@@ -46,24 +46,18 @@ test.describe('Full Pipeline E2E', () => {
       }
     });
 
-    // Step 1: Navigate to app (auth state already loaded via storageState)
-    await test.step('Navigate to app', async () => {
-      await page.goto('/app');
-      await expect(
-        page.getByRole('button', { name: /Start New Session/i }),
-      ).toBeVisible({ timeout: 15_000 });
-    });
-
-    // Step 2: Start a new session — click the button to reach V2IntakeForm
-    await test.step('Click Start New Session', async () => {
-      await page.getByRole('button', { name: /Start New Session/i }).click();
-      // V2IntakeForm renders with #v2-resume textarea
+    // Step 1: Navigate directly to the current Resume Builder session route
+    await test.step('Navigate to the current Resume Builder session route', async () => {
+      await page.goto('/resume-builder/session');
       await expect(page.locator('#v2-resume')).toBeVisible({
-        timeout: 10_000,
+        timeout: 15_000,
+      });
+      await expect(page.locator('#v2-jd')).toBeVisible({
+        timeout: 15_000,
       });
     });
 
-    // Step 3: Fill the V2 intake form and submit
+    // Step 2: Fill the V2 intake form and submit
     await test.step('Fill V2 intake form and submit', async () => {
       await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
       await page.locator('#v2-jd').fill(REAL_JD_TEXT);
@@ -94,7 +88,7 @@ test.describe('Full Pipeline E2E', () => {
       }
     });
 
-    // Step 4: Wait for the V2 streaming display to appear
+    // Step 3: Wait for the V2 streaming display to appear
     // The intake form disappears when sessionId is set; the top bar with "Back" appears
     await test.step('Wait for V2 streaming display to connect', async () => {
       // #v2-resume disappears when pipeline starts
@@ -114,7 +108,7 @@ test.describe('Full Pipeline E2E', () => {
       ).toBeVisible({ timeout: 90_000 }); // 90s for first LLM response
     });
 
-    // Step 5: Wait for strategy phase to produce gap coaching cards (if any),
+    // Step 4: Wait for strategy phase to produce gap coaching cards (if any),
     // then respond to each one.
     // NOTE: The V2 pipeline streams continuously — gap coaching cards appear
     // mid-stream but the backend keeps writing. If the resume section appears
@@ -228,7 +222,7 @@ test.describe('Full Pipeline E2E', () => {
       }
     });
 
-    // Step 6: Wait for pipeline completion
+    // Step 5: Wait for pipeline completion
     // The completion status reads "Your resume is ready"
     await test.step('Wait for pipeline completion', async () => {
       await expect(
@@ -245,7 +239,7 @@ test.describe('Full Pipeline E2E', () => {
       expect(pipelineDurationMs).toBeLessThan(7 * 60_000); // 7 min max (includes gap coaching re-run)
     });
 
-    // Step 7: Verify ExportBar is visible and download PDF
+    // Step 6: Verify ExportBar is visible and download PDF
     await test.step('Download PDF resume', async () => {
       // Scroll to the bottom of the streaming display to bring ExportBar into view
       await page.evaluate(() => {
