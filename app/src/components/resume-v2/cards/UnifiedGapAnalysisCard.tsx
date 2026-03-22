@@ -14,6 +14,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 import { importanceLabel, importanceStyle } from './shared-badges';
 import type {
   GapAnalysis,
@@ -32,6 +33,7 @@ import {
   buildEditContext as buildEditContextUtil,
   buildCoachingLookup,
 } from '../utils/coaching-actions';
+import { scrollToBullet } from '../useStrategyThread';
 
 // ─── Per-coaching-item state (mirrors GapCoachingCard pattern) ──────
 
@@ -85,6 +87,28 @@ const SECTION_CONFIG = {
   },
 } as const;
 
+function requirementSourceLabel(source: RequirementGap['source']): string {
+  return source === 'benchmark' ? 'Benchmark' : 'Job Description';
+}
+
+function requirementStatusLabel(classification: GapClassification): string {
+  if (classification === 'strong') return 'Covered';
+  if (classification === 'partial') return 'Partially Covered';
+  return 'Not Yet Covered';
+}
+
+function shortenText(text: string | undefined, max = 120): string {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function sourceDescription(source: 'job_description' | 'benchmark'): string {
+  return source === 'benchmark'
+    ? 'These are ideal executive signals the benchmark expects, even when the job description does not spell them out directly.'
+    : 'These are the direct requirements we pulled from the job description and need to account for honestly.';
+}
+
 // ─── Expandable requirement row ─────────────────────────────────────
 
 interface RequirementRowProps {
@@ -108,6 +132,9 @@ function RequirementRow({
   const [expanded, setExpanded] = useState(false);
   const hasCoaching = coaching && coachingState && onCoachingChange;
   const isResponded = coachingState?.action !== null && coachingState?.action !== undefined;
+  const mappedEvidence = currentResume
+    ? findBulletForRequirement(req.requirement, positioningAssessment, currentResume)
+    : null;
 
   const editContext = (): EditContext =>
     buildEditContextUtil(req.requirement, req.evidence, req.strategy?.positioning);
@@ -172,6 +199,9 @@ function RequirementRow({
       <button
         type="button"
         onClick={() => setExpanded(prev => !prev)}
+        onMouseEnter={() => {
+          if (mappedEvidence) scrollToBullet(req.requirement);
+        }}
         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
         aria-expanded={expanded}
       >
@@ -184,6 +214,9 @@ function RequirementRow({
         />
         {classificationIcon(classification)}
         <span className="flex-1 min-w-0 text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
+        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45 shrink-0">
+          {requirementSourceLabel(req.source)}
+        </span>
         <span
           className="inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase shrink-0"
           style={importanceStyle(req.importance)}
@@ -206,6 +239,26 @@ function RequirementRow({
         )}
       >
         <div className="px-4 pb-4 space-y-3">
+          {mappedEvidence && (
+            <div className="support-callout border-white/[0.08] bg-black/15 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">Current Resume Proof</div>
+                  <p className="mt-1 text-xs leading-5 text-white/62">
+                    {mappedEvidence.section}: {shortenText(mappedEvidence.text, 140)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => scrollToBullet(req.requirement)}
+                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/84"
+                >
+                  Show in Resume
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Evidence */}
           {req.evidence.length > 0 && (
             <div>
@@ -455,6 +508,124 @@ function RequirementRow({
   );
 }
 
+function RequirementInventory({
+  requirements,
+  currentResume,
+  positioningAssessment,
+}: {
+  requirements: RequirementGap[];
+  currentResume?: ResumeDraft | null;
+  positioningAssessment?: PositioningAssessment | null;
+}) {
+  const groups = [
+    {
+      key: 'job_description' as const,
+      title: 'Job Description Requirements',
+      description: sourceDescription('job_description'),
+      items: requirements.filter((item) => (item.source ?? 'job_description') === 'job_description'),
+    },
+    {
+      key: 'benchmark' as const,
+      title: 'Benchmark Requirements',
+      description: sourceDescription('benchmark'),
+      items: requirements.filter((item) => item.source === 'benchmark'),
+    },
+  ].filter((group) => group.items.length > 0);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      <AiHelperHint
+        title="What You’re Matching"
+        body="This is the full inventory of what we found. Start here to see what came directly from the job description, what came from the benchmark, what is already covered, and what still needs stronger proof."
+        tip="Hover a requirement or use “Show in Resume” to jump to the current proof on the right. If the proof is weak, click that resume line and improve it."
+      />
+
+      {groups.map((group) => (
+        <div key={group.key} className="room-shell space-y-3 px-4 py-4">
+          <div className="space-y-1">
+            <div className="room-meta-strip">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/44">
+                {group.title}
+              </span>
+              <span className="text-[10px] text-white/30">({group.items.length})</span>
+            </div>
+            <p className="text-sm leading-6 text-white/56">{group.description}</p>
+          </div>
+
+          <div className="space-y-2">
+            {group.items.map((item) => {
+              const mappedEvidence = currentResume
+                ? findBulletForRequirement(item.requirement, positioningAssessment, currentResume)
+                : null;
+
+              return (
+                <div
+                  key={`${group.key}:${item.requirement}`}
+                  className="support-callout px-3 py-3 transition-colors hover:bg-white/[0.05]"
+                  onMouseEnter={() => {
+                    if (mappedEvidence) scrollToBullet(item.requirement);
+                  }}
+                  onFocus={() => {
+                    if (mappedEvidence) scrollToBullet(item.requirement);
+                  }}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium leading-6 text-white/84">{item.requirement}</span>
+                        <span
+                          className="rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]"
+                          style={importanceStyle(item.importance)}
+                        >
+                          {importanceLabel(item.importance)}
+                        </span>
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                          {requirementSourceLabel(item.source)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-white/50">
+                        {mappedEvidence
+                          ? `Currently shown in ${mappedEvidence.section}: ${shortenText(mappedEvidence.text)}`
+                          : 'Not clearly mapped to a specific line in the current resume yet.'}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={cn(
+                          'rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+                          item.classification === 'strong'
+                            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
+                            : item.classification === 'partial'
+                              ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/88'
+                              : 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/88',
+                        )}
+                      >
+                        {requirementStatusLabel(item.classification)}
+                      </span>
+                      {mappedEvidence && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToBullet(item.requirement)}
+                          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.07] hover:text-white/86"
+                        >
+                          Show in Resume
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Section group ──────────────────────────────────────────────────
 
 function SectionGroup({
@@ -636,6 +807,12 @@ export function UnifiedGapAnalysisCard({
           <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gap{missing.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
+
+      <RequirementInventory
+        requirements={gapAnalysis.requirements}
+        currentResume={currentResume}
+        positioningAssessment={positioningAssessment}
+      />
 
       {/* Coaching progress bar */}
       {hasCoaching && (
