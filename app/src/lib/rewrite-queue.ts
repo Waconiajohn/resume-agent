@@ -295,6 +295,8 @@ function userInstructionForRequirement(args: {
   const asksForFinancialProof = /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement);
   const asksForTalentProof = /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalizedRequirement);
   const asksForPortfolioProof = /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement);
+  const asksForPlatformScaleProof = /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement);
+  const asksForArchitectureDecisionProof = /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement);
   const asksForScaleProof = /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(args.requirement);
   const asksForTechnicalProof = /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement);
 
@@ -329,6 +331,14 @@ function userInstructionForRequirement(args: {
 
     if (asksForPortfolioProof) {
       return 'Answer with the brands, product lines, or categories you managed together, how you coordinated them, and what business outcome came from that portfolio work.';
+    }
+
+    if (asksForPlatformScaleProof) {
+      return 'Answer with the platform scale involved, such as transaction volume, request volume, uptime, latency, or system footprint, and what you architected at that scale.';
+    }
+
+    if (asksForArchitectureDecisionProof) {
+      return 'Answer with one architecture decision: who the stakeholders were, what tradeoff you led, and what outcome came from that decision.';
     }
 
     if (asksForScaleProof) {

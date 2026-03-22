@@ -335,6 +335,63 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('portfolio work');
   });
 
+  it('tailors nearby-proof guidance for platform-scale architecture requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Architect data platform components handling 2B+ daily transactions',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Implemented Kubernetes-based container orchestration platform serving 50M+ API requests daily.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('transaction volume, request volume, uptime, latency, or system footprint');
+    expect(queue.items[0]?.userInstruction).toContain('architected at that scale');
+  });
+
+  it('tailors nearby-proof guidance for cross-functional architecture decision requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Proven ability to lead cross-functional architecture decisions',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Led a team of 14 infrastructure and DevOps engineers.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('architecture decision');
+    expect(queue.items[0]?.userInstruction).toContain('tradeoff');
+    expect(queue.items[0]?.userInstruction).toContain('stakeholders');
+  });
+
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
