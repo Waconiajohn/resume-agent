@@ -1106,7 +1106,7 @@ export function stabilizeFinalReviewResult(
         severity: 'critical',
         type: 'credibility_risk',
         observation: `Hard requirement not clearly evidenced: ${hardRequirementRisks[0]}`,
-        why_it_hurts: 'This can screen the candidate out before interview selection if the credential or threshold is truly missing or not explicit.',
+        why_it_hurts: buildHardRequirementWhyItHurts(hardRequirementRisks[0]),
         target_section: 'Education, Certifications, or Summary',
         related_requirement: hardRequirementRisks[0],
         fix_strategy: 'If the requirement is real, add direct proof. If it is not, keep the risk visible and avoid overstating fit.',
@@ -1169,7 +1169,7 @@ export function stabilizeFinalReviewResult(
         severity: materialJobFitRisks.length > 1 ? 'critical' : 'moderate',
         type: 'missing_evidence',
         observation: `Must-have role-fit evidence is still thin: ${materialJobFitRisks[0]}`,
-        why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+        why_it_hurts: buildMaterialJobFitWhyItHurts(materialJobFitRisks[0]),
         target_section: 'Summary or most relevant experience bullets',
         related_requirement: materialJobFitRisks[0],
         fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
@@ -1713,6 +1713,62 @@ function buildMaterialJobFitWhyItMatters(requirement: string): string {
   }
 
   return 'This is central to the role fit, and the draft does not yet make that proof obvious.';
+}
+
+function buildHardRequirementWhyItHurts(requirement: string): string {
+  const normalized = normalizeReviewText(requirement);
+
+  if (extractYearsThreshold(requirement) !== null) {
+    return 'If this tenure threshold is not obvious, the candidate may fail an early screen before the deeper interview discussion starts.';
+  }
+
+  if (/\b(certification|certified|certificate|license|licensed|licensure|cpa|pmp|pe)\b/i.test(normalized)) {
+    return 'If this credential is truly required and not explicit, the candidate may be screened out before interview selection.';
+  }
+
+  if (/\b(bachelor|master|mba|phd|doctorate|degree|foreign equivalent)\b/i.test(normalized)) {
+    return 'If this degree requirement is truly required and not explicit, the candidate may be screened out before interview selection.';
+  }
+
+  return 'If this requirement is truly mandatory and not explicit, the candidate may be screened out before interview selection.';
+}
+
+function buildMaterialJobFitWhyItHurts(requirement: string): string {
+  const normalized = normalizeReviewText(requirement);
+  const hasYearsThreshold = extractYearsThreshold(requirement) !== null
+    || /\b(progressive|seniority|senior|leadership tenure)\b/.test(normalized);
+  const hasDomainSignal = /\b(regulated industr(?:y|ies)|financial services|healthcare|consumer products|cpg|manufacturing|saas|public sector|federal|defense|pharma|medtech|ecommerce|e-commerce|retail)\b/i.test(normalized);
+  const hasLeadershipSignal = /\b(leadership|executive stakeholders?|executive presence|board(?:-level)?|communication|influence|talent development|high-performing teams?|build and lead|cross-functional|mentor|coach|hire|hiring|cmo|coo|cto|cfo|vice president|vp\b|director)\b/i.test(normalized);
+  const hasScaleSignal = extractDollarThreshold(requirement) !== null
+    || /\b(\d+\+\s*(?:person|people|member)|p&l|profit and loss|budget|revenue|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|organization)\b/i.test(normalized);
+  const hasTechnicalSignal = extractFrameworkEvidencePatterns(normalized).length > 0
+    || /\b(service mesh|istio|linkerd|kafka|spark|kubernetes|cloud|architecture|data platform|erp|aws|azure|gcp|microservices)\b/i.test(normalized);
+
+  if (hasYearsThreshold) {
+    return 'Without direct proof of this seniority bar, the candidate can look short of the role level even if the broader background is strong.';
+  }
+
+  if (hasLeadershipSignal && hasScaleSignal) {
+    return 'Without direct proof at this leadership scale, the hiring team may question whether the candidate has operated at the level the role demands.';
+  }
+
+  if (hasScaleSignal) {
+    return 'Without direct proof at this scale, the hiring team may question whether the candidate has operated at the level the role demands.';
+  }
+
+  if (hasDomainSignal) {
+    return 'Without direct proof in this domain, the hiring team may question whether the candidate can transfer quickly into the core context of the role.';
+  }
+
+  if (hasTechnicalSignal) {
+    return 'Without direct proof here, the hiring team may question whether the candidate has the technical depth this role expects.';
+  }
+
+  if (hasLeadershipSignal) {
+    return 'Without direct proof here, the hiring team may question whether the candidate has the leadership scope this role expects.';
+  }
+
+  return 'Without direct proof here, the hiring team may question whether the candidate fully matches this core part of the role.';
 }
 
 function softenContradictedSummaryClaims(result: FinalReviewResult): string {

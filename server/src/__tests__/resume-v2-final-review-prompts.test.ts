@@ -211,6 +211,8 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
     expect(stabilized.concerns[0]?.severity).toBe('critical');
     expect(stabilized.concerns[0]?.related_requirement).toContain("Bachelor's degree");
+    expect(stabilized.concerns[0]?.why_it_hurts).toContain('degree requirement');
+    expect(stabilized.concerns[0]?.why_it_hurts).toContain('screened out before interview selection');
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes("Bachelor's degree"))).toBe(true);
     expect(stabilized.hiring_manager_verdict.summary).toMatch(/screening risk|hard requirement/i);
     expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
@@ -858,6 +860,8 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Build and lead a 40+ person marketing organization.');
+    expect(stabilized.concerns[0]?.why_it_hurts).toContain('leadership scale');
+    expect(stabilized.concerns[0]?.why_it_hurts).toContain('operated at the level the role demands');
     const leadershipScaleGap = stabilized.six_second_scan.important_signals_missing.find((item) => item.signal.includes('40+ person marketing organization'));
     expect(leadershipScaleGap).toBeTruthy();
     expect(leadershipScaleGap?.why_it_matters).toContain('leadership scope');

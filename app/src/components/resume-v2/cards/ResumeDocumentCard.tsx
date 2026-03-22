@@ -49,6 +49,13 @@ export function ResumeDocumentCard({
     onTextSelect(text, section, rect);
   }, [onTextSelect]);
 
+  const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
+  const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
+  const professionalExperience = Array.isArray(resume.professional_experience) ? resume.professional_experience : [];
+  const earlierCareer = Array.isArray(resume.earlier_career) ? resume.earlier_career : [];
+  const education = Array.isArray(resume.education) ? resume.education : [];
+  const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
+
   return (
     <div
       className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text"
@@ -98,11 +105,11 @@ export function ResumeDocumentCard({
       </section>
 
       {/* Core Competencies */}
-      {resume.core_competencies.length > 0 && (
+      {coreCompetencies.length > 0 && (
         <section data-section="core_competencies">
           <SectionHeading>Core Competencies</SectionHeading>
           <div className="flex flex-wrap gap-2">
-            {resume.core_competencies.map((comp, i) => (
+            {coreCompetencies.map((comp, i) => (
               <span
                 key={i}
                 className="rounded border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-white/70"
@@ -115,12 +122,13 @@ export function ResumeDocumentCard({
       )}
 
       {/* Selected Accomplishments */}
-      {resume.selected_accomplishments.length > 0 && (
+      {selectedAccomplishments.length > 0 && (
         <section data-section="selected_accomplishments">
           <SectionHeading>Selected Accomplishments</SectionHeading>
           <ul className="space-y-2">
-            {resume.selected_accomplishments.map((a, i) => {
-              const hasStrategy = a.addresses_requirements.length > 0;
+            {selectedAccomplishments.map((a, i) => {
+              const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
+              const hasStrategy = accomplishmentRequirements.length > 0;
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
               return (
                 <li
@@ -147,13 +155,13 @@ export function ResumeDocumentCard({
                       tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onBulletClick(a.content, 'selected_accomplishments', i, a.addresses_requirements);
+                        onBulletClick(a.content, 'selected_accomplishments', i, accomplishmentRequirements);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           e.stopPropagation();
-                          onBulletClick(a.content, 'selected_accomplishments', i, a.addresses_requirements);
+                          onBulletClick(a.content, 'selected_accomplishments', i, accomplishmentRequirements);
                         }
                       }}
                       className={
@@ -168,13 +176,13 @@ export function ResumeDocumentCard({
                     a.content
                   )}
                   {hasStrategy && (
-                    <StrategyTooltip requirements={a.addresses_requirements} />
+                    <StrategyTooltip requirements={accomplishmentRequirements} />
                   )}
                   {isActive && onRequestEdit && (
                     <InlineEditPanel
                       bulletText={a.content}
                       section="selected_accomplishments"
-                      requirements={a.addresses_requirements}
+                      requirements={accomplishmentRequirements}
                       pendingEdit={pendingEdit}
                       isEditing={isEditing}
                       onRequestEdit={onRequestEdit}
@@ -190,11 +198,11 @@ export function ResumeDocumentCard({
       )}
 
       {/* Professional Experience */}
-      {resume.professional_experience.length > 0 && (
+      {professionalExperience.length > 0 && (
         <section data-section="professional_experience">
           <SectionHeading>Professional Experience</SectionHeading>
           <div className="space-y-5">
-            {resume.professional_experience.map((exp, i) => (
+            {professionalExperience.map((exp, i) => (
               <div key={i}>
                 <div className="flex items-baseline justify-between gap-2">
                   <div>
@@ -216,8 +224,9 @@ export function ResumeDocumentCard({
                   </p>
                 )}
                 <ul className="mt-2 space-y-1.5">
-                  {exp.bullets.map((bullet, j) => {
-                    const hasStrategy = bullet.addresses_requirements.length > 0;
+                  {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
+                    const bulletRequirements = Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [];
+                    const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
                     return (
@@ -245,13 +254,13 @@ export function ResumeDocumentCard({
                             tabIndex={0}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onBulletClick(bullet.text, 'professional_experience', bulletIndex, bullet.addresses_requirements);
+                              onBulletClick(bullet.text, 'professional_experience', bulletIndex, bulletRequirements);
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                onBulletClick(bullet.text, 'professional_experience', bulletIndex, bullet.addresses_requirements);
+                                onBulletClick(bullet.text, 'professional_experience', bulletIndex, bulletRequirements);
                               }
                             }}
                             className={
@@ -266,13 +275,13 @@ export function ResumeDocumentCard({
                           bullet.text
                         )}
                         {hasStrategy && (
-                          <StrategyTooltip requirements={bullet.addresses_requirements} />
+                          <StrategyTooltip requirements={bulletRequirements} />
                         )}
                         {isActive && onRequestEdit && (
                           <InlineEditPanel
                             bulletText={bullet.text}
                             section="professional_experience"
-                            requirements={bullet.addresses_requirements}
+                            requirements={bulletRequirements}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
                             onRequestEdit={onRequestEdit}
@@ -291,11 +300,11 @@ export function ResumeDocumentCard({
       )}
 
       {/* Earlier Career */}
-      {resume.earlier_career && resume.earlier_career.length > 0 && (
+      {earlierCareer.length > 0 && (
         <section data-section="earlier_career">
           <SectionHeading>Earlier Career</SectionHeading>
           <div className="space-y-1">
-            {resume.earlier_career.map((ec, i) => (
+            {earlierCareer.map((ec, i) => (
               <div key={i} className="flex items-baseline justify-between text-sm">
                 <span className="text-white/70">
                   {ec.title}{' '}
@@ -309,11 +318,11 @@ export function ResumeDocumentCard({
       )}
 
       {/* Education */}
-      {resume.education.length > 0 && (
+      {education.length > 0 && (
         <section data-section="education">
           <SectionHeading>Education</SectionHeading>
           <div className="space-y-1">
-            {resume.education.map((edu, i) => (
+            {education.map((edu, i) => (
               <div key={i} className="text-sm text-white/80">
                 {edu.degree} — {edu.institution}
                 {edu.year && <span className="text-white/40"> ({edu.year})</span>}
@@ -324,11 +333,11 @@ export function ResumeDocumentCard({
       )}
 
       {/* Certifications */}
-      {resume.certifications.length > 0 && (
+      {certifications.length > 0 && (
         <section data-section="certifications">
           <SectionHeading>Certifications</SectionHeading>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {resume.certifications.map((cert, i) => (
+            {certifications.map((cert, i) => (
               <span key={i} className="text-sm text-white/70">{cert}</span>
             ))}
           </div>
