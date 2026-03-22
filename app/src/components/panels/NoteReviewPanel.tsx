@@ -81,10 +81,10 @@ export function NoteReviewPanel({ data, onPipelineRespond }: NoteReviewPanelProp
                 aria-selected={idx === selectedNote}
                 onClick={() => setSelectedNote(idx)}
                 className={cn(
-                  'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                  'rounded-md border px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] transition-colors',
                   idx === selectedNote
-                    ? 'bg-[#afc4ff]/20 text-[#afc4ff]'
-                    : 'bg-white/[0.05] text-white/50 hover:text-white/70',
+                    ? 'border-[#afc4ff]/25 bg-[#afc4ff]/20 text-[#afc4ff]'
+                    : 'border-white/[0.08] bg-white/[0.05] text-white/50 hover:text-white/70',
                 )}
               >
                 {note.interviewer_name}
@@ -101,7 +101,7 @@ export function NoteReviewPanel({ data, onPipelineRespond }: NoteReviewPanelProp
                 <p className="text-xs font-semibold text-white/85">{activeNote.interviewer_name}</p>
                 <p className="text-[11px] text-white/50">{activeNote.interviewer_title}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-white/45">
+              <span className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/45">
                 {FORMAT_LABELS[activeNote.format] ?? activeNote.format}
               </span>
             </div>

@@ -309,9 +309,9 @@ export function SectionWorkbench({
           </p>
 
           {reviewStrategy === 'bundled' && (
-            <div className="rounded-2xl border border-white/[0.1] bg-white/[0.025] p-3">
+            <div className="room-shell p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                <span className="rounded-md border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
                   Grouped Sections
                 </span>
                 <span className="text-xs text-white/60">
@@ -324,10 +324,10 @@ export function SectionWorkbench({
                 )}
               </div>
               {reviewRequiredSections.length > 0 && (
-                <div className="mt-2 rounded-xl border border-white/[0.08] bg-black/20 p-2.5">
+                <div className="support-callout mt-2 bg-black/20 p-2.5">
                   <div className="mb-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                      <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
                         Your Next Step
                       </span>
                       {reviewRequiredSections.includes(section) ? (
@@ -442,7 +442,7 @@ export function SectionWorkbench({
                         return (
                           <span
                             key={`bundle-pill-${bundle.key}`}
-                            className={`rounded-full border px-2 py-0.5 text-[10px] ${toneClass}`}
+                            className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] ${toneClass}`}
                             title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} sections approved`}
                           >
                             {bundle.label}
@@ -459,9 +459,9 @@ export function SectionWorkbench({
                     <span>Your progress</span>
                     <span>{approvedReviewSections.length}/{reviewRequiredSections.length} approved</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-1.5 overflow-hidden bg-white/[0.06]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#7cb5ff]/80 to-[#b3e1ff]/85 transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-[#7cb5ff]/80 to-[#b3e1ff]/85 transition-all duration-300"
                       style={{ width: `${reviewProgressPct}%` }}
                     />
                   </div>
@@ -473,7 +473,7 @@ export function SectionWorkbench({
                         return (
                           <span
                             key={reviewSection}
-                            className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                            className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] ${
                               isApproved
                                 ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
                                 : isCurrent
@@ -598,13 +598,13 @@ export function SectionWorkbench({
 
           {/* Refining loading overlay */}
           {isRefining && (
-            <div className="relative rounded-xl border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
+            <div className="relative rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
               <div className="flex items-center gap-2 justify-center">
-                <div className="h-2 w-2 rounded-full bg-[#98b3ff] motion-safe:animate-pulse" />
+                <div className="h-2 w-2 bg-[#98b3ff] motion-safe:animate-pulse" />
                 <p className="text-xs text-[#98b3ff]/80 font-medium">Refining section…</p>
               </div>
-              <div className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                <div className="h-full w-1/3 rounded-full bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
+              <div className="mt-2 h-0.5 w-full overflow-hidden bg-white/[0.06]">
+                <div className="h-full w-1/3 bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
               </div>
             </div>
           )}

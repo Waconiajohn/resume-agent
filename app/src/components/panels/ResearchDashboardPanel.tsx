@@ -18,7 +18,7 @@ function importanceBadge(importance: BenchmarkSkill['importance']) {
   };
   const labels = { critical: 'Critical', important: 'Important', nice_to_have: 'Nice to have' };
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${styles[importance]}`}>
+    <span className={`rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${styles[importance]}`}>
       {labels[importance]}
     </span>
   );
@@ -79,7 +79,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {(data.status_note || data.next_expected || data.loading_state) && (
           <GlassCard className="p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${researchStatusTone}`}>
+              <span className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${researchStatusTone}`}>
                 {data.loading_state === 'running'
                   ? 'Research running'
                   : data.loading_state === 'background_running'
@@ -120,7 +120,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
               {company.values.map((v, i) => (
                 <span
                   key={`company-value-${v}-${i}`}
-                  className="rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/75"
+                  className="rounded-md border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-white/75"
                 >
                   {v}
                 </span>
@@ -146,7 +146,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           )}
 
           {jd_requirements.seniority_level && (
-            <span className="mb-3 inline-block rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/76">
+            <span className="mb-3 inline-block rounded-md border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/76">
               {jd_requirements.seniority_level}
             </span>
           )}

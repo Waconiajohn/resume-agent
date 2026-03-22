@@ -32,7 +32,7 @@ function BioCard({ bio, index }: { bio: BioVariant; index: number }) {
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-semibold text-white/85 truncate">{bio.format_label}</span>
-          <span className="shrink-0 rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[9px] text-white/55">
+          <span className="shrink-0 rounded-md border border-white/[0.10] bg-white/[0.04] px-2 py-1 text-[9px] uppercase tracking-[0.12em] text-white/55">
             {bio.length_label}
           </span>
           <span className="shrink-0 text-[10px] text-white/40 tabular-nums">

@@ -107,12 +107,12 @@ function NumberField({
         </div>
         <div className="flex items-center gap-1.5">
           {wasEdited && (
-            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.10em]', colors.badge)}>
+            <span className={cn('rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.10em]', colors.badge)}>
               Edited
             </span>
           )}
           {canEdit && !wasEdited && (
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.10em] text-white/40">
+            <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.10em] text-white/40">
               Editable
             </span>
           )}

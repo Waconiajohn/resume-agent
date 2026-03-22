@@ -171,7 +171,7 @@ function ChangeBlock({
             {change.jd_requirements.map((req, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/76"
+                  className="inline-flex items-center gap-1 rounded-md border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-white/76"
                 >
                   <Tag className="h-2.5 w-2.5" />
                   {req}
@@ -272,7 +272,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white/85">Resume Preview</span>
-          <span className="rounded-full border border-white/[0.14] bg-white/[0.05] px-2.5 py-0.5 text-[10px] font-medium text-white/78">
+          <span className="rounded-md border border-white/[0.14] bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/78">
             {sectionTitle(active_section)}
           </span>
         </div>

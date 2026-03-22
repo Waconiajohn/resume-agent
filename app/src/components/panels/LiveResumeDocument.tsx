@@ -280,7 +280,7 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   if (isActive) {
     return (
       <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500" role="status" aria-live="polite">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
+        <span className="h-1.5 w-1.5 animate-pulse bg-blue-400" />
         Creating...
       </span>
     );
@@ -288,7 +288,7 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   if (source === 'draft') {
     return (
       <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+        <span className="h-1.5 w-1.5 bg-amber-400" />
         Draft
       </span>
     );
@@ -296,7 +296,7 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   if (source === 'approved' || source === 'resume') {
     return (
       <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-500">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="h-1.5 w-1.5 bg-emerald-400" />
         Complete
       </span>
     );
@@ -568,7 +568,7 @@ function QualityBadge({ data }: { data: QualityDashboardData }) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold shadow-lg transition-all ${qualityScoreColor(overallScore)}`}
+        className={`flex h-10 w-10 items-center justify-center rounded-md border-2 text-sm font-bold shadow-lg transition-all ${qualityScoreColor(overallScore)}`}
         aria-label={`Quality score ${overallScore}%. Click for breakdown.`}
       >
         {overallScore}
@@ -736,7 +736,7 @@ function QuickFixPopover({
             key={chip}
             type="button"
             onClick={() => toggleChip(chip)}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors ${
               selectedChips.has(chip)
                 ? 'border-blue-300 bg-blue-50 text-blue-700'
                 : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
@@ -910,9 +910,9 @@ export function LiveResumeDocument({
       <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
         {isProcessing && !allComplete && (
           <div className="flex flex-1 items-center gap-3">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-700">
+            <div className="h-1.5 flex-1 overflow-hidden bg-gray-700">
               <div
-                className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                className="h-full bg-blue-400 transition-all duration-500"
                 style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
               />
             </div>
