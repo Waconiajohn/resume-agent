@@ -93,7 +93,7 @@ describe('ResumeAiWorklogCard', () => {
     );
 
     expect(screen.getByText('What AI Is Doing For You')).toBeInTheDocument();
-    expect(screen.getByText(/invisible work happening behind the scenes/i)).toBeInTheDocument();
+    expect(screen.getByText(/shows the work happening behind the scenes/i)).toBeInTheDocument();
     expect(screen.getByText(/Right now we are working on "Executive stakeholder leadership"/i)).toBeInTheDocument();
   });
 });

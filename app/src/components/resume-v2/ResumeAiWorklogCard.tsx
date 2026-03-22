@@ -124,7 +124,7 @@ export function ResumeAiWorklogCard({
         </div>
       </div>
       <p className="text-sm leading-6 text-white/54">
-          This is the invisible work happening behind the scenes so you can see what the system is doing for your money and why the next action matters.
+        This shows the work happening behind the scenes so you can see why the next step matters.
       </p>
 
       <div className="space-y-2.5">

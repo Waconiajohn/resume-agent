@@ -305,8 +305,7 @@ export function RewriteQueuePanel({
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-white/88">What to Fix Next</h2>
             <p className="mt-1 text-sm leading-6 text-white/54">
-              AI already read your resume, studied the job description, built a benchmark candidate, and compared that work against your current draft.
-              Work one issue at a time. Answer the next question or review the next edit. Nothing changes on the resume until you accept the edit.
+              This is the live queue of the highest-value fixes left on the draft. Work one item at a time and only accept changes that are fully accurate.
             </p>
           </div>
         </div>
