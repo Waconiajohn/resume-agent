@@ -71,7 +71,7 @@ const SOURCE_LABELS = {
 } as const;
 
 const CATEGORY_LABELS: Record<RewriteQueueItem['category'], string> = {
-  quick_win: 'Easier to fix',
+  quick_win: 'Good first fix',
   proof_upgrade: 'Needs stronger proof',
   hard_gap: 'Possible screen-out risk',
   benchmark_stretch: 'Benchmark signal',
@@ -164,7 +164,7 @@ function helperToggleLabel(isExpanded: boolean): string {
 }
 
 function contextToggleLabel(isExpanded: boolean): string {
-  return isExpanded ? 'Hide Why This Needs Work' : 'Why This Needs Work';
+  return isExpanded ? 'Hide Why This Still Needs Work' : 'Why This Still Needs Work';
 }
 
 function primaryActionLabel(item: RewriteQueueItem, hasViewableEvidence: boolean): string {
@@ -485,12 +485,12 @@ export function RewriteQueuePanel({
 
         <div className="grid gap-3 sm:grid-cols-3">
           <QueueStat
-            label="Start Here"
+            label="Fix First"
             value={visibleFixFirstCount}
             detail={queuedAfterFixFirst > 0 ? `${queuedAfterFixFirst} more queued after these` : undefined}
             tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]"
           />
-          <QueueStat label="Strengthen Next" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
+          <QueueStat label="Still Needs Proof" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
           <QueueStat label="Already Covered" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
         </div>
 
@@ -520,7 +520,7 @@ export function RewriteQueuePanel({
                 <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">3. What is still missing</p>
                 <p className="mt-2 text-base leading-7 text-white/74">{missingExplanation(nextItem)}</p>
                 <p className="mt-3 text-sm leading-6 text-white/56">
-                  The one detail we still need from you: {nextDetailPrompt(nextItem)}
+                  To make this strong enough, tell us: {nextDetailPrompt(nextItem)}
                 </p>
               </div>
               <SuggestedDraftPreview item={nextItem} />
@@ -732,7 +732,7 @@ export function RewriteQueuePanel({
 
                                 {item.starterQuestion && item.bucket !== 'resolved' && (
                                   <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-sm leading-6 text-white/72">
-                                    The one detail we still need from you: {item.starterQuestion}
+                                    To make this strong enough, tell us: {item.starterQuestion}
                                   </div>
                                 )}
 

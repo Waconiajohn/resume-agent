@@ -99,10 +99,10 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
               className="text-[10px] font-semibold uppercase tracking-wide"
               style={{ color: '#b5dec2' }}
             >
-              Suggested Resume Language
+              Resume line ready to review
             </span>
             <p style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary, marginTop: 6 }}>
-              Work directly in this box, then apply the draft when it says what you mean.
+              Work directly in this box, then send it to review when it says what you mean.
             </p>
             <textarea
               value={draftValue}
@@ -316,7 +316,7 @@ export function GapChatThread({
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5" style={{ color: '#b5dec2' }} />
           <span style={{ fontSize: 13, fontWeight: 500, color: '#b5dec2' }}>
-            Edit accepted
+            Sent to review
           </span>
         </div>
         <p style={{ fontSize: 13, color: REPORT_COLORS.secondary, marginTop: 4, lineHeight: 1.5 }}>
@@ -360,7 +360,7 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
-              What detail would make this stronger
+              To make this strong enough
             </p>
             <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
@@ -442,7 +442,7 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
-              What we still need from you
+              To make this strong enough
             </p>
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
@@ -586,7 +586,7 @@ export function GapChatThread({
             onKeyDown={handleKeyDown}
             placeholder={messages.length === 0
               ? 'Add one concrete detail here, like a metric, scope, reporting cadence, stakeholder group, or business result, and AI will improve the rewrite.'
-              : 'Add the next detail or ask AI for another rewrite...'
+              : 'Add the next missing detail or ask for another rewrite...'
             }
             rows={1}
             disabled={isLoading}

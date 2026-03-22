@@ -503,7 +503,7 @@ test.describe('Resume Builder session flow', () => {
 
     await expect(page.getByRole('button', { name: /Work on This with AI|Let AI Draft It/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Send to Review/i }).first()).toBeVisible();
-    await expect(page.getByText(/The one detail we still need from you/i).first()).toBeVisible();
+    await expect(page.getByText(/To make this strong enough, tell us/i).first()).toBeVisible();
     await expect(page.getByText(/Start with the first requirement below/i)).toBeVisible();
   });
 });

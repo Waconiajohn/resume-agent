@@ -443,7 +443,7 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getAllByText('2. From your resume').length).toBeGreaterThan(0);
     expect(screen.getAllByText('3. What is still missing').length).toBeGreaterThan(0);
     expect(screen.getAllByText('4. Suggested rewrite for your resume').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Why This Needs Work' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Why This Still Needs Work' })).not.toBeInTheDocument();
     expect(
       screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
     ).toBeGreaterThan(0);
@@ -451,7 +451,7 @@ describe('rewrite queue browser flow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Work on This with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
-    expect(screen.getByText('What we still need from you')).toBeInTheDocument();
+    expect(screen.getByText('To make this strong enough')).toBeInTheDocument();
     expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Make the Rewrite Stronger' }));
@@ -487,7 +487,7 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    expect(screen.getByText('Start Here')).toBeInTheDocument();
+    expect(screen.getByText('Fix First')).toBeInTheDocument();
     expect(screen.getByText('1 more queued after these')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
   });
