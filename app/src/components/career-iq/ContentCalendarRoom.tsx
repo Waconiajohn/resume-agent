@@ -239,10 +239,10 @@ function ContentPillarsBar({ posts }: { posts: StructuredPost[] }) {
                 <PillarIcon size={11} className={cn(pillar.color.split(' ')[0])} />
                 <span className="text-[11px] text-white/50 truncate">{pillar.label}</span>
               </div>
-              <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+              <div className="flex-1 h-1.5 overflow-hidden bg-white/[0.06]">
                 <div
                   className={cn(
-                    'h-full rounded-full transition-all duration-500',
+                    'h-full transition-all duration-500',
                     onTarget ? 'bg-[#b5dec2]/60' : 'bg-[#f0d99f]/60',
                   )}
                   style={{ width: `${pillar.pct}%` }}
@@ -357,7 +357,7 @@ export function ContentCalendarRoom() {
       {calendar.qualityScore !== null && (
         <div className="flex items-center gap-3">
           <div className={cn(
-            'text-[12px] font-medium px-2.5 py-1 rounded-full',
+            'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
             calendar.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
             calendar.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
             'text-[#f0b8b8] bg-[#f0b8b8]/10',
@@ -401,7 +401,7 @@ export function ContentCalendarRoom() {
               type="button"
               onClick={() => setViewMode('week')}
               className={cn(
-                'text-[11px] px-3 py-1 rounded-full transition-colors',
+                'rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
                 viewMode === 'week' ? 'text-white/80 bg-white/[0.08]' : 'text-white/30 hover:text-white/50',
               )}
             >
@@ -411,7 +411,7 @@ export function ContentCalendarRoom() {
               type="button"
               onClick={() => setViewMode('month')}
               className={cn(
-                'text-[11px] px-3 py-1 rounded-full transition-colors',
+                'rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
                 viewMode === 'month' ? 'text-white/80 bg-white/[0.08]' : 'text-white/30 hover:text-white/50',
               )}
             >

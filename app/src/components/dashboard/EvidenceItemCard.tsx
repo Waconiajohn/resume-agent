@@ -23,11 +23,11 @@ export function EvidenceItemCard({ item, onDelete }: EvidenceItemCardProps) {
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-xs leading-relaxed text-white/80">{item.text}</p>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', cfg.classes)}>
+            <span className={cn('rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', cfg.classes)}>
               {cfg.label}
             </span>
             {item.category && (
-              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50">
+              <span className="rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/50">
                 {item.category}
               </span>
             )}

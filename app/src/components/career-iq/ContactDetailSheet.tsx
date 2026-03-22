@@ -144,16 +144,16 @@ export function ContactDetailSheet({
 
         {/* Relationship info */}
         <div className="flex flex-wrap gap-2 mb-5">
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#98b3ff]/10 text-[#98b3ff] capitalize">
+          <span className="rounded-md bg-[#98b3ff]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]">
             {contact.relationship_type.replace('_', ' ')}
           </span>
-          <span className="text-[10px] text-white/30 px-2 py-0.5 rounded-full border border-white/[0.06]">
+          <span className="rounded-md border border-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-white/30">
             Strength: {contact.relationship_strength}/5
           </span>
           {contact.tags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] text-white/30 px-2 py-0.5 rounded-full border border-white/[0.06]"
+              className="rounded-md border border-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-white/30"
             >
               {tag}
             </span>
@@ -206,7 +206,7 @@ export function ContactDetailSheet({
                   key={tp.id}
                   className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
                 >
-                  <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.06] text-white/40 flex-shrink-0">
+                  <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-white/40">
                     {TOUCHPOINT_ICONS[tp.type] ?? <MessageSquare size={11} />}
                   </div>
                   <div className="flex-1 min-w-0">

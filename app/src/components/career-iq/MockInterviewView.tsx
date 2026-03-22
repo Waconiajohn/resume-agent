@@ -43,9 +43,9 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-[11px] text-white/40 w-32 flex-shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="flex-1 h-1.5 overflow-hidden bg-white/[0.06]">
         <div
-          className={cn('h-full rounded-full transition-all', scoreBg(value))}
+          className={cn('h-full transition-all', scoreBg(value))}
           style={{ width: `${value}%`, opacity: 0.7 }}
         />
       </div>
@@ -74,7 +74,7 @@ function EvaluationCard({
       >
         <span
           className={cn(
-            'text-[10px] font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0',
+            'shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
             CATEGORY_COLORS[evaluation.question_type] ?? 'text-white/40 bg-white/[0.06]',
           )}
         >
@@ -110,7 +110,7 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-[#b5dec2]/50 mt-1.5 flex-shrink-0" />
+                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#b5dec2]/50" />
                     <span className="text-[12px] text-[#b5dec2]/70 leading-relaxed">{s}</span>
                   </li>
                 ))}
@@ -127,7 +127,7 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.improvements.map((imp, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#f0d99f]/50" />
                     <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{imp}</span>
                   </li>
                 ))}
@@ -174,7 +174,7 @@ function QuestionCard({
       <div className="flex items-center gap-3 mb-4">
         <span
           className={cn(
-            'text-[11px] font-medium px-2.5 py-1 rounded-full capitalize',
+            'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
             CATEGORY_COLORS[question.type] ?? 'text-white/40 bg-white/[0.06]',
           )}
         >
@@ -221,7 +221,7 @@ function ConnectingView({
         <div className="w-full space-y-1.5 max-h-[200px] overflow-y-auto">
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 py-0.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
+              <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#98b3ff]/40" />
               <span className="text-[12px] text-white/45 leading-relaxed">{msg.message}</span>
             </div>
           ))}
@@ -264,7 +264,7 @@ function SummaryView({
           </div>
           <div
             className={cn(
-              'ml-auto text-[11px] font-medium px-3 py-1 rounded-full',
+              'ml-auto rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
               summary.overall_score >= 80
                 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                 : summary.overall_score >= 60
@@ -304,7 +304,7 @@ function SummaryView({
             <ul className="space-y-1.5">
               {summary.areas_for_improvement.map((area, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                  <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#f0d99f]/50" />
                   <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{area}</span>
                 </li>
               ))}

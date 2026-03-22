@@ -346,7 +346,7 @@ export function MasterResumeTab({
                               return (
                                 <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
                                   <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
-                                  <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium', badge.classes)}>
+                                  <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
                                     {badge.label}
                                   </span>
                                   <button
@@ -378,11 +378,11 @@ export function MasterResumeTab({
                         return (
                           <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
                             <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
-                            <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium', badge.classes)}>
+                            <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
                               {badge.label}
                             </span>
                             {item.category && (
-                              <span className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45">
+                              <span className="shrink-0 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/45">
                                 {item.category}
                               </span>
                             )}

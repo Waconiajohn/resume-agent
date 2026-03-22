@@ -58,7 +58,7 @@ export function SkillsCategoryCard({
         {skills.map((skill, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.05] px-2.5 py-0.5 text-xs text-white/75"
+            className="inline-flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium text-white/75"
           >
             {skill}
             {isEditing && (
@@ -82,12 +82,12 @@ export function SkillsCategoryCard({
               onChange={(e) => setNewSkill(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Add skill..."
-              className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-0.5 text-xs text-white/80 placeholder-white/30 outline-none focus:border-white/[0.22] w-28"
+              className="w-28 rounded-md border border-white/[0.12] bg-white/[0.05] px-2.5 py-1 text-[10px] text-white/80 placeholder-white/30 outline-none focus:border-white/[0.22]"
             />
             <button
               type="button"
               onClick={handleAddSkill}
-              className="inline-flex items-center justify-center rounded-full p-0.5 text-white/40 transition-colors hover:text-white/80"
+              className="inline-flex items-center justify-center rounded-md p-1 text-white/40 transition-colors hover:text-white/80"
               aria-label="Add skill"
             >
               <Plus className="h-3.5 w-3.5" />
