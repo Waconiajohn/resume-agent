@@ -279,6 +279,34 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('team size');
   });
 
+  it('tailors nearby-proof guidance for talent development and leadership pipeline requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Developed plant managers and promoted two site leaders into regional roles.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('hired, developed, or promoted');
+    expect(queue.items[0]?.userInstruction).toContain('leadership bench');
+  });
+
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
