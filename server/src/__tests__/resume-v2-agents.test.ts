@@ -1096,6 +1096,46 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.pending_strategies).toEqual([]);
     });
 
+    it('drops generic strategy interview questions so the UI can fall back to a better targeted prompt', async () => {
+      const modeledOutput: GapAnalysisOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          {
+            requirement: 'Develop and track performance metrics',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'important',
+            classification: 'partial',
+            evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the platform.'],
+            source_evidence: 'Develop and track performance metrics',
+            strategy: {
+              real_experience: 'Tracked weekly throughput metrics and improved fill rate by 14% across the platform.',
+              positioning: 'Tracked weekly throughput metrics and improved fill rate by 14% across the platform.',
+              ai_reasoning: 'The proof is close but still needs one specific detail.',
+              interview_questions: [
+                {
+                  question: 'Tell me about any experience you have related to developing and tracking performance metrics.',
+                  rationale: 'We need more detail.',
+                  looking_for: 'Any relevant example.',
+                },
+              ],
+            },
+          },
+        ],
+        pending_strategies: [],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(modeledOutput);
+
+      const result = await runGapAnalysis(input);
+      const requirement = result.requirements.find((item) => item.requirement === 'Develop and track performance metrics');
+
+      expect(requirement?.strategy?.positioning).toBe('Tracked weekly throughput metrics and improved fill rate by 14% across the platform.');
+      expect(requirement?.strategy?.interview_questions).toBeUndefined();
+    });
+
     it('deterministic fallback does not surface abstract profile labels as resume evidence', async () => {
       const deterministicInput: GapAnalysisInput = {
         candidate: {
@@ -1488,6 +1528,45 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(requirement?.classification).toBe('strong');
       expect(requirement?.evidence).toEqual(expect.arrayContaining(['AWS', 'GCP']));
+    });
+
+    it('deterministic fallback asks metrics-specific follow-up questions instead of generic prompts', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const metricsInput: GapAnalysisInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: ['Tracked weekly throughput metrics and improved fill rate by 14% across the platform.'],
+            },
+          ],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Develop and track performance metrics',
+              importance: 'important',
+              evidence_from_jd: 'Develop and track performance metrics',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(metricsInput);
+      const requirement = result.requirements.find((item) => item.requirement === 'Develop and track performance metrics');
+      const question = requirement?.strategy?.interview_questions?.[0]?.question ?? '';
+
+      expect(requirement?.classification).toBe('partial');
+      expect(question.toLowerCase()).toContain('which metrics or scorecards did you personally track');
+      expect(question.toLowerCase()).toContain('what decision or improvement did they drive');
     });
 
     it('deterministic fallback uses industry depth to satisfy regulated-industry requirements when the candidate already has that background', async () => {

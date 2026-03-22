@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildRewriteQueue } from '../rewrite-queue';
-import type { FinalReviewResult, GapAnalysis, JobIntelligence, ResumeDraft } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewResult, GapAnalysis, JobIntelligence, ResumeDraft } from '@/types/resume-v2';
 
 function makeJobIntelligence(): JobIntelligence {
   return {
@@ -314,6 +314,54 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.suggestedDraft).toBeUndefined();
     expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards');
     expect(queue.items[0]?.userInstruction).toContain('what decision or improvement they drove');
+  });
+
+  it('replaces generic helper questions with requirement-specific metrics guidance', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Develop and track performance metrics',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the network.'],
+          source_evidence: 'Develop and track performance metrics',
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const gapChatSnapshot: CoachingThreadSnapshot = {
+      items: {
+        'develop and track performance metrics': {
+          messages: [
+            {
+              role: 'assistant',
+              content: 'Let me help you tighten this up.',
+              currentQuestion: 'Tell me about any experience you have related to developing and tracking performance metrics.',
+              recommendedNextAction: 'answer_question',
+              candidateInputUsed: false,
+            },
+          ],
+          resolvedLanguage: null,
+          error: null,
+        },
+      },
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+      gapChatSnapshot,
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.starterQuestion).toContain('Which metrics or scorecards did you personally track');
+    expect(queue.items[0]?.starterQuestion).toContain('what decision or improvement did they drive');
   });
 
   it('drops instructional coaching text that is not a real resume rewrite', () => {
