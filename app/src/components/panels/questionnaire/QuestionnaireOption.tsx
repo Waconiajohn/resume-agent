@@ -95,12 +95,12 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
               {option.label}
             </span>
             {badge && (
-              <span
-                className={cn(
-                  'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
-                  badge.className,
-                )}
-              >
+            <span
+              className={cn(
+                'shrink-0 rounded-md px-2 py-1 text-[9px] font-semibold uppercase tracking-wider',
+                badge.className,
+              )}
+            >
                 {badge.label}
               </span>
             )}

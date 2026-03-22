@@ -273,7 +273,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentVisiblePos === 0 && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+                <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
                   {batchModeLabel}
                 </span>
                 <span className="text-[11px] text-white/65">
@@ -292,7 +292,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               {currentQuestion.impact_tier && (
                 <span
                   className={cn(
-                    'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                    'rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em]',
                     currentQuestion.impact_tier === 'high'
                       ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                       : currentQuestion.impact_tier === 'medium'

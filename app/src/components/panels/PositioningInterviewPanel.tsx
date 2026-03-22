@@ -89,7 +89,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
             {/* Source badge */}
             <span
               className={cn(
-                'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+                'shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider',
                 sourceBadge.className,
               )}
             >
@@ -149,7 +149,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             {/* Label pill */}
             <span
               className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap',
+                'shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap',
                 isComplete
                   ? 'bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/25'
                   : 'bg-white/[0.06] text-white/45 border border-white/[0.10]',
@@ -159,7 +159,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             </span>
             {/* Progress track */}
             <div
-              className="flex-1 h-1.5 rounded-full bg-white/[0.08] overflow-hidden"
+              className="flex-1 h-1.5 overflow-hidden bg-white/[0.08]"
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}
@@ -168,7 +168,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             >
               <div
                 className={cn(
-                  'h-full rounded-full transition-all duration-500 ease-out',
+                  'h-full transition-all duration-500 ease-out',
                   isComplete ? 'bg-[#b5dec2]/70' : 'bg-[#b5c9ff]/60',
                 )}
                 style={{ width: `${pct}%` }}
@@ -336,7 +336,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {suggestions.length > 0 && (
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
               Select Your Answer
             </span>
             <span className="text-[11px] text-white/55">
@@ -367,7 +367,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {/* Custom answer textarea */}
       <div className="relative">
         <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+          <span className="rounded-md border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
             Your Answer
           </span>
           <span className="text-[11px] text-white/48">
@@ -467,7 +467,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
           /* Fallback: simple overall progress bar */
           questions_total > 0 && (
             <div
-              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
+              className="mt-2 h-1.5 w-full overflow-hidden bg-white/[0.10]"
               role="progressbar"
               aria-valuenow={progressPct}
               aria-valuemin={0}
@@ -475,7 +475,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
               aria-label={`${progressPct}% complete`}
             >
               <div
-                className="h-full rounded-full bg-[#b5c9ff] transition-all duration-500 ease-out"
+                className="h-full bg-[#b5c9ff] transition-all duration-500 ease-out"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
@@ -521,7 +521,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
                   {current_question.requirement_map.map((req) => (
                     <span
                       key={req}
-                      className="rounded-full bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2 py-0.5 text-[10px] font-medium text-[#afc4ff]/80"
+                      className="rounded-md bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#afc4ff]/80"
                     >
                       {req}
                     </span>

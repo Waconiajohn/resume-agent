@@ -30,7 +30,7 @@ export function ProgressHeader({ title, currentStep, totalSteps, icon }: Progres
 
       {totalSteps > 0 && (
         <div
-          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
+          className="mt-2 h-1.5 w-full overflow-hidden bg-white/[0.10]"
           role="progressbar"
           aria-valuenow={progressPct}
           aria-valuemin={0}
@@ -38,7 +38,7 @@ export function ProgressHeader({ title, currentStep, totalSteps, icon }: Progres
           aria-label={`${progressPct}% complete`}
         >
           <div
-            className="h-full rounded-full bg-[#b5c9ff] transition-all duration-500 ease-out"
+            className="h-full bg-[#b5c9ff] transition-all duration-500 ease-out"
             style={{ width: `${progressPct}%` }}
           />
         </div>

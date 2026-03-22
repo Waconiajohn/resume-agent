@@ -104,7 +104,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
           <GlassCard className="p-4">
             <div className="flex flex-wrap items-center gap-2">
               {parseConfidence && (
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${confidenceTone}`}>
+                <span className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${confidenceTone}`}>
                   {confidenceLabel}
                 </span>
               )}
