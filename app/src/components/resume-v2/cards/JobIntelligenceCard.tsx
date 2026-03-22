@@ -10,15 +10,21 @@ export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
           <Briefcase className="h-4 w-4 text-[#afc4ff]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow-label">Role signal</p>
-          <h3 className="mt-2 text-sm font-semibold text-white/90">What They&apos;re Looking For</h3>
+          <p className="eyebrow-label">Role requirements</p>
+          <h3 className="mt-2 text-sm font-semibold text-white/90">What this role needs from the resume</h3>
         </div>
         <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">{data.company_name} · {data.role_title}</span>
       </div>
 
+      <div className="support-callout px-4 py-3">
+        <p className="text-sm leading-6 text-white/68">
+          These are the direct signals the resume needs to cover. This is the clearest view of what the posting is asking for before we compare it against your current proof.
+        </p>
+      </div>
+
       {/* Core competencies */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Key Requirements</h4>
+        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Direct requirements from the posting</h4>
         <div className="space-y-1.5">
           {data.core_competencies.map((c, i) => (
             <div key={i} className="support-callout flex items-start gap-3 px-3 py-2.5 text-sm">
@@ -32,7 +38,7 @@ export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
       {/* Business problems */}
       {data.business_problems.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Business Problems to Solve</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Problems this hire is expected to solve</h4>
           <ul className="space-y-1">
             {data.business_problems.map((p, i) => (
               <li key={i} className="text-sm text-white/70 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/30">{p}</li>
@@ -44,7 +50,7 @@ export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
       {/* Hidden signals */}
       {data.hidden_hiring_signals.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Hidden Hiring Signals</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Signals the posting implies but does not state clearly</h4>
           <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
             <ul className="space-y-1">
               {data.hidden_hiring_signals.map((s, i) => (

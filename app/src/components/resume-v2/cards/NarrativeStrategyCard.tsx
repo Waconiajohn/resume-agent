@@ -14,9 +14,15 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
           <Compass className="h-4 w-4 text-[#afc4ff]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow-label">Narrative strategy</p>
-          <h3 className="mt-2 text-sm font-semibold text-white/90">Your Positioning</h3>
+          <p className="eyebrow-label">Resume positioning</p>
+          <h3 className="mt-2 text-sm font-semibold text-white/90">How the resume should position you</h3>
         </div>
+      </div>
+
+      <div className="support-callout px-4 py-3">
+        <p className="text-sm leading-6 text-white/68">
+          This is the story the resume should tell once we finish matching the role requirements to your strongest proof.
+        </p>
       </div>
 
       {/* Branded title */}
@@ -34,13 +40,13 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
 
       {/* Why Me story — pull-quote treatment */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Why You</h4>
+        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Core positioning</h4>
         <p className="text-lg leading-relaxed text-white/90 italic border-l-[3px] border-[#afc4ff]/40 pl-4">
           {data.why_me_concise}
         </p>
         {data.why_me_story && (
           <details className="mt-2">
-            <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">Full positioning story</summary>
+            <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">See the longer version of this story</summary>
             <p className="mt-1 text-xs text-white/50 leading-relaxed">{data.why_me_story}</p>
           </details>
         )}
@@ -51,7 +57,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         <div className="absolute top-2 left-3 text-4xl leading-none text-[#b5dec2]/10 font-serif select-none" aria-hidden="true">
           &ldquo;
         </div>
-        <div className="text-xs font-medium text-[#b5dec2]/70 mb-2 relative z-10">Your Best Line</div>
+        <div className="text-xs font-medium text-[#b5dec2]/70 mb-2 relative z-10">Best line to reuse</div>
         <p className="text-sm text-white/80 italic relative z-10 pl-2">{data.why_me_best_line}</p>
       </div>
 
@@ -66,7 +72,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       {/* Unique Differentiators — Sparkles chips */}
       {data.unique_differentiators && data.unique_differentiators.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What Sets You Apart</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Points to emphasize</h4>
           <div className="flex flex-wrap gap-1.5">
             {data.unique_differentiators.map((diff, i) => (
               <span
@@ -84,7 +90,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       {/* Section Guidance */}
       <details>
         <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
-          How Your Resume Will Be Framed
+          How the resume should read
         </summary>
         <div className="mt-3 space-y-4 pl-1">
 
@@ -154,7 +160,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         <details>
           <summary className="flex items-center gap-1.5 text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
             <MessageCircle className="h-3 w-3" />
-            Prepare for These Conversations
+            Talking points to keep in mind
           </summary>
           <div className="mt-3 space-y-2 pl-1">
             {data.interview_talking_points.map((point, i) => (

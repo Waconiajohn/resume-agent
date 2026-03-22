@@ -9,15 +9,21 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
           <User className="h-4 w-4 text-[#b5dec2]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow-label">Candidate signal</p>
-          <h3 className="mt-2 text-sm font-semibold text-white/90">What You Bring</h3>
+          <p className="eyebrow-label">Resume strengths</p>
+          <h3 className="mt-2 text-sm font-semibold text-white/90">What your resume already gives us</h3>
         </div>
         <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">{data.contact.name}</span>
       </div>
 
+      <div className="support-callout px-4 py-3">
+        <p className="text-sm leading-6 text-white/68">
+          This is the strongest material already on the page. We use it to decide what proof to keep, what to promote, and where the next believable edits should come from.
+        </p>
+      </div>
+
       {/* Career themes */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Career Themes</h4>
+        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Patterns we can lean on</h4>
         <div className="flex flex-wrap gap-1.5">
           {data.career_themes.map((theme, i) => (
             <span key={i} className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/66">{theme}</span>
@@ -28,7 +34,7 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
       {/* Quantified outcomes */}
       {data.quantified_outcomes.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Quantified Impact</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Proof already on the page</h4>
           <div className="grid grid-cols-2 gap-2">
             {data.quantified_outcomes.slice(0, 6).map((o, i) => (
               <div key={i} className="support-callout px-3 py-2">
@@ -41,13 +47,13 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
       )}
 
       {/* Leadership scope + scale */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="support-callout px-3 py-3">
-          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Leadership</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="support-callout px-3 py-3">
+          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Leadership scope</h4>
           <p className="text-sm text-white/70">{data.leadership_scope}</p>
         </div>
         <div className="support-callout px-3 py-3">
-          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Scale</h4>
+          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Operating scale</h4>
           <p className="text-sm text-white/70">{data.operational_scale}</p>
         </div>
       </div>
@@ -55,7 +61,7 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
       {/* Hidden accomplishments */}
       {data.hidden_accomplishments.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Hidden Strengths We Found</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
           <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
             <ul className="space-y-1">
               {data.hidden_accomplishments.map((a, i) => (

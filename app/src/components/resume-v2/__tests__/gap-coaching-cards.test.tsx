@@ -415,13 +415,13 @@ describe('NarrativeStrategyCard — unique_differentiators', () => {
   it('does not render the "What Sets You Apart" section when unique_differentiators is absent', () => {
     const data = makeNarrativeStrategy({ unique_differentiators: undefined });
     render(<NarrativeStrategyCard data={data} />);
-    expect(screen.queryByText(/what sets you apart/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/points to emphasize/i)).not.toBeInTheDocument();
   });
 
   it('does not render the section when unique_differentiators is an empty array', () => {
     const data = makeNarrativeStrategy({ unique_differentiators: [] });
     render(<NarrativeStrategyCard data={data} />);
-    expect(screen.queryByText(/what sets you apart/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/points to emphasize/i)).not.toBeInTheDocument();
   });
 });
 
@@ -445,13 +445,13 @@ describe('NarrativeStrategyCard — interview_talking_points', () => {
   it('does not render the talking points section when interview_talking_points is absent', () => {
     const data = makeNarrativeStrategy({ interview_talking_points: undefined });
     render(<NarrativeStrategyCard data={data} />);
-    expect(screen.queryByText(/prepare for these conversations/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/talking points to keep in mind/i)).not.toBeInTheDocument();
   });
 
   it('does not render the talking points section when the array is empty', () => {
     const data = makeNarrativeStrategy({ interview_talking_points: [] });
     render(<NarrativeStrategyCard data={data} />);
-    expect(screen.queryByText(/prepare for these conversations/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/talking points to keep in mind/i)).not.toBeInTheDocument();
   });
 });
 
