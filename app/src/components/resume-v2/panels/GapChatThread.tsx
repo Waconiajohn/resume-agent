@@ -417,6 +417,45 @@ export function GapChatThread({
         </div>
       )}
 
+      {messages.length > 0 && !resolvedLanguage && (
+        <div className="space-y-2 border-b border-white/[0.06] px-4 py-4">
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
+              {introSourceLabel}
+            </p>
+            <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading }}>
+              {introSourceExcerpt}
+            </p>
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: 'rgba(175,196,255,0.05)',
+              border: '1px solid rgba(175,196,255,0.12)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+              What we still need from you
+            </p>
+            <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
+              {introQuestion}
+            </p>
+            {activeRewriteSeed && (
+              <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
+                The latest AI rewrite is ready below. Keep editing it there or ask AI for another version.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Messages — accessible chat log */}
       {messages.length > 0 && (
         <div

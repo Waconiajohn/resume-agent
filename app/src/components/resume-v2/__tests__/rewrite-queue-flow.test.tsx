@@ -451,6 +451,8 @@ describe('rewrite queue browser flow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Improve This Rewrite with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
+    expect(screen.getByText('What we still need from you')).toBeInTheDocument();
+    expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try a Stronger Rewrite' }));
     expect(onSendMessage).toHaveBeenCalledWith(
