@@ -768,10 +768,18 @@ export function V2StreamingDisplay({
             <section aria-label="Analysis" ref={analysisSectionRef}>
             <StageBanner label="AI is analyzing the role and your resume" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
             <div className="space-y-4">
-              {analysisRunning && (
+              {data.stage === 'analysis' && !isComplete && (
                 <AnimatedCard index={0}>
                   <LiveStageSummary stage="analysis" isActive={data.stage === 'analysis'} />
                 </AnimatedCard>
+              )}
+              {hasAnalysis && data.stage === 'analysis' && !isComplete && (
+                <div className="support-callout px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Findings collected so far</p>
+                  <p className="mt-2 text-sm leading-6 text-white/58">
+                    These are intermediate findings that have already been collected. AI is still working, so let the live progress panel guide the pacing while these continue to fill in.
+                  </p>
+                </div>
               )}
               {data.jobIntelligence && (
                 <AnimatedCard index={1}>
@@ -788,7 +796,7 @@ export function V2StreamingDisplay({
                   <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} /></GlassCard>
                 </AnimatedCard>
               )}
-              {analysisRunning && <StagePendingDots />}
+              {data.stage === 'analysis' && !isComplete && <StagePendingDots />}
             </div>
           </section>
         )}
@@ -800,10 +808,18 @@ export function V2StreamingDisplay({
             <section aria-label="Positioning strategy" ref={strategySectionRef}>
               <StageBanner label="AI is building your requirement map" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
               <div className="space-y-4">
-                {strategyRunning && (
+                {data.stage === 'strategy' && !isComplete && (
                   <AnimatedCard index={0}>
                     <LiveStageSummary stage="strategy" isActive={data.stage === 'strategy'} />
                   </AnimatedCard>
+                )}
+                {hasStrategy && data.stage === 'strategy' && !isComplete && (
+                  <div className="support-callout px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Map building so far</p>
+                    <p className="mt-2 text-sm leading-6 text-white/58">
+                      The requirement map is still being assembled. Treat the panels below as work in progress while the live activity panel keeps walking through what AI is doing next.
+                    </p>
+                  </div>
                 )}
                 {data.gapAnalysis && (
                   <AnimatedCard index={1}>
@@ -833,7 +849,7 @@ export function V2StreamingDisplay({
                     <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
                   </AnimatedCard>
                 )}
-                {strategyRunning && <StagePendingDots />}
+                {data.stage === 'strategy' && !isComplete && <StagePendingDots />}
               </div>
             </section>
           </>

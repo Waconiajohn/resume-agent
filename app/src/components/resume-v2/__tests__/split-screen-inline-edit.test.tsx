@@ -803,6 +803,27 @@ describe('V2StreamingDisplay — split-screen activation', () => {
     vi.useRealTimers();
   });
 
+  it('keeps the live activity panel visible even after early analysis findings arrive', () => {
+    const props = makeDisplayProps({
+      isComplete: false,
+      editableResume: null,
+      data: makePipelineDataWithResume({
+        stage: 'analysis',
+        candidateIntelligence: null,
+        benchmarkCandidate: null,
+        resumeDraft: null,
+        assembly: null,
+        gapAnalysis: null,
+      }),
+    });
+
+    render(<V2StreamingDisplay {...props} />);
+
+    expect(screen.getByText('Live progress')).toBeInTheDocument();
+    expect(screen.getByText('Findings collected so far')).toBeInTheDocument();
+    expect(screen.getByTestId('job-intelligence-card')).toBeInTheDocument();
+  });
+
   it('does NOT render split layout when isRerunning is true', () => {
     render(<V2StreamingDisplay {...makeDisplayProps({ isRerunning: true })} />);
 
