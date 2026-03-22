@@ -145,7 +145,7 @@ function missingExplanation(item: RewriteQueueItem): string {
   }
 
   if (firstEvidence.basis === 'nearby') {
-    return 'This line is related, but it does not directly prove the requirement yet.';
+    return 'This line points in the right direction, but we still need one concrete detail that proves you owned this directly.';
   }
 
   return 'Your resume gets close here, but the requirement is still not obvious enough for a recruiter or hiring manager.';

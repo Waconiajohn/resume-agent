@@ -279,6 +279,42 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('team size');
   });
 
+  it('filters placeholder source evidence and weak rewrite labels while tailoring metrics prompts', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Develop and track performance metrics',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Operational efficiency metrics experience'],
+          source_evidence: 'Canonical Requirement Catalog',
+          strategy: {
+            real_experience: 'Operational efficiency metrics experience',
+            positioning: 'Related performance metrics expertise',
+            ai_reasoning: 'Metrics experience is adjacent but not direct enough yet.',
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.sourceEvidence[0]?.text).toBe('Develop and track performance metrics');
+    expect(queue.items[0]?.suggestedDraft).toBeUndefined();
+    expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards');
+    expect(queue.items[0]?.userInstruction).toContain('what decision or improvement they drove');
+  });
+
   it('tailors nearby-proof guidance for talent development and leadership pipeline requirements', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

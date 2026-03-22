@@ -502,7 +502,6 @@ test.describe('Resume Builder session flow', () => {
     await waitForPipelineCompletion(page);
 
     await expect(page.getByRole('button', { name: /Improve with AI|Draft with AI/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Send to Review/i }).first()).toBeVisible();
     await expect(page.getByText(/To make this strong enough, tell us/i).first()).toBeVisible();
     await expect(page.getByText(/Start with the first requirement below/i)).toBeVisible();
   });

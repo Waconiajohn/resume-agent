@@ -20,6 +20,31 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
+function hasMeaningfulSourceEvidence(text: string | null | undefined): text is string {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/^#+\s*/.test(trimmed)) return false;
+  if (/canonical requirement catalog/i.test(trimmed)) return false;
+  if (/^(job description|benchmark|requirement catalog|resume evidence)$/i.test(trimmed)) return false;
+  return true;
+}
+
+function looksLikeResumeRewrite(text: string | null | undefined): text is string {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const wordCount = trimmed.split(/\s+/).length;
+  const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered)\b/i.test(trimmed);
+  const looksLikeLabel = /\b(experience|expertise|background|exposure)\b/i.test(trimmed) && wordCount <= 6;
+
+  if (looksLikeLabel) return false;
+  if (wordCount < 5) return false;
+
+  return hasStrongVerb || wordCount >= 8;
+}
+
 function classificationWeight(classification: RequirementGap['classification']): number {
   if (classification === 'missing') return 0;
   if (classification === 'partial') return 1;
@@ -166,22 +191,28 @@ function sourceEvidenceForRequirement(args: {
     const competency = args.jobIntelligence.core_competencies.find(
       (item) => normalize(item.competency) === normalize(args.requirement.requirement),
     );
-    if (competency?.evidence_from_jd) {
+    if (hasMeaningfulSourceEvidence(competency?.evidence_from_jd)) {
       evidence.push({
         text: competency.evidence_from_jd,
         source: 'job_description',
         basis: 'source',
       });
-    } else if (args.requirement.source_evidence) {
+    } else if (hasMeaningfulSourceEvidence(args.requirement.source_evidence)) {
       evidence.push({
         text: args.requirement.source_evidence,
+        source: 'job_description',
+        basis: 'source',
+      });
+    } else {
+      evidence.push({
+        text: args.requirement.requirement,
         source: 'job_description',
         basis: 'source',
       });
     }
   }
 
-  if (source === 'benchmark' && args.requirement.source_evidence) {
+  if (source === 'benchmark' && hasMeaningfulSourceEvidence(args.requirement.source_evidence)) {
     evidence.push({
       text: args.requirement.source_evidence,
       source: 'benchmark',
@@ -309,6 +340,7 @@ function userInstructionForRequirement(args: {
   const asksForPortfolioProof = /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement);
   const asksForPlatformScaleProof = /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement);
   const asksForArchitectureDecisionProof = /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement);
+  const asksForMetricsProof = /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalizedRequirement);
   const asksForScaleProof = /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(args.requirement);
   const asksForTechnicalProof = /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement);
 
@@ -353,6 +385,10 @@ function userInstructionForRequirement(args: {
       return 'Answer with one architecture decision: who the stakeholders were, what tradeoff you led, and what outcome came from that decision.';
     }
 
+    if (asksForMetricsProof) {
+      return 'Answer with the metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.';
+    }
+
     if (asksForScaleProof) {
       return 'Answer with the exact scale involved here, such as company size, team size, budget, revenue, or operational footprint.';
     }
@@ -361,10 +397,10 @@ function userInstructionForRequirement(args: {
       return 'Answer with the exact platform, framework, or technical environment you worked in and what you delivered there.';
     }
 
-    return 'Answer the next question so we can turn the nearby proof into direct, requirement-specific evidence.';
+    return 'Tell us one concrete example so we can turn the related proof into direct evidence for this requirement.';
   }
 
-  return 'Answer the next question so we can find truthful proof before we draft a stronger line.';
+  return 'Tell us one concrete example so we can find truthful proof before we draft a stronger line.';
 }
 
 function mergeEvidence(left: RequirementGap['evidence'], right: RequirementGap['evidence']): string[] {
@@ -541,7 +577,11 @@ export function buildRewriteQueue(args: {
       riskNote: category === 'hard_gap'
         ? 'If this is truly missing, keep it visible as a real risk instead of forcing it into the resume.'
         : undefined,
-      suggestedDraft: latestAssistant?.suggestedLanguage ?? requirement.strategy?.positioning ?? undefined,
+      suggestedDraft: looksLikeResumeRewrite(latestAssistant?.suggestedLanguage)
+        ? latestAssistant?.suggestedLanguage
+        : looksLikeResumeRewrite(requirement.strategy?.positioning)
+          ? requirement.strategy?.positioning
+          : undefined,
     };
   }).sort((left, right) => {
     const bucketDiff = bucketWeight(left.bucket) - bucketWeight(right.bucket);
