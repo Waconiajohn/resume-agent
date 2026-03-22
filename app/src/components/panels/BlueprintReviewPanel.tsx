@@ -116,7 +116,7 @@ function ReorderableWireframe({
 
 function StatBadge({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/[0.06] px-3 py-1.5">
+    <div className="flex items-center gap-1.5 rounded-md border border-white/[0.12] bg-white/[0.06] px-3 py-1.5">
       <span className="text-xs font-medium text-white/80">{label}</span>
     </div>
   );
@@ -208,7 +208,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
           <div className="flex items-center gap-2 mb-2">
             {(angleWasEdited || onApprove) && (
               <span className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
+                'rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]',
                 angleWasEdited
                   ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
                   : 'border-white/[0.08] bg-white/[0.02] text-white/48',
@@ -217,7 +217,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               </span>
             )}
             {!angleWasEdited && (
-              <span className="text-[10px] text-indigo-300/60 bg-indigo-400/[0.08] border border-indigo-400/20 rounded px-1.5 py-0.5">AI-suggested</span>
+              <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
             )}
             <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
               Target
@@ -293,7 +293,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             <div className="flex items-center gap-2 mb-3">
               {(orderWasEdited || onApprove) && (
                 <span className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
+                  'rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]',
                   orderWasEdited
                     ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
                     : 'border-white/[0.08] bg-white/[0.02] text-white/48',
@@ -302,7 +302,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 </span>
               )}
               {!orderWasEdited && (
-                <span className="text-[10px] text-indigo-300/60 bg-indigo-400/[0.08] border border-indigo-400/20 rounded px-1.5 py-0.5">AI-suggested</span>
+                <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
               )}
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                 Section Layout
@@ -366,10 +366,10 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                       <span className="text-[9px] text-white/40">{kw.placements.slice(0, 2).join(', ')}</span>
                     )}
                     <span className={cn(
-                      'rounded-full px-1.5 py-0.5 text-[9px] font-medium',
+                      'rounded-md border px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em]',
                       kw.current_count > 0
-                        ? 'border border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]'
-                        : 'border border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]'
+                        ? 'border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]'
+                        : 'border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]'
                     )}>
                       {kw.action || (kw.current_count > 0 ? 'present' : 'add')}
                     </span>

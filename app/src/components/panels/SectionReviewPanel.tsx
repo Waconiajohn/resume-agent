@@ -115,7 +115,7 @@ export function SectionReviewPanel({
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white/85">Review This Section</span>
-          <span className="rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/78">
+          <span className="rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/78">
             {sectionTitle(section)}
           </span>
         </div>
@@ -175,7 +175,7 @@ export function SectionReviewPanel({
                     key={chip}
                     onClick={() => toggleChip(chip)}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+                      'rounded-md border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.08em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
                       active
                         ? 'border-[#9eb8ff]/55 bg-[rgba(158,184,255,0.18)] text-white'
                         : 'border-white/[0.1] bg-white/[0.03] text-white/60 hover:border-white/[0.2] hover:bg-white/[0.07] hover:text-white/85',

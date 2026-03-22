@@ -193,31 +193,31 @@ export function CompletionPanel({
 
         {/* Export error banner */}
         {exportError && (
-          <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('error')}`}>
+          <div className={`support-callout px-3 py-2 text-xs ${toneClass('error')}`}>
             {exportError}
           </div>
         )}
         {exportInfo && (
-          <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('info')}`}>
+          <div className={`support-callout px-3 py-2 text-xs ${toneClass('info')}`}>
             {exportInfo}
           </div>
         )}
         {validationIssues.map((issue) => (
           <div
             key={`${issue.field}-${issue.message}`}
-            className={`rounded-lg border px-3 py-2 text-xs ${toneClass(issue.severity === 'error' ? 'error' : 'warning')}`}
+            className={`support-callout px-3 py-2 text-xs ${toneClass(issue.severity === 'error' ? 'error' : 'warning')}`}
           >
             {issue.message}
           </div>
         ))}
         {data.export_validation && !data.export_validation.passed && (
-          <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('warning')}`}>
+          <div className={`support-callout px-3 py-2 text-xs ${toneClass('warning')}`}>
             We found {data.export_validation.findings.length} formatting item(s) that some hiring systems might flag. Please review before submitting.
           </div>
         )}
         {saveMessage && (
           <div
-            className={`rounded-lg border px-3 py-2 text-xs ${toneClass(saveMessage.type === 'success' ? 'success' : 'error')}`}
+            className={`support-callout px-3 py-2 text-xs ${toneClass(saveMessage.type === 'success' ? 'success' : 'error')}`}
           >
             {saveMessage.text}
           </div>
@@ -246,7 +246,7 @@ export function CompletionPanel({
 
         {/* Missing contact info warning */}
         {resume && !resume.contact_info?.name && (
-          <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('warning')}`}>
+          <div className={`support-callout px-3 py-2 text-xs ${toneClass('warning')}`}>
             Contact name is missing. Your exports will not include a name header.
           </div>
         )}
@@ -254,7 +254,7 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
+            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
               Action
             </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
@@ -272,7 +272,7 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
                 {docxBlocked && (
-                  <span className="ml-2 rounded-full border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-[#f0d99f]/80">
+                  <span className="ml-2 rounded-md border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-2 py-1 text-[9px] uppercase tracking-wider text-[#f0d99f]/80">
                     Upgrade
                   </span>
                 )}
@@ -294,7 +294,7 @@ export function CompletionPanel({
         {resume && onSaveCurrentResumeAsBase && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/48">
                 Optional
               </span>
               <Save className="h-4 w-4 text-[#a8d7b8]" />
@@ -338,7 +338,7 @@ export function CompletionPanel({
 
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+            <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/48">
               Optional
             </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />

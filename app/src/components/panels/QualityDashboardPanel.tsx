@@ -137,7 +137,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white/85">Quality Scores</span>
-          <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">AI estimate</span>
+          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-amber-400/60">AI estimate</span>
         </div>
       </div>
       <span className="sr-only" aria-live="polite">
@@ -288,7 +288,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                     className="flex items-start gap-2 rounded border border-white/[0.08] bg-white/[0.02] px-2.5 py-2"
                   >
                     <span
-                      className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider ${badgeStyle}`}
+                      className={`mt-0.5 shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeStyle}`}
                     >
                       {finding.priority ?? 'low'}
                     </span>
@@ -346,7 +346,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {risk_flags && risk_flags.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+              <span className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] ${
                 highRiskCount > 0
                   ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
                   : 'border-white/[0.08] bg-white/[0.02] text-white/48'
@@ -380,7 +380,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
+              <span className="rounded-md border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
                 Action required
               </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
