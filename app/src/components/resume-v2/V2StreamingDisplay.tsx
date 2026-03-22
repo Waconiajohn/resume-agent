@@ -156,7 +156,7 @@ function StagePendingDots() {
   );
 }
 
-function LiveStageSummary({ stage }: { stage: V2Stage }) {
+function LiveStageSummary({ stage, isActive }: { stage: V2Stage; isActive: boolean }) {
   const content = stage === 'analysis'
     ? {
         eyebrow: 'AI analysis in progress',
@@ -166,6 +166,7 @@ function LiveStageSummary({ stage }: { stage: V2Stage }) {
           'Read the strongest proof already on the resume',
           'Pull direct requirements from the job description',
           'Add benchmark expectations for a strong executive match',
+          'Keep the progress visible long enough for you to follow it',
         ],
       }
     : {
@@ -176,20 +177,55 @@ function LiveStageSummary({ stage }: { stage: V2Stage }) {
           'Map each requirement to current resume evidence',
           'Mark covered, partial, and missing requirements',
           'Prepare the first issue to fix with editable AI help',
+          'Keep the next action visible instead of flashing it past you',
         ],
       };
+  const [visibleChecklistCount, setVisibleChecklistCount] = useState(1);
+
+  useEffect(() => {
+    setVisibleChecklistCount(1);
+    if (!isActive || content.checklist.length <= 1) return;
+
+    const interval = window.setInterval(() => {
+      setVisibleChecklistCount((current) => {
+        if (current >= content.checklist.length) {
+          window.clearInterval(interval);
+          return current;
+        }
+        return current + 1;
+      });
+    }, 1200);
+
+    return () => window.clearInterval(interval);
+  }, [content.checklist.length, isActive, stage]);
 
   return (
     <div className="room-shell border border-[#afc4ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(175,196,255,0.12),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5">
       <p className="eyebrow-label text-[#c9d7ff]/72">{content.eyebrow}</p>
       <p className="mt-2 text-lg font-semibold text-white/88">{content.title}</p>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-white/60">{content.detail}</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {content.checklist.map((item) => (
-          <div key={item} className="support-callout px-4 py-3 text-sm leading-6 text-white/72">
-            {item}
-          </div>
-        ))}
+
+      <div className="mt-4 support-callout border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-4 py-3">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">
+          <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" />
+          Live progress
+        </div>
+        <div className="mt-3 space-y-2">
+          {content.checklist.slice(0, visibleChecklistCount).map((item, index) => {
+            const isNewest = index === visibleChecklistCount - 1 && visibleChecklistCount < content.checklist.length;
+            return (
+              <div key={item} className="flex items-start gap-3 text-sm leading-6 text-white/76">
+                <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${isNewest ? 'bg-[#afc4ff]' : 'bg-[#b5dec2]/80'}`} />
+                <span>{item}</span>
+              </div>
+            );
+          })}
+        </div>
+        {visibleChecklistCount < content.checklist.length && (
+          <p className="mt-3 text-xs leading-5 text-white/48">
+            More live updates will appear here as the analysis moves forward.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -734,7 +770,7 @@ export function V2StreamingDisplay({
             <div className="space-y-4">
               {analysisRunning && (
                 <AnimatedCard index={0}>
-                  <LiveStageSummary stage="analysis" />
+                  <LiveStageSummary stage="analysis" isActive={data.stage === 'analysis'} />
                 </AnimatedCard>
               )}
               {data.jobIntelligence && (
@@ -766,7 +802,7 @@ export function V2StreamingDisplay({
               <div className="space-y-4">
                 {strategyRunning && (
                   <AnimatedCard index={0}>
-                    <LiveStageSummary stage="strategy" />
+                    <LiveStageSummary stage="strategy" isActive={data.stage === 'strategy'} />
                   </AnimatedCard>
                 )}
                 {data.gapAnalysis && (

@@ -771,6 +771,38 @@ describe('V2StreamingDisplay — split-screen activation', () => {
     expect(screen.getByText('Requirements to Match')).toBeInTheDocument();
   });
 
+  it('reveals live analysis progress one step at a time while analysis is running', () => {
+    vi.useFakeTimers();
+
+    const props = makeDisplayProps({
+      isComplete: false,
+      editableResume: null,
+      data: makePipelineDataWithResume({
+        stage: 'analysis',
+        jobIntelligence: null,
+        candidateIntelligence: null,
+        benchmarkCandidate: null,
+        resumeDraft: null,
+        assembly: null,
+        gapAnalysis: null,
+      }),
+    });
+
+    render(<V2StreamingDisplay {...props} />);
+
+    expect(screen.getByText('Live progress')).toBeInTheDocument();
+    expect(screen.getByText('Read the strongest proof already on the resume')).toBeInTheDocument();
+    expect(screen.queryByText('Pull direct requirements from the job description')).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    expect(screen.getByText('Pull direct requirements from the job description')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
   it('does NOT render split layout when isRerunning is true', () => {
     render(<V2StreamingDisplay {...makeDisplayProps({ isRerunning: true })} />);
 
