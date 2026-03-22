@@ -1,5 +1,11 @@
+import mammoth from 'mammoth';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+
 type ResumeUploadExt = 'txt' | 'docx' | 'pdf' | 'doc';
 const MAX_RESUME_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 function getExtension(fileName: string): ResumeUploadExt | '' {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -16,17 +22,12 @@ async function extractFromTxt(file: File): Promise<string> {
 }
 
 async function extractFromDocx(file: File): Promise<string> {
-  const { default: mammoth } = await import('mammoth');
   const buffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer: buffer });
   return normalizeText(result.value ?? '');
 }
 
 async function extractFromPdf(file: File): Promise<string> {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const worker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-
   const buffer = await file.arrayBuffer();
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
   const pdf = await loadingTask.promise;

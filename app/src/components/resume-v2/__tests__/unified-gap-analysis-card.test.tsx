@@ -198,4 +198,21 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Show in Resume' })[0]);
     expect(mockScrollToBullet).toHaveBeenCalledWith('Team leadership at scale');
   });
+
+  it('opens requirements that need work with a clearer issue and draft flow', () => {
+    render(
+      <UnifiedGapAnalysisCard
+        gapAnalysis={makeGapAnalysis()}
+        gapCoachingCards={null}
+        onRespondGapCoaching={vi.fn()}
+        currentResume={makeResume()}
+        positioningAssessment={makePositioningAssessment()}
+      />,
+    );
+
+    expect(screen.getAllByText('Needs stronger proof').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Not yet covered').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Issue').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('What your resume shows today').length).toBeGreaterThan(0);
+  });
 });

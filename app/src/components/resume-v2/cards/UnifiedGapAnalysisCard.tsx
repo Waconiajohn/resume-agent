@@ -72,17 +72,17 @@ function classificationIcon(c: GapClassification) {
 const SECTION_CONFIG = {
   strong: {
     accent: '#b5dec2',
-    label: 'Strong Matches',
+    label: 'Already covered',
     icon: CheckCircle2,
   },
   partial: {
     accent: '#afc4ff',
-    label: 'Areas to Strengthen',
+    label: 'Needs stronger proof',
     icon: AlertTriangle,
   },
   missing: {
     accent: '#f0b8b8',
-    label: 'Experience Gaps',
+    label: 'Not yet covered',
     icon: XCircle,
   },
 } as const;
@@ -129,12 +129,19 @@ function RequirementRow({
   onRequestEdit, currentResume, isComplete, classification, disabled,
   positioningAssessment,
 }: RequirementRowProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(classification !== 'strong');
   const hasCoaching = coaching && coachingState && onCoachingChange;
   const isResponded = coachingState?.action !== null && coachingState?.action !== undefined;
   const mappedEvidence = currentResume
     ? findBulletForRequirement(req.requirement, positioningAssessment, currentResume)
     : null;
+  const issueText = coaching?.ai_reasoning
+    ?? req.source_evidence
+    ?? (classification === 'missing'
+      ? 'We do not have clear proof of this requirement on the current resume yet.'
+      : classification === 'partial'
+        ? 'The resume gets close to this requirement, but the proof is still indirect or too weak.'
+        : 'The current resume already addresses this requirement.');
 
   const editContext = (): EditContext =>
     buildEditContextUtil(req.requirement, req.evidence, req.strategy?.positioning);
@@ -172,9 +179,9 @@ function RequirementRow({
   // Collapsed responded state for coaching items
   if (hasCoaching && isResponded) {
     const statusConfig = {
-      approve: { dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />, label: 'Approved', color: 'text-[#b5dec2]' },
-      context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'Context added', color: 'text-[#afc4ff]' },
-      skip: { dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />, label: 'Skipped', color: 'text-white/35' },
+      approve: { dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />, label: 'Draft queued', color: 'text-[#b5dec2]' },
+      context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'More context added', color: 'text-[#afc4ff]' },
+      skip: { dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />, label: 'Left as-is', color: 'text-white/35' },
     }[coachingState!.action!];
 
     return (
@@ -213,7 +220,16 @@ function RequirementRow({
           aria-hidden="true"
         />
         {classificationIcon(classification)}
-        <span className="flex-1 min-w-0 text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
+        <div className="min-w-0 flex-1">
+          <span className="block text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
+          <span className="mt-1 block text-xs leading-5 text-white/42">
+            {classification === 'strong'
+              ? 'This requirement already has solid proof on the current resume.'
+              : classification === 'partial'
+                ? 'There is some proof on the resume, but it needs a stronger story.'
+                : 'This requirement still needs a believable bridge from your experience.'}
+          </span>
+        </div>
         <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45 shrink-0">
           {requirementSourceLabel(req.source)}
         </span>
@@ -239,11 +255,16 @@ function RequirementRow({
         )}
       >
         <div className="px-4 pb-4 space-y-3">
+          <div className="support-callout px-3 py-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-white/36">Issue</p>
+            <p className="mt-1 text-sm leading-6 text-white/72">{issueText}</p>
+          </div>
+
           {mappedEvidence && (
             <div className="support-callout border-white/[0.08] bg-black/15 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">Current Resume Proof</div>
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">What your resume shows today</div>
                   <p className="mt-1 text-xs leading-5 text-white/62">
                     {mappedEvidence.section}: {shortenText(mappedEvidence.text, 140)}
                   </p>
@@ -263,7 +284,7 @@ function RequirementRow({
           {req.evidence.length > 0 && (
             <div>
               <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
-                Your Relevant Experience
+                Other nearby proof we found
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {req.evidence.map((e, i) => (
@@ -275,34 +296,6 @@ function RequirementRow({
                     {e}
                   </span>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Coach reasoning (from coaching card) */}
-          {coaching?.ai_reasoning && (
-            <div className="flex gap-3">
-              <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
-                <div className="h-7 w-7 bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
-                  <span className="text-[9px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
-                </div>
-                <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
-              </div>
-              <div className="flex-1 relative">
-                <div
-                  className="absolute -left-[7px] top-[10px] w-0 h-0"
-                  style={{
-                    borderTop: '5px solid transparent',
-                    borderBottom: '5px solid transparent',
-                    borderRight: '7px solid rgba(175,196,255,0.08)',
-                  }}
-                />
-                <div className="rounded-xl border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
-                  <div className="text-[9px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
-                    AI Coach
-                  </div>
-                  <p className="text-[14px] text-white/75 leading-[1.7]">{coaching.ai_reasoning}</p>
-                </div>
               </div>
             </div>
           )}
@@ -320,7 +313,7 @@ function RequirementRow({
                 <span className="text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: `${accentColor}B3` }}
                 >
-                  {classification === 'missing' ? 'Safe Resume Language' : 'Resume Language to Add'}
+                  {classification === 'missing' ? 'Draft language to review' : 'Suggested draft to review'}
                 </span>
               </div>
               <p className="text-sm text-white/75 leading-relaxed">{req.strategy.positioning}</p>
@@ -412,7 +405,7 @@ function RequirementRow({
                   aria-label={`Approve strategy for: ${req.requirement}`}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  {classification === 'missing' ? 'Apply Safe Language' : 'Apply to Resume'}
+                  Use this draft
                 </button>
 
                 {/* Context toggle/submit */}
@@ -449,7 +442,7 @@ function RequirementRow({
                     ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
                       ? 'Submit context'
                       : 'Answer above...'
-                    : 'I Have More Context'}
+                    : 'Give AI more context'}
                 </button>
 
                 {/* Cancel context */}
@@ -484,8 +477,8 @@ function RequirementRow({
                 {/* What this means */}
                 <p className="w-full text-[11px] text-white/25 leading-relaxed mt-1">
                   {classification === 'missing'
-                    ? 'Approving lets the AI position adjacent experience to address this gap on your resume.'
-                    : 'Approving lets the AI strengthen how this requirement is presented using your related experience.'}
+                    ? 'Using the draft lets AI bridge from your adjacent experience, but you still review the wording before it lands on the resume.'
+                    : 'Using the draft lets AI strengthen how this requirement is presented, but you still review the wording before it counts.'}
                 </p>
               </>
             )}
@@ -498,7 +491,7 @@ function RequirementRow({
                 className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
               >
                 <Lightbulb className="h-3.5 w-3.5" />
-                {classification === 'missing' ? 'Apply Safe Language' : 'Apply to Resume'}
+                Use this draft
               </button>
             )}
           </div>
@@ -665,6 +658,13 @@ function SectionGroup({
         </span>
         <span className="text-[10px] text-white/30">({requirements.length})</span>
       </div>
+      <p className="text-sm leading-6 text-white/54">
+        {classification === 'strong'
+          ? 'These requirements are already represented well enough on the current resume.'
+          : classification === 'partial'
+            ? 'These are the best places to improve next because the resume is close, but the proof still needs to be clearer.'
+            : 'These requirements are not clearly covered yet. Use the suggested draft carefully and keep it honest.'}
+      </p>
       <div className="space-y-2">
         {requirements.map((req, i) => {
           const match = coachingLookup.get(normalizeRequirement(req.requirement));
@@ -911,7 +911,7 @@ export function UnifiedGapAnalysisCard({
             aria-disabled={!allResponded || disabled}
             aria-label="Continue to resume writing"
           >
-            Continue — Start Writing
+            Continue to resume drafting
             <ArrowRight className="h-4 w-4" />
           </button>
           {!allResponded && (

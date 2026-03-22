@@ -164,8 +164,8 @@ test.describe('Full Pipeline E2E', () => {
               await page.waitForTimeout(200);
             }
           }
-          // Click "Apply to Resume" or "Apply Safe Language" (replaces old "Use this strategy")
-          const approveBtn = card.getByRole('button', { name: /Apply to Resume|Apply Safe Language/i });
+          // Click the current draft-application action on a coaching card.
+          const approveBtn = card.getByRole('button', { name: /Use this draft/i });
           const approveVisible = await approveBtn.isVisible().catch(() => false);
           if (approveVisible) {
             await approveBtn.click();
@@ -174,10 +174,10 @@ test.describe('Full Pipeline E2E', () => {
           }
         }
 
-        // After all cards are responded, the "Continue — Start Writing" button enables.
+        // After all cards are responded, the continue button enables.
         // Use DOM click as a fallback since the button may be below the viewport.
         const continueBtn = page.getByRole('button', {
-          name: /Continue.*Start Writing/i,
+          name: /Continue to resume drafting/i,
         });
 
         // The continue button might not appear if the pipeline already completed
@@ -189,12 +189,12 @@ test.describe('Full Pipeline E2E', () => {
           await expect(continueBtn).toBeEnabled({ timeout: 10_000 });
           await continueBtn.click();
           // eslint-disable-next-line no-console
-          console.log('[test] Clicked "Continue — Start Writing" — pipeline re-running');
+          console.log('[test] Clicked "Continue to resume drafting" — pipeline re-running');
         } else {
           // Try DOM-level click as fallback (button may be offscreen)
           const clicked = await page.evaluate(() => {
             const btn = Array.from(document.querySelectorAll('button')).find(
-              (b) => /Continue.*Start Writing/i.test(b.textContent ?? ''),
+              (b) => /Continue to resume drafting/i.test(b.textContent ?? ''),
             );
             if (btn && !btn.disabled) {
               (btn as HTMLElement).click();
@@ -205,7 +205,7 @@ test.describe('Full Pipeline E2E', () => {
 
           if (clicked) {
             // eslint-disable-next-line no-console
-            console.log('[test] Clicked "Continue — Start Writing" via DOM — pipeline re-running');
+            console.log('[test] Clicked "Continue to resume drafting" via DOM — pipeline re-running');
           } else {
             // eslint-disable-next-line no-console
             console.log('[test] Continue button not found/enabled — pipeline may have already completed');

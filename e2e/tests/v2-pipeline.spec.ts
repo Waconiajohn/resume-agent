@@ -498,6 +498,6 @@ test.describe('Resume Builder session flow', () => {
 
     await expect(page.getByRole('button', { name: /Open AI helper/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Show Details/i }).first()).toBeVisible();
-    await expect(page.getByText(/work the next requirement/i)).toBeVisible();
+    await expect(page.getByText(/Start with the first requirement below/i)).toBeVisible();
   });
 });

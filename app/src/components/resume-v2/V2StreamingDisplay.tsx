@@ -32,7 +32,7 @@ import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import type { GapChatContext } from '@/types/resume-v2';
 import { scrollToBullet } from './useStrategyThread';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
-import { GuidedWorkflowCard, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
+import { ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { ResumeAiWorklogCard } from './ResumeAiWorklogCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 
@@ -509,7 +509,7 @@ export function V2StreamingDisplay({
                 </div>
               )}
 
-              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="space-y-4">
                 <ResumeAiWorklogCard
                   currentResume={displayResume}
                   jobIntelligence={data.jobIntelligence ?? null}
@@ -522,22 +522,9 @@ export function V2StreamingDisplay({
                   unresolvedCriticalCount={unresolvedCriticalConcerns.length}
                   postReviewPolish={postReviewPolish}
                 />
-
-                <div className="space-y-4">
-                  <GuidedWorkflowCard
-                    hasFinalReview={Boolean(hiringManagerResult)}
-                    isFinalReviewStale={isFinalReviewStale}
-                    unresolvedCriticalCount={unresolvedCriticalConcerns.length}
-                    coverageAddressed={jobBreakdown.addressed}
-                    coverageTotal={jobBreakdown.total}
-                    queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-                    nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-                    postReviewPolish={postReviewPolish}
-                  />
-
-                  {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-                </div>
               </div>
+
+              {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
               {/* Verification spinner */}
               {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (
