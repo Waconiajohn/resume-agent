@@ -38,8 +38,10 @@ function looksLikeResumeRewrite(text: string | null | undefined): text is string
   const wordCount = trimmed.split(/\s+/).length;
   const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered)\b/i.test(trimmed);
   const looksLikeLabel = /\b(experience|expertise|background|exposure)\b/i.test(trimmed) && wordCount <= 6;
+  const looksLikeInstruction = /^(use|acknowledge|frame|highlight|position|naturally\b|translate|connect|show|bring|surface|tie|focus on|lean on)\b/i.test(trimmed);
 
   if (looksLikeLabel) return false;
+  if (looksLikeInstruction) return false;
   if (wordCount < 5) return false;
 
   return hasStrongVerb || wordCount >= 8;

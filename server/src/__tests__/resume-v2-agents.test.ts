@@ -1095,6 +1095,47 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.pending_strategies).toEqual([]);
     });
 
+    it('drops instruction-style positioning text that is not a real resume line', async () => {
+      const modeledOutput: GapAnalysisOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          {
+            requirement: 'Cloud Architecture',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'must_have',
+            classification: 'partial',
+            evidence: ['Built cloud platform on AWS'],
+            source_evidence: 'Build and scale cloud platform',
+            strategy: {
+              real_experience: 'Built cloud platform on AWS',
+              positioning: 'Use Built cloud platform on AWS to strengthen how the resume proves Cloud Architecture.',
+              ai_reasoning: 'Nearby proof exists.',
+            },
+          },
+        ],
+        pending_strategies: [
+          {
+            requirement: 'Cloud Architecture',
+            strategy: {
+              real_experience: 'Built cloud platform on AWS',
+              positioning: 'Use Built cloud platform on AWS to strengthen how the resume proves Cloud Architecture.',
+              ai_reasoning: 'Nearby proof exists.',
+            },
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(modeledOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements[0]?.strategy).toBeUndefined();
+      expect(result.pending_strategies).toEqual([]);
+    });
+
     it('drops malformed strategy payloads and coerces malformed evidence arrays safely', async () => {
       const malformedStrategyOutput = {
         ...GAP_ANALYSIS_OUTPUT,

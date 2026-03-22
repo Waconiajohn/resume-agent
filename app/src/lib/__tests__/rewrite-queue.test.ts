@@ -315,6 +315,37 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('what decision or improvement they drove');
   });
 
+  it('drops instructional coaching text that is not a real resume rewrite', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Cloud Architecture',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Built cloud platform on AWS.'],
+          strategy: {
+            real_experience: 'Built cloud platform on AWS.',
+            positioning: 'Use Built cloud platform on AWS to strengthen how the resume proves Cloud Architecture.',
+            ai_reasoning: 'Nearby proof exists.',
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items[0]?.suggestedDraft).toBeUndefined();
+  });
+
   it('tailors nearby-proof guidance for talent development and leadership pipeline requirements', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
