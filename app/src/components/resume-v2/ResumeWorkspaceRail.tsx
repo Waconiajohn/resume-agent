@@ -74,18 +74,18 @@ export function GuidedWorkflowCard({
       : 'quality_review';
 
   const nextOverride = queueNeedsAttention > 0
-    ? `Next: work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
+    ? `work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
     : queuePartials > 0
-      ? 'Next: tighten the remaining partial items so the proof is strong enough before you trust the final score.'
+      ? 'tighten the remaining partial items so the proof is strong enough before you trust the final score.'
       : hardGapCount > 0
-        ? `Next: review the ${hardGapCount} hard requirement risk${hardGapCount === 1 ? '' : 's'} so you know what may still block screening.`
+        ? `review the ${hardGapCount} hard requirement risk${hardGapCount === 1 ? '' : 's'} so you know what may still block screening.`
       : !hasFinalReview
-        ? 'Next: run Final Review to pressure-test the draft before export.'
+        ? 'run Final Review to pressure-test the draft before export.'
         : isFinalReviewStale
-          ? 'Next: rerun Final Review because the resume changed after the last review.'
+          ? 'rerun Final Review because the resume changed after the last review.'
           : unresolvedCriticalCount > 0
-            ? 'Next: resolve or consciously waive the remaining critical concerns, then export.'
-            : 'Next: export the tailored resume or promote selected edits to the master resume.';
+            ? 'resolve or consciously waive the remaining critical concerns, then export.'
+            : 'export the tailored resume or promote selected edits to the master resume.';
 
   const userDoesOverride = queueNeedsAttention > 0
     ? 'Use the rewrite queue on the left one item at a time. Generate options, send the best one to diff review, and only count it after you accept the edit.'
