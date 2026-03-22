@@ -732,7 +732,7 @@ function TrackerGenerator() {
           )}
         </GlassButton>
         <GlassButton onClick={handleReset}>
-          <RotateCcw size={14} /> New Analysis
+          <RotateCcw size={14} /> Start Another Analysis
         </GlassButton>
       </div>
     </GlassCard>

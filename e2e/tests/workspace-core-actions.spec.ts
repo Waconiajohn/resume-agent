@@ -349,7 +349,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/Northstar SaaS — strong fit/i)).toBeVisible();
     await expect(page.getByText(/2 apps · 1 follow-ups/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /New Analysis/i }).click();
+    await page.getByRole('button', { name: /Start Another Analysis/i }).click();
     await expect(page.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tracker Report', exact: true })).toHaveCount(0);
   });
