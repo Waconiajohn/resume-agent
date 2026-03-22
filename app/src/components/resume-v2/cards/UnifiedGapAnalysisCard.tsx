@@ -33,7 +33,6 @@ import {
   buildEditContext as buildEditContextUtil,
   buildCoachingLookup,
 } from '../utils/coaching-actions';
-import { scrollToBullet } from '../useStrategyThread';
 
 // ─── Per-coaching-item state (mirrors GapCoachingCard pattern) ──────
 
@@ -135,6 +134,9 @@ function RequirementRow({
   const mappedEvidence = currentResume
     ? findBulletForRequirement(req.requirement, positioningAssessment, currentResume)
     : null;
+  const bestEvidence = mappedEvidence?.text ?? req.evidence[0] ?? null;
+  const bestEvidenceSection = mappedEvidence?.section ?? null;
+  const relatedEvidence = req.evidence.filter((entry) => entry !== bestEvidence).slice(0, 2);
   const issueText = coaching?.ai_reasoning
     ?? req.source_evidence
     ?? (classification === 'missing'
@@ -206,9 +208,6 @@ function RequirementRow({
       <button
         type="button"
         onClick={() => setExpanded(prev => !prev)}
-        onMouseEnter={() => {
-          if (mappedEvidence) scrollToBullet(req.requirement);
-        }}
         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
         aria-expanded={expanded}
       >
@@ -221,8 +220,8 @@ function RequirementRow({
         />
         {classificationIcon(classification)}
         <div className="min-w-0 flex-1">
-          <span className="block text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
-          <span className="mt-1 block text-xs leading-5 text-white/42">
+          <span className="block text-base text-white/84 leading-snug truncate">{req.requirement}</span>
+          <span className="mt-1 block text-sm leading-6 text-white/50">
             {classification === 'strong'
               ? 'This requirement already has solid proof on the current resume.'
               : classification === 'partial'
@@ -254,87 +253,82 @@ function RequirementRow({
           expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0',
         )}
       >
-        <div className="px-4 pb-4 space-y-3">
-          <div className="support-callout px-3 py-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-white/36">Issue</p>
-            <p className="mt-1 text-sm leading-6 text-white/72">{issueText}</p>
-          </div>
+        <div className="px-4 pb-4">
+          <div className="support-callout border-white/[0.08] bg-white/[0.03] px-4 py-4">
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-white/42">What still needs to be clearer</p>
+                <p className="mt-2 text-base leading-7 text-white/78">{issueText}</p>
+              </div>
 
-          {mappedEvidence && (
-            <div className="support-callout border-white/[0.08] bg-black/15 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">What your resume shows today</div>
-                  <p className="mt-1 text-xs leading-5 text-white/62">
-                    {mappedEvidence.section}: {shortenText(mappedEvidence.text, 140)}
-                  </p>
+              {(bestEvidence || relatedEvidence.length > 0) && (
+                <div className="border-t border-white/[0.06] pt-4">
+                  <p className="text-xs uppercase tracking-[0.14em] text-white/42">Best evidence on your resume</p>
+                  {bestEvidence ? (
+                    <>
+                      {bestEvidenceSection && (
+                        <p className="mt-2 text-xs leading-5 text-white/42">{bestEvidenceSection}</p>
+                      )}
+                      <p className="mt-1 text-base leading-7 text-white/76">{bestEvidence}</p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-base leading-7 text-white/58">
+                      We do not have a strong line on the resume for this yet.
+                    </p>
+                  )}
+
+                  {relatedEvidence.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs uppercase tracking-[0.14em] text-white/34">Other related evidence</p>
+                      {relatedEvidence.map((evidence, index) => (
+                        <p key={`${evidence}-${index}`} className="text-sm leading-6 text-white/58">
+                          {evidence}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => scrollToBullet(req.requirement)}
-                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/84"
+              )}
+
+              {req.strategy && (
+                <div
+                  className="relative overflow-hidden rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.04] pl-4 pr-4 py-4"
+                  style={{ borderColor: `${accentColor}22` }}
                 >
-                  Show in Resume
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Evidence */}
-          {req.evidence.length > 0 && (
-            <div>
-              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
-                Other nearby proof we found
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {req.evidence.map((e, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-white/60 bg-white/[0.05] border border-white/[0.10]"
-                  >
-                    <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
-                    {e}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Strategy / positioning */}
-          {req.strategy && (
-            <div className="relative rounded-lg border bg-white/[0.03] pl-4 pr-3 py-2.5 overflow-hidden"
-              style={{ borderColor: `${accentColor}20` }}
-            >
-              <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg"
-                style={{ background: `linear-gradient(to bottom, ${accentColor}, transparent)` }}
-              />
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Lightbulb className="h-3 w-3 shrink-0" style={{ color: `${accentColor}B3` }} />
-                <span className="text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ color: `${accentColor}B3` }}
-                >
-                  {classification === 'missing' ? 'Draft language to review' : 'Suggested draft to review'}
-                </span>
-              </div>
-              <p className="text-sm text-white/75 leading-relaxed">{req.strategy.positioning}</p>
-
-              {req.strategy.inferred_metric && (
-                <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-start gap-1.5">
-                  <Ruler className="h-3 w-3 text-[#f0d99f]/60 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-xs text-[#f0d99f]/80">{req.strategy.inferred_metric}</span>
-                    {req.strategy.inference_rationale && (
-                      <span className="text-xs text-white/30 ml-1.5">— {req.strategy.inference_rationale}</span>
-                    )}
+                  <div
+                    className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg"
+                    style={{ background: `linear-gradient(to bottom, ${accentColor}, transparent)` }}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <Lightbulb className="h-3.5 w-3.5 shrink-0" style={{ color: `${accentColor}C0` }} />
+                    <span
+                      className="text-xs font-semibold uppercase tracking-[0.14em]"
+                      style={{ color: `${accentColor}C0` }}
+                    >
+                      Draft to start from
+                    </span>
                   </div>
+                  <p className="mt-3 text-lg leading-8 text-white/84">{req.strategy.positioning}</p>
+
+                  {req.strategy.inferred_metric && (
+                    <div className="mt-3 flex items-start gap-1.5 border-t border-white/[0.06] pt-3">
+                      <Ruler className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#f0d99f]/70" />
+                      <div className="text-sm leading-6">
+                        <span className="text-[#f0d99f]/84">{req.strategy.inferred_metric}</span>
+                        {req.strategy.inference_rationale && (
+                          <span className="ml-1.5 text-white/36">— {req.strategy.inference_rationale}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
 
           {/* Coaching context: structured questions or generic textarea */}
           {hasCoaching && coachingState.showContextInput && (
-            <div className="space-y-3">
+            <div className="mt-3 space-y-3">
               {coaching.interview_questions && coaching.interview_questions.length > 0 ? (
                 /* Structured interview questions */
                 coaching.interview_questions.map((q, qi) => (
@@ -370,7 +364,7 @@ function RequirementRow({
           )}
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2 flex-wrap pt-1">
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
             {/* Post-completion edit buttons (strong items) */}
             {classification === 'strong' && isComplete && onRequestEdit && currentResume && (
               <>
@@ -442,7 +436,7 @@ function RequirementRow({
                     ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
                       ? 'Submit context'
                       : 'Answer above...'
-                    : 'Give AI more context'}
+                    : 'Tell AI one more detail'}
                 </button>
 
                 {/* Cancel context */}
@@ -474,12 +468,6 @@ function RequirementRow({
                   Skip
                 </button>
 
-                {/* What this means */}
-                <p className="w-full text-[11px] text-white/25 leading-relaxed mt-1">
-                  {classification === 'missing'
-                    ? 'Using the draft lets AI bridge from your adjacent experience, but you still review the wording before it lands on the resume.'
-                    : 'Using the draft lets AI strengthen how this requirement is presented, but you still review the wording before it counts.'}
-                </p>
               </>
             )}
 
@@ -532,7 +520,7 @@ function RequirementInventory({
       <AiHelperHint
         title="What You’re Matching"
         body="This is the full inventory of what we found. Start here to see what came directly from the job description, what came from the benchmark, what is already covered, and what still needs stronger proof."
-        tip="Hover a requirement or use “Show in Resume” to jump to the current proof on the right. If the proof is weak, click that resume line and improve it."
+        tip="Start by reviewing what came from the job description and what came from the benchmark. Then move into guided editing to strengthen the highest-value gaps one at a time."
       />
 
       {groups.map((group) => (
@@ -557,12 +545,6 @@ function RequirementInventory({
                 <div
                   key={`${group.key}:${item.requirement}`}
                   className="support-callout px-3 py-3 transition-colors hover:bg-white/[0.05]"
-                  onMouseEnter={() => {
-                    if (mappedEvidence) scrollToBullet(item.requirement);
-                  }}
-                  onFocus={() => {
-                    if (mappedEvidence) scrollToBullet(item.requirement);
-                  }}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -584,7 +566,6 @@ function RequirementInventory({
                           : 'Not clearly mapped to a specific line in the current resume yet.'}
                       </p>
                     </div>
-
                     <div className="flex shrink-0 items-center gap-2">
                       <span
                         className={cn(
@@ -598,15 +579,6 @@ function RequirementInventory({
                       >
                         {requirementStatusLabel(item.classification)}
                       </span>
-                      {mappedEvidence && (
-                        <button
-                          type="button"
-                          onClick={() => scrollToBullet(item.requirement)}
-                          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.07] hover:text-white/86"
-                        >
-                          Show in Resume
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>

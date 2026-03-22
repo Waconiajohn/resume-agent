@@ -4,12 +4,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { UnifiedGapAnalysisCard } from '../cards/UnifiedGapAnalysisCard';
 import type { GapAnalysis, PositioningAssessment, ResumeDraft } from '@/types/resume-v2';
 
-const mockScrollToBullet = vi.fn();
-
-vi.mock('../useStrategyThread', () => ({
-  scrollToBullet: (requirement: string) => mockScrollToBullet(requirement),
-}));
-
 function makeResume(): ResumeDraft {
   return {
     header: {
@@ -184,7 +178,7 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('lets the user jump from the inventory to the mapped resume proof', () => {
+  it('does not show the old resume jump action in the inventory', () => {
     render(
       <UnifiedGapAnalysisCard
         gapAnalysis={makeGapAnalysis()}
@@ -195,11 +189,10 @@ describe('UnifiedGapAnalysisCard inventory', () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Show in Resume' })[0]);
-    expect(mockScrollToBullet).toHaveBeenCalledWith('Team leadership at scale');
+    expect(screen.queryByRole('button', { name: 'Show in Resume' })).not.toBeInTheDocument();
   });
 
-  it('opens requirements that need work with a clearer issue and draft flow', () => {
+  it('opens requirements that need work with a clearer, more consolidated coaching flow', () => {
     render(
       <UnifiedGapAnalysisCard
         gapAnalysis={makeGapAnalysis()}
@@ -212,7 +205,7 @@ describe('UnifiedGapAnalysisCard inventory', () => {
 
     expect(screen.getAllByText('Needs stronger proof').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not yet covered').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Issue').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('What your resume shows today').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('What still needs to be clearer').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Best evidence on your resume').length).toBeGreaterThan(0);
   });
 });

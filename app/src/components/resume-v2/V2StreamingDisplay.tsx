@@ -164,7 +164,7 @@ function LiveStageSummary({ stage, isActive }: { stage: V2Stage; isActive: boole
     ? {
         eyebrow: 'AI analysis in progress',
         title: 'We are reading the role and your current resume',
-        detail: 'This should not feel like a black box. We are pulling direct requirements from the job description, adding benchmark signals the posting may have missed, and collecting the best proof already on your resume.',
+        detail: 'We are pulling direct requirements from the job description, adding benchmark signals the posting may have missed, and collecting the best proof already on your resume.',
         checklist: [
           'Read the strongest proof already on the resume',
           'Pull direct requirements from the job description',
