@@ -916,12 +916,15 @@ function sanitizeConcernSuggestedEdit(
   }
 
   if (/^(none|n\/a|not without)/i.test(suggestedEdit) || /without explicit candidate input/i.test(suggestedEdit)) {
+    const coachingSubject = cleanImprovementSummaryText(concern.related_requirement ?? concern.observation ?? '');
     return {
       ...concern,
       suggested_resume_edit: undefined,
       requires_candidate_input: true,
       clarifying_question: concern.clarifying_question
-        ?? 'What truthful example or missing detail would let us strengthen this point without inventing experience?',
+        ?? (coachingSubject
+          ? buildRequirementClarifyingQuestion(coachingSubject)
+          : 'What truthful example or missing detail would let us strengthen this point without inventing experience?'),
     };
   }
 
@@ -929,12 +932,15 @@ function sanitizeConcernSuggestedEdit(
     return concern;
   }
 
+  const coachingSubject = cleanImprovementSummaryText(concern.related_requirement ?? concern.observation ?? '');
   return {
     ...concern,
     suggested_resume_edit: undefined,
     requires_candidate_input: true,
     clarifying_question: concern.clarifying_question
-      ?? 'What truthful example, credential, or concrete proof can we point to for this requirement without inventing new experience?',
+      ?? (coachingSubject
+        ? buildRequirementClarifyingQuestion(coachingSubject)
+        : 'What truthful example, credential, or concrete proof can we point to for this requirement without inventing new experience?'),
     fix_strategy: /only add/i.test(concern.fix_strategy)
       ? concern.fix_strategy
       : `${concern.fix_strategy.replace(/\s*$/, '').replace(/[.?!]$/, '')}. Only add sample language that is already directly supported by the resume or by a truthful candidate clarification.`,
@@ -967,12 +973,16 @@ function sanitizeConcernGuidance(
   let fixStrategy = concern.fix_strategy
     ? removeUnsupportedCredentialGuidance(concern.fix_strategy)
     : concern.fix_strategy;
-  const clarifyingQuestion = concern.clarifying_question
+  let clarifyingQuestion = concern.clarifying_question
     ? removeUnsupportedCredentialGuidance(concern.clarifying_question)
     : concern.clarifying_question;
 
   if (fixStrategy && requirement && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))) {
     fixStrategy = buildRequirementProofAction(requirement, concern.requires_candidate_input);
+  }
+
+  if (requirement && concern.requires_candidate_input && (!clarifyingQuestion || looksGenericClarifyingQuestion(clarifyingQuestion))) {
+    clarifyingQuestion = buildRequirementClarifyingQuestion(requirement);
   }
 
   return {
@@ -1458,27 +1468,237 @@ function cleanConcernFixStrategy(value: string, requiresCandidateInput: boolean)
   if (
     requiresCandidateInput
     && /^(add|consider adding|highlight)\b/i.test(cleaned)
-    && !/^if (?:true|applicable|relevant)\b/i.test(cleaned)
+    && !/^if (?:you have this experience|you have this background|true|applicable|relevant)\b/i.test(cleaned)
   ) {
-    cleaned = `If true, ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`;
+    cleaned = `If you have this experience, ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`;
   }
 
   return cleaned;
 }
 
+function detectRequirementCoachingSignals(requirement: string): {
+  acquisition: boolean;
+  architecture: boolean;
+  communication: boolean;
+  cloudMulti: boolean;
+  executiveRole: boolean;
+  financial: boolean;
+  industry40: boolean;
+  metrics: boolean;
+  peBacked: boolean;
+  platformScale: boolean;
+  portfolio: boolean;
+  regulated: boolean;
+  scale: boolean;
+  talent: boolean;
+  technical: boolean;
+} {
+  const normalized = requirement.trim().toLowerCase();
+
+  return {
+    acquisition: /\b(post-acquisition|post acquisition|acquisition integration|merger integration|integration workstream)\b/.test(normalized),
+    architecture: /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalized),
+    cloudMulti: /\b(aws)\b.*\b(azure|gcp|additional cloud)\b|\b(azure|gcp|additional cloud)\b.*\baws\b/.test(normalized),
+    communication: /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalized),
+    executiveRole: /\b(vp|vice president|cmo|chief marketing officer|chief operating officer|chief|director|head of)\b/.test(normalized),
+    financial: /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalized),
+    industry40: /\b(industry 4\.0|digital transformation|smart manufacturing|predictive maintenance|digital twin|iot)\b/.test(normalized),
+    metrics: /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalized),
+    peBacked: /\b(pe-backed|private equity|private-equity|value creation)\b/.test(normalized),
+    platformScale: /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalized),
+    portfolio: /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalized),
+    regulated: /\b(regulated industries?|financial services|healthcare|soc 2|hipaa|pci(?:-dss)?|fedramp|gdpr|cmmc|sox|glba|compliance frameworks?)\b/.test(normalized),
+    scale: /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(requirement),
+    talent: /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalized)
+      || /\b(build|built|lead|leading|led)\b.*\b(team|teams|organization|organizations|people)\b/.test(normalized),
+    technical: /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|digital transformation|erp|sap|oracle|netsuite|workday|enterprise systems?)\b/.test(normalized),
+  };
+}
+
+function extractRequirementExperienceSubject(requirement: string): string | null {
+  const trimmed = requirement.trim().replace(/[.?!]+$/, '');
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/\b(?:experience with|experience in|experience using|expertise in|background in|knowledge of|familiarity with)\s+(.+)$/i);
+  if (!match?.[1]) return null;
+
+  return match[1].trim();
+}
+
 function buildRequirementProofAction(requirement: string, requiresCandidateInput: boolean): string {
-  return requiresCandidateInput
-    ? `If true, add one concrete example showing ${requirement}.`
-    : `Add one concrete example showing ${requirement}.`;
+  const prefix = requiresCandidateInput
+    ? 'If you have this experience, add one concrete example showing '
+    : 'Add one concrete example showing ';
+  const signals = detectRequirementCoachingSignals(requirement);
+
+  if (signals.metrics) {
+    return `${prefix}which metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.`;
+  }
+
+  if (signals.cloudMulti) {
+    return `${prefix}where you used AWS together with Azure or GCP, what you delivered across those environments, and why that mattered to the business.`;
+  }
+
+  if (signals.executiveRole && signals.scale) {
+    return `${prefix}the title you held, the company or business scale involved, and the business outcome you led at that level.`;
+  }
+
+  if (signals.regulated) {
+    return `${prefix}where you worked in a regulated environment and which industry, compliance framework, or control context was involved.`;
+  }
+
+  if (signals.financial) {
+    return `${prefix}the budget, spend, revenue, or P&L scope you owned and the business outcome tied to it.`;
+  }
+
+  if (signals.communication) {
+    return `${prefix}who the audience was, what you communicated or aligned on, and what decision or outcome followed.`;
+  }
+
+  if (signals.talent) {
+    return `${prefix}who you hired, developed, coached, or promoted and what changed because of that leadership.`;
+  }
+
+  if (signals.acquisition) {
+    return `${prefix}the acquisition or merger integration workstream you led, what operational area was involved, and what changed after the integration.`;
+  }
+
+  if (signals.industry40) {
+    return `${prefix}the Industry 4.0 or digital transformation initiative you led, what technology or operating change was involved, and the business result.`;
+  }
+
+  if (signals.peBacked) {
+    return `${prefix}how you operated in a PE-backed environment and what growth, turnaround, or value-creation result you drove there.`;
+  }
+
+  if (signals.portfolio) {
+    return `${prefix}the brands, product lines, or categories involved, how you coordinated them, and the business result that followed.`;
+  }
+
+  if (signals.platformScale) {
+    return `${prefix}the scale involved, such as transaction volume, uptime, latency, or system footprint, and what you built or improved at that scale.`;
+  }
+
+  if (signals.architecture) {
+    return `${prefix}the architecture or cross-functional decision you led, the tradeoff involved, and the resulting outcome.`;
+  }
+
+  const experienceSubject = extractRequirementExperienceSubject(requirement);
+  if (experienceSubject) {
+    return `${prefix}where you used ${experienceSubject}, what you personally owned, and what outcome came from that work.`;
+  }
+
+  if (signals.technical) {
+    return `${prefix}the technical environment involved and what you personally delivered there.`;
+  }
+
+  if (signals.scale) {
+    return `${prefix}the exact scale involved, such as team size, budget, sites, revenue, or operating footprint, and the result you drove.`;
+  }
+
+  return `${prefix}${requirement}.`;
+}
+
+function looksGenericClarifyingQuestion(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return [
+    /^what is the strongest (real )?example from your background/,
+    /^what additional detail/,
+    /^can you provide specific examples?/,
+    /^can you provide specific examples of your experience/,
+    /^can you provide examples of/,
+    /^can you provide more information about/,
+    /^can you provide (?:an|a) example of/,
+    /^can you describe any/,
+    /^can you describe your experience with/,
+    /^can you share any/,
+    /^can you tell me more about/,
+    /truthful example/,
+    /this must-have requirement/,
+    /, if any\??$/,
+  ].some((pattern) => pattern.test(normalized));
+}
+
+function buildRequirementClarifyingQuestion(requirement: string): string {
+  const signals = detectRequirementCoachingSignals(requirement);
+
+  if (signals.metrics) {
+    return 'Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?';
+  }
+
+  if (signals.cloudMulti) {
+    return 'Where have you used AWS together with Azure or GCP, what did you deliver across those environments, and why did it matter to the business?';
+  }
+
+  if (signals.executiveRole && signals.scale) {
+    return 'What title did you hold, what was the company or business scale, and what business outcome did you lead at that level?';
+  }
+
+  if (signals.regulated) {
+    return 'Where have you worked in a regulated environment, and which industry, compliance framework, or control context was involved?';
+  }
+
+  if (signals.financial) {
+    return 'What budget, spend, revenue, or P&L scope did you personally own, and what business decision or outcome did it influence?';
+  }
+
+  if (signals.communication) {
+    return 'Who was the audience, what did you present or align on, and what decision or next step came from it?';
+  }
+
+  if (signals.talent) {
+    return 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?';
+  }
+
+  if (signals.acquisition) {
+    return 'What acquisition or merger integration workstream did you lead, which operational area was involved, and what changed after the integration?';
+  }
+
+  if (signals.industry40) {
+    return 'What Industry 4.0 or digital transformation initiative did you lead, what technology or operating change was involved, and what business result came from it?';
+  }
+
+  if (signals.peBacked) {
+    return 'Where have you operated in a PE-backed environment, and what growth, turnaround, or value-creation result did you drive there?';
+  }
+
+  if (signals.portfolio) {
+    return 'Which brands, product lines, or categories were involved, how did you coordinate them, and what business result came from that work?';
+  }
+
+  if (signals.platformScale) {
+    return 'What scale did you support, such as transaction volume, uptime, latency, or system footprint, and what did you build or improve at that scale?';
+  }
+
+  if (signals.architecture) {
+    return 'Which stakeholders were involved, what tradeoff or architecture decision did you lead, and what outcome came from it?';
+  }
+
+  const experienceSubject = extractRequirementExperienceSubject(requirement);
+  if (experienceSubject) {
+    return `Where have you used ${experienceSubject}, what did you personally own, and what outcome came from that work?`;
+  }
+
+  if (signals.technical) {
+    return 'Which technical environment was involved, and what did you personally deliver there?';
+  }
+
+  if (signals.scale) {
+    return 'What exact scale was involved, such as team size, budget, sites, revenue, or operating footprint, and what result did you drive?';
+  }
+
+  return `What is the strongest real example from your background that proves ${requirement}?`;
 }
 
 function isLowSignalFixStrategy(value: string): boolean {
   const normalized = value.trim().toLowerCase();
-  if (!/^(if true,\s*)?(add|consider adding|highlight|provide)\b/i.test(normalized)) {
+  if (!/^(if (?:you have this experience,\s*)?)?(add|consider adding|highlight|provide)\b/i.test(normalized)) {
     return false;
   }
 
   return [
+    'direct example',
+    'direct proof',
     'specific example',
     'specific examples',
     'specific detail',
@@ -1490,6 +1710,8 @@ function isLowSignalFixStrategy(value: string): boolean {
     'more detail',
     'more details',
     'a statement',
+    'a sentence',
+    'a sentence or bullet point',
     'a brief statement',
     'a brief statement or bullet point',
     'a brief description',
@@ -1498,6 +1720,7 @@ function isLowSignalFixStrategy(value: string): boolean {
     'bullet points',
     'a separate section',
     'mention',
+    'if this requirement is real',
     'any relevant experience',
     'any relevant experience or training',
   ].some((fragment) => normalized.includes(fragment));

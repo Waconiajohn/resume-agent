@@ -859,7 +859,7 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('needs_improvement');
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Build and lead a 40+ person marketing organization.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('who you hired, developed, coached, or promoted');
     expect(stabilized.concerns[0]?.why_it_hurts).toContain('leadership scale');
     expect(stabilized.concerns[0]?.why_it_hurts).toContain('operated at the level the role demands');
     const leadershipScaleGap = stabilized.six_second_scan.important_signals_missing.find((item) => item.signal.includes('40+ person marketing organization'));
@@ -916,7 +916,8 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.concerns[0]?.severity).toBe('moderate');
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience architecting for regulated industries (financial services or healthcare).');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('regulated environment');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('compliance framework');
     expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
     const regulatedIndustryGap = stabilized.six_second_scan.important_signals_missing.find((item) => item.signal.includes('regulated industries'));
@@ -1284,10 +1285,10 @@ describe('resume-v2 final review prompts', () => {
       ],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Demonstrated success in talent development and building high-performing teams.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('who you hired, developed, coached, or promoted');
     expect(stabilized.improvement_summary).toEqual([
-      'If true, add one concrete example showing Demonstrated success in talent development and building high-performing teams.',
-      'If true, add one concrete example showing Lead post-acquisition operational integration for 2-3 planned acquisitions.',
+      'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+      'If you have this experience, add one concrete example showing the acquisition or merger integration workstream you led, what operational area was involved, and what changed after the integration.',
     ]);
   });
 
@@ -1380,7 +1381,7 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
-    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+    expect(stabilized.concerns[0]?.clarifying_question).toBe('Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?');
     expect(stabilized.concerns[0]?.fix_strategy).toContain('Only add sample language');
   });
 
@@ -1486,7 +1487,7 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
-    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+    expect(stabilized.concerns[0]?.clarifying_question).toBe('Where have you operated in a PE-backed environment, and what growth, turnaround, or value-creation result did you drive there?');
   });
 
   it('removes speculative suggested edits that introduce unsupported acquisition or integration claims', () => {
@@ -1539,7 +1540,7 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
-    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('acquisition or merger integration workstream');
   });
 
   it('removes placeholder suggested edits that only say candidate input is required', () => {
@@ -1591,7 +1592,7 @@ describe('resume-v2 final review prompts', () => {
     });
 
     expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
-    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('acquisition or merger integration workstream');
   });
 
   it('removes suggested resume edits that introduce unsupported metrics', () => {
@@ -1749,8 +1750,8 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('AWS together with Azure or GCP');
+    expect(stabilized.improvement_summary[0]).toContain('AWS together with Azure or GCP');
   });
 
   it('rewrites low-signal bullet-point guidance into requirement-specific concern text', () => {
@@ -1800,8 +1801,8 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience with Azure or GCP.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience with Azure or GCP.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('where you used Azure or GCP');
+    expect(stabilized.improvement_summary[0]).toContain('where you used Azure or GCP');
   });
 
   it('rewrites generic provide-more-examples guidance into requirement-specific concern text', () => {
@@ -1851,8 +1852,8 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('regulated environment');
+    expect(stabilized.improvement_summary[0]).toContain('regulated environment');
   });
 
   it('rewrites generic add-more-detail guidance into requirement-specific concern text', () => {
@@ -1902,8 +1903,8 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience with Industry 4.0 / smart manufacturing technologies.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience with Industry 4.0 / smart manufacturing technologies.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('Industry 4.0 or digital transformation initiative');
+    expect(stabilized.improvement_summary[0]).toContain('Industry 4.0 or digital transformation initiative');
   });
 
   it('rewrites generic relevant-experience-or-training guidance into requirement-specific concern text', () => {
@@ -1953,8 +1954,8 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed environments with focus on growth and value creation.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience in PE-backed environments with focus on growth and value creation.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('PE-backed environment');
+    expect(stabilized.improvement_summary[0]).toContain('PE-backed environment');
   });
 
   it('rewrites generic brief-statement-or-bullet guidance into requirement-specific concern text', () => {
@@ -2004,8 +2005,53 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
-    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('PE-backed environment');
+    expect(stabilized.improvement_summary[0]).toContain('PE-backed environment');
+  });
+
+  it('rewrites sentence-or-bullet-point filler into requirement-specific PE-backed coaching', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible marketing leader with one PE-backed proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'missing_evidence',
+          observation: "The candidate's experience in PE-backed environments is not explicitly mentioned.",
+          why_it_hurts: 'This may be a concern given the job description emphasis on PE-backed experience.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience in PE-backed environments with focus on growth and value creation',
+          fix_strategy: 'Add a sentence or bullet point detailing experience in PE-backed environments, if applicable.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If you have this experience, add one concrete example showing how you operated in a PE-backed environment and what growth, turnaround, or value-creation result you drove there.');
+    expect(stabilized.improvement_summary[0]).toBe('If you have this experience, add one concrete example showing how you operated in a PE-backed environment and what growth, turnaround, or value-creation result you drove there.');
   });
 
   it('does not misread PE-backed experience as a PE credential concern', () => {
@@ -2049,7 +2095,7 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('PE-backed environment');
   });
 
   it('uses a specific proof-gap sentence instead of generic final-draft boilerplate', () => {
@@ -2377,8 +2423,54 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.concerns[0]?.fix_strategy).not.toMatch(/certif/i);
     expect(stabilized.concerns[0]?.clarifying_question).not.toMatch(/certif/i);
-    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
-    expect(stabilized.concerns[0]?.clarifying_question).toContain('Azure or GCP');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('AWS together with Azure or GCP');
+    expect(stabilized.concerns[0]?.clarifying_question).toBe('Where have you used AWS together with Azure or GCP, what did you deliver across those environments, and why did it matter to the business?');
+  });
+
+  it('turns generic ERP coaching into a concrete technical proof question', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Solid operator with one systems gap.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong operator, but ERP systems proof is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'The candidate does not explicitly mention experience with ERP systems (SAP, Oracle, or similar).',
+          why_it_hurts: 'The role expects ERP familiarity in the operating environment.',
+          target_section: 'Professional Experience or Core Competencies',
+          related_requirement: 'Experience with ERP systems (SAP, Oracle, or similar)',
+          fix_strategy: 'Add a direct example if this requirement is real.',
+          requires_candidate_input: true,
+          clarifying_question: 'Can you describe your experience with ERP systems (SAP, Oracle, or similar)?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If you have this experience, add one concrete example showing where you used ERP systems (SAP, Oracle, or similar), what you personally owned, and what outcome came from that work.');
+    expect(stabilized.concerns[0]?.clarifying_question).toBe('Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?');
   });
 
   it('rewrites templated recruiter-scan win explanations into signal-aware wording', () => {
