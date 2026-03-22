@@ -2,79 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import type { FinalReviewChatContext, GapChatMessage } from '@/types/resume-v2';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
-import { AiHelperHint } from '@/components/shared/AiHelperHint';
-
-const EVIDENCE_SHORTCUTS = [
-  {
-    label: 'Metrics',
-    message: 'Ask me specifically about measurable business impact, percentages, cost savings, revenue impact, or cycle-time improvement for this concern.',
-  },
-  {
-    label: 'Team Scope',
-    message: 'Ask me about team size, reporting scope, stakeholders, or leadership scale that would strengthen this concern.',
-  },
-  {
-    label: 'Budget',
-    message: 'Ask me whether I owned a budget, P&L, vendor spend, or financial accountability relevant to this concern.',
-  },
-  {
-    label: 'Customer Scale',
-    message: 'Ask me about customer count, user scale, site count, geography, or operational footprint related to this concern.',
-  },
-  {
-    label: 'Tools',
-    message: 'Ask me about the platforms, systems, tools, or domain knowledge that would make this section more credible.',
-  },
-  {
-    label: 'Ownership',
-    message: 'Ask me about end-to-end ownership, authority, or decision rights that would help fix this concern.',
-  },
-];
-
-const REWRITE_ANGLE_SHORTCUTS = [
-  {
-    label: 'Direct',
-    message: 'Give me one direct, plainspoken rewrite that addresses this concern without embellishment.',
-  },
-  {
-    label: 'Executive',
-    message: 'Rewrite this concern in a sharper executive tone while staying fully truthful and credible.',
-  },
-  {
-    label: 'Metrics-First',
-    message: 'If possible, lead with measurable impact and give me a metrics-first rewrite for this concern.',
-  },
-];
-
-const POSITIONING_SHORTCUTS = [
-  {
-    label: 'Conservative',
-    message: 'Give me the most conservative version that stays very close to what is already clearly proven.',
-  },
-  {
-    label: 'Balanced',
-    message: 'Give me a balanced version that improves competitiveness without overstating anything.',
-  },
-  {
-    label: 'Competitive',
-    message: 'Give me the strongest truthful competitive version, using adjacent experience if needed without sounding inflated.',
-  },
-];
-
-const PLACEMENT_SHORTCUTS = [
-  {
-    label: 'Bullet',
-    message: 'Present the next fix as a resume bullet.',
-  },
-  {
-    label: 'Summary Line',
-    message: 'Present the next fix as a short executive-summary line.',
-  },
-  {
-    label: 'Scope Statement',
-    message: 'Present the next fix as a scope statement that frames the bullets below it.',
-  },
-];
 
 interface FinalReviewConcernThreadProps {
   concernId: string;
@@ -112,13 +39,11 @@ function AssistantBubble({
   isAccepted: boolean;
   onReviewEdit: (concernId: string, language: string, candidateInputUsed?: boolean) => void;
 }) {
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [draftValue, setDraftValue] = useState(message.suggestedLanguage ?? '');
   const disabled = isEditing || isAccepted;
 
   useEffect(() => {
     setDraftValue(message.suggestedLanguage ?? '');
-    setIsEditingDraft(false);
   }, [message.suggestedLanguage]);
 
   return (
@@ -139,28 +64,16 @@ function AssistantBubble({
               Suggested Resume Language
             </span>
             <p className="mt-1 text-xs leading-5 text-white/58">
-              Treat this as a working draft. You can edit it here before you send it into the resume.
+              Work directly in this box, then apply the draft when it says what you mean.
             </p>
-            {isEditingDraft ? (
-              <textarea
-                value={draftValue}
-                onChange={(event) => setDraftValue(event.target.value)}
-                rows={4}
-                aria-label="Edit final review draft"
-                className="mt-2 w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
-              />
-            ) : (
-              <p className="mt-2 text-sm leading-6 text-white/88">&ldquo;{draftValue}&rdquo;</p>
-            )}
+            <textarea
+              value={draftValue}
+              onChange={(event) => setDraftValue(event.target.value)}
+              rows={6}
+              aria-label="Edit final review draft"
+              className="mt-3 min-h-[160px] w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
+            />
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditingDraft((previous) => !previous)}
-                disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/72 transition-colors hover:bg-white/[0.10] disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                {isEditingDraft ? 'Hide Editor' : 'Edit First'}
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -225,7 +138,6 @@ export function FinalReviewConcernThread({
   onCloseThread,
 }: FinalReviewConcernThreadProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSentRef = useRef('');
@@ -256,6 +168,18 @@ export function FinalReviewConcernThread({
     lastSentRef.current = message;
     onSendMessage(concernId, message, context);
   }, [concernId, context, isLoading, onSendMessage]);
+
+  const requestGuidance = useCallback(() => {
+    sendQuickMessage('Ask me the single most useful question you need answered to strengthen this concern truthfully.');
+  }, [sendQuickMessage]);
+
+  const requestDraft = useCallback(() => {
+    sendQuickMessage('Draft the strongest truthful fix you can from what we already know, and keep it natural and believable.');
+  }, [sendQuickMessage]);
+
+  const requestAlternative = useCallback(() => {
+    sendQuickMessage('Try one different truthful version that takes another angle without sounding inflated.');
+  }, [sendQuickMessage]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -303,12 +227,30 @@ export function FinalReviewConcernThread({
         <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-3 py-2.5">
           <button
             type="button"
-            onClick={() => setShowAdvanced((previous) => !previous)}
+            onClick={requestGuidance}
             disabled={isLoading}
             className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
           >
-            {showAdvanced ? 'Hide More Options' : 'More Options'}
+            Ask AI What Detail Is Missing
           </button>
+          <button
+            type="button"
+            onClick={requestDraft}
+            disabled={isLoading}
+            className="rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:opacity-40"
+          >
+            Draft Stronger Version
+          </button>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={requestAlternative}
+              disabled={isLoading}
+              className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+            >
+              Try Another Version
+            </button>
+          )}
           {onCloseThread && (
             <button
               type="button"
@@ -318,100 +260,6 @@ export function FinalReviewConcernThread({
               Skip for Now
             </button>
           )}
-        </div>
-      )}
-
-      {!resolvedLanguage && showAdvanced && (
-        <div className="space-y-2 px-3 pb-2.5">
-          <AiHelperHint
-            title="How To Use These AI Buttons"
-            body="Use the shortcut buttons when you want AI to do more of the prompting and drafting for you."
-            tip="If AI gives you something close, edit the draft in place and apply it directly instead of copying it into another field."
-          />
-
-          <div className="support-callout px-3 py-3">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">More ways to answer</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => sendQuickMessage('Please ask me one targeted follow-up question that would make this resume evidence stronger.')}
-                disabled={isLoading}
-                className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
-              >
-                Ask Another Question
-              </button>
-              <button
-                type="button"
-                onClick={() => sendQuickMessage('Please try another truthful angle for this concern and suggest different resume language.')}
-                disabled={isLoading}
-                className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
-              >
-                Try Another Angle
-              </button>
-            </div>
-          </div>
-
-          <div className="support-callout px-3 py-3">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">Evidence Shortcuts</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {EVIDENCE_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.06] disabled:opacity-30"
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="support-callout border-[#afc4ff]/12 bg-[#afc4ff]/[0.04] px-3 py-3">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-[#afc4ff]/82">Rewrite Variants</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {REWRITE_ANGLE_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.12] disabled:opacity-40"
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {POSITIONING_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {PLACEMENT_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -444,11 +292,12 @@ export function FinalReviewConcernThread({
           }}
           onKeyDown={handleKeyDown}
           placeholder={messages.length === 0
-            ? 'Answer the missing detail or ask for another angle...'
-            : 'Share the next detail you want the AI to use...'}
+            ? 'Add one concrete detail here and AI will turn it into a stronger draft...'
+            : 'Add the next detail or ask AI for a stronger version...'}
           rows={1}
           disabled={isLoading}
           className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-sm leading-6 text-white/86 transition-colors focus:outline-none disabled:opacity-50"
+          style={{ minHeight: 110, maxHeight: 220 }}
         />
         <button
           type="button"

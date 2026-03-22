@@ -10,79 +10,6 @@ import { Send, Sparkles, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import type { GapChatMessage, GapChatContext } from '@/types/resume-v2';
 import { MAX_TURNS } from '@/hooks/useGapChat';
 import { REPORT_COLORS } from './report-colors';
-import { AiHelperHint } from '@/components/shared/AiHelperHint';
-
-const EVIDENCE_SHORTCUTS = [
-  {
-    label: 'Metrics',
-    message: 'Ask me specifically about measurable outcomes, percentages, cost savings, revenue impact, or time savings for this requirement.',
-  },
-  {
-    label: 'Team Scope',
-    message: 'Ask me about team size, reporting scope, or cross-functional leadership for this requirement.',
-  },
-  {
-    label: 'Budget',
-    message: 'Ask me whether I owned a budget, P&L, vendor spend, or financial accountability related to this requirement.',
-  },
-  {
-    label: 'Customer Scale',
-    message: 'Ask me about customer count, user scale, geography, site count, or operational scale connected to this requirement.',
-  },
-  {
-    label: 'Tools',
-    message: 'Ask me about tools, systems, platforms, or domain knowledge that would make this requirement more credible.',
-  },
-  {
-    label: 'Ownership',
-    message: 'Ask me about ownership, decision rights, or end-to-end accountability for this requirement.',
-  },
-];
-
-const REWRITE_ANGLE_SHORTCUTS = [
-  {
-    label: 'Direct',
-    message: 'Rewrite this requirement as one direct, plainspoken resume bullet that stays truthful and easy to believe.',
-  },
-  {
-    label: 'Executive',
-    message: 'Rewrite this requirement in a sharper executive tone while staying truthful and natural.',
-  },
-  {
-    label: 'Metrics-First',
-    message: 'Lead with measurable impact if possible and suggest a metrics-first rewrite for this requirement.',
-  },
-];
-
-const POSITIONING_SHORTCUTS = [
-  {
-    label: 'Conservative',
-    message: 'Give me a conservative version that stays close to what is clearly proven and avoids any stretch.',
-  },
-  {
-    label: 'Balanced',
-    message: 'Give me a balanced version that is competitive but still fully supportable and natural.',
-  },
-  {
-    label: 'Competitive',
-    message: 'Give me the strongest truthful competitive version, using adjacent experience if needed without overstating anything.',
-  },
-];
-
-const PLACEMENT_SHORTCUTS = [
-  {
-    label: 'Bullet',
-    message: 'Present the next suggestion as a resume bullet.',
-  },
-  {
-    label: 'Summary Line',
-    message: 'Present the next suggestion as a short executive-summary line.',
-  },
-  {
-    label: 'Scope Statement',
-    message: 'Present the next suggestion as a scope or role-context statement above the bullets.',
-  },
-];
 
 interface GapChatThreadProps {
   requirement: string;
@@ -124,13 +51,11 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
   requirement: string;
   isAccepted: boolean;
 }) {
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [draftValue, setDraftValue] = useState(message.suggestedLanguage ?? '');
   const disabled = isEditing || isAccepted;
 
   useEffect(() => {
     setDraftValue(message.suggestedLanguage ?? '');
-    setIsEditingDraft(false);
   }, [message.suggestedLanguage]);
 
   const handleAccept = useCallback(() => {
@@ -172,37 +97,16 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
               Suggested Resume Language
             </span>
             <p style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary, marginTop: 6 }}>
-              Use this as a starting point. You can edit the draft here before you apply it.
+              Work directly in this box, then apply the draft when it says what you mean.
             </p>
-            {isEditingDraft ? (
-              <textarea
-                value={draftValue}
-                onChange={(event) => setDraftValue(event.target.value)}
-                rows={4}
-                aria-label="Edit suggested resume language"
-                className="mt-2 w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
-              />
-            ) : (
-              <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading, marginTop: 8 }}>
-                &ldquo;{draftValue}&rdquo;
-              </p>
-            )}
+            <textarea
+              value={draftValue}
+              onChange={(event) => setDraftValue(event.target.value)}
+              rows={6}
+              aria-label="Edit suggested resume language"
+              className="mt-3 min-h-[160px] w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
+            />
             <div className="mt-2 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditingDraft((previous) => !previous)}
-                disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: REPORT_COLORS.secondary,
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                }}
-              >
-                {isEditingDraft ? 'Hide Editor' : 'Edit First'}
-              </button>
               <button
                 type="button"
                 onClick={handleAccept}
@@ -298,7 +202,6 @@ export function GapChatThread({
   onSkip,
 }: GapChatThreadProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -333,6 +236,18 @@ export function GapChatThread({
     lastSentRef.current = message;
     onSendMessage(requirement, message, context, classification);
   }, [classification, context, isLoading, onSendMessage, requirement]);
+
+  const requestGuidance = useCallback(() => {
+    sendQuickMessage('Ask me the single most useful question you need answered to make this resume line stronger and more believable.');
+  }, [sendQuickMessage]);
+
+  const requestDraft = useCallback(() => {
+    sendQuickMessage('Draft the strongest truthful version you can from what we already know, and keep it natural and believable.');
+  }, [sendQuickMessage]);
+
+  const requestAlternative = useCallback(() => {
+    sendQuickMessage('Try one different truthful version that takes a different angle but stays easy to believe.');
+  }, [sendQuickMessage]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -417,22 +332,50 @@ export function GapChatThread({
         >
           <button
             type="button"
-            onClick={() => setShowAdvanced((previous) => !previous)}
+            onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               color: '#afc4ff',
               backgroundColor: 'rgba(175,196,255,0.06)',
               border: '1px solid rgba(175,196,255,0.15)',
             }}
           >
-            {showAdvanced ? 'Hide More Options' : 'More Options'}
+            Ask AI What Detail Is Missing
           </button>
+          <button
+            type="button"
+            onClick={requestDraft}
+            disabled={isLoading}
+            className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              color: '#b5dec2',
+              backgroundColor: 'rgba(181,222,194,0.08)',
+              border: '1px solid rgba(181,222,194,0.20)',
+            }}
+          >
+            Draft Stronger Version
+          </button>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={requestAlternative}
+              disabled={isLoading}
+              className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                color: REPORT_COLORS.secondary,
+                backgroundColor: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+            >
+              Try Another Version
+            </button>
+          )}
           {onSkip && (
             <button
               type="button"
               onClick={onSkip}
-              className="rounded-lg px-2.5 py-1 text-[11px] transition-colors hover:opacity-80"
+              className="rounded-lg px-3 py-1.5 text-[11px] transition-colors hover:opacity-80"
               style={{
                 color: REPORT_COLORS.tertiary,
                 backgroundColor: 'rgba(255,255,255,0.02)',
@@ -442,154 +385,6 @@ export function GapChatThread({
               Skip
             </button>
           )}
-        </div>
-      )}
-
-      {!resolvedLanguage && !atTurnLimit && showAdvanced && (
-        <div className="px-3 pb-2.5 space-y-2.5">
-          <AiHelperHint
-            title="How To Use These AI Buttons"
-            body="The shortcuts below are prompts, not final answers. Use them when you want AI to ask a better question or draft a stronger rewrite for you."
-            tip="If AI gives you language that is close, edit the draft in place and apply it directly instead of copying and pasting."
-          />
-
-          <div
-            className="rounded-lg px-3 py-2"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            <p style={{ fontSize: 11, color: REPORT_COLORS.tertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              More ways to answer
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => sendQuickMessage('Ask me one targeted follow-up question that would help prove this requirement truthfully.')}
-                disabled={isLoading}
-                className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  color: '#afc4ff',
-                  backgroundColor: 'rgba(175,196,255,0.06)',
-                  border: '1px solid rgba(175,196,255,0.15)',
-                }}
-              >
-                Ask Another Question
-              </button>
-              <button
-                type="button"
-                onClick={() => sendQuickMessage('Try another truthful angle and suggest different resume language for this requirement.')}
-                disabled={isLoading}
-                className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  color: REPORT_COLORS.secondary,
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                }}
-              >
-                Try Another Angle
-              </button>
-            </div>
-          </div>
-
-          <div
-            className="rounded-lg px-3 py-2"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            <p style={{ fontSize: 11, color: REPORT_COLORS.tertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Evidence Shortcuts
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {EVIDENCE_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    color: REPORT_COLORS.secondary,
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div
-            className="rounded-lg px-3 py-2"
-            style={{
-              backgroundColor: 'rgba(175,196,255,0.04)',
-              border: '1px solid rgba(175,196,255,0.10)',
-            }}
-          >
-            <p style={{ fontSize: 11, color: '#afc4ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Rewrite Variants
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {REWRITE_ANGLE_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    color: '#afc4ff',
-                    backgroundColor: 'rgba(175,196,255,0.05)',
-                    border: '1px solid rgba(175,196,255,0.12)',
-                  }}
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {POSITIONING_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    color: REPORT_COLORS.heading,
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {PLACEMENT_SHORTCUTS.map((shortcut) => (
-                <button
-                  key={shortcut.label}
-                  type="button"
-                  onClick={() => sendQuickMessage(shortcut.message)}
-                  disabled={isLoading}
-                  className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    color: REPORT_COLORS.secondary,
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
-                >
-                  {shortcut.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -632,8 +427,8 @@ export function GapChatThread({
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             placeholder={messages.length === 0
-              ? 'Share one concrete detail, or use a shortcut above so AI can guide the next step...'
-              : 'Answer the question, refine the draft, or ask for another angle...'
+              ? 'Add one concrete detail here and AI will turn it into a stronger draft...'
+              : 'Add the next detail or ask AI for a stronger version...'
             }
             rows={1}
             disabled={isLoading}
@@ -644,8 +439,8 @@ export function GapChatThread({
               color: REPORT_COLORS.heading,
               backgroundColor: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.10)',
-              minHeight: 36,
-              maxHeight: 120,
+              minHeight: 110,
+              maxHeight: 220,
             }}
             aria-label={`Chat about: ${requirement}`}
           />

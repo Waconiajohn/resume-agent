@@ -311,11 +311,10 @@ describe('rewrite queue browser flow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Review Draft with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'More Options' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Metrics-First' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Draft Stronger Version' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',
-      expect.stringContaining('metrics-first'),
+      expect.stringContaining('strongest truthful version'),
       expect.any(Object),
       'partial',
     );
