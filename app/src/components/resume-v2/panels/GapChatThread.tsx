@@ -252,24 +252,30 @@ export function GapChatThread({
     onSendMessage(requirement, message, context, classification);
   }, [classification, context, isLoading, onSendMessage, requirement]);
 
+  const latestSuggestedLanguage = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && typeof message.suggestedLanguage === 'string' && message.suggestedLanguage.trim().length > 0)
+    ?.suggestedLanguage;
+  const activeRewriteSeed = starterDraftValue.trim() || latestSuggestedLanguage?.trim() || initialSuggestedLanguage?.trim() || '';
+
   const requestGuidance = useCallback(() => {
     const focus = initialQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
     sendQuickMessage(`Tell me the single most useful detail still missing for this requirement, and ask me one short question to get it. Focus on this: ${focus}`);
   }, [initialQuestion, promptHint, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
-    const startingPoint = initialSuggestedLanguage
-      ? `Start from this rewrite and improve it if needed: "${initialSuggestedLanguage}"`
+    const startingPoint = activeRewriteSeed
+      ? `Start from this rewrite and improve it if needed: "${activeRewriteSeed}"`
       : 'Draft the strongest truthful resume rewrite you can from what we already know.';
     sendQuickMessage(`${startingPoint} Keep it natural, believable, and specific to the requirement.`);
-  }, [initialSuggestedLanguage, sendQuickMessage]);
+  }, [activeRewriteSeed, sendQuickMessage]);
 
   const requestAlternative = useCallback(() => {
-    const startingPoint = initialSuggestedLanguage
-      ? `Try a different truthful rewrite than this one: "${initialSuggestedLanguage}"`
+    const startingPoint = activeRewriteSeed
+      ? `Try a different truthful rewrite than this one: "${activeRewriteSeed}"`
       : 'Try a different truthful rewrite that takes another angle.';
     sendQuickMessage(`${startingPoint} Keep it easy to believe and ready for a resume.`);
-  }, [initialSuggestedLanguage, sendQuickMessage]);
+  }, [activeRewriteSeed, sendQuickMessage]);
 
   const handleStarterApply = useCallback(() => {
     const trimmed = starterDraftValue.trim();

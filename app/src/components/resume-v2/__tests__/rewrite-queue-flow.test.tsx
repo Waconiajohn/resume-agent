@@ -79,6 +79,44 @@ function makeResumeDraft(): ResumeDraft {
   };
 }
 
+function makeUnmappedResumeDraft(): ResumeDraft {
+  return {
+    header: {
+      name: 'Jane Doe',
+      phone: '555-0100',
+      email: 'jane@example.com',
+      branded_title: 'VP Operations',
+    },
+    executive_summary: {
+      content: 'Operations leader with broad delivery experience.',
+      is_new: false,
+      addresses_requirements: [],
+    },
+    core_competencies: ['Leadership', 'Operational Strategy'],
+    selected_accomplishments: [],
+    professional_experience: [
+      {
+        company: 'Acme Corp',
+        title: 'VP Operations',
+        start_date: 'Jan 2021',
+        end_date: 'Present',
+        scope_statement: 'Led operations programs across multiple business functions.',
+        scope_statement_is_new: false,
+        scope_statement_addresses_requirements: [],
+        bullets: [
+          {
+            text: 'Improved delivery coordination across teams.',
+            is_new: false,
+            addresses_requirements: [],
+          },
+        ],
+      },
+    ],
+    education: [{ degree: 'BS Business', institution: 'Northwestern', year: '2010' }],
+    certifications: [],
+  };
+}
+
 function makeJobIntelligence(): JobIntelligence {
   return {
     company_name: 'TechCorp',
@@ -212,6 +250,48 @@ function makeCoveredGapAnalysis(): GapAnalysis {
   };
 }
 
+function makeSeededDraftGapAnalysis(): GapAnalysis {
+  return {
+    requirements: [
+      {
+        requirement: 'Executive stakeholder leadership',
+        importance: 'must_have',
+        classification: 'partial',
+        evidence: [],
+        source: 'job_description',
+        source_evidence: 'Lead alignment across executive stakeholders and operating teams.',
+        score_domain: 'ats',
+        strategy: {
+          real_experience: 'Led recurring alignment across executive stakeholders.',
+          positioning: 'Aligned executive stakeholders around weekly priorities to keep cross-functional execution on track.',
+        },
+      },
+    ],
+    coverage_score: 50,
+    score_breakdown: {
+      job_description: {
+        addressed: 0,
+        total: 1,
+        strong: 0,
+        partial: 1,
+        missing: 0,
+        coverage_score: 50,
+      },
+      benchmark: {
+        addressed: 0,
+        total: 0,
+        strong: 0,
+        partial: 0,
+        missing: 0,
+        coverage_score: 0,
+      },
+    },
+    strength_summary: 'Strong operating foundation.',
+    critical_gaps: [],
+    pending_strategies: [],
+  };
+}
+
 function makeGapChatSnapshot(): CoachingThreadSnapshot {
   return {
     items: {
@@ -233,20 +313,34 @@ function makeGapChatSnapshot(): CoachingThreadSnapshot {
   };
 }
 
+function makeEmptyGapChatSnapshot(): CoachingThreadSnapshot {
+  return {
+    items: {
+      'executive stakeholder leadership': {
+        messages: [],
+        resolvedLanguage: null,
+        error: null,
+      },
+    },
+  };
+}
+
 function QueueHarness({
   onRequestEdit,
   onSendMessage,
   onAcknowledgeWarnings,
   gapAnalysis = makeGapAnalysis(),
+  resume = makeResumeDraft(),
+  gapChatSnapshot = makeGapChatSnapshot(),
 }: {
   onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: EditContext) => void;
   onSendMessage: (...args: unknown[]) => void;
   onAcknowledgeWarnings: () => void;
   gapAnalysis?: GapAnalysis;
+  resume?: ResumeDraft;
+  gapChatSnapshot?: CoachingThreadSnapshot;
 }) {
   const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null);
-  const resume = makeResumeDraft();
-  const gapChatSnapshot = makeGapChatSnapshot();
 
   return (
     <div>
@@ -349,6 +443,7 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getAllByText('2. From your resume').length).toBeGreaterThan(0);
     expect(screen.getAllByText('3. What is still missing').length).toBeGreaterThan(0);
     expect(screen.getAllByText('4. Suggested rewrite for your resume').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'See More Context' })).not.toBeInTheDocument();
     expect(
       screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
     ).toBeGreaterThan(0);
@@ -395,6 +490,52 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
   });
 
+  it('shows the placement warning inline and opens the helper when a rewrite cannot be placed automatically', () => {
+    const onRequestEdit = vi.fn();
+
+    render(
+      <QueueHarness
+        onRequestEdit={onRequestEdit}
+        onSendMessage={vi.fn()}
+        onAcknowledgeWarnings={vi.fn()}
+        resume={makeUnmappedResumeDraft()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use This Rewrite' }));
+
+    expect(onRequestEdit).not.toHaveBeenCalled();
+    expect(screen.getByText(/We could not place this automatically yet/i)).toBeInTheDocument();
+    expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
+  });
+
+  it('uses the edited starter rewrite when asking AI for a stronger version', () => {
+    const onSendMessage = vi.fn();
+
+    render(
+      <QueueHarness
+        onRequestEdit={vi.fn()}
+        onSendMessage={onSendMessage}
+        onAcknowledgeWarnings={vi.fn()}
+        gapAnalysis={makeSeededDraftGapAnalysis()}
+        gapChatSnapshot={makeEmptyGapChatSnapshot()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Improve This Rewrite with AI' }));
+    fireEvent.change(screen.getByLabelText('Edit the suggested rewrite'), {
+      target: { value: 'Updated rewrite that mentions executive planning cadence and cross-functional scorecards.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Try a Stronger Rewrite' }));
+
+    expect(onSendMessage).toHaveBeenCalledWith(
+      'Executive stakeholder leadership',
+      expect.stringContaining('Updated rewrite that mentions executive planning cadence and cross-functional scorecards.'),
+      expect.any(Object),
+      'partial',
+    );
+  });
+
   it('lets the user jump straight to current proof from the queue', () => {
     const onRequirementClick = vi.fn();
     const onRequestEdit = vi.fn();
@@ -433,7 +574,6 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show Done (1)' }));
     fireEvent.click(screen.getByRole('button', { name: 'See Current Proof on Resume' }));
     expect(onRequirementClick).toHaveBeenCalledWith('Executive stakeholder leadership');
   });

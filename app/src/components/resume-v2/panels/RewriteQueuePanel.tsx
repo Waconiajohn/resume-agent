@@ -128,6 +128,12 @@ function sourceSectionTitle(source: RewriteQueueItem['source']): string {
   return '1. From the job description';
 }
 
+function sourceCardPhrase(source: RewriteQueueItem['source']): string {
+  if (source === 'benchmark') return 'the benchmark';
+  if (source === 'final_review') return 'the final review';
+  return 'the job description';
+}
+
 function missingExplanation(item: RewriteQueueItem): string {
   if (item.category === 'hard_gap') {
     return 'This may be a real gap. We need to confirm whether you actually have it before the resume should claim it.';
@@ -167,6 +173,14 @@ function primaryActionLabel(item: RewriteQueueItem, hasViewableEvidence: boolean
   }
 
   return aiActionLabel(item);
+}
+
+function PlacementWarning({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-3 py-2 text-xs leading-5 text-[#f0b8b8]">
+      {message}
+    </div>
+  );
 }
 
 function RequirementSourcePreview({ item }: { item: RewriteQueueItem }) {
@@ -293,7 +307,8 @@ export function RewriteQueuePanel({
   onRequestHiringManagerReview: _onRequestHiringManagerReview,
   isEditing = false,
 }: RewriteQueuePanelProps) {
-  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [openHelperItemId, setOpenHelperItemId] = useState<string | null>(null);
+  const [openContextItemId, setOpenContextItemId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [showAllFixFirst, setShowAllFixFirst] = useState(false);
   const [placementWarnings, setPlacementWarnings] = useState<Record<string, string>>({});
@@ -323,6 +338,7 @@ export function RewriteQueuePanel({
   const nextItem = queue.nextItem;
   const visibleFixFirstCount = Math.min(queue.summary.needsAttention, FIX_FIRST_VISIBLE_LIMIT);
   const queuedAfterFixFirst = Math.max(queue.summary.needsAttention - FIX_FIRST_VISIBLE_LIMIT, 0);
+  const nextItemHasViewableEvidence = nextItem?.currentEvidence.some((evidence) => Boolean(evidence.section)) ?? false;
 
   const applySuggestedLanguage = (
     item: RewriteQueueItem,
@@ -333,6 +349,7 @@ export function RewriteQueuePanel({
 
     const target = findBulletForRequirement(item.requirement, positioningAssessment, currentResume);
     if (!target) {
+      setOpenHelperItemId(item.id);
       setPlacementWarnings((previous) => ({
         ...previous,
         [item.id]: 'We could not place this automatically yet. Open a section on the resume first or answer one more question so we can anchor the edit in the right place.',
@@ -370,11 +387,11 @@ export function RewriteQueuePanel({
       return;
     }
 
-    setExpandedItemId((previous) => previous === item.id ? null : item.id);
+    setOpenHelperItemId((previous) => previous === item.id ? null : item.id);
   };
 
   const renderThread = (item: RewriteQueueItem) => {
-    if (expandedItemId !== item.id) return null;
+    if (openHelperItemId !== item.id) return null;
     if (item.kind !== 'requirement' || !item.requirement || !gapChat || !buildChatContext || !currentResume || !onRequestEdit) {
       return null;
     }
@@ -397,7 +414,7 @@ export function RewriteQueuePanel({
         }}
         context={chatContext}
         isEditing={isEditing}
-        onSkip={() => setExpandedItemId(null)}
+        onSkip={() => setOpenHelperItemId(null)}
         sourceLabel={SOURCE_LABELS[item.source]}
         sourceExcerpt={item.sourceEvidence[0]?.text ?? null}
         initialQuestion={nextDetailPrompt(item)}
@@ -482,7 +499,7 @@ export function RewriteQueuePanel({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">
-                  Start with this requirement from {nextItem.source === 'benchmark' ? 'the benchmark' : 'the job description'}
+                  Start with this requirement from {sourceCardPhrase(nextItem.source)}
                 </p>
                 <p className="mt-2 text-lg font-semibold leading-8 text-white/90">{nextItem.title}</p>
               </div>
@@ -515,7 +532,7 @@ export function RewriteQueuePanel({
               )}
 
               <div className="flex flex-wrap gap-2">
-                {nextItem.suggestedDraft && (
+                {nextItem.suggestedDraft && nextItem.status !== 'already_covered' && (
                   <button
                     type="button"
                     onClick={() => applySuggestedLanguage(nextItem, nextItem.suggestedDraft ?? '')}
@@ -530,10 +547,22 @@ export function RewriteQueuePanel({
                   onClick={() => handlePrimaryAction(nextItem)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                 >
-                  <MessagesSquare className="h-3.5 w-3.5" />
-                  {helperToggleLabel(expandedItemId === nextItem.id)}
+                  {nextItem.status === 'already_covered' && nextItemHasViewableEvidence ? (
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                  ) : (
+                    <MessagesSquare className="h-3.5 w-3.5" />
+                  )}
+                  {nextItem.status === 'already_covered' && nextItemHasViewableEvidence
+                    ? primaryActionLabel(nextItem, nextItemHasViewableEvidence)
+                    : helperToggleLabel(openHelperItemId === nextItem.id)}
                 </button>
               </div>
+
+              {placementWarnings[nextItem.id] && (
+                <PlacementWarning message={placementWarnings[nextItem.id]} />
+              )}
+
+              {renderThread(nextItem)}
             </div>
           </div>
         )}
@@ -541,14 +570,21 @@ export function RewriteQueuePanel({
 
       <div className="space-y-5 px-5 py-5">
         {BUCKETS.map((bucket) => {
-          const items = queue.items.filter((item) => item.bucket === bucket.id);
+          const bucketItems = queue.items.filter((item) => item.bucket === bucket.id);
+          const items = nextItem && nextItem.bucket === bucket.id
+            ? bucketItems.filter((item) => item.id !== nextItem.id)
+            : bucketItems;
           if (items.length === 0) return null;
 
           const isResolvedBucket = bucket.id === 'resolved';
           const isFixFirstBucket = bucket.id === 'needs_attention';
           const bucketOpen = !isResolvedBucket || showResolved;
+          const visibleFixFirstRemainingLimit = Math.max(
+            visibleFixFirstCount - (nextItem?.bucket === 'needs_attention' ? 1 : 0),
+            0,
+          );
           const visibleItems = isFixFirstBucket && !showAllFixFirst
-            ? items.slice(0, FIX_FIRST_VISIBLE_LIMIT)
+            ? items.slice(0, visibleFixFirstRemainingLimit)
             : items;
           const hiddenFixFirstCount = isFixFirstBucket ? Math.max(items.length - visibleItems.length, 0) : 0;
 
@@ -587,14 +623,15 @@ export function RewriteQueuePanel({
                 <div className="space-y-3">
                   {visibleItems.map((item) => {
                     const hasViewableEvidence = item.currentEvidence.some((evidence) => Boolean(evidence.section));
-                    const isExpanded = expandedItemId === item.id;
+                    const isHelperOpen = openHelperItemId === item.id;
+                    const isContextOpen = openContextItemId === item.id;
                     const isPrimary = nextItem?.id === item.id;
 
                     return (
                       <div
                         key={item.id}
                         className={`room-shell border px-4 py-4 transition-colors ${
-                          isExpanded
+                          isHelperOpen || isContextOpen
                             ? isPrimary
                               ? 'border-[#afc4ff]/28 bg-[#afc4ff]/[0.06]'
                               : 'border-white/[0.14] bg-white/[0.045]'
@@ -672,20 +709,24 @@ export function RewriteQueuePanel({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setExpandedItemId((previous) => previous === item.id ? null : item.id)}
+                                onClick={() => setOpenContextItemId((previous) => previous === item.id ? null : item.id)}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
-                                aria-expanded={isExpanded}
+                                aria-expanded={isContextOpen}
                                 aria-label={`Toggle more context for ${item.title}`}
                               >
                                 <ChevronRight
                                   className="h-3.5 w-3.5 transition-transform"
-                                  style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                                  style={{ transform: isContextOpen ? 'rotate(90deg)' : 'none' }}
                                 />
-                                {contextToggleLabel(isExpanded)}
+                                {contextToggleLabel(isContextOpen)}
                               </button>
                             </div>
 
-                            {isExpanded && (
+                            {placementWarnings[item.id] && (
+                              <PlacementWarning message={placementWarnings[item.id]} />
+                            )}
+
+                            {isContextOpen && (
                               <div className="support-callout space-y-3 px-3 py-3">
                                 <RequirementSourcePreview item={item} />
 
@@ -714,15 +755,10 @@ export function RewriteQueuePanel({
                                   />
                                 )}
 
-                                {placementWarnings[item.id] && (
-                                  <div className="rounded-lg border border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-3 py-2 text-xs leading-5 text-[#f0b8b8]">
-                                    {placementWarnings[item.id]}
-                                  </div>
-                                )}
-
-                                {renderThread(item)}
                               </div>
                             )}
+
+                            {renderThread(item)}
                           </div>
                         </div>
                       </div>
