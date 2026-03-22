@@ -2,7 +2,13 @@ import { Briefcase } from 'lucide-react';
 import { IMPORTANCE_LABELS } from './shared-badges';
 import type { JobIntelligence } from '@/types/resume-v2';
 
-export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
+export function JobIntelligenceCard({
+  data,
+  isLive = false,
+}: {
+  data: JobIntelligence;
+  isLive?: boolean;
+}) {
   return (
     <div className="room-shell animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-5">
       <div className="flex items-center gap-2">
@@ -36,29 +42,63 @@ export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
       </div>
 
       {/* Business problems */}
-      {data.business_problems.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Problems this hire is expected to solve</h4>
-          <ul className="space-y-1">
-            {data.business_problems.map((p, i) => (
-              <li key={i} className="text-sm text-white/70 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/30">{p}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Hidden signals */}
-      {data.hidden_hiring_signals.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Signals the posting implies but does not state clearly</h4>
-          <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
-            <ul className="space-y-1">
-              {data.hidden_hiring_signals.map((s, i) => (
-                <li key={i} className="text-sm text-white/60 italic pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{s}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      {(data.business_problems.length > 0 || data.hidden_hiring_signals.length > 0) && (
+        isLive ? (
+          <details>
+            <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+              More role context
+            </summary>
+            <div className="mt-3 space-y-4">
+              {data.business_problems.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Problems this hire is expected to solve</h4>
+                  <ul className="space-y-1">
+                    {data.business_problems.map((p, i) => (
+                      <li key={i} className="text-sm text-white/70 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/30">{p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {data.hidden_hiring_signals.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Signals the posting implies but does not state clearly</h4>
+                  <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
+                    <ul className="space-y-1">
+                      {data.hidden_hiring_signals.map((s, i) => (
+                        <li key={i} className="text-sm text-white/60 italic pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+        ) : (
+          <>
+            {data.business_problems.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Problems this hire is expected to solve</h4>
+                <ul className="space-y-1">
+                  {data.business_problems.map((p, i) => (
+                    <li key={i} className="text-sm text-white/70 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/30">{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {data.hidden_hiring_signals.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Signals the posting implies but does not state clearly</h4>
+                <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
+                  <ul className="space-y-1">
+                    {data.hidden_hiring_signals.map((s, i) => (
+                      <li key={i} className="text-sm text-white/60 italic pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </>
+        )
       )}
     </div>
   );

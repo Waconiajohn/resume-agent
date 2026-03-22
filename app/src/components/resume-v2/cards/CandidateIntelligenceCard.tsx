@@ -1,7 +1,16 @@
 import { User } from 'lucide-react';
 import type { CandidateIntelligence } from '@/types/resume-v2';
 
-export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligence }) {
+export function CandidateIntelligenceCard({
+  data,
+  isLive = false,
+}: {
+  data: CandidateIntelligence;
+  isLive?: boolean;
+}) {
+  const visibleOutcomes = isLive ? data.quantified_outcomes.slice(0, 3) : data.quantified_outcomes.slice(0, 6);
+  const hiddenOutcomes = isLive ? data.quantified_outcomes.slice(3) : [];
+
   return (
     <div className="room-shell animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-5">
       <div className="flex items-center gap-2">
@@ -36,7 +45,7 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
         <div>
           <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Proof already on the page</h4>
           <div className="grid grid-cols-2 gap-2">
-            {data.quantified_outcomes.slice(0, 6).map((o, i) => (
+            {visibleOutcomes.map((o, i) => (
               <div key={i} className="support-callout px-3 py-2">
                 <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
                 <div className="text-xs text-white/50 line-clamp-2">{o.outcome}</div>
@@ -47,8 +56,8 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
       )}
 
       {/* Leadership scope + scale */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="support-callout px-3 py-3">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="support-callout px-3 py-3">
           <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Leadership scope</h4>
           <p className="text-sm text-white/70">{data.leadership_scope}</p>
         </div>
@@ -58,18 +67,54 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
         </div>
       </div>
 
-      {/* Hidden accomplishments */}
-      {data.hidden_accomplishments.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
-          <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
-            <ul className="space-y-1">
-              {data.hidden_accomplishments.map((a, i) => (
-                <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      {(hiddenOutcomes.length > 0 || data.hidden_accomplishments.length > 0) && (
+        isLive ? (
+          <details>
+            <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+              More resume detail
+            </summary>
+            <div className="mt-3 space-y-4">
+              {hiddenOutcomes.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Additional proof already on the page</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {hiddenOutcomes.map((o, i) => (
+                      <div key={i} className="support-callout px-3 py-2">
+                        <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
+                        <div className="text-xs text-white/50 line-clamp-2">{o.outcome}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.hidden_accomplishments.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
+                  <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
+                    <ul className="space-y-1">
+                      {data.hidden_accomplishments.map((a, i) => (
+                        <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+        ) : (
+          data.hidden_accomplishments.length > 0 && (
+            <div>
+              <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
+              <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
+                <ul className="space-y-1">
+                  {data.hidden_accomplishments.map((a, i) => (
+                    <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )
+        )
       )}
     </div>
   );

@@ -482,3 +482,24 @@ describe('NarrativeStrategyCard — section_guidance', () => {
     expect(screen.getByText('Beta Inc')).toBeInTheDocument();
   });
 });
+
+describe('NarrativeStrategyCard — live mode', () => {
+  it('keeps the live strategy view focused on the essentials', () => {
+    const data = makeNarrativeStrategy({
+      supporting_themes: ['AI Delivery', 'SaaS Scale', 'Cross-Functional Leadership', 'Board Communication'],
+      unique_differentiators: ['AI-first operator', 'Revenue-linked engineer', 'Bi-modal thinker'],
+      narrative_angle_rationale: 'This angle works because the role needs someone who can translate strategy into shipped outcomes.',
+      interview_talking_points: ['Explain how you align research, product, and revenue.'],
+    });
+
+    render(<NarrativeStrategyCard data={data} isLive />);
+
+    expect(screen.getByText('More positioning detail')).toBeInTheDocument();
+    expect(screen.getByText('More positioning themes will open once this stage finishes.')).toBeInTheDocument();
+    expect(screen.getByText('More emphasis points will appear when the map is finished.')).toBeInTheDocument();
+    expect(screen.queryByText('Talking points to keep in mind')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('This angle works because the role needs someone who can translate strategy into shipped outcomes.'),
+    ).not.toBeInTheDocument();
+  });
+});

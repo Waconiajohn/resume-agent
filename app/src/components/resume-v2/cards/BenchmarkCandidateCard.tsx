@@ -1,7 +1,13 @@
 import { Target } from 'lucide-react';
 import type { BenchmarkCandidate } from '@/types/resume-v2';
 
-export function BenchmarkCandidateCard({ data }: { data: BenchmarkCandidate }) {
+export function BenchmarkCandidateCard({
+  data,
+  isLive = false,
+}: {
+  data: BenchmarkCandidate;
+  isLive?: boolean;
+}) {
   return (
     <div className="room-shell animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-5">
       <div className="flex items-center gap-2">
@@ -20,33 +26,71 @@ export function BenchmarkCandidateCard({ data }: { data: BenchmarkCandidate }) {
       </div>
 
       {/* Expected achievements */}
-      {data.expected_achievements.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What stronger candidates usually prove</h4>
-          <div className="space-y-2">
-            {data.expected_achievements.map((a, i) => (
-              <div key={i} className="support-callout px-3 py-2">
-                <div className="text-sm font-medium text-white/80">{a.area}</div>
-                <div className="text-xs text-white/50">{a.description}</div>
-                <div className="mt-1 text-xs text-[#afc4ff]/70">{a.typical_metrics}</div>
+      {((data.expected_achievements.length > 0) || (data.differentiators.length > 0)) && (
+        isLive ? (
+          <details>
+            <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+              More benchmark detail
+            </summary>
+            <div className="mt-3 space-y-4">
+              {data.expected_achievements.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What stronger candidates usually prove</h4>
+                  <div className="space-y-2">
+                    {data.expected_achievements.map((a, i) => (
+                      <div key={i} className="support-callout px-3 py-2">
+                        <div className="text-sm font-medium text-white/80">{a.area}</div>
+                        <div className="text-xs text-white/50">{a.description}</div>
+                        <div className="mt-1 text-xs text-[#afc4ff]/70">{a.typical_metrics}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.differentiators.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What often separates the strongest candidates</h4>
+                  <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
+                    <ul className="space-y-1">
+                      {data.differentiators.map((d, i) => (
+                        <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+        ) : (
+          <>
+            {data.expected_achievements.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What stronger candidates usually prove</h4>
+                <div className="space-y-2">
+                  {data.expected_achievements.map((a, i) => (
+                    <div key={i} className="support-callout px-3 py-2">
+                      <div className="text-sm font-medium text-white/80">{a.area}</div>
+                      <div className="text-xs text-white/50">{a.description}</div>
+                      <div className="mt-1 text-xs text-[#afc4ff]/70">{a.typical_metrics}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Differentiators */}
-      {data.differentiators.length > 0 && (
-        <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What often separates the strongest candidates</h4>
-          <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
-            <ul className="space-y-1">
-              {data.differentiators.map((d, i) => (
-                <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{d}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+            )}
+            {data.differentiators.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What often separates the strongest candidates</h4>
+                <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
+                  <ul className="space-y-1">
+                    {data.differentiators.map((d, i) => (
+                      <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </>
+        )
       )}
     </div>
   );

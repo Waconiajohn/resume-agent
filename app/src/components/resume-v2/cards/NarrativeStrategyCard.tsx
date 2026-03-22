@@ -2,10 +2,20 @@ import { useState } from 'react';
 import { Compass, Lightbulb, Target, MessageCircle, Sparkles, Clipboard, Check } from 'lucide-react';
 import type { NarrativeStrategy } from '@/types/resume-v2';
 
-export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
+export function NarrativeStrategyCard({
+  data,
+  isLive = false,
+}: {
+  data: NarrativeStrategy;
+  isLive?: boolean;
+}) {
   const experienceFramingEntries = data.section_guidance.experience_framing
     ? Object.entries(data.section_guidance.experience_framing)
     : [];
+  const visibleThemes = isLive ? data.supporting_themes.slice(0, 3) : data.supporting_themes;
+  const hiddenThemes = isLive ? data.supporting_themes.slice(3) : [];
+  const visibleDifferentiators = isLive ? (data.unique_differentiators ?? []).slice(0, 2) : (data.unique_differentiators ?? []);
+  const hiddenDifferentiators = isLive ? (data.unique_differentiators ?? []).slice(2) : [];
 
   return (
     <div className="room-shell space-y-5">
@@ -33,10 +43,13 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
 
       {/* Supporting themes */}
       <div className="flex flex-wrap gap-1.5">
-        {data.supporting_themes.map((theme, i) => (
+        {visibleThemes.map((theme, i) => (
           <span key={i} className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/60">{theme}</span>
         ))}
       </div>
+      {hiddenThemes.length > 0 && (
+        <p className="text-xs text-white/42">More positioning themes will open once this stage finishes.</p>
+      )}
 
       {/* Why Me story — pull-quote treatment */}
       <div>
@@ -44,7 +57,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         <p className="text-lg leading-relaxed text-white/90 italic border-l-[3px] border-[#afc4ff]/40 pl-4">
           {data.why_me_concise}
         </p>
-        {data.why_me_story && (
+        {!isLive && data.why_me_story && (
           <details className="mt-2">
             <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">See the longer version of this story</summary>
             <p className="mt-1 text-xs text-white/50 leading-relaxed">{data.why_me_story}</p>
@@ -62,7 +75,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       </div>
 
       {/* Narrative Rationale */}
-      {data.narrative_angle_rationale && (
+      {!isLive && data.narrative_angle_rationale && (
         <div className="support-callout px-4 py-3 flex gap-3">
           <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#f0d99f]/60" />
           <p className="text-xs text-white/60 leading-relaxed">{data.narrative_angle_rationale}</p>
@@ -74,7 +87,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         <div>
           <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Points to emphasize</h4>
           <div className="flex flex-wrap gap-1.5">
-            {data.unique_differentiators.map((diff, i) => (
+            {visibleDifferentiators.map((diff, i) => (
               <span
                 key={i}
                 className="flex items-center gap-1.5 bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-3 py-1.5 rounded-md text-xs uppercase tracking-[0.08em] text-[#afc4ff]/80"
@@ -84,13 +97,16 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
               </span>
             ))}
           </div>
+          {isLive && hiddenDifferentiators.length > 0 && (
+            <p className="mt-2 text-xs text-white/42">More emphasis points will appear when the map is finished.</p>
+          )}
         </div>
       )}
 
       {/* Section Guidance */}
-      <details>
+      <details open={!isLive}>
         <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
-          How the resume should read
+          {isLive ? 'More positioning detail' : 'How the resume should read'}
         </summary>
         <div className="mt-3 space-y-4 pl-1">
 
@@ -156,7 +172,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       </details>
 
       {/* Interview Talking Points — numbered with clipboard copy */}
-      {data.interview_talking_points && data.interview_talking_points.length > 0 && (
+      {!isLive && data.interview_talking_points && data.interview_talking_points.length > 0 && (
         <details>
           <summary className="flex items-center gap-1.5 text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
             <MessageCircle className="h-3 w-3" />

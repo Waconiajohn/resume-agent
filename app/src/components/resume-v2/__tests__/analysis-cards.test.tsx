@@ -56,6 +56,21 @@ const candidateIntelligence: CandidateIntelligence = {
       outcome: 'Improved margin across a multi-site operation',
       metric_type: 'money',
     },
+    {
+      value: '$14M',
+      outcome: 'Delivered savings through supply chain redesign',
+      metric_type: 'money',
+    },
+    {
+      value: '18',
+      outcome: 'Led cross-functional leaders across operating groups',
+      metric_type: 'scope',
+    },
+    {
+      value: '3x',
+      outcome: 'Expanded execution capacity in the highest-volume region',
+      metric_type: 'volume',
+    },
   ],
   industry_depth: ['SaaS operations'],
   technologies: ['ERP', 'Planning systems'],
@@ -100,5 +115,19 @@ describe('resume-v2 analysis cards', () => {
     expect(screen.getByText('Patterns we can lean on')).toBeInTheDocument();
     expect(screen.getByText('Proof already on the page')).toBeInTheDocument();
     expect(screen.getByText('Strengths we can surface more clearly')).toBeInTheDocument();
+  });
+
+  it('keeps live analysis cards lighter while the stage is still active', () => {
+    const { rerender } = render(<JobIntelligenceCard data={jobIntelligence} isLive />);
+
+    expect(screen.getByText('More role context')).toBeInTheDocument();
+
+    rerender(<BenchmarkCandidateCard data={benchmarkCandidate} isLive />);
+    expect(screen.getByText('More benchmark detail')).toBeInTheDocument();
+
+    rerender(<CandidateIntelligenceCard data={candidateIntelligence} isLive />);
+    expect(screen.getByText('More resume detail')).toBeInTheDocument();
+    expect(screen.queryByText('More role context')).not.toBeInTheDocument();
+    expect(screen.queryByText('More benchmark detail')).not.toBeInTheDocument();
   });
 });

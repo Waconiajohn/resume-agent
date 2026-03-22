@@ -783,17 +783,17 @@ export function V2StreamingDisplay({
               )}
               {data.jobIntelligence && (
                 <AnimatedCard index={1}>
-                  <GlassCard className="p-5"><JobIntelligenceCard data={data.jobIntelligence} /></GlassCard>
+                  <GlassCard className="p-5"><JobIntelligenceCard data={data.jobIntelligence} isLive={data.stage === 'analysis' && !isComplete} /></GlassCard>
                 </AnimatedCard>
               )}
               {data.candidateIntelligence && (
                 <AnimatedCard index={2}>
-                  <GlassCard className="p-5"><CandidateIntelligenceCard data={data.candidateIntelligence} /></GlassCard>
+                  <GlassCard className="p-5"><CandidateIntelligenceCard data={data.candidateIntelligence} isLive={data.stage === 'analysis' && !isComplete} /></GlassCard>
                 </AnimatedCard>
               )}
               {data.benchmarkCandidate && (
                 <AnimatedCard index={3}>
-                  <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} /></GlassCard>
+                  <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} isLive={data.stage === 'analysis' && !isComplete} /></GlassCard>
                 </AnimatedCard>
               )}
               {data.stage === 'analysis' && !isComplete && <StagePendingDots />}
@@ -846,7 +846,7 @@ export function V2StreamingDisplay({
                 )}
                 {data.narrativeStrategy && (
                   <AnimatedCard index={3}>
-                    <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
+                    <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} isLive={data.stage === 'strategy' && !isComplete} /></GlassCard>
                   </AnimatedCard>
                 )}
                 {data.stage === 'strategy' && !isComplete && <StagePendingDots />}
