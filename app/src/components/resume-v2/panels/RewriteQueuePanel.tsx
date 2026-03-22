@@ -115,9 +115,9 @@ function QueueStat({
 }) {
   return (
     <div className={`support-callout px-3 py-3 ${tone}`}>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">{label}</p>
-      <p className="mt-2 text-base font-semibold text-white/86">{value}</p>
-      {detail && <p className="mt-1 text-[11px] leading-4 text-white/42">{detail}</p>}
+      <p className="text-[12px] uppercase tracking-[0.16em] text-white/46">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-white/88">{value}</p>
+      {detail && <p className="mt-1 text-xs leading-5 text-white/50">{detail}</p>}
     </div>
   );
 }
@@ -487,11 +487,25 @@ export function RewriteQueuePanel({
           <QueueStat
             label="Fix First"
             value={visibleFixFirstCount}
-            detail={queuedAfterFixFirst > 0 ? `${queuedAfterFixFirst} more queued after these` : undefined}
+            detail={
+              queuedAfterFixFirst > 0
+                ? `${queuedAfterFixFirst} more queued after these. Start here because these are the best next improvements.`
+                : 'Start here because these are the best next improvements.'
+            }
             tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]"
           />
-          <QueueStat label="Still Needs Proof" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
-          <QueueStat label="Already Covered" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
+          <QueueStat
+            label="Still Needs Proof"
+            value={queue.summary.partiallyAddressed}
+            detail="These already show up on the resume, but the proof is not strong enough yet."
+            tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]"
+          />
+          <QueueStat
+            label="Already Covered"
+            value={queue.summary.resolved}
+            detail="These already have accepted proof in the current draft."
+            tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]"
+          />
         </div>
 
         {nextItem && (

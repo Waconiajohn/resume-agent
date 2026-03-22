@@ -488,7 +488,7 @@ describe('rewrite queue browser flow', () => {
     );
 
     expect(screen.getByText('Fix First')).toBeInTheDocument();
-    expect(screen.getByText('1 more queued after these')).toBeInTheDocument();
+    expect(screen.getByText(/1 more queued after these\./i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
   });
 
