@@ -723,7 +723,7 @@ export function ResumeWorkspaceRail({
           ? 'Your draft is ready for Final Review. Run the recruiter and hiring manager check before exporting.'
           : isFinalReviewStale
             ? 'Final Review is out of date because the resume changed. Rerun it before exporting or acknowledge the warning.'
-            : 'Final Review is current. Resolve any remaining concerns, then export when you are satisfied.'}
+            : 'Final Review is current. Resolve any remaining concerns, then export if you are satisfied with the draft.'}
       </div>
 
       {onRequestHiringManagerReview && companyName && jobTitle && (

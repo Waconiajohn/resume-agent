@@ -37,7 +37,7 @@ test.describe('workspace guided flows', () => {
 
     await page.getByRole('button', { name: /I understand, enable export/i }).click();
 
-    await expect(page.getByText('Warning acknowledged. Export is enabled.')).toBeVisible();
+    await expect(page.getByText('Warning acknowledged. Export is enabled, but the draft still has open review warnings.')).toBeVisible();
     await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeEnabled();
     await expect(page.getByRole('button', { name: /Download PDF/i })).toBeEnabled();
   });

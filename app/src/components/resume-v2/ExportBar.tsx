@@ -202,7 +202,7 @@ export function ExportBar({
                 </button>
               ) : (
                 <p className="mt-3 text-xs text-white/50">
-                  Warning acknowledged. Export is enabled.
+                  Warning acknowledged. Export is enabled, but the draft still has open review warnings.
                 </p>
               )}
             </div>
@@ -212,7 +212,7 @@ export function ExportBar({
 
       {!hasWarnings && (queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/58">
-          Export is enabled, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
+          Export is available, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
           {nextQueueItemLabel ? ` If you want to keep improving the draft first, start with "${nextQueueItemLabel}".` : ''}
         </div>
       )}

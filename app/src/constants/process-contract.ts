@@ -88,8 +88,8 @@ export const PROCESS_STEP_CONTRACTS: Record<ProcessStepKey, ProcessStepContract>
     summary: "We're refreshing tone, ATS readiness, and final coverage so you know exactly what is ready before export.",
     systemDoes: 'We rerun tone and match checks after accepted fixes, summarize final readiness, and prepare export-safe files.',
     userDoes: 'Review any remaining warnings, decide what should be saved to your master resume, and export when satisfied.',
-    next: 'Your resume is ready to export.',
-    victoryMessage: 'Your resume is polished, pressure-tested, and ready to use.',
+    next: 'Review the final warnings, then export when you are satisfied with the draft.',
+    victoryMessage: 'Your resume is polished, pressure-tested, and ready for a final export decision.',
   },
 };
 
