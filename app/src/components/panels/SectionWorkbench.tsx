@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, Pencil, ChevronDown, ChevronUp, Redo2, Undo2 } from 'lucide-react';
 import { GlassButton } from '../GlassButton';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 import { WorkbenchProgressDots } from './workbench/WorkbenchProgressDots';
 import { WorkbenchContentEditor } from './workbench/WorkbenchContentEditor';
 import { WorkbenchActionChips } from './workbench/WorkbenchActionChips';
@@ -61,6 +62,7 @@ export function SectionWorkbench({
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBundleDetails, setShowBundleDetails] = useState(false);
+  const [lastAiAction, setLastAiAction] = useState<string | null>(null);
   const actionLockedRef = useRef(false);
   const lastActionAtRef = useRef(0);
   const refineWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,6 +158,7 @@ export function SectionWorkbench({
       lastActionAtRef.current = now;
       actionLockedRef.current = true;
       setIsRefining(true);
+      setLastAiAction(instruction);
       clearRefineWatchdog();
       refineWatchdogRef.current = setTimeout(() => {
         // If the server response never arrives, unlock so the user can continue.
@@ -307,6 +310,14 @@ export function SectionWorkbench({
           <p className="text-center text-xs text-white/50 max-w-md mx-auto">
             Read this section. If it looks right, approve it. If you'd like changes, tell us what to fix.
           </p>
+
+          {!isRefining && !hasLocalEdits && (
+            <AiHelperHint
+              title="How AI Help Works Here"
+              body="Use the helper buttons when you want a starting point. AI rewrites the full section below for you instead of making you type the whole request from memory."
+              tip="After the rewrite lands, review it in place, click any line to edit it, then save your edits or approve the section."
+            />
+          )}
 
           {reviewStrategy === 'bundled' && (
             <div className="room-shell p-3">
@@ -599,10 +610,13 @@ export function SectionWorkbench({
           {/* Refining loading overlay */}
           {isRefining && (
             <div className="relative rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
-              <div className="flex items-center gap-2 justify-center">
-                <div className="h-2 w-2 bg-[#98b3ff] motion-safe:animate-pulse" />
-                <p className="text-xs text-[#98b3ff]/80 font-medium">Refining section…</p>
-              </div>
+              <AiHelperHint
+                title="AI Is Rewriting This Section"
+                body={lastAiAction
+                  ? `Working on: ${lastAiAction}`
+                  : 'AI is rewriting this section based on the instruction you selected.'}
+                tip="You do not need to type the whole answer from scratch here. Wait for the updated draft, then review and fine-tune it inline."
+              />
               <div className="mt-2 h-0.5 w-full overflow-hidden bg-white/[0.06]">
                 <div className="h-full w-1/3 bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
               </div>

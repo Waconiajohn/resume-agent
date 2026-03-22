@@ -12,6 +12,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 
 interface WorkbenchActionChipsProps {
   section: string;
@@ -147,9 +148,11 @@ export function WorkbenchActionChips({ section, onAction, disabled }: WorkbenchA
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-medium tracking-wide uppercase text-white/35 px-0.5">
-        Refine
-      </p>
+      <AiHelperHint
+        title="AI Quick Starts"
+        body="Use one of these as a starting point when you do not want to write the request from scratch."
+        tip="Each button asks AI to rewrite the section for you. When the draft comes back, you can still click any line and edit it directly."
+      />
       <div className="flex flex-wrap gap-2">
         {chips.map((chip) => (
           <button

@@ -573,7 +573,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     );
 
     expect(
-      screen.getByText(
+      screen.getByDisplayValue(
         'Cut release cycle from 2 weeks to 3 days, improving deployment frequency by 4x',
       ),
     ).toBeInTheDocument();
@@ -601,7 +601,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       />,
     );
 
-    expect(screen.queryByText('Some improvement text')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Some improvement text')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
   });
 
@@ -626,7 +626,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     );
 
     expect(
-      screen.queryByText('Scaled engineering org from 5 to 45 engineers, 9x headcount growth'),
+      screen.queryByDisplayValue('Scaled engineering org from 5 to 45 engineers, 9x headcount growth'),
     ).not.toBeInTheDocument();
   });
 
@@ -657,6 +657,39 @@ describe('InlineEditPanel — pending edit suggestion', () => {
 
     expect(onAcceptEdit).toHaveBeenCalledOnce();
     expect(onAcceptEdit).toHaveBeenCalledWith('Cut release cycle from 2 weeks to 3 days');
+  });
+
+  it('lets the user edit the suggested draft before accepting it', () => {
+    const resume = makeResumeDraft();
+    const onAcceptEdit = vi.fn();
+    const pendingEdit: PendingEdit = {
+      section: 'selected_accomplishments',
+      originalText: 'Reduced deploy time by 60%',
+      replacement: 'Cut release cycle from 2 weeks to 3 days',
+      action: 'strengthen',
+    };
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onBulletClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        pendingEdit={pendingEdit}
+        isEditing={false}
+        onAcceptEdit={onAcceptEdit}
+        onRejectEdit={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Edit suggested rewrite before applying'), {
+      target: { value: 'Cut release cycle from 2 weeks to 3 days across 3 teams' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    expect(onAcceptEdit).toHaveBeenCalledWith(
+      'Cut release cycle from 2 weeks to 3 days across 3 teams',
+    );
   });
 
   it('calls onRejectEdit when Cancel is clicked', () => {

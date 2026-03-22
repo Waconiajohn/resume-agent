@@ -3,6 +3,7 @@ import {
   AlertTriangle, Layers, Target, BarChart2, Zap, Compass, Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 import type { SectionSuggestion, SuggestionIntent } from '@/types/panels';
 
 interface WorkbenchSuggestionsProps {
@@ -192,6 +193,13 @@ export function WorkbenchSuggestions({
         isResolvedAnim ? 'suggestion-resolved' : slideDir === 'out' ? 'suggestion-slide-out' : 'suggestion-slide-in',
       )}
     >
+      <AiHelperHint
+        title="AI Suggestion"
+        body="This is a guided fix for the current gap. Apply it to have AI rewrite the section for you instead of starting from a blank answer."
+        tip="When the updated draft lands below, click any line to tweak it before you save or approve."
+        className="mb-4"
+      />
+
       {/* Header row: intent icon + label + counter */}
       <div className="flex items-center gap-2">
         <span className="text-white/50">

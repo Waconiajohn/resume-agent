@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import type { FinalReviewChatContext, GapChatMessage } from '@/types/resume-v2';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 
 const EVIDENCE_SHORTCUTS = [
   {
@@ -111,7 +112,14 @@ function AssistantBubble({
   isAccepted: boolean;
   onReviewEdit: (concernId: string, language: string, candidateInputUsed?: boolean) => void;
 }) {
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [draftValue, setDraftValue] = useState(message.suggestedLanguage ?? '');
   const disabled = isEditing || isAccepted;
+
+  useEffect(() => {
+    setDraftValue(message.suggestedLanguage ?? '');
+    setIsEditingDraft(false);
+  }, [message.suggestedLanguage]);
 
   return (
     <div className="flex justify-start">
@@ -130,20 +138,45 @@ function AssistantBubble({
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
               Suggested Resume Language
             </span>
-            <p className="mt-1 text-sm leading-6 text-white/88">&ldquo;{message.suggestedLanguage}&rdquo;</p>
-            <div className="mt-3 flex justify-end">
+            <p className="mt-1 text-xs leading-5 text-white/58">
+              Treat this as a working draft. You can edit it here before you send it into the resume.
+            </p>
+            {isEditingDraft ? (
+              <textarea
+                value={draftValue}
+                onChange={(event) => setDraftValue(event.target.value)}
+                rows={4}
+                aria-label="Edit final review draft"
+                className="mt-2 w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
+              />
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-white/88">&ldquo;{draftValue}&rdquo;</p>
+            )}
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingDraft((previous) => !previous)}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-white/72 transition-colors hover:bg-white/[0.10] disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                {isEditingDraft ? 'Hide Editor' : 'Edit First'}
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   if (!disabled) {
-                    onReviewEdit(concernId, message.suggestedLanguage!, message.candidateInputUsed);
+                    onReviewEdit(
+                      concernId,
+                      draftValue.trim() || message.suggestedLanguage!,
+                      message.candidateInputUsed,
+                    );
                   }
                 }}
                 disabled={disabled}
                 className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isEditing ? 'Preparing Edit...' : 'Review Edit'}
+                {isEditing ? 'Preparing Edit...' : 'Apply Draft'}
               </button>
             </div>
           </div>
@@ -290,6 +323,12 @@ export function FinalReviewConcernThread({
 
       {!resolvedLanguage && showAdvanced && (
         <div className="space-y-2 px-3 pb-2.5">
+          <AiHelperHint
+            title="How To Use These AI Buttons"
+            body="Use the shortcut buttons when you want AI to do more of the prompting and drafting for you."
+            tip="If AI gives you something close, edit the draft in place and apply it directly instead of copying it into another field."
+          />
+
           <div className="support-callout px-3 py-3">
             <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">More ways to answer</p>
             <div className="mt-2 flex flex-wrap gap-2">

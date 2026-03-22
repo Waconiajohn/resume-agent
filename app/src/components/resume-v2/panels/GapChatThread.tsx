@@ -10,6 +10,7 @@ import { Send, Sparkles, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import type { GapChatMessage, GapChatContext } from '@/types/resume-v2';
 import { MAX_TURNS } from '@/hooks/useGapChat';
 import { REPORT_COLORS } from './report-colors';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 
 const EVIDENCE_SHORTCUTS = [
   {
@@ -123,12 +124,23 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
   requirement: string;
   isAccepted: boolean;
 }) {
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [draftValue, setDraftValue] = useState(message.suggestedLanguage ?? '');
   const disabled = isEditing || isAccepted;
+
+  useEffect(() => {
+    setDraftValue(message.suggestedLanguage ?? '');
+    setIsEditingDraft(false);
+  }, [message.suggestedLanguage]);
 
   const handleAccept = useCallback(() => {
     if (disabled || !message.suggestedLanguage) return;
-    onAcceptLanguage(requirement, message.suggestedLanguage, message.candidateInputUsed);
-  }, [disabled, message.candidateInputUsed, message.suggestedLanguage, requirement, onAcceptLanguage]);
+    onAcceptLanguage(
+      requirement,
+      draftValue.trim() || message.suggestedLanguage,
+      message.candidateInputUsed,
+    );
+  }, [disabled, draftValue, message.candidateInputUsed, message.suggestedLanguage, onAcceptLanguage, requirement]);
 
   return (
     <div className="flex justify-start">
@@ -159,10 +171,38 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
             >
               Suggested Resume Language
             </span>
-            <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading, marginTop: 4 }}>
-              &ldquo;{message.suggestedLanguage}&rdquo;
+            <p style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary, marginTop: 6 }}>
+              Use this as a starting point. You can edit the draft here before you apply it.
             </p>
-            <div className="flex justify-end mt-2">
+            {isEditingDraft ? (
+              <textarea
+                value={draftValue}
+                onChange={(event) => setDraftValue(event.target.value)}
+                rows={4}
+                aria-label="Edit suggested resume language"
+                className="mt-2 w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
+              />
+            ) : (
+              <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading, marginTop: 8 }}>
+                &ldquo;{draftValue}&rdquo;
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingDraft((previous) => !previous)}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: REPORT_COLORS.secondary,
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                }}
+              >
+                {isEditingDraft ? 'Hide Editor' : 'Edit First'}
+              </button>
               <button
                 type="button"
                 onClick={handleAccept}
@@ -178,7 +218,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
                 data-testid="accept-language"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isEditing ? 'Preparing Edit...' : 'Review Edit'}
+                {isEditing ? 'Preparing Edit...' : 'Apply Draft'}
               </button>
             </div>
           </div>
@@ -407,6 +447,12 @@ export function GapChatThread({
 
       {!resolvedLanguage && !atTurnLimit && showAdvanced && (
         <div className="px-3 pb-2.5 space-y-2.5">
+          <AiHelperHint
+            title="How To Use These AI Buttons"
+            body="The shortcuts below are prompts, not final answers. Use them when you want AI to ask a better question or draft a stronger rewrite for you."
+            tip="If AI gives you language that is close, edit the draft in place and apply it directly instead of copying and pasting."
+          />
+
           <div
             className="rounded-lg px-3 py-2"
             style={{
@@ -586,8 +632,8 @@ export function GapChatThread({
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             placeholder={messages.length === 0
-              ? 'Share one concrete detail about this requirement...'
-              : 'Answer the question or ask for another angle...'
+              ? 'Share one concrete detail, or use a shortcut above so AI can guide the next step...'
+              : 'Answer the question, refine the draft, or ask for another angle...'
             }
             rows={1}
             disabled={isLoading}

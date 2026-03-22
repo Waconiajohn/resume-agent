@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import type { ResumeDraft } from '@/types/resume-v2';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
+import { AiHelperHint } from '@/components/shared/AiHelperHint';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -368,8 +369,32 @@ function InlineEditPanel({
   onAcceptEdit,
   onRejectEdit,
 }: InlineEditPanelProps) {
+  const [draftValue, setDraftValue] = useState('');
+
+  useEffect(() => {
+    if (
+      pendingEdit
+      && pendingEdit.section === section
+      && pendingEdit.originalText === bulletText
+    ) {
+      setDraftValue(pendingEdit.replacement);
+      return;
+    }
+    setDraftValue('');
+  }, [bulletText, pendingEdit, section]);
+
+  const matchesPendingEdit = Boolean(
+    pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText,
+  );
+
   return (
     <div className="support-callout mt-2 border border-[#afc4ff]/20 bg-[#0f141e]/90 p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
+      <AiHelperHint
+        title="AI Rewrite Help"
+        body="Pick a rewrite angle to generate a stronger version of this bullet. You can apply the AI draft directly or edit it here first."
+        tip="This should feel collaborative. You should not have to copy and paste the AI text into a blank box just to use it."
+      />
+
       {/* Requirement tags */}
       {requirements.length > 0 && (
         <p className="text-[11px] leading-5 text-white/42">
@@ -396,23 +421,47 @@ function InlineEditPanel({
       {isEditing && (
         <div className="flex items-center gap-2 text-xs text-white/40">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Generating suggestion...
+          Generating a reviewable draft...
         </div>
       )}
 
       {/* Pending edit suggestion — only show if it matches this bullet's text */}
-      {pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText && (
+      {matchesPendingEdit && pendingEdit && (
         <div className="support-callout border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-3 space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wider text-[#b5dec2]/60">Suggested</p>
-          <p className="text-sm text-white/80 leading-relaxed">{pendingEdit.replacement}</p>
+          <p className="text-[11px] leading-relaxed text-white/55">
+            Review the draft below. You can make small edits before you apply it.
+          </p>
+          <textarea
+            value={draftValue}
+            onChange={(event) => setDraftValue(event.target.value)}
+            rows={4}
+            aria-label="Edit suggested rewrite before applying"
+            className="w-full resize-y rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm leading-relaxed text-white/80 outline-none transition-colors focus:border-white/20 focus:bg-white/[0.06]"
+          />
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onAcceptEdit?.(pendingEdit.replacement); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAcceptEdit?.(draftValue.trim() || pendingEdit.replacement);
+              }}
               className="rounded-md bg-[#b5dec2]/20 border border-[#b5dec2]/30 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-[#b5dec2] hover:bg-[#b5dec2]/30 transition-colors"
             >
               Accept
             </button>
+            {draftValue !== pendingEdit.replacement && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftValue(pendingEdit.replacement);
+                }}
+                className="rounded-md border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.08em] text-white/60 hover:bg-white/[0.06] transition-colors"
+              >
+                Reset
+              </button>
+            )}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRejectEdit?.(); }}
