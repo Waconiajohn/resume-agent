@@ -714,6 +714,223 @@ Return valid JSON only:
 
 // ─── POST /:sessionId/gap-chat ────────────────────────────────────
 
+function normalizeGapChatText(value: string): string {
+  return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
+}
+
+function detectGapChatRequirementSignals(requirement: string): {
+  architecture: boolean;
+  communication: boolean;
+  financial: boolean;
+  metrics: boolean;
+  platformScale: boolean;
+  portfolio: boolean;
+  scale: boolean;
+  talent: boolean;
+  technical: boolean;
+} {
+  const normalizedRequirement = normalizeGapChatText(requirement);
+
+  return {
+    architecture: /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement),
+    communication: /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement),
+    financial: /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement),
+    metrics: /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalizedRequirement),
+    platformScale: /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement),
+    portfolio: /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement),
+    scale: /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(requirement),
+    talent: /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalizedRequirement),
+    technical: /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement),
+  };
+}
+
+function summarizeGapChatEvidence(text: string | null | undefined): string | null {
+  if (typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (trimmed.length <= 140) return trimmed;
+  return `${trimmed.slice(0, 137).trimEnd()}...`;
+}
+
+function looksLikeGapChatRewrite(text: string | null | undefined): text is string {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const wordCount = trimmed.split(/\s+/).length;
+  const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered|presented|executed|standardized|scaled)\b/i.test(trimmed);
+  const looksLikeLabel = /\b(experience|expertise|background|exposure|knowledge|skills?)\b/i.test(trimmed) && wordCount <= 7;
+  const looksLikeInstruction = /^(use|acknowledge|frame|highlight|position|naturally|translate|connect|show|bring|surface|tie|focus on|lean on|answer|tell us)\b/i.test(trimmed);
+  const looksLikeWeakOpener = /^(experience with|background in|related |familiar with|proven ability to|knowledge of)\b/i.test(trimmed.toLowerCase());
+
+  if (looksLikeLabel || looksLikeInstruction || looksLikeWeakOpener) return false;
+  if (wordCount < 5) return false;
+
+  return hasStrongVerb || wordCount >= 8;
+}
+
+function looksLikeGapChatQuestion(question: string | null | undefined, requirement: string): question is string {
+  if (typeof question !== 'string') return false;
+  const trimmed = question.trim();
+  if (!trimmed) return false;
+
+  const normalized = trimmed.toLowerCase();
+  if (
+    /^(tell me about|can you walk me through your experience|what experience do you have|share any experience|describe your experience)\b/.test(normalized)
+    || /\brelated to\b/.test(normalized)
+  ) {
+    return false;
+  }
+
+  const signals = detectGapChatRequirementSignals(requirement);
+  if (signals.metrics && !/\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|track|tracked|reviewed|reporting)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.financial && !/\b(budget|revenue|financial|p&l|spend|cost)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.communication && !/\b(audience|stakeholder|stakeholders|present|presented|board|communicat|align)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.talent && !/\b(team|people|hire|hired|coach|coached|develop|developed|promot|leadership)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.portfolio && !/\b(brand|brands|product lines?|categories|portfolio)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.platformScale && !/\b(transaction|transactions|request|requests|uptime|latency|scale|footprint|system)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.architecture && !/\b(architecture|architectural|stakeholder|stakeholders|tradeoff|trade-off|decision|design)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.technical && !/\b(platform|framework|technical|aws|azure|gcp|cloud|kubernetes|terraform|environment)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.scale && !/\b(scale|team|budget|sites|revenue|footprint|organization)\b/i.test(trimmed)) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildGapChatFallbackQuestion(
+  requirement: string,
+  context: {
+    evidence: string[];
+    job_description_excerpt: string;
+  },
+  classification: 'partial' | 'missing' | 'strong',
+): string {
+  const signals = detectGapChatRequirementSignals(requirement);
+  const evidenceSnippet = summarizeGapChatEvidence(context.evidence[0] ?? null);
+  const prefix = evidenceSnippet
+    ? `Your resume already shows "${evidenceSnippet}". `
+    : classification === 'missing'
+      ? 'The resume does not show this directly yet. '
+      : '';
+
+  if (signals.metrics) {
+    return `${prefix}Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?`;
+  }
+  if (signals.financial) {
+    return `${prefix}What budget, spend, revenue, or P&L scope did you personally own, and what business decision or outcome did it influence?`;
+  }
+  if (signals.communication) {
+    return `${prefix}Who was the audience, what did you present or align on, and what decision or next step came from it?`;
+  }
+  if (signals.talent) {
+    return `${prefix}How many people did you lead, hire, coach, or promote, and what changed because of your leadership?`;
+  }
+  if (signals.portfolio) {
+    return `${prefix}Which brands, product lines, or categories were involved, how did you coordinate them, and what result came from that work?`;
+  }
+  if (signals.platformScale) {
+    return `${prefix}What scale did you support, such as transaction volume, request volume, uptime, latency, or system footprint, and what did you build or improve at that scale?`;
+  }
+  if (signals.architecture) {
+    return `${prefix}Which stakeholders were involved, what tradeoff or architecture decision did you lead, and what outcome came from it?`;
+  }
+  if (signals.technical) {
+    return `${prefix}Which platform, framework, or technical environment was involved, and what did you personally deliver there?`;
+  }
+  if (signals.scale) {
+    return `${prefix}What exact scale was involved, such as team size, budget, sites, revenue, or footprint, and what result did you drive?`;
+  }
+
+  const jdSnippet = summarizeGapChatEvidence(context.job_description_excerpt);
+  if (jdSnippet && normalizeGapChatText(jdSnippet) !== normalizeGapChatText(requirement)) {
+    return `${prefix}What is the clearest example from your background that proves this role need: "${jdSnippet}"?`;
+  }
+
+  return `${prefix}What is the clearest concrete example that proves "${requirement}" for this role?`;
+}
+
+function buildGapChatFallbackResponse(
+  requirement: string,
+  context: {
+    evidence: string[];
+  },
+  classification: 'partial' | 'missing' | 'strong',
+): string {
+  const evidenceSnippet = summarizeGapChatEvidence(context.evidence[0] ?? null);
+  if (evidenceSnippet) {
+    return `Right now the strongest proof we have is "${evidenceSnippet}". That points in the right direction, but it still does not make "${requirement}" obvious enough on the resume. I need one more concrete detail before I should draft a stronger line.`;
+  }
+
+  if (classification === 'missing') {
+    return `Right now the resume does not show direct proof for "${requirement}". I need one concrete detail from your background before I should draft resume language for it.`;
+  }
+
+  return `The proof for "${requirement}" is still too thin to rewrite safely. I need one more concrete detail before I should turn this into resume language.`;
+}
+
+function normalizeGapChatResult(
+  result: {
+    response: string;
+    suggested_resume_language?: string;
+    follow_up_question?: string;
+    current_question?: string;
+    needs_candidate_input?: boolean;
+    recommended_next_action?: 'answer_question' | 'review_edit' | 'try_another_angle' | 'skip' | 'confirm';
+  },
+  args: {
+    requirement: string;
+    classification: 'partial' | 'missing' | 'strong';
+    context: {
+      evidence: string[];
+      job_description_excerpt: string;
+    };
+  },
+) {
+  const fallbackQuestion = buildGapChatFallbackQuestion(args.requirement, args.context, args.classification);
+  const hasStrongRewrite = looksLikeGapChatRewrite(result.suggested_resume_language);
+  const bestQuestion = looksLikeGapChatQuestion(result.current_question, args.requirement)
+    ? result.current_question.trim()
+    : looksLikeGapChatQuestion(result.follow_up_question, args.requirement)
+      ? result.follow_up_question.trim()
+      : fallbackQuestion;
+
+  if (!hasStrongRewrite) {
+    return {
+      response: buildGapChatFallbackResponse(args.requirement, args.context, args.classification),
+      current_question: bestQuestion,
+      follow_up_question: bestQuestion,
+      suggested_resume_language: undefined,
+      needs_candidate_input: true,
+      recommended_next_action: 'answer_question' as const,
+    };
+  }
+
+  return {
+    ...result,
+    current_question: looksLikeGapChatQuestion(result.current_question, args.requirement) ? result.current_question.trim() : undefined,
+    follow_up_question: looksLikeGapChatQuestion(result.follow_up_question, args.requirement) ? result.follow_up_question.trim() : undefined,
+    needs_candidate_input: false,
+    recommended_next_action: 'review_edit' as const,
+  };
+}
+
 const GAP_CHAT_SYSTEM = `You are a $3,000/engagement executive resume strategist having a coaching conversation with a candidate about a specific gap on their resume.
 
 Your job:
@@ -821,14 +1038,17 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
     if (!result.success) {
       // Fallback: treat raw text as the response — log for monitoring
       logger.warn({ session_id: sessionId, requirement, rawSnippet: response.text.substring(0, 200) }, 'Gap chat: repairJSON failed, falling back to raw text');
+      const fallbackQuestion = buildGapChatFallbackQuestion(requirement, context, classification);
       return c.json({
-        response: response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim(),
+        response: buildGapChatFallbackResponse(requirement, context, classification),
+        follow_up_question: fallbackQuestion,
+        current_question: fallbackQuestion,
         recommended_next_action: 'answer_question',
         needs_candidate_input: true,
       });
     }
 
-    return c.json(result.data);
+    return c.json(normalizeGapChatResult(result.data, { requirement, classification, context }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, requirement, error: message }, 'Gap chat failed');

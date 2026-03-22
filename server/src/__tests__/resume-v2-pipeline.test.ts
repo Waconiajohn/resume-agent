@@ -366,7 +366,7 @@ describe('GET /api/resume-v2/:sessionId/result', () => {
 
     expect(res.status).toBe(409);
     const body = await res.json() as { error: string; status: string };
-    expect(body.error).toMatch(/not yet complete/i);
+    expect(body.error).toMatch(/snapshot not yet available/i);
     expect(body.status).toBe('running');
   });
 
@@ -608,5 +608,88 @@ describe('POST /api/resume-v2/:sessionId/rescore', () => {
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe('Rescore failed');
     expect(body.message).toBe('Rate limit exceeded');
+  });
+});
+
+// ─── POST /:sessionId/gap-chat ───────────────────────────────────────────────
+
+describe('POST /api/resume-v2/:sessionId/gap-chat', () => {
+  const VALID_GAP_CHAT_BODY = {
+    requirement: 'Develop and track performance metrics',
+    classification: 'partial',
+    messages: [],
+    context: {
+      evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the platform.'],
+      current_strategy: 'Tracked weekly throughput metrics and improved fill rate by 14% across the platform.',
+      ai_reasoning: 'The proof is close but still needs one more concrete detail.',
+      job_description_excerpt: 'Develop and track performance metrics',
+      candidate_experience_summary: 'Led operating cadence across a multi-site network.',
+    },
+  } as const;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const chain = buildSingleChain({
+      data: { id: SESSION_ID, user_id: 'test-user-123' },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+
+    mockParseJsonBodyWithLimit.mockResolvedValue({ ok: true, data: VALID_GAP_CHAT_BODY });
+  });
+
+  it('replaces weak label-style rewrites and generic questions with a targeted follow-up', async () => {
+    mockLlmChat.mockResolvedValue({
+      text: '{"response":"You have related experience here.","suggested_resume_language":"Related performance metrics expertise","current_question":"Tell me about any experience you have related to developing and tracking performance metrics.","follow_up_question":"Tell me about any experience you have related to developing and tracking performance metrics.","needs_candidate_input":true,"recommended_next_action":"answer_question"}',
+    });
+    mockRepairJSON.mockReturnValue({
+      response: 'You have related experience here.',
+      suggested_resume_language: 'Related performance metrics expertise',
+      current_question: 'Tell me about any experience you have related to developing and tracking performance metrics.',
+      follow_up_question: 'Tell me about any experience you have related to developing and tracking performance metrics.',
+      needs_candidate_input: true,
+      recommended_next_action: 'answer_question',
+    });
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/gap-chat`, 'POST', VALID_GAP_CHAT_BODY);
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      response: string;
+      suggested_resume_language?: string;
+      current_question?: string;
+      follow_up_question?: string;
+      needs_candidate_input?: boolean;
+      recommended_next_action?: string;
+    };
+
+    expect(body.suggested_resume_language).toBeUndefined();
+    expect(body.current_question).toContain('Which metrics or scorecards did you personally track');
+    expect(body.follow_up_question).toContain('what decision or improvement did they drive');
+    expect(body.recommended_next_action).toBe('answer_question');
+    expect(body.needs_candidate_input).toBe(true);
+  });
+
+  it('falls back to a concrete targeted question when the model response is unparseable', async () => {
+    mockLlmChat.mockResolvedValue({ text: 'Not valid JSON at all' });
+    mockRepairJSON.mockReturnValue(null);
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/gap-chat`, 'POST', VALID_GAP_CHAT_BODY);
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      response: string;
+      current_question?: string;
+      follow_up_question?: string;
+      recommended_next_action?: string;
+      needs_candidate_input?: boolean;
+    };
+
+    expect(body.response).toContain('strongest proof we have');
+    expect(body.current_question).toContain('Which metrics or scorecards did you personally track');
+    expect(body.follow_up_question).toContain('what decision or improvement did they drive');
+    expect(body.recommended_next_action).toBe('answer_question');
+    expect(body.needs_candidate_input).toBe(true);
   });
 });
