@@ -124,6 +124,7 @@ function extractResumeExcerptForSection(resume: ResumeDraft, section: string | u
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
+  const [workspaceMode, setWorkspaceMode] = useState<'analysis' | 'workspace'>('analysis');
 
   // Track the editable resume separately — starts as the pipeline output,
   // then gets mutated by inline edits
@@ -287,6 +288,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
         setEditableResume(resolvedDraftState?.editable_resume ?? null);
+        setWorkspaceMode('analysis');
         setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
         hydrateGapChatSnapshot(resolvedDraftState?.gap_chat_state ?? null);
         hydrateHiringManagerReview(resolvedDraftState?.final_review_state?.result ?? null);
@@ -680,6 +682,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setResumeText(rt);
     setJobDescription(jd);
     setEditableResume(null);
+    setWorkspaceMode('analysis');
     setSessionLoadError(null);
     lastMasterSnapshotRef.current = '';
     lastPersistedDraftRef.current = 'null';
@@ -717,6 +720,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }
 
     setEditableResume(null);
+    setWorkspaceMode('analysis');
     resetHistory();
     resetGapChat();
     resetFinalReviewChat();
@@ -781,6 +785,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     // Snapshot the current resume before the re-run so we can show what changed
     setPreviousResume(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null);
     setEditableResume(null);
+    setWorkspaceMode('analysis');
     resetHistory();
     resetGapChat();
     resetFinalReviewChat();
@@ -815,6 +820,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     reset();
     setEditableResume(null);
     setPreviousResume(null);
+    setWorkspaceMode('analysis');
     lastMasterSnapshotRef.current = '';
     lastPersistedDraftRef.current = 'null';
     setMasterSaveMode('session_only');
@@ -1012,6 +1018,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const displayToneScore = postReviewPolish.result?.tone_score ?? data.assembly?.scores.tone ?? null;
   const gapChatSnapshot = isComplete ? getGapChatSnapshot() : null;
   const finalReviewChatSnapshot = isComplete ? getFinalReviewChatSnapshot() : null;
+  const canReturnToAnalysis = workspaceMode === 'workspace' && Boolean(currentResume && data.jobIntelligence && data.gapAnalysis);
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
@@ -1031,6 +1038,17 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
           <span className="text-xs text-white/40 truncate">
             {data.jobIntelligence.role_title} at {data.jobIntelligence.company_name}
           </span>
+        )}
+
+        {canReturnToAnalysis && (
+          <GlassButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setWorkspaceMode('analysis')}
+            className="gap-1.5 text-xs"
+          >
+            Review Analysis
+          </GlassButton>
         )}
 
         {/* Live scores in header */}
@@ -1103,6 +1121,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onToggleMasterPromotionItem={handleToggleMasterPromotionItem}
         onSelectAllMasterPromotionItems={handleSelectAllMasterPromotionItems}
         onClearMasterPromotionItems={handleClearMasterPromotionItems}
+        workspaceMode={workspaceMode}
+        onOpenWorkspace={() => setWorkspaceMode('workspace')}
       />
     </div>
   );

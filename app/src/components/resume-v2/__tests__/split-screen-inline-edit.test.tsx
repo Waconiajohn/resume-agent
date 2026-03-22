@@ -771,6 +771,28 @@ describe('V2StreamingDisplay — split-screen activation', () => {
     expect(screen.getByText('Requirements to Match')).toBeInTheDocument();
   });
 
+  it('keeps the analysis view in place until the user opens the guided workspace', () => {
+    render(<V2StreamingDisplay {...makeDisplayProps({ workspaceMode: 'analysis' })} />);
+
+    expect(screen.queryByText('Requirements to Match')).not.toBeInTheDocument();
+    expect(screen.getByText('Ready to start guided editing')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Guided Editing Workspace' })).toBeInTheDocument();
+  });
+
+  it('fires the explicit handoff action when the guided workspace CTA is clicked', () => {
+    const onOpenWorkspace = vi.fn();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({ workspaceMode: 'analysis', onOpenWorkspace })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Guided Editing Workspace' }));
+
+    expect(onOpenWorkspace).toHaveBeenCalledOnce();
+  });
+
   it('reveals live analysis progress one step at a time while analysis is running', () => {
     vi.useFakeTimers();
 
