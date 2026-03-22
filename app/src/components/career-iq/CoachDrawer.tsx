@@ -93,26 +93,27 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={cn('fixed right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 flex items-center justify-center transition-all hover:scale-105', isMobile ? 'bottom-20' : 'bottom-6')}
+        className={cn('fixed right-6 z-50 flex h-14 items-center gap-2 rounded-md border border-[#8ea8ff]/25 bg-[#111726]/92 px-4 text-white shadow-[0_24px_50px_rgba(11,15,24,0.38)] transition-all hover:border-[#8ea8ff]/45 hover:bg-[#131b2b]', isMobile ? 'bottom-20' : 'bottom-6')}
         aria-label="Open AI Coach"
       >
         <MessageSquare size={22} />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/72">Coach</span>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 h-[32rem] flex flex-col rounded-2xl border border-white/[0.08] bg-[#0a0a1a]/95 backdrop-blur-xl shadow-2xl shadow-black/40">
+    <div className="fixed bottom-6 right-6 z-50 flex h-[32rem] w-96 flex-col rounded-xl border border-white/[0.08] bg-[#0a0a1a]/95 shadow-2xl shadow-black/40">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-indigo-400/20 bg-indigo-600/20">
             <span className="text-xs font-semibold text-indigo-300">AI</span>
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white/90">{firstName ? `AI ${firstName}` : 'AI Coach'}</h3>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 bg-emerald-400" />
               <span className="text-[10px] text-white/40 uppercase tracking-wider">
                 {mode === 'guided' ? 'Guided' : 'Chat'}
               </span>
@@ -165,15 +166,15 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
             <div className="bg-white/[0.06] rounded-2xl px-4 py-3 border border-white/[0.06]">
               <div className="flex gap-1">
                 <span
-                  className="w-2 h-2 rounded-full bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-white/20 animate-bounce"
                   style={{ animationDelay: '0ms' }}
                 />
                 <span
-                  className="w-2 h-2 rounded-full bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-white/20 animate-bounce"
                   style={{ animationDelay: '150ms' }}
                 />
                 <span
-                  className="w-2 h-2 rounded-full bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-white/20 animate-bounce"
                   style={{ animationDelay: '300ms' }}
                 />
               </div>

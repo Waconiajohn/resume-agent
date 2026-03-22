@@ -158,7 +158,7 @@ export function WorkbenchActionChips({ section, onAction, disabled }: WorkbenchA
             onClick={() => onAction(chip.instruction)}
             disabled={disabled}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150',
+              'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-150',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
               'border-white/[0.1] bg-white/[0.03] text-white/60',
               !disabled && 'hover:border-white/[0.2] hover:bg-white/[0.07] hover:text-white/85 cursor-pointer',

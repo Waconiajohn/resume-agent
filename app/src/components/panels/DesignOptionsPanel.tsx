@@ -100,7 +100,7 @@ function DesignCard({
         <Layout className="h-3.5 w-3.5 text-[#afc4ff]" />
         <span className="text-sm font-medium text-white">{option.name}</span>
         {isSelected && (
-          <span className="ml-auto rounded-full border border-white/[0.14] bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/78">
+          <span className="ml-auto rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/78">
             Selected
           </span>
         )}

@@ -44,7 +44,7 @@ export function WorkbenchProgressDots({
       </div>
 
       {/* 3px linear progress bar */}
-      <div className="h-[3px] w-full rounded-full bg-white/10 overflow-hidden flex">
+      <div className="flex h-[3px] w-full overflow-hidden bg-white/10">
         {sectionOrder.map((section) => {
           const isApproved = sectionsApproved.includes(section);
           const isCurrent = section === currentSection && !isApproved;

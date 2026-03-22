@@ -66,7 +66,7 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
               disabled={!isMissing}
               aria-label={`${kw.keyword} — ${status === 'met' ? 'covered' : status === 'partial' ? 'partially covered' : 'not yet included'}`}
               className={cn(
-                'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+                'rounded-md border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
                 status === 'met' &&
                   'border-[#a8d7b8]/35 bg-[#a8d7b8]/[0.08] text-[#a8d7b8]/80 cursor-default',
                 status === 'partial' &&
@@ -81,7 +81,7 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
               {status !== 'missing' && (
                 <span
                   className={cn(
-                    'ml-1 text-[9px]',
+                    'ml-1 text-[9px] tracking-normal',
                     status === 'met' ? 'text-[#a8d7b8]/60' : 'text-[#f0d99f]/50',
                   )}
                 >

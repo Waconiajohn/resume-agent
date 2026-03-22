@@ -56,7 +56,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border p-3 transition-all duration-200',
+        'rounded-lg border p-3 transition-all duration-200',
         used
           ? 'border-[#a8d7b8]/25 bg-[#a8d7b8]/[0.04]'
           : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]',
@@ -88,7 +88,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           {scopeBadges.map(([k, v]) => (
             <span
               key={k}
-              className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50"
+              className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55"
             >
               {k.replace(/_/g, ' ')}: {v}
             </span>
@@ -102,7 +102,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           {item.mapped_requirements.slice(0, 3).map((req) => (
             <span
               key={req}
-              className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/[0.07] px-2 py-0.5 text-[10px] text-[#98b3ff]/70"
+              className="rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
             >
               {truncate(req, 30)}
             </span>
@@ -148,7 +148,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           <button
             type="button"
             onClick={() => onWeaveIn(item)}
-            className="flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-white/55 hover:border-white/[0.2] hover:text-white/80 transition-all duration-150"
+            className="flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-all duration-150 hover:border-white/[0.2] hover:text-white/80"
             aria-label="Add this achievement to the section"
           >
             <Layers className="h-3 w-3" />
@@ -191,7 +191,7 @@ export function WorkbenchEvidenceCards({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] py-2 text-xs text-white/40 hover:text-white/60 hover:border-white/[0.1] transition-all duration-150"
+          className="w-full rounded-md border border-white/[0.06] bg-white/[0.02] py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45 transition-all duration-150 hover:border-white/[0.1] hover:text-white/65"
           aria-label={`Show ${hiddenCount} more achievements`}
         >
           Show {hiddenCount} more

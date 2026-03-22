@@ -119,9 +119,9 @@ function QualityBadge({ score }: { score: number }) {
   const borderClass = score >= 80 ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06]' : score >= 60 ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06]' : 'border-white/[0.10] bg-white/[0.03]';
 
   return (
-    <div className={cn('flex items-center gap-1.5 rounded-full border px-3 py-1', borderClass)}>
+    <div className={cn('flex items-center gap-1.5 rounded-md border px-3 py-1.5', borderClass)}>
       <span className={cn('text-xs font-medium', colorClass)}>{score}</span>
-      <span className="text-[10px] text-white/50">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.14em] text-white/50">{label}</span>
     </div>
   );
 }
