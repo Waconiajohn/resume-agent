@@ -19,6 +19,12 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
+function classificationWeight(classification: RequirementGap['classification']): number {
+  if (classification === 'missing') return 0;
+  if (classification === 'partial') return 1;
+  return 2;
+}
+
 function importanceWeight(importance?: RequirementGap['importance']): number {
   if (importance === 'must_have') return 0;
   if (importance === 'important') return 1;
@@ -242,6 +248,49 @@ function bucketForItem(
   return 'needs_attention';
 }
 
+function mergeEvidence(left: RequirementGap['evidence'], right: RequirementGap['evidence']): string[] {
+  const merged = [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  return Array.from(new Set(merged));
+}
+
+function dedupeRequirements(requirements: RequirementGap[]): RequirementGap[] {
+  const merged = new Map<string, RequirementGap>();
+
+  for (const requirement of requirements) {
+    const source = requirement.source ?? (requirement.score_domain === 'benchmark' ? 'benchmark' : 'job_description');
+    const key = `${source}:${normalize(requirement.requirement)}`;
+    const existing = merged.get(key);
+
+    if (!existing) {
+      merged.set(key, {
+        ...requirement,
+        evidence: mergeEvidence(requirement.evidence, []),
+      });
+      continue;
+    }
+
+    const mergedRequirement: RequirementGap = {
+      ...existing,
+      importance:
+        importanceWeight(requirement.importance) < importanceWeight(existing.importance)
+          ? requirement.importance
+          : existing.importance,
+      classification:
+        classificationWeight(requirement.classification) < classificationWeight(existing.classification)
+          ? requirement.classification
+          : existing.classification,
+      evidence: mergeEvidence(existing.evidence, requirement.evidence),
+      source_evidence: existing.source_evidence || requirement.source_evidence,
+      strategy: existing.strategy ?? requirement.strategy,
+    };
+
+    merged.set(key, mergedRequirement);
+  }
+
+  return Array.from(merged.values());
+}
+
 export function buildRewriteQueue(args: {
   jobIntelligence: JobIntelligence;
   gapAnalysis: GapAnalysis;
@@ -261,7 +310,9 @@ export function buildRewriteQueue(args: {
     (args.gapCoachingCards ?? []).map((card) => [normalize(card.requirement), card]),
   );
 
-  const items = args.gapAnalysis.requirements.map((requirement) => {
+  const dedupedRequirements = dedupeRequirements(args.gapAnalysis.requirements);
+
+  const items = dedupedRequirements.map((requirement) => {
     const normalizedRequirement = normalize(requirement.requirement);
     const source = requirement.source ?? (requirement.score_domain === 'benchmark' ? 'benchmark' : 'job_description');
     const coachingCard = coachingLookup.get(normalizedRequirement);

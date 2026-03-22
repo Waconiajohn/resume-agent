@@ -250,4 +250,48 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.requirement).toBe('Executive stakeholder communication');
     expect(queue.summary.total).toBe(1);
   });
+
+  it('dedupes repeated benchmark requirements with the same normalized text', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'ERP systems',
+          source: 'benchmark',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Led ERP rollout across 3 plants.'],
+        },
+        {
+          requirement: 'ERP systems.',
+          source: 'benchmark',
+          importance: 'must_have',
+          classification: 'missing',
+          evidence: ['Implemented SAP during operations transformation.'],
+          source_evidence: 'Benchmark candidates usually show ERP leadership.',
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.id).toBe('requirement:benchmark:erp systems');
+    expect(queue.items[0]?.classification).toBe('missing');
+    expect(queue.items[0]?.importance).toBe('must_have');
+    expect(queue.items[0]?.sourceEvidence[0]?.text).toBe('Benchmark candidates usually show ERP leadership.');
+    expect(queue.items[0]?.currentEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Led ERP rollout across 3 plants.' }),
+        expect.objectContaining({ text: 'Implemented SAP during operations transformation.' }),
+      ]),
+    );
+  });
 });
