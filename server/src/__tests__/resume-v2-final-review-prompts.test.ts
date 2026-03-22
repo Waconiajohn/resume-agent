@@ -2629,4 +2629,82 @@ describe('resume-v2 final review prompts', () => {
       'This would strengthen the fit, but it is still a preferred signal and more of a competitive disadvantage than a must-have screen.',
     );
   });
+
+  it('rewrites job-description-emphasizes missing-signal language into role-fit wording', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Direct mention of Industry 4.0 / smart manufacturing technologies experience',
+            why_it_matters: 'The job description emphasizes the importance of driving Industry 4.0 initiatives.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operator with one visible proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This is part of the technical and operating model the role expects, and that proof is not obvious in the draft yet.',
+    );
+  });
+
+  it('rewrites key-requirement missing-signal language into role-fit wording', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Specific experience with disaster recovery and business continuity planning',
+            why_it_matters: 'A key requirement for the role, and its absence may raise concerns.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible architect with one visible proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This is part of the platform-resilience fit for the role, and the draft does not yet make that proof obvious.',
+    );
+  });
 });

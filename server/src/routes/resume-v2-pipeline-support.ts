@@ -1079,6 +1079,8 @@ export function stabilizeFinalReviewResult(
     ...item,
     why_it_matters: preferredMissingSignalNeedsSpecificity(item.signal, item.why_it_matters)
       ? buildPreferredMissingSignalWhyItMatters(item.signal)
+      : missingSignalNeedsSpecificity(item.why_it_matters)
+        ? buildMissingSignalWhyItMatters(item.signal)
       : softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
   }));
   const hardRequirementRisks = getEffectiveHardRequirementRisks(
@@ -1744,6 +1746,31 @@ function buildPreferredMissingSignalWhyItMatters(signal: string): string {
   }
 
   return 'This would strengthen the fit, but it is still a preferred signal and more of a competitive disadvantage than a must-have screen.';
+}
+
+function missingSignalNeedsSpecificity(whyItMatters: string): boolean {
+  const normalized = normalizeReviewText(whyItMatters);
+  return /^the job description emphasizes /.test(normalized)
+    || /^a key requirement for the role/.test(normalized)
+    || /^the job requires /.test(normalized);
+}
+
+function buildMissingSignalWhyItMatters(signal: string): string {
+  const normalized = normalizeReviewText(signal);
+
+  if (/\bindustry 4\.0|smart manufacturing|advanced manufacturing\b/.test(normalized)) {
+    return 'This is part of the technical and operating model the role expects, and that proof is not obvious in the draft yet.';
+  }
+
+  if (/\bazure\b|\bgcp\b|additional cloud|multiple clouds?\b/.test(normalized)) {
+    return 'This is part of the technical fit for the role, and the draft does not yet make that broader cloud depth obvious.';
+  }
+
+  if (/\bdisaster recovery|business continuity\b/.test(normalized)) {
+    return 'This is part of the platform-resilience fit for the role, and the draft does not yet make that proof obvious.';
+  }
+
+  return 'This is part of the role fit, and the draft does not yet make that proof obvious.';
 }
 
 function buildMaterialJobFitWhyItMatters(requirement: string): string {
