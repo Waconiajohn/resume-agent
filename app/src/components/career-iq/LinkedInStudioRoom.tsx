@@ -186,7 +186,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                     <p className="text-[13px] font-medium text-white/80 mb-1">{topic.topic}</p>
                     <p className="text-[12px] text-white/45 italic mb-2">&ldquo;{topic.hook}&rdquo;</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-medium text-[#98b3ff]/60 bg-[#98b3ff]/[0.08] px-2 py-0.5 rounded-full">
+                      <span className="rounded-md bg-[#98b3ff]/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/60">
                         {topic.expertise_area}
                       </span>
                       <span className="text-[11px] text-white/30">{topic.rationale}</span>
@@ -217,20 +217,20 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
             {scores && (
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                   scores.authenticity >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Auth {scores.authenticity}
                 </span>
                 <span className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                   scores.engagement_potential >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Engage {scores.engagement_potential}
                 </span>
                 {content.hookScore != null && (
                   <span className={cn(
-                    'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                    'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                     content.hookScore >= 60 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                   )}>
                     Hook {content.hookScore}
@@ -484,9 +484,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                 <div
                   key={section}
                   className={cn(
-                    'flex-1 h-1.5 rounded-full',
-                    editor.sectionsCompleted.includes(section) ? 'bg-[#b5dec2]' : 'bg-white/10',
-                  )}
+                  'h-1.5 flex-1',
+                  editor.sectionsCompleted.includes(section) ? 'bg-[#b5dec2]' : 'bg-white/10',
+                )}
                 />
               ))}
             </div>
@@ -518,7 +518,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
               <div
                 key={s}
                 className={cn(
-                  'flex-1 h-1.5 rounded-full',
+                  'h-1.5 flex-1',
                   editor.sectionsCompleted.includes(s)
                     ? 'bg-[#b5dec2]'
                     : s === section
@@ -555,13 +555,13 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
             {scores && (
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                   scores.keyword_coverage >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Keywords {scores.keyword_coverage}
                 </span>
                 <span className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                   scores.positioning_alignment >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Positioning {scores.positioning_alignment}
@@ -1007,7 +1007,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="flex items-center gap-3 mb-4">
               {selectedReport.quality_score > 0 && (
                 <span className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                   selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Score {selectedReport.quality_score}
@@ -1079,7 +1079,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                     </div>
                     {saved.quality_score > 0 && (
                       <span className={cn(
-                        'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0',
+                        'shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                         saved.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                       )}>
                         {saved.quality_score}

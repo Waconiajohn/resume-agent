@@ -35,7 +35,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
     return (
       <GlassCard className="p-4 animate-pulse">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-600/20" />
+          <div className="h-10 w-10 rounded-md bg-indigo-600/20" />
           <div className="flex-1">
             <div className="h-4 w-40 bg-white/[0.06] rounded mb-2" />
             <div className="h-3 w-64 bg-white/[0.04] rounded" />
@@ -62,7 +62,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
         <button
           type="button"
           onClick={onOpenCoach}
-          className="w-10 h-10 rounded-full bg-indigo-600/30 border border-indigo-400/20 flex items-center justify-center flex-shrink-0 hover:bg-indigo-600/40 transition-colors"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-indigo-400/20 bg-indigo-600/30 transition-colors hover:bg-indigo-600/40"
           aria-label={`Open ${displayName}`}
         >
           <span className="text-xs font-bold text-indigo-300">AI</span>
@@ -110,7 +110,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
 
         {/* Phase badge */}
         <div className="flex-shrink-0">
-          <span className="text-[10px] text-white/30 bg-white/[0.04] border border-white/[0.06] rounded-full px-2 py-0.5">
+          <span className="rounded-md border border-white/[0.06] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
             {recommendation.phase_label}
           </span>
         </div>
