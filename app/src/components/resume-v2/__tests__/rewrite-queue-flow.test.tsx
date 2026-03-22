@@ -489,7 +489,7 @@ describe('rewrite queue browser flow', () => {
 
     expect(screen.getByText('Fix First')).toBeInTheDocument();
     expect(screen.getByText(/1 more queued after these\./i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show all queued requirements (1)' })).toBeInTheDocument();
   });
 
   it('shows the placement warning inline and opens the helper when a rewrite cannot be placed automatically', () => {

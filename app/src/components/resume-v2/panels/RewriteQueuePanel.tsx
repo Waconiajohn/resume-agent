@@ -73,9 +73,9 @@ const SOURCE_LABELS = {
 const CATEGORY_LABELS: Record<RewriteQueueItem['category'], string> = {
   quick_win: 'Good first fix',
   proof_upgrade: 'Needs stronger proof',
-  hard_gap: 'Possible screen-out risk',
-  benchmark_stretch: 'Benchmark signal',
-  final_review_issue: 'Final Review',
+  hard_gap: 'Needs proof or verification',
+  benchmark_stretch: 'Benchmark expectation',
+  final_review_issue: 'From final review',
 };
 
 const BUCKETS: Array<{
@@ -85,7 +85,7 @@ const BUCKETS: Array<{
 }> = [
   {
     id: 'needs_attention',
-    title: 'Start here',
+    title: 'Fix first',
     description: 'These are the highest-value requirements to work through next. Finish them one at a time so the rewrite stays clear and truthful.',
   },
   {
@@ -452,8 +452,8 @@ export function RewriteQueuePanel({
         <details className="room-shell px-4 py-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Optional background report</p>
-              <p className="mt-1 text-sm font-medium text-white/84">View Full Analysis</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Optional deeper report</p>
+              <p className="mt-1 text-sm font-medium text-white/84">Open Full Analysis</p>
               <p className="mt-1 text-sm leading-6 text-white/54">
                 Open the full role, resume, benchmark, and positioning analysis if you want the deeper report behind this workspace.
               </p>
@@ -469,7 +469,7 @@ export function RewriteQueuePanel({
 
             {gapAnalysis.critical_gaps.length > 0 && (
               <div className="support-callout border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#f0b8b8]/78">Potential critical gaps</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#f0b8b8]/78">Potential deal-breakers to verify</p>
                 <div className="mt-2 space-y-2 text-sm leading-6 text-white/68">
                   {gapAnalysis.critical_gaps.map((gap, index) => (
                     <p key={`${gap}-${index}`}>{gap}</p>
@@ -513,7 +513,7 @@ export function RewriteQueuePanel({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">
-                  Start with this requirement from {sourceCardPhrase(nextItem.source)}
+                  Next requirement from {sourceCardPhrase(nextItem.source)}
                 </p>
                 <p className="mt-2 text-lg font-semibold leading-8 text-white/90">{nextItem.title}</p>
               </div>
@@ -627,8 +627,8 @@ export function RewriteQueuePanel({
                       style={{ transform: (isResolvedBucket ? bucketOpen : showAllFixFirst) ? 'rotate(90deg)' : 'none' }}
                     />
                     {isResolvedBucket
-                      ? (bucketOpen ? 'Hide Done' : `Show Done (${items.length})`)
-                      : (showAllFixFirst ? 'Show fewer first-priority items' : `Show all queued issues (${hiddenFixFirstCount})`)}
+                      ? (bucketOpen ? 'Hide covered requirements' : `Show covered requirements (${items.length})`)
+                      : (showAllFixFirst ? 'Show fewer first-priority requirements' : `Show all queued requirements (${hiddenFixFirstCount})`)}
                   </button>
                 )}
               </div>
@@ -673,7 +673,7 @@ export function RewriteQueuePanel({
                                 <div className="flex flex-wrap items-center gap-2">
                                   {isPrimary && item.bucket !== 'resolved' && (
                                     <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
-                                      Start here
+                                      Next up
                                     </span>
                                   )}
                                   <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">

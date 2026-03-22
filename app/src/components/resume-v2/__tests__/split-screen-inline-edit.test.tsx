@@ -769,7 +769,7 @@ describe('V2StreamingDisplay — split-screen activation', () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
 
     expect(screen.getByText('Requirements to Match')).toBeInTheDocument();
-    expect(screen.getByText('View Full Analysis')).toBeInTheDocument();
+    expect(screen.getByText('Open Full Analysis')).toBeInTheDocument();
   });
 
   it('reveals live analysis progress one step at a time while analysis is running', () => {
