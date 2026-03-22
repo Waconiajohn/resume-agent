@@ -525,6 +525,7 @@ export function buildRewriteQueue(args: {
       riskNote: category === 'hard_gap'
         ? 'If this is truly missing, keep it visible as a real risk instead of forcing it into the resume.'
         : undefined,
+      suggestedDraft: latestAssistant?.suggestedLanguage ?? requirement.strategy?.positioning ?? undefined,
     };
   }).sort((left, right) => {
     const bucketDiff = bucketWeight(left.bucket) - bucketWeight(right.bucket);

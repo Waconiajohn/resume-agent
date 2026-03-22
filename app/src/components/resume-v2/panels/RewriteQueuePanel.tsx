@@ -117,9 +117,12 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   const firstEvidence = item.currentEvidence[0];
   if (!firstEvidence) {
     return (
-      <p className="text-sm leading-6 text-white/52">
-        Nothing on the current resume proves this yet.
-      </p>
+      <div className="support-callout px-3 py-2">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">2. Current proof on the resume</p>
+        <p className="mt-1 text-sm leading-6 text-white/52">
+          Nothing on the current resume proves this yet.
+        </p>
+      </div>
     );
   }
 
@@ -128,6 +131,9 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   return (
     <div className="support-callout px-3 py-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
+        2. Current proof on the resume
+      </p>
+      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/34">
         {isNearbyEvidence ? 'Closest proof we found on the resume' : 'Current proof on the resume'}
         {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
       </p>
@@ -137,6 +143,33 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
         </p>
       )}
       <p className="mt-1 text-sm leading-6 text-white/72">{firstEvidence.text}</p>
+    </div>
+  );
+}
+
+function SuggestedDraftPreview({ item }: { item: RewriteQueueItem }) {
+  return (
+    <div className="support-callout border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-3 py-3">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-[#afc4ff]/72">3. Better draft to start from</p>
+      {item.suggestedDraft ? (
+        <>
+          <p className="mt-2 text-sm leading-6 text-white/78">{item.suggestedDraft}</p>
+          <p className="mt-2 text-xs leading-5 text-white/48">
+            Treat this as a starting point. You can edit it before you apply it to the resume.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-sm leading-6 text-white/64">
+            AI is ready to draft this, but it still needs one more concrete detail or one quick review of the current proof.
+          </p>
+          {item.starterQuestion && (
+            <p className="mt-2 text-xs leading-5 text-white/52">
+              First question: {item.starterQuestion}
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -350,27 +383,17 @@ export function RewriteQueuePanel({
 
             <div className="support-callout mt-3 space-y-3 px-3 py-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Issue</p>
-                <p className="mt-1 text-sm leading-6 text-white/68">{nextItem.whyItMatters}</p>
-              </div>
-
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">How AI can help</p>
-                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.aiPlan}</p>
-              </div>
-
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What to do now</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">1. Why this needs attention</p>
                 <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.userInstruction}</p>
               </div>
 
               <CurrentProofPreview item={nextItem} />
+              <SuggestedDraftPreview item={nextItem} />
 
-              {nextItem.starterQuestion && (
-                <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-3 py-2 text-xs leading-5 text-white/72">
-                  First question: {nextItem.starterQuestion}
-                </div>
-              )}
+              <div className="support-callout px-3 py-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">4. Work with AI on this requirement</p>
+                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.aiPlan}</p>
+              </div>
 
               {nextItem.riskNote && (
                 <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
@@ -385,8 +408,18 @@ export function RewriteQueuePanel({
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                 >
                   <MessagesSquare className="h-3.5 w-3.5" />
-                  Open AI helper
+                  {nextItem.suggestedDraft ? 'Review Draft with AI' : 'Draft with AI'}
                 </button>
+                {nextItem.requirement && nextItem.currentEvidence.some((evidence) => Boolean(evidence.section)) && (
+                  <button
+                    type="button"
+                    onClick={() => onRequirementClick(nextItem.requirement!)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
+                  >
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    Show Current Proof in Resume
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setExpandedItemId((previous) => previous === nextItem.id ? null : nextItem.id)}
@@ -508,6 +541,7 @@ export function RewriteQueuePanel({
                                 </div>
 
                                 <CurrentProofPreview item={item} />
+                                <SuggestedDraftPreview item={item} />
                               </div>
 
                               <button
@@ -532,7 +566,7 @@ export function RewriteQueuePanel({
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                               >
                                 <MessagesSquare className="h-3.5 w-3.5" />
-                                Open AI helper
+                                {item.suggestedDraft ? 'Review Draft with AI' : 'Draft with AI'}
                               </button>
 
                               {hasViewableEvidence && item.requirement && (
@@ -542,7 +576,7 @@ export function RewriteQueuePanel({
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
                                 >
                                   <ClipboardCheck className="h-3.5 w-3.5" />
-                                  View Current Proof
+                                  Jump to Current Proof
                                 </button>
                               )}
                             </div>
@@ -550,18 +584,8 @@ export function RewriteQueuePanel({
                             {isExpanded && (
                               <div className="support-callout space-y-3 px-3 py-3">
                                 <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Issue</p>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">1. Why this needs attention</p>
                                   <p className="mt-1 text-sm leading-6 text-white/68">{item.whyItMatters}</p>
-                                </div>
-
-                                <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">How AI can help</p>
-                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>
-                                </div>
-
-                                <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What to do now</p>
-                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.userInstruction}</p>
                                 </div>
 
                                 {item.starterQuestion && item.bucket !== 'resolved' && (
@@ -577,10 +601,18 @@ export function RewriteQueuePanel({
                                 )}
 
                                 <EvidenceList
-                                  title="What your resume shows today"
+                                  title="2. What your resume shows today"
                                   items={item.currentEvidence}
                                   emptyLabel="Nothing on the current resume proves this yet."
                                 />
+
+                                <SuggestedDraftPreview item={item} />
+
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">4. Work with AI on this requirement</p>
+                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>
+                                  <p className="mt-2 text-sm leading-6 text-white/56">{item.userInstruction}</p>
+                                </div>
 
                                 {item.sourceEvidence.length > 0 && (
                                   <EvidenceList

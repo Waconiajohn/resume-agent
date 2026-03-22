@@ -300,8 +300,15 @@ describe('rewrite queue browser flow', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Requirements to Match' })).toBeInTheDocument();
+    expect(screen.getAllByText('1. Why this needs attention').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2. Current proof on the resume').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3. Better draft to start from').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('4. Work with AI on this requirement').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
+    ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open AI helper' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Review Draft with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'More Options' }));
@@ -341,5 +348,50 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getByText('Start Here')).toBeInTheDocument();
     expect(screen.getByText('1 more queued after these')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
+  });
+
+  it('lets the user jump straight to current proof from the queue', () => {
+    const onRequirementClick = vi.fn();
+    const onRequestEdit = vi.fn();
+    const onSendMessage = vi.fn();
+
+    render(
+      <RewriteQueuePanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={null}
+        gapAnalysis={makeGapAnalysis()}
+        benchmarkCandidate={null}
+        currentResume={makeResumeDraft()}
+        gapCoachingCards={null}
+        gapChat={{
+          getItemState: () => makeGapChatSnapshot().items['executive stakeholder leadership'],
+          sendMessage: onSendMessage,
+        } as never}
+        gapChatSnapshot={makeGapChatSnapshot()}
+        buildChatContext={(requirement: string): GapChatContext => ({
+          evidence: [],
+          currentStrategy: undefined,
+          aiReasoning: 'Show stakeholder alignment more explicitly.',
+          inferredMetric: undefined,
+          jobDescriptionExcerpt: requirement,
+          candidateExperienceSummary: 'Led cross-functional operations programs.',
+        })}
+        finalReviewResult={null}
+        finalReviewChat={null}
+        finalReviewChatSnapshot={null}
+        buildFinalReviewChatContext={() => null}
+        resolvedFinalReviewConcernIds={[]}
+        onRequirementClick={onRequirementClick}
+        onRequestEdit={onRequestEdit}
+        onRequestHiringManagerReview={vi.fn()}
+        isEditing={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Current Proof in Resume' }));
+    expect(onRequirementClick).toHaveBeenCalledWith('Executive stakeholder leadership');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Jump to Current Proof' }));
+    expect(onRequirementClick).toHaveBeenCalledWith('Executive stakeholder leadership');
   });
 });

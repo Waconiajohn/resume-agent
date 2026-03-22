@@ -505,6 +505,7 @@ export interface RewriteQueueItem {
   coachingReasoning?: string;
   starterQuestion?: string;
   riskNote?: string;
+  suggestedDraft?: string;
 }
 
 export interface RewriteQueueSummary {
