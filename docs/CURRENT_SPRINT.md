@@ -1,3 +1,23 @@
+# Current Direction Override — 2026-03-22
+
+The active product direction is now broader than isolated `resume-v2` tuning.
+
+Before doing additional AI/workflow work, read:
+
+- `AGENTS.md`
+- `docs/AI_OPERATING_MODEL.md`
+- `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
+- `docs/APP_WIDE_OVERHAUL_PLAN.md`
+
+Current implementation priority:
+
+1. shared context and evidence contracts
+2. app-wide AI workflow consistency
+3. upstream generation quality
+4. downstream hardening only as a safety net
+
+This overrides any tendency to keep solving repeated problems with room-local fixes alone.
+
 # Epic: Resume Agent v2 — 10-Agent Rebuild
 
 **Goal:** Replace the 3-agent assembly-line pipeline with a 10-agent strategic positioning engine. Two-field intake, streaming accumulation UX, inline AI editing, creative gap analysis.

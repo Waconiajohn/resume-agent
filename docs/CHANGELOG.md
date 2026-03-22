@@ -1,5 +1,26 @@
 # Changelog — Resume Agent
 
+## 2026-03-22 — Session 83
+**Sprint:** Platform Overhaul Guardrails | **Story:** Codex operating structure and anti-drift docs
+**Summary:** Added Codex-native project guardrails so future work starts from a shared AI workflow model instead of room-local rescue logic.
+
+### Changes Made
+- `AGENTS.md` — New repository-level Codex operating brief with mandatory session-start docs and anti-drift rules.
+- `docs/AI_OPERATING_MODEL.md` — New shared AI/user-task contract for active product rooms.
+- `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md` — New Codex anti-drift checklist and verification rules.
+- `docs/APP_WIDE_OVERHAUL_PLAN.md` — New application-wide sequencing plan for the shared-context / shared-evidence overhaul.
+- `docs/CURRENT_SPRINT.md` — Added current-direction override pointing Codex to the new guardrail docs before AI/workflow changes.
+- `docs/DECISIONS.md` — Added ADR-044 documenting the Codex guardrail system and shared AI workflow model.
+
+### Decisions Made
+- `AGENTS.md` is the Codex-native equivalent of the must-read session brief for this repo.
+- Shared workflow issues must now be mapped to the app-wide AI operating model before local fixes continue.
+- Downstream hardening remains allowed, but only as a safety net after upstream context and shared-contract checks.
+
+### Next Steps
+- Use the new docs as the required review set for all future AI/workflow sessions.
+- Start the app-wide overhaul from shared context and evidence contracts rather than more room-local rescue work.
+
 ## 2026-03-13 — Session 82
 **Sprint:** Remediation | **Story:** CLAUDE.md compliance audit fixes
 **Summary:** Fixed all violations found in the CLAUDE.md compliance audit of commits G1, G2, T1, P1, CL1-PX1. Extracted `IAgentBus` interface to eliminate unsafe cast, removed dead imports, added Zod trim validation, added session load error feedback, split LinkedInStudioRoom into components.

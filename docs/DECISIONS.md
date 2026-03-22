@@ -608,3 +608,38 @@ The six conditions above define the exact boundary. They are not guidelines — 
 - This ADR does NOT authorize: multi-call chains in routes, any use of `MODEL_MID` or above in routes without a separate ADR, passing route handler results into a pipeline or agent as structured state, or adding tool schemas to a route-level LLM call.
 - Future utility endpoints in other product toolboxes (e.g., a LinkedIn headline scorer, a cover letter tone checker) may follow this pattern if and only if all six conditions are satisfied at the time of implementation and remain satisfied as the endpoint evolves.
 - If an endpoint built under this exception later requires a second LLM call or session context, it MUST be refactored into an agent tool before that capability is added. No gradual expansion of route-handler LLM logic is permitted.
+
+## ADR-044: Codex Operating Guardrails + Shared AI Workflow Model
+**Date:** 2026-03-22
+**Status:** accepted
+
+**Context:**
+The product has repeatedly drifted into local UI copy fixes, room-specific helper behavior, and downstream hardening for problems that are actually shared across the application. The result is repeated rescue work: weak or generic LLM outputs are corrected in one room, then reappear in another room or later stage. `CLAUDE.md` contains strong project history and philosophy, but Codex does not automatically treat it as the active operating brief. The repository did not have a Codex-native guardrail file (`AGENTS.md`) or a concise shared AI workflow contract for the active product.
+
+**Decision:**
+Adopt a Codex-native control layer made of:
+
+1. `AGENTS.md` at the repository root as the required operating brief for Codex
+2. `docs/AI_OPERATING_MODEL.md` as the canonical shared AI/user-task contract
+3. `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md` as the anti-drift checklist
+4. `docs/APP_WIDE_OVERHAUL_PLAN.md` as the sequencing plan for the application-wide refactor
+
+All active-room AI work must map back to the shared model:
+
+- goal
+- what we know
+- what is missing
+- best next action
+- AI help inside the action
+- review / apply
+
+Before implementing AI/workflow changes, Codex must review the documents above plus the current sprint and conventions docs.
+
+**Reasoning:**
+The product problem is no longer just resume quality. It is a repeated architecture and interaction-pattern problem. Without a small set of required documents that Codex re-reads every session, work can regress into local patching, sidecar AI tools, duplicated analysis views, and increasingly heavy downstream hardening. The new document set creates explicit stopgaps: recurring issues must be mapped to the shared model before code is written, and downstream hardening is treated as a safety net rather than the primary strategy.
+
+**Consequences:**
+- `AGENTS.md` becomes the Codex-native equivalent of a mandatory session brief
+- shared workflow logic must be justified against `docs/AI_OPERATING_MODEL.md`
+- if a problem repeats across rooms, the shared docs must be updated before local fixes continue
+- future work should prioritize upstream context quality and shared contracts before room-specific rescue logic
