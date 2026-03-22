@@ -260,21 +260,33 @@ export function GapChatThread({
 
   const requestGuidance = useCallback(() => {
     const focus = initialQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
-    sendQuickMessage(`Tell me the single most useful detail still missing for this requirement, and ask me one short question to get it. Focus on this: ${focus}`);
+    sendQuickMessage(
+      `Using the role requirement, the current evidence, and the candidate background summary, do three things in plain language: ` +
+      `1) say what the current evidence already proves, ` +
+      `2) name the single missing detail that would make the proof direct, and ` +
+      `3) ask exactly one short question to get that detail. ` +
+      `Focus especially on this: ${focus}`,
+    );
   }, [initialQuestion, promptHint, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
     const startingPoint = activeRewriteSeed
       ? `Start from this rewrite and improve it if needed: "${activeRewriteSeed}"`
-      : 'Draft the strongest truthful resume rewrite you can from what we already know.';
-    sendQuickMessage(`${startingPoint} Keep it natural, believable, and specific to the requirement.`);
+      : 'Draft the strongest truthful resume line you can from what we already know.';
+    sendQuickMessage(
+      `${startingPoint} Return one resume-ready line that sounds natural, specific, and believable. ` +
+      `If one essential detail is still missing, say what detail is missing first and then ask exactly one short question.`,
+    );
   }, [activeRewriteSeed, sendQuickMessage]);
 
   const requestAlternative = useCallback(() => {
     const startingPoint = activeRewriteSeed
       ? `Try a different truthful rewrite than this one: "${activeRewriteSeed}"`
       : 'Try a different truthful rewrite that takes another angle.';
-    sendQuickMessage(`${startingPoint} Keep it easy to believe and ready for a resume.`);
+    sendQuickMessage(
+      `${startingPoint} Keep it easy to believe, specific, and ready for a resume. ` +
+      `Use a meaningfully different angle than the last version, not just word swaps.`,
+    );
   }, [activeRewriteSeed, sendQuickMessage]);
 
   const handleStarterApply = useCallback(() => {
@@ -300,7 +312,7 @@ export function GapChatThread({
   const userTurnCount = messages.filter(m => m.role === 'user').length;
   const atTurnLimit = userTurnCount >= MAX_TURNS;
   const isAccepted = resolvedLanguage !== null;
-  const introSourceLabel = sourceLabel ?? 'From the job description';
+  const introSourceLabel = sourceLabel ?? 'What the role is asking for';
   const introSourceExcerpt = sourceExcerpt ?? context.jobDescriptionExcerpt;
   const introQuestion = initialQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
 
@@ -360,7 +372,7 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
-              To make this strong enough
+              Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
@@ -375,12 +387,12 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
-              Resume line to review
+              Suggested rewrite to start from
             </p>
             {initialSuggestedLanguage ? (
               <>
                 <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                  Start here if this already sounds close. You can edit it before you send it to review.
+                  Start here if this sounds close. Edit it until it says exactly what you mean, then send it to review.
                 </p>
                 <textarea
                   value={starterDraftValue}
@@ -410,7 +422,7 @@ export function GapChatThread({
               </>
             ) : (
               <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
-                We still need one concrete detail from you before AI should suggest a truthful resume line.
+                We do not have a safe rewrite yet. Add one concrete detail first, and AI will turn it into a truthful resume line.
               </p>
             )}
           </div>
@@ -442,14 +454,14 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
-              To make this strong enough
+              Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
             </p>
             {activeRewriteSeed && (
               <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                The latest AI rewrite is ready below. Keep editing it there or ask AI for another version.
+                The latest AI rewrite is ready below. Keep editing it there or ask AI for a stronger or different version.
               </p>
             )}
           </div>
@@ -499,7 +511,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.15)',
             }}
             >
-            Ask What Detail Is Missing
+            Tell Me What Is Missing
           </button>
           <button
             type="button"
@@ -512,7 +524,7 @@ export function GapChatThread({
               border: '1px solid rgba(181,222,194,0.20)',
             }}
             >
-            Strengthen This Rewrite
+            Draft from What We Know
           </button>
           {messages.length > 0 && (
             <button
@@ -526,7 +538,7 @@ export function GapChatThread({
                 border: '1px solid rgba(255,255,255,0.10)',
               }}
             >
-              Show Another Option
+              Show Another Rewrite
             </button>
           )}
           {onSkip && (
@@ -548,7 +560,7 @@ export function GapChatThread({
 
       {!resolvedLanguage && (
         <div className="px-4 pb-1 text-xs leading-5 text-white/44">
-          Use a shortcut for a quick nudge, or type one missing detail below and AI will work from that.
+          Fastest path: add one concrete detail below, and AI will rewrite from that instead of guessing.
         </div>
       )}
 

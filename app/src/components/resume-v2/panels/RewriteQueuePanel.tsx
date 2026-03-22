@@ -417,7 +417,12 @@ export function RewriteQueuePanel({
     }
 
     const chatState = gapChat.getItemState(item.requirement);
-    const chatContext = buildChatContext(item.requirement);
+    const baseChatContext = buildChatContext(item.requirement);
+    const chatContext = {
+      ...baseChatContext,
+      evidence: item.currentEvidence.map((evidence) => evidence.text),
+      jobDescriptionExcerpt: item.sourceEvidence[0]?.text ?? baseChatContext.jobDescriptionExcerpt,
+    };
 
     return (
       <GapChatThread

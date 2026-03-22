@@ -451,13 +451,13 @@ describe('rewrite queue browser flow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Improve with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
-    expect(screen.getByText('To make this strong enough')).toBeInTheDocument();
+    expect(screen.getByText('Best next detail to add')).toBeInTheDocument();
     expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Strengthen This Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Draft from What We Know' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',
-      expect.stringContaining('Start from this rewrite'),
+      expect.stringContaining('Return one resume-ready line'),
       expect.any(Object),
       'partial',
     );
@@ -528,7 +528,7 @@ describe('rewrite queue browser flow', () => {
     fireEvent.change(screen.getByLabelText('Edit the suggested rewrite'), {
       target: { value: 'Updated rewrite that mentions executive planning cadence and cross-functional scorecards.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Strengthen This Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Draft from What We Know' }));
 
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',

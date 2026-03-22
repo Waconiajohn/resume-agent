@@ -727,6 +727,8 @@ CONVERSATION STYLE:
 - Ask ONE targeted follow-up question at a time — don't overwhelm.
 - When the candidate shares new information, immediately show how you'd use it.
 - Show your math when inferring numbers (budget from team size, etc.) and back off 10-20%.
+- Speak in plain language. Tell them what the current evidence already proves, what is still missing, and what the next step is.
+- Name the actual evidence when you can. Avoid vague phrases like "related experience" unless you immediately say what experience you mean.
 
 RESPONSE FORMAT: Return valid JSON only:
 {
@@ -742,7 +744,10 @@ RULES:
 - NEVER fabricate experience. Only position what's real.
 - When inferring metrics, back off 10-20% from calculated values.
 - suggested_resume_language should be a single, polished resume bullet — not a paragraph.
+- suggested_resume_language must sound like a real resume line, not a label or category name.
 - If the candidate's response reveals they truly don't have this experience, say so honestly and suggest they skip this gap.
+- When you ask a question, tie it to the strongest evidence we already have or the specific company/role in the background summary whenever possible.
+- Do not just restate the requirement. Explain what would make the proof believable for a recruiter.
 - If you ask a question, set needs_candidate_input=true and recommended_next_action="answer_question".
 - If you propose language, set recommended_next_action="review_edit".
 - If the candidate seems stuck, you may set recommended_next_action="try_another_angle" or "skip".`;
@@ -798,7 +803,7 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
   // then the actual conversation history
   const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: contextBlock },
-    { role: 'assistant', content: '{"response": "I understand the gap. Let me review what we have and help you position this.", "follow_up_question": "Tell me about any experience you have related to this requirement, even if it seems indirect."}' },
+    { role: 'assistant', content: '{"response":"I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.","follow_up_question":"What is the one concrete detail from your experience that would make this requirement obviously true?","current_question":"What is the one concrete detail from your experience that would make this requirement obviously true?","needs_candidate_input":true,"recommended_next_action":"answer_question"}' },
     ...messages,
   ];
 
