@@ -1161,6 +1161,7 @@ function normalizeRequirement(requirement: RequirementGap): RequirementGap {
     ? requirement.evidence.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 2)
     : [];
   const strategy = sanitizeGapStrategy(requirement.strategy);
+  const sourceEvidence = sanitizeSourceEvidence(requirement.source_evidence, requirement.requirement);
 
   return {
     ...requirement,
@@ -1168,7 +1169,7 @@ function normalizeRequirement(requirement: RequirementGap): RequirementGap {
     category: requirement.category ?? defaultCategoryForSource(source),
     score_domain: requirement.score_domain ?? (source === 'job_description' ? 'ats' : 'benchmark'),
     evidence,
-    source_evidence: requirement.source_evidence,
+    source_evidence: sourceEvidence,
     strategy: requirement.classification === 'strong' ? undefined : strategy,
   };
 }
@@ -1187,6 +1188,33 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value);
   }
   return result;
+}
+
+function sanitizeSourceEvidence(sourceEvidence: string | undefined, requirement: string): string | undefined {
+  const trimmed = typeof sourceEvidence === 'string' ? sourceEvidence.trim() : '';
+  if (!trimmed) return undefined;
+  if (/^#+\s*/.test(trimmed)) return requirement;
+  if (/canonical requirement catalog/i.test(trimmed)) return requirement;
+  if (/^(job description|benchmark|requirement catalog|resume evidence|required qualifications?)$/i.test(trimmed)) {
+    return requirement;
+  }
+  return trimmed;
+}
+
+function looksLikeResumePositioning(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const wordCount = trimmed.split(/\s+/).length;
+  const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered)\b/i.test(trimmed);
+  const looksLikeLabel = /\b(experience|expertise|background|exposure)\b/i.test(trimmed) && wordCount <= 6;
+  const looksLikeScopePhrase = /\b(accountability|ownership|management|oversight|responsibility|scope)\b/i.test(trimmed);
+  const hasMetricSignal = /[$%]|\b\d+|\bpayroll\b|\bbudget\b|\brevenue\b|\bcost\b/i.test(trimmed);
+
+  if (looksLikeLabel) return false;
+  if (wordCount < 4 && !(looksLikeScopePhrase && hasMetricSignal)) return false;
+
+  return hasStrongVerb || wordCount >= 8 || (looksLikeScopePhrase && hasMetricSignal);
 }
 
 function sanitizeGapStrategy(strategy: RequirementGap['strategy']): RequirementGap['strategy'] {
@@ -1214,7 +1242,7 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy']): RequirementG
     positioning: typeof strategy.positioning === 'string' ? strategy.positioning.trim() : '',
   };
 
-  if (!normalized.real_experience || !normalized.positioning) {
+  if (!normalized.real_experience || !normalized.positioning || !looksLikeResumePositioning(normalized.positioning)) {
     return undefined;
   }
 

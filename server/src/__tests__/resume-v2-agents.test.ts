@@ -796,7 +796,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.requirements.map((item) => item.requirement)).toEqual(
         expect.arrayContaining(['Cloud Architecture', 'Team Leadership']),
       );
-      expect(result.pending_strategies[0]?.requirement).toBe('Cloud Architecture');
+      expect(result.pending_strategies).toEqual([]);
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
@@ -1051,6 +1051,48 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(result.critical_gaps).toEqual([]);
       expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
+    });
+
+    it('falls back to the requirement text when source evidence is a placeholder and drops weak positioning labels', async () => {
+      const modeledOutput: GapAnalysisOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          {
+            requirement: 'Develop and track performance metrics',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'important',
+            classification: 'partial',
+            evidence: ['Operational efficiency metrics experience'],
+            source_evidence: 'Canonical Requirement Catalog',
+            strategy: {
+              real_experience: 'Operational efficiency metrics experience',
+              positioning: 'Related performance metrics expertise',
+              ai_reasoning: 'Metrics experience is adjacent but still indirect.',
+            },
+          },
+        ],
+        pending_strategies: [
+          {
+            requirement: 'Develop and track performance metrics',
+            strategy: {
+              real_experience: 'Operational efficiency metrics experience',
+              positioning: 'Related performance metrics expertise',
+              ai_reasoning: 'Metrics experience is adjacent but still indirect.',
+            },
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(modeledOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements[0]?.source_evidence).toBe('Develop and track performance metrics');
+      expect(result.requirements[0]?.strategy).toBeUndefined();
+      expect(result.pending_strategies).toEqual([]);
     });
 
     it('drops malformed strategy payloads and coerces malformed evidence arrays safely', async () => {
