@@ -10,6 +10,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Application Status ────────────────────────────────────────────
 
@@ -189,6 +190,9 @@ export interface JobTrackerState extends BaseState {
     positioning_strategy?: Record<string, unknown>;
     evidence_items?: Record<string, unknown>[];
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** Parsed resume data */
   resume_data?: {

@@ -63,6 +63,7 @@ import { writerTools } from '../agents/job-tracker/writer/tools.js';
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createJobTrackerProductConfig } from '../agents/job-tracker/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Application Status & Follow-Up Type Constants
@@ -257,6 +258,39 @@ describe('Job Tracker — Agent Registration', () => {
       expect(writerConfig.system_prompt).toContain('RULE 0');
       expect(writerConfig.system_prompt).toContain('TRACKING PHILOSOPHY');
     });
+  });
+});
+
+describe('Job Tracker shared context rollout', () => {
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createJobTrackerProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Application analysis should stay tied to credible executive positioning';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      applications: [],
+      shared_context: sharedContext,
+    });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Application analysis should stay tied to credible executive positioning');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createJobTrackerProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Known for matching operating proof to the right executive scope';
+    sharedContext.positioningStrategy.positioningAngle = 'Operator targeting roles where disciplined execution is the differentiator';
+    const state = config.createInitialState('s', 'u', {
+      applications: [{
+        company: 'Acme',
+        role: 'VP Operations',
+        date_applied: '2026-03-01',
+        jd_text: 'Needs an operator who can scale execution.',
+        status: 'applied',
+      }],
+      shared_context: sharedContext,
+    });
+    const msg = config.buildAgentMessage('analyst', state, { resume_text: 'resume text' });
+    expect(msg).toContain('Known for matching operating proof to the right executive scope');
+    expect(msg).toContain('Operator targeting roles where disciplined execution is the differentiator');
   });
 });
 

@@ -20,7 +20,12 @@ import { FOLLOW_UP_LABELS, FOLLOW_UP_TIMING } from '../types.js';
 import { JOB_TRACKER_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type JobTrackerTool = AgentTool<JobTrackerState, JobTrackerSSEEvent>;
 
@@ -28,6 +33,7 @@ type JobTrackerTool = AgentTool<JobTrackerState, JobTrackerSSEEvent>;
 
 function buildCandidateContext(state: JobTrackerState): string {
   const parts: string[] = [];
+  const sharedContext = state.shared_context;
 
   if (state.resume_data) {
     const rd = state.resume_data;
@@ -46,10 +52,25 @@ function buildCandidateContext(state: JobTrackerState): string {
     }
   }
 
-  if (state.platform_context?.positioning_strategy) {
+  if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+    parts.push(...renderCareerProfileSection({
+      heading: '## Career Profile',
+      sharedContext,
+    }));
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative Signals',
+      sharedNarrative: sharedContext?.careerNarrative,
+    }));
+  }
+
+  if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: state.platform_context?.positioning_strategy,
     }));
   }
 

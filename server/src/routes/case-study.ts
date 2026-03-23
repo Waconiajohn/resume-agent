@@ -14,12 +14,12 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createCaseStudyProductConfig } from '../agents/case-study/product.js';
 import { FF_CASE_STUDY } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { CaseStudyState, CaseStudySSEEvent } from '../agents/case-study/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -51,28 +51,38 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context and emotional baseline
     try {
-      const [baseline, strategyRows, evidenceRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map(r => r.content);
-      }
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeCareerNarrative: true,
+        includeClientProfile: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'case_study',
+          artifactGoal: 'build consulting-grade case studies from supported achievements',
+          targetAudience: 'hiring manager or executive decision-maker',
+          successCriteria: [
+            'ground every case study in evidence',
+            'highlight transferable executive impact',
+            'avoid unsupported embellishment',
+          ],
+        },
+        workflowState: {
+          room: 'case_study',
+          stage: 'context_loaded',
+          activeTask: 'map shared positioning and evidence into case-study selections',
+        },
+      });
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(

@@ -11,10 +11,16 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { researcherConfig } from './researcher/agent.js';
 import { plannerConfig } from './planner/agent.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent, PlanPhase, Stakeholder, QuickWin, LearningPriority } from './types.js';
-import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanState, NinetyDayPlanSSEEvent> {
   return {
@@ -113,6 +119,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
       learning_priorities: [] as LearningPriority[],
       phases: [] as PlanPhase[],
       platform_context: input.platform_context as NinetyDayPlanState['platform_context'],
+      shared_context: input.shared_context as NinetyDayPlanState['shared_context'],
       target_context: input.target_context as NinetyDayPlanState['target_context'] ?? {
         target_role: '',
         target_industry: '',
@@ -122,6 +129,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'researcher') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze this executive\'s target role and prepare research for the 90-day onboarding plan.',
           '',
@@ -137,10 +145,35 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
         if (state.role_context.reporting_to) parts.push(`Reporting To: ${state.role_context.reporting_to}`);
         if (state.role_context.team_size) parts.push(`Team Size: ${state.role_context.team_size}`);
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Positioning Strategy',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
           }));
         }
 

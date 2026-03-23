@@ -14,6 +14,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Assessment Dimensions ──────────────────────────────────────────
 
@@ -176,6 +177,9 @@ export interface RetirementBridgeState extends BaseState {
     client_profile?: Record<string, unknown>;
     positioning_strategy?: Record<string, unknown>;
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────

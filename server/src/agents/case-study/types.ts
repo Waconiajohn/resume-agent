@@ -10,6 +10,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // --- Case Study Formats ------------------------------------------------
 
@@ -153,6 +154,9 @@ export interface CaseStudyState extends BaseState {
     /** Evidence items surfaced during resume building */
     evidence_items?: Record<string, unknown>[];
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** Context about the target role and market */
   target_context?: {

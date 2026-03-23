@@ -22,10 +22,12 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEditorState, LinkedInEditorSSEEvent> {
   return {
@@ -104,6 +106,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
       user_id: userId,
       current_stage: 'editing',
       platform_context: input.platform_context as LinkedInEditorState['platform_context'],
+      shared_context: input.shared_context as LinkedInEditorState['shared_context'],
       current_profile: typeof input.current_profile === 'string' ? input.current_profile : undefined,
       sections_completed: [],
       section_drafts: {},
@@ -113,6 +116,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'editor') {
+        const sharedContext = state.shared_context;
         // Determine which sections remain
         const completed = state.sections_completed ?? [];
         const remaining = PROFILE_SECTION_ORDER.filter((s) => !completed.includes(s));
@@ -151,17 +155,26 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
           }
         }
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Positioning Strategy',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
           }));
         }
 
@@ -173,10 +186,12 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
           );
         }
 
-        if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
           parts.push(...renderEvidenceInventorySection({
             heading: '## Evidence Items',
-            legacyEvidence: state.platform_context.evidence_items,
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
             maxItems: 8,
           }));
         }

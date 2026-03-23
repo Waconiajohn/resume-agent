@@ -81,6 +81,7 @@ import { plannerTools } from '../agents/ninety-day-plan/planner/tools.js';
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createNinetyDayPlanProductConfig } from '../agents/ninety-day-plan/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Agent Registration
@@ -160,6 +161,41 @@ describe('90-Day Plan Agent Registration', () => {
     const creators = agentRegistry.findByCapability('plan_writing', 'ninety-day-plan');
     expect(creators.length).toBeGreaterThanOrEqual(1);
     expect(creators[0].identity.name).toBe('planner');
+  });
+});
+
+describe('90-Day Plan shared context rollout', () => {
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createNinetyDayPlanProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Onboarding plan should build from truthful executive scope';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      role_context: {
+        target_role: 'VP Operations',
+        target_company: 'Acme',
+        target_industry: 'Industrial',
+      },
+      shared_context: sharedContext,
+    });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Onboarding plan should build from truthful executive scope');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createNinetyDayPlanProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career arc centered on stabilizing teams and accelerating delivery';
+    sharedContext.positioningStrategy.positioningAngle = 'Executive operator translating proof into the first ninety days';
+    const state = config.createInitialState('s', 'u', {
+      role_context: {
+        target_role: 'VP Operations',
+        target_company: 'Acme',
+        target_industry: 'Industrial',
+      },
+      shared_context: sharedContext,
+    });
+    const msg = config.buildAgentMessage('researcher', state, { resume_text: 'resume text' });
+    expect(msg).toContain('Career arc centered on stabilizing teams and accelerating delivery');
+    expect(msg).toContain('Executive operator translating proof into the first ninety days');
   });
 });
 

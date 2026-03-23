@@ -17,6 +17,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInEditorState, LinkedInEditorSSEEvent } from '../agents/linkedin-editor/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -44,7 +45,7 @@ export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, Lin
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
@@ -56,6 +57,23 @@ export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, Lin
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'linkedin_editor',
+          artifactGoal: 'rewrite LinkedIn profile sections in a truthful executive voice',
+          targetAudience: 'recruiters and executive hiring stakeholders',
+          successCriteria: [
+            'preserve authentic voice',
+            'tie copy to supported evidence',
+            'improve section-by-section positioning clarity',
+          ],
+        },
+        workflowState: {
+          room: 'linkedin_editor',
+          stage: 'context_loaded',
+          activeTask: 'optimize LinkedIn sections from shared positioning and evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

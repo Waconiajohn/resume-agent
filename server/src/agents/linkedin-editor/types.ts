@@ -12,6 +12,7 @@
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { AgentTool } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Profile Sections ──────────────────────────────────────────────────
 
@@ -61,6 +62,9 @@ export interface LinkedInEditorState extends BaseState {
     evidence_items?: Record<string, unknown>[];
     career_narrative?: Record<string, unknown>;
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** The user's existing LinkedIn profile text (raw) */
   current_profile?: string;

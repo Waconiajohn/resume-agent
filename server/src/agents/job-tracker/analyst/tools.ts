@@ -17,7 +17,12 @@ import type {
 } from '../types.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type JobTrackerTool = AgentTool<JobTrackerState, JobTrackerSSEEvent>;
 
@@ -220,9 +225,25 @@ const scoreFitTool: JobTrackerTool = {
       message: 'Refining fit scores with positioning context...',
     });
 
-    const positioningStrategy = state.platform_context?.positioning_strategy;
-    const positioningContext = positioningStrategy
-      ? `\nPOSITIONING STRATEGY: ${JSON.stringify(positioningStrategy)}`
+    const sharedContext = state.shared_context;
+    const positioningContext = state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+      ? renderPositioningStrategySection({
+          heading: '## Positioning Strategy',
+          sharedStrategy: sharedContext?.positioningStrategy,
+          legacyStrategy: state.platform_context?.positioning_strategy,
+        }).join('\n')
+      : '';
+    const careerProfileContext = hasMeaningfulSharedValue(sharedContext?.candidateProfile)
+      ? renderCareerProfileSection({
+          heading: '## Career Profile',
+          sharedContext,
+        }).join('\n')
+      : '';
+    const careerNarrativeContext = hasMeaningfulSharedValue(sharedContext?.careerNarrative)
+      ? renderCareerNarrativeSection({
+          heading: '## Career Narrative Signals',
+          sharedNarrative: sharedContext?.careerNarrative,
+        }).join('\n')
       : '';
 
     const scoringPrompt = `Refine the fit scores for these job applications. Each score is weighted 25% across 4 dimensions.
@@ -232,6 +253,8 @@ CANDIDATE:
 - Title: ${state.resume_data.current_title}
 - Skills: ${state.resume_data.key_skills?.join(', ') || 'None listed'}
 - Achievements: ${state.resume_data.key_achievements?.join(' | ') || 'None listed'}
+${careerProfileContext ? `\n${careerProfileContext}` : ''}
+${careerNarrativeContext ? `\n${careerNarrativeContext}` : ''}
 ${positioningContext}
 
 APPLICATIONS AND INITIAL ANALYSES:

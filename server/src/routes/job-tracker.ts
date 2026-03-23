@@ -13,11 +13,11 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createJobTrackerProductConfig } from '../agents/job-tracker/product.js';
 import { FF_JOB_TRACKER } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { JobTrackerState, JobTrackerSSEEvent } from '../agents/job-tracker/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const applicationSchema = z.object({
   company: z.string().min(1).max(200),
@@ -57,27 +57,38 @@ export const jobTrackerRoutes = createProductRoutes<JobTrackerState, JobTrackerS
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeCareerNarrative: true,
+        includeClientProfile: true,
+        includeEmotionalBaseline: true,
+      });
 
       const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'job_tracker',
+          artifactGoal: 'analyze application portfolio fit and draft follow-ups',
+          targetAudience: 'candidate and recruiting contacts',
+          successCriteria: [
+            'prioritize realistic follow-up actions',
+            'keep fit scoring tied to evidence',
+            'avoid unsupported positioning claims',
+          ],
+        },
+        workflowState: {
+          room: 'job_tracker',
+          stage: 'context_loaded',
+          activeTask: 'analyze application fit using shared positioning and evidence',
+        },
+      });
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {

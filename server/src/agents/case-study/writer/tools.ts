@@ -18,7 +18,12 @@ import type {
 import { CASE_STUDY_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type WriterTool = AgentTool<CaseStudyState, CaseStudySSEEvent>;
 
@@ -26,6 +31,7 @@ type WriterTool = AgentTool<CaseStudyState, CaseStudySSEEvent>;
 
 function buildStateContext(state: CaseStudyState): string {
   const parts: string[] = [];
+  const sharedContext = state.shared_context;
 
   // Target context
   if (state.target_context) {
@@ -45,11 +51,25 @@ function buildStateContext(state: CaseStudyState): string {
     if (rd.key_skills?.length > 0) parts.push(`Key Skills: ${rd.key_skills.join(', ')}`);
   }
 
-  // Platform context
-  if (state.platform_context?.positioning_strategy) {
+  if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+    parts.push(...renderCareerProfileSection({
+      heading: '## Career Profile',
+      sharedContext,
+    }));
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative Signals',
+      sharedNarrative: sharedContext?.careerNarrative,
+    }));
+  }
+
+  if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: state.platform_context?.positioning_strategy,
     }));
   }
 

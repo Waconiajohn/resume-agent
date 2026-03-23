@@ -18,6 +18,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { OnboardingState, OnboardingSSEEvent } from '../agents/onboarding/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -47,7 +48,7 @@ export const onboardingRoutes = createProductRoutes<OnboardingState, OnboardingS
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeWhyMeStory: true,
@@ -58,6 +59,23 @@ export const onboardingRoutes = createProductRoutes<OnboardingState, OnboardingS
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'onboarding',
+          artifactGoal: 'build a truthful client profile and career direction baseline',
+          targetAudience: 'internal platform agents and coaching surfaces',
+          successCriteria: [
+            'clarify next-role direction',
+            'capture truthful strengths and constraints',
+            'avoid repeating already-supported context',
+          ],
+        },
+        workflowState: {
+          room: 'onboarding',
+          stage: 'context_loaded',
+          activeTask: 'ask the highest-value onboarding questions from shared context',
+        },
+      });
       if (emotionalBaseline) {
         transformed.emotional_baseline = emotionalBaseline;
       }

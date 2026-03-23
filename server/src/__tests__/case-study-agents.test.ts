@@ -80,6 +80,7 @@ import { writerTools } from '../agents/case-study/writer/tools.js';
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createCaseStudyProductConfig } from '../agents/case-study/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Agent Registration
@@ -159,6 +160,27 @@ describe('Case Study Agent Registration', () => {
     const creators = agentRegistry.findByCapability('case_study_writing', 'case-study');
     expect(creators.length).toBeGreaterThanOrEqual(1);
     expect(creators[0].identity.name).toBe('writer');
+  });
+});
+
+describe('Case Study ProductConfig shared context', () => {
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createCaseStudyProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Executive case studies should stay grounded in provable transformation work';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Executive case studies should stay grounded in provable transformation work');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createCaseStudyProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career arc built around high-stakes operational transformation';
+    sharedContext.positioningStrategy.positioningAngle = 'Board-facing operator with repeatable turnaround proof';
+    const state = config.createInitialState('s', 'u', { shared_context: sharedContext });
+    const msg = config.buildAgentMessage('analyst', state, { resume_text: 'resume text' });
+    expect(msg).toContain('Career arc built around high-stakes operational transformation');
+    expect(msg).toContain('Board-facing operator with repeatable turnaround proof');
   });
 });
 

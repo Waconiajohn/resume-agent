@@ -18,6 +18,7 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { assessorConfig } from './assessor/agent.js';
 import type { RetirementBridgeState, RetirementBridgeSSEEvent, RetirementReadinessSummary } from './types.js';
 import {
+  renderCareerProfileSection,
   renderClientProfileSection,
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
@@ -25,6 +26,7 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createRetirementBridgeProductConfig(): ProductConfig<RetirementBridgeState, RetirementBridgeSSEEvent> {
   return {
@@ -94,10 +96,12 @@ export function createRetirementBridgeProductConfig(): ProductConfig<RetirementB
       responses: {},
       dimension_assessments: [],
       platform_context: input.platform_context as RetirementBridgeState['platform_context'],
+      shared_context: input.shared_context as RetirementBridgeState['shared_context'],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'assessor_questions') {
+        const sharedContext = state.shared_context;
         // Phase 1: Generate assessment questions
         const parts = [
           'Conduct a retirement readiness assessment for this person in career transition.',
@@ -129,10 +133,18 @@ export function createRetirementBridgeProductConfig(): ProductConfig<RetirementB
           );
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (!state.platform_context?.client_profile && hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Positioning Strategy (from resume pipeline)',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
           }));
         }
 
@@ -159,6 +171,7 @@ export function createRetirementBridgeProductConfig(): ProductConfig<RetirementB
       }
 
       if (agentName === 'assessor_evaluation') {
+        const sharedContext = state.shared_context;
         // Phase 2: Evaluate user responses and build readiness summary
         const parts = [
           '## User Responses',
@@ -183,6 +196,11 @@ export function createRetirementBridgeProductConfig(): ProductConfig<RetirementB
             ...clientProfileSection.slice(1, -1),
             '</client_profile>',
           );
+        } else if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile (context for evaluation)',
+            sharedContext,
+          }));
         }
 
         // Distress resources — include in evaluation pass too (responses may reveal distress)

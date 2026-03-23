@@ -23,7 +23,13 @@ import type {
 import { NINETY_DAY_PLAN_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type PlannerTool = AgentTool<NinetyDayPlanState, NinetyDayPlanSSEEvent>;
 
@@ -31,6 +37,7 @@ type PlannerTool = AgentTool<NinetyDayPlanState, NinetyDayPlanSSEEvent>;
 
 function buildResearchContext(state: NinetyDayPlanState): string {
   const parts: string[] = [];
+  const sharedContext = state.shared_context;
 
   // Role context
   parts.push('## Role Context');
@@ -48,6 +55,20 @@ function buildResearchContext(state: NinetyDayPlanState): string {
     parts.push(`Current Title: ${state.resume_data.current_title}`);
     parts.push(`Summary: ${state.resume_data.career_summary}`);
     if (state.resume_data.key_skills?.length > 0) parts.push(`Key Skills: ${state.resume_data.key_skills.join(', ')}`);
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+    parts.push(...renderCareerProfileSection({
+      heading: '## Career Profile',
+      sharedContext,
+    }));
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative Signals',
+      sharedNarrative: sharedContext?.careerNarrative,
+    }));
   }
 
   // Stakeholder map
@@ -75,10 +96,21 @@ function buildResearchContext(state: NinetyDayPlanState): string {
   }
 
   // Platform context
-  if (state.platform_context?.positioning_strategy) {
+  if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: state.platform_context?.positioning_strategy,
+    }));
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+    || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+    parts.push(...renderEvidenceInventorySection({
+      heading: '## Evidence Inventory',
+      sharedInventory: sharedContext?.evidenceInventory,
+      legacyEvidence: state.platform_context?.evidence_items,
+      maxItems: 8,
     }));
   }
 

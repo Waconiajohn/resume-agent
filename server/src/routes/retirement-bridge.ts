@@ -17,12 +17,12 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createRetirementBridgeProductConfig } from '../agents/retirement-bridge/product.js';
 import { FF_RETIREMENT_BRIDGE } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { RetirementBridgeState, RetirementBridgeSSEEvent } from '../agents/retirement-bridge/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -51,30 +51,35 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const [baseline, profileRows, careerProfileRows, strategyRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'client_profile'),
-        getUserContext(userId, 'career_profile'),
-        getUserContext(userId, 'positioning_strategy'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (profileRows.length > 0) {
-        platformContext.client_profile = profileRows[0].content;
-      }
-      if (careerProfileRows.length > 0) {
-        platformContext.career_profile = careerProfileRows[0].content;
-      }
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeClientProfile: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'retirement_bridge',
+          artifactGoal: 'assess retirement-readiness questions without giving financial advice',
+          targetAudience: 'candidate preparing for a fiduciary planning conversation',
+          successCriteria: [
+            'surface observations instead of advice',
+            'personalize questions from known context',
+            'preserve fiduciary guardrails',
+          ],
+        },
+        workflowState: {
+          room: 'retirement_bridge',
+          stage: 'context_loaded',
+          activeTask: 'personalize retirement-readiness assessment from shared context',
+        },
+      });
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(

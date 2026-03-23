@@ -12,6 +12,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Financial Segments ────────────────────────────────────────────
 
@@ -153,6 +154,9 @@ export interface OnboardingState extends BaseState {
       whyNotMe: string;
     };
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 }
 
 // ─── SSE Events ────────────────────────────────────────────────────

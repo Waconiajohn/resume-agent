@@ -14,12 +14,12 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createNinetyDayPlanProductConfig } from '../agents/ninety-day-plan/product.js';
 import { FF_NINETY_DAY_PLAN } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent } from '../agents/ninety-day-plan/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -58,24 +58,38 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context and emotional baseline
     try {
-      const [baseline, strategyRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeCareerNarrative: true,
+        includeClientProfile: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'ninety_day_plan',
+          artifactGoal: 'build a strategic 90-day onboarding plan',
+          targetAudience: 'candidate preparing for a target role',
+          successCriteria: [
+            'tie actions to role context and shared strengths',
+            'stay realistic for the onboarding timeline',
+            'ground quick wins in supported evidence',
+          ],
+        },
+        workflowState: {
+          room: 'ninety_day_plan',
+          stage: 'context_loaded',
+          activeTask: 'map shared positioning and evidence into onboarding priorities',
+        },
+      });
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(

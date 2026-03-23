@@ -15,14 +15,17 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInEditorState, LinkedInEditorSSEEvent } from '../types.js';
 import {
+  renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 // ─── Section writing prompts ───────────────────────────────────────────
 
 function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState): string {
   const platformContext = state.platform_context;
+  const sharedContext = state.shared_context;
   const approvedSections = state.section_drafts;
   const analysis = state.analysis;
 
@@ -37,17 +40,27 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     }
   }
 
-  if (platformContext?.positioning_strategy) {
-    parts.push(...renderPositioningStrategySection({
-      heading: '## Positioning Strategy',
-      legacyStrategy: platformContext.positioning_strategy,
+  if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative Signals',
+      sharedNarrative: sharedContext?.careerNarrative,
     }));
   }
 
-  if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+  if (platformContext?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+    parts.push(...renderPositioningStrategySection({
+      heading: '## Positioning Strategy',
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: platformContext?.positioning_strategy,
+    }));
+  }
+
+  if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+    || (platformContext?.evidence_items?.length ?? 0) > 0) {
     parts.push(...renderEvidenceInventorySection({
       heading: '## Evidence Items (use specific metrics and stories)',
-      legacyEvidence: platformContext.evidence_items,
+      sharedInventory: sharedContext?.evidenceInventory,
+      legacyEvidence: platformContext?.evidence_items,
       maxItems: 6,
     }));
   }

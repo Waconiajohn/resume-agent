@@ -84,6 +84,7 @@ import {
   RULE_6_SELF_REVIEW,
   ONBOARDING_RULES,
 } from '../agents/onboarding/knowledge/rules.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ─── Agent Registry ───────────────────────────────────────────────────────────
 
@@ -1439,6 +1440,13 @@ describe('Onboarding ProductConfig', () => {
     expect(state.responses).toEqual({});
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Onboarding should sharpen direction without repeating known proof';
+    const state = config.createInitialState('sess-2', 'user-2', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Onboarding should sharpen direction without repeating known proof');
+  });
+
   it('buildAgentMessage for assessor_questions frames a Career Profile discovery pass', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     const msg = config.buildAgentMessage('assessor_questions', state, {});
@@ -1468,6 +1476,16 @@ describe('Onboarding ProductConfig', () => {
     state.responses = { q1: 'Led engineering teams at Acme' };
     const msg = config.buildAgentMessage('assessor_evaluation', state, {});
     expect(msg).toContain('Led engineering teams at Acme');
+  });
+
+  it('buildAgentMessage uses canonical shared context when legacy room context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career arc built around practical executive problem-solving';
+    sharedContext.positioningStrategy.positioningAngle = 'Direction should stay anchored in supported strengths and constraints';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    const msg = config.buildAgentMessage('assessor_questions', state, {});
+    expect(msg).toContain('Career arc built around practical executive problem-solving');
+    expect(msg).toContain('Direction should stay anchored in supported strengths and constraints');
   });
 
   it('buildAgentMessage returns empty string for unknown agent name', () => {

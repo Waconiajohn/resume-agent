@@ -13,6 +13,7 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { assessorConfig } from './assessor/agent.js';
 import type { OnboardingState, OnboardingSSEEvent, ClientProfile, AssessmentSummary } from './types.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
@@ -22,6 +23,7 @@ import { upsertUserContext } from '../../lib/platform-context.js';
 import { loadCareerProfileContext } from '../../lib/career-profile-context.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createOnboardingProductConfig(): ProductConfig<OnboardingState, OnboardingSSEEvent> {
   return {
@@ -88,10 +90,12 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
       questions: [],
       responses: {},
       platform_context: input.platform_context as OnboardingState['platform_context'],
+      shared_context: input.shared_context as OnboardingState['shared_context'],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'assessor_questions') {
+        const sharedContext = state.shared_context;
         const parts = [
           'You are building or refining this candidate\'s Career Profile.',
           'Use the available context to ask only the highest-value questions that will sharpen downstream resume, LinkedIn, job-search, and interview work.',
@@ -119,17 +123,26 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           }
         }
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Existing Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Prior Positioning Strategy',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
           }));
         }
 
@@ -149,6 +162,7 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
       }
 
       if (agentName === 'assessor_evaluation') {
+        const sharedContext = state.shared_context;
         const parts = [
           'The user has answered the Career Profile assessment questions.',
           '## User Responses',
@@ -158,17 +172,19 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           'You are responsible for producing an honest client profile that downstream agents can trust.',
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Existing Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Prior Positioning Strategy',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
           }));
         }
 

@@ -108,6 +108,7 @@ import { assessorTools } from '../agents/retirement-bridge/assessor/tools.js';
 // ─── Product config ───────────────────────────────────────────────────────────
 
 import { createRetirementBridgeProductConfig } from '../agents/retirement-bridge/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ─── LLM mock access ──────────────────────────────────────────────────────────
 
@@ -217,6 +218,27 @@ describe('RetirementBridge Types — ReadinessSignal', () => {
   it('red is a valid ReadinessSignal', () => {
     const signal: ReadinessSignal = 'red';
     expect(signal).toBe('red');
+  });
+});
+
+describe('Retirement Bridge shared context rollout', () => {
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createRetirementBridgeProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Retirement planning conversations should respect verified career context';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Retirement planning conversations should respect verified career context');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createRetirementBridgeProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.candidateProfile.factualSummary = 'Senior executive planning a thoughtful late-career transition';
+    sharedContext.positioningStrategy.positioningAngle = 'Transition planning should stay grounded in verified executive background';
+    const state = config.createInitialState('s', 'u', { shared_context: sharedContext });
+    const msg = config.buildAgentMessage('assessor_questions', state, {});
+    expect(msg).toContain('Senior executive planning a thoughtful late-career transition');
+    expect(msg).toContain('Transition planning should stay grounded in verified executive background');
   });
 });
 

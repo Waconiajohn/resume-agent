@@ -14,7 +14,13 @@ import type { JobTrackerState, JobTrackerSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
-import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, JobTrackerSSEEvent> {
   return {
@@ -72,11 +78,13 @@ export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, 
       current_stage: 'analysis',
       applications: (input.applications ?? []) as JobTrackerState['applications'],
       platform_context: input.platform_context as JobTrackerState['platform_context'],
+      shared_context: input.shared_context as JobTrackerState['shared_context'],
       follow_up_messages: [],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'analyst') {
+        const sharedContext = state.shared_context;
         const appCount = state.applications.length;
         const parts = [
           `Analyze ${appCount} job application(s) against the candidate resume and positioning strategy.`,
@@ -90,14 +98,39 @@ export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, 
           ),
         ];
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(
             '',
             ...renderPositioningStrategySection({
               heading: '## Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
+              sharedStrategy: sharedContext?.positioningStrategy,
+              legacyStrategy: state.platform_context?.positioning_strategy,
             }),
           );
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         parts.push(

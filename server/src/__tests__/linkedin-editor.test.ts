@@ -48,6 +48,7 @@ vi.mock('../lib/json-repair.js', () => ({
 }));
 
 import { createLinkedInEditorProductConfig } from '../agents/linkedin-editor/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import {
   PROFILE_SECTION_ORDER,
   PROFILE_SECTION_LABELS,
@@ -228,6 +229,15 @@ describe('createLinkedInEditorProductConfig().createInitialState', () => {
     expect(state.platform_context?.positioning_strategy).toEqual({ angle: 'Scale expert' });
   });
 
+  it('preserves shared_context from input', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Profile rewrite should follow truthful executive positioning';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      shared_context: sharedContext,
+    });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Profile rewrite should follow truthful executive positioning');
+  });
+
   it('handles missing current_profile gracefully', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     expect(state.current_profile).toBeUndefined();
@@ -277,6 +287,16 @@ describe('createLinkedInEditorProductConfig().buildAgentMessage', () => {
     });
     const msg = config.buildAgentMessage('editor', state, {});
     expect(msg).toContain('Positioning Strategy');
+  });
+
+  it('includes canonical shared context when legacy room context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career story centered on leading product and platform scale-ups';
+    sharedContext.positioningStrategy.positioningAngle = 'Executive profile translating delivery proof into recruiter-friendly LinkedIn language';
+    const state = makeState({ shared_context: sharedContext });
+    const msg = config.buildAgentMessage('editor', state, {});
+    expect(msg).toContain('Career story centered on leading product and platform scale-ups');
+    expect(msg).toContain('Executive profile translating delivery proof into recruiter-friendly LinkedIn language');
   });
 
   it('returns empty string for unknown agent', () => {

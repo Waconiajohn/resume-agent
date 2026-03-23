@@ -12,12 +12,15 @@ import { analystConfig } from './analyst/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { CaseStudyState, CaseStudySSEEvent } from './types.js';
 import {
+  renderCareerNarrativeSection,
+  renderCareerProfileSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, CaseStudySSEEvent> {
   return {
@@ -71,6 +74,7 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
       user_id: userId,
       current_stage: 'analysis',
       platform_context: input.platform_context as CaseStudyState['platform_context'],
+      shared_context: input.shared_context as CaseStudyState['shared_context'],
       target_context: input.target_context as CaseStudyState['target_context'] ?? {
         target_role: '',
         target_industry: '',
@@ -81,6 +85,7 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'analyst') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze this executive resume to extract and score achievements for case study writing.',
           '',
@@ -88,20 +93,36 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
           String(input.resume_text ?? ''),
         ];
 
-        if (state.platform_context) {
-          if (state.platform_context.positioning_strategy) {
-            parts.push(...renderPositioningStrategySection({
-              heading: '## Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
-            }));
-          }
-          if (state.platform_context.evidence_items && state.platform_context.evidence_items.length > 0) {
-            parts.push(...renderEvidenceInventorySection({
-              heading: '## Evidence Items',
-              legacyEvidence: state.platform_context.evidence_items,
-              maxItems: 8,
-            }));
-          }
+        if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Items',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         if (state.target_context) {
