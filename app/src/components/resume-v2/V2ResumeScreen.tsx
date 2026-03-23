@@ -254,6 +254,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       observation: concern.observation,
       whyItHurts: concern.why_it_hurts,
       fixStrategy: concern.fix_strategy,
+      requiresCandidateInput: concern.requires_candidate_input,
+      clarifyingQuestion: concern.clarifying_question,
       targetSection: concern.target_section,
       relatedRequirement: concern.related_requirement,
       suggestedResumeEdit: concern.suggested_resume_edit,

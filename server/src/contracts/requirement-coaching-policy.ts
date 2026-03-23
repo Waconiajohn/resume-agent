@@ -1,6 +1,7 @@
 export type RequirementCoachingFamily =
   | 'metrics'
   | 'cloudMulti'
+  | 'cloudPlatform'
   | 'executiveScope'
   | 'regulated'
   | 'financial'
@@ -12,6 +13,7 @@ export type RequirementCoachingFamily =
   | 'portfolio'
   | 'platformScale'
   | 'architecture'
+  | 'erp'
   | 'technical'
   | 'scale';
 
@@ -68,6 +70,15 @@ const REQUIREMENT_FAMILY_POLICIES: readonly RequirementFamilyPolicy[] = [
     rationale: 'Multi-cloud claims only read credibly when the environments, delivery scope, and business reason are explicit.',
     lookingFor: 'Specific AWS plus Azure or GCP context, what was delivered across those environments, and the business outcome.',
     targetedQuestionPatterns: [/\b(aws|azure|gcp|multi-?cloud|cloud)\b/i],
+  },
+  {
+    family: 'cloudPlatform',
+    matches: (normalized) => /\b(azure|gcp|google cloud|cloud platform|cloud environments?)\b/.test(normalized),
+    clarifyingQuestion: 'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+    proofActionDetail: 'where you used Azure or GCP, what you personally owned, and what outcome came from that work.',
+    rationale: 'Cloud-platform claims need the environment, owned scope, and outcome to read as real experience instead of a keyword.',
+    lookingFor: 'Specific Azure or GCP context, what was personally owned there, and the business or technical outcome.',
+    targetedQuestionPatterns: [/\b(azure|gcp|google cloud|cloud)\b/i],
   },
   {
     family: 'executiveScope',
@@ -170,6 +181,15 @@ const REQUIREMENT_FAMILY_POLICIES: readonly RequirementFamilyPolicy[] = [
     rationale: 'Architecture requirements become believable when stakeholders, tradeoffs, and outcomes are explicit.',
     lookingFor: 'Stakeholders, tradeoffs, decisions led, and the resulting technical or business outcome.',
     targetedQuestionPatterns: [/\b(architecture|architectural|stakeholder|stakeholders|tradeoff|trade-off|decision|design)\b/i],
+  },
+  {
+    family: 'erp',
+    matches: (normalized) => /\b(erp|sap|oracle|netsuite|workday|enterprise resource planning)\b/.test(normalized),
+    clarifyingQuestion: 'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    proofActionDetail: 'where you used ERP systems (SAP, Oracle, or similar), what you personally owned, and what outcome came from that work.',
+    rationale: 'ERP claims need the system context, owned responsibility, and outcome to read as real operating experience.',
+    lookingFor: 'ERP system context, personal ownership, and the business or operating result that followed.',
+    targetedQuestionPatterns: [/\b(erp|sap|oracle|netsuite|workday|system)\b/i],
   },
   {
     family: 'technical',

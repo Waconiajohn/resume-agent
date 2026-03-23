@@ -138,9 +138,14 @@ export function FinalReviewConcernThread({
   onCloseThread,
 }: FinalReviewConcernThreadProps) {
   const [inputValue, setInputValue] = useState('');
+  const [starterDraftValue, setStarterDraftValue] = useState(context.suggestedResumeEdit ?? '');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSentRef = useRef('');
+
+  useEffect(() => {
+    setStarterDraftValue(context.suggestedResumeEdit ?? '');
+  }, [context.suggestedResumeEdit]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -170,16 +175,44 @@ export function FinalReviewConcernThread({
   }, [concernId, context, isLoading, onSendMessage]);
 
   const requestGuidance = useCallback(() => {
-    sendQuickMessage('Ask me the single most useful question you need answered to strengthen this concern truthfully.');
-  }, [sendQuickMessage]);
+    const focus = context.clarifyingQuestion ?? context.fixStrategy;
+    sendQuickMessage(
+      `Using this final review concern, do three things in plain language: ` +
+      `1) say what the current resume already proves, ` +
+      `2) name the single missing detail that would make this concern safer, and ` +
+      `3) ask exactly one short question to get that detail. ` +
+      `Focus especially on this: ${focus}`,
+    );
+  }, [context.clarifyingQuestion, context.fixStrategy, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
-    sendQuickMessage('Draft the strongest truthful fix you can from what we already know, and keep it natural and believable.');
-  }, [sendQuickMessage]);
+    const startingPoint = starterDraftValue.trim()
+      ? `Start from this draft and improve it if needed: "${starterDraftValue.trim()}"`
+      : context.suggestedResumeEdit
+        ? `Start from this draft and improve it if needed: "${context.suggestedResumeEdit}"`
+        : 'Draft the strongest truthful fix you can from what we already know.';
+    sendQuickMessage(
+      `${startingPoint} Keep it natural, specific, and believable. ` +
+      `If one essential detail is still missing, say what detail is missing first and then ask exactly one short question.`,
+    );
+  }, [context.suggestedResumeEdit, sendQuickMessage, starterDraftValue]);
 
   const requestAlternative = useCallback(() => {
-    sendQuickMessage('Try one different truthful version that takes another angle without sounding inflated.');
-  }, [sendQuickMessage]);
+    const startingPoint = starterDraftValue.trim()
+      ? `Try a different truthful version than this one: "${starterDraftValue.trim()}"`
+      : context.suggestedResumeEdit
+        ? `Try a different truthful version than this one: "${context.suggestedResumeEdit}"`
+        : 'Try one different truthful version that takes another angle without sounding inflated.';
+    sendQuickMessage(
+      `${startingPoint} Keep the meaning grounded in the actual concern and resume evidence, not just a wording swap.`,
+    );
+  }, [context.suggestedResumeEdit, sendQuickMessage, starterDraftValue]);
+
+  const handleStarterApply = useCallback(() => {
+    const trimmed = starterDraftValue.trim();
+    if (!trimmed || isEditing) return;
+    onReviewEdit(concernId, trimmed, false);
+  }, [concernId, isEditing, onReviewEdit, starterDraftValue]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -202,6 +235,57 @@ export function FinalReviewConcernThread({
 
   return (
     <div className="room-shell mt-3 overflow-hidden border-[#afc4ff]/12 bg-black/15" data-testid="final-review-thread">
+      {messages.length === 0 && (
+        <div className="space-y-3 border-b border-white/[0.06] px-4 py-4">
+          <div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/42">
+              What needs to be fixed
+            </p>
+            <p className="mt-2 text-base leading-7 text-white/82">
+              {context.relatedRequirement ?? context.observation}
+            </p>
+          </div>
+
+          <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#afc4ff]">
+              Best next detail to add
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/76">
+              {context.clarifyingQuestion ?? context.fixStrategy}
+            </p>
+          </div>
+
+          {context.suggestedResumeEdit && (
+            <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
+                Suggested rewrite to start from
+              </p>
+              <p className="mt-1 text-xs leading-5 text-white/58">
+                Start here if this sounds close. Edit it until it says exactly what you mean, then send it to review.
+              </p>
+              <textarea
+                value={starterDraftValue}
+                onChange={(event) => setStarterDraftValue(event.target.value)}
+                rows={5}
+                aria-label="Edit the suggested final review rewrite"
+                className="mt-3 min-h-[150px] w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
+              />
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleStarterApply}
+                  disabled={isEditing || !starterDraftValue.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {isEditing ? 'Sending to Review...' : 'Send to Review'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {messages.length > 0 && (
         <div className="max-h-[360px] space-y-3 overflow-y-auto px-4 py-3" role="log" aria-live="polite">
           {messages.map((message, index) => (
@@ -292,7 +376,7 @@ export function FinalReviewConcernThread({
           }}
           onKeyDown={handleKeyDown}
           placeholder={messages.length === 0
-            ? 'Add one concrete detail here and AI will turn it into a stronger draft...'
+            ? (context.clarifyingQuestion ?? context.fixStrategy ?? 'Add one concrete detail here and AI will turn it into a stronger draft...')
             : 'Add the next detail or ask AI for a stronger version...'}
           rows={1}
           disabled={isLoading}

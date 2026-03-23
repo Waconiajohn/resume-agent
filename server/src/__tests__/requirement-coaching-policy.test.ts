@@ -24,6 +24,30 @@ describe('requirement coaching policy', () => {
     expect(buildRequirementProofAction(requirement, true)).toContain('If you have this experience, add one concrete example showing which metrics or scorecards');
   });
 
+  it('classifies single-platform cloud requirements and provides specific coaching', () => {
+    const requirement = 'Experience with Azure or GCP';
+
+    expect(detectRequirementCoachingFamilies(requirement)).toContain('cloudPlatform');
+    expect(buildRequirementClarifyingQuestion(requirement)).toBe(
+      'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+    );
+    expect(buildRequirementProofAction(requirement, true)).toBe(
+      'If you have this experience, add one concrete example showing where you used Azure or GCP, what you personally owned, and what outcome came from that work.',
+    );
+  });
+
+  it('classifies ERP requirements and provides specific coaching', () => {
+    const requirement = 'Experience with ERP systems (SAP, Oracle, or similar)';
+
+    expect(detectRequirementCoachingFamilies(requirement)).toContain('erp');
+    expect(buildRequirementClarifyingQuestion(requirement)).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+    expect(buildRequirementProofAction(requirement, true)).toBe(
+      'If you have this experience, add one concrete example showing where you used ERP systems (SAP, Oracle, or similar), what you personally owned, and what outcome came from that work.',
+    );
+  });
+
   it('uses evidence-aware fallback questions for partial proof', () => {
     const question = buildRequirementFallbackQuestion({
       requirement: 'Develop and track performance metrics',

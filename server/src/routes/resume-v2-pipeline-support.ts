@@ -345,6 +345,8 @@ export const finalReviewChatSchema = z.object({
     observation: z.string().max(2000),
     why_it_hurts: z.string().max(2000),
     fix_strategy: z.string().max(3000),
+    requires_candidate_input: z.boolean().optional(),
+    clarifying_question: z.string().max(2000).optional(),
     target_section: z.string().max(500).optional(),
     related_requirement: z.string().max(1000).optional(),
     suggested_resume_edit: z.string().max(3000).optional(),

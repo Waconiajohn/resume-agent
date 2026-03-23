@@ -968,6 +968,10 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 
   logger.info({ session_id: sessionId, concern_id, turn: messages.length }, 'Final review chat message');
 
+  const starterQuestion = context.clarifying_question?.trim() || 'What additional detail can you share that would make this point more credible or specific?';
+  const starterNeedsInput = context.requires_candidate_input ?? !context.suggested_resume_edit;
+  const starterAction = starterNeedsInput ? 'answer_question' : context.suggested_resume_edit ? 'review_edit' : 'answer_question';
+
   const contextBlock = [
     '## Final Review Concern',
     `Concern ID: ${concern_id}`,
@@ -982,6 +986,8 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
     '',
     `## Fix Strategy`,
     context.fix_strategy,
+    context.clarifying_question ? `Candidate question: ${context.clarifying_question}` : '',
+    `Requires candidate input: ${starterNeedsInput ? 'yes' : 'no'}`,
     context.target_section ? `Target section: ${context.target_section}` : '',
     context.related_requirement ? `Related requirement: ${context.related_requirement}` : '',
     context.suggested_resume_edit ? `Existing sample language: ${context.suggested_resume_edit}` : '',
@@ -999,7 +1005,13 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 
   const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: contextBlock },
-    { role: 'assistant', content: '{"response":"I understand the concern. I will either ask for the one missing detail that matters most or give you language that directly resolves it.","recommended_next_action":"answer_question","needs_candidate_input":true,"follow_up_question":"What additional detail can you share that would make this point more credible or specific?","current_question":"What additional detail can you share that would make this point more credible or specific?"}' },
+    { role: 'assistant', content: JSON.stringify({
+      response: 'I understand the concern. I will either ask for the one missing detail that matters most or give you language that directly resolves it.',
+      recommended_next_action: starterAction,
+      needs_candidate_input: starterNeedsInput,
+      follow_up_question: starterQuestion,
+      current_question: starterQuestion,
+    }) },
     ...messages,
   ];
 

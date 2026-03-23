@@ -347,6 +347,8 @@ export interface FinalReviewChatContext {
   observation: string;
   whyItHurts: string;
   fixStrategy: string;
+  requiresCandidateInput?: boolean;
+  clarifyingQuestion?: string;
   targetSection?: string;
   relatedRequirement?: string;
   suggestedResumeEdit?: string;

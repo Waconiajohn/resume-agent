@@ -203,6 +203,8 @@ export function useFinalReviewChat(accessToken: string | null, sessionId: string
             observation: context.observation,
             why_it_hurts: context.whyItHurts,
             fix_strategy: context.fixStrategy,
+            requires_candidate_input: context.requiresCandidateInput,
+            clarifying_question: context.clarifyingQuestion,
             target_section: context.targetSection,
             related_requirement: context.relatedRequirement,
             suggested_resume_edit: context.suggestedResumeEdit,
