@@ -372,6 +372,120 @@ describe('GET /api/sessions — enriched session list', () => {
 
 // ─── Tests: GET /api/sessions/:id/resume ─────────────────────────────────────
 
+describe('GET /api/sessions/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('enriches stored resume-v2 final-review guidance before returning the session', async () => {
+    mockFrom.mockReturnValue(makeChain({
+      data: {
+        id: VALID_SESSION_ID,
+        user_id: 'test-user-id',
+        status: 'active',
+        current_phase: 'quality_review',
+        tailored_sections: {
+          version: 'v2',
+          inputs: {
+            resume_text: 'Operations leader with multi-site delivery experience.',
+            job_description: 'Use ERP systems to improve planning and operations.',
+          },
+          pipeline_data: {
+            stage: 'complete',
+            jobIntelligence: null,
+            candidateIntelligence: null,
+            benchmarkCandidate: null,
+            gapAnalysis: null,
+            gapCoachingCards: null,
+            preScores: null,
+            narrativeStrategy: null,
+            resumeDraft: null,
+            assembly: null,
+            error: null,
+            stageMessages: [],
+          },
+          draft_state: {
+            editable_resume: null,
+            master_save_mode: 'session_only',
+            final_review_state: {
+              result: {
+                six_second_scan: {
+                  decision: 'skip',
+                  reason: 'ERP proof is thin.',
+                  top_signals_seen: [],
+                  important_signals_missing: [],
+                },
+                hiring_manager_verdict: {
+                  rating: 'needs_improvement',
+                  summary: 'ERP systems experience is not clearly evidenced.',
+                },
+                fit_assessment: {
+                  job_description_fit: 'moderate',
+                  benchmark_alignment: 'moderate',
+                  business_impact: 'moderate',
+                  clarity_and_credibility: 'weak',
+                },
+                top_wins: [],
+                concerns: [{
+                  id: 'concern_erp',
+                  severity: 'moderate',
+                  type: 'missing_evidence',
+                  observation: 'ERP systems experience is not clearly evidenced.',
+                  why_it_hurts: 'The role expects it.',
+                  related_requirement: 'Experience with ERP systems (SAP, Oracle, or similar)',
+                  fix_strategy: 'Strengthen the supporting proof before export.',
+                  requires_candidate_input: true,
+                }],
+                structure_recommendations: [],
+                benchmark_comparison: {
+                  advantages_vs_benchmark: [],
+                  gaps_vs_benchmark: [],
+                  reframing_opportunities: [],
+                },
+                improvement_summary: [],
+              },
+              resolved_concern_ids: [],
+              acknowledged_export_warnings: false,
+              is_stale: false,
+            },
+            updated_at: '2026-03-22T00:00:00.000Z',
+          },
+          updated_at: '2026-03-22T00:00:00.000Z',
+        },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+      },
+      error: null,
+    }));
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as {
+      session: {
+        tailored_sections?: {
+          draft_state?: {
+            final_review_state?: {
+              result?: {
+                concerns?: Array<{
+                  clarifying_question?: string;
+                }>;
+              };
+            };
+          };
+        };
+      };
+    };
+
+    expect(
+      body.session.tailored_sections?.draft_state?.final_review_state?.result?.concerns?.[0]?.clarifying_question,
+    ).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+  });
+});
+
 describe('GET /api/sessions/:id/resume', () => {
   beforeEach(() => {
     vi.clearAllMocks();

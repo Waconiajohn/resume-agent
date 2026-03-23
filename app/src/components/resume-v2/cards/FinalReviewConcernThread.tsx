@@ -16,6 +16,19 @@ interface FinalReviewConcernThreadProps {
   onCloseThread?: () => void;
 }
 
+function isGenericConcernQuestion(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  return (
+    /what additional detail can you share/.test(normalized)
+    || /what proof can you add here truthfully/.test(normalized)
+    || /what concrete truthful detail would address this concern/.test(normalized)
+    || /what truthful detail would address this concern/.test(normalized)
+    || /what proof can you add here/.test(normalized)
+  );
+}
+
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
@@ -32,15 +45,20 @@ function AssistantBubble({
   isEditing,
   isAccepted,
   onReviewEdit,
+  fallbackQuestion,
 }: {
   message: GapChatMessage;
   concernId: string;
   isEditing?: boolean;
   isAccepted: boolean;
   onReviewEdit: (concernId: string, language: string, candidateInputUsed?: boolean) => void;
+  fallbackQuestion?: string;
 }) {
   const [draftValue, setDraftValue] = useState(message.suggestedLanguage ?? '');
   const disabled = isEditing || isAccepted;
+  const visibleQuestion = isGenericConcernQuestion(message.currentQuestion)
+    ? (fallbackQuestion ?? message.currentQuestion)
+    : message.currentQuestion;
 
   useEffect(() => {
     setDraftValue(message.suggestedLanguage ?? '');
@@ -51,9 +69,9 @@ function AssistantBubble({
       <div className="max-w-[92%] space-y-2">
         <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <p className="text-sm leading-6 text-white/76">{message.content}</p>
-          {message.currentQuestion && (
+          {visibleQuestion && (
             <p className="mt-2 text-xs italic text-[#f0d99f]/85">
-              Next question: {message.currentQuestion}
+              Next question: {visibleQuestion}
             </p>
           )}
         </div>
@@ -299,6 +317,7 @@ export function FinalReviewConcernThread({
                   isEditing={isEditing}
                   isAccepted={resolvedLanguage !== null}
                   onReviewEdit={onReviewEdit}
+                  fallbackQuestion={context.clarifyingQuestion}
                 />
               )
           ))}

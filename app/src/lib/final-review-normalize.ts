@@ -10,6 +10,8 @@ import type {
 
 const DEFAULT_SCAN_DECISION: FinalReviewResult['six_second_scan']['decision'] = 'skip';
 const DEFAULT_RATING: FinalReviewVerdict['rating'] = 'needs_improvement';
+const DEFAULT_FINAL_REVIEW_FIX_STRATEGY = 'Review this concern and add truthful supporting proof before export if you have it.';
+const DEFAULT_FINAL_REVIEW_QUESTION = 'What concrete truthful detail would address this concern?';
 const DEFAULT_FIT: FinalReviewFitAssessment = {
   job_description_fit: 'moderate',
   benchmark_alignment: 'moderate',
@@ -132,29 +134,32 @@ function normalizeConcerns(value: unknown): FinalReviewConcern[] {
         type: 'missing_evidence',
         observation,
         why_it_hurts: 'This weakens interview confidence until the resume shows stronger proof.',
-        fix_strategy: 'Add a truthful, concrete example that addresses this issue before export.',
+        fix_strategy: DEFAULT_FINAL_REVIEW_FIX_STRATEGY,
         requires_candidate_input: true,
-        clarifying_question: 'What proof can you add here truthfully?',
+        clarifying_question: DEFAULT_FINAL_REVIEW_QUESTION,
       });
       return;
     }
     if (!isRecord(item)) return;
     const observation = asString(item.observation).trim();
     if (!observation) return;
+    const clarifyingQuestion = asString(item.clarifying_question).trim();
+    const requiresCandidateInput = typeof item.requires_candidate_input === 'boolean'
+      ? item.requires_candidate_input
+      : Boolean(clarifyingQuestion);
+
     concerns.push({
       id: asString(item.id, `concern_${index + 1}`),
       severity: normalizeConcernSeverity(item.severity),
       type: normalizeConcernType(item.type),
       observation,
       why_it_hurts: asString(item.why_it_hurts, 'This issue weakens interview odds.'),
-      fix_strategy: asString(item.fix_strategy, 'Strengthen the supporting proof before export.'),
+      fix_strategy: asString(item.fix_strategy, DEFAULT_FINAL_REVIEW_FIX_STRATEGY),
       target_section: asString(item.target_section).trim() || undefined,
       related_requirement: asString(item.related_requirement).trim() || undefined,
       suggested_resume_edit: asString(item.suggested_resume_edit).trim() || undefined,
-      requires_candidate_input: typeof item.requires_candidate_input === 'boolean'
-        ? item.requires_candidate_input
-        : Boolean(asString(item.clarifying_question).trim()),
-      clarifying_question: asString(item.clarifying_question).trim() || undefined,
+      requires_candidate_input: requiresCandidateInput,
+      clarifying_question: clarifyingQuestion || (requiresCandidateInput ? DEFAULT_FINAL_REVIEW_QUESTION : undefined),
     });
   });
   return concerns;

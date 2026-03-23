@@ -34,6 +34,13 @@ describe('FinalReviewConcernThread', () => {
     cleanup();
   });
 
+  if (!('scrollIntoView' in HTMLElement.prototype)) {
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      value: vi.fn(),
+      writable: true,
+    });
+  }
+
   it('shows structured intro guidance and editable starter draft before any chat messages exist', () => {
     const view = render(
       <FinalReviewConcernThread
@@ -82,5 +89,31 @@ describe('FinalReviewConcernThread', () => {
         clarifyingQuestion: 'Who was the audience, what did you present, and what decision or next step came from it?',
       }),
     );
+  });
+
+  it('prefers the structured concern question over a generic legacy message question', () => {
+    const view = render(
+      <FinalReviewConcernThread
+        concernId="concern-1"
+        messages={[
+          {
+            role: 'assistant',
+            content: 'We can tighten this concern if we get one missing detail.',
+            currentQuestion: 'What additional detail can you share that would make this point more credible or specific?',
+          },
+        ]}
+        isLoading={false}
+        error={null}
+        resolvedLanguage={null}
+        onSendMessage={vi.fn()}
+        onReviewEdit={vi.fn()}
+        context={makeContext()}
+      />,
+    );
+
+    expect(view.getByText(/Next question:/)).toHaveTextContent(
+      'Who was the audience, what did you present, and what decision or next step came from it?',
+    );
+    expect(view.queryByText(/what additional detail can you share/i)).not.toBeInTheDocument();
   });
 });

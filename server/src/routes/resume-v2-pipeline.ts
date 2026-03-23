@@ -38,6 +38,7 @@ import {
   createInitialSnapshot,
   applyEventToSnapshot,
   enrichStoredPipelineDataForClient,
+  enrichStoredDraftStateForClient,
   gapResponseSchema,
   draftStateSchema,
   buildEditSystemPrompt,
@@ -379,6 +380,10 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
   if (stored && stored.version === 'v2') {
     const storedSnapshot = stored as StoredV2Snapshot;
     const enrichedPipelineData = enrichStoredPipelineDataForClient(storedSnapshot.pipeline_data);
+    const enrichedDraftState = enrichStoredDraftStateForClient(storedSnapshot.draft_state, {
+      resumeText: storedSnapshot.inputs.resume_text,
+      gapAnalysis: enrichedPipelineData.gapAnalysis,
+    });
     return c.json({
       version: 'v2',
       status: session.pipeline_status,
@@ -386,7 +391,7 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
       error_message: session.error_message ?? null,
       pipeline_data: enrichedPipelineData,
       inputs: storedSnapshot.inputs,
-      draft_state: storedSnapshot.draft_state ?? null,
+      draft_state: enrichedDraftState ?? null,
     });
   }
 

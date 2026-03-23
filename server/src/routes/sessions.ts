@@ -8,6 +8,11 @@ import logger from '../lib/logger.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import type { PipelineSSEEvent } from '../agents/types.js';
 import { buildGroundedPipelineChatReply } from '../lib/session-status-service.js';
+import {
+  enrichStoredDraftStateForClient,
+  enrichStoredPipelineDataForClient,
+  type StoredV2Snapshot,
+} from './resume-v2-pipeline-support.js';
 
 const sessions = new Hono();
 
@@ -550,6 +555,26 @@ sessions.get('/:id', async (c) => {
 
   if (error || !data) {
     return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const stored = data.tailored_sections as Record<string, unknown> | null;
+  if (stored && stored.version === 'v2') {
+    const storedSnapshot = stored as StoredV2Snapshot;
+    const enrichedPipelineData = enrichStoredPipelineDataForClient(storedSnapshot.pipeline_data);
+    const enrichedDraftState = enrichStoredDraftStateForClient(storedSnapshot.draft_state, {
+      resumeText: storedSnapshot.inputs.resume_text,
+      gapAnalysis: enrichedPipelineData.gapAnalysis,
+    });
+    return c.json({
+      session: {
+        ...data,
+        tailored_sections: {
+          ...storedSnapshot,
+          pipeline_data: enrichedPipelineData,
+          draft_state: enrichedDraftState,
+        },
+      },
+    });
   }
 
   return c.json({ session: data });

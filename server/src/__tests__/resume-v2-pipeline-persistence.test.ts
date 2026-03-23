@@ -207,6 +207,90 @@ describe('GET /api/resume-v2/:sessionId/result — v2 format detection', () => {
     expect(body.inputs).toEqual(FULL_V2_SNAPSHOT.inputs);
   });
 
+  it('stabilizes stored final-review concern guidance inside draft_state before returning the snapshot', async () => {
+    const chain = buildSingleChain({
+      data: {
+        id: SESSION_ID,
+        user_id: 'test-user-123',
+        pipeline_status: 'complete',
+        tailored_sections: {
+          ...FULL_V2_SNAPSHOT,
+          draft_state: {
+            editable_resume: null,
+            master_save_mode: 'session_only',
+            final_review_state: {
+              result: {
+                six_second_scan: {
+                  decision: 'skip',
+                  reason: 'Resume needs stronger ERP proof.',
+                  top_signals_seen: [],
+                  important_signals_missing: [],
+                },
+                hiring_manager_verdict: {
+                  rating: 'needs_improvement',
+                  summary: 'ERP proof is too thin.',
+                },
+                fit_assessment: {
+                  job_description_fit: 'moderate',
+                  benchmark_alignment: 'moderate',
+                  business_impact: 'moderate',
+                  clarity_and_credibility: 'weak',
+                },
+                top_wins: [],
+                concerns: [{
+                  id: 'concern_erp',
+                  severity: 'moderate',
+                  type: 'missing_evidence',
+                  observation: 'ERP systems experience is not clearly evidenced.',
+                  why_it_hurts: 'The hiring team may doubt fit for the operating model.',
+                  related_requirement: 'Experience with ERP systems (SAP, Oracle, or similar)',
+                  fix_strategy: 'Strengthen the supporting proof before export.',
+                  requires_candidate_input: true,
+                }],
+                structure_recommendations: [],
+                benchmark_comparison: {
+                  advantages_vs_benchmark: [],
+                  gaps_vs_benchmark: [],
+                  reframing_opportunities: [],
+                },
+                improvement_summary: [],
+              },
+              resolved_concern_ids: [],
+              acknowledged_export_warnings: false,
+              is_stale: false,
+              reviewed_resume_text: 'Operations leader who improved manufacturing performance across multiple sites.',
+            },
+            updated_at: '2026-03-22T00:00:00.000Z',
+          },
+        },
+      },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/result`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json() as {
+      draft_state?: {
+        final_review_state?: {
+          result?: {
+            concerns?: Array<{
+              fix_strategy?: string;
+              clarifying_question?: string;
+            }>;
+          };
+        };
+      } | null;
+    };
+
+    const concern = body.draft_state?.final_review_state?.result?.concerns?.[0];
+    expect(concern?.fix_strategy).toContain('ERP systems (SAP, Oracle, or similar)');
+    expect(concern?.clarifying_question).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+  });
+
   it('does NOT include a top-level "result" key in the v2 response shape', async () => {
     const chain = buildSingleChain({
       data: {

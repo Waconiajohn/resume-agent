@@ -196,6 +196,64 @@ export function enrichStoredPipelineDataForClient(pipelineData: StoredV2Pipeline
   };
 }
 
+function stabilizeStoredFinalReviewResultForClient(
+  result: unknown,
+  options?: { resumeText?: string; gapAnalysis?: unknown },
+): unknown {
+  if (!result || typeof result !== 'object') {
+    return result;
+  }
+
+  const parsed = finalReviewResultSchema.safeParse(result);
+  if (!parsed.success) {
+    return result;
+  }
+
+  return stabilizeFinalReviewResult(parsed.data, {
+    resumeText: options?.resumeText,
+    hardRequirementRisks: extractHardRequirementRisksFromGapAnalysis(options?.gapAnalysis),
+    materialJobFitRisks: extractMaterialJobFitRisksFromGapAnalysis(options?.gapAnalysis),
+  });
+}
+
+export function enrichStoredDraftStateForClient(
+  draftState: unknown,
+  options?: { resumeText?: string; gapAnalysis?: unknown },
+): unknown {
+  if (!draftState || typeof draftState !== 'object') {
+    return draftState;
+  }
+
+  const record = draftState as Record<string, unknown>;
+  const finalReviewState = record.final_review_state;
+  if (!finalReviewState || typeof finalReviewState !== 'object') {
+    return draftState;
+  }
+
+  const finalReviewRecord = finalReviewState as Record<string, unknown>;
+  const reviewedResumeText = typeof finalReviewRecord.reviewed_resume_text === 'string'
+    && finalReviewRecord.reviewed_resume_text.trim().length > 0
+    ? finalReviewRecord.reviewed_resume_text
+    : options?.resumeText;
+
+  const enrichedResult = stabilizeStoredFinalReviewResultForClient(finalReviewRecord.result, {
+    resumeText: reviewedResumeText,
+    gapAnalysis: options?.gapAnalysis,
+  });
+
+  if (enrichedResult === finalReviewRecord.result) {
+    return draftState;
+  }
+
+  return {
+    ...record,
+    final_review_state: {
+      ...finalReviewRecord,
+      result: enrichedResult,
+    },
+  };
+}
+
 export function applyEventToSnapshot(snapshot: StoredV2Snapshot, event: V2PipelineSSEEvent): {
   pipelineStatus?: 'running' | 'complete' | 'error';
   pipelineStage?: V2PipelineStage;
@@ -1586,7 +1644,7 @@ function cleanConcernFixStrategy(value: string, requiresCandidateInput: boolean)
 
 function isLowSignalFixStrategy(value: string): boolean {
   const normalized = value.trim().toLowerCase();
-  if (!/^(if (?:you have this experience,\s*)?)?(add|consider adding|highlight|provide)\b/i.test(normalized)) {
+  if (!/^(if (?:you have this experience,\s*)?)?(add|consider adding|highlight|provide|strengthen|review)\b/i.test(normalized)) {
     return false;
   }
 
@@ -1613,6 +1671,8 @@ function isLowSignalFixStrategy(value: string): boolean {
     'a bullet point or statement',
     'bullet points',
     'a separate section',
+    'strengthen the supporting proof before export',
+    'review this concern and add truthful supporting proof before export if you have it',
     'mention',
     'if this requirement is real',
     'any relevant experience',

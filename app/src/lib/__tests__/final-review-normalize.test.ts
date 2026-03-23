@@ -42,6 +42,19 @@ describe('normalizeFinalReviewResult', () => {
     expect(normalized?.improvement_summary[0]).toContain('Specific ownership');
   });
 
+  it('keeps legacy concern fallbacks compatibility-safe and generic', () => {
+    const normalized = normalizeFinalReviewResult({
+      concerns: ['Needs stronger operating cadence proof'],
+    });
+
+    expect(normalized?.concerns[0]?.fix_strategy).toBe(
+      'Review this concern and add truthful supporting proof before export if you have it.',
+    );
+    expect(normalized?.concerns[0]?.clarifying_question).toBe(
+      'What concrete truthful detail would address this concern?',
+    );
+  });
+
   it('returns null for non-object input', () => {
     expect(normalizeFinalReviewResult(null)).toBeNull();
     expect(normalizeFinalReviewResult('bad payload')).toBeNull();
