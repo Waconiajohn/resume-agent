@@ -895,4 +895,44 @@ describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
     );
     expect(seededAssistant.recommended_next_action).toBe('answer_question');
   });
+
+  it('uses the observation as the shared fallback subject when related_requirement is missing', async () => {
+    mockParseJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      data: {
+        ...VALID_FINAL_REVIEW_CHAT_BODY,
+        context: {
+          ...VALID_FINAL_REVIEW_CHAT_BODY.context,
+          related_requirement: undefined,
+          observation: 'ERP systems experience is not clearly evidenced.',
+        },
+      },
+    });
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/final-review-chat`, 'POST', {
+      ...VALID_FINAL_REVIEW_CHAT_BODY,
+      context: {
+        ...VALID_FINAL_REVIEW_CHAT_BODY.context,
+        related_requirement: undefined,
+        observation: 'ERP systems experience is not clearly evidenced.',
+      },
+    });
+
+    expect(res.status).toBe(200);
+
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const seededAssistant = JSON.parse(llmArgs.messages[1]?.content ?? '{}') as {
+      current_question?: string;
+      follow_up_question?: string;
+    };
+
+    expect(seededAssistant.current_question).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+    expect(seededAssistant.follow_up_question).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+  });
 });

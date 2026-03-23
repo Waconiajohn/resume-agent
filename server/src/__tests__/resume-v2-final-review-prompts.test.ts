@@ -2473,6 +2473,54 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.clarifying_question).toBe('Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?');
   });
 
+  it('uses the observation as the coaching subject when related_requirement is missing', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Solid operator with one systems gap.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong operator, but ERP systems proof is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_observation_only',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'ERP systems experience is not clearly evidenced.',
+          why_it_hurts: 'The role expects ERP familiarity in the operating environment.',
+          target_section: 'Professional Experience or Core Competencies',
+          fix_strategy: 'Strengthen the supporting proof before export.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe(
+      'If you have this experience, add one concrete example showing where you used ERP systems (SAP, Oracle, or similar), what you personally owned, and what outcome came from that work.',
+    );
+    expect(stabilized.concerns[0]?.clarifying_question).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+  });
+
   it('rewrites templated recruiter-scan win explanations into signal-aware wording', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {

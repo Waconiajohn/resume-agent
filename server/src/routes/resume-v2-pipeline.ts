@@ -998,10 +998,11 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 
   logger.info({ session_id: sessionId, concern_id, turn: messages.length }, 'Final review chat message');
 
+  const starterSubject = context.related_requirement?.trim() || context.observation?.trim();
   const starterQuestion = context.clarifying_question?.trim()
-    || (context.related_requirement?.trim()
-      ? buildRequirementClarifyingQuestion(context.related_requirement)
-      : 'What additional detail can you share that would make this point more credible or specific?');
+    || (starterSubject
+      ? buildRequirementClarifyingQuestion(starterSubject)
+      : 'What concrete truthful detail would address this concern?');
   const starterNeedsInput = context.requires_candidate_input ?? !context.suggested_resume_edit;
   const starterAction = starterNeedsInput ? 'answer_question' : context.suggested_resume_edit ? 'review_edit' : 'answer_question';
 

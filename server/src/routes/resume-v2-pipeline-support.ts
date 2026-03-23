@@ -1131,7 +1131,7 @@ function removeUnsupportedCredentialGuidance(text: string): string {
 function sanitizeConcernGuidance(
   concern: FinalReviewResult['concerns'][number],
 ): FinalReviewResult['concerns'][number] {
-  const requirement = cleanImprovementSummaryText(concern.related_requirement ?? '');
+  const coachingSubject = cleanImprovementSummaryText(concern.related_requirement ?? concern.observation ?? '');
   if (requirementLooksCredentialBased(concern)) {
     return concern;
   }
@@ -1143,12 +1143,12 @@ function sanitizeConcernGuidance(
     ? removeUnsupportedCredentialGuidance(concern.clarifying_question)
     : concern.clarifying_question;
 
-  if (fixStrategy && requirement && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))) {
-    fixStrategy = buildRequirementProofAction(requirement, concern.requires_candidate_input);
+  if (fixStrategy && coachingSubject && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))) {
+    fixStrategy = buildRequirementProofAction(coachingSubject, concern.requires_candidate_input);
   }
 
-  if (requirement && concern.requires_candidate_input && (!clarifyingQuestion || isGenericClarifyingQuestion(clarifyingQuestion))) {
-    clarifyingQuestion = buildRequirementClarifyingQuestion(requirement);
+  if (coachingSubject && concern.requires_candidate_input && (!clarifyingQuestion || isGenericClarifyingQuestion(clarifyingQuestion))) {
+    clarifyingQuestion = buildRequirementClarifyingQuestion(coachingSubject);
   }
 
   return {
