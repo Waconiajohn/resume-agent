@@ -2,218 +2,223 @@
 
 ## Purpose
 
-This document defines the shared product model for AI-assisted work across the active application.
+Define the product-wide AI operating model for this application so that all active rooms share the same structure for context, evidence, guidance, generation, review, and apply.
 
-It exists to stop room-by-room drift and to keep the product centered on the user’s job instead of the system’s internal process.
+This document works together with:
 
-## The Shared User Task Loop
+- [SHARED_CONTEXT_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_CONTEXT_CONTRACT.md)
+- [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md)
 
-Every active workflow should follow this sequence:
+## Product Philosophy
 
-1. `Goal`
-2. `What we know`
-3. `What is missing`
-4. `Best next action`
-5. `AI help inside the action`
-6. `Review and apply`
+This is an agentic executive-career platform, not a rigid wizard.
 
-If a screen does not clearly fit this loop, it must justify why.
+The system should:
 
-## What AI Should Do
+- give agents strong structured context
+- preserve agent reasoning freedom inside typed contracts
+- keep AI embedded inside the user’s work
+- make provenance and evidence explicit
+- protect users from unsupported claims or vague generic output
 
-AI is an embedded collaborator, not a sidecar tool palette.
+The system should not:
 
-AI should:
+- force users to decode internal pipeline states
+- hide product reasoning in UI glue code
+- use room-by-room logic where a shared contract should exist
+- turn benchmark expectations into candidate history
+- turn missing data into asserted fact
+- script agents into rigid procedural workers when typed contracts and agent domain ownership should drive behavior
 
-- interpret the target task
-- compare known evidence to the target
-- identify the most important missing detail
-- suggest a grounded draft
-- help refine that draft
-- support review before apply
+## Core Workflow Loop
 
-AI should not:
+Every major AI-assisted workflow should follow this loop:
 
-- force the user to infer provenance
-- expose raw internal reasoning structures
-- open into a blank prompt box when the system already knows the context
-- repeat analysis without changing the next action
+1. understand goal
+2. assemble context
+3. classify evidence
+4. identify gaps
+5. choose best next action
+6. generate structured help
+7. review with user-facing transparency
+8. apply or refine
 
-## Shared Data Layers
+This loop is the canonical behavior model for active rooms.
 
-All major rooms should eventually rely on the same conceptual layers.
+## Shared Inputs
 
-### 1. Goal Layer
+All rooms should consume some subset of the shared context contract:
 
-What artifact or outcome are we trying to improve?
+- candidate identity and background
+- target role
+- target company
+- industry context
+- source artifacts
+- career narrative
+- benchmark candidate model
+- gap analysis state
+- positioning strategy
+- evidence inventory
+- workflow state
+- constraints and provenance
 
-Examples:
+Evidence usage and output eligibility must follow the shared evidence contract.
 
-- targeted resume
-- master resume
-- cover letter
-- LinkedIn headline / summary / post
-- interview answer
-- networking outreach
+## Agent Responsibilities
 
-### 2. Context Layer
+Agent autonomy in this product means preserving agent domain ownership and reasoning freedom inside typed contracts. The application is responsible for assembling context, validating evidence, and governing review and apply. The application is not responsible for replacing agent judgment with brittle procedural sequencing.
 
-Known structured inputs:
+Agents are responsible for:
 
-- profession / role family
-- industry
-- company context
-- target role or target audience
-- job description or benchmark context
-- career profile / positioning context
+- interpreting structured context
+- matching the user goal to available evidence
+- identifying what is missing or weak
+- producing structured, transparent guidance
+- drafting grounded content
+- explaining what still requires user confirmation
 
-### 3. Evidence Layer
+Agents are not responsible for:
 
-Known support from the candidate’s actual background:
+- inventing missing facts
+- turning benchmark expectations into candidate biography
+- hiding provenance
+- deciding product workflow structure in an ad hoc way
 
-- direct proof
-- adjacent proof
-- unsupported area
-- overreach risk
-- benchmark-only gap
-- must-have gap
-- preferred signal gap
+The application is responsible for:
 
-### 4. Gap Layer
+- assembling context
+- enforcing contract shape
+- validating evidence level
+- deciding when review or confirmation is required
+- keeping AI help embedded inside the current user task
 
-What is not yet strong enough?
+## Room Adapters
 
-This should be explicit:
+Each room adapts the shared model to a specific artifact or objective.
 
-- what is missing
-- why it matters
-- whether the user needs to add a detail
-- whether the system already has enough to draft
+### Resume
 
-### 5. Action Layer
-
-One clear next action at a time:
-
-- answer a question
-- review a draft
-- improve a line
-- verify a claim
-- skip for now
-
-### 6. Review Layer
-
-Before content is treated as final, the user should be able to:
-
-- review the draft
-- edit the draft
-- approve / apply
-- understand what changed
-
-## Shared UX Rules
-
-These apply across active product surfaces.
-
-### Provenance must be explicit
-
-Users should not have to guess whether text came from:
-
-- the job description
-- the benchmark
-- their resume
-- AI inference
-
-### AI must start from context, not emptiness
-
-When AI opens, it should already know:
-
-- what the user is working on
-- what evidence exists
-- what detail is missing
-- what a grounded draft might look like
-
-### Analysis is useful only if it changes action
-
-Long analysis sections are only justified if they materially improve:
-
-- the next decision
-- the next question
-- the next draft
-- the user’s trust in the result
-
-If not, analysis should be folded into the workspace or hidden behind disclosure.
-
-### One active thing at a time
-
-The UI should keep one clear center of gravity:
-
-- one active requirement
-- one active section
-- one active answer
-- one active rewrite
-
-Secondary information can exist, but it must not compete with the main task.
-
-## Responsibilities: LLM vs Application
-
-### LLM responsibilities
-
-- interpret structured context
-- generate targeted questions
-- produce grounded draft language
-- compare candidate evidence to target requirements
-- generate critique or review observations
-
-### Application responsibilities
-
-- provide structured context
-- validate provenance and evidence quality
-- reject unsupported or generic outputs
-- preserve workflow state
-- present one clear next step
-- keep AI embedded inside the task
-
-The application should not ask the LLM to rescue poor structure that the application itself could define more explicitly.
-
-## Room Mapping
-
-### Resume Builder
-
-Primary reference implementation for the model:
-
-- role target
-- evidence map
-- gaps
-- rewrite loop
-- review/apply
-
-### Career Profile
-
-Canonical context source:
-
-- positioning
-- recurring strengths
-- operating style
-- trusted evidence inventory
-
-### Cover Letter
-
-Same model as resume, but applied to narrative fit and audience-specific framing.
+- Primary goal:
+  - improve a targeted or master resume against a role and benchmark
+- Shared inputs consumed:
+  - `candidateProfile`, `targetRole`, `targetCompany`, `industryContext`, `sourceArtifacts`, `careerNarrative`, `benchmarkCandidate`, `gapAnalysis`, `positioningStrategy`, `artifactTarget`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - requirement map, rewrite suggestions, edited resume sections, final review concerns
+- Special constraints:
+  - no unsupported claims, no invented metrics, no hidden provenance
+- Common failure mode:
+  - role requirements or benchmark expectations get echoed back as if they were candidate proof
 
 ### LinkedIn
 
-Same model applied to profile sections and content strategy.
+- Primary goal:
+  - align LinkedIn profile sections and supporting content with the target role and career narrative
+- Shared inputs consumed:
+  - `candidateProfile`, `targetRole`, `targetCompany`, `industryContext`, `careerNarrative`, `positioningStrategy`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - headline, about section, experience rewrites, featured content suggestions
+- Special constraints:
+  - profile voice must remain authentic and defensible, not sound like a fabricated executive bio
+- Common failure mode:
+  - generic polished language with weak evidence anchoring
 
-### Job Search
+### Blogging/Thought Leadership
 
-Same model applied to role targeting, fit assessment, and next actions.
+- Primary goal:
+  - generate thought-leadership content grounded in the candidate’s real expertise and career themes
+- Shared inputs consumed:
+  - `candidateProfile`, `industryContext`, `careerNarrative`, `positioningStrategy`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - blog outlines, post drafts, series ideas, content positioning themes
+- Special constraints:
+  - content may generalize expertise but may not fabricate lived experience, board work, or business results
+- Common failure mode:
+  - benchmark-level sophistication gets mistaken for actual candidate history
 
 ### Interview Prep
 
-Same model applied to answer quality:
+- Primary goal:
+  - prepare grounded, high-quality interview answers using real evidence and clear framing
+- Shared inputs consumed:
+  - `candidateProfile`, `targetRole`, `targetCompany`, `industryContext`, `sourceArtifacts`, `careerNarrative`, `benchmarkCandidate`, `gapAnalysis`, `positioningStrategy`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - likely questions, answer drafts, gap alerts, follow-up talking points
+- Special constraints:
+  - answers may strengthen framing, but may not overstate unsupported experience
+- Common failure mode:
+  - polished answer drafts imply proof the candidate does not actually have
 
-- what the interviewer wants
-- what evidence exists
-- what is thin
-- suggested answer
-- improve with AI
+### Job Targeting
 
+- Primary goal:
+  - identify strong-fit roles and show the positioning gaps between the candidate and the role
+- Shared inputs consumed:
+  - `candidateProfile`, `targetRole`, `targetCompany`, `industryContext`, `careerNarrative`, `benchmarkCandidate`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - fit summaries, risk areas, targeting recommendations, next actions
+- Special constraints:
+  - fit analysis should distinguish between must-have, preferred, and benchmark-only expectations
+- Common failure mode:
+  - job-fit summaries collapse materially different evidence types into one shallow score
+
+### Company Targeting
+
+- Primary goal:
+  - help the user pursue a specific company with grounded positioning and outreach strategy
+- Shared inputs consumed:
+  - `candidateProfile`, `targetCompany`, `industryContext`, `careerNarrative`, `positioningStrategy`, `evidenceInventory`, `constraints`, `provenance`, `workflowState`
+- Output types:
+  - company-specific positioning, outreach angles, relationship maps, talking points
+- Special constraints:
+  - company narrative must remain evidence-based and should not imply inside knowledge or domain depth the candidate lacks
+- Common failure mode:
+  - aspirational company-fit language gets mistaken for demonstrated company-relevant experience
+
+## Review and Apply Model
+
+All AI-assisted content should move through the same user-facing model:
+
+1. show the target or goal
+2. show the strongest known supporting evidence
+3. show what is still missing or weak
+4. show the suggested draft or next question
+5. allow user review and edit
+6. apply only after the content is reviewable
+
+AI should help inside that loop, not in a detached helper layer.
+
+Evidence eligibility inside review and apply must stay consistent with [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md):
+
+- `DirectProof` may flow into final artifact copy.
+- `StrongAdjacentProof` may flow into final artifact copy only when the wording remains faithful to what the evidence actually proves and any required confirmation has happened.
+- `SupportableInference`, `BenchmarkInformedGap`, `UserUnconfirmedClaim`, `Unsupported`, and `HighOverreachRisk` must not be exported as factual artifact copy.
+- benchmark-derived guidance must remain labeled as benchmark-derived guidance until it is replaced by candidate-supported proof.
+
+## Contract Dependencies
+
+This operating model depends directly on:
+
+- `SHARED_CONTEXT_CONTRACT`
+- `SHARED_EVIDENCE_CONTRACT`
+
+If a room cannot map its behavior to those contracts, it is not aligned with the operating model and must be treated as a refactor target.
+
+## Failure Modes
+
+Common failure modes to watch for:
+
+- context missing upstream, forcing downstream rescue logic
+- evidence-free artifact generation
+- benchmark guidance rendered as candidate biography
+- requirement echoing instead of meaningful next-action coaching
+- domain reasoning leaking into UI-only code
+- duplicated analysis sections that do not change the next action
+- agent prompts becoming rigid pseudo-procedural scripts
+
+## Implementation Notes
+
+- Shared contracts should live in typed code on both server and app sides.
+- Room adapters should be explicit and minimal.
+- Validation should happen before user-visible artifact rendering.
+- Local room code may shape presentation, but shared contracts should define meaning.
+- If repeated hardening is needed in multiple rooms, move the logic upstream or into shared validators.

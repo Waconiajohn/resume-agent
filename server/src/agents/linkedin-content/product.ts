@@ -16,6 +16,7 @@ import type { LinkedInContentState, LinkedInContentSSEEvent, TopicSuggestion, Po
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createLinkedInContentProductConfig(): ProductConfig<LinkedInContentState, LinkedInContentSSEEvent> {
   return {
@@ -99,10 +100,12 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
       user_id: userId,
       current_stage: 'strategy',
       platform_context: input.platform_context as LinkedInContentState['platform_context'],
+      shared_context: input.shared_context as LinkedInContentState['shared_context'],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'strategist') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze this professional\'s positioning and generate compelling LinkedIn post topic suggestions.',
           '',
@@ -116,7 +119,13 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           );
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(
+            '## Prior Positioning Strategy',
+            JSON.stringify(sharedContext?.positioningStrategy, null, 2),
+            '',
+          );
+        } else if (state.platform_context?.positioning_strategy) {
           parts.push(
             '## Prior Positioning Strategy',
             JSON.stringify(state.platform_context.positioning_strategy, null, 2),
@@ -124,7 +133,13 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           );
         }
 
-        if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+          parts.push(
+            '## Evidence Items',
+            JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+            '',
+          );
+        } else if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
           parts.push(
             '## Evidence Items',
             JSON.stringify(state.platform_context.evidence_items.slice(0, 8), null, 2),
@@ -155,6 +170,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
       }
 
       if (agentName === 'writer') {
+        const sharedContext = state.shared_context;
         const selectedTopic = state.selected_topic ?? 'professional insight';
 
         const parts = [
@@ -172,7 +188,13 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           );
         }
 
-        if (state.platform_context?.career_narrative) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(
+            '## Career Narrative (match this authentic voice)',
+            JSON.stringify(sharedContext?.careerNarrative, null, 2),
+            '',
+          );
+        } else if (state.platform_context?.career_narrative) {
           parts.push(
             '## Career Narrative (match this authentic voice)',
             JSON.stringify(state.platform_context.career_narrative, null, 2),

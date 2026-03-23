@@ -109,6 +109,22 @@ function sourceDescription(source: 'job_description' | 'benchmark'): string {
     : 'These are the direct requirements we pulled from the job description and need to account for honestly.';
 }
 
+function coachingQuestions(card: GapCoachingCard | undefined) {
+  if (card?.interview_questions && card.interview_questions.length > 0) {
+    return card.interview_questions;
+  }
+
+  if (card?.coaching_policy?.clarifyingQuestion) {
+    return [{
+      question: card.coaching_policy.clarifyingQuestion,
+      rationale: card.coaching_policy.rationale ?? '',
+      looking_for: card.coaching_policy.lookingFor ?? '',
+    }];
+  }
+
+  return [];
+}
+
 // ─── Expandable requirement row ─────────────────────────────────────
 
 interface RequirementRowProps {
@@ -139,6 +155,8 @@ function RequirementRow({
   const bestEvidence = mappedEvidence?.text ?? relevantEvidence[0] ?? null;
   const bestEvidenceSection = mappedEvidence?.section ?? null;
   const relatedEvidence = relevantEvidence.filter((entry) => entry !== bestEvidence).slice(0, 2);
+  const questions = coachingQuestions(coaching);
+  const coachingPrompt = coaching?.coaching_policy?.proofActionRequiresInput;
   const issueText = coaching?.ai_reasoning
     ?? req.source_evidence
     ?? (classification === 'missing'
@@ -331,9 +349,9 @@ function RequirementRow({
           {/* Coaching context: structured questions or generic textarea */}
           {hasCoaching && coachingState.showContextInput && (
             <div className="mt-3 space-y-3">
-              {coaching.interview_questions && coaching.interview_questions.length > 0 ? (
+              {questions.length > 0 ? (
                 /* Structured interview questions */
-                coaching.interview_questions.map((q, qi) => (
+                questions.map((q, qi) => (
                   <div key={qi} className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] px-3 py-2.5">
                     <p className="text-sm text-white/80 leading-relaxed mb-1.5">{q.question}</p>
                     <p className="text-[10px] text-white/30 mb-2 italic">{q.looking_for}</p>
@@ -356,7 +374,7 @@ function RequirementRow({
                   value={coachingState.contextText}
                   onChange={e => onCoachingChange({ contextText: e.target.value })}
                   disabled={disabled}
-                  placeholder="Share any relevant experience, projects, or context that wasn't in your resume..."
+                  placeholder={coachingPrompt ?? "Share any relevant experience, projects, or context that wasn't in your resume..."}
                   rows={3}
                   className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={`Additional context for: ${req.requirement}`}
@@ -686,7 +704,7 @@ export function UnifiedGapAnalysisCard({
 
   // Coaching state tracking — reset is handled by `key` prop at call site
   const [coachingStates, setCoachingStates] = useState<CoachingState[]>(() =>
-    (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false, questionAnswers: {} })),
+      (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false, questionAnswers: {} })),
   );
 
   const hasCoaching = gapCoachingCards !== null && gapCoachingCards.length > 0;
@@ -711,7 +729,7 @@ export function UnifiedGapAnalysisCard({
       };
       if (s.action === 'context') {
         // Build context from structured Q&A pairs when available
-        const questions = card.interview_questions ?? [];
+        const questions = coachingQuestions(card);
         const qaParts: string[] = [];
         for (const [idx, answer] of Object.entries(s.questionAnswers)) {
           if (answer.trim()) {

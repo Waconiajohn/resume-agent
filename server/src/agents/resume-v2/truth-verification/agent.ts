@@ -12,6 +12,7 @@ import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { TruthVerificationInput, TruthVerificationOutput } from '../types.js';
+import { mapTruthVerificationOutputToEvidenceItems } from '../../../contracts/shared-evidence.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Return exactly one JSON object.
@@ -79,7 +80,7 @@ export async function runTruthVerification(
     });
 
     const parsed = repairJSON<TruthVerificationOutput>(response.text);
-    if (parsed) return parsed;
+    if (parsed) return attachCanonicalEvidence(parsed);
 
     logger.warn(
       { rawSnippet: response.text.substring(0, 500) },
@@ -105,7 +106,7 @@ export async function runTruthVerification(
     });
 
     const retryParsed = repairJSON<TruthVerificationOutput>(retry.text);
-    if (retryParsed) return retryParsed;
+    if (retryParsed) return attachCanonicalEvidence(retryParsed);
 
     logger.error(
       { rawSnippet: retry.text.substring(0, 500) },
@@ -222,10 +223,19 @@ function buildDeterministicTruthVerification(
   const trustworthyCount = claims.filter((claim) => claim.confidence === 'verified' || claim.confidence === 'plausible').length;
   const truth_score = claims.length > 0 ? Math.round((trustworthyCount / claims.length) * 100) : 100;
 
-  return {
+  return attachCanonicalEvidence({
     claims,
     truth_score,
     flagged_items,
+  });
+}
+
+function attachCanonicalEvidence(output: TruthVerificationOutput): TruthVerificationOutput {
+  return {
+    ...output,
+    evidence_items: mapTruthVerificationOutputToEvidenceItems(output.claims, {
+      sourceProduct: 'resume_v2',
+    }),
   };
 }
 

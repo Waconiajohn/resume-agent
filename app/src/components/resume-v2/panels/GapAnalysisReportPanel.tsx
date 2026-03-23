@@ -75,6 +75,7 @@ interface MergedRequirement {
   sourceEvidence?: string;
   benchmarkContext?: string;
   strategy?: GapStrategy;
+  coachingPolicy?: GapStrategy['coaching_policy'];
   aiReasoning?: string;
   interviewQuestions?: Array<{ question: string; rationale: string; looking_for: string }>;
   inferredMetric?: string;
@@ -159,6 +160,22 @@ function tierStatusLabel(tier: Tier): 'strong' | 'repositioned' | 'gap' {
   if (tier === 'strong') return 'strong';
   if (tier === 'partial') return 'repositioned';
   return 'gap';
+}
+
+function coachingQuestions(req: MergedRequirement): Array<{ question: string; rationale: string; looking_for: string }> {
+  if (req.interviewQuestions && req.interviewQuestions.length > 0) {
+    return req.interviewQuestions;
+  }
+
+  if (req.coachingPolicy?.clarifyingQuestion) {
+    return [{
+      question: req.coachingPolicy.clarifyingQuestion,
+      rationale: req.coachingPolicy.rationale ?? '',
+      looking_for: req.coachingPolicy.lookingFor ?? '',
+    }];
+  }
+
+  return [];
 }
 
 // ─── Summary Header ──────────────────────────────────────────────────────────
@@ -387,6 +404,7 @@ function RequirementCard({
     : req.tier === 'partial'
       ? hasMapping ? 'Partially Covered' : 'Needs More Evidence'
       : 'Not Addressed';
+  const policyGuidance = req.coachingPolicy?.proofActionRequiresInput;
 
   const handleApplyLanguage = useCallback(() => {
     if (!canAct || !req.strategy?.positioning) return;
@@ -428,7 +446,7 @@ function RequirementCard({
     onRequirementClick(req.requirement);
   }, [req.requirement, onRequirementClick]);
 
-  const questions = req.interviewQuestions ?? [];
+  const questions = coachingQuestions(req);
   const metric = req.inferredMetric ?? req.strategy?.inferred_metric;
   const metricRationale = req.inferenceRationale ?? req.strategy?.inference_rationale;
 
@@ -606,9 +624,11 @@ function RequirementCard({
             style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <p style={{ fontSize: 13, lineHeight: 1.6, color: REPORT_COLORS.body }}>
-              {req.tier === 'partial'
-                ? 'You are at least partly qualified here. Tighten the wording or add missing detail before you count this as covered.'
-                : 'This requirement still needs proof. Add real detail, brainstorm adjacent experience, or leave it marked as only partially addressed.'}
+              {policyGuidance ?? (
+                req.tier === 'partial'
+                  ? 'You are at least partly qualified here. Tighten the wording or add missing detail before you count this as covered.'
+                  : 'This requirement still needs proof. Add real detail, brainstorm adjacent experience, or leave it marked as only partially addressed.'
+              )}
             </p>
           </div>
         )}
@@ -707,7 +727,7 @@ function RequirementCard({
             <textarea
               value={contextText}
               onChange={(e) => setContextText(e.target.value)}
-              placeholder={contextHint(req.requirement)}
+              placeholder={policyGuidance ?? contextHint(req.requirement)}
               rows={3}
               className="w-full rounded-lg px-3.5 py-2.5 resize-none focus:outline-none transition-colors"
               style={{
@@ -979,6 +999,7 @@ export function GapAnalysisReportPanel({
         sourceEvidence: gapReq?.source_evidence ?? comp.evidence_from_jd ?? undefined,
         benchmarkContext: benchCtx ?? undefined,
         strategy: gapReq?.strategy,
+        coachingPolicy: coaching?.coaching_policy ?? gapReq?.strategy?.coaching_policy,
         aiReasoning: coaching?.ai_reasoning ?? gapReq?.strategy?.ai_reasoning,
         interviewQuestions: coaching?.interview_questions ?? gapReq?.strategy?.interview_questions,
         inferredMetric: coaching?.inferred_metric ?? gapReq?.strategy?.inferred_metric,
@@ -1011,6 +1032,7 @@ export function GapAnalysisReportPanel({
         sourceEvidence: req.source_evidence,
         benchmarkContext: benchCtx ?? undefined,
         strategy: req.strategy,
+        coachingPolicy: coaching?.coaching_policy ?? req.strategy?.coaching_policy,
         aiReasoning: coaching?.ai_reasoning ?? req.strategy?.ai_reasoning,
         interviewQuestions: coaching?.interview_questions ?? req.strategy?.interview_questions,
         inferredMetric: coaching?.inferred_metric ?? req.strategy?.inferred_metric,

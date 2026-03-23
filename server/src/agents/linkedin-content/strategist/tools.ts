@@ -13,6 +13,7 @@ import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 // ─── Tool: analyze_expertise ───────────────────────────────────────────
 
@@ -38,8 +39,9 @@ const analyzeExpertiseTool: LinkedInContentTool = {
     });
 
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
 
-    if (!platformContext?.positioning_strategy && !platformContext?.evidence_items) {
+    if (!hasMeaningfulSharedValue(sharedContext?.positioningStrategy) && !platformContext?.positioning_strategy && !hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems) && !platformContext?.evidence_items) {
       // No platform context — return generic analysis placeholder
       const fallback = {
         expertise_areas: ['professional leadership', 'industry expertise', 'strategic thinking'],
@@ -53,14 +55,25 @@ const analyzeExpertiseTool: LinkedInContentTool = {
 
     const contextParts: string[] = [];
 
-    if (platformContext.positioning_strategy) {
+    if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+      contextParts.push(
+        '## Positioning Strategy',
+        JSON.stringify(sharedContext?.positioningStrategy, null, 2),
+      );
+    } else if (platformContext?.positioning_strategy) {
       contextParts.push(
         '## Positioning Strategy',
         JSON.stringify(platformContext.positioning_strategy, null, 2),
       );
     }
 
-    if (platformContext.evidence_items && platformContext.evidence_items.length > 0) {
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      contextParts.push(
+        '',
+        '## Evidence Items',
+        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 10), null, 2),
+      );
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       contextParts.push(
         '',
         '## Evidence Items',
@@ -68,7 +81,13 @@ const analyzeExpertiseTool: LinkedInContentTool = {
       );
     }
 
-    if (platformContext.career_narrative) {
+    if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+      contextParts.push(
+        '',
+        '## Career Narrative',
+        JSON.stringify(sharedContext?.careerNarrative, null, 2),
+      );
+    } else if (platformContext?.career_narrative) {
       contextParts.push(
         '',
         '## Career Narrative',
@@ -153,6 +172,7 @@ const suggestTopicsTool: LinkedInContentTool = {
 
     const expertiseAnalysis = ctx.scratchpad.expertise_analysis as Record<string, unknown> | undefined;
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
 
     const contextParts: string[] = ['Generate LinkedIn post topic suggestions for this professional.', ''];
 
@@ -164,7 +184,13 @@ const suggestTopicsTool: LinkedInContentTool = {
       );
     }
 
-    if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      contextParts.push(
+        '## Available Evidence Items (use as hooks)',
+        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+        '',
+      );
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       contextParts.push(
         '## Available Evidence Items (use as hooks)',
         JSON.stringify(platformContext.evidence_items.slice(0, 8), null, 2),

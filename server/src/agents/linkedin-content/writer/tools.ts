@@ -14,6 +14,7 @@ import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 // ─── Tool: write_post ─────────────────────────────────────────────────
 
@@ -56,13 +57,20 @@ const writePostTool: LinkedInContentTool = {
     });
 
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
     const contextParts: string[] = [
       `Write a LinkedIn post on this topic: "${topic}"`,
       `Style: ${style}`,
       '',
     ];
 
-    if (platformContext?.career_narrative) {
+    if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+      contextParts.push(
+        '## User\'s Career Narrative (match their authentic voice)',
+        JSON.stringify(sharedContext?.careerNarrative, null, 2),
+        '',
+      );
+    } else if (platformContext?.career_narrative) {
       contextParts.push(
         '## User\'s Career Narrative (match their authentic voice)',
         JSON.stringify(platformContext.career_narrative, null, 2),
@@ -70,7 +78,13 @@ const writePostTool: LinkedInContentTool = {
       );
     }
 
-    if (platformContext?.positioning_strategy) {
+    if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+      contextParts.push(
+        '## Positioning Strategy (ensure post reinforces this)',
+        JSON.stringify(sharedContext?.positioningStrategy, null, 2),
+        '',
+      );
+    } else if (platformContext?.positioning_strategy) {
       contextParts.push(
         '## Positioning Strategy (ensure post reinforces this)',
         JSON.stringify(platformContext.positioning_strategy, null, 2),
@@ -78,7 +92,13 @@ const writePostTool: LinkedInContentTool = {
       );
     }
 
-    if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      contextParts.push(
+        '## Evidence Items (use specific metrics and stories from here)',
+        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 5), null, 2),
+        '',
+      );
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       contextParts.push(
         '## Evidence Items (use specific metrics and stories from here)',
         JSON.stringify(platformContext.evidence_items.slice(0, 5), null, 2),
@@ -291,6 +311,7 @@ const revisePostTool: LinkedInContentTool = {
     });
 
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
     const revisionParts: string[] = [
       'Revise this LinkedIn post based on the user feedback.',
       '',
@@ -301,7 +322,13 @@ const revisePostTool: LinkedInContentTool = {
       feedback,
     ];
 
-    if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      revisionParts.push(
+        '',
+        '## Available Evidence (use if user requests specific examples)',
+        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+      );
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       revisionParts.push(
         '',
         '## Available Evidence (use if user requests specific examples)',

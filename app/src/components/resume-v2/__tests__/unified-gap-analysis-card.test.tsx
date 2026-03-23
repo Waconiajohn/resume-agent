@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { UnifiedGapAnalysisCard } from '../cards/UnifiedGapAnalysisCard';
-import type { GapAnalysis, PositioningAssessment, ResumeDraft } from '@/types/resume-v2';
+import type { GapAnalysis, GapCoachingCard, PositioningAssessment, ResumeDraft } from '@/types/resume-v2';
 
 function makeResume(): ResumeDraft {
   return {
@@ -207,6 +207,42 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     expect(screen.getAllByText('Not yet covered').length).toBeGreaterThan(0);
     expect(screen.getAllByText('What still needs to be clearer').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Best evidence on your resume').length).toBeGreaterThan(0);
+  });
+
+  it('uses shared coaching policy guidance when explicit interview questions are missing', () => {
+    const coachingCards: GapCoachingCard[] = [
+      {
+        requirement: 'Board-level communication',
+        importance: 'important',
+        classification: 'missing',
+        ai_reasoning: 'We need one concrete board or executive audience example before this should count as covered.',
+        proposed_strategy: 'Presented quarterly operating updates to the board and executive leadership, translating performance issues into investment priorities.',
+        evidence_found: [],
+        coaching_policy: {
+          primaryFamily: 'communication',
+          families: ['communication'],
+          clarifyingQuestion: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+          proofActionRequiresInput: 'If you have this experience, add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+          proofActionDirect: 'Add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+          rationale: 'Executive communication only counts when the audience, message, and outcome are clear.',
+          lookingFor: 'Audience seniority, what was presented, and the decision, alignment, or outcome that followed.',
+        },
+      },
+    ];
+
+    render(
+      <UnifiedGapAnalysisCard
+        gapAnalysis={makeGapAnalysis()}
+        gapCoachingCards={coachingCards}
+        onRespondGapCoaching={vi.fn()}
+        currentResume={makeResume()}
+        positioningAssessment={makePositioningAssessment()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add context for: board-level communication/i }));
+    expect(screen.getByText(/who was the audience, what did you present or align on/i)).toBeInTheDocument();
+    expect(screen.getByText(/audience seniority/i)).toBeInTheDocument();
   });
 
   it('does not present unrelated operational proof as mapped evidence for availability requirements', () => {

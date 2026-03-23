@@ -13,6 +13,7 @@ import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../types.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 // ─── Tool: score_job_fit ────────────────────────────────────────────
 
@@ -43,9 +44,16 @@ const scoreJobFitTool: JobFinderTool = {
     });
 
     // Build context for scoring
-    const positioningStrategy = state.platform_context?.positioning_strategy;
-    const benchmarkCandidate = state.platform_context?.benchmark_candidate;
-    const gapAnalysis = state.platform_context?.gap_analysis;
+    const sharedContext = state.shared_context;
+    const positioningStrategy = hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+      ? sharedContext?.positioningStrategy
+      : state.platform_context?.positioning_strategy;
+    const benchmarkCandidate = hasMeaningfulSharedValue(sharedContext?.benchmarkCandidate)
+      ? sharedContext?.benchmarkCandidate
+      : state.platform_context?.benchmark_candidate;
+    const gapAnalysis = hasMeaningfulSharedValue(sharedContext?.gapAnalysis)
+      ? sharedContext?.gapAnalysis
+      : state.platform_context?.gap_analysis;
 
     const contextParts: string[] = [];
     if (positioningStrategy) {
@@ -192,8 +200,12 @@ const rankAndNarrateTool: JobFinderTool = {
     const topScores = sortedScores.slice(0, maxResults);
 
     // Merge score data with discovery data (title+company match)
-    const careerNarrative = state.platform_context?.career_narrative;
-    const industryResearch = state.platform_context?.industry_research;
+    const careerNarrative = hasMeaningfulSharedValue(state.shared_context?.careerNarrative)
+      ? state.shared_context?.careerNarrative
+      : state.platform_context?.career_narrative;
+    const industryResearch = hasMeaningfulSharedValue(state.shared_context?.industryContext)
+      ? state.shared_context?.industryContext
+      : state.platform_context?.industry_research;
 
     const narrativePrompt = `Write compelling, specific "why this matches" narratives for these job opportunities.
 

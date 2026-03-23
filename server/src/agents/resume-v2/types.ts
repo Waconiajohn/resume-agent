@@ -10,6 +10,8 @@
  */
 
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { EvidenceItem } from '../../contracts/shared-evidence.js';
+import type { RequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
 
 // ─── Agent 1: Job Intelligence ───────────────────────────────────────
 
@@ -159,6 +161,7 @@ export interface GapStrategy {
     /** What kind of answer would help (guides the user) */
     looking_for: string;
   }>;
+  coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
 export interface RequirementGap {
@@ -351,6 +354,8 @@ export interface TruthVerificationOutput {
     issue: string;
     recommendation: string;
   }>;
+  /** Canonical evidence mapping derived from legacy truth-verification claims */
+  evidence_items?: EvidenceItem[];
 }
 
 // ─── Agent 8: ATS Optimization ───────────────────────────────────────
@@ -468,6 +473,7 @@ export interface GapCoachingCard {
     rationale: string;
     looking_for: string;
   }>;
+  coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
 export interface GapCoachingResponse {

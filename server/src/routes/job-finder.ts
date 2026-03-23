@@ -18,6 +18,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../agents/job-finder/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -45,7 +46,7 @@ export const jobFinderRoutes = createProductRoutes<JobFinderState, JobFinderSSEE
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeBenchmarkCandidate: true,
@@ -53,6 +54,8 @@ export const jobFinderRoutes = createProductRoutes<JobFinderState, JobFinderSSEE
         includeEvidenceItems: true,
         includeCareerNarrative: true,
         includeIndustryResearch: true,
+        includeClientProfile: true,
+        includeTargetRole: true,
         includeEmotionalBaseline: true,
       });
 
@@ -60,6 +63,19 @@ export const jobFinderRoutes = createProductRoutes<JobFinderState, JobFinderSSEE
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'job_match_list',
+          artifactGoal: 'identify and rank target jobs',
+          targetAudience: 'candidate',
+          successCriteria: ['surface strong-fit roles', 'ground ranking in shared context'],
+        },
+        workflowState: {
+          room: 'job_search',
+          stage: 'context_loaded',
+          activeTask: 'score job matches against shared positioning and evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

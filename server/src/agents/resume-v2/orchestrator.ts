@@ -15,6 +15,7 @@
 import logger from '../../lib/logger.js';
 import { MODEL_LIGHT, MODEL_MID, MODEL_PRIMARY, MODEL_PRICING } from '../../lib/model-constants.js';
 import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../../lib/llm-provider.js';
+import { getRequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
 import { runJobIntelligence } from './job-intelligence/agent.js';
 import { runCandidateIntelligence } from './candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from './benchmark-candidate/agent.js';
@@ -156,6 +157,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
           evidence_found: req?.evidence ?? [],
           previously_approved: !!previouslyApproved,
           interview_questions: ps.strategy.interview_questions,
+          coaching_policy: ps.strategy.coaching_policy ?? getRequirementCoachingPolicySnapshot(ps.requirement),
         };
       });
       emit({ type: 'gap_coaching', data: coachingCards });

@@ -163,6 +163,7 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
       classification: 'strong',
       evidence: ['Built cloud platform on AWS'],
       source_evidence: undefined,
+      strategy: undefined,
     },
     {
       requirement: 'Budget Management',
@@ -179,6 +180,15 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
         inferred_metric: '$3M+',
         inference_rationale: '40 × $85K = $3.4M, backed off to $3M+',
         ai_reasoning: 'I found you managed a team of 40 engineers. That implies roughly $3M in payroll.',
+        coaching_policy: {
+          primaryFamily: 'financial',
+          families: ['financial'],
+          clarifyingQuestion: 'What budget, spend, revenue, or P&L scope did you personally own, and what business decision or outcome did it influence?',
+          proofActionRequiresInput: 'If you have this experience, add one concrete example showing the budget, spend, revenue, or P&L scope you owned and the business outcome tied to it.',
+          proofActionDirect: 'Add one concrete example showing the budget, spend, revenue, or P&L scope you owned and the business outcome tied to it.',
+          rationale: 'Financial scope only reads credibly when the owned dollars and decisions are explicit.',
+          lookingFor: 'Budget, spend, revenue, or P&L scope plus the business result tied to that ownership.',
+        },
       },
     },
   ],
@@ -212,6 +222,15 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
         inferred_metric: '$3M+',
         inference_rationale: '40 × $85K = $3.4M',
         ai_reasoning: 'Your team of 40 implies roughly $3M in payroll costs.',
+        coaching_policy: {
+          primaryFamily: 'financial',
+          families: ['financial'],
+          clarifyingQuestion: 'What budget, spend, revenue, or P&L scope did you personally own, and what business decision or outcome did it influence?',
+          proofActionRequiresInput: 'If you have this experience, add one concrete example showing the budget, spend, revenue, or P&L scope you owned and the business outcome tied to it.',
+          proofActionDirect: 'Add one concrete example showing the budget, spend, revenue, or P&L scope you owned and the business outcome tied to it.',
+          rationale: 'Financial scope only reads credibly when the owned dollars and decisions are explicit.',
+          lookingFor: 'Budget, spend, revenue, or P&L scope plus the business result tied to that ownership.',
+        },
       },
     },
   ],
@@ -691,6 +710,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.requirements.length).toBeGreaterThan(0);
       expect(result.score_breakdown?.job_description.total).toBeGreaterThan(0);
       expect(result.strength_summary.length).toBeGreaterThan(0);
+    });
+
+    it('adds shared coaching policy snapshots to normalized strategies', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(GAP_ANALYSIS_OUTPUT);
+
+      const result = await runGapAnalysis(input);
+      const partialRequirement = result.requirements.find((item) => item.requirement === 'Budget Management');
+      const pendingStrategy = result.pending_strategies.find((item) => item.requirement === 'Budget Management');
+
+      expect(partialRequirement?.strategy?.coaching_policy?.primaryFamily).toBe('financial');
+      expect(partialRequirement?.strategy?.coaching_policy?.clarifyingQuestion).toContain('budget, spend, revenue, or P&L scope');
+      expect(pendingStrategy?.strategy.coaching_policy?.proofActionRequiresInput).toContain('business outcome tied to it');
     });
 
     it('falls back deterministically when the LLM times out', async () => {

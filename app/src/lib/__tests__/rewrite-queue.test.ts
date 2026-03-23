@@ -180,6 +180,25 @@ describe('rewrite-queue', () => {
       jobIntelligence: makeJobIntelligence(),
       gapAnalysis,
       currentResume: makeResume(),
+      gapCoachingCards: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+          proposed_strategy: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+          evidence_found: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          coaching_policy: {
+            primaryFamily: 'talent',
+            families: ['talent'],
+            clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+            lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+          },
+        },
+      ],
     });
 
     const hardGap = queue.items.find((item) => item.requirement?.includes('Bachelor'))!;
@@ -244,6 +263,25 @@ describe('rewrite-queue', () => {
       jobIntelligence: makeJobIntelligence(),
       gapAnalysis,
       currentResume: makeResume(),
+      gapCoachingCards: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+          proposed_strategy: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+          evidence_found: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          coaching_policy: {
+            primaryFamily: 'talent',
+            families: ['talent'],
+            clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+            lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+          },
+        },
+      ],
     });
 
     expect(queue.items).toHaveLength(1);
@@ -272,6 +310,25 @@ describe('rewrite-queue', () => {
       jobIntelligence: makeJobIntelligence(),
       gapAnalysis,
       currentResume: makeResume(),
+      gapCoachingCards: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+          proposed_strategy: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+          evidence_found: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          coaching_policy: {
+            primaryFamily: 'talent',
+            families: ['talent'],
+            clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+            lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+          },
+        },
+      ],
     });
 
     expect(queue.items).toHaveLength(1);
@@ -306,6 +363,25 @@ describe('rewrite-queue', () => {
       jobIntelligence: makeJobIntelligence(),
       gapAnalysis,
       currentResume: makeResume(),
+      gapCoachingCards: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+          proposed_strategy: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+          evidence_found: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          coaching_policy: {
+            primaryFamily: 'talent',
+            families: ['talent'],
+            clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+            lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+          },
+        },
+      ],
     });
 
     expect(queue.items).toHaveLength(1);
@@ -362,6 +438,173 @@ describe('rewrite-queue', () => {
     expect(queue.items).toHaveLength(1);
     expect(queue.items[0]?.starterQuestion).toContain('Which metrics or scorecards did you personally track');
     expect(queue.items[0]?.starterQuestion).toContain('what decision or improvement did they drive');
+  });
+
+  it('prefers shared coaching policy metadata over local fallback prompts', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          strategy: {
+            real_experience: 'Developed plant managers and promoted two site leaders into regional roles.',
+            positioning: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+            ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+            coaching_policy: {
+              primaryFamily: 'talent',
+              families: ['talent'],
+              clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+              proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+              proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+              rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+              lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+            },
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+      gapCoachingCards: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+          proposed_strategy: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+          evidence_found: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          coaching_policy: {
+            primaryFamily: 'talent',
+            families: ['talent'],
+            clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+            rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+            lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+          },
+        },
+      ],
+    });
+
+    expect(queue.items[0]?.starterQuestion).toBe('Who did you hire, coach, develop, or promote, and what changed because of that leadership?');
+    expect(queue.items[0]?.userInstruction).toContain('who you hired, developed, coached, or promoted');
+  });
+
+  it('uses strategy-level shared coaching policy even when no coaching card is present', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Develop and track performance metrics',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the network.'],
+          strategy: {
+            real_experience: 'Tracked weekly throughput metrics and improved fill rate by 14% across the network.',
+            positioning: 'Built and tracked weekly throughput scorecards that improved fill rate by 14% across the network.',
+            ai_reasoning: 'The proof is close, but the resume still needs the metrics and cadence to be explicit.',
+            interview_questions: [
+              {
+                question: 'Tell me about your experience with performance metrics.',
+                rationale: 'Generic placeholder',
+                looking_for: 'Something about metrics',
+              },
+            ],
+            coaching_policy: {
+              primaryFamily: 'metrics',
+              families: ['metrics'],
+              clarifyingQuestion: 'Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?',
+              proofActionRequiresInput: 'If you have this experience, add one concrete example showing which metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.',
+              proofActionDirect: 'Add one concrete example showing which metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.',
+              rationale: 'Specific metrics, review cadence, and decisions make performance-management claims believable on a resume.',
+              lookingFor: 'Named metrics, reporting cadence, and the decision or improvement they drove.',
+            },
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items[0]?.starterQuestion).toBe('Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?');
+    expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards you tracked');
+  });
+
+  it('keeps review guidance when a suggested rewrite already exists even if coaching policy is present', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Build and develop operations leadership pipeline',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Developed plant managers and promoted two site leaders into regional roles.'],
+          strategy: {
+            real_experience: 'Developed plant managers and promoted two site leaders into regional roles.',
+            positioning: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+            ai_reasoning: 'The nearby proof is strong but still needs direct leadership-pipeline framing.',
+            coaching_policy: {
+              primaryFamily: 'talent',
+              families: ['talent'],
+              clarifyingQuestion: 'Who did you hire, coach, develop, or promote, and what changed because of that leadership?',
+              proofActionRequiresInput: 'If you have this experience, add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+              proofActionDirect: 'Add one concrete example showing who you hired, developed, coached, or promoted and what changed because of that leadership.',
+              rationale: 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.',
+              lookingFor: 'Team size, hiring or development scope, and the leadership or business result that followed.',
+            },
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const gapChatSnapshot: CoachingThreadSnapshot = {
+      items: {
+        'build and develop operations leadership pipeline': {
+          messages: [
+            {
+              role: 'assistant',
+              content: 'Here is a stronger draft.',
+              suggestedLanguage: 'Built an operations leadership bench by developing plant managers and promoting two site leaders into regional roles.',
+              candidateInputUsed: false,
+            },
+          ],
+          resolvedLanguage: null,
+          error: null,
+        },
+      },
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+      gapChatSnapshot,
+    });
+
+    expect(queue.items[0]?.suggestedDraft).toContain('Built an operations leadership bench');
+    expect(queue.items[0]?.userInstruction).toContain('Review the suggested language');
   });
 
   it('drops instructional coaching text that is not a real resume rewrite', () => {

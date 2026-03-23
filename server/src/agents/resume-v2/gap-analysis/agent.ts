@@ -14,6 +14,13 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import {
+  buildRequirementInterviewQuestion,
+  buildRequirementInterviewQuestionLookingFor,
+  buildRequirementInterviewQuestionRationale,
+  getRequirementCoachingPolicySnapshot,
+  looksLikeTargetedRequirementQuestion,
+} from '../../../contracts/requirement-coaching-policy.js';
 import type {
   GapAnalysisInput,
   GapAnalysisOutput,
@@ -1086,7 +1093,12 @@ function buildFallbackStrategy(
 ): GapStrategy {
   const firstExperience = input.candidate.experience[0];
   const companyReference = firstExperience ? `${firstExperience.title} at ${firstExperience.company}` : 'your recent work';
-  const fallbackQuestion = buildRequirementSpecificFallbackQuestion(requirement.requirement, adjacentEvidence, companyReference, hardRequirement);
+  const fallbackQuestion = buildRequirementInterviewQuestion({
+    requirement: requirement.requirement,
+    hardRequirement,
+    evidenceSnippet: looksLikeCandidateEvidence(adjacentEvidence, requirement.requirement) ? adjacentEvidence : null,
+    companyReference,
+  });
   const resumeSeed = !hardRequirement && looksLikeResumePositioning(adjacentEvidence)
     ? adjacentEvidence
     : null;
@@ -1103,147 +1115,10 @@ function buildFallbackStrategy(
     interview_questions: [
       {
         question: fallbackQuestion,
-        rationale: buildFallbackQuestionRationale(requirement.requirement, hardRequirement),
-        looking_for: buildFallbackQuestionLookingFor(requirement.requirement, hardRequirement),
+        rationale: buildRequirementInterviewQuestionRationale(requirement.requirement, hardRequirement),
+        looking_for: buildRequirementInterviewQuestionLookingFor(requirement.requirement, hardRequirement),
       },
     ],
-  };
-}
-
-function buildRequirementSpecificFallbackQuestion(
-  requirement: string,
-  adjacentEvidence: string,
-  companyReference: string,
-  hardRequirement: boolean,
-): string {
-  const promptPrefix = looksLikeCandidateEvidence(adjacentEvidence, requirement)
-    ? `Your resume already shows "${adjacentEvidence}" from ${companyReference}. `
-    : `Thinking about ${companyReference}, `;
-  const signals = detectRequirementSignals(requirement);
-
-  if (hardRequirement) {
-    return `${promptPrefix}do you actually have ${requirement}, or is this a true gap we need to leave visible?`;
-  }
-
-  if (signals.metrics) {
-    return `${promptPrefix}which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?`;
-  }
-
-  if (signals.financial) {
-    return `${promptPrefix}what budget, spend, revenue, or P&L scope did you personally own there, and what business decision or outcome did it influence?`;
-  }
-
-  if (signals.communication) {
-    return `${promptPrefix}who was the audience, what did you present or align on, and what decision or next step came from it?`;
-  }
-
-  if (signals.talent) {
-    return `${promptPrefix}how many people did you lead, hire, coach, or promote there, and what changed because of your leadership?`;
-  }
-
-  if (signals.portfolio) {
-    return `${promptPrefix}which brands, product lines, or categories were involved, how did you coordinate them, and what result came from that work?`;
-  }
-
-  if (signals.platformScale) {
-    return `${promptPrefix}what scale did you support, such as transaction volume, uptime, latency, or system footprint, and what did you build or improve at that scale?`;
-  }
-
-  if (signals.architecture) {
-    return `${promptPrefix}which stakeholders were involved, what tradeoff or architecture decision did you lead, and what outcome came from it?`;
-  }
-
-  if (signals.technical) {
-    return `${promptPrefix}which platform, framework, or technical environment was involved, and what did you personally deliver there?`;
-  }
-
-  if (signals.scale) {
-    return `${promptPrefix}what exact scale was involved, such as team size, budget, sites, revenue, or operating footprint, and what result did you drive?`;
-  }
-
-  return `${promptPrefix}what is the clearest concrete example that proves "${requirement}" for this role?`;
-}
-
-function buildFallbackQuestionRationale(requirement: string, hardRequirement: boolean): string {
-  if (hardRequirement) {
-    return 'We need to confirm whether this requirement actually exists before we decide how to position the risk.';
-  }
-
-  const signals = detectRequirementSignals(requirement);
-  if (signals.metrics) {
-    return 'Specific metrics, review cadence, and decisions make performance-management claims believable on a resume.';
-  }
-  if (signals.financial) {
-    return 'Financial scope only reads credibly when the owned dollars and decisions are explicit.';
-  }
-  if (signals.communication) {
-    return 'Executive communication only counts when the audience, message, and outcome are clear.';
-  }
-  if (signals.talent) {
-    return 'Leadership pipeline claims become credible when the team scope and people outcomes are explicit.';
-  }
-  if (signals.platformScale || signals.technical || signals.architecture) {
-    return 'Technical requirements become believable when the environment, scale, and owned decisions are concrete.';
-  }
-  return 'One concrete detail will turn adjacent proof into stronger, more defensible resume language.';
-}
-
-function buildFallbackQuestionLookingFor(requirement: string, hardRequirement: boolean): string {
-  if (hardRequirement) {
-    return 'Confirmation that the credential, degree, or license exists, or confirmation that it is truly missing.';
-  }
-
-  const signals = detectRequirementSignals(requirement);
-  if (signals.metrics) {
-    return 'Named metrics, reporting cadence, and the decision or improvement they drove.';
-  }
-  if (signals.financial) {
-    return 'Budget, spend, revenue, or P&L scope plus the business result tied to that ownership.';
-  }
-  if (signals.communication) {
-    return 'Audience seniority, what was presented, and the decision, alignment, or outcome that followed.';
-  }
-  if (signals.talent) {
-    return 'Team size, hiring/development scope, and the leadership or business result that followed.';
-  }
-  if (signals.platformScale) {
-    return 'Transaction scale, uptime, latency, system footprint, and the architecture or delivery outcome.';
-  }
-  if (signals.architecture) {
-    return 'Stakeholders, tradeoffs, decisions led, and the resulting technical or business outcome.';
-  }
-  if (signals.technical) {
-    return 'Specific platform or framework context plus what the candidate personally delivered there.';
-  }
-  if (signals.scale) {
-    return 'Concrete scale such as team size, sites, budget, revenue, or footprint, plus the outcome achieved.';
-  }
-  return 'Scope, scale, stakeholders, measurable outcomes, or technical depth tied directly to the requirement.';
-}
-
-function detectRequirementSignals(requirement: string): {
-  architecture: boolean;
-  communication: boolean;
-  financial: boolean;
-  metrics: boolean;
-  platformScale: boolean;
-  portfolio: boolean;
-  scale: boolean;
-  talent: boolean;
-  technical: boolean;
-} {
-  const normalizedRequirement = requirement.trim().toLowerCase();
-
-  return {
-    architecture: /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement),
-    communication: /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement),
-    financial: /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement),
-    metrics: /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalizedRequirement),
-    platformScale: /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement),
-    portfolio: /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement),
-    scale: /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(requirement),
-    talent: /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalizedRequirement),
-    technical: /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement),
   };
 }
 
@@ -1405,44 +1280,7 @@ function looksLikeResumePositioning(text: string): boolean {
 }
 
 function looksLikeTargetedInterviewQuestion(question: string, requirement: string): boolean {
-  const trimmed = question.trim();
-  if (!trimmed) return false;
-
-  const normalized = trimmed.toLowerCase();
-  if (
-    /^(tell me about|can you walk me through your experience|what experience do you have|share any experience|describe your experience)\b/.test(normalized)
-    || /\brelated to\b/.test(normalized)
-  ) {
-    return false;
-  }
-
-  const signals = detectRequirementSignals(requirement);
-  if (signals.metrics && !/\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|track|tracked|reviewed|reporting)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.financial && !/\b(budget|revenue|financial|p&l|spend|cost)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.communication && !/\b(audience|stakeholder|stakeholders|present|presented|board|communicat|align)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.talent && !/\b(team|people|hire|hired|coach|coached|develop|developed|promot|leadership)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.platformScale && !/\b(transaction|transactions|request|requests|uptime|latency|scale|footprint|system)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.architecture && !/\b(architecture|architectural|stakeholder|stakeholders|tradeoff|trade-off|decision|design)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.technical && !/\b(platform|framework|technical|aws|azure|gcp|cloud|kubernetes|terraform|environment)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.scale && !/\b(scale|team|budget|sites|revenue|footprint|organization)\b/i.test(trimmed)) {
-    return false;
-  }
-
-  return true;
+  return looksLikeTargetedRequirementQuestion(question, requirement);
 }
 
 function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: string): RequirementGap['strategy'] {
@@ -1486,6 +1324,7 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
   if (questions.length > 0) {
     normalized.interview_questions = questions;
   }
+  normalized.coaching_policy = getRequirementCoachingPolicySnapshot(requirement);
 
   return normalized;
 }

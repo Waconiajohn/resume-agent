@@ -12,6 +12,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Discovered Job ─────────────────────────────────────────────────
 
@@ -83,6 +84,9 @@ export interface JobFinderState extends BaseState {
     career_narrative?: Record<string, unknown>;
     industry_research?: Record<string, unknown>;
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** All jobs discovered across all search sources */
   search_results: DiscoveredJob[];

@@ -9,6 +9,8 @@ import {
 } from './platform-context.js';
 import { supabaseAdmin } from './supabase.js';
 import logger from './logger.js';
+import { buildSharedContextFromLegacyBundle } from '../contracts/shared-context-adapter.js';
+import type { SharedContext } from '../contracts/shared-context.js';
 
 export type CareerProfileSignalLevel = 'green' | 'yellow' | 'red';
 export type CareerProfileDashboardState = 'new-user' | 'refining' | 'strong';
@@ -562,6 +564,7 @@ export async function loadAgentContextBundle(
   platformContext: Record<string, unknown>;
   emotionalBaseline: EmotionalBaseline | null;
   careerProfile: CareerProfileV2 | null;
+  sharedContext: SharedContext;
 }> {
   const includeCareerProfile = options.includeCareerProfile ?? true;
   const includeEmotionalBaseline = options.includeEmotionalBaseline ?? true;
@@ -637,9 +640,24 @@ export async function loadAgentContextBundle(
     platformContext.evidence_items = evidenceRows.map((row) => row.content);
   }
 
+  const sharedContext = buildSharedContextFromLegacyBundle({
+    userId,
+    careerProfile,
+    clientProfileRow,
+    positioningStrategyRow,
+    benchmarkCandidateRow,
+    gapAnalysisRow,
+    careerNarrativeRow,
+    industryResearchRow,
+    targetRoleRow,
+    evidenceRows,
+    emotionalBaseline: baseline,
+  });
+
   return {
     platformContext,
     emotionalBaseline: baseline,
     careerProfile,
+    sharedContext,
   };
 }

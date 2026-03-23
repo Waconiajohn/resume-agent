@@ -18,6 +18,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../agents/cover-letter/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -55,10 +56,11 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
@@ -66,6 +68,19 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'cover_letter',
+          artifactGoal: 'draft a role-specific cover letter',
+          targetAudience: 'hiring manager',
+          successCriteria: ['tie evidence to role requirements', 'remain concise and truthful'],
+        },
+        workflowState: {
+          room: 'cover_letter',
+          stage: 'context_loaded',
+          activeTask: 'connect shared evidence to the target role',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

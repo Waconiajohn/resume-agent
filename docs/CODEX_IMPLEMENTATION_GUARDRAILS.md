@@ -1,121 +1,147 @@
 # Codex Implementation Guardrails
 
-## Why This Exists
+## Purpose
 
-The project has repeatedly drifted into local fixes for systemic AI/workflow problems.
+This document is the anti-drift implementation guide for Codex.
 
-This document is the anti-drift checklist for Codex work.
+Its job is to prevent the codebase from sliding back into:
 
-## Before Writing Code
+- local patching for shared problems
+- brittle procedural workflow logic
+- UI-driven business logic
+- evidence-free artifact generation
+- silent contract drift
 
-Answer these questions first.
+## Non-Negotiable Rules
 
-1. Is this a local bug or a repeated product pattern?
-2. Which part of the shared AI operating model does it affect?
-3. Is the real problem upstream context, evidence typing, UI framing, or a genuine room-only bug?
-4. Does this change improve the user’s task, or only the system’s internal explanation?
-5. Will the user actually see a better result, or just a cleaner implementation?
+1. Do not patch locally when the cause is shared.
+2. Do not reduce agent autonomy for convenience.
+3. Do not convert the system into a rigid procedural wizard.
+4. Do not move domain reasoning into UI glue code.
+5. Do not silently change shared schemas.
+6. Do not create evidence-free artifact generation paths.
+7. Do not create duplicate room-specific business logic unless justified.
+8. Do not invent evidence, metrics, scale, credentials, or chronology.
+9. Do not let benchmark guidance masquerade as candidate fact.
+10. Do not add AI controls that are not clearly tied to the current user task.
 
-If those answers are unclear, do not start with local hardening.
+## Shared vs Local Decision Framework
 
-## Anti-Pattern Warnings
+Use this decision framework before implementing:
 
-Stop if the work is drifting into any of these:
+Use the same shared-vs-local meaning defined in `AGENTS.md`.
 
-### 1. Rescue coding as the main strategy
+### Shared
 
-Examples:
+The change is shared if it touches:
 
-- generic output generated upstream, then patched repeatedly downstream
-- UI complexity added to compensate for weak evidence structure
-- one more local fallback instead of improving the shared contract
+- context structure
+- evidence provenance or evidence classification
+- provenance
+- review and apply behavior
+- AI guidance shape
+- agent responsibilities
+- room-to-room consistency
+- user-facing reasoning transparency
+- prompt structure that affects multiple artifacts
+- validation or normalization logic reused across rooms
 
-### 2. AI beside the work instead of inside the work
+### Local
 
-Examples:
+The change is local only if:
 
-- button farms
-- blank prompt boxes
-- hidden helper drawers
-- secondary AI areas that do not clearly advance the task
+- the issue is confined to one room
+- no shared contract meaning changes
+- the fix does not duplicate logic needed elsewhere
+- the fix does not encode domain reasoning in UI glue
+- the cause is not upstream context or evidence weakness
 
-### 3. Repeated analysis loops
+If the issue repeats or is likely to repeat, it is shared.
 
-Examples:
+## Agentic Architecture Guardrails
 
-- report, then another report, then a workspace
-- multiple sections that restate the same gap
-- progress summaries that do not change the next action
+Agent autonomy means preserving agent domain ownership and reasoning freedom inside typed contracts. The application may constrain inputs, outputs, evidence eligibility, and review-and-apply gates, but it must not replace agent judgment with rigid procedural sequencing unless safety requires it.
 
-### 4. Room-specific reinvention
+For requirement taxonomy and coaching-policy work:
 
-Examples:
+- classify requirement families
+- define evidence expectations
+- define fallback policy
+- define safety rules
+- leave final phrasing and domain reasoning room for the agents
 
-- each room invents new evidence wording
-- different provenance labels for the same concept
-- inconsistent approve/apply/review behavior
+Do not let taxonomy or coaching-policy modules turn into giant hardcoded wizards. They should govern contracts, eligibility, and safe fallbacks, not replace agent judgment with brittle scripts.
 
-## Required Design Questions
+1. Preserve agent domain ownership.
+2. Prefer contract-driven agent behavior over hardcoded procedural sequences.
+3. Prompts should provide structured guidance, not rigid scripts, unless safety absolutely requires determinism.
+4. Avoid hidden tool pipelines inside route handlers or UI glue.
+5. Keep agent inputs typed and explicit.
+6. Keep agent outputs typed and reviewable.
+7. If a room needs domain reasoning, ask whether that reasoning belongs in a shared agent utility or shared contract first.
 
-Every AI-assisted flow should make these answers obvious:
+## UI and Product Guardrails
 
-- What am I trying to improve?
-- What do you already know?
-- What is still missing?
-- What should I do next?
-- How can AI help me right here?
-- How do I review or apply the result?
+1. UI should present the user’s task, not the system’s internal process.
+2. AI help should live inside the current action, not in detached button farms.
+3. Analysis sections are only justified when they change a decision or next action.
+4. Users must not have to infer provenance.
+5. Users must not have to infer whether content is final, draft, inferred, benchmark-driven, or still unconfirmed.
+6. One active work item should stay visually primary.
 
-If the user must infer these answers, the flow is not ready.
+## Data and Contract Guardrails
 
-## When Hardening Is Allowed
+1. Shared contracts must stay typed and predictable.
+2. Do not create silent schema drift between server, app, saved state, and prompts.
+3. Make required vs optional fields explicit.
+4. Distinguish factual history from strategic framing from benchmark recommendations.
+5. When a contract changes meaning, update the governing docs and tests before or with the code.
 
-Hardening is still valid, but only as:
+## Evidence Guardrails
 
-- malformed output protection
-- unsupported claim filtering
-- placeholder cleanup
-- generic filler replacement
-- deterministic fallback generation
+1. Every user-facing artifact must respect the shared evidence contract.
+2. Unsupported claims must not reach exportable artifacts.
+3. Inference must never be silently upgraded into biography.
+4. Missing metrics must not become invented metrics.
+5. Role requirements must not become implied accomplishments.
+6. Benchmark expectations must not become candidate achievements.
 
-Hardening should not be the primary place where product meaning is created.
+## Change Checklist
 
-## Verification Rules
+Before implementation:
 
-### Local changes
+- identify whether the issue is shared or local
+- identify which contracts are touched
+- identify which room adapters are affected
+- identify what evidence risk exists
 
-At minimum:
+Before merge:
 
-- typecheck
-- focused tests
+- validate typed contracts
+- run focused tests
+- verify at least one user-facing artifact or realistic flow if generated text changed
+- confirm no shared problem was hidden behind a local patch
 
-### AI/workflow changes
+## Red Flags
 
-Also require:
+Treat any of these as a pause signal:
 
-- at least one artifact or browser validation of the user-facing result
+- “just one more local fallback”
+- “the UI can figure this out later”
+- “the agent can infer the rest”
+- “we only need this in one room”
+- “this output is close enough even if provenance is fuzzy”
+- “we can harden it downstream if it goes weird”
+- “the requirement text itself is probably good enough as the draft”
 
-### Shared-contract changes
+## Required Commit Summary Template
 
-Also require:
+Every substantial commit summary should cover:
 
-- regression coverage for the contract
-- at least one representative real or realistic session check if the change affects generated text
-
-## Escalation Rule
-
-Pause and update the shared docs before continuing if:
-
-- the same issue appears across more than one active room
-- the change redefines what AI is supposed to do
-- the change alters evidence, provenance, or review semantics
-- the fix requires introducing a new workflow phase or user mental model
-
-## Shared Docs To Update When Needed
-
-- `AGENTS.md`
-- `docs/AI_OPERATING_MODEL.md`
-- `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
-- `docs/APP_WIDE_OVERHAUL_PLAN.md`
-- `docs/DECISIONS.md` when an architectural decision changes
-
+- Goal
+- Why shared or local
+- Contracts touched
+- Evidence impact
+- Agent autonomy impact
+- Risks
+- Follow-up needed

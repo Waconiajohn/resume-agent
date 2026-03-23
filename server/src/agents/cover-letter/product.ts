@@ -13,6 +13,7 @@ import type { CoverLetterState, CoverLetterSSEEvent } from './types.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState, CoverLetterSSEEvent> {
   return {
@@ -106,6 +107,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       user_id: userId,
       current_stage: 'analysis',
       platform_context: input.platform_context as CoverLetterState['platform_context'],
+      shared_context: input.shared_context as CoverLetterState['shared_context'],
       tone: (input.tone as CoverLetterState['tone']) ?? 'formal',
       // Input data will be parsed by the analyst agent's tools
       resume_data: undefined,
@@ -114,6 +116,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'analyst') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze the following resume and job description to create a cover letter plan.',
           '',
@@ -134,7 +137,14 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           );
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(
+            '',
+            '## Prior Positioning Strategy (from Resume Strategist)',
+            'Use this canonical positioning context to shape which achievements and themes you emphasize.',
+            JSON.stringify(sharedContext?.positioningStrategy, null, 2),
+          );
+        } else if (state.platform_context?.positioning_strategy) {
           parts.push(
             '',
             '## Prior Positioning Strategy (from Resume Strategist)',
@@ -143,7 +153,14 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           );
         }
 
-        if (
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+          parts.push(
+            '',
+            '## Prior Evidence Items',
+            'The following canonical evidence items were captured during prior work. Leverage relevant items:',
+            JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+          );
+        } else if (
           state.platform_context?.evidence_items &&
           state.platform_context.evidence_items.length > 0
         ) {

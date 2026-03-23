@@ -933,6 +933,8 @@ describe('gap coaching', () => {
     expect(card.classification).toBe('partial');
     expect(card.proposed_strategy).toBeDefined();
     expect(card.ai_reasoning).toBeDefined();
+    expect(card.coaching_policy?.clarifyingQuestion).toContain('What scale did you support');
+    expect(card.coaching_policy?.proofActionRequiresInput).toContain('scale involved');
   });
 
   it('sets previously_approved true when requirement was approved in gap_coaching_responses', async () => {

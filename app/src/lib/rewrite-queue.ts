@@ -648,6 +648,7 @@ export function buildRewriteQueue(args: {
     });
     const isHardRequirement = hardRequirementText(requirement.requirement, sourceEvidence);
     const hasSuggestedLanguage = Boolean(latestAssistant?.suggestedLanguage);
+    const sharedCoachingPolicy = coachingCard?.coaching_policy ?? requirement.strategy?.coaching_policy;
 
     const status: RewriteQueueItem['status'] = requirement.classification === 'strong'
       ? 'already_covered'
@@ -702,7 +703,7 @@ export function buildRewriteQueue(args: {
       hasSuggestedLanguage,
     });
 
-    const userInstruction = userInstructionForRequirement({
+    const fallbackUserInstruction = userInstructionForRequirement({
       requirement: requirement.requirement,
       category,
       status,
@@ -710,6 +711,11 @@ export function buildRewriteQueue(args: {
       inferredEvidenceCount: inferredEvidence.length,
       hasSuggestedLanguage,
     });
+    const userInstruction = status === 'already_covered' || category === 'hard_gap' || hasSuggestedLanguage
+      ? fallbackUserInstruction
+      : latestAssistant?.needsCandidateInput === false && sharedCoachingPolicy?.proofActionDirect
+        ? sharedCoachingPolicy.proofActionDirect
+        : sharedCoachingPolicy?.proofActionRequiresInput ?? fallbackUserInstruction;
     const fallbackStarterQuestion = buildStarterQuestion({
       requirement: requirement.requirement,
       category,
@@ -719,9 +725,12 @@ export function buildRewriteQueue(args: {
     });
     const starterQuestion = looksLikeTargetedStarterQuestion(latestAssistant?.currentQuestion, requirement.requirement)
       ? latestAssistant?.currentQuestion?.trim()
-      : looksLikeTargetedStarterQuestion(coachingCard?.interview_questions?.[0]?.question, requirement.requirement)
-        ? coachingCard?.interview_questions?.[0]?.question?.trim()
-        : fallbackStarterQuestion;
+      : sharedCoachingPolicy?.clarifyingQuestion?.trim()
+        || (looksLikeTargetedStarterQuestion(coachingCard?.interview_questions?.[0]?.question, requirement.requirement)
+          ? coachingCard?.interview_questions?.[0]?.question?.trim()
+          : looksLikeTargetedStarterQuestion(requirement.strategy?.interview_questions?.[0]?.question, requirement.requirement)
+            ? requirement.strategy?.interview_questions?.[0]?.question?.trim()
+            : fallbackStarterQuestion);
 
     return {
       id: `requirement:${source}:${normalizedRequirement}`,

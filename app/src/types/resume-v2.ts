@@ -97,6 +97,17 @@ export interface GapStrategy {
     rationale: string;
     looking_for: string;
   }>;
+  coaching_policy?: RequirementCoachingPolicySnapshot;
+}
+
+export interface RequirementCoachingPolicySnapshot {
+  primaryFamily: string | null;
+  families: string[];
+  clarifyingQuestion: string;
+  proofActionRequiresInput: string;
+  proofActionDirect: string;
+  rationale: string;
+  lookingFor: string;
 }
 
 export type GapClassification = 'strong' | 'partial' | 'missing';
@@ -171,6 +182,7 @@ export interface GapCoachingCard {
     rationale: string;
     looking_for: string;
   }>;
+  coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
 export type GapCoachingAction = 'approve' | 'context' | 'skip';

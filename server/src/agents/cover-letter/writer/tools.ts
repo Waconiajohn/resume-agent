@@ -11,6 +11,7 @@ import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -47,11 +48,18 @@ const writeLetterTool: CoverLetterTool = {
     const tone = String(input.tone ?? state.tone ?? 'formal');
 
     const platformCtx = state.platform_context;
-    const positioningStrategy = platformCtx?.positioning_strategy
-      ? `\n\nPositioning strategy from resume strategist:\n${JSON.stringify(platformCtx.positioning_strategy, null, 2)}`
+    const sharedContext = state.shared_context;
+    const positioningStrategySource = hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+      ? sharedContext?.positioningStrategy
+      : platformCtx?.positioning_strategy;
+    const evidenceItemSource = hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+      ? sharedContext?.evidenceInventory.evidenceItems
+      : platformCtx?.evidence_items;
+    const positioningStrategy = positioningStrategySource
+      ? `\n\nPositioning strategy from resume strategist:\n${JSON.stringify(positioningStrategySource, null, 2)}`
       : '';
-    const evidenceItems = platformCtx?.evidence_items?.length
-      ? `\n\nKey evidence items:\n${platformCtx.evidence_items.slice(0, 8).map(e => `- ${JSON.stringify(e)}`).join('\n')}`
+    const evidenceItems = Array.isArray(evidenceItemSource) && evidenceItemSource.length > 0
+      ? `\n\nKey evidence items:\n${evidenceItemSource.slice(0, 8).map(e => `- ${JSON.stringify(e)}`).join('\n')}`
       : '';
 
     const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.
