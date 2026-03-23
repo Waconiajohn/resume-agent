@@ -37,6 +37,7 @@ import {
   type StoredV2Snapshot,
   createInitialSnapshot,
   applyEventToSnapshot,
+  enrichStoredPipelineDataForClient,
   gapResponseSchema,
   draftStateSchema,
   buildEditSystemPrompt,
@@ -376,14 +377,16 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
   // Detect v2 pipeline snapshot vs legacy AssemblyOutput
   const stored = session.tailored_sections as Record<string, unknown> | null;
   if (stored && stored.version === 'v2') {
+    const storedSnapshot = stored as StoredV2Snapshot;
+    const enrichedPipelineData = enrichStoredPipelineDataForClient(storedSnapshot.pipeline_data);
     return c.json({
       version: 'v2',
       status: session.pipeline_status,
       pipeline_stage: session.pipeline_stage,
       error_message: session.error_message ?? null,
-      pipeline_data: stored.pipeline_data,
-      inputs: stored.inputs,
-      draft_state: stored.draft_state ?? null,
+      pipeline_data: enrichedPipelineData,
+      inputs: storedSnapshot.inputs,
+      draft_state: storedSnapshot.draft_state ?? null,
     });
   }
 

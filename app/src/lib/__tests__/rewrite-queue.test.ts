@@ -239,10 +239,10 @@ describe('rewrite-queue', () => {
     expect(queue.items).toHaveLength(1);
     expect(queue.items[0]?.currentEvidence[0]?.basis).toBe('nearby');
     expect(queue.items[0]?.currentEvidence[0]?.section).toBeUndefined();
-    expect(queue.items[0]?.userInstruction).toContain('executive-facing example');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('tailors nearby-proof guidance for financial scope requirements', () => {
+  it('uses generic compatibility guidance when no shared coaching policy is available for financial scope requirements', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -285,11 +285,10 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('financial scope');
-    expect(queue.items[0]?.userInstruction).toContain('business outcome');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('tailors nearby-proof guidance for team and organization scale requirements', () => {
+  it('uses generic compatibility guidance when no shared coaching policy is available for scale requirements', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -332,11 +331,10 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('exact scale involved');
-    expect(queue.items[0]?.userInstruction).toContain('team size');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('filters placeholder source evidence and weak rewrite labels while tailoring metrics prompts', () => {
+  it('filters placeholder source evidence and weak rewrite labels while falling back to generic legacy prompts', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -388,11 +386,11 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.sourceEvidence[0]?.text).toBe('Develop and track performance metrics');
     expect(queue.items[0]?.currentEvidence).toEqual([]);
     expect(queue.items[0]?.suggestedDraft).toBeUndefined();
-    expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards');
-    expect(queue.items[0]?.userInstruction).toContain('what decision or improvement they drove');
+    expect(queue.items[0]?.starterQuestion).toBe('What is the clearest concrete example that proves "Develop and track performance metrics" for this role?');
+    expect(queue.items[0]?.userInstruction).toContain('find truthful proof');
   });
 
-  it('replaces generic helper questions with requirement-specific metrics guidance', () => {
+  it('replaces generic helper questions with a generic compatibility fallback when shared coaching metadata is absent', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -436,11 +434,12 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.starterQuestion).toContain('Which metrics or scorecards did you personally track');
-    expect(queue.items[0]?.starterQuestion).toContain('what decision or improvement did they drive');
+    expect(queue.items[0]?.starterQuestion).toBe(
+      'Your resume already shows "Tracked weekly throughput metrics and improved fill rate by 14% across the network.". What is the clearest concrete example that proves "Develop and track performance metrics" for this role?',
+    );
   });
 
-  it('uses specific Azure or GCP fallback guidance for legacy cloud requirements without shared coaching metadata', () => {
+  it('uses generic compatibility fallback guidance for legacy cloud requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -464,12 +463,12 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items[0]?.starterQuestion).toBe(
-      'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+      'What is the clearest concrete example that proves "Experience with Azure or GCP" for this role?',
     );
-    expect(queue.items[0]?.userInstruction).toContain('where you used Azure or GCP');
+    expect(queue.items[0]?.userInstruction).toContain('find truthful proof');
   });
 
-  it('uses specific ERP fallback guidance for legacy ERP requirements without shared coaching metadata', () => {
+  it('uses generic compatibility fallback guidance for legacy ERP requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -493,9 +492,9 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items[0]?.starterQuestion).toBe(
-      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+      'What is the clearest concrete example that proves "Experience with ERP systems (SAP, Oracle, or similar)" for this role?',
     );
-    expect(queue.items[0]?.userInstruction).toContain('where you used ERP systems');
+    expect(queue.items[0]?.userInstruction).toContain('find truthful proof');
   });
 
   it('prefers shared coaching policy metadata over local fallback prompts', () => {
@@ -696,7 +695,7 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.suggestedDraft).toBeUndefined();
   });
 
-  it('tailors nearby-proof guidance for talent development and leadership pipeline requirements', () => {
+  it('uses generic compatibility guidance for talent-development requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -720,11 +719,10 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('hired, developed, or promoted');
-    expect(queue.items[0]?.userInstruction).toContain('leadership bench');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('tailors nearby-proof guidance for multi-brand portfolio requirements', () => {
+  it('uses generic compatibility guidance for portfolio requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -748,11 +746,10 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('brands, product lines, or categories');
-    expect(queue.items[0]?.userInstruction).toContain('portfolio work');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('tailors nearby-proof guidance for platform-scale architecture requirements', () => {
+  it('uses generic compatibility guidance for platform-scale requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -776,11 +773,10 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('transaction volume, request volume, uptime, latency, or system footprint');
-    expect(queue.items[0]?.userInstruction).toContain('architected at that scale');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
-  it('tailors nearby-proof guidance for cross-functional architecture decision requirements', () => {
+  it('uses generic compatibility guidance for architecture-decision requirements without shared coaching metadata', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
         {
@@ -804,9 +800,7 @@ describe('rewrite-queue', () => {
     });
 
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]?.userInstruction).toContain('architecture decision');
-    expect(queue.items[0]?.userInstruction).toContain('tradeoff');
-    expect(queue.items[0]?.userInstruction).toContain('stakeholders');
+    expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {

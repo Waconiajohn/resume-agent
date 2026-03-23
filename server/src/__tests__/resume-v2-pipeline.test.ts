@@ -389,6 +389,95 @@ describe('GET /api/resume-v2/:sessionId/result', () => {
     const body = await res.json() as { result: typeof storedResult };
     expect(body.result).toEqual(storedResult);
   });
+
+  it('enriches legacy v2 snapshots with coaching policy metadata before returning them', async () => {
+    const storedSnapshot = {
+      version: 'v2' as const,
+      pipeline_data: {
+        stage: 'strategy',
+        jobIntelligence: null,
+        candidateIntelligence: null,
+        benchmarkCandidate: null,
+        gapAnalysis: {
+          requirements: [
+            {
+              requirement: 'Develop and track performance metrics',
+              source: 'job_description',
+              importance: 'important',
+              classification: 'partial',
+              evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the network.'],
+              strategy: {
+                real_experience: 'Tracked weekly throughput metrics and improved fill rate by 14% across the network.',
+                positioning: 'Built and tracked weekly throughput scorecards that improved fill rate by 14% across the network.',
+              },
+            },
+          ],
+          coverage_score: 0,
+          strength_summary: '',
+          critical_gaps: [],
+          pending_strategies: [
+            {
+              requirement: 'Develop and track performance metrics',
+              strategy: {
+                real_experience: 'Tracked weekly throughput metrics and improved fill rate by 14% across the network.',
+                positioning: 'Built and tracked weekly throughput scorecards that improved fill rate by 14% across the network.',
+              },
+            },
+          ],
+        },
+        gapCoachingCards: [
+          {
+            requirement: 'Develop and track performance metrics',
+            importance: 'important',
+            classification: 'partial',
+            ai_reasoning: 'The proof is close but still needs the metrics and cadence to be explicit.',
+            proposed_strategy: 'Built and tracked weekly throughput scorecards that improved fill rate by 14% across the network.',
+            evidence_found: ['Tracked weekly throughput metrics and improved fill rate by 14% across the network.'],
+          },
+        ],
+        preScores: null,
+        narrativeStrategy: null,
+        resumeDraft: null,
+        assembly: null,
+        error: null,
+        stageMessages: [],
+      },
+      inputs: {
+        resume_text: VALID_RESUME,
+        job_description: VALID_JD,
+      },
+    };
+
+    const chain = buildSingleChain({
+      data: {
+        id: SESSION_ID,
+        user_id: 'test-user-123',
+        pipeline_status: 'complete',
+        tailored_sections: storedSnapshot,
+      },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/result`);
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      version: string;
+      pipeline_data: {
+        gapAnalysis: {
+          requirements: Array<{ strategy?: { coaching_policy?: { clarifyingQuestion: string } } }>;
+          pending_strategies: Array<{ strategy?: { coaching_policy?: { proofActionRequiresInput: string } } }>;
+        };
+        gapCoachingCards: Array<{ coaching_policy?: { lookingFor: string } }>;
+      };
+    };
+
+    expect(body.version).toBe('v2');
+    expect(body.pipeline_data.gapAnalysis.requirements[0]?.strategy?.coaching_policy?.clarifyingQuestion).toContain('metrics or scorecards');
+    expect(body.pipeline_data.gapAnalysis.pending_strategies[0]?.strategy?.coaching_policy?.proofActionRequiresInput).toContain('metrics or scorecards');
+    expect(body.pipeline_data.gapCoachingCards[0]?.coaching_policy?.lookingFor).toContain('reporting cadence');
+  });
 });
 
 // ─── POST /:sessionId/edit ────────────────────────────────────────────────────

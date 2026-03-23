@@ -71,38 +71,6 @@ function looksLikeResumeEvidenceSnippet(text: string | null | undefined, require
   return true;
 }
 
-function detectRequirementSignals(requirement: string): {
-  architecture: boolean;
-  cloudMulti: boolean;
-  cloudPlatform: boolean;
-  communication: boolean;
-  erp: boolean;
-  financial: boolean;
-  metrics: boolean;
-  platformScale: boolean;
-  portfolio: boolean;
-  scale: boolean;
-  talent: boolean;
-  technical: boolean;
-} {
-  const normalizedRequirement = normalize(requirement);
-
-  return {
-    architecture: /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement),
-    cloudMulti: /\b(aws)\b.*\b(azure|gcp|additional cloud)\b|\b(azure|gcp|additional cloud)\b.*\baws\b/.test(normalizedRequirement),
-    cloudPlatform: /\b(azure|gcp|google cloud|cloud platform|cloud environments?)\b/.test(normalizedRequirement),
-    communication: /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement),
-    erp: /\b(erp|sap|oracle|netsuite|workday|enterprise resource planning)\b/.test(normalizedRequirement),
-    financial: /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement),
-    metrics: /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalizedRequirement),
-    platformScale: /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement),
-    portfolio: /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement),
-    scale: /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(requirement),
-    talent: /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalizedRequirement),
-    technical: /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement),
-  };
-}
-
 function summarizeEvidenceSnippet(text: string | null | undefined): string | null {
   if (typeof text !== 'string') return null;
   const trimmed = text.trim();
@@ -118,7 +86,6 @@ function buildStarterQuestion(args: {
   currentEvidenceText?: string | null;
   sourceEvidenceText?: string | null;
 }): string {
-  const signals = detectRequirementSignals(args.requirement);
   const evidenceSnippet = summarizeEvidenceSnippet(args.currentEvidenceText ?? null);
   const promptPrefix = evidenceSnippet
     ? `Your resume already shows "${evidenceSnippet}". `
@@ -128,54 +95,6 @@ function buildStarterQuestion(args: {
 
   if (args.category === 'hard_gap') {
     return `Do you actually have ${args.requirement}, or is this a real gap we should keep visible?`;
-  }
-
-  if (signals.metrics) {
-    return `${promptPrefix}Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?`;
-  }
-
-  if (signals.cloudMulti) {
-    return `${promptPrefix}Where have you used AWS together with Azure or GCP, what did you deliver across those environments, and why did it matter to the business?`;
-  }
-
-  if (signals.cloudPlatform) {
-    return `${promptPrefix}Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?`;
-  }
-
-  if (signals.erp) {
-    return `${promptPrefix}Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?`;
-  }
-
-  if (signals.financial) {
-    return `${promptPrefix}What budget, spend, revenue, or P&L scope did you personally own, and what business decision or outcome did it influence?`;
-  }
-
-  if (signals.communication) {
-    return `${promptPrefix}Who was the audience, what did you present or align on, and what decision or next step came from it?`;
-  }
-
-  if (signals.talent) {
-    return `${promptPrefix}How many people did you lead, hire, coach, or promote, and what changed because of your leadership?`;
-  }
-
-  if (signals.portfolio) {
-    return `${promptPrefix}Which brands, product lines, or categories were involved, how did you coordinate them, and what result came from that work?`;
-  }
-
-  if (signals.platformScale) {
-    return `${promptPrefix}What scale did you support, such as transaction volume, request volume, uptime, latency, or system footprint, and what did you build or improve at that scale?`;
-  }
-
-  if (signals.architecture) {
-    return `${promptPrefix}Which stakeholders were involved, what tradeoff or architecture decision did you lead, and what outcome came from it?`;
-  }
-
-  if (signals.technical) {
-    return `${promptPrefix}Which platform, framework, or technical environment was involved, and what did you personally deliver there?`;
-  }
-
-  if (signals.scale) {
-    return `${promptPrefix}What exact scale was involved, such as team size, budget, sites, revenue, or footprint, and what result did you drive?`;
   }
 
   const sourceSnippet = summarizeEvidenceSnippet(args.sourceEvidenceText ?? null);
@@ -190,50 +109,13 @@ function looksLikeTargetedStarterQuestion(question: string | null | undefined, r
   if (typeof question !== 'string') return false;
   const trimmed = question.trim();
   if (!trimmed) return false;
+  if (trimmed.split(/\s+/).length < 5) return false;
 
   const normalizedQuestion = trimmed.toLowerCase();
   if (
     /^(tell me about|can you walk me through your experience|what experience do you have|share any experience|describe your experience)\b/.test(normalizedQuestion)
     || /\brelated to\b/.test(normalizedQuestion)
   ) {
-    return false;
-  }
-
-  const signals = detectRequirementSignals(requirement);
-  if (signals.metrics && !/\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|track|tracked|reviewed|reporting)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.cloudMulti && !/\b(aws|azure|gcp|multi-?cloud|cloud)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.cloudPlatform && !/\b(azure|gcp|google cloud|cloud)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.erp && !/\b(erp|sap|oracle|netsuite|workday|system)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.financial && !/\b(budget|revenue|financial|p&l|spend|cost)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.communication && !/\b(audience|stakeholder|stakeholders|present|presented|board|communicat|align)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.talent && !/\b(team|people|hire|hired|coach|coached|develop|developed|promot|leadership)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.portfolio && !/\b(brand|brands|product lines?|categories|portfolio)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.platformScale && !/\b(transaction|transactions|request|requests|uptime|latency|scale|footprint|system)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.architecture && !/\b(architecture|architectural|stakeholder|stakeholders|tradeoff|trade-off|decision|design)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.technical && !/\b(platform|framework|technical|aws|azure|gcp|cloud|kubernetes|terraform|environment)\b/i.test(trimmed)) {
-    return false;
-  }
-  if (signals.scale && !/\b(scale|team|budget|sites|revenue|footprint|organization)\b/i.test(trimmed)) {
     return false;
   }
 
@@ -528,8 +410,6 @@ function userInstructionForRequirement(args: {
   inferredEvidenceCount: number;
   hasSuggestedLanguage: boolean;
 }): string {
-  const signals = detectRequirementSignals(args.requirement);
-
   if (args.category === 'hard_gap') {
     return 'Confirm whether you actually have this requirement. Do not stretch it. If you do not have it, leave it marked as a real risk.';
   }
@@ -544,54 +424,6 @@ function userInstructionForRequirement(args: {
 
   if (args.hasSuggestedLanguage) {
     return 'Review the suggested language and accept it only if it is fully accurate and supportable.';
-  }
-
-  if (signals.communication) {
-    return 'Answer with one concrete executive-facing example: who the audience was, what you communicated, and what outcome it influenced.';
-  }
-
-  if (signals.financial) {
-    return 'Answer with the financial scope you owned, what decisions were yours, and the business outcome.';
-  }
-
-  if (signals.talent) {
-    return 'Answer with who you hired, developed, or promoted, how you built the leadership bench, and what business result came from it.';
-  }
-
-  if (signals.portfolio) {
-    return 'Answer with the brands, product lines, or categories you managed together, how you coordinated them, and what business outcome came from that portfolio work.';
-  }
-
-  if (signals.platformScale) {
-    return 'Answer with the platform scale involved, such as transaction volume, request volume, uptime, latency, or system footprint, and what you architected at that scale.';
-  }
-
-  if (signals.architecture) {
-    return 'Answer with one architecture decision: who the stakeholders were, what tradeoff you led, and what outcome came from that decision.';
-  }
-
-  if (signals.metrics) {
-    return 'Answer with the metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.';
-  }
-
-  if (signals.cloudMulti) {
-    return 'Answer with where you used AWS together with Azure or GCP, what you delivered across those environments, and why it mattered to the business.';
-  }
-
-  if (signals.cloudPlatform) {
-    return 'Answer with where you used Azure or GCP, what you personally owned, and what outcome came from that work.';
-  }
-
-  if (signals.erp) {
-    return 'Answer with where you used ERP systems, what you personally owned there, and what outcome came from that work.';
-  }
-
-  if (signals.scale) {
-    return 'Answer with the exact scale involved here, such as company size, team size, budget, revenue, or operational footprint.';
-  }
-
-  if (signals.technical) {
-    return 'Answer with the exact platform, framework, or technical environment you worked in and what you delivered there.';
   }
 
   if (args.liveEvidenceCount > 0 || args.inferredEvidenceCount > 0) {
@@ -742,6 +574,8 @@ export function buildRewriteQueue(args: {
       hasSuggestedLanguage,
     });
 
+    // Legacy compatibility fallback for older snapshots that do not yet carry
+    // canonical coaching_policy metadata from the server.
     const fallbackUserInstruction = userInstructionForRequirement({
       requirement: requirement.requirement,
       category,

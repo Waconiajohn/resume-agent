@@ -4,6 +4,7 @@ import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/ty
 import {
   buildRequirementClarifyingQuestion,
   buildRequirementProofAction,
+  getRequirementCoachingPolicySnapshot,
   isGenericClarifyingQuestion,
 } from '../contracts/requirement-coaching-policy.js';
 
@@ -101,6 +102,97 @@ export function createInitialSnapshot(resumeText: string, jobDescription: string
     },
     draft_state: null,
     updated_at: new Date().toISOString(),
+  };
+}
+
+function withRequirementCoachingPolicy<T extends { requirement?: unknown; strategy?: unknown }>(value: T): T {
+  if (typeof value.requirement !== 'string' || !value.requirement.trim()) {
+    return value;
+  }
+
+  const strategy = value.strategy;
+  if (!strategy || typeof strategy !== 'object') {
+    return value;
+  }
+
+  if ('coaching_policy' in strategy && strategy.coaching_policy && typeof strategy.coaching_policy === 'object') {
+    return value;
+  }
+
+  return {
+    ...value,
+    strategy: {
+      ...strategy,
+      coaching_policy: getRequirementCoachingPolicySnapshot(value.requirement),
+    },
+  };
+}
+
+function enrichGapAnalysisForClient(gapAnalysis: unknown): unknown {
+  if (!gapAnalysis || typeof gapAnalysis !== 'object') {
+    return gapAnalysis;
+  }
+
+  const record = gapAnalysis as Record<string, unknown>;
+  const requirements = Array.isArray(record.requirements)
+    ? record.requirements.map((requirement) => (
+      requirement && typeof requirement === 'object'
+        ? withRequirementCoachingPolicy(requirement as {
+            requirement?: unknown;
+            strategy?: unknown;
+          })
+        : requirement
+    ))
+    : record.requirements;
+
+  const pendingStrategies = Array.isArray(record.pending_strategies)
+    ? record.pending_strategies.map((item) => (
+      item && typeof item === 'object'
+        ? withRequirementCoachingPolicy(item as {
+            requirement?: unknown;
+            strategy?: unknown;
+          })
+        : item
+    ))
+    : record.pending_strategies;
+
+  return {
+    ...record,
+    requirements,
+    pending_strategies: pendingStrategies,
+  };
+}
+
+function enrichGapCoachingCardsForClient(cards: unknown): unknown {
+  if (!Array.isArray(cards)) {
+    return cards;
+  }
+
+  return cards.map((card) => {
+    if (!card || typeof card !== 'object') {
+      return card;
+    }
+
+    const record = card as Record<string, unknown>;
+    const requirement = typeof record.requirement === 'string' ? record.requirement.trim() : '';
+    const coachingPolicy = record.coaching_policy;
+
+    if (!requirement || (coachingPolicy && typeof coachingPolicy === 'object')) {
+      return card;
+    }
+
+    return {
+      ...record,
+      coaching_policy: getRequirementCoachingPolicySnapshot(requirement),
+    };
+  });
+}
+
+export function enrichStoredPipelineDataForClient(pipelineData: StoredV2PipelineData): StoredV2PipelineData {
+  return {
+    ...pipelineData,
+    gapAnalysis: enrichGapAnalysisForClient(pipelineData.gapAnalysis),
+    gapCoachingCards: enrichGapCoachingCardsForClient(pipelineData.gapCoachingCards) as unknown[] | null,
   };
 }
 
