@@ -230,6 +230,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             inferred_metric: context.inferredMetric,
             job_description_excerpt: context.jobDescriptionExcerpt,
             candidate_experience_summary: context.candidateExperienceSummary,
+            coaching_policy: context.coachingPolicy,
           },
         }),
       });

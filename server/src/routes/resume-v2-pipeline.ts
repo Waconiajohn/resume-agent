@@ -736,15 +736,19 @@ function normalizeGapChatResult(
     context: {
       evidence: string[];
       job_description_excerpt: string;
+      coaching_policy?: {
+        clarifyingQuestion: string;
+      };
     };
   },
 ) {
-  const fallbackQuestion = buildRequirementFallbackQuestion({
-    requirement: args.requirement,
-    classification: args.classification,
-    evidence: args.context.evidence,
-    jobDescriptionExcerpt: args.context.job_description_excerpt,
-  });
+  const fallbackQuestion = args.context.coaching_policy?.clarifyingQuestion?.trim()
+    || buildRequirementFallbackQuestion({
+      requirement: args.requirement,
+      classification: args.classification,
+      evidence: args.context.evidence,
+      jobDescriptionExcerpt: args.context.job_description_excerpt,
+    });
   const hasStrongRewrite = looksLikeRequirementRewrite(result.suggested_resume_language);
   const bestQuestion = looksLikeTargetedRequirementQuestion(result.current_question, args.requirement)
     ? result.current_question.trim()
@@ -842,6 +846,14 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
 
   logger.info({ session_id: sessionId, requirement, turn: messages.length }, 'Gap chat message');
 
+  const starterQuestion = context.coaching_policy?.clarifyingQuestion?.trim()
+    || buildRequirementFallbackQuestion({
+      requirement,
+      classification,
+      evidence: context.evidence,
+      jobDescriptionExcerpt: context.job_description_excerpt,
+    });
+
   // Build the context message for the first turn
   const contextBlock = [
     `## Gap Being Discussed`,
@@ -855,6 +867,9 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
     context.current_strategy ? `## Current Positioning Strategy\n${context.current_strategy}` : '',
     context.ai_reasoning ? `## AI Analysis\n${context.ai_reasoning}` : '',
     context.inferred_metric ? `## Inferred Metric\n${context.inferred_metric}` : '',
+    context.coaching_policy
+      ? `## Shared Coaching Guidance\nWhy this matters: ${context.coaching_policy.rationale}\nWhat would make this believable: ${context.coaching_policy.lookingFor}\nBest next question: ${context.coaching_policy.clarifyingQuestion}`
+      : '',
     '',
     `## Job Description Context\n${context.job_description_excerpt}`,
     '',
@@ -865,7 +880,13 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
   // then the actual conversation history
   const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: contextBlock },
-    { role: 'assistant', content: '{"response":"I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.","follow_up_question":"What is the one concrete detail from your experience that would make this requirement obviously true?","current_question":"What is the one concrete detail from your experience that would make this requirement obviously true?","needs_candidate_input":true,"recommended_next_action":"answer_question"}' },
+    { role: 'assistant', content: JSON.stringify({
+      response: 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
+      follow_up_question: starterQuestion,
+      current_question: starterQuestion,
+      needs_candidate_input: true,
+      recommended_next_action: 'answer_question',
+    }) },
     ...messages,
   ];
 
@@ -895,8 +916,8 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
           classification,
           evidence: context.evidence,
         }),
-        follow_up_question: fallbackQuestion,
-        current_question: fallbackQuestion,
+        follow_up_question: context.coaching_policy?.clarifyingQuestion?.trim() || fallbackQuestion,
+        current_question: context.coaching_policy?.clarifyingQuestion?.trim() || fallbackQuestion,
         recommended_next_action: 'answer_question',
         needs_candidate_input: true,
       });

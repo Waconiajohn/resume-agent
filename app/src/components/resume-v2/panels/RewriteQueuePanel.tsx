@@ -422,6 +422,7 @@ export function RewriteQueuePanel({
       ...baseChatContext,
       evidence: item.currentEvidence.map((evidence) => evidence.text),
       jobDescriptionExcerpt: item.sourceEvidence[0]?.text ?? baseChatContext.jobDescriptionExcerpt,
+      coachingPolicy: item.coachingPolicy ?? baseChatContext.coachingPolicy,
     };
 
     return (

@@ -793,6 +793,7 @@ export function buildRewriteQueue(args: {
       classification: requirement.classification,
       candidateInputNeeded: latestAssistant?.needsCandidateInput ?? false,
       coachingReasoning: coachingCard?.ai_reasoning ?? requirement.strategy?.ai_reasoning,
+      coachingPolicy: sharedCoachingPolicy,
       starterQuestion,
       riskNote: category === 'hard_gap'
         ? 'If this is truly missing, keep it visible as a real risk instead of forcing it into the resume.'

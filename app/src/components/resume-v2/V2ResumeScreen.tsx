@@ -214,6 +214,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const ji = data.jobIntelligence;
     const ci = data.candidateIntelligence;
     const ga = data.gapAnalysis;
+    const gc = data.gapCoachingCards;
 
     // Find the matching requirement in gap analysis (normalized + fallback)
     const normalized = normalizeRequirement(requirement);
@@ -230,11 +231,18 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       c => c.competency.toLowerCase().includes(normalized) || normalized.includes(c.competency.toLowerCase()),
     );
 
+    const coachingCard = gc?.find(
+      card => normalizeRequirement(card.requirement) === normalized,
+    ) ?? gc?.find(
+      card => card.requirement.toLowerCase().includes(normalized) || normalized.includes(card.requirement.toLowerCase()),
+    );
+
     return {
       evidence: gapReq?.evidence ?? [],
       currentStrategy: gapReq?.strategy?.positioning,
       aiReasoning: gapReq?.strategy?.ai_reasoning,
       inferredMetric: gapReq?.strategy?.inferred_metric,
+      coachingPolicy: coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy,
       jobDescriptionExcerpt: comp?.evidence_from_jd
         ?? ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
         ?? '',
@@ -242,7 +250,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         ? `${ci.career_themes.join(', ')}. ${ci.leadership_scope}. Scale: ${ci.operational_scale}.`
         : '',
     };
-  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis]);
+  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards]);
 
   const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
     if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;

@@ -338,6 +338,7 @@ export interface GapChatContext {
   inferredMetric?: string;
   jobDescriptionExcerpt: string;
   candidateExperienceSummary: string;
+  coachingPolicy?: RequirementCoachingPolicySnapshot;
 }
 
 export interface FinalReviewChatContext {
@@ -517,6 +518,7 @@ export interface RewriteQueueItem {
   severity?: FinalReviewConcern['severity'];
   candidateInputNeeded?: boolean;
   coachingReasoning?: string;
+  coachingPolicy?: RequirementCoachingPolicySnapshot;
   starterQuestion?: string;
   riskNote?: string;
   suggestedDraft?: string;

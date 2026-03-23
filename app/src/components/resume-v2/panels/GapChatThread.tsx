@@ -259,15 +259,18 @@ export function GapChatThread({
   const activeRewriteSeed = starterDraftValue.trim() || latestSuggestedLanguage?.trim() || initialSuggestedLanguage?.trim() || '';
 
   const requestGuidance = useCallback(() => {
-    const focus = initialQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
+    const focus = initialQuestion ?? context.coachingPolicy?.clarifyingQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
+    const proofTarget = context.coachingPolicy?.lookingFor
+      ? ` What would make this believable: ${context.coachingPolicy.lookingFor}`
+      : '';
     sendQuickMessage(
       `Using the role requirement, the current evidence, and the candidate background summary, do three things in plain language: ` +
       `1) say what the current evidence already proves, ` +
       `2) name the single missing detail that would make the proof direct, and ` +
       `3) ask exactly one short question to get that detail. ` +
-      `Focus especially on this: ${focus}`,
+      `Focus especially on this: ${focus}.${proofTarget}`,
     );
-  }, [initialQuestion, promptHint, sendQuickMessage]);
+  }, [context.coachingPolicy?.clarifyingQuestion, context.coachingPolicy?.lookingFor, initialQuestion, promptHint, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
     const startingPoint = activeRewriteSeed
@@ -314,7 +317,7 @@ export function GapChatThread({
   const isAccepted = resolvedLanguage !== null;
   const introSourceLabel = sourceLabel ?? 'What the role is asking for';
   const introSourceExcerpt = sourceExcerpt ?? context.jobDescriptionExcerpt;
-  const introQuestion = initialQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
+  const introQuestion = initialQuestion ?? context.coachingPolicy?.clarifyingQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
 
   if (resolvedLanguage) {
     return (
@@ -377,6 +380,11 @@ export function GapChatThread({
             <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
             </p>
+            {context.coachingPolicy?.lookingFor && (
+              <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
+                What AI is looking for: {context.coachingPolicy.lookingFor}
+              </p>
+            )}
           </div>
 
           <div
@@ -459,6 +467,11 @@ export function GapChatThread({
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
               {introQuestion}
             </p>
+            {context.coachingPolicy?.lookingFor && (
+              <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
+                What AI is looking for: {context.coachingPolicy.lookingFor}
+              </p>
+            )}
             {activeRewriteSeed && (
               <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
                 The latest AI rewrite is ready below. Keep editing it there or ask AI for a stronger or different version.

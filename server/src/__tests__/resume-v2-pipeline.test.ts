@@ -692,6 +692,56 @@ describe('POST /api/resume-v2/:sessionId/gap-chat', () => {
     expect(body.recommended_next_action).toBe('answer_question');
     expect(body.needs_candidate_input).toBe(true);
   });
+
+  it('seeds gap chat with shared coaching policy guidance when it is available', async () => {
+    mockParseJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      data: {
+        ...VALID_GAP_CHAT_BODY,
+        context: {
+          ...VALID_GAP_CHAT_BODY.context,
+          coaching_policy: {
+            primaryFamily: 'communication',
+            families: ['communication'],
+            clarifyingQuestion: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            proofActionDirect: 'Add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            rationale: 'Executive communication only counts when the audience, message, and outcome are clear.',
+            lookingFor: 'Audience seniority, what was presented, and the decision, alignment, or outcome that followed.',
+          },
+        },
+      },
+    });
+    mockLlmChat.mockResolvedValue({
+      text: '{"response":"Need one more detail.","current_question":"Who was the audience, what did you present or align on, and what decision or next step came from it?","follow_up_question":"Who was the audience, what did you present or align on, and what decision or next step came from it?","needs_candidate_input":true,"recommended_next_action":"answer_question"}',
+    });
+    mockRepairJSON.mockReturnValue({
+      response: 'Need one more detail.',
+      current_question: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+      follow_up_question: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+      needs_candidate_input: true,
+      recommended_next_action: 'answer_question',
+    });
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/gap-chat`, 'POST', VALID_GAP_CHAT_BODY);
+
+    expect(res.status).toBe(200);
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const seededAssistant = JSON.parse(llmArgs.messages[1]?.content ?? '{}') as {
+      current_question?: string;
+      follow_up_question?: string;
+    };
+
+    expect(seededAssistant.current_question).toBe(
+      'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+    );
+    expect(seededAssistant.follow_up_question).toBe(
+      'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+    );
+    expect(llmArgs.messages[0]?.content).toContain('What would make this believable: Audience seniority, what was presented, and the decision, alignment, or outcome that followed.');
+  });
 });
 
 describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {

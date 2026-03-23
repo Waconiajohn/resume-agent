@@ -149,6 +149,19 @@ function makeGapAnalysis(): GapAnalysis {
         source: 'job_description',
         source_evidence: 'Lead alignment across executive stakeholders and operating teams.',
         score_domain: 'ats',
+        strategy: {
+          real_experience: 'Led recurring alignment across executive stakeholders.',
+          positioning: 'Aligned executive stakeholders around weekly priorities to keep cross-functional execution on track.',
+          coaching_policy: {
+            primaryFamily: 'communication',
+            families: ['communication'],
+            clarifyingQuestion: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            proofActionDirect: 'Add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            rationale: 'Executive communication only counts when the audience, message, and outcome are clear.',
+            lookingFor: 'Audience seniority, what was presented, and the decision, alignment, or outcome that followed.',
+          },
+        },
       },
     ],
     coverage_score: 50,
@@ -264,6 +277,15 @@ function makeSeededDraftGapAnalysis(): GapAnalysis {
         strategy: {
           real_experience: 'Led recurring alignment across executive stakeholders.',
           positioning: 'Aligned executive stakeholders around weekly priorities to keep cross-functional execution on track.',
+          coaching_policy: {
+            primaryFamily: 'communication',
+            families: ['communication'],
+            clarifyingQuestion: 'Who was the audience, what did you present or align on, and what decision or next step came from it?',
+            proofActionRequiresInput: 'If you have this experience, add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            proofActionDirect: 'Add one concrete example showing who the audience was, what you communicated or aligned on, and what decision or outcome followed.',
+            rationale: 'Executive communication only counts when the audience, message, and outcome are clear.',
+            lookingFor: 'Audience seniority, what was presented, and the decision, alignment, or outcome that followed.',
+          },
         },
       },
     ],
@@ -452,6 +474,7 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
     expect(screen.getByText('Best next detail to add')).toBeInTheDocument();
+    expect(screen.getByText('What AI is looking for: Audience seniority, what was presented, and the decision, alignment, or outcome that followed.')).toBeInTheDocument();
     expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Draft from What We Know' }));

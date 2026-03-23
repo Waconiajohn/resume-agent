@@ -321,6 +321,15 @@ export const gapChatSchema = z.object({
     inferred_metric: z.string().max(500).optional(),
     job_description_excerpt: z.string().max(5000),
     candidate_experience_summary: z.string().max(3000),
+    coaching_policy: z.object({
+      primaryFamily: z.string().nullable(),
+      families: z.array(z.string()),
+      clarifyingQuestion: z.string().max(2000),
+      proofActionRequiresInput: z.string().max(3000),
+      proofActionDirect: z.string().max(3000),
+      rationale: z.string().max(2000),
+      lookingFor: z.string().max(2000),
+    }).optional(),
   }),
 });
 
