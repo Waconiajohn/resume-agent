@@ -599,11 +599,7 @@ export function buildRewriteQueue(args: {
     const starterQuestion = looksLikeTargetedStarterQuestion(latestAssistant?.currentQuestion, requirement.requirement)
       ? latestAssistant?.currentQuestion?.trim()
       : sharedCoachingPolicy?.clarifyingQuestion?.trim()
-        || (looksLikeTargetedStarterQuestion(coachingCard?.interview_questions?.[0]?.question, requirement.requirement)
-          ? coachingCard?.interview_questions?.[0]?.question?.trim()
-          : looksLikeTargetedStarterQuestion(requirement.strategy?.interview_questions?.[0]?.question, requirement.requirement)
-            ? requirement.strategy?.interview_questions?.[0]?.question?.trim()
-            : fallbackStarterQuestion);
+        || fallbackStarterQuestion;
 
     return {
       id: `requirement:${source}:${normalizedRequirement}`,

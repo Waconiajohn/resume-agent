@@ -605,6 +605,46 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards you tracked');
   });
 
+  it('does not let legacy generic interview questions override the contract-safe fallback when no coaching policy exists', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Develop and track performance metrics',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Tracked weekly throughput metrics and improved fill rate by 14% across the network.'],
+          strategy: {
+            real_experience: 'Tracked weekly throughput metrics and improved fill rate by 14% across the network.',
+            positioning: 'Built and tracked weekly throughput scorecards that improved fill rate by 14% across the network.',
+            ai_reasoning: 'The proof is close, but the resume still needs the metrics and cadence to be explicit.',
+            interview_questions: [
+              {
+                question: 'Tell me about any experience you have related to performance metrics.',
+                rationale: 'Legacy generic placeholder',
+                looking_for: 'Anything about metrics',
+              },
+            ],
+          },
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items[0]?.starterQuestion).toBe(
+      'Your resume already shows "Tracked weekly throughput metrics and improved fill rate by 14% across the network.". What is the clearest concrete example that proves "Develop and track performance metrics" for this role?',
+    );
+  });
+
   it('keeps review guidance when a suggested rewrite already exists even if coaching policy is present', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [
