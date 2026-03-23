@@ -355,6 +355,32 @@ describe('Content Calendar ProductConfig', () => {
     expect(msg).toContain('Turnaround operator');
   });
 
+  it('buildAgentMessage includes LinkedIn profile analysis when available', () => {
+    const config = createContentCalendarProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.platform_context = {
+      linkedin_analysis: {
+        keyword_analysis: {
+          coverage_score: 42,
+          missing_keywords: ['Cloud', 'DevOps'],
+          recommended_keywords: ['Platform'],
+        },
+        profile_analysis: {
+          headline_assessment: 'Needs stronger target-role language',
+          about_assessment: 'Good story, weak keyword density',
+          positioning_gaps: ['Target role not explicit'],
+          strengths: ['Strong leadership tone'],
+        },
+      },
+    };
+    const msg = config.buildAgentMessage('strategist', state, {
+      resume_text: 'resume',
+    });
+    expect(msg).toContain('LinkedIn Profile Analysis');
+    expect(msg).toContain('Cloud, DevOps');
+    expect(msg).toContain('Needs stronger target-role language');
+  });
+
   it('buildAgentMessage returns content for writer', () => {
     const config = createContentCalendarProductConfig();
     const state = config.createInitialState('s', 'u', {});

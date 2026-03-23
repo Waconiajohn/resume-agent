@@ -646,3 +646,60 @@ export function renderWhyMeStorySection(args: {
 
   return section(args.heading, lines);
 }
+
+export function renderClientProfileSection(args: {
+  heading: string;
+  legacyClientProfile?: unknown;
+}): string[] {
+  const profile = asRecord(args.legacyClientProfile);
+  if (!profile) return [];
+
+  const yearsExperience = typeof profile.years_experience === 'number'
+    ? String(profile.years_experience)
+    : asString(profile.years_experience);
+  const urgencyScore = typeof profile.urgency_score === 'number'
+    ? String(profile.urgency_score)
+    : asString(profile.urgency_score);
+  const lines: string[] = [];
+
+  pushLine(lines, 'Career level', firstMeaningful(profile.career_level));
+  pushLine(lines, 'Industry', firstMeaningful(profile.industry));
+  pushLine(lines, 'Years of experience', yearsExperience);
+  pushLine(lines, 'Financial segment', firstMeaningful(profile.financial_segment));
+  pushLine(lines, 'Emotional state', firstMeaningful(profile.emotional_state));
+  pushLine(lines, 'Transition type', firstMeaningful(profile.transition_type));
+  pushListLine(lines, 'Goals', asStringArray(profile.goals), 5);
+  pushListLine(lines, 'Constraints', asStringArray(profile.constraints), 5);
+  pushListLine(lines, 'Self-reported strengths', asStringArray(profile.strengths_self_reported), 5);
+  pushLine(lines, 'Urgency score', urgencyScore);
+  pushLine(lines, 'Recommended starting point', firstMeaningful(profile.recommended_starting_point));
+  pushLine(lines, 'Coaching tone', firstMeaningful(profile.coaching_tone));
+
+  return section(args.heading, lines);
+}
+
+export function renderLinkedInAnalysisSection(args: {
+  heading: string;
+  legacyLinkedInAnalysis?: unknown;
+}): string[] {
+  const analysis = asRecord(args.legacyLinkedInAnalysis);
+  if (!analysis) return [];
+
+  const keywordAnalysis = asRecord(analysis.keyword_analysis);
+  const profileAnalysis = asRecord(analysis.profile_analysis);
+  const coverageScore = typeof keywordAnalysis?.coverage_score === 'number'
+    ? `${keywordAnalysis.coverage_score}%`
+    : asString(keywordAnalysis?.coverage_score);
+  const lines: string[] = [];
+
+  pushLine(lines, 'Coverage score', coverageScore);
+  pushListLine(lines, 'Missing keywords', asStringArray(keywordAnalysis?.missing_keywords), 6);
+  pushListLine(lines, 'Recommended keywords', asStringArray(keywordAnalysis?.recommended_keywords), 6);
+  pushListLine(lines, 'Present keywords', asStringArray(keywordAnalysis?.present_keywords), 6);
+  pushLine(lines, 'Headline assessment', firstMeaningful(profileAnalysis?.headline_assessment));
+  pushLine(lines, 'About assessment', firstMeaningful(profileAnalysis?.about_assessment));
+  pushListLine(lines, 'Positioning gaps', asStringArray(profileAnalysis?.positioning_gaps), 5);
+  pushListLine(lines, 'Profile strengths', asStringArray(profileAnalysis?.strengths), 5);
+
+  return section(args.heading, lines);
+}

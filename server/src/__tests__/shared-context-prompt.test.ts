@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { createEmptySharedContext } from '../contracts/shared-context.js';
 import { summarizeEvidenceInventory, type EvidenceItem } from '../contracts/shared-evidence.js';
 import {
+  renderClientProfileSection,
   renderCareerProfileSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
+  renderLinkedInAnalysisSection,
   renderPositioningStrategySection,
   renderTargetingSummaryLines,
   renderWhyMeStorySection,
@@ -175,5 +177,56 @@ describe('shared-context prompt formatter', () => {
     expect(text).toContain('fixing broken teams');
     expect(text).toContain('turnaround leadership');
     expect(text).toContain('deep operational experience others lack');
+  });
+
+  it('renders legacy client profile into readable prompt lines', () => {
+    const lines = renderClientProfileSection({
+      heading: '## Client Profile',
+      legacyClientProfile: {
+        career_level: 'vp',
+        industry: 'Industrial',
+        years_experience: 18,
+        financial_segment: 'ideal',
+        transition_type: 'voluntary',
+        goals: ['Board role'],
+        constraints: ['Chicago'],
+        strengths_self_reported: ['Turnarounds'],
+        urgency_score: 4,
+        recommended_starting_point: 'resume',
+        coaching_tone: 'direct',
+      },
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('vp');
+    expect(text).toContain('Industrial');
+    expect(text).toContain('Board role');
+    expect(text).toContain('Turnarounds');
+    expect(text).toContain('resume');
+  });
+
+  it('renders legacy LinkedIn analysis into readable prompt lines', () => {
+    const lines = renderLinkedInAnalysisSection({
+      heading: '## LinkedIn Profile Analysis',
+      legacyLinkedInAnalysis: {
+        keyword_analysis: {
+          coverage_score: 42,
+          missing_keywords: ['Cloud', 'DevOps'],
+          recommended_keywords: ['Platform'],
+        },
+        profile_analysis: {
+          headline_assessment: 'Needs stronger target-role language',
+          about_assessment: 'Good story, weak keyword density',
+          positioning_gaps: ['Target role not explicit'],
+          strengths: ['Strong leadership tone'],
+        },
+      },
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('42%');
+    expect(text).toContain('Cloud, DevOps');
+    expect(text).toContain('Needs stronger target-role language');
+    expect(text).toContain('Strong leadership tone');
   });
 });

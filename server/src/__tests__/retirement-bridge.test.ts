@@ -511,6 +511,31 @@ describe('createRetirementBridgeProductConfig', () => {
     expect(state.responses['rq1']).toBe('I have a solid runway');
     expect(state.responses['rq2']).toBe('COBRA is sorted');
   });
+
+  it('buildAgentMessage includes readable client profile context when available', () => {
+    const config = createRetirementBridgeProductConfig();
+    const state = config.createInitialState('sess-1', 'user-1', {});
+    state.platform_context = {
+      client_profile: {
+        career_level: 'vp',
+        industry: 'Industrial',
+        years_experience: 18,
+        financial_segment: 'ideal',
+        transition_type: 'voluntary',
+        goals: ['Board role'],
+        constraints: ['Chicago'],
+        strengths_self_reported: ['Turnarounds'],
+        urgency_score: 4,
+        recommended_starting_point: 'resume',
+        coaching_tone: 'direct',
+      },
+    };
+    const msg = config.buildAgentMessage('assessor_questions', state, {});
+    expect(msg).toContain('Client Profile');
+    expect(msg).toContain('Career level: vp');
+    expect(msg).toContain('Board role');
+    expect(msg).toContain('Turnarounds');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

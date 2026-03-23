@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from './types.js';
 import {
   renderCareerProfileSection,
+  renderLinkedInAnalysisSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
@@ -120,11 +121,10 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
         }
 
         if (state.platform_context?.linkedin_analysis) {
-          parts.push(
-            '',
-            '## LinkedIn Profile Analysis (from LinkedIn Optimizer)',
-            JSON.stringify(state.platform_context.linkedin_analysis, null, 2),
-          );
+          parts.push(...renderLinkedInAnalysisSection({
+            heading: '## LinkedIn Profile Analysis (from LinkedIn Optimizer)',
+            legacyLinkedInAnalysis: state.platform_context.linkedin_analysis,
+          }));
         }
 
         if (input.target_role) {
