@@ -19,6 +19,7 @@ import type {
 import { llm, MODEL_MID } from '../../../../lib/llm.js';
 import type { ChatResponse } from '../../../../lib/llm-provider.js';
 import { repairJSON } from '../../../../lib/json-repair.js';
+import { renderPositioningStrategySection } from '../../../../contracts/shared-context-prompt.js';
 
 type InterviewerTool = AgentTool<MockInterviewState, MockInterviewSSEEvent>;
 
@@ -85,9 +86,10 @@ const generateInterviewQuestionTool: InterviewerTool = {
 
     if (state.platform_context?.positioning_strategy) {
       parts.push(
-        '## Positioning Strategy (from prior CareerIQ session)',
-        JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-        '',
+        ...renderPositioningStrategySection({
+          heading: '## Positioning Strategy (from prior CareerIQ session)',
+          legacyStrategy: state.platform_context.positioning_strategy,
+        }),
       );
     }
 

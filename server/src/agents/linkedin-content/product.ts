@@ -17,6 +17,11 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
+import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
 
 export function createLinkedInContentProductConfig(): ProductConfig<LinkedInContentState, LinkedInContentSSEEvent> {
   return {
@@ -120,31 +125,29 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         }
 
         if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
-          parts.push(
-            '## Prior Positioning Strategy',
-            JSON.stringify(sharedContext?.positioningStrategy, null, 2),
-            '',
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy',
+            sharedStrategy: sharedContext?.positioningStrategy,
+          }));
         } else if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '## Prior Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-            '',
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
-          parts.push(
-            '## Evidence Items',
-            JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
-            '',
-          );
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Items',
+            sharedInventory: sharedContext?.evidenceInventory,
+            maxItems: 8,
+          }));
         } else if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
-          parts.push(
-            '## Evidence Items',
-            JSON.stringify(state.platform_context.evidence_items.slice(0, 8), null, 2),
-            '',
-          );
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Items',
+            legacyEvidence: state.platform_context.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         parts.push(
@@ -189,17 +192,15 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         }
 
         if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
-          parts.push(
-            '## Career Narrative (match this authentic voice)',
-            JSON.stringify(sharedContext?.careerNarrative, null, 2),
-            '',
-          );
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative (match this authentic voice)',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
         } else if (state.platform_context?.career_narrative) {
-          parts.push(
-            '## Career Narrative (match this authentic voice)',
-            JSON.stringify(state.platform_context.career_narrative, null, 2),
-            '',
-          );
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative (match this authentic voice)',
+            legacyNarrative: state.platform_context.career_narrative,
+          }));
         }
 
         // If revision is needed, include the feedback

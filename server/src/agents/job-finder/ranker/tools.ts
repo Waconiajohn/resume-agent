@@ -14,6 +14,13 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
+import {
+  renderBenchmarkCandidateSection,
+  renderCareerNarrativeSection,
+  renderGapAnalysisSection,
+  renderIndustryContextSection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 // ─── Tool: score_job_fit ────────────────────────────────────────────
 
@@ -55,16 +62,23 @@ const scoreJobFitTool: JobFinderTool = {
       ? sharedContext?.gapAnalysis
       : state.platform_context?.gap_analysis;
 
-    const contextParts: string[] = [];
-    if (positioningStrategy) {
-      contextParts.push(`POSITIONING STRATEGY:\n${JSON.stringify(positioningStrategy, null, 2)}`);
-    }
-    if (benchmarkCandidate) {
-      contextParts.push(`BENCHMARK CANDIDATE PROFILE:\n${JSON.stringify(benchmarkCandidate, null, 2)}`);
-    }
-    if (gapAnalysis) {
-      contextParts.push(`GAP ANALYSIS:\n${JSON.stringify(gapAnalysis, null, 2)}`);
-    }
+    const contextParts: string[] = [
+      ...renderPositioningStrategySection({
+        heading: 'POSITIONING STRATEGY',
+        sharedStrategy: sharedContext?.positioningStrategy,
+        legacyStrategy: positioningStrategy,
+      }),
+      ...renderBenchmarkCandidateSection({
+        heading: 'BENCHMARK CANDIDATE PROFILE',
+        sharedBenchmark: sharedContext?.benchmarkCandidate,
+        legacyBenchmark: benchmarkCandidate,
+      }),
+      ...renderGapAnalysisSection({
+        heading: 'GAP ANALYSIS',
+        sharedGapAnalysis: sharedContext?.gapAnalysis,
+        legacyGapAnalysis: gapAnalysis,
+      }),
+    ];
 
     const hasContext = contextParts.length > 0;
 
@@ -207,9 +221,25 @@ const rankAndNarrateTool: JobFinderTool = {
       ? state.shared_context?.industryContext
       : state.platform_context?.industry_research;
 
+    const narrativeContextSections = [
+      ...renderCareerNarrativeSection({
+        heading: 'CANDIDATE CAREER NARRATIVE',
+        sharedNarrative: state.shared_context?.careerNarrative,
+        legacyNarrative: careerNarrative,
+      }),
+      ...renderIndustryContextSection({
+        heading: 'INDUSTRY RESEARCH',
+        sharedIndustry: state.shared_context?.industryContext,
+        legacyIndustry: industryResearch,
+      }),
+    ];
+    const narrativeContext = narrativeContextSections.length > 0
+      ? `${narrativeContextSections.join('\n')}\n`
+      : '';
+
     const narrativePrompt = `Write compelling, specific "why this matches" narratives for these job opportunities.
 
-${careerNarrative ? `CANDIDATE CAREER NARRATIVE:\n${JSON.stringify(careerNarrative, null, 2)}\n\n` : ''}${industryResearch ? `INDUSTRY RESEARCH:\n${JSON.stringify(industryResearch, null, 2)}\n\n` : ''}JOBS (ordered by fit score):
+${narrativeContext}JOBS (ordered by fit score):
 ${topScores.map((j, i) => `${i + 1}. "${j.title}" at ${j.company}
    Fit Score: ${j.fit_score}/100
    Positioning Alignment: ${j.positioning_alignment}

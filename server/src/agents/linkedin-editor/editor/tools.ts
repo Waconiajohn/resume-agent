@@ -14,6 +14,10 @@ import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInEditorState, LinkedInEditorSSEEvent } from '../types.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 // ─── Section writing prompts ───────────────────────────────────────────
 
@@ -34,19 +38,18 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
   }
 
   if (platformContext?.positioning_strategy) {
-    parts.push(
-      '## Positioning Strategy',
-      JSON.stringify(platformContext.positioning_strategy, null, 2),
-      '',
-    );
+    parts.push(...renderPositioningStrategySection({
+      heading: '## Positioning Strategy',
+      legacyStrategy: platformContext.positioning_strategy,
+    }));
   }
 
   if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
-    parts.push(
-      '## Evidence Items (use specific metrics and stories)',
-      JSON.stringify(platformContext.evidence_items.slice(0, 6), null, 2),
-      '',
-    );
+    parts.push(...renderEvidenceInventorySection({
+      heading: '## Evidence Items (use specific metrics and stories)',
+      legacyEvidence: platformContext.evidence_items,
+      maxItems: 6,
+    }));
   }
 
   if (state.current_profile) {
@@ -227,6 +230,12 @@ const selfReviewSectionTool: LinkedInEditorTool = {
     });
 
     const positioningStrategy = state.platform_context?.positioning_strategy;
+    const positioningSection = positioningStrategy
+      ? renderPositioningStrategySection({
+          heading: '## Target Positioning',
+          legacyStrategy: positioningStrategy,
+        }).join('\n')
+      : '';
 
     const response = await llm.chat({
       model: MODEL_MID,
@@ -241,7 +250,7 @@ const selfReviewSectionTool: LinkedInEditorTool = {
 ## Section Content
 ${sectionContent}
 
-${positioningStrategy ? `## Target Positioning\n${JSON.stringify(positioningStrategy, null, 2)}` : ''}
+${positioningSection}
 
 Return scores (0-100) as:
 {
@@ -336,7 +345,13 @@ ${currentDraft}
 ## User Feedback
 ${feedback}
 
-${state.platform_context?.evidence_items ? `## Available Evidence (use if user requests specific examples)\n${JSON.stringify(state.platform_context.evidence_items.slice(0, 6), null, 2)}` : ''}
+${state.platform_context?.evidence_items
+  ? renderEvidenceInventorySection({
+      heading: '## Available Evidence (use if user requests specific examples)',
+      legacyEvidence: state.platform_context.evidence_items,
+      maxItems: 6,
+    }).join('\n')
+  : ''}
 
 Return ONLY valid JSON:
 {

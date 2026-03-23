@@ -21,6 +21,10 @@ import { PROFILE_SECTION_ORDER } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
 
 export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEditorState, LinkedInEditorSSEEvent> {
   return {
@@ -127,7 +131,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         }
 
         if (nextSection) {
-          parts.push(`## Next Section to Write: ${nextSection}`, '');
+          parts.push(`## Next Section to Write: "${nextSection}"`, '');
 
           // Include the feedback for this section if revision was requested
           const feedback = state.section_feedback?.[nextSection as ProfileSection];
@@ -155,11 +159,10 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         }
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '## Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-            '',
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         if (state.current_profile) {
@@ -171,11 +174,11 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         }
 
         if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
-          parts.push(
-            '## Evidence Items',
-            JSON.stringify(state.platform_context.evidence_items.slice(0, 8), null, 2),
-            '',
-          );
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Items',
+            legacyEvidence: state.platform_context.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         // Distress resources — always first agent

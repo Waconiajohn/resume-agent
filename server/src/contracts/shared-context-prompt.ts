@@ -1,0 +1,524 @@
+import {
+  hasMeaningfulSharedValue,
+  type SharedBenchmarkCandidate,
+  type SharedCareerNarrative,
+  type SharedContext,
+  type SharedGapAnalysis,
+  type SharedIndustryContext,
+  type SharedPositioningStrategy,
+} from './shared-context.js';
+import type { EvidenceInventorySummary, EvidenceItem } from './shared-evidence.js';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const next: string[] = [];
+  const seen = new Set<string>();
+
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    next.push(trimmed);
+  }
+
+  return next;
+}
+
+function firstMeaningful(...values: unknown[]): string | null {
+  for (const value of values) {
+    const next = asString(value);
+    if (next) return next;
+  }
+  return null;
+}
+
+function pushLine(lines: string[], label: string, value: string | null) {
+  if (!value) return;
+  lines.push(`- ${label}: ${value}`);
+}
+
+function pushListLine(lines: string[], label: string, values: string[], maxItems = 5) {
+  if (!values.length) return;
+  lines.push(`- ${label}: ${values.slice(0, maxItems).join(', ')}`);
+}
+
+function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
+  const next: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    if (!value) continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    next.push(trimmed);
+  }
+
+  return next;
+}
+
+function section(heading: string, lines: string[]): string[] {
+  const clean = lines
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!clean.length) return [];
+  return [heading, ...clean, ''];
+}
+
+function summarizeLegacyEvidenceItem(raw: unknown): string | null {
+  if (typeof raw === 'string') return raw.trim() || null;
+
+  const record = asRecord(raw);
+  if (!record) return null;
+
+  const fragments = uniqueNonEmpty([
+    asString(record.text),
+    asString(record.statement),
+    asString(record.claim),
+    asString(record.situation),
+    asString(record.action),
+    asString(record.result),
+    asString(record.achievement),
+    asString(record.impact),
+    asString(record.metric),
+    asString(record.outcome),
+  ]);
+
+  return fragments.length ? fragments.join('; ') : null;
+}
+
+function formatEvidenceItem(item: EvidenceItem): string {
+  const flags: string[] = [item.level];
+  if (item.requiresConfirmation) flags.push('needs confirmation');
+  if (!item.finalArtifactEligible) flags.push('not export-ready');
+
+  return `- [${flags.join(' | ')}] ${item.statement}`;
+}
+
+export function renderTargetingSummaryLines(
+  sharedContext?: SharedContext | null,
+  legacyPositioningStrategy?: unknown,
+): string[] {
+  const legacy = asRecord(legacyPositioningStrategy);
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Target role',
+    firstMeaningful(sharedContext?.targetRole.roleTitle, legacy?.target_role),
+  );
+  pushLine(
+    lines,
+    'Role family',
+    firstMeaningful(sharedContext?.targetRole.roleFamily, legacy?.role_family),
+  );
+  pushLine(
+    lines,
+    'Role level',
+    firstMeaningful(sharedContext?.targetRole.roleLevel, legacy?.target_seniority, legacy?.target_level),
+  );
+  pushListLine(
+    lines,
+    'Target titles',
+    uniqueNonEmpty(asStringArray(legacy?.target_titles)),
+  );
+  pushLine(
+    lines,
+    'Target industry',
+    firstMeaningful(sharedContext?.industryContext.primaryIndustry, legacy?.target_industry),
+  );
+  pushLine(
+    lines,
+    'Target company',
+    firstMeaningful(sharedContext?.targetCompany.companyName, legacy?.target_company),
+  );
+
+  return lines;
+}
+
+export function renderPositioningStrategySection(args: {
+  heading: string;
+  sharedStrategy?: SharedPositioningStrategy | null;
+  legacyStrategy?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyStrategy);
+  const strategy = args.sharedStrategy;
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Positioning angle',
+    firstMeaningful(strategy?.positioningAngle, legacy?.angle, legacy?.positioning_statement),
+  );
+  pushLine(lines, 'Positioning focus', firstMeaningful(legacy?.focus));
+  pushLine(lines, 'Target role', firstMeaningful(legacy?.target_role));
+  pushListLine(lines, 'Target titles', asStringArray(legacy?.target_titles), 5);
+  pushLine(
+    lines,
+    'Target level',
+    firstMeaningful(legacy?.target_level, legacy?.target_seniority),
+  );
+  pushLine(lines, 'Target industry', firstMeaningful(legacy?.target_industry));
+  pushListLine(
+    lines,
+    'Supporting themes',
+    uniqueNonEmpty([
+      ...strategy?.supportingThemes ?? [],
+      ...asStringArray(legacy?.supporting_themes),
+      ...asStringArray(legacy?.proof_themes),
+    ]),
+    6,
+  );
+  pushListLine(
+    lines,
+    'Narrative priorities',
+    uniqueNonEmpty([
+      ...strategy?.narrativePriorities ?? [],
+      ...asStringArray(legacy?.narrative_priorities),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Approved framing',
+    uniqueNonEmpty([
+      ...strategy?.approvedFraming ?? [],
+      ...asStringArray(legacy?.approved_framing),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Risk areas',
+    uniqueNonEmpty([
+      ...strategy?.riskAreas ?? [],
+      ...asStringArray(legacy?.risk_areas),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Needs confirmation',
+    uniqueNonEmpty([
+      ...strategy?.framingStillRequiringConfirmation ?? [],
+      ...asStringArray(legacy?.framing_still_requiring_confirmation),
+    ]),
+    4,
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderEvidenceInventorySection(args: {
+  heading: string;
+  sharedInventory?: EvidenceInventorySummary | null;
+  legacyEvidence?: unknown[] | null;
+  maxItems?: number;
+}): string[] {
+  const maxItems = typeof args.maxItems === 'number' ? Math.max(1, args.maxItems) : 8;
+  const lines: string[] = [];
+
+  if (args.sharedInventory?.evidenceItems?.length) {
+    const items = args.sharedInventory.evidenceItems.slice(0, maxItems);
+    for (const item of items) {
+      lines.push(formatEvidenceItem(item));
+    }
+    if (args.sharedInventory.overreachRisks.length > 0) {
+      lines.push(`- Overreach risks flagged: ${args.sharedInventory.overreachRisks.length}`);
+    }
+    return section(args.heading, lines);
+  }
+
+  if (Array.isArray(args.legacyEvidence) && args.legacyEvidence.length > 0) {
+    const items = args.legacyEvidence
+      .map((item) => summarizeLegacyEvidenceItem(item))
+      .filter((item): item is string => !!item)
+      .slice(0, maxItems)
+      .map((item) => `- ${item}`);
+    return section(args.heading, items);
+  }
+
+  return [];
+}
+
+export function renderCareerNarrativeSection(args: {
+  heading: string;
+  sharedNarrative?: SharedCareerNarrative | null;
+  legacyNarrative?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyNarrative);
+  const narrative = args.sharedNarrative;
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Career arc',
+    firstMeaningful(narrative?.careerArc, legacy?.career_arc, legacy?.narrative_summary),
+  );
+  pushListLine(
+    lines,
+    'Signature strengths',
+    uniqueNonEmpty([
+      ...narrative?.signatureStrengths ?? [],
+      ...asStringArray(legacy?.signature_strengths),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Career themes',
+    uniqueNonEmpty([
+      ...narrative?.careerThemes ?? [],
+      ...asStringArray(legacy?.career_themes),
+    ]),
+    5,
+  );
+  pushLine(
+    lines,
+    'Operating style',
+    firstMeaningful(narrative?.operatingStyle, legacy?.operating_style),
+  );
+  pushLine(
+    lines,
+    'Leadership identity',
+    firstMeaningful(narrative?.leadershipIdentity, legacy?.leadership_identity),
+  );
+  pushListLine(
+    lines,
+    'Differentiators',
+    uniqueNonEmpty([
+      ...narrative?.differentiators ?? [],
+      ...asStringArray(legacy?.differentiators),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Authentic phrases',
+    uniqueNonEmpty([
+      ...narrative?.authenticPhrases ?? [],
+      ...asStringArray(legacy?.authentic_phrases),
+    ]),
+    3,
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderIndustryContextSection(args: {
+  heading: string;
+  sharedIndustry?: SharedIndustryContext | null;
+  legacyIndustry?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyIndustry);
+  const industry = args.sharedIndustry;
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Primary industry',
+    firstMeaningful(industry?.primaryIndustry, legacy?.primary_industry),
+  );
+  pushListLine(
+    lines,
+    'Adjacent industries',
+    uniqueNonEmpty([
+      ...industry?.adjacentIndustries ?? [],
+      ...asStringArray(legacy?.adjacent_industries),
+    ]),
+    4,
+  );
+  pushListLine(
+    lines,
+    'Common success signals',
+    uniqueNonEmpty([
+      ...industry?.commonSuccessSignals ?? [],
+      ...asStringArray(legacy?.common_success_signals),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Domain language',
+    uniqueNonEmpty([
+      ...industry?.domainLanguage ?? [],
+      ...asStringArray(legacy?.domain_language),
+    ]),
+    6,
+  );
+  pushListLine(
+    lines,
+    'Industry constraints',
+    uniqueNonEmpty([
+      ...industry?.industryConstraints ?? [],
+      ...asStringArray(legacy?.industry_constraints),
+    ]),
+    4,
+  );
+  pushListLine(
+    lines,
+    'Regulatory context',
+    uniqueNonEmpty([
+      ...industry?.regulatoryContext ?? [],
+      ...asStringArray(legacy?.regulatory_context),
+    ]),
+    4,
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderBenchmarkCandidateSection(args: {
+  heading: string;
+  sharedBenchmark?: SharedBenchmarkCandidate | null;
+  legacyBenchmark?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyBenchmark);
+  const benchmark = args.sharedBenchmark;
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Benchmark summary',
+    firstMeaningful(benchmark?.benchmarkSummary, legacy?.ideal_profile_summary),
+  );
+  pushListLine(
+    lines,
+    'Benchmark requirements',
+    uniqueNonEmpty([
+      ...benchmark?.benchmarkRequirements ?? [],
+      ...asStringArray(legacy?.expected_industry_knowledge),
+      ...asStringArray(legacy?.expected_technical_skills),
+      ...asStringArray(legacy?.must_have_signals),
+    ]),
+    6,
+  );
+  pushListLine(
+    lines,
+    'Benchmark signals',
+    uniqueNonEmpty([
+      ...benchmark?.benchmarkSignals ?? [],
+      ...asStringArray(legacy?.benchmark_signals),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Differentiators',
+    uniqueNonEmpty([
+      ...benchmark?.differentiators ?? [],
+      ...asStringArray(legacy?.differentiators),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Gaps relative to candidate',
+    uniqueNonEmpty([
+      ...benchmark?.benchmarkGapsRelativeToCandidate ?? [],
+      ...asStringArray(legacy?.benchmark_gaps_relative_to_candidate),
+    ]),
+    4,
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderGapAnalysisSection(args: {
+  heading: string;
+  sharedGapAnalysis?: SharedGapAnalysis | null;
+  legacyGapAnalysis?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyGapAnalysis);
+  const gap = args.sharedGapAnalysis;
+  const lines: string[] = [];
+
+  const coverageSummary = firstMeaningful(gap?.coverageSummary, legacy?.strength_summary);
+  if (coverageSummary) {
+    lines.push(coverageSummary);
+  }
+
+  pushListLine(
+    lines,
+    'Requirements',
+    uniqueNonEmpty([
+      ...gap?.requirements ?? [],
+      ...asStringArray(legacy?.requirements),
+    ]),
+    6,
+  );
+  pushListLine(
+    lines,
+    'Must-have gaps',
+    uniqueNonEmpty([
+      ...gap?.mustHaveGaps ?? [],
+      ...asStringArray(legacy?.must_have_gaps),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Preferred gaps',
+    uniqueNonEmpty([
+      ...gap?.preferredGaps ?? [],
+      ...asStringArray(legacy?.preferred_gaps),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Benchmark gaps',
+    uniqueNonEmpty([
+      ...gap?.benchmarkGaps ?? [],
+      ...asStringArray(legacy?.benchmark_gaps),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Critical risks',
+    uniqueNonEmpty([
+      ...gap?.criticalRisks ?? [],
+      ...asStringArray(legacy?.critical_gaps),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Next best actions',
+    uniqueNonEmpty([
+      ...gap?.nextBestActions ?? [],
+      ...asStringArray(legacy?.next_best_actions),
+    ]),
+    5,
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderEvidenceSummaryLine(sharedContext?: SharedContext | null): string | null {
+  if (!hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) return null;
+
+  const evidenceCount = sharedContext?.evidenceInventory.evidenceItems.length ?? 0;
+  const directProofCount = sharedContext?.evidenceInventory.directProof.length ?? 0;
+  const adjacentCount = sharedContext?.evidenceInventory.adjacentProof.length ?? 0;
+
+  return `Evidence available: ${evidenceCount} items (${directProofCount} direct, ${adjacentCount} adjacent).`;
+}

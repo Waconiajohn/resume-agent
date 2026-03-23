@@ -12,6 +12,10 @@ import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -55,11 +59,30 @@ const writeLetterTool: CoverLetterTool = {
     const evidenceItemSource = hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
       ? sharedContext?.evidenceInventory.evidenceItems
       : platformCtx?.evidence_items;
-    const positioningStrategy = positioningStrategySource
-      ? `\n\nPositioning strategy from resume strategist:\n${JSON.stringify(positioningStrategySource, null, 2)}`
+    const positioningStrategyBlock = positioningStrategySource
+      ? renderPositioningStrategySection({
+          heading: 'POSITIONING STRATEGY FROM RESUME STRATEGIST',
+          sharedStrategy: hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+            ? sharedContext?.positioningStrategy
+            : undefined,
+          legacyStrategy: positioningStrategySource,
+        }).join('\n')
       : '';
-    const evidenceItems = Array.isArray(evidenceItemSource) && evidenceItemSource.length > 0
-      ? `\n\nKey evidence items:\n${evidenceItemSource.slice(0, 8).map(e => `- ${JSON.stringify(e)}`).join('\n')}`
+    const evidenceItemsBlock = Array.isArray(evidenceItemSource) && evidenceItemSource.length > 0
+      ? renderEvidenceInventorySection({
+          heading: 'KEY EVIDENCE ITEMS',
+          sharedInventory: hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+            ? sharedContext?.evidenceInventory
+            : undefined,
+          legacyEvidence: evidenceItemSource,
+          maxItems: 8,
+        }).join('\n')
+      : '';
+    const positioningStrategy = positioningStrategyBlock
+      ? `\n\n${positioningStrategyBlock}`
+      : '';
+    const evidenceItems = evidenceItemsBlock
+      ? `\n\n${evidenceItemsBlock}`
       : '';
 
     const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.

@@ -14,6 +14,10 @@
 import type { ProductConfig } from '../../runtime/product-config.js';
 import { interviewerConfig } from './interviewer/agent.js';
 import type { MockInterviewState, MockInterviewSSEEvent, MockInterviewMode, QuestionType } from './types.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 export function createMockInterviewProductConfig(): ProductConfig<MockInterviewState, MockInterviewSSEEvent> {
   return {
@@ -117,8 +121,10 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
       if (state.platform_context?.positioning_strategy) {
         parts.push(
           '',
-          '## Prior Positioning Strategy (from CareerIQ resume session)',
-          JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+          ...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy (from CareerIQ resume session)',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }),
         );
       }
       if (state.platform_context?.why_me_story) {
@@ -134,8 +140,11 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
       ) {
         parts.push(
           '',
-          '## Evidence Items (use to generate targeted questions)',
-          JSON.stringify(state.platform_context?.evidence_items?.slice(0, 5) ?? [], null, 2),
+          ...renderEvidenceInventorySection({
+            heading: '## Evidence Items (use to generate targeted questions)',
+            legacyEvidence: state.platform_context?.evidence_items ?? [],
+            maxItems: 5,
+          }),
         );
       }
 

@@ -15,6 +15,11 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
+import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 // ─── Tool: write_post ─────────────────────────────────────────────────
 
@@ -65,45 +70,41 @@ const writePostTool: LinkedInContentTool = {
     ];
 
     if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
-      contextParts.push(
-        '## User\'s Career Narrative (match their authentic voice)',
-        JSON.stringify(sharedContext?.careerNarrative, null, 2),
-        '',
-      );
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## User\'s Career Narrative (match their authentic voice)',
+        sharedNarrative: sharedContext?.careerNarrative,
+      }));
     } else if (platformContext?.career_narrative) {
-      contextParts.push(
-        '## User\'s Career Narrative (match their authentic voice)',
-        JSON.stringify(platformContext.career_narrative, null, 2),
-        '',
-      );
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## User\'s Career Narrative (match their authentic voice)',
+        legacyNarrative: platformContext.career_narrative,
+      }));
     }
 
     if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
-      contextParts.push(
-        '## Positioning Strategy (ensure post reinforces this)',
-        JSON.stringify(sharedContext?.positioningStrategy, null, 2),
-        '',
-      );
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy (ensure post reinforces this)',
+        sharedStrategy: sharedContext?.positioningStrategy,
+      }));
     } else if (platformContext?.positioning_strategy) {
-      contextParts.push(
-        '## Positioning Strategy (ensure post reinforces this)',
-        JSON.stringify(platformContext.positioning_strategy, null, 2),
-        '',
-      );
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy (ensure post reinforces this)',
+        legacyStrategy: platformContext.positioning_strategy,
+      }));
     }
 
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
-      contextParts.push(
-        '## Evidence Items (use specific metrics and stories from here)',
-        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 5), null, 2),
-        '',
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Items (use specific metrics and stories from here)',
+        sharedInventory: sharedContext?.evidenceInventory,
+        maxItems: 5,
+      }));
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
-      contextParts.push(
-        '## Evidence Items (use specific metrics and stories from here)',
-        JSON.stringify(platformContext.evidence_items.slice(0, 5), null, 2),
-        '',
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Items (use specific metrics and stories from here)',
+        legacyEvidence: platformContext.evidence_items,
+        maxItems: 5,
+      }));
     }
 
     contextParts.push(
@@ -325,14 +326,20 @@ const revisePostTool: LinkedInContentTool = {
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
       revisionParts.push(
         '',
-        '## Available Evidence (use if user requests specific examples)',
-        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+        ...renderEvidenceInventorySection({
+          heading: '## Available Evidence (use if user requests specific examples)',
+          sharedInventory: sharedContext?.evidenceInventory,
+          maxItems: 8,
+        }),
       );
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       revisionParts.push(
         '',
-        '## Available Evidence (use if user requests specific examples)',
-        JSON.stringify(platformContext.evidence_items.slice(0, 8), null, 2),
+        ...renderEvidenceInventorySection({
+          heading: '## Available Evidence (use if user requests specific examples)',
+          legacyEvidence: platformContext.evidence_items,
+          maxItems: 8,
+        }),
       );
     }
 

@@ -14,6 +14,10 @@ import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotio
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
 
 export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState, CoverLetterSSEEvent> {
   return {
@@ -142,14 +146,20 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             '',
             '## Prior Positioning Strategy (from Resume Strategist)',
             'Use this canonical positioning context to shape which achievements and themes you emphasize.',
-            JSON.stringify(sharedContext?.positioningStrategy, null, 2),
+            ...renderPositioningStrategySection({
+              heading: 'Positioning strategy summary',
+              sharedStrategy: sharedContext?.positioningStrategy,
+            }),
           );
         } else if (state.platform_context?.positioning_strategy) {
           parts.push(
             '',
             '## Prior Positioning Strategy (from Resume Strategist)',
             'The user has previously completed a resume positioning session. Use this strategy to inform your analysis:',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+            ...renderPositioningStrategySection({
+              heading: 'Positioning strategy summary',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }),
           );
         }
 
@@ -158,7 +168,11 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             '',
             '## Prior Evidence Items',
             'The following canonical evidence items were captured during prior work. Leverage relevant items:',
-            JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
+            ...renderEvidenceInventorySection({
+              heading: 'Evidence summary',
+              sharedInventory: sharedContext?.evidenceInventory,
+              maxItems: 8,
+            }),
           );
         } else if (
           state.platform_context?.evidence_items &&
@@ -168,7 +182,11 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             '',
             '## Prior Evidence Items',
             'The following evidence items were captured during the resume process. Leverage relevant items:',
-            JSON.stringify(state.platform_context.evidence_items, null, 2),
+            ...renderEvidenceInventorySection({
+              heading: 'Evidence summary',
+              legacyEvidence: state.platform_context.evidence_items,
+              maxItems: 8,
+            }),
           );
         }
 

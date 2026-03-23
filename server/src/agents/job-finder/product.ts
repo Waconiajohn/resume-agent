@@ -17,7 +17,7 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
-import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
+import { renderTargetingSummaryLines } from '../../contracts/shared-context-prompt.js';
 
 // FF_JOB_FINDER is used by the route — imported from feature-flags.ts directly there.
 
@@ -111,28 +111,9 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
         const hasNiData = !!platformCtx;
         if (hasNiData) {
           parts.push('## Available Data', 'Platform context available — use for targeting:');
-          if (hasMeaningfulSharedValue(sharedContext?.targetRole)) {
-            if (sharedContext?.targetRole.roleTitle) {
-              parts.push(`- Target role: ${sharedContext.targetRole.roleTitle}`);
-            }
-            if (sharedContext?.targetRole.roleFamily) {
-              parts.push(`- Role family: ${sharedContext.targetRole.roleFamily}`);
-            }
-            if (sharedContext?.industryContext.primaryIndustry) {
-              parts.push(`- Target industry: ${sharedContext.industryContext.primaryIndustry}`);
-            }
-          } else if (platformCtx?.positioning_strategy) {
-            const ps = platformCtx.positioning_strategy as Record<string, unknown>;
-            if (typeof ps.target_role === 'string') {
-              parts.push(`- Target role: ${ps.target_role}`);
-            }
-            if (Array.isArray(ps.target_titles)) {
-              parts.push(`- Target titles: ${(ps.target_titles as string[]).join(', ')}`);
-            }
-            if (typeof ps.target_industry === 'string') {
-              parts.push(`- Target industry: ${ps.target_industry}`);
-            }
-          }
+          parts.push(
+            ...renderTargetingSummaryLines(sharedContext, platformCtx?.positioning_strategy),
+          );
           parts.push('');
         }
 

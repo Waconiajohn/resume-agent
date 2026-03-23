@@ -14,6 +14,11 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
+import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 // ─── Tool: analyze_expertise ───────────────────────────────────────────
 
@@ -56,43 +61,41 @@ const analyzeExpertiseTool: LinkedInContentTool = {
     const contextParts: string[] = [];
 
     if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
-      contextParts.push(
-        '## Positioning Strategy',
-        JSON.stringify(sharedContext?.positioningStrategy, null, 2),
-      );
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy',
+        sharedStrategy: sharedContext?.positioningStrategy,
+      }));
     } else if (platformContext?.positioning_strategy) {
-      contextParts.push(
-        '## Positioning Strategy',
-        JSON.stringify(platformContext.positioning_strategy, null, 2),
-      );
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy',
+        legacyStrategy: platformContext.positioning_strategy,
+      }));
     }
 
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
-      contextParts.push(
-        '',
-        '## Evidence Items',
-        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 10), null, 2),
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Items',
+        sharedInventory: sharedContext?.evidenceInventory,
+        maxItems: 10,
+      }));
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
-      contextParts.push(
-        '',
-        '## Evidence Items',
-        JSON.stringify(platformContext.evidence_items.slice(0, 10), null, 2),
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Items',
+        legacyEvidence: platformContext.evidence_items,
+        maxItems: 10,
+      }));
     }
 
     if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
-      contextParts.push(
-        '',
-        '## Career Narrative',
-        JSON.stringify(sharedContext?.careerNarrative, null, 2),
-      );
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## Career Narrative',
+        sharedNarrative: sharedContext?.careerNarrative,
+      }));
     } else if (platformContext?.career_narrative) {
-      contextParts.push(
-        '',
-        '## Career Narrative',
-        JSON.stringify(platformContext.career_narrative, null, 2),
-      );
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## Career Narrative',
+        legacyNarrative: platformContext.career_narrative,
+      }));
     }
 
     const response = await llm.chat({
@@ -185,17 +188,17 @@ const suggestTopicsTool: LinkedInContentTool = {
     }
 
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
-      contextParts.push(
-        '## Available Evidence Items (use as hooks)',
-        JSON.stringify(sharedContext?.evidenceInventory.evidenceItems.slice(0, 8), null, 2),
-        '',
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Available Evidence Items (use as hooks)',
+        sharedInventory: sharedContext?.evidenceInventory,
+        maxItems: 8,
+      }));
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
-      contextParts.push(
-        '## Available Evidence Items (use as hooks)',
-        JSON.stringify(platformContext.evidence_items.slice(0, 8), null, 2),
-        '',
-      );
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Available Evidence Items (use as hooks)',
+        legacyEvidence: platformContext.evidence_items,
+        maxItems: 8,
+      }));
     }
 
     contextParts.push(
