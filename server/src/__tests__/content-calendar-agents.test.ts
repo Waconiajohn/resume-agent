@@ -54,6 +54,7 @@ import '../agents/content-calendar/writer/agent.js';
 import { createContentCalendarProductConfig } from '../agents/content-calendar/product.js';
 import { strategistTools } from '../agents/content-calendar/strategist/tools.js';
 import { writerTools } from '../agents/content-calendar/writer/tools.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import {
   CONTENT_CALENDAR_RULES,
   RULE_0_PHILOSOPHY,
@@ -281,6 +282,14 @@ describe('Content Calendar ProductConfig', () => {
     expect(Array.isArray(state.posts)).toBe(true);
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createContentCalendarProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Operations storyteller for industrial transformation';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Operations storyteller for industrial transformation');
+  });
+
   it('buildAgentMessage returns content for strategist', () => {
     const config = createContentCalendarProductConfig();
     const state = config.createInitialState('s', 'u', {});
@@ -379,6 +388,21 @@ describe('Content Calendar ProductConfig', () => {
     expect(msg).toContain('LinkedIn Profile Analysis');
     expect(msg).toContain('Cloud, DevOps');
     expect(msg).toContain('Needs stronger target-role language');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createContentCalendarProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    const sharedContext = createEmptySharedContext();
+    sharedContext.candidateProfile.factualSummary = 'Operations executive building resilient industrial teams';
+    sharedContext.careerNarrative.careerArc = 'Known for turning fragmented operations into steady execution engines';
+    sharedContext.positioningStrategy.positioningAngle = 'Industrial operations leader with a systems lens';
+    state.shared_context = sharedContext;
+
+    const msg = config.buildAgentMessage('strategist', state, { resume_text: 'resume' });
+    expect(msg).toContain('Operations executive building resilient industrial teams');
+    expect(msg).toContain('Known for turning fragmented operations into steady execution engines');
+    expect(msg).toContain('Industrial operations leader with a systems lens');
   });
 
   it('buildAgentMessage returns content for writer', () => {

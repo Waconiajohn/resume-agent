@@ -10,6 +10,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Content Types ──────────────────────────────────────────────────
 
@@ -154,6 +155,9 @@ export interface ContentCalendarState extends BaseState {
       profile_analysis?: Record<string, unknown>;
     };
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** Parsed resume data */
   resume_data?: {

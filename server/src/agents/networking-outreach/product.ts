@@ -16,10 +16,13 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createNetworkingOutreachProductConfig(): ProductConfig<NetworkingOutreachState, NetworkingOutreachSSEEvent> {
   return {
@@ -115,6 +118,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       user_id: userId,
       current_stage: 'research',
       platform_context: input.platform_context as NetworkingOutreachState['platform_context'],
+      shared_context: input.shared_context as NetworkingOutreachState['shared_context'],
       target_input: input.target_input as NetworkingOutreachState['target_input'],
       messaging_method: (input.messaging_method as MessagingMethod | undefined) ?? 'group_message',
       messages: [],
@@ -122,6 +126,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
 
     buildAgentMessage: async (agentName, state, input) => {
       if (agentName === 'researcher') {
+        const sharedContext = state.shared_context;
         const ti = input.target_input as NetworkingOutreachState['target_input'];
         const parts = [
           'Analyze the target contact and the candidate resume to find common ground and plan an outreach sequence.',
@@ -142,26 +147,42 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           parts.push(`Context Notes: ${ti.context_notes}`);
         }
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
-        if (state.platform_context?.why_me_story) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        } else if (state.platform_context?.why_me_story) {
           parts.push(...renderWhyMeStorySection({
             heading: '## Why-Me Story',
-            legacyWhyMeStory: state.platform_context.why_me_story,
+            legacyWhyMeStory: state.platform_context?.why_me_story,
           }));
         }
-        if (state.platform_context?.positioning_strategy) {
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(
             '',
             ...renderPositioningStrategySection({
               heading: '## Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
+              sharedStrategy: sharedContext?.positioningStrategy,
+              legacyStrategy: state.platform_context?.positioning_strategy,
             }),
           );
+        }
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 6,
+          }));
         }
 
         parts.push(

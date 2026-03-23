@@ -17,6 +17,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from '../agents/linkedin-optimizer/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -50,11 +51,13 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
@@ -62,6 +65,23 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'linkedin_profile',
+          artifactGoal: 'optimize LinkedIn profile sections',
+          targetAudience: 'recruiters and hiring managers',
+          successCriteria: [
+            'improve discoverability',
+            'stay truthful',
+            'align LinkedIn with the shared career narrative',
+          ],
+        },
+        workflowState: {
+          room: 'linkedin',
+          stage: 'context_loaded',
+          activeTask: 'optimize LinkedIn sections using shared context and evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

@@ -19,6 +19,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../agents/executive-bio/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -56,17 +57,35 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'executive_bio',
+          artifactGoal: 'draft executive biographies',
+          targetAudience: 'board, speaker, advisory, and professional readers',
+          successCriteria: [
+            'stay truthful',
+            'fit the requested format',
+            'maintain a consistent positioning story',
+          ],
+        },
+        workflowState: {
+          room: 'executive_bio',
+          stage: 'context_loaded',
+          activeTask: 'shape executive bios from shared positioning and narrative signals',
+        },
+      });
       if (emotionalBaseline) {
         transformed.emotional_baseline = emotionalBaseline;
       }

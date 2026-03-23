@@ -20,6 +20,8 @@ import { NETWORKING_OUTREACH_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -141,19 +143,33 @@ function buildContextBlock(state: NetworkingOutreachState): string {
   }
 
   // Platform context (Why-Me story, positioning strategy)
-  if (state.platform_context?.why_me_story) {
+  const sharedNarrativeSection = renderCareerNarrativeSection({
+    heading: '## Career Narrative Signals',
+    sharedNarrative: state.shared_context?.careerNarrative,
+  });
+  if (sharedNarrativeSection.length > 0) {
+    parts.push(...sharedNarrativeSection);
+  } else if (state.platform_context?.why_me_story) {
     parts.push(...renderWhyMeStorySection({
       heading: '## Why-Me Story (from CareerIQ)',
-      legacyWhyMeStory: state.platform_context.why_me_story,
+      legacyWhyMeStory: state.platform_context?.why_me_story,
     }));
   }
 
-  if (state.platform_context?.positioning_strategy) {
+  if (state.platform_context?.positioning_strategy || state.shared_context?.positioningStrategy) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: state.shared_context?.positioningStrategy,
+      legacyStrategy: state.platform_context?.positioning_strategy,
     }));
   }
+
+  parts.push(...renderEvidenceInventorySection({
+    heading: '## Evidence Inventory',
+    sharedInventory: state.shared_context?.evidenceInventory,
+    legacyEvidence: state.platform_context?.evidence_items,
+    maxItems: 6,
+  }));
 
   return parts.join('\n');
 }

@@ -13,6 +13,8 @@ import type { ContentCalendarState, ContentCalendarSSEEvent } from '../types.js'
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -170,14 +172,28 @@ const identifyThemesTool: ContentCalendarTool = {
 
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
     const themeCount = Number(input.theme_count ?? 6);
     const positioningSection = renderPositioningStrategySection({
       heading: 'POSITIONING STRATEGY',
+      sharedStrategy: sharedContext?.positioningStrategy,
       legacyStrategy: platformContext?.positioning_strategy,
     }).join('\n');
-    const whyMeSection = renderWhyMeStorySection({
-      heading: 'WHY-ME STORY',
-      legacyWhyMeStory: platformContext?.why_me_story,
+    const narrativeLines = renderCareerNarrativeSection({
+      heading: 'CAREER NARRATIVE',
+      sharedNarrative: sharedContext?.careerNarrative,
+    });
+    const narrativeSection = (narrativeLines.length > 0
+      ? narrativeLines
+      : renderWhyMeStorySection({
+          heading: 'WHY-ME STORY',
+          legacyWhyMeStory: platformContext?.why_me_story,
+        })).join('\n');
+    const evidenceSection = renderEvidenceInventorySection({
+      heading: 'EVIDENCE INVENTORY',
+      sharedInventory: sharedContext?.evidenceInventory,
+      legacyEvidence: platformContext?.evidence_items,
+      maxItems: 6,
     }).join('\n');
 
     const themePrompt = `Identify ${themeCount} content themes for a LinkedIn content calendar based on this executive's expertise.
@@ -190,7 +206,7 @@ CANDIDATE PROFILE:
 - Key Achievements: ${resumeData.key_achievements?.join(' | ') || 'None listed'}
 - Work History: ${resumeData.work_history?.map((w: { company: string; title: string; duration: string }) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
-${positioningSection ? `${positioningSection}\n` : ''}${whyMeSection ? `${whyMeSection}\n` : ''}
+${positioningSection ? `${positioningSection}\n` : ''}${narrativeSection ? `${narrativeSection}\n` : ''}${evidenceSection ? `${evidenceSection}\n` : ''}
 
 Return as JSON array:
 [

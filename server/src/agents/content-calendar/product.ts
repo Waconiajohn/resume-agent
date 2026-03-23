@@ -12,7 +12,9 @@ import { strategistConfig } from './strategist/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from './types.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
+  renderEvidenceInventorySection,
   renderLinkedInAnalysisSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
@@ -20,6 +22,7 @@ import {
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createContentCalendarProductConfig(): ProductConfig<ContentCalendarState, ContentCalendarSSEEvent> {
   return {
@@ -82,6 +85,7 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
       user_id: userId,
       current_stage: 'strategy',
       platform_context: input.platform_context as ContentCalendarState['platform_context'],
+      shared_context: input.shared_context as ContentCalendarState['shared_context'],
       target_context: {
         target_role: (input.target_role as string) ?? '',
         target_industry: (input.target_industry as string) ?? '',
@@ -92,6 +96,7 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'strategist') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze the candidate resume to identify expertise, themes, and audience for a 30-day LinkedIn content calendar.',
           '',
@@ -99,31 +104,48 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
           String(input.resume_text ?? ''),
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.why_me_story) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        } else if (state.platform_context?.why_me_story) {
           parts.push(...renderWhyMeStorySection({
             heading: '## Why-Me Story (from CareerIQ)',
-            legacyWhyMeStory: state.platform_context.why_me_story,
+            legacyWhyMeStory: state.platform_context?.why_me_story,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({
             heading: '## Prior Positioning Strategy',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
           }));
         }
 
         if (state.platform_context?.linkedin_analysis) {
           parts.push(...renderLinkedInAnalysisSection({
             heading: '## LinkedIn Profile Analysis (from LinkedIn Optimizer)',
-            legacyLinkedInAnalysis: state.platform_context.linkedin_analysis,
+            legacyLinkedInAnalysis: state.platform_context?.linkedin_analysis,
           }));
         }
 

@@ -17,6 +17,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { NetworkingOutreachState, NetworkingOutreachSSEEvent } from '../agents/networking-outreach/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -52,11 +53,13 @@ export const networkingOutreachRoutes = createProductRoutes<NetworkingOutreachSt
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
@@ -64,6 +67,23 @@ export const networkingOutreachRoutes = createProductRoutes<NetworkingOutreachSt
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'networking_outreach',
+          artifactGoal: 'draft a networking outreach sequence',
+          targetAudience: 'target contact',
+          successCriteria: [
+            'sound personal and credible',
+            'use supported common ground',
+            'avoid overclaiming',
+          ],
+        },
+        workflowState: {
+          room: 'networking',
+          stage: 'context_loaded',
+          activeTask: 'shape outreach from shared positioning and confirmed evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

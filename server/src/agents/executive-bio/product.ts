@@ -19,10 +19,12 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 const ALL_FORMATS: BioFormat[] = ['speaker', 'board', 'advisory', 'professional', 'linkedin_featured'];
 const DEFAULT_LENGTHS: BioLength[] = ['standard'];
@@ -112,11 +114,13 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
         : DEFAULT_LENGTHS,
       target_context: input.target_context as ExecutiveBioState['target_context'],
       platform_context: input.platform_context as ExecutiveBioState['platform_context'],
+      shared_context: input.shared_context as ExecutiveBioState['shared_context'],
       bios: [],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'writer') {
+        const sharedContext = state.shared_context;
         const whyMeContext = state.platform_context?.why_me_story;
         const parts = [
           'Analyze executive positioning and write polished bios for this candidate.',
@@ -131,25 +135,32 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
           state.requested_lengths.join(', '),
         ];
 
-        if (state.platform_context) {
-          if (state.platform_context.career_profile) {
+        if (state.platform_context || sharedContext) {
+          if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
             parts.push(...renderCareerProfileSection({
               heading: '## Career Profile',
-              legacyCareerProfile: state.platform_context.career_profile,
+              sharedContext,
+              legacyCareerProfile: state.platform_context?.career_profile,
             }));
           }
-          if (whyMeContext) {
+          if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+            parts.push(...renderCareerNarrativeSection({
+              heading: '## Career Narrative Signals',
+              sharedNarrative: sharedContext?.careerNarrative,
+            }));
+          } else if (whyMeContext) {
             parts.push(...renderWhyMeStorySection({
               heading: '## Career Narrative Signals',
               legacyWhyMeStory: whyMeContext,
             }));
           }
-          if (state.platform_context.positioning_strategy) {
+          if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
             parts.push(
               '',
               ...renderPositioningStrategySection({
                 heading: '## Positioning Strategy',
-                legacyStrategy: state.platform_context.positioning_strategy,
+                sharedStrategy: sharedContext?.positioningStrategy,
+                legacyStrategy: state.platform_context?.positioning_strategy,
               }),
             );
           }

@@ -19,6 +19,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from '../agents/content-calendar/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -49,12 +50,14 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
     if (!userId) return input;
 
     try {
-      const [{ platformContext, emotionalBaseline }, linkedinReport] = await Promise.all([
+      const [{ platformContext, emotionalBaseline, sharedContext }, linkedinReport] = await Promise.all([
         loadAgentContextBundle(userId, {
           includeCareerProfile: true,
           includePositioningStrategy: true,
           includeEvidenceItems: true,
+          includeCareerNarrative: true,
           includeWhyMeStory: true,
+          includeClientProfile: true,
           includeEmotionalBaseline: true,
         }),
         supabaseAdmin
@@ -78,6 +81,23 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'content_calendar',
+          artifactGoal: 'generate a LinkedIn content calendar',
+          targetAudience: 'linkedin audience',
+          successCriteria: [
+            'reflect the candidate voice',
+            'ground themes in supported evidence',
+            'create a coherent month-long plan',
+          ],
+        },
+        workflowState: {
+          room: 'content_calendar',
+          stage: 'context_loaded',
+          activeTask: 'plan a truthful content calendar from shared positioning and evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

@@ -15,6 +15,8 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { supabaseAdmin } from '../../../lib/supabase.js';
 import logger from '../../../lib/logger.js';
 import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -262,18 +264,28 @@ const findCommonGroundTool: NetworkingOutreachTool = {
     const resumeData = state.resume_data;
     const targetAnalysis = state.target_analysis;
     const platformContext = state.platform_context;
-    const positioningSection = platformContext?.positioning_strategy
-      ? renderPositioningStrategySection({
-          heading: 'POSITIONING STRATEGY',
-          legacyStrategy: platformContext.positioning_strategy,
-        }).join('\n')
-      : '';
-    const whyMeSection = platformContext?.why_me_story
-      ? renderWhyMeStorySection({
+    const sharedContext = state.shared_context;
+    const positioningSection = renderPositioningStrategySection({
+      heading: 'POSITIONING STRATEGY',
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: platformContext?.positioning_strategy,
+    }).join('\n');
+    const narrativeLines = renderCareerNarrativeSection({
+      heading: 'CAREER NARRATIVE',
+      sharedNarrative: sharedContext?.careerNarrative,
+    });
+    const narrativeSection = (narrativeLines.length > 0
+      ? narrativeLines
+      : renderWhyMeStorySection({
           heading: 'WHY-ME STORY',
-          legacyWhyMeStory: platformContext.why_me_story,
-        }).join('\n')
-      : '';
+          legacyWhyMeStory: platformContext?.why_me_story,
+        })).join('\n');
+    const evidenceSection = renderEvidenceInventorySection({
+      heading: 'EVIDENCE INVENTORY',
+      sharedInventory: sharedContext?.evidenceInventory,
+      legacyEvidence: platformContext?.evidence_items,
+      maxItems: 6,
+    }).join('\n');
 
     const commonGroundPrompt = `Find common ground between this user and their target contact for a networking outreach campaign.
 
@@ -286,7 +298,8 @@ USER PROFILE:
 - Work History: ${resumeData.work_history?.map((w) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
 ${positioningSection}
-${whyMeSection}
+${narrativeSection}
+${evidenceSection}
 
 TARGET CONTACT:
 - Name: ${targetAnalysis.target_name}

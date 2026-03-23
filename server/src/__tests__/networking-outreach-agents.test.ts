@@ -66,6 +66,7 @@ import { writerTools } from '../agents/networking-outreach/writer/tools.js';
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createNetworkingOutreachProductConfig } from '../agents/networking-outreach/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Message Types & Constants
@@ -284,6 +285,15 @@ describe('Networking Outreach — ProductConfig', () => {
     expect(state.messages).toEqual([]);
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Operator who helps leaders stabilize and scale execution';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      shared_context: sharedContext,
+    });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Operator who helps leaders stabilize and scale execution');
+  });
+
   it('buildAgentMessage for researcher includes target info', async () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       target_input: {
@@ -312,6 +322,32 @@ describe('Networking Outreach — ProductConfig', () => {
     expect(msg).toContain('connection request');
     expect(msg).toContain('meeting request');
     expect(msg).toContain('assembled sequence');
+  });
+
+  it('buildAgentMessage for researcher includes shared context when legacy room context is absent', async () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Known for helping operators rebuild execution discipline under pressure';
+    sharedContext.positioningStrategy.positioningAngle = 'Operations leader who turns pressure into clarity';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      target_input: {
+        target_name: 'Jane Doe',
+        target_title: 'VP Ops',
+        target_company: 'Acme',
+      },
+      shared_context: sharedContext,
+    });
+
+    const msg = await config.buildAgentMessage('researcher', state, {
+      resume_text: 'John Doe, 20 years experience...',
+      target_input: {
+        target_name: 'Jane Doe',
+        target_title: 'VP Ops',
+        target_company: 'Acme',
+      },
+    });
+
+    expect(msg).toContain('Known for helping operators rebuild execution discipline under pressure');
+    expect(msg).toContain('Operations leader who turns pressure into clarity');
   });
 
   it('buildAgentMessage for unknown agent returns empty', async () => {

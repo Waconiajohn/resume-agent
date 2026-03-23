@@ -49,6 +49,7 @@ import '../agents/linkedin-optimizer/writer/agent.js';
 import { createLinkedInOptimizerProductConfig } from '../agents/linkedin-optimizer/product.js';
 import { analyzerTools } from '../agents/linkedin-optimizer/analyzer/tools.js';
 import { writerTools } from '../agents/linkedin-optimizer/writer/tools.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import {
   LINKEDIN_OPTIMIZER_RULES,
   RULE_0_AUDIENCE,
@@ -266,6 +267,14 @@ describe('LinkedIn Optimizer ProductConfig', () => {
     expect(state.sections).toBeDefined();
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createLinkedInOptimizerProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Executive profile built around transformation outcomes';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Executive profile built around transformation outcomes');
+  });
+
   it('buildAgentMessage returns content for analyzer', () => {
     const config = createLinkedInOptimizerProductConfig();
     const state = config.createInitialState('s', 'u', {});
@@ -295,6 +304,18 @@ describe('LinkedIn Optimizer ProductConfig', () => {
     });
     expect(msg).toContain('Why-Me Story');
     expect(msg).toContain('fixing broken teams');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createLinkedInOptimizerProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career narrative centered on scaling delivery systems with measurable outcomes';
+    sharedContext.positioningStrategy.positioningAngle = 'Operator translating transformation work into recruiter-friendly proof';
+    const state = config.createInitialState('s', 'u', { shared_context: sharedContext });
+
+    const msg = config.buildAgentMessage('analyzer', state, { resume_text: 'resume' });
+    expect(msg).toContain('Career narrative centered on scaling delivery systems with measurable outcomes');
+    expect(msg).toContain('Operator translating transformation work into recruiter-friendly proof');
   });
 
   it('buildAgentMessage returns content for writer', () => {

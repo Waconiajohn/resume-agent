@@ -75,6 +75,7 @@ import { writerConfig } from '../agents/executive-bio/writer/agent.js';
 // ─── Tools ───────────────────────────────────────────────────────────
 
 import { writerTools } from '../agents/executive-bio/writer/tools.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ─── ProductConfig ───────────────────────────────────────────────────
 
@@ -329,6 +330,13 @@ describe('Executive Bio ProductConfig', () => {
     expect(state.requested_formats).toContain('linkedin_featured');
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.leadershipIdentity = 'Board-ready operator with transformation depth';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.careerNarrative.leadershipIdentity).toBe('Board-ready operator with transformation depth');
+  });
+
   it('createInitialState defaults requested_lengths to [standard] when not specified', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     expect(state.requested_lengths).toEqual(['standard']);
@@ -424,6 +432,19 @@ describe('Executive Bio ProductConfig', () => {
     });
     expect(msg).toContain('Career Profile');
     expect(msg).toContain('Transformation executive');
+  });
+
+  it('buildAgentMessage for writer prefers shared narrative and positioning when available', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Scaled operational turnarounds across complex portfolio companies';
+    sharedContext.positioningStrategy.positioningAngle = 'Transformation executive for board-facing growth and execution';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      shared_context: sharedContext,
+    });
+
+    const msg = config.buildAgentMessage('writer', state, { resume_text: 'Resume here...' });
+    expect(msg).toContain('Scaled operational turnarounds across complex portfolio companies');
+    expect(msg).toContain('Transformation executive for board-facing growth and execution');
   });
 
   it('buildAgentMessage for unknown agent returns empty string', () => {

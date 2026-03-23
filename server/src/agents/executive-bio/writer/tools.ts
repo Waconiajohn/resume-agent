@@ -22,6 +22,7 @@ import { EXECUTIVE_BIO_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderCareerNarrativeSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -54,12 +55,23 @@ const analyzePositioningTool: WriterTool = {
     const platformContextSections = [
       ...renderPositioningStrategySection({
         heading: '## Platform Positioning Strategy',
+        sharedStrategy: state.shared_context?.positioningStrategy,
         legacyStrategy: state.platform_context?.positioning_strategy,
       }),
-      ...renderWhyMeStorySection({
-        heading: '## Why-Me Narrative',
-        legacyWhyMeStory: state.platform_context?.why_me_story,
-      }),
+      ...(
+        renderCareerNarrativeSection({
+          heading: '## Career Narrative Signals',
+          sharedNarrative: state.shared_context?.careerNarrative,
+        }).length > 0
+          ? renderCareerNarrativeSection({
+              heading: '## Career Narrative Signals',
+              sharedNarrative: state.shared_context?.careerNarrative,
+            })
+          : renderWhyMeStorySection({
+              heading: '## Why-Me Narrative',
+              legacyWhyMeStory: state.platform_context?.why_me_story,
+            })
+      ),
     ];
     const platformContext = platformContextSections.length > 0
       ? `\n${platformContextSections.join('\n')}`

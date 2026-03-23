@@ -13,6 +13,8 @@ import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from '../types
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -208,18 +210,28 @@ const analyzeCurrentProfileTool: LinkedInOptimizerTool = {
     const currentProfile = state.current_profile;
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
-    const positioningSection = platformContext?.positioning_strategy
-      ? renderPositioningStrategySection({
-          heading: 'POSITIONING STRATEGY',
-          legacyStrategy: platformContext.positioning_strategy,
-        }).join('\n')
-      : '';
-    const whyMeSection = platformContext?.why_me_story
-      ? renderWhyMeStorySection({
+    const sharedContext = state.shared_context;
+    const positioningSection = renderPositioningStrategySection({
+      heading: 'POSITIONING STRATEGY',
+      sharedStrategy: sharedContext?.positioningStrategy,
+      legacyStrategy: platformContext?.positioning_strategy,
+    }).join('\n');
+    const narrativeLines = renderCareerNarrativeSection({
+      heading: 'CAREER NARRATIVE',
+      sharedNarrative: sharedContext?.careerNarrative,
+    });
+    const narrativeSection = (narrativeLines.length > 0
+      ? narrativeLines
+      : renderWhyMeStorySection({
           heading: 'WHY-ME STORY',
-          legacyWhyMeStory: platformContext.why_me_story,
-        }).join('\n')
-      : '';
+          legacyWhyMeStory: platformContext?.why_me_story,
+        })).join('\n');
+    const evidenceSection = renderEvidenceInventorySection({
+      heading: 'EVIDENCE INVENTORY',
+      sharedInventory: sharedContext?.evidenceInventory,
+      legacyEvidence: platformContext?.evidence_items,
+      maxItems: 8,
+    }).join('\n');
 
     const analysisPrompt = `Analyze this LinkedIn profile against the candidate's resume and provide a detailed assessment.
 
@@ -232,7 +244,8 @@ CANDIDATE RESUME DATA:
 - Work History: ${resumeData.work_history?.map((w: { company: string; title: string; duration: string }) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
 ${positioningSection}
-${whyMeSection}
+${narrativeSection}
+${evidenceSection}
 
 CURRENT LINKEDIN PROFILE:
 - Headline: ${currentProfile?.headline || '(not provided)'}

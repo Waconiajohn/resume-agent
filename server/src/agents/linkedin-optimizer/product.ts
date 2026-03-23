@@ -15,10 +15,13 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOptimizerState, LinkedInOptimizerSSEEvent> {
   return {
@@ -70,6 +73,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
       current_stage: 'analysis',
       job_application_id: input.job_application_id as string | undefined,
       platform_context: input.platform_context as LinkedInOptimizerState['platform_context'],
+      shared_context: input.shared_context as LinkedInOptimizerState['shared_context'],
       target_context: {
         target_role: (input.target_role as string) ?? '',
         target_industry: (input.target_industry as string) ?? '',
@@ -80,6 +84,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'analyzer') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze the candidate resume and current LinkedIn profile to identify optimization opportunities.',
           '',
@@ -104,28 +109,45 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
           parts.push(`Target Industry: ${String(input.target_industry)}`);
         }
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.why_me_story) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        } else if (state.platform_context?.why_me_story) {
           parts.push(...renderWhyMeStorySection({
             heading: '## Why-Me Story (from CareerIQ)',
-            legacyWhyMeStory: state.platform_context.why_me_story,
+            legacyWhyMeStory: state.platform_context?.why_me_story,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(
             '',
             ...renderPositioningStrategySection({
               heading: '## Prior Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
+              sharedStrategy: sharedContext?.positioningStrategy,
+              legacyStrategy: state.platform_context?.positioning_strategy,
             }),
           );
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         parts.push('', 'Call parse_inputs first, then analyze_current_profile, then identify_keyword_gaps.');

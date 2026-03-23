@@ -21,7 +21,11 @@ import { CONTENT_TYPE_LABELS } from '../types.js';
 import { CONTENT_CALENDAR_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID, MODEL_LIGHT } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderWhyMeStorySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderCareerNarrativeSection,
+  renderEvidenceInventorySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type ContentCalendarTool = AgentTool<ContentCalendarState, ContentCalendarSSEEvent>;
 
@@ -126,12 +130,25 @@ function buildContextBlock(state: ContentCalendarState): string {
     parts.push(`Rationale: ${state.content_mix.rationale}`);
   }
 
-  if (state.platform_context?.why_me_story) {
+  const sharedNarrativeSection = renderCareerNarrativeSection({
+    heading: '## Career Narrative Signals',
+    sharedNarrative: state.shared_context?.careerNarrative,
+  });
+  if (sharedNarrativeSection.length > 0) {
+    parts.push(...sharedNarrativeSection);
+  } else if (state.platform_context?.why_me_story) {
     parts.push(...renderWhyMeStorySection({
       heading: '## Why-Me Story (from CareerIQ)',
-      legacyWhyMeStory: state.platform_context.why_me_story,
+      legacyWhyMeStory: state.platform_context?.why_me_story,
     }));
   }
+
+  parts.push(...renderEvidenceInventorySection({
+    heading: '## Evidence Inventory',
+    sharedInventory: state.shared_context?.evidenceInventory,
+    legacyEvidence: state.platform_context?.evidence_items,
+    maxItems: 6,
+  }));
 
   return parts.join('\n');
 }
