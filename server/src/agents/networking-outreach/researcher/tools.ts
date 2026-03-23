@@ -14,6 +14,10 @@ import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { supabaseAdmin } from '../../../lib/supabase.js';
 import logger from '../../../lib/logger.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type NetworkingOutreachTool = AgentTool<NetworkingOutreachState, NetworkingOutreachSSEEvent>;
 
@@ -258,6 +262,18 @@ const findCommonGroundTool: NetworkingOutreachTool = {
     const resumeData = state.resume_data;
     const targetAnalysis = state.target_analysis;
     const platformContext = state.platform_context;
+    const positioningSection = platformContext?.positioning_strategy
+      ? renderPositioningStrategySection({
+          heading: 'POSITIONING STRATEGY',
+          legacyStrategy: platformContext.positioning_strategy,
+        }).join('\n')
+      : '';
+    const whyMeSection = platformContext?.why_me_story
+      ? renderWhyMeStorySection({
+          heading: 'WHY-ME STORY',
+          legacyWhyMeStory: platformContext.why_me_story,
+        }).join('\n')
+      : '';
 
     const commonGroundPrompt = `Find common ground between this user and their target contact for a networking outreach campaign.
 
@@ -269,11 +285,8 @@ USER PROFILE:
 - Key Achievements: ${resumeData.key_achievements?.join(' | ') || 'None listed'}
 - Work History: ${resumeData.work_history?.map((w) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
-${platformContext?.positioning_strategy ? `POSITIONING STRATEGY: ${JSON.stringify(platformContext.positioning_strategy)}` : ''}
-${platformContext?.why_me_story ? `WHY-ME STORY:
-- Colleagues came for: ${platformContext.why_me_story.colleaguesCameForWhat}
-- Known for: ${platformContext.why_me_story.knownForWhat}
-- Why not me: ${platformContext.why_me_story.whyNotMe}` : ''}
+${positioningSection}
+${whyMeSection}
 
 TARGET CONTACT:
 - Name: ${targetAnalysis.target_name}

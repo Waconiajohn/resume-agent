@@ -18,6 +18,7 @@ import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 import {
+  renderCareerProfileSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
@@ -117,11 +118,10 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         ];
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '## Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-            '',
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
@@ -184,11 +184,10 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         ];
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '## Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-            '',
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {

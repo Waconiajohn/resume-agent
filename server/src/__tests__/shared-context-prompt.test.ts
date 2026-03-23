@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { createEmptySharedContext } from '../contracts/shared-context.js';
 import { summarizeEvidenceInventory, type EvidenceItem } from '../contracts/shared-evidence.js';
 import {
+  renderCareerProfileSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderTargetingSummaryLines,
+  renderWhyMeStorySection,
 } from '../contracts/shared-context-prompt.js';
 
 function makeEvidenceItem(overrides: Partial<EvidenceItem> = {}): EvidenceItem {
@@ -117,5 +119,47 @@ describe('shared-context prompt formatter', () => {
     const text = lines.join('\n');
     expect(text).toContain('Scaled operations teams through multi-site turnarounds.');
     expect(text).toContain('Operational discipline, Leadership under pressure');
+  });
+
+  it('renders legacy career profile into readable prompt lines', () => {
+    const lines = renderCareerProfileSection({
+      heading: '## Career Profile',
+      legacyCareerProfile: {
+        profile_summary: 'Transformation executive',
+        targeting: {
+          target_roles: ['COO'],
+          target_industries: ['Tech'],
+          seniority: 'C-suite',
+        },
+        positioning: {
+          positioning_statement: 'Transformation executive',
+          core_strengths: ['Digital transformation'],
+          differentiators: ['Operator'],
+          leadership_scope: 'Global',
+        },
+      },
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('Transformation executive');
+    expect(text).toContain('COO');
+    expect(text).toContain('Digital transformation');
+    expect(text).toContain('Global');
+  });
+
+  it('renders why-me story into readable prompt lines', () => {
+    const lines = renderWhyMeStorySection({
+      heading: '## Why-Me Story',
+      legacyWhyMeStory: {
+        colleaguesCameForWhat: 'fixing broken teams',
+        knownForWhat: 'turnaround leadership',
+        whyNotMe: 'deep operational experience others lack',
+      },
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('fixing broken teams');
+    expect(text).toContain('turnaround leadership');
+    expect(text).toContain('deep operational experience others lack');
   });
 });

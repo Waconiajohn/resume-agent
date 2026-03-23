@@ -18,7 +18,11 @@ import type {
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
-import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
+import {
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../contracts/shared-context-prompt.js';
 
 const ALL_FORMATS: BioFormat[] = ['speaker', 'board', 'advisory', 'professional', 'linkedin_featured'];
 const DEFAULT_LENGTHS: BioLength[] = ['standard'];
@@ -129,14 +133,16 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
 
         if (state.platform_context) {
           if (state.platform_context.career_profile) {
-            parts.push('', '## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2));
+            parts.push(...renderCareerProfileSection({
+              heading: '## Career Profile',
+              legacyCareerProfile: state.platform_context.career_profile,
+            }));
           }
           if (whyMeContext) {
-            parts.push(
-              '',
-              '## Career Narrative Signals',
-              typeof whyMeContext === 'string' ? whyMeContext : JSON.stringify(whyMeContext, null, 2),
-            );
+            parts.push(...renderWhyMeStorySection({
+              heading: '## Career Narrative Signals',
+              legacyWhyMeStory: whyMeContext,
+            }));
           }
           if (state.platform_context.positioning_strategy) {
             parts.push(

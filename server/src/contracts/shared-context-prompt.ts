@@ -1,6 +1,7 @@
 import {
   hasMeaningfulSharedValue,
   type SharedBenchmarkCandidate,
+  type SharedCandidateProfile,
   type SharedCareerNarrative,
   type SharedContext,
   type SharedGapAnalysis,
@@ -521,4 +522,125 @@ export function renderEvidenceSummaryLine(sharedContext?: SharedContext | null):
   const adjacentCount = sharedContext?.evidenceInventory.adjacentProof.length ?? 0;
 
   return `Evidence available: ${evidenceCount} items (${directProofCount} direct, ${adjacentCount} adjacent).`;
+}
+
+export function renderCareerProfileSection(args: {
+  heading: string;
+  sharedContext?: SharedContext | null;
+  legacyCareerProfile?: unknown;
+}): string[] {
+  const legacy = asRecord(args.legacyCareerProfile);
+  const targeting = asRecord(legacy?.targeting);
+  const positioning = asRecord(legacy?.positioning);
+  const candidateProfile: SharedCandidateProfile | undefined = args.sharedContext?.candidateProfile;
+  const lines: string[] = [];
+
+  pushLine(
+    lines,
+    'Profile summary',
+    firstMeaningful(
+      asString(legacy?.profile_summary),
+      candidateProfile?.factualSummary,
+      candidateProfile?.headline,
+    ),
+  );
+  pushListLine(
+    lines,
+    'Target roles',
+    uniqueNonEmpty([
+      ...asStringArray(targeting?.target_roles),
+    ]),
+    4,
+  );
+  pushListLine(
+    lines,
+    'Target industries',
+    uniqueNonEmpty([
+      ...asStringArray(targeting?.target_industries),
+      ...(candidateProfile?.industries ?? []),
+    ]),
+    4,
+  );
+  pushLine(
+    lines,
+    'Target seniority',
+    firstMeaningful(asString(targeting?.seniority), candidateProfile?.seniorityLevel),
+  );
+  pushLine(
+    lines,
+    'Positioning statement',
+    firstMeaningful(asString(positioning?.positioning_statement)),
+  );
+  pushLine(
+    lines,
+    'Narrative summary',
+    firstMeaningful(asString(positioning?.narrative_summary)),
+  );
+  pushListLine(
+    lines,
+    'Core strengths',
+    uniqueNonEmpty([
+      ...asStringArray(positioning?.core_strengths),
+      ...(candidateProfile?.coreFunctions ?? []),
+    ]),
+    5,
+  );
+  pushListLine(
+    lines,
+    'Differentiators',
+    uniqueNonEmpty(asStringArray(positioning?.differentiators)),
+    5,
+  );
+  pushLine(
+    lines,
+    'Leadership scope',
+    firstMeaningful(asString(positioning?.leadership_scope), candidateProfile?.leadershipScope.summary),
+  );
+  pushLine(
+    lines,
+    'Scope of responsibility',
+    firstMeaningful(
+      asString(positioning?.scope_of_responsibility),
+      candidateProfile?.leadershipScope.scopeOfResponsibility,
+    ),
+  );
+
+  return section(args.heading, lines);
+}
+
+export function renderWhyMeStorySection(args: {
+  heading: string;
+  legacyWhyMeStory?: unknown;
+}): string[] {
+  const raw = args.legacyWhyMeStory;
+  if (typeof raw === 'string') {
+    return section(args.heading, [raw]);
+  }
+
+  const story = asRecord(raw);
+  if (!story) return [];
+
+  const lines: string[] = [];
+  pushLine(
+    lines,
+    'Colleagues came for',
+    firstMeaningful(story.colleaguesCameForWhat, story.colleagues_came_for_what),
+  );
+  pushLine(
+    lines,
+    'Known for',
+    firstMeaningful(story.knownForWhat, story.known_for_what),
+  );
+  pushLine(
+    lines,
+    'Why not me',
+    firstMeaningful(story.whyNotMe, story.why_not_me),
+  );
+  pushLine(
+    lines,
+    'Story snippet',
+    firstMeaningful(story.storySnippet, story.story_snippet),
+  );
+
+  return section(args.heading, lines);
 }

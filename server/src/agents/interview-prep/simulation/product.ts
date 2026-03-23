@@ -15,8 +15,10 @@ import type { ProductConfig } from '../../runtime/product-config.js';
 import { interviewerConfig } from './interviewer/agent.js';
 import type { MockInterviewState, MockInterviewSSEEvent, MockInterviewMode, QuestionType } from './types.js';
 import {
+  renderCareerProfileSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
+  renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
 
 export function createMockInterviewProductConfig(): ProductConfig<MockInterviewState, MockInterviewSSEEvent> {
@@ -112,11 +114,10 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
 
       // Platform context enrichment
       if (state.platform_context?.career_profile) {
-        parts.push(
-          '',
-          '## Career Profile',
-          JSON.stringify(state.platform_context.career_profile, null, 2),
-        );
+        parts.push(...renderCareerProfileSection({
+          heading: '## Career Profile',
+          legacyCareerProfile: state.platform_context.career_profile,
+        }));
       }
       if (state.platform_context?.positioning_strategy) {
         parts.push(
@@ -128,11 +129,10 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
         );
       }
       if (state.platform_context?.why_me_story) {
-        parts.push(
-          '',
-          '## Why-Me Story',
-          JSON.stringify(state.platform_context.why_me_story, null, 2),
-        );
+        parts.push(...renderWhyMeStorySection({
+          heading: '## Why-Me Story',
+          legacyWhyMeStory: state.platform_context.why_me_story,
+        }));
       }
       if (
         Array.isArray(state.platform_context?.evidence_items) &&

@@ -22,6 +22,7 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerProfileSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
@@ -151,11 +152,10 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         }
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '## Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-            '',
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (state.platform_context?.positioning_strategy) {

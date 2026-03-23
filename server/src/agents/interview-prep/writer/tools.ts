@@ -18,6 +18,7 @@ import type {
 import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { renderWhyMeStorySection } from '../../../contracts/shared-context-prompt.js';
 
 type InterviewPrepTool = AgentTool<InterviewPrepState, InterviewPrepSSEEvent>;
 
@@ -98,11 +99,10 @@ function buildContextBlock(state: InterviewPrepState): string {
   }
 
   if (state.platform_context?.why_me_story) {
-    const wm = state.platform_context.why_me_story;
-    parts.push('\n## Why-Me Story (from CareerIQ)');
-    if (wm.colleaguesCameForWhat) parts.push(`What colleagues came to me for: ${wm.colleaguesCameForWhat}`);
-    if (wm.knownForWhat) parts.push(`What I'm known for: ${wm.knownForWhat}`);
-    if (wm.whyNotMe) parts.push(`Why not me (differentiator): ${wm.whyNotMe}`);
+    parts.push(...renderWhyMeStorySection({
+      heading: '## Why-Me Story (from CareerIQ)',
+      legacyWhyMeStory: state.platform_context.why_me_story,
+    }));
   }
 
   return parts.join('\n');

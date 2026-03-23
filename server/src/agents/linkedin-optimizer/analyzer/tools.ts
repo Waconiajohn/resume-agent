@@ -12,6 +12,10 @@ import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from '../types.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type LinkedInOptimizerTool = AgentTool<LinkedInOptimizerState, LinkedInOptimizerSSEEvent>;
 
@@ -204,6 +208,18 @@ const analyzeCurrentProfileTool: LinkedInOptimizerTool = {
     const currentProfile = state.current_profile;
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
+    const positioningSection = platformContext?.positioning_strategy
+      ? renderPositioningStrategySection({
+          heading: 'POSITIONING STRATEGY',
+          legacyStrategy: platformContext.positioning_strategy,
+        }).join('\n')
+      : '';
+    const whyMeSection = platformContext?.why_me_story
+      ? renderWhyMeStorySection({
+          heading: 'WHY-ME STORY',
+          legacyWhyMeStory: platformContext.why_me_story,
+        }).join('\n')
+      : '';
 
     const analysisPrompt = `Analyze this LinkedIn profile against the candidate's resume and provide a detailed assessment.
 
@@ -215,11 +231,8 @@ CANDIDATE RESUME DATA:
 - Key Achievements: ${resumeData.key_achievements?.join(' | ') || 'None listed'}
 - Work History: ${resumeData.work_history?.map((w: { company: string; title: string; duration: string }) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
-${platformContext?.positioning_strategy ? `POSITIONING STRATEGY: ${JSON.stringify(platformContext.positioning_strategy)}` : ''}
-${platformContext?.why_me_story ? `WHY-ME STORY:
-- Colleagues came for: ${platformContext.why_me_story.colleaguesCameForWhat}
-- Known for: ${platformContext.why_me_story.knownForWhat}
-- Why not me: ${platformContext.why_me_story.whyNotMe}` : ''}
+${positioningSection}
+${whyMeSection}
 
 CURRENT LINKEDIN PROFILE:
 - Headline: ${currentProfile?.headline || '(not provided)'}

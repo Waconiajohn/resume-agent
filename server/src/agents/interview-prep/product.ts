@@ -13,7 +13,11 @@ import type { InterviewPrepState, InterviewPrepSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
-import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
+import {
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../contracts/shared-context-prompt.js';
 
 export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepState, InterviewPrepSSEEvent> {
   return {
@@ -124,19 +128,17 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
         ];
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '',
-            '## Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (state.platform_context?.why_me_story) {
-          parts.push(
-            '',
-            '## Why-Me Story (from CareerIQ)',
-            JSON.stringify(state.platform_context.why_me_story, null, 2),
-          );
+          parts.push(...renderWhyMeStorySection({
+            heading: '## Why-Me Story (from CareerIQ)',
+            legacyWhyMeStory: state.platform_context.why_me_story,
+          }));
         }
 
         if (state.platform_context?.positioning_strategy) {

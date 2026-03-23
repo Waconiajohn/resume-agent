@@ -19,7 +19,10 @@ import type {
 import { llm, MODEL_MID } from '../../../../lib/llm.js';
 import type { ChatResponse } from '../../../../lib/llm-provider.js';
 import { repairJSON } from '../../../../lib/json-repair.js';
-import { renderPositioningStrategySection } from '../../../../contracts/shared-context-prompt.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../../contracts/shared-context-prompt.js';
 
 type InterviewerTool = AgentTool<MockInterviewState, MockInterviewSSEEvent>;
 
@@ -94,11 +97,10 @@ const generateInterviewQuestionTool: InterviewerTool = {
     }
 
     if (state.platform_context?.why_me_story) {
-      parts.push(
-        '## Why-Me Story',
-        JSON.stringify(state.platform_context.why_me_story, null, 2),
-        '',
-      );
+      parts.push(...renderWhyMeStorySection({
+        heading: '## Why-Me Story',
+        legacyWhyMeStory: state.platform_context.why_me_story,
+      }));
     }
 
     if (state.evaluations.length > 0) {

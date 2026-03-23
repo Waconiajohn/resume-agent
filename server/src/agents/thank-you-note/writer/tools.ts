@@ -20,6 +20,10 @@ import { NOTE_FORMAT_LABELS } from '../types.js';
 import { THANK_YOU_NOTE_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type WriterTool = AgentTool<ThankYouNoteState, ThankYouNoteSSEEvent>;
 
@@ -50,13 +54,18 @@ const analyzeInterviewContextTool: WriterTool = {
       `- ${i.name} (${i.title}): Topics: ${i.topics_discussed.join(', ')}${i.rapport_notes ? `. Rapport: ${i.rapport_notes}` : ''}${i.key_questions?.length ? `. Key questions: ${i.key_questions.join('; ')}` : ''}`,
     ).join('\n');
 
-    const whyMeNarrative = state.platform_context?.why_me_story
-      ? typeof state.platform_context.why_me_story === 'string'
-        ? state.platform_context.why_me_story
-        : JSON.stringify(state.platform_context.why_me_story, null, 2)
-      : 'N/A';
-    const platformContext = state.platform_context
-      ? `\n## Platform Context\nPositioning Strategy: ${JSON.stringify(state.platform_context.positioning_strategy, null, 2)}\nWhy-Me Narrative: ${whyMeNarrative}`
+    const platformContextSections = [
+      ...renderPositioningStrategySection({
+        heading: '## Platform Positioning Strategy',
+        legacyStrategy: state.platform_context?.positioning_strategy,
+      }),
+      ...renderWhyMeStorySection({
+        heading: '## Why-Me Narrative',
+        legacyWhyMeStory: state.platform_context?.why_me_story,
+      }),
+    ];
+    const platformContext = platformContextSections.length > 0
+      ? `\n${platformContextSections.join('\n')}`
       : '';
 
     const response = await llm.chat({
