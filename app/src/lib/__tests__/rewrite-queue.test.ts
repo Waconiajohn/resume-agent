@@ -440,6 +440,64 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.starterQuestion).toContain('what decision or improvement did they drive');
   });
 
+  it('uses specific Azure or GCP fallback guidance for legacy cloud requirements without shared coaching metadata', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Experience with Azure or GCP',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'missing',
+          evidence: [],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items[0]?.starterQuestion).toBe(
+      'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+    );
+    expect(queue.items[0]?.userInstruction).toContain('where you used Azure or GCP');
+  });
+
+  it('uses specific ERP fallback guidance for legacy ERP requirements without shared coaching metadata', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Experience with ERP systems (SAP, Oracle, or similar)',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'missing',
+          evidence: [],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items[0]?.starterQuestion).toBe(
+      'Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?',
+    );
+    expect(queue.items[0]?.userInstruction).toContain('where you used ERP systems');
+  });
+
   it('prefers shared coaching policy metadata over local fallback prompts', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

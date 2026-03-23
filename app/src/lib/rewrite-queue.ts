@@ -73,7 +73,10 @@ function looksLikeResumeEvidenceSnippet(text: string | null | undefined, require
 
 function detectRequirementSignals(requirement: string): {
   architecture: boolean;
+  cloudMulti: boolean;
+  cloudPlatform: boolean;
   communication: boolean;
+  erp: boolean;
   financial: boolean;
   metrics: boolean;
   platformScale: boolean;
@@ -86,7 +89,10 @@ function detectRequirementSignals(requirement: string): {
 
   return {
     architecture: /\b(cross-functional architecture decisions|architecture decisions|architectural decisions|technical decisions|design decisions|stakeholders|trade-?offs|cross-functional)\b/.test(normalizedRequirement),
+    cloudMulti: /\b(aws)\b.*\b(azure|gcp|additional cloud)\b|\b(azure|gcp|additional cloud)\b.*\baws\b/.test(normalizedRequirement),
+    cloudPlatform: /\b(azure|gcp|google cloud|cloud platform|cloud environments?)\b/.test(normalizedRequirement),
     communication: /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement),
+    erp: /\b(erp|sap|oracle|netsuite|workday|enterprise resource planning)\b/.test(normalizedRequirement),
     financial: /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement),
     metrics: /\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|performance tracking|reporting cadence|measure(?:ment|ments)?)\b/.test(normalizedRequirement),
     platformScale: /\b(data platform|transactions?|transactional|api requests?|throughput|latency|uptime|availability|distributed systems?|platform components?|real-time|realtime)\b/.test(normalizedRequirement),
@@ -126,6 +132,18 @@ function buildStarterQuestion(args: {
 
   if (signals.metrics) {
     return `${promptPrefix}Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?`;
+  }
+
+  if (signals.cloudMulti) {
+    return `${promptPrefix}Where have you used AWS together with Azure or GCP, what did you deliver across those environments, and why did it matter to the business?`;
+  }
+
+  if (signals.cloudPlatform) {
+    return `${promptPrefix}Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?`;
+  }
+
+  if (signals.erp) {
+    return `${promptPrefix}Where have you used ERP systems (SAP, Oracle, or similar), what did you personally own, and what outcome came from that work?`;
   }
 
   if (signals.financial) {
@@ -183,6 +201,15 @@ function looksLikeTargetedStarterQuestion(question: string | null | undefined, r
 
   const signals = detectRequirementSignals(requirement);
   if (signals.metrics && !/\b(metric|metrics|kpi|kpis|scorecard|scorecards|dashboard|dashboards|track|tracked|reviewed|reporting)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.cloudMulti && !/\b(aws|azure|gcp|multi-?cloud|cloud)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.cloudPlatform && !/\b(azure|gcp|google cloud|cloud)\b/i.test(trimmed)) {
+    return false;
+  }
+  if (signals.erp && !/\b(erp|sap|oracle|netsuite|workday|system)\b/i.test(trimmed)) {
     return false;
   }
   if (signals.financial && !/\b(budget|revenue|financial|p&l|spend|cost)\b/i.test(trimmed)) {
@@ -545,6 +572,18 @@ function userInstructionForRequirement(args: {
 
   if (signals.metrics) {
     return 'Answer with the metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.';
+  }
+
+  if (signals.cloudMulti) {
+    return 'Answer with where you used AWS together with Azure or GCP, what you delivered across those environments, and why it mattered to the business.';
+  }
+
+  if (signals.cloudPlatform) {
+    return 'Answer with where you used Azure or GCP, what you personally owned, and what outcome came from that work.';
+  }
+
+  if (signals.erp) {
+    return 'Answer with where you used ERP systems, what you personally owned there, and what outcome came from that work.';
   }
 
   if (signals.scale) {
