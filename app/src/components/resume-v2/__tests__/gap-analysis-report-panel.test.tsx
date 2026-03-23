@@ -947,7 +947,8 @@ describe('GapAnalysisReportPanel', () => {
     const textarea = screen.getByRole('textbox');
     const placeholder = textarea.getAttribute('placeholder') ?? '';
     expect(placeholder.length).toBeGreaterThan(10);
-    expect(placeholder).not.toContain('Share relevant experience');
+    expect(placeholder).toContain('scope, environment, or result involved');
+    expect(placeholder).not.toContain('cloud platform experience from');
   });
 
   it('calls onRequestEdit when submitting context', () => {

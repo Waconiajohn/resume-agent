@@ -135,27 +135,6 @@ function classificationToTier(classification: string, assessmentStatus?: string)
   return 'gap';
 }
 
-/** Generate a requirement-specific context hint */
-function contextHint(requirement: string): string {
-  const lower = requirement.toLowerCase();
-  if (lower.includes('cloud') || lower.includes('aws') || lower.includes('azure') || lower.includes('gcp')) {
-    return `I also have cloud platform experience from...`;
-  }
-  if (lower.includes('kubernetes') || lower.includes('k8s') || lower.includes('container')) {
-    return `I managed container orchestration at...`;
-  }
-  if (lower.includes('leadership') || lower.includes('team') || lower.includes('management')) {
-    return `I led a team of X at...`;
-  }
-  if (lower.includes('budget') || lower.includes('financial') || lower.includes('p&l')) {
-    return `I managed a $X budget at...`;
-  }
-  if (lower.includes('agile') || lower.includes('scrum') || lower.includes('devops')) {
-    return `I implemented ${requirement.toLowerCase()} practices at...`;
-  }
-  return `I have ${requirement.toLowerCase()} experience from...`;
-}
-
 function tierStatusLabel(tier: Tier): 'strong' | 'repositioned' | 'gap' {
   if (tier === 'strong') return 'strong';
   if (tier === 'partial') return 'repositioned';
@@ -727,7 +706,7 @@ function RequirementCard({
             <textarea
               value={contextText}
               onChange={(e) => setContextText(e.target.value)}
-              placeholder={policyGuidance ?? contextHint(req.requirement)}
+              placeholder={policyGuidance ?? 'Add one concrete detail that makes this requirement believable, such as the scope, environment, or result involved.'}
               rows={3}
               className="w-full rounded-lg px-3.5 py-2.5 resize-none focus:outline-none transition-colors"
               style={{
