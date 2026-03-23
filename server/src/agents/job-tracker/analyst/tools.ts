@@ -17,6 +17,7 @@ import type {
 } from '../types.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
 
 type JobTrackerTool = AgentTool<JobTrackerState, JobTrackerSSEEvent>;
 
@@ -628,7 +629,10 @@ function buildApplicationAnalysisPrompt(
   }
 
   if (state.platform_context?.positioning_strategy) {
-    parts.push('', `## Positioning Strategy`, JSON.stringify(state.platform_context.positioning_strategy));
+    parts.push(...renderPositioningStrategySection({
+      heading: '## Positioning Strategy',
+      legacyStrategy: state.platform_context.positioning_strategy,
+    }));
   }
 
   parts.push(

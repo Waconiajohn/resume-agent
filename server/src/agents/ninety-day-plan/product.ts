@@ -11,6 +11,7 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { researcherConfig } from './researcher/agent.js';
 import { plannerConfig } from './planner/agent.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent, PlanPhase, Stakeholder, QuickWin, LearningPriority } from './types.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -137,7 +138,10 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
         if (state.role_context.team_size) parts.push(`Team Size: ${state.role_context.team_size}`);
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         parts.push(

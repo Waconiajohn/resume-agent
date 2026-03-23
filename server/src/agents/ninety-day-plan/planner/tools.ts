@@ -23,6 +23,7 @@ import type {
 import { NINETY_DAY_PLAN_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { renderPositioningStrategySection } from '../../../contracts/shared-context-prompt.js';
 
 type PlannerTool = AgentTool<NinetyDayPlanState, NinetyDayPlanSSEEvent>;
 
@@ -75,8 +76,10 @@ function buildResearchContext(state: NinetyDayPlanState): string {
 
   // Platform context
   if (state.platform_context?.positioning_strategy) {
-    parts.push('\n## Positioning Strategy');
-    parts.push(JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+    parts.push(...renderPositioningStrategySection({
+      heading: '## Positioning Strategy',
+      legacyStrategy: state.platform_context.positioning_strategy,
+    }));
   }
 
   return parts.join('\n');

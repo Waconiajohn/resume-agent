@@ -11,6 +11,10 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { analystConfig } from './analyst/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { CaseStudyState, CaseStudySSEEvent } from './types.js';
+import {
+  renderEvidenceInventorySection,
+  renderPositioningStrategySection,
+} from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -86,10 +90,17 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
 
         if (state.platform_context) {
           if (state.platform_context.positioning_strategy) {
-            parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+            parts.push(...renderPositioningStrategySection({
+              heading: '## Positioning Strategy',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }));
           }
           if (state.platform_context.evidence_items && state.platform_context.evidence_items.length > 0) {
-            parts.push('', '## Evidence Items', JSON.stringify(state.platform_context.evidence_items, null, 2));
+            parts.push(...renderEvidenceInventorySection({
+              heading: '## Evidence Items',
+              legacyEvidence: state.platform_context.evidence_items,
+              maxItems: 8,
+            }));
           }
         }
 

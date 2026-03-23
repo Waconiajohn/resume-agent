@@ -18,6 +18,7 @@ import type {
 import { CASE_STUDY_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_MID, MODEL_LIGHT } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { renderEvidenceInventorySection } from '../../../contracts/shared-context-prompt.js';
 
 type CaseStudyTool = AgentTool<CaseStudyState, CaseStudySSEEvent>;
 
@@ -413,7 +414,11 @@ ${achievements?.map((a) => `- [${a.id}] "${a.title}" at ${a.company}: ${a.descri
 SELECTED ACHIEVEMENTS TO EXPAND:
 ${selected.map((a) => `- [${a.id}] "${a.title}" at ${a.company} (${a.role}) — Impact: ${a.impact_category}, Score: ${a.impact_score}`).join('\n')}
 
-${state.platform_context?.evidence_items ? `EVIDENCE FROM RESUME PIPELINE:\n${JSON.stringify(state.platform_context.evidence_items, null, 2)}` : ''}
+${renderEvidenceInventorySection({
+  heading: 'EVIDENCE FROM RESUME PIPELINE',
+  legacyEvidence: state.platform_context?.evidence_items,
+  maxItems: 8,
+}).join('\n')}
 
 For each selected achievement, return:
 [

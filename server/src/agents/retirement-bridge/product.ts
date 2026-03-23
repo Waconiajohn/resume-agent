@@ -17,6 +17,7 @@
 import type { ProductConfig } from '../runtime/product-config.js';
 import { assessorConfig } from './assessor/agent.js';
 import type { RetirementBridgeState, RetirementBridgeSSEEvent, RetirementReadinessSummary } from './types.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
 import logger from '../../lib/logger.js';
@@ -122,11 +123,10 @@ export function createRetirementBridgeProductConfig(): ProductConfig<RetirementB
         }
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '## Positioning Strategy (from resume pipeline)',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-            '',
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy (from resume pipeline)',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         parts.push(
