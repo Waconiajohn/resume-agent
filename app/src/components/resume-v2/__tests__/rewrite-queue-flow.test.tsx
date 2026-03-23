@@ -335,6 +335,26 @@ function makeGapChatSnapshot(): CoachingThreadSnapshot {
   };
 }
 
+function makeGenericQuestionGapChatSnapshot(): CoachingThreadSnapshot {
+  return {
+    items: {
+      'executive stakeholder leadership': {
+        messages: [
+          {
+            role: 'assistant',
+            content: 'Let me help you tighten this up.',
+            currentQuestion: 'Tell me about any experience you have related to executive stakeholder leadership.',
+            recommendedNextAction: 'answer_question',
+            candidateInputUsed: false,
+          },
+        ],
+        resolvedLanguage: null,
+        error: null,
+      },
+    },
+  };
+}
+
 function makeEmptyGapChatSnapshot(): CoachingThreadSnapshot {
   return {
     items: {
@@ -559,6 +579,24 @@ describe('rewrite queue browser flow', () => {
       expect.any(Object),
       'partial',
     );
+  });
+
+  it('prefers shared coaching policy over a generic legacy current question in the AI helper', () => {
+    render(
+      <QueueHarness
+        onRequestEdit={vi.fn()}
+        onSendMessage={vi.fn()}
+        onAcknowledgeWarnings={vi.fn()}
+        gapChatSnapshot={makeGenericQuestionGapChatSnapshot()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Improve with AI' }));
+
+    expect(screen.queryByText(/tell me about any experience you have related to executive stakeholder leadership/i)).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(/who was the audience, what did you present or align on, and what decision or next step came from it/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it('lets the user jump straight to current proof from the queue', () => {

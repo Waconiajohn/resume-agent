@@ -142,16 +142,16 @@ function tierStatusLabel(tier: Tier): 'strong' | 'repositioned' | 'gap' {
 }
 
 function coachingQuestions(req: MergedRequirement): Array<{ question: string; rationale: string; looking_for: string }> {
-  if (req.interviewQuestions && req.interviewQuestions.length > 0) {
-    return req.interviewQuestions;
-  }
-
   if (req.coachingPolicy?.clarifyingQuestion) {
     return [{
       question: req.coachingPolicy.clarifyingQuestion,
       rationale: req.coachingPolicy.rationale ?? '',
       looking_for: req.coachingPolicy.lookingFor ?? '',
     }];
+  }
+
+  if (req.interviewQuestions && req.interviewQuestions.length > 0) {
+    return req.interviewQuestions;
   }
 
   return [];

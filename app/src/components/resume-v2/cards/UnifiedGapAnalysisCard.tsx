@@ -110,16 +110,16 @@ function sourceDescription(source: 'job_description' | 'benchmark'): string {
 }
 
 function coachingQuestions(card: GapCoachingCard | undefined) {
-  if (card?.interview_questions && card.interview_questions.length > 0) {
-    return card.interview_questions;
-  }
-
   if (card?.coaching_policy?.clarifyingQuestion) {
     return [{
       question: card.coaching_policy.clarifyingQuestion,
       rationale: card.coaching_policy.rationale ?? '',
       looking_for: card.coaching_policy.lookingFor ?? '',
     }];
+  }
+
+  if (card?.interview_questions && card.interview_questions.length > 0) {
+    return card.interview_questions;
   }
 
   return [];

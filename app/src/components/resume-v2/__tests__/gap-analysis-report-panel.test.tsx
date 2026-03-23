@@ -865,6 +865,59 @@ describe('GapAnalysisReportPanel', () => {
     expect(screen.getByText(/what was delivered across those environments/i)).toBeTruthy();
   });
 
+  it('prefers shared coaching policy over generic legacy interview questions', () => {
+    const ga = makeGapAnalysis({
+      requirements: [
+        {
+          requirement: 'Cloud Infrastructure',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['AWS migration'],
+          strategy: {
+            real_experience: 'AWS migration experience',
+            positioning: 'Architected enterprise cloud migration spanning 200+ services',
+            interview_questions: [
+              {
+                question: 'Tell me about any experience you have related to cloud infrastructure.',
+                rationale: 'Legacy generic prompt',
+                looking_for: 'Anything cloud related',
+              },
+            ],
+            coaching_policy: {
+              primaryFamily: 'cloudMulti',
+              families: ['cloudMulti', 'technical'],
+              clarifyingQuestion: 'Where have you used AWS together with Azure or GCP, what did you deliver across those environments, and why did it matter to the business?',
+              proofActionRequiresInput: 'If you have this experience, add one concrete example showing where you used AWS together with Azure or GCP, what you delivered across those environments, and why that mattered to the business.',
+              proofActionDirect: 'Add one concrete example showing where you used AWS together with Azure or GCP, what you delivered across those environments, and why that mattered to the business.',
+              rationale: 'Multi-cloud claims only read credibly when the environments, delivery scope, and business reason are explicit.',
+              lookingFor: 'Specific AWS plus Azure or GCP context, what was delivered across those environments, and the business outcome.',
+            },
+          },
+        },
+      ],
+    });
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Cloud Infrastructure', importance: 'important', evidence_from_jd: 'Multi-cloud experience at enterprise scale' },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    const toggleBtn = screen.getByTestId('toggle-questions');
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByText(/tell me about any experience you have related to cloud infrastructure/i)).toBeNull();
+    expect(screen.getByText(/where have you used AWS together with Azure or GCP/i)).toBeTruthy();
+  });
+
   // ─── Edit actions keep cards in the current interaction model ──────────────
 
   it('keeps the card expanded after clicking Review Edit', () => {

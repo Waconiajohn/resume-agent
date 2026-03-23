@@ -31,6 +31,15 @@ interface GapChatThreadProps {
   promptHint?: string | null;
 }
 
+function isGenericPromptQuestion(question: string | null | undefined): boolean {
+  if (typeof question !== 'string') return true;
+  const trimmed = question.trim();
+  if (!trimmed) return true;
+
+  return /^(tell me about|can you walk me through your experience|what experience do you have|share any experience|describe your experience)\b/i.test(trimmed)
+    || /\brelated to\b/i.test(trimmed);
+}
+
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
@@ -257,9 +266,14 @@ export function GapChatThread({
     .find((message) => message.role === 'assistant' && typeof message.suggestedLanguage === 'string' && message.suggestedLanguage.trim().length > 0)
     ?.suggestedLanguage;
   const activeRewriteSeed = starterDraftValue.trim() || latestSuggestedLanguage?.trim() || initialSuggestedLanguage?.trim() || '';
+  const preferredInitialQuestion = !isGenericPromptQuestion(initialQuestion)
+    ? initialQuestion?.trim()
+    : context.coachingPolicy?.clarifyingQuestion?.trim()
+      || initialQuestion?.trim()
+      || null;
 
   const requestGuidance = useCallback(() => {
-    const focus = initialQuestion ?? context.coachingPolicy?.clarifyingQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
+    const focus = preferredInitialQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
     const proofTarget = context.coachingPolicy?.lookingFor
       ? ` What would make this believable: ${context.coachingPolicy.lookingFor}`
       : '';
@@ -270,7 +284,7 @@ export function GapChatThread({
       `3) ask exactly one short question to get that detail. ` +
       `Focus especially on this: ${focus}.${proofTarget}`,
     );
-  }, [context.coachingPolicy?.clarifyingQuestion, context.coachingPolicy?.lookingFor, initialQuestion, promptHint, sendQuickMessage]);
+  }, [context.coachingPolicy?.lookingFor, preferredInitialQuestion, promptHint, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
     const startingPoint = activeRewriteSeed
@@ -317,7 +331,7 @@ export function GapChatThread({
   const isAccepted = resolvedLanguage !== null;
   const introSourceLabel = sourceLabel ?? 'What the role is asking for';
   const introSourceExcerpt = sourceExcerpt ?? context.jobDescriptionExcerpt;
-  const introQuestion = initialQuestion ?? context.coachingPolicy?.clarifyingQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
+  const introQuestion = preferredInitialQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
 
   if (resolvedLanguage) {
     return (
@@ -489,20 +503,29 @@ export function GapChatThread({
           aria-live="polite"
           aria-label={`Coaching conversation about: ${requirement}`}
         >
-          {messages.map((msg, i) =>
-            msg.role === 'user' ? (
-              <UserBubble key={i} content={msg.content} />
+          {messages.map((msg, i) => {
+            const renderedMessage = msg.role === 'assistant'
+              && isGenericPromptQuestion(msg.currentQuestion)
+              && context.coachingPolicy?.clarifyingQuestion
+              ? {
+                  ...msg,
+                  currentQuestion: context.coachingPolicy.clarifyingQuestion,
+                }
+              : msg;
+
+            return renderedMessage.role === 'user' ? (
+              <UserBubble key={i} content={renderedMessage.content} />
             ) : (
               <AssistantBubble
                 key={i}
-                message={msg}
+                message={renderedMessage}
                 onAcceptLanguage={onAcceptLanguage}
                 isEditing={isEditing}
                 requirement={requirement}
                 isAccepted={isAccepted}
               />
-            ),
-          )}
+            );
+          })}
           {isLoading && <LoadingDots />}
           <div ref={messagesEndRef} />
         </div>

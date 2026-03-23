@@ -209,7 +209,7 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     expect(screen.getAllByText('Best evidence on your resume').length).toBeGreaterThan(0);
   });
 
-  it('uses shared coaching policy guidance when explicit interview questions are missing', () => {
+  it('prefers shared coaching policy guidance over legacy interview questions', () => {
     const coachingCards: GapCoachingCard[] = [
       {
         requirement: 'Board-level communication',
@@ -218,6 +218,13 @@ describe('UnifiedGapAnalysisCard inventory', () => {
         ai_reasoning: 'We need one concrete board or executive audience example before this should count as covered.',
         proposed_strategy: 'Presented quarterly operating updates to the board and executive leadership, translating performance issues into investment priorities.',
         evidence_found: [],
+        interview_questions: [
+          {
+            question: 'Tell me about any experience you have related to board-level communication.',
+            rationale: 'Legacy generic prompt',
+            looking_for: 'Anything related',
+          },
+        ],
         coaching_policy: {
           primaryFamily: 'communication',
           families: ['communication'],
@@ -241,6 +248,7 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /add context for: board-level communication/i }));
+    expect(screen.queryByText(/tell me about any experience you have related to board-level communication/i)).not.toBeInTheDocument();
     expect(screen.getByText(/who was the audience, what did you present or align on/i)).toBeInTheDocument();
     expect(screen.getByText(/audience seniority/i)).toBeInTheDocument();
   });
