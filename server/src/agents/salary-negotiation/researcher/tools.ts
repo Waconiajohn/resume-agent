@@ -20,6 +20,10 @@ import type {
 import { SALARY_NEGOTIATION_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_MID, MODEL_LIGHT } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type SalaryNegotiationTool = AgentTool<SalaryNegotiationState, SalaryNegotiationSSEEvent>;
 
@@ -453,6 +457,14 @@ const identifyLeveragePointsTool: SalaryNegotiationTool = {
     const rd = state.resume_data;
     const od = state.offer_details;
     const breakdown = state.total_comp_breakdown;
+    const positioningSection = renderPositioningStrategySection({
+      heading: 'POSITIONING STRATEGY',
+      legacyStrategy: state.platform_context?.positioning_strategy,
+    }).join('\n');
+    const whyMeSection = renderWhyMeStorySection({
+      heading: 'WHY-ME NARRATIVE',
+      legacyWhyMeStory: state.platform_context?.why_me_story,
+    }).join('\n');
 
     const leveragePrompt = `Identify the candidate's strongest negotiation leverage points for this offer.
 
@@ -481,8 +493,7 @@ OFFER:
 COMP BREAKDOWN:
 ${breakdown?.map((b) => `- ${b.component}: current=${b.current_value ?? 'N/A'}, market=${b.market_value}, negotiable=${b.negotiable}`).join('\n') || 'Not yet analyzed'}
 
-${state.platform_context?.positioning_strategy ? `POSITIONING STRATEGY:\n${JSON.stringify(state.platform_context.positioning_strategy)}` : ''}
-${state.platform_context?.why_me_story ? `WHY-ME NARRATIVE:\n${typeof state.platform_context.why_me_story === 'string' ? state.platform_context.why_me_story : JSON.stringify(state.platform_context.why_me_story)}` : ''}
+${positioningSection ? `${positioningSection}\n` : ''}${whyMeSection ? `${whyMeSection}\n` : ''}
 
 Return JSON array of leverage points (aim for 4-8):
 [

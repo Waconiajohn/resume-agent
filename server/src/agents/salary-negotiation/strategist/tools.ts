@@ -21,6 +21,10 @@ import { SCENARIO_LABELS } from '../types.js';
 import { SALARY_NEGOTIATION_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type StrategistTool = AgentTool<SalaryNegotiationState, SalaryNegotiationSSEEvent>;
 
@@ -103,16 +107,16 @@ function buildStateContext(state: SalaryNegotiationState): string {
 
   // Platform context
   if (state.platform_context?.positioning_strategy) {
-    parts.push('\n## Positioning Strategy');
-    parts.push(JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+    parts.push(...renderPositioningStrategySection({
+      heading: '## Positioning Strategy',
+      legacyStrategy: state.platform_context.positioning_strategy,
+    }));
   }
   if (state.platform_context?.why_me_story) {
-    parts.push('\n## Why-Me Narrative');
-    parts.push(
-      typeof state.platform_context.why_me_story === 'string'
-        ? state.platform_context.why_me_story
-        : JSON.stringify(state.platform_context.why_me_story, null, 2),
-    );
+    parts.push(...renderWhyMeStorySection({
+      heading: '## Why-Me Narrative',
+      legacyWhyMeStory: state.platform_context.why_me_story,
+    }));
   }
 
   return parts.join('\n');

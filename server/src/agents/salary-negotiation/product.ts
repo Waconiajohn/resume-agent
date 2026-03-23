@@ -11,6 +11,11 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { researcherConfig } from './researcher/agent.js';
 import { strategistConfig } from './strategist/agent.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from './types.js';
+import {
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -144,7 +149,6 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'researcher') {
-        const whyMeContext = state.platform_context?.why_me_story;
         const parts = [
           'Research compensation benchmarks and identify negotiation leverage for this candidate.',
           '',
@@ -191,17 +195,22 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
 
         if (state.platform_context) {
           if (state.platform_context.career_profile) {
-            parts.push('', '## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2));
+            parts.push(...renderCareerProfileSection({
+              heading: '## Career Profile',
+              legacyCareerProfile: state.platform_context.career_profile,
+            }));
           }
-          if (whyMeContext) {
-            parts.push(
-              '',
-              '## Career Narrative Signals',
-              typeof whyMeContext === 'string' ? whyMeContext : JSON.stringify(whyMeContext, null, 2),
-            );
+          if (state.platform_context.why_me_story) {
+            parts.push(...renderWhyMeStorySection({
+              heading: '## Career Narrative Signals',
+              legacyWhyMeStory: state.platform_context.why_me_story,
+            }));
           }
           if (state.platform_context.positioning_strategy) {
-            parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+            parts.push(...renderPositioningStrategySection({
+              heading: '## Positioning Strategy',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }));
           }
         }
 

@@ -11,6 +11,11 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { strategistConfig } from './strategist/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from './types.js';
+import {
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -94,27 +99,24 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
         ];
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '',
-            '## Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (state.platform_context?.why_me_story) {
-          parts.push(
-            '',
-            '## Why-Me Story (from CareerIQ)',
-            JSON.stringify(state.platform_context.why_me_story, null, 2),
-          );
+          parts.push(...renderWhyMeStorySection({
+            heading: '## Why-Me Story (from CareerIQ)',
+            legacyWhyMeStory: state.platform_context.why_me_story,
+          }));
         }
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '',
-            '## Prior Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         if (state.platform_context?.linkedin_analysis) {

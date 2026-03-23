@@ -12,6 +12,11 @@
 import type { ProductConfig } from '../runtime/product-config.js';
 import { assessorConfig } from './assessor/agent.js';
 import type { OnboardingState, OnboardingSSEEvent, ClientProfile, AssessmentSummary } from './types.js';
+import {
+  renderCareerProfileSection,
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../contracts/shared-context-prompt.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
 import { loadCareerProfileContext } from '../../lib/career-profile-context.js';
@@ -115,27 +120,24 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
         }
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '',
-            '## Existing Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Existing Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '',
-            '## Prior Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         if (state.platform_context?.why_me_story) {
-          parts.push(
-            '',
-            '## Existing Why-Me Story',
-            JSON.stringify(state.platform_context.why_me_story, null, 2),
-          );
+          parts.push(...renderWhyMeStorySection({
+            heading: '## Existing Why-Me Story',
+            legacyWhyMeStory: state.platform_context.why_me_story,
+          }));
         }
 
         const toneGuidance = getToneGuidanceFromInput(input);
@@ -157,19 +159,17 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
         ];
 
         if (state.platform_context?.career_profile) {
-          parts.push(
-            '',
-            '## Existing Career Profile',
-            JSON.stringify(state.platform_context.career_profile, null, 2),
-          );
+          parts.push(...renderCareerProfileSection({
+            heading: '## Existing Career Profile',
+            legacyCareerProfile: state.platform_context.career_profile,
+          }));
         }
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push(
-            '',
-            '## Prior Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
-          );
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Prior Positioning Strategy',
+            legacyStrategy: state.platform_context.positioning_strategy,
+          }));
         }
 
         // Distress resources — include in evaluation pass too (user responses may reveal distress)

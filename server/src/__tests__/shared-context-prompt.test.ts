@@ -66,6 +66,20 @@ describe('shared-context prompt formatter', () => {
     expect(lines.join('\n')).toContain('Needs clearer P&L evidence');
   });
 
+  it('renders legacy positioning theme fields into readable strategy lines', () => {
+    const lines = renderPositioningStrategySection({
+      heading: '## Prior Positioning Strategy',
+      legacyStrategy: {
+        theme: 'digital transformation',
+        themes: ['operating model redesign'],
+      },
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('digital transformation');
+    expect(text).toContain('operating model redesign');
+  });
+
   it('renders shared evidence inventory with evidence labels', () => {
     const inventory = summarizeEvidenceInventory([
       makeEvidenceItem(),

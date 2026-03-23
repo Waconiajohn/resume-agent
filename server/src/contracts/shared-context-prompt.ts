@@ -166,7 +166,7 @@ export function renderPositioningStrategySection(args: {
   pushLine(
     lines,
     'Positioning angle',
-    firstMeaningful(strategy?.positioningAngle, legacy?.angle, legacy?.positioning_statement),
+    firstMeaningful(strategy?.positioningAngle, legacy?.angle, legacy?.positioning_statement, legacy?.theme),
   );
   pushLine(lines, 'Positioning focus', firstMeaningful(legacy?.focus));
   pushLine(lines, 'Target role', firstMeaningful(legacy?.target_role));
@@ -182,6 +182,8 @@ export function renderPositioningStrategySection(args: {
     'Supporting themes',
     uniqueNonEmpty([
       ...strategy?.supportingThemes ?? [],
+      ...asStringArray(legacy?.themes),
+      ...asStringArray(legacy?.key_themes),
       ...asStringArray(legacy?.supporting_themes),
       ...asStringArray(legacy?.proof_themes),
     ]),

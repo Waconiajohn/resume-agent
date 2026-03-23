@@ -12,6 +12,10 @@ import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from '../types.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  renderPositioningStrategySection,
+  renderWhyMeStorySection,
+} from '../../../contracts/shared-context-prompt.js';
 
 type ContentCalendarTool = AgentTool<ContentCalendarState, ContentCalendarSSEEvent>;
 
@@ -167,6 +171,14 @@ const identifyThemesTool: ContentCalendarTool = {
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
     const themeCount = Number(input.theme_count ?? 6);
+    const positioningSection = renderPositioningStrategySection({
+      heading: 'POSITIONING STRATEGY',
+      legacyStrategy: platformContext?.positioning_strategy,
+    }).join('\n');
+    const whyMeSection = renderWhyMeStorySection({
+      heading: 'WHY-ME STORY',
+      legacyWhyMeStory: platformContext?.why_me_story,
+    }).join('\n');
 
     const themePrompt = `Identify ${themeCount} content themes for a LinkedIn content calendar based on this executive's expertise.
 
@@ -178,11 +190,7 @@ CANDIDATE PROFILE:
 - Key Achievements: ${resumeData.key_achievements?.join(' | ') || 'None listed'}
 - Work History: ${resumeData.work_history?.map((w: { company: string; title: string; duration: string }) => `${w.title} at ${w.company} (${w.duration})`).join(', ') || 'None listed'}
 
-${platformContext?.positioning_strategy ? `POSITIONING STRATEGY: ${JSON.stringify(platformContext.positioning_strategy)}` : ''}
-${platformContext?.why_me_story ? `WHY-ME STORY:
-- Colleagues came for: ${platformContext.why_me_story.colleaguesCameForWhat}
-- Known for: ${platformContext.why_me_story.knownForWhat}
-- Why not me: ${platformContext.why_me_story.whyNotMe}` : ''}
+${positioningSection ? `${positioningSection}\n` : ''}${whyMeSection ? `${whyMeSection}\n` : ''}
 
 Return as JSON array:
 [
@@ -295,6 +303,14 @@ const mapAudienceInterestsTool: ContentCalendarTool = {
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
     const targetContext = state.target_context;
+    const positioningSection = renderPositioningStrategySection({
+      heading: 'POSITIONING STRATEGY',
+      legacyStrategy: platformContext?.positioning_strategy,
+    }).join('\n');
+    const whyMeSection = renderWhyMeStorySection({
+      heading: 'WHY-ME STORY',
+      legacyWhyMeStory: platformContext?.why_me_story,
+    }).join('\n');
 
     const audiencePrompt = `Map the target audience for a LinkedIn content calendar for this executive.
 
@@ -307,11 +323,7 @@ CANDIDATE PROFILE:
 - Target Role: ${targetContext?.target_role || resumeData.current_title || 'Not specified'}
 - Target Industry: ${targetContext?.target_industry || 'Not specified'}
 
-${platformContext?.positioning_strategy ? `POSITIONING STRATEGY: ${JSON.stringify(platformContext.positioning_strategy)}` : ''}
-${platformContext?.why_me_story ? `WHY-ME STORY:
-- Colleagues came for: ${platformContext.why_me_story.colleaguesCameForWhat}
-- Known for: ${platformContext.why_me_story.knownForWhat}
-- Why not me: ${platformContext.why_me_story.whyNotMe}` : ''}
+${positioningSection ? `${positioningSection}\n` : ''}${whyMeSection ? `${whyMeSection}\n` : ''}
 
 Return as JSON with TWO sections:
 
