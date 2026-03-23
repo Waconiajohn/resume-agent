@@ -24,6 +24,7 @@ import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js
 import { repairJSON } from '../lib/json-repair.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
 import {
+  buildRequirementClarifyingQuestion,
   buildRequirementFallbackQuestion,
   buildRequirementFallbackResponse,
   looksLikeRequirementRewrite,
@@ -968,7 +969,10 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 
   logger.info({ session_id: sessionId, concern_id, turn: messages.length }, 'Final review chat message');
 
-  const starterQuestion = context.clarifying_question?.trim() || 'What additional detail can you share that would make this point more credible or specific?';
+  const starterQuestion = context.clarifying_question?.trim()
+    || (context.related_requirement?.trim()
+      ? buildRequirementClarifyingQuestion(context.related_requirement)
+      : 'What additional detail can you share that would make this point more credible or specific?');
   const starterNeedsInput = context.requires_candidate_input ?? !context.suggested_resume_edit;
   const starterAction = starterNeedsInput ? 'answer_question' : context.suggested_resume_edit ? 'review_edit' : 'answer_question';
 

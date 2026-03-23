@@ -693,3 +693,67 @@ describe('POST /api/resume-v2/:sessionId/gap-chat', () => {
     expect(body.needs_candidate_input).toBe(true);
   });
 });
+
+describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
+  const VALID_FINAL_REVIEW_CHAT_BODY = {
+    concern_id: 'concern-1',
+    messages: [],
+    context: {
+      concern_type: 'missing_evidence',
+      severity: 'critical',
+      observation: 'Azure or GCP experience is not explicit.',
+      why_it_hurts: 'This role expects direct multi-cloud credibility.',
+      fix_strategy: 'Add one concrete example showing Azure or GCP delivery.',
+      related_requirement: 'Experience with Azure or GCP',
+      role_title: 'Cloud Architect',
+      company_name: 'TargetCo',
+      resume_excerpt: 'Built AWS infrastructure and reliability programs.',
+    },
+  } as const;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const chain = buildSingleChain({
+      data: { id: SESSION_ID, user_id: 'test-user-123' },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+
+    mockParseJsonBodyWithLimit.mockResolvedValue({ ok: true, data: VALID_FINAL_REVIEW_CHAT_BODY });
+    mockLlmChat.mockResolvedValue({
+      text: '{"response":"Need one more detail.","current_question":"Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?","follow_up_question":"Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?","needs_candidate_input":true,"recommended_next_action":"answer_question"}',
+    });
+    mockRepairJSON.mockReturnValue({
+      response: 'Need one more detail.',
+      current_question: 'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+      follow_up_question: 'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+      needs_candidate_input: true,
+      recommended_next_action: 'answer_question',
+    });
+  });
+
+  it('seeds final review chat with a requirement-specific starter question when context lacks one', async () => {
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/final-review-chat`, 'POST', VALID_FINAL_REVIEW_CHAT_BODY);
+
+    expect(res.status).toBe(200);
+    expect(mockLlmChat).toHaveBeenCalledOnce();
+
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const seededAssistant = JSON.parse(llmArgs.messages[1]?.content ?? '{}') as {
+      current_question?: string;
+      follow_up_question?: string;
+      recommended_next_action?: string;
+    };
+
+    expect(seededAssistant.current_question).toBe(
+      'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+    );
+    expect(seededAssistant.follow_up_question).toBe(
+      'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
+    );
+    expect(seededAssistant.recommended_next_action).toBe('answer_question');
+  });
+});
