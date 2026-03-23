@@ -570,7 +570,7 @@ export const finalReviewResultSchema = z.object({
     why_it_hurts: z.string().catch('This issue weakens interview odds.'),
     target_section: z.string().optional(),
     related_requirement: z.string().optional(),
-    fix_strategy: z.string().catch('Strengthen the supporting proof before export.'),
+    fix_strategy: z.string().catch('Review this concern and add truthful supporting proof before export if you have it.'),
     suggested_resume_edit: z.string().optional(),
     requires_candidate_input: z.boolean().default(false),
     clarifying_question: z.string().optional(),
@@ -1143,7 +1143,12 @@ function sanitizeConcernGuidance(
     ? removeUnsupportedCredentialGuidance(concern.clarifying_question)
     : concern.clarifying_question;
 
-  if (fixStrategy && coachingSubject && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))) {
+  if (
+    fixStrategy
+    && coachingSubject
+    && !/only add sample language/i.test(fixStrategy)
+    && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))
+  ) {
     fixStrategy = buildRequirementProofAction(coachingSubject, concern.requires_candidate_input);
   }
 

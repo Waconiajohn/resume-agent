@@ -1326,7 +1326,7 @@ describe('resume-v2 final review prompts', () => {
     });
 
     expect(parsed.concerns[0]?.why_it_hurts).toBe('This issue weakens interview odds.');
-    expect(parsed.concerns[0]?.fix_strategy).toBe('Strengthen the supporting proof before export.');
+    expect(parsed.concerns[0]?.fix_strategy).toBe('Review this concern and add truthful supporting proof before export if you have it.');
     expect(parsed.concerns[0]?.severity).toBe('moderate');
     expect(parsed.concerns[0]?.type).toBe('missing_evidence');
   });
