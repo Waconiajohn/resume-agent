@@ -75,6 +75,7 @@ import { writerTools } from '../agents/thank-you-note/writer/tools.js';
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createThankYouNoteProductConfig } from '../agents/thank-you-note/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Agent Registration
@@ -309,6 +310,13 @@ describe('Thank You Note ProductConfig', () => {
     expect(state.notes).toEqual([]);
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Trusted operator who leaves interviewers with high-confidence follow-through';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.careerNarrative.careerArc).toBe('Trusted operator who leaves interviewers with high-confidence follow-through');
+  });
+
   it('createInitialState accepts interviewers input', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       interviewers: [
@@ -421,6 +429,24 @@ describe('Thank You Note ProductConfig', () => {
     });
     expect(msg).toContain('Career Profile');
     expect(msg).toContain('Digital transformation leader');
+  });
+
+  it('buildAgentMessage for writer includes canonical shared context when legacy room context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Known for following through on the promises made in the room';
+    sharedContext.positioningStrategy.positioningAngle = 'Executive follow-up should reinforce fit without sounding canned';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      company: 'Acme Corp',
+      role: 'VP Operations',
+      shared_context: sharedContext,
+    });
+
+    const msg = config.buildAgentMessage('writer', state, {
+      resume_text: 'Resume here...',
+    });
+
+    expect(msg).toContain('Known for following through on the promises made in the room');
+    expect(msg).toContain('Executive follow-up should reinforce fit without sounding canned');
   });
 
   it('buildAgentMessage for unknown agent returns empty string', () => {

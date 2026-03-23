@@ -18,6 +18,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { InterviewPrepState, InterviewPrepSSEEvent } from '../agents/interview-prep/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -52,11 +53,13 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
@@ -64,6 +67,23 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'interview_prep',
+          artifactGoal: 'prepare for a target interview',
+          targetAudience: 'candidate',
+          successCriteria: [
+            'ground answers in supported evidence',
+            'align stories to the target role',
+            'keep interview prep truthful and reusable',
+          ],
+        },
+        workflowState: {
+          room: 'interview_prep',
+          stage: 'context_loaded',
+          activeTask: 'turn shared evidence into interview-ready preparation',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

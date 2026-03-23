@@ -14,10 +14,13 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
+  renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepState, InterviewPrepSSEEvent> {
   return {
@@ -110,11 +113,13 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
       current_stage: 'research',
       job_application_id: input.job_application_id as string | undefined,
       platform_context: input.platform_context as InterviewPrepState['platform_context'],
+      shared_context: input.shared_context as InterviewPrepState['shared_context'],
       sections: {} as InterviewPrepState['sections'],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'researcher') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Analyze the candidate resume and job description, research the company, and find real interview questions.',
           '',
@@ -127,28 +132,45 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           `Company: ${String(input.company_name ?? 'Unknown')}`,
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
-        if (state.platform_context?.why_me_story) {
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        } else if (state.platform_context?.why_me_story) {
           parts.push(...renderWhyMeStorySection({
             heading: '## Why-Me Story (from CareerIQ)',
-            legacyWhyMeStory: state.platform_context.why_me_story,
+            legacyWhyMeStory: state.platform_context?.why_me_story,
           }));
         }
 
-        if (state.platform_context?.positioning_strategy) {
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(
             '',
             ...renderPositioningStrategySection({
               heading: '## Prior Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
+              sharedStrategy: sharedContext?.positioningStrategy,
+              legacyStrategy: state.platform_context?.positioning_strategy,
             }),
           );
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
+          || (state.platform_context?.evidence_items?.length ?? 0) > 0) {
+          parts.push(...renderEvidenceInventorySection({
+            heading: '## Evidence Inventory',
+            sharedInventory: sharedContext?.evidenceInventory,
+            legacyEvidence: state.platform_context?.evidence_items,
+            maxItems: 8,
+          }));
         }
 
         parts.push('', 'Call parse_inputs first, then research_company, then find_interview_questions.');

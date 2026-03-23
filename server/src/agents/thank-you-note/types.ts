@@ -11,6 +11,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Note Formats ──────────────────────────────────────────────────
 
@@ -124,6 +125,9 @@ export interface ThankYouNoteState extends BaseState {
       whyNotMe: string;
     };
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** Context about the target role and market */
   target_context?: {

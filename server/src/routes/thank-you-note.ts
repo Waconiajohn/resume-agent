@@ -19,6 +19,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { ThankYouNoteState, ThankYouNoteSSEEvent } from '../agents/thank-you-note/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -66,16 +67,35 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'thank_you_note',
+          artifactGoal: 'draft post-interview thank-you notes',
+          targetAudience: 'interviewer',
+          successCriteria: [
+            'sound specific and human',
+            'reinforce fit without overclaiming',
+            'match the shared career narrative',
+          ],
+        },
+        workflowState: {
+          room: 'thank_you_note',
+          stage: 'context_loaded',
+          activeTask: 'turn interview context into tailored follow-up notes',
+        },
+      });
       if (emotionalBaseline) {
         transformed.emotional_baseline = emotionalBaseline;
       }

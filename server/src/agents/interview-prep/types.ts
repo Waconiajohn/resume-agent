@@ -10,6 +10,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Document Sections ──────────────────────────────────────────────
 
@@ -108,6 +109,9 @@ export interface InterviewPrepState extends BaseState {
     /** Evidence items captured during resume sessions */
     evidence_items?: Record<string, unknown>[];
   };
+
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
 
   /** Parsed resume data */
   resume_data?: {

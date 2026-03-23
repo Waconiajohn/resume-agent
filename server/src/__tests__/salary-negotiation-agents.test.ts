@@ -80,6 +80,7 @@ import { strategistTools } from '../agents/salary-negotiation/strategist/tools.j
 // ─── ProductConfig ───────────────────────────────────────────────────
 
 import { createSalaryNegotiationProductConfig } from '../agents/salary-negotiation/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Agent Registration
@@ -363,6 +364,16 @@ describe('Salary Negotiation ProductConfig', () => {
     expect(state.offer_details.equity_details).toBe('10,000 RSUs over 4 years');
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Negotiation leverage should stay anchored in credible executive scope';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      offer_details: { company: 'Acme', role: 'VP Engineering' },
+      shared_context: sharedContext,
+    });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Negotiation leverage should stay anchored in credible executive scope');
+  });
+
   it('createInitialState initializes target_context from input', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       offer_details: { company: 'Acme', role: 'VP Ops' },
@@ -397,6 +408,23 @@ describe('Salary Negotiation ProductConfig', () => {
     expect(msg).toContain('Acme');
     expect(msg).toContain('VP Ops');
     expect(msg).toContain('200,000');
+  });
+
+  it('buildAgentMessage for researcher includes canonical shared context when legacy room context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career narrative built on commercial impact and calm negotiation posture';
+    sharedContext.positioningStrategy.positioningAngle = 'Use supported scope and outcomes as leverage, not inflated claims';
+    const state = config.createInitialState('sess-1', 'user-1', {
+      offer_details: { company: 'Acme', role: 'VP Engineering' },
+      shared_context: sharedContext,
+    });
+
+    const msg = config.buildAgentMessage('researcher', state, {
+      resume_text: 'Resume text',
+    });
+
+    expect(msg).toContain('Career narrative built on commercial impact and calm negotiation posture');
+    expect(msg).toContain('Use supported scope and outcomes as leverage, not inflated claims');
   });
 
   it('buildAgentMessage for researcher includes Career Profile when available', () => {

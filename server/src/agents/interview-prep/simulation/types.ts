@@ -10,6 +10,7 @@
 
 import type { BaseState } from '../../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../../lib/career-profile-context.js';
+import type { SharedContext } from '../../../contracts/shared-context.js';
 
 // ─── Question & Evaluation Types ─────────────────────────────────────
 
@@ -69,6 +70,8 @@ export interface MockInterviewState extends BaseState {
     why_me_story?: Record<string, unknown>;
     evidence_items?: Record<string, unknown>[];
   };
+  /** Canonical shared context, populated alongside legacy platform_context during migration */
+  shared_context?: SharedContext;
   final_summary?: {
     overall_score: number;
     total_questions: number;

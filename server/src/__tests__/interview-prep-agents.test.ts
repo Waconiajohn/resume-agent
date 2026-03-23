@@ -54,6 +54,7 @@ import '../agents/interview-prep/writer/agent.js';
 import { createInterviewPrepProductConfig } from '../agents/interview-prep/product.js';
 import { researcherTools } from '../agents/interview-prep/researcher/tools.js';
 import { writerTools } from '../agents/interview-prep/writer/tools.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import {
   INTERVIEW_PREP_RULES,
   RULE_0_AUDIENCE,
@@ -278,6 +279,14 @@ describe('Interview Prep ProductConfig', () => {
     expect(state.sections).toBeDefined();
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const config = createInterviewPrepProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Operator preparing concise, proof-backed interview stories';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Operator preparing concise, proof-backed interview stories');
+  });
+
   it('buildAgentMessage returns content for researcher', () => {
     const config = createInterviewPrepProductConfig();
     const state = config.createInitialState('s', 'u', {});
@@ -324,6 +333,23 @@ describe('Interview Prep ProductConfig', () => {
     });
     expect(msg).toContain('Positioning Strategy');
     expect(msg).toContain('operational excellence');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const config = createInterviewPrepProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Known for turning high-pressure situations into structured execution stories';
+    sharedContext.positioningStrategy.positioningAngle = 'Executive operator with strong evidence-backed interview examples';
+    const state = config.createInitialState('s', 'u', { shared_context: sharedContext });
+
+    const msg = config.buildAgentMessage('researcher', state, {
+      resume_text: 'resume',
+      job_description: 'jd',
+      company_name: 'Acme',
+    });
+
+    expect(msg).toContain('Known for turning high-pressure situations into structured execution stories');
+    expect(msg).toContain('Executive operator with strong evidence-backed interview examples');
   });
 
   it('buildAgentMessage returns content for writer', () => {

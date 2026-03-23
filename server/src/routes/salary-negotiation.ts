@@ -19,6 +19,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from '../agents/salary-negotiation/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -85,16 +86,35 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
     };
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
+      transformed.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'salary_negotiation',
+          artifactGoal: 'prepare a salary negotiation strategy',
+          targetAudience: 'candidate',
+          successCriteria: [
+            'tie leverage to truthful evidence',
+            'keep negotiation asks commercially credible',
+            'preserve consistent positioning',
+          ],
+        },
+        workflowState: {
+          room: 'salary_negotiation',
+          stage: 'context_loaded',
+          activeTask: 'shape negotiation strategy from shared positioning and market context',
+        },
+      });
       if (emotionalBaseline) {
         transformed.emotional_baseline = emotionalBaseline;
       }

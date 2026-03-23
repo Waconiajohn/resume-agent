@@ -17,6 +17,7 @@ import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { MockInterviewState, MockInterviewSSEEvent } from '../agents/interview-prep/simulation/types.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -48,11 +49,13 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
     if (!userId) return input;
 
     try {
-      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+      const { platformContext, emotionalBaseline, sharedContext } = await loadAgentContextBundle(userId, {
         includeCareerProfile: true,
         includePositioningStrategy: true,
         includeEvidenceItems: true,
+        includeCareerNarrative: true,
         includeWhyMeStory: true,
+        includeClientProfile: true,
         includeEmotionalBaseline: true,
       });
 
@@ -60,6 +63,23 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      result.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'mock_interview',
+          artifactGoal: 'conduct a realistic mock interview',
+          targetAudience: 'candidate',
+          successCriteria: [
+            'ask targeted questions',
+            'evaluate answers against supported evidence',
+            'keep feedback specific and actionable',
+          ],
+        },
+        workflowState: {
+          room: 'interview_prep',
+          stage: 'context_loaded',
+          activeTask: 'simulate interview questions from shared positioning and evidence',
+        },
+      });
       if (emotionalBaseline) {
         result.emotional_baseline = emotionalBaseline;
       }

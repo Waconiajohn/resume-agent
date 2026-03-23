@@ -15,11 +15,13 @@ import type { ProductConfig } from '../../runtime/product-config.js';
 import { interviewerConfig } from './interviewer/agent.js';
 import type { MockInterviewState, MockInterviewSSEEvent, MockInterviewMode, QuestionType } from './types.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 export function createMockInterviewProductConfig(): ProductConfig<MockInterviewState, MockInterviewSSEEvent> {
   return {
@@ -64,6 +66,7 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
         job_description: input.job_description ? String(input.job_description) : undefined,
         company_name: input.company_name ? String(input.company_name) : undefined,
         platform_context: input.platform_context as MockInterviewState['platform_context'],
+        shared_context: input.shared_context as MockInterviewState['shared_context'],
       };
     },
 
@@ -113,35 +116,44 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
       }
 
       // Platform context enrichment
-      if (state.platform_context?.career_profile) {
+      if (state.platform_context?.career_profile || hasMeaningfulSharedValue(state.shared_context?.candidateProfile)) {
         parts.push(...renderCareerProfileSection({
           heading: '## Career Profile',
-          legacyCareerProfile: state.platform_context.career_profile,
+          sharedContext: state.shared_context,
+          legacyCareerProfile: state.platform_context?.career_profile,
         }));
       }
-      if (state.platform_context?.positioning_strategy) {
+      if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(state.shared_context?.positioningStrategy)) {
         parts.push(
           '',
           ...renderPositioningStrategySection({
             heading: '## Prior Positioning Strategy (from CareerIQ resume session)',
-            legacyStrategy: state.platform_context.positioning_strategy,
+            sharedStrategy: state.shared_context?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
           }),
         );
       }
-      if (state.platform_context?.why_me_story) {
+      if (hasMeaningfulSharedValue(state.shared_context?.careerNarrative)) {
+        parts.push(...renderCareerNarrativeSection({
+          heading: '## Career Narrative Signals',
+          sharedNarrative: state.shared_context?.careerNarrative,
+        }));
+      } else if (state.platform_context?.why_me_story) {
         parts.push(...renderWhyMeStorySection({
           heading: '## Why-Me Story',
-          legacyWhyMeStory: state.platform_context.why_me_story,
+          legacyWhyMeStory: state.platform_context?.why_me_story,
         }));
       }
       if (
-        Array.isArray(state.platform_context?.evidence_items) &&
-        (state.platform_context?.evidence_items ?? []).length > 0
+        hasMeaningfulSharedValue(state.shared_context?.evidenceInventory.evidenceItems)
+        || (Array.isArray(state.platform_context?.evidence_items) &&
+        (state.platform_context?.evidence_items ?? []).length > 0)
       ) {
         parts.push(
           '',
           ...renderEvidenceInventorySection({
             heading: '## Evidence Items (use to generate targeted questions)',
+            sharedInventory: state.shared_context?.evidenceInventory,
             legacyEvidence: state.platform_context?.evidence_items ?? [],
             maxItems: 5,
           }),

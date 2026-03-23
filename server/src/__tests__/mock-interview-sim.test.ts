@@ -38,6 +38,7 @@ import { interviewerConfig } from '../agents/interview-prep/simulation/interview
 import { agentRegistry } from '../agents/runtime/agent-registry.js';
 import { createMockInterviewProductConfig } from '../agents/interview-prep/simulation/product.js';
 import type { MockInterviewState, MockInterviewSSEEvent, AnswerEvaluation } from '../agents/interview-prep/simulation/types.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import { makeMockGenericContext } from './helpers/mock-factories.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -920,6 +921,13 @@ describe('Mock Interview ProductConfig', () => {
     expect(state.company_name).toBe('Stripe');
   });
 
+  it('createInitialState preserves shared_context when provided', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Candidate needs rigorous interview reps tied to supported evidence';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+    expect(state.shared_context?.positioningStrategy.positioningAngle).toBe('Candidate needs rigorous interview reps tied to supported evidence');
+  });
+
   it('buildAgentMessage for interviewer (full mode) includes question count', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     const msg = config.buildAgentMessage('interviewer', state, {});
@@ -951,6 +959,17 @@ describe('Mock Interview ProductConfig', () => {
     const msg = config.buildAgentMessage('interviewer', state, {});
     expect(msg).toContain('Positioning Strategy');
     expect(msg).toContain('Platform-first engineering executive');
+  });
+
+  it('buildAgentMessage includes canonical shared context when legacy room context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.careerNarrative.careerArc = 'Career story built around calm execution under pressure';
+    sharedContext.positioningStrategy.positioningAngle = 'Interview on proof, not generic leadership claims';
+    const state = config.createInitialState('sess-1', 'user-1', { shared_context: sharedContext });
+
+    const msg = config.buildAgentMessage('interviewer', state, {});
+    expect(msg).toContain('Career story built around calm execution under pressure');
+    expect(msg).toContain('Interview on proof, not generic leadership claims');
   });
 
   it('buildAgentMessage for unknown agent returns empty string', () => {

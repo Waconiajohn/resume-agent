@@ -12,6 +12,7 @@ import { researcherConfig } from './researcher/agent.js';
 import { strategistConfig } from './strategist/agent.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from './types.js';
 import {
+  renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
@@ -19,6 +20,7 @@ import {
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNegotiationState, SalaryNegotiationSSEEvent> {
   return {
@@ -145,10 +147,12 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         target_seniority: String(input.target_seniority ?? ''),
       },
       platform_context: input.platform_context as SalaryNegotiationState['platform_context'],
+      shared_context: input.shared_context as SalaryNegotiationState['shared_context'],
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'researcher') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Research compensation benchmarks and identify negotiation leverage for this candidate.',
           '',
@@ -193,23 +197,30 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           if (state.target_context.target_seniority) parts.push(`Target Seniority: ${state.target_context.target_seniority}`);
         }
 
-        if (state.platform_context) {
-          if (state.platform_context.career_profile) {
+        if (state.platform_context || sharedContext) {
+          if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
             parts.push(...renderCareerProfileSection({
               heading: '## Career Profile',
-              legacyCareerProfile: state.platform_context.career_profile,
+              sharedContext,
+              legacyCareerProfile: state.platform_context?.career_profile,
             }));
           }
-          if (state.platform_context.why_me_story) {
+          if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+            parts.push(...renderCareerNarrativeSection({
+              heading: '## Career Narrative Signals',
+              sharedNarrative: sharedContext?.careerNarrative,
+            }));
+          } else if (state.platform_context?.why_me_story) {
             parts.push(...renderWhyMeStorySection({
               heading: '## Career Narrative Signals',
-              legacyWhyMeStory: state.platform_context.why_me_story,
+              legacyWhyMeStory: state.platform_context?.why_me_story,
             }));
           }
-          if (state.platform_context.positioning_strategy) {
+          if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
             parts.push(...renderPositioningStrategySection({
               heading: '## Positioning Strategy',
-              legacyStrategy: state.platform_context.positioning_strategy,
+              sharedStrategy: sharedContext?.positioningStrategy,
+              legacyStrategy: state.platform_context?.positioning_strategy,
             }));
           }
         }
