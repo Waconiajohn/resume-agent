@@ -18,6 +18,7 @@ import type {
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 
 const ALL_FORMATS: BioFormat[] = ['speaker', 'board', 'advisory', 'professional', 'linkedin_featured'];
 const DEFAULT_LENGTHS: BioLength[] = ['standard'];
@@ -138,7 +139,13 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
             );
           }
           if (state.platform_context.positioning_strategy) {
-            parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+            parts.push(
+              '',
+              ...renderPositioningStrategySection({
+                heading: '## Positioning Strategy',
+                legacyStrategy: state.platform_context.positioning_strategy,
+              }),
+            );
           }
         }
 

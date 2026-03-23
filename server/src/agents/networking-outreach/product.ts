@@ -15,6 +15,7 @@ import { MESSAGING_METHOD_CONFIG } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 
 export function createNetworkingOutreachProductConfig(): ProductConfig<NetworkingOutreachState, NetworkingOutreachSSEEvent> {
   return {
@@ -144,7 +145,13 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           parts.push('', '## Why-Me Story', JSON.stringify(state.platform_context.why_me_story, null, 2));
         }
         if (state.platform_context?.positioning_strategy) {
-          parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+          parts.push(
+            '',
+            ...renderPositioningStrategySection({
+              heading: '## Positioning Strategy',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }),
+          );
         }
 
         parts.push(

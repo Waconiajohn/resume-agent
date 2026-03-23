@@ -14,6 +14,7 @@ import type { JobTrackerState, JobTrackerSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 
 export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, JobTrackerSSEEvent> {
   return {
@@ -90,7 +91,13 @@ export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, 
         ];
 
         if (state.platform_context?.positioning_strategy) {
-          parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+          parts.push(
+            '',
+            ...renderPositioningStrategySection({
+              heading: '## Positioning Strategy',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }),
+          );
         }
 
         parts.push(

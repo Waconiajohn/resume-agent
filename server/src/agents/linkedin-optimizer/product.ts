@@ -14,6 +14,7 @@ import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from './types.
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { renderPositioningStrategySection } from '../../contracts/shared-context-prompt.js';
 
 export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOptimizerState, LinkedInOptimizerSSEEvent> {
   return {
@@ -118,8 +119,10 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         if (state.platform_context?.positioning_strategy) {
           parts.push(
             '',
-            '## Prior Positioning Strategy',
-            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+            ...renderPositioningStrategySection({
+              heading: '## Prior Positioning Strategy',
+              legacyStrategy: state.platform_context.positioning_strategy,
+            }),
           );
         }
 
