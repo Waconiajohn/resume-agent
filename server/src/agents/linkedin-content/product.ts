@@ -117,10 +117,14 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           '',
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (
+          hasMeaningfulSharedValue(sharedContext?.candidateProfile) ||
+          state.platform_context?.career_profile
+        ) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 
@@ -183,10 +187,14 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           '',
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (
+          hasMeaningfulSharedValue(sharedContext?.candidateProfile) ||
+          state.platform_context?.career_profile
+        ) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
           }));
         }
 

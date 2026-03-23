@@ -53,6 +53,7 @@ vi.mock('../lib/json-repair.js', () => ({
 }));
 
 import { createLinkedInContentProductConfig } from '../agents/linkedin-content/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 import type {
   LinkedInContentState,
   TopicSuggestion,
@@ -296,6 +297,18 @@ describe('createLinkedInContentProductConfig().buildAgentMessage', () => {
     expect(msg).toContain('Product builder');
   });
 
+  it('includes shared Career Profile in strategist message when legacy context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.candidateProfile.factualSummary = 'Executive operator known for scaling product organizations';
+    sharedContext.candidateProfile.coreFunctions = ['Product strategy'];
+
+    const state = makeState({ shared_context: sharedContext });
+    const msg = config.buildAgentMessage('strategist', state, {});
+
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Executive operator known for scaling product organizations');
+  });
+
   it('includes objective-driven guidance in strategist message', () => {
     const state = makeState();
     const msg = config.buildAgentMessage('strategist', state, {});
@@ -308,6 +321,22 @@ describe('createLinkedInContentProductConfig().buildAgentMessage', () => {
     const msg = config.buildAgentMessage('writer', state, {});
     expect(typeof msg).toBe('string');
     expect(msg).toContain('How I built a remote team');
+  });
+
+  it('includes shared Career Profile and Narrative in writer message when legacy context is absent', () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.candidateProfile.factualSummary = 'Builder-operator with enterprise product leadership experience';
+    sharedContext.careerNarrative.careerArc = 'Moved from startup product management into global portfolio leadership';
+
+    const state = makeState({
+      selected_topic: 'How I built a remote team',
+      shared_context: sharedContext,
+    });
+    const msg = config.buildAgentMessage('writer', state, {});
+
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Builder-operator with enterprise product leadership experience');
+    expect(msg).toContain('global portfolio leadership');
   });
 
   it('includes revision instructions when revision_feedback is set', () => {

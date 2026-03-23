@@ -199,17 +199,31 @@ const generateSearchQueriesTool: JobFinderTool = {
 
     const state = ctx.getState();
 
-    // Load target titles from platform context if available
+    // Load target titles from shared context first, then legacy context if available
+    const sharedTargetRole = state.shared_context?.targetRole;
     const positioningStrategy = state.platform_context?.positioning_strategy;
     const targetTitles: string[] = [];
+    const seenTitles = new Set<string>();
+    const pushTargetTitle = (value: unknown) => {
+      if (typeof value !== 'string') return;
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (seenTitles.has(key)) return;
+      seenTitles.add(key);
+      targetTitles.push(trimmed);
+    };
+
+    pushTargetTitle(sharedTargetRole?.roleTitle);
+
     if (positioningStrategy && typeof positioningStrategy === 'object') {
       const ps = positioningStrategy as Record<string, unknown>;
       if (Array.isArray(ps.target_titles)) {
-        targetTitles.push(...ps.target_titles.filter((t): t is string => typeof t === 'string').slice(0, 10));
+        for (const title of ps.target_titles.filter((t): t is string => typeof t === 'string').slice(0, 10)) {
+          pushTargetTitle(title);
+        }
       }
-      if (typeof ps.target_role === 'string') {
-        targetTitles.push(ps.target_role);
-      }
+      pushTargetTitle(ps.target_role);
     }
 
     const { id, result } = await generateBooleanSearch(resumeText, targetTitles);

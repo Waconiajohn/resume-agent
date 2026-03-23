@@ -462,4 +462,100 @@ describe('self_review_section tool', () => {
     );
     expect(result).toHaveProperty('success', false);
   });
+
+  it('uses shared positioning context when legacy context is absent', async () => {
+    const { editorTools } = await import('../agents/linkedin-editor/editor/tools.js');
+    const tool = editorTools.find((t) => t.name === 'self_review_section');
+    if (!tool) throw new Error('self_review_section tool not found');
+
+    const sharedContext = createEmptySharedContext();
+    sharedContext.positioningStrategy.positioningAngle = 'Executive leader for cloud platform scale-ups';
+
+    const state = makeState({ shared_context: sharedContext });
+    const ctx = makeCtx(state);
+    ctx.scratchpad['draft_headline'] = 'VP Engineering | Cloud Platforms | Scale';
+    ctx.scratchpad.current_section = 'headline';
+
+    const { llm } = await import('../lib/llm.js');
+    const llmMock = llm.chat as ReturnType<typeof vi.fn>;
+    llmMock.mockResolvedValue({
+      text: JSON.stringify({
+        keyword_coverage: 82,
+        readability: 90,
+        positioning_alignment: 78,
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute(
+      { section: 'headline' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const callArgs = llmMock.mock.calls.at(-1)?.[0];
+    const userContent = callArgs?.messages?.[0]?.content as string;
+    expect(userContent).toContain('Target Positioning');
+    expect(userContent).toContain('Executive leader for cloud platform scale-ups');
+  });
+});
+
+describe('revise_section tool', () => {
+  it('uses shared evidence context when legacy context is absent', async () => {
+    const { editorTools } = await import('../agents/linkedin-editor/editor/tools.js');
+    const tool = editorTools.find((t) => t.name === 'revise_section');
+    if (!tool) throw new Error('revise_section tool not found');
+
+    const sharedContext = createEmptySharedContext();
+    sharedContext.evidenceInventory.evidenceItems = [
+      {
+        id: 'ev_engineering_scale',
+        statement: 'Scaled an engineering organization from 40 to 150 people across three regions',
+        level: 'DirectProof',
+        sourceType: 'resume',
+        sourceArtifactId: null,
+        sourceExcerpt: 'Scaled an engineering organization from 40 to 150 people across three regions',
+        supports: ['leadership scale'],
+        limitations: [],
+        requiresConfirmation: false,
+        finalArtifactEligible: true,
+        riskLabel: 'Low',
+        confidence: 'High',
+        provenance: {
+          origin: 'platform_context',
+          sourceProduct: 'linkedin-editor',
+          sourceSessionId: 'sess-test',
+          sourceContextType: 'evidence_item',
+          capturedAt: '2026-03-23T00:00:00.000Z',
+          mapper: 'test-fixture',
+        },
+      },
+    ];
+    sharedContext.evidenceInventory.directProof = [sharedContext.evidenceInventory.evidenceItems[0]];
+
+    const state = makeState({ shared_context: sharedContext });
+    const ctx = makeCtx(state);
+    ctx.scratchpad['draft_about'] = 'I lead engineering teams.';
+
+    const { llm } = await import('../lib/llm.js');
+    const llmMock = llm.chat as ReturnType<typeof vi.fn>;
+    llmMock.mockResolvedValue({
+      text: JSON.stringify({
+        about_content: 'I lead engineering organizations through global scale and platform modernization.',
+        revision_notes: 'Added scale and modernization proof.',
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute(
+      { section: 'about', feedback: 'Make it more specific' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const callArgs = llmMock.mock.calls.at(-1)?.[0];
+    const userContent = callArgs?.messages?.[0]?.content as string;
+    expect(userContent).toContain('Available Evidence');
+    expect(userContent).toContain('Scaled an engineering organization from 40 to 150 people');
+  });
 });

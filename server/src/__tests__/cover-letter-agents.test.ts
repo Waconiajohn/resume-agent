@@ -64,6 +64,7 @@ import { agentRegistry } from '../agents/runtime/agent-registry.js';
 import '../agents/cover-letter/analyst/agent.js';
 import '../agents/cover-letter/writer/agent.js';
 import { createCoverLetterProductConfig } from '../agents/cover-letter/product.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // Import tools directly for execution tests
 import { analystTools } from '../agents/cover-letter/analyst/tools.js';
@@ -238,6 +239,26 @@ describe('Cover Letter ProductConfig', () => {
     expect(msg).toContain('Resume');
     expect(msg).toContain('My resume...');
     expect(msg).toContain('Acme Corp');
+  });
+
+  it('buildAgentMessage prefers shared career context when legacy context is absent', () => {
+    const config = createCoverLetterProductConfig();
+    const sharedContext = createEmptySharedContext();
+    sharedContext.candidateProfile.factualSummary = 'Operations executive with multi-site leadership experience';
+    sharedContext.candidateProfile.industries = ['Energy'];
+    sharedContext.careerNarrative.careerArc = 'Progressed from field operations into enterprise transformation leadership';
+
+    const state = config.createInitialState('s', 'u', { shared_context: sharedContext });
+    const msg = config.buildAgentMessage('analyst', state, {
+      resume_text: 'My resume...',
+      job_description: 'JD here...',
+      company_name: 'Acme Corp',
+    });
+
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Operations executive with multi-site leadership experience');
+    expect(msg).toContain('Career Narrative');
+    expect(msg).toContain('enterprise transformation leadership');
   });
 
   it('buildAgentMessage returns content for writer', () => {

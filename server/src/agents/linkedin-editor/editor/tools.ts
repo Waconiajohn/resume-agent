@@ -242,11 +242,14 @@ const selfReviewSectionTool: LinkedInEditorTool = {
       message: `Reviewing ${section} for keyword coverage and positioning alignment...`,
     });
 
-    const positioningStrategy = state.platform_context?.positioning_strategy;
-    const positioningSection = positioningStrategy
+    const positioningSection = (
+      state.platform_context?.positioning_strategy ||
+      hasMeaningfulSharedValue(state.shared_context?.positioningStrategy)
+    )
       ? renderPositioningStrategySection({
           heading: '## Target Positioning',
-          legacyStrategy: positioningStrategy,
+          sharedStrategy: state.shared_context?.positioningStrategy,
+          legacyStrategy: state.platform_context?.positioning_strategy,
         }).join('\n')
       : '';
 
@@ -358,10 +361,14 @@ ${currentDraft}
 ## User Feedback
 ${feedback}
 
-${state.platform_context?.evidence_items
+${(
+  hasMeaningfulSharedValue(state.shared_context?.evidenceInventory.evidenceItems) ||
+  state.platform_context?.evidence_items
+)
   ? renderEvidenceInventorySection({
       heading: '## Available Evidence (use if user requests specific examples)',
-      legacyEvidence: state.platform_context.evidence_items,
+      sharedInventory: state.shared_context?.evidenceInventory,
+      legacyEvidence: state.platform_context?.evidence_items,
       maxItems: 6,
     }).join('\n')
   : ''}

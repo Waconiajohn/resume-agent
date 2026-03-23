@@ -126,9 +126,11 @@ import { searcherTools } from '../agents/job-finder/searcher/tools.js';
 import { rankerTools } from '../agents/job-finder/ranker/tools.js';
 import { createJobFinderProductConfig } from '../agents/job-finder/product.js';
 import { llm } from '../lib/llm.js';
+import { generateBooleanSearch } from '../lib/ni/boolean-search.js';
 import { getJobMatchesByUser } from '../lib/ni/job-matches-store.js';
 import { getCompanySummary } from '../lib/ni/connections-store.js';
 import type { JobFinderSSEEvent } from '../agents/job-finder/types.js';
+import { createEmptySharedContext } from '../contracts/shared-context.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -229,6 +231,19 @@ describe('Searcher: generate_search_queries', () => {
     await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
     expect(ctx.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'transparency' }),
+    );
+  });
+
+  it('prefers shared target role when deriving boolean search titles', async () => {
+    const sharedContext = createEmptySharedContext();
+    sharedContext.targetRole.roleTitle = 'Chief Operating Officer';
+
+    const ctx = makeCtx({ shared_context: sharedContext });
+    await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
+
+    expect(generateBooleanSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(['Chief Operating Officer']),
     );
   });
 });
@@ -588,6 +603,19 @@ describe('createJobFinderProductConfig', () => {
       });
       const msg = config.buildAgentMessage('searcher', state, { resume_text: 'A'.repeat(200) });
       expect(msg).toContain('VP Operations');
+    });
+
+    it('searcher message includes shared career context when legacy context is absent', () => {
+      const sharedContext = createEmptySharedContext();
+      sharedContext.candidateProfile.factualSummary = 'Operations executive with large-scale manufacturing leadership';
+      sharedContext.targetRole.roleTitle = 'Chief Operating Officer';
+
+      const state = makeState({ shared_context: sharedContext });
+      const msg = config.buildAgentMessage('searcher', state, { resume_text: 'A'.repeat(200) });
+
+      expect(msg).toContain('Career Profile');
+      expect(msg).toContain('Operations executive with large-scale manufacturing leadership');
+      expect(msg).toContain('Chief Operating Officer');
     });
 
     it('searcher message includes resume text', () => {

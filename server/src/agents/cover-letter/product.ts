@@ -16,6 +16,7 @@ import logger from '../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 import {
   renderCareerProfileSection,
+  renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
@@ -134,10 +135,21 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           `Company: ${String(input.company_name ?? 'Unknown')}`,
         ];
 
-        if (state.platform_context?.career_profile) {
+        if (
+          hasMeaningfulSharedValue(sharedContext?.candidateProfile) ||
+          state.platform_context?.career_profile
+        ) {
           parts.push(...renderCareerProfileSection({
             heading: '## Career Profile',
-            legacyCareerProfile: state.platform_context.career_profile,
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative',
+            sharedNarrative: sharedContext?.careerNarrative,
           }));
         }
 

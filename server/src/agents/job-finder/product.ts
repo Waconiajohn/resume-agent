@@ -17,7 +17,10 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
-import { renderTargetingSummaryLines } from '../../contracts/shared-context-prompt.js';
+import {
+  renderCareerProfileSection,
+  renderTargetingSummaryLines,
+} from '../../contracts/shared-context-prompt.js';
 
 // FF_JOB_FINDER is used by the route — imported from feature-flags.ts directly there.
 
@@ -99,21 +102,21 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
           '',
         ];
 
-        if (platformCtx?.career_profile) {
-          parts.push(
-            '## Career Profile',
-            JSON.stringify(platformCtx.career_profile, null, 2),
-            '',
-          );
+        if (sharedContext?.candidateProfile || platformCtx?.career_profile) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+            legacyCareerProfile: platformCtx?.career_profile,
+          }));
         }
 
-        // NI data summary
-        const hasNiData = !!platformCtx;
-        if (hasNiData) {
+        const targetingSummaryLines = renderTargetingSummaryLines(
+          sharedContext,
+          platformCtx?.positioning_strategy,
+        );
+        if (targetingSummaryLines.length > 0) {
           parts.push('## Available Data', 'Platform context available — use for targeting:');
-          parts.push(
-            ...renderTargetingSummaryLines(sharedContext, platformCtx?.positioning_strategy),
-          );
+          parts.push(...targetingSummaryLines);
           parts.push('');
         }
 
