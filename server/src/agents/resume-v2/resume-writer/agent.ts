@@ -46,16 +46,24 @@ CONTENT DECISIONS — For each bullet on the original resume, ASSESS its quality
 - REWRITE bullets that are duty-focused, vague, have no metrics, or use passive language
 - CUT bullets that are completely irrelevant to the target role (unless they fill an employment gap)
 
-POSITION DECISIONS:
-- Recent + relevant positions (last 10 years, matches target): 5-8 strong bullets each
-- Recent + less relevant: 3-4 bullets, reframe for transferable skills
-- Older but highly relevant (10-15 years): 3-5 focused bullets
-- 15-20 years ago: 2-3 bullets if relevant, or scope statement only
+POSITION DECISIONS — bullet count should reflect the role's depth and relevance:
+- The most recent/significant position gets the most detail — write as many bullets as the accomplishments justify
+- Other recent relevant positions: proportional detail based on how much strong evidence exists
+- Recent + less relevant: fewer bullets, reframe for transferable skills
+- Older but highly relevant (10-15 years): focus on the strongest accomplishments
+- 15-20 years ago: brief if relevant, scope statement if not
 - 20+ years ago: "Additional Work Experience" section — title, company, city and state ONLY (no bullets, no dates)
 - NEVER remove a position if it creates an employment gap > 6 months
+- CRITICAL: Do not produce FEWER bullets than the original resume had for a role. If the original has 4 bullets, write at least 4 — enhanced, not reduced. You are here to improve, not shrink.
 
-PAGE LENGTH — Let content quality drive the length. Most executives need 1.5-2 pages.
+SELECTED ACCOMPLISHMENTS:
+- Should address the most important requirements from the job description
+- Each must be substantial, specific, and impressive with quantified impact
+- These are the "proof points" that make the candidate undeniable
+
+PAGE LENGTH — Let content quality drive the length.
 NEVER pad to fill space. NEVER cut quality content to save space. Every line must earn its place.
+If the original resume is 2 pages of real content, your output should be at least as substantial. Do not compress a strong resume into a weaker, shorter version.
 
 SECTIONS TO INCLUDE (when the candidate has the data):
 - Executive Summary (3-5 powerful lines, positioning-first, not a list of adjectives)

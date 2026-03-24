@@ -205,6 +205,7 @@ export function ResumeDocumentCard({
                       isCurrent={suggestion.id === currentSuggestionId}
                       suggestionDataIndex={suggestionDataIdx}
                       totalSuggestions={totalSuggestions}
+                      onRequestEdit={onRequestEdit}
                     />
                   ) : onBulletClick && !a.is_new ? (
                     <span
@@ -318,6 +319,7 @@ export function ResumeDocumentCard({
                             isCurrent={suggestion.id === currentSuggestionId}
                             suggestionDataIndex={suggestionDataIdx}
                             totalSuggestions={totalSuggestions}
+                            onRequestEdit={onRequestEdit}
                           />
                         ) : onBulletClick && !bullet.is_new ? (
                           <span
@@ -441,6 +443,7 @@ interface BulletWithSuggestionProps {
   suggestionDataIndex?: number;
   /** Total suggestion count across document */
   totalSuggestions?: number;
+  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
 }
 
 function BulletWithSuggestion({
@@ -456,6 +459,7 @@ function BulletWithSuggestion({
   isCurrent = false,
   suggestionDataIndex,
   totalSuggestions,
+  onRequestEdit,
 }: BulletWithSuggestionProps) {
   const isAccepted = suggestion.status === 'accepted';
   const isRejected = suggestion.status === 'rejected';
@@ -573,6 +577,7 @@ function BulletWithSuggestion({
             onClosePopover();
           }}
           onClose={onClosePopover}
+          onRequestEdit={onRequestEdit}
         />
       )}
     </span>
@@ -590,9 +595,10 @@ interface SuggestionPopoverProps {
   onClose: () => void;
   suggestionNumber?: number;
   totalSuggestions?: number;
+  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
 }
 
-function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClose, suggestionNumber, totalSuggestions }: SuggestionPopoverProps) {
+function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClose, suggestionNumber, totalSuggestions, onRequestEdit }: SuggestionPopoverProps) {
   const [editedText, setEditedText] = useState(suggestion.suggestedText);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -707,15 +713,19 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
         >
           Reject
         </button>
-        <button
-          type="button"
-          disabled
-          title="Coming soon"
-          className="flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-400 opacity-50 cursor-not-allowed"
-        >
-          <Wand2 className="h-3 w-3" />
-          AI Alternatives
-        </button>
+        {onRequestEdit && (
+          <button
+            type="button"
+            onClick={() => {
+              onRequestEdit(suggestion.suggestedText, suggestion.sectionId, 'rewrite');
+              onClose();
+            }}
+            className="flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-strong)] transition-colors"
+          >
+            <Wand2 className="h-3 w-3" />
+            AI Alternatives
+          </button>
+        )}
       </div>
     </div>
   );

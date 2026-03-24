@@ -734,39 +734,10 @@ export function computeInlineSuggestions(
   // it causes numbering to start at 2+ for the first visible bullet.
 
   // ── 2. Core Competencies ──────────────────────────────────────────────────
-
-  // Build a broader original competency set to reduce false-positive "additions".
-  // Include technologies, career_themes, and industry_depth alongside raw tech strings.
-  const originalCompetencies = new Set([
-    ...(Array.isArray(candidateIntel.technologies) ? candidateIntel.technologies : []),
-    ...(Array.isArray(candidateIntel.career_themes) ? candidateIntel.career_themes : []),
-    ...(Array.isArray(candidateIntel.industry_depth) ? candidateIntel.industry_depth : []),
-  ].map(t => t.toLowerCase()));
-  const addedCompetencies = draft.core_competencies.filter(
-    c => !originalCompetencies.has(c.toLowerCase()),
-  );
-
-  for (const comp of addedCompetencies) {
-    const sectionId = 'core_competencies';
-    const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
-      comp,
-      gapAnalysis,
-      importanceToRequirementPriority,
-      `Adds "${comp}" to core competencies`,
-    );
-
-    suggestions.push({
-      id: makeId(sectionId),
-      sectionId,
-      originalText: '',
-      suggestedText: comp,
-      changeType: 'addition',
-      requirementText,
-      requirementPriority,
-      requirementSource,
-      rationale,
-    });
-  }
+  // Skipped: Core competencies are rendered as plain chips in the frontend,
+  // not through the BulletWithSuggestion system. Generating suggestions for
+  // them causes visible suggestion numbers to be skipped (e.g. numbering
+  // starts at 8 instead of 1 because 7 invisible suggestions were counted).
 
   // ── 3. Selected Accomplishments ───────────────────────────────────────────
 
