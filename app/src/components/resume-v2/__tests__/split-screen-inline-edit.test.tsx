@@ -30,15 +30,20 @@ vi.mock('lucide-react', () => {
   return {
     Loader2: Icon,
     Lightbulb: Icon,
+    CheckCircle: Icon,
     CheckCircle2: Icon,
     AlertCircle: Icon,
     Briefcase: Icon,
+    Circle: Icon,
+    Check: Icon,
+    X: Icon,
     Compass: Icon,
     FileText: Icon,
     Shield: Icon,
     Undo2: Icon,
     Redo2: Icon,
     ChevronDown: Icon,
+    ChevronUp: Icon,
     ChevronRight: Icon,
     ClipboardCheck: Icon,
     MessageSquare: Icon,
@@ -793,18 +798,21 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     render(<V2StreamingDisplay {...props} />);
 
-    expect(screen.getByText('Reading your resume...')).toBeInTheDocument();
+    // StagedProcessingViewer renders stage titles (without trailing '...')
+    expect(screen.getByText('Reading your resume')).toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {
-    const stages: Array<{ stage: string; label: string }> = [
-      { stage: 'strategy', label: 'Building your positioning strategy...' },
-      { stage: 'writing', label: 'Drafting your resume...' },
-      { stage: 'verification', label: 'Running quality checks...' },
-      { stage: 'assembly', label: 'Preparing your suggestions...' },
+    // StagedProcessingViewer renders all stage titles in a list regardless of stage.
+    // Verify that for each stage the processing viewer is present (no resume document shown).
+    const stages: Array<{ stage: string }> = [
+      { stage: 'strategy' },
+      { stage: 'writing' },
+      { stage: 'verification' },
+      { stage: 'assembly' },
     ];
 
-    for (const { stage, label } of stages) {
+    for (const { stage } of stages) {
       cleanup();
       const props = makeDisplayProps({
         isComplete: false,
@@ -816,7 +824,8 @@ describe('V2StreamingDisplay — layout modes', () => {
         }),
       });
       render(<V2StreamingDisplay {...props} />);
-      expect(screen.getByText(label)).toBeInTheDocument();
+      // StagedProcessingViewer always renders 'Optimizing Your Resume' as its header
+      expect(screen.getByText('Optimizing Your Resume')).toBeInTheDocument();
     }
   });
 

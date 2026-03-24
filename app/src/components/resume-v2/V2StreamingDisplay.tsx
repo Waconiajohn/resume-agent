@@ -2,8 +2,8 @@
  * V2StreamingDisplay — Output display for the v2 pipeline
  *
  * Two layout modes:
- *   1. Processing mode — minimal status bar only (no stage cards, no split panels)
- *   2. Resume mode — full-width centered document with inline editing
+ *   1. Processing mode — OriginalScoresCard + staged processing viewer
+ *   2. Resume mode — coaching banner + full-width centered document with inline editing
  *
  * The left panel (RewriteQueuePanel) and Live AI Review column are intentionally
  * not rendered. The SuggestionsBadge overlay (built separately) provides coaching
@@ -11,8 +11,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
-import { ProcessingStatusBar } from './ProcessingStatusBar';
+import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Circle, Check, X } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
@@ -101,6 +100,330 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {children}
+    </div>
+  );
+}
+
+// ─── OriginalScoresCard ───────────────────────────────────────────────────────
+// Shows the pre-optimization ATS score + keyword breakdown before the AI processes.
+
+interface OriginalScoresCardProps {
+  preScores: PreScores;
+}
+
+function OriginalScoresCard({ preScores }: OriginalScoresCardProps) {
+  const { ats_match, keywords_found, keywords_missing } = preScores;
+  const topMissing = keywords_missing.slice(0, 5);
+  const extraMissing = keywords_missing.length - topMissing.length;
+
+  return (
+    <div
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6 mb-6"
+      role="region"
+      aria-label="Original resume analysis"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-4">
+        Your Starting Point
+      </p>
+
+      {/* ATS score + bar */}
+      <div className="mb-5">
+        <div className="flex items-baseline gap-2 mb-1.5">
+          <span className="text-2xl font-bold tabular-nums text-neutral-800">{ats_match}%</span>
+          <span className="text-sm text-neutral-500">ATS Keyword Match</span>
+        </div>
+        <div
+          className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={ats_match}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`ATS match: ${ats_match}%`}
+        >
+          <div
+            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
+            style={{ width: `${ats_match}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Keyword counts row */}
+      <div className="flex items-start gap-6 mb-4">
+        <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+          <Check className="h-4 w-4 shrink-0" />
+          {keywords_found.length} keyword{keywords_found.length !== 1 ? 's' : ''} found
+        </div>
+        <div className="flex items-center gap-1.5 text-sm text-neutral-400 font-medium">
+          <X className="h-4 w-4 shrink-0" />
+          {keywords_missing.length} keyword{keywords_missing.length !== 1 ? 's' : ''} missing
+        </div>
+      </div>
+
+      {/* Top 5 missing keywords */}
+      {topMissing.length > 0 && (
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-2">Top missing keywords</p>
+          <div className="flex flex-wrap gap-1.5">
+            {topMissing.map((kw, i) => (
+              <span
+                key={i}
+                className="rounded-md px-2 py-0.5 text-[12px] font-medium text-neutral-400 bg-neutral-100 border border-neutral-200"
+              >
+                {kw}
+              </span>
+            ))}
+            {extraMissing > 0 && (
+              <span className="rounded-md px-2 py-0.5 text-[12px] font-medium text-neutral-400 bg-neutral-100 border border-neutral-200">
+                +{extraMissing} more
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-4 text-[13px] text-neutral-500 leading-relaxed">
+        We are now optimizing your resume to close these gaps...
+      </p>
+    </div>
+  );
+}
+
+// ─── StagedProcessingViewer ───────────────────────────────────────────────────
+// Replaces ProcessingStatusBar with a readable staged view that maps SSE stages.
+
+interface ProcessingStage {
+  key: V2Stage;
+  title: string;
+  description: string;
+}
+
+const PROCESSING_STAGES: ProcessingStage[] = [
+  {
+    key: 'analysis',
+    title: 'Reading your resume',
+    description: 'Pulling out your strongest facts, scope, and evidence.',
+  },
+  {
+    key: 'strategy',
+    title: 'Analyzing the job description',
+    description: 'Identifying what the hiring manager really needs.',
+  },
+  {
+    key: 'strategy',
+    title: 'Building the benchmark candidate',
+    description: 'Researching what the ideal hire looks like.',
+  },
+  {
+    key: 'writing',
+    title: 'Identifying gaps and strategies',
+    description: 'Finding where your experience maps and where to position creatively.',
+  },
+  {
+    key: 'verification',
+    title: 'Writing your optimized resume',
+    description: 'Crafting each section to position you as the benchmark.',
+  },
+  {
+    key: 'assembly',
+    title: 'Running quality checks',
+    description: 'Verifying claims, checking keywords, polishing tone.',
+  },
+];
+
+// Maps each pipeline stage to the index of the last PROCESSING_STAGES entry that should
+// be considered "active or complete" for that stage.
+function getActiveStageIndex(stage: V2Stage): number {
+  switch (stage) {
+    case 'intake': return 0;
+    case 'analysis': return 0;
+    case 'strategy': return 2;
+    case 'writing': return 3;
+    case 'verification': return 4;
+    case 'assembly': return 5;
+    case 'complete': return 5;
+    default: return 0;
+  }
+}
+
+interface StagedProcessingViewerProps {
+  stage: V2Stage;
+  isComplete: boolean;
+}
+
+function StagedProcessingViewer({ stage, isComplete }: StagedProcessingViewerProps) {
+  const activeIndex = getActiveStageIndex(stage);
+  // Each stage shows for at least MIN_DISPLAY_MS even if the pipeline advances faster.
+  const MIN_DISPLAY_MS = 2500;
+  const [displayedIndex, setDisplayedIndex] = useState(0);
+  const lastAdvanceRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    if (activeIndex <= displayedIndex) return;
+    const elapsed = Date.now() - lastAdvanceRef.current;
+    const delay = Math.max(0, MIN_DISPLAY_MS - elapsed);
+    const timer = setTimeout(() => {
+      setDisplayedIndex(activeIndex);
+      lastAdvanceRef.current = Date.now();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [activeIndex, displayedIndex]);
+
+  const progress = isComplete ? 100 : Math.round(((displayedIndex + 1) / PROCESSING_STAGES.length) * 100);
+
+  return (
+    <div
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6"
+      role="status"
+      aria-live="polite"
+      aria-label={`Processing: ${PROCESSING_STAGES[displayedIndex]?.title ?? 'Working...'}`}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-5">
+        Optimizing Your Resume
+      </p>
+
+      {/* Stage list */}
+      <ol className="space-y-4 mb-6" aria-label="Processing stages">
+        {PROCESSING_STAGES.map((s, i) => {
+          const isComplete_ = i < displayedIndex || isComplete;
+          const isActive = i === displayedIndex && !isComplete;
+          const isPending = i > displayedIndex && !isComplete;
+
+          return (
+            <li key={i} className="flex items-start gap-3">
+              {/* Status icon */}
+              <span className="mt-0.5 shrink-0">
+                {isComplete_ ? (
+                  <CheckCircle
+                    className="h-4 w-4 text-emerald-500"
+                    aria-label="Complete"
+                  />
+                ) : isActive ? (
+                  <span
+                    className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-blue-400 motion-safe:animate-pulse"
+                    aria-label="Active"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                  </span>
+                ) : (
+                  <Circle
+                    className="h-4 w-4 text-neutral-300"
+                    aria-label="Pending"
+                  />
+                )}
+              </span>
+
+              {/* Text */}
+              <div>
+                <p
+                  className={`text-sm font-semibold leading-tight ${
+                    isComplete_
+                      ? 'text-emerald-600'
+                      : isActive
+                      ? 'text-neutral-800'
+                      : 'text-neutral-400'
+                  }`}
+                >
+                  {s.title}
+                </p>
+                {(isActive || isComplete_) && (
+                  <p className="text-[13px] text-neutral-500 mt-0.5 leading-relaxed">
+                    {s.description}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* Overall progress bar */}
+      <div className="space-y-1.5">
+        <div
+          className="h-1 w-full rounded-full bg-neutral-100 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-[11px] text-neutral-400 text-right">
+          Stage {Math.min(displayedIndex + 1, PROCESSING_STAGES.length)} of {PROCESSING_STAGES.length}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── CoachingBanner ───────────────────────────────────────────────────────────
+// Shows above the resume document to explain inline suggestions and give Accept All / Dismiss.
+
+interface CoachingBannerProps {
+  suggestions: InlineSuggestion[];
+  onAcceptAll: () => void;
+  onDismiss: () => void;
+}
+
+function CoachingBanner({ suggestions, onAcceptAll, onDismiss }: CoachingBannerProps) {
+  const total = suggestions.length;
+  const critical = suggestions.filter((s) => s.requirementPriority === 'critical').length;
+  const important = suggestions.filter((s) => s.requirementPriority === 'important').length;
+
+  return (
+    <div
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.18)] px-6 py-5 mb-4"
+      role="region"
+      aria-label="Resume coaching guidance"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">
+        Your Optimized Resume
+      </p>
+
+      <p className="text-[13px] text-neutral-600 leading-relaxed mb-4">
+        Green text shows AI improvements — click any highlighted text to review, edit, or accept
+        the change. Red strikethrough shows what is being replaced. Your original content is
+        preserved until you confirm each change.
+      </p>
+
+      {/* Suggestion counts */}
+      {total > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-neutral-500 mb-4">
+          <span className="font-medium text-neutral-700">{total} suggestion{total !== 1 ? 's' : ''}</span>
+          {critical > 0 && (
+            <>
+              <span className="text-neutral-300">•</span>
+              <span>{critical} critical</span>
+            </>
+          )}
+          {important > 0 && (
+            <>
+              <span className="text-neutral-300">•</span>
+              <span>{important} important</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onAcceptAll}
+          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+        >
+          Accept All
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-sm text-neutral-400 hover:text-neutral-600 underline underline-offset-2 transition-colors"
+        >
+          Dismiss
+        </button>
+      </div>
     </div>
   );
 }
@@ -212,6 +535,19 @@ export function V2StreamingDisplay({
   const canEdit = isComplete && displayResume !== null && displayResume !== undefined;
 
   const canShowUndoBar = canEdit && (undoCount > 0 || redoCount > 0);
+
+  // Coaching banner state — shown once when resume first appears, dismissed per session
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  // Accept all pending suggestions at once
+  const handleAcceptAll = useCallback(() => {
+    suggestions.forEach((s) => {
+      if (s.status === 'pending') {
+        acceptSuggestion(s.id);
+      }
+    });
+    setBannerDismissed(true);
+  }, [suggestions, acceptSuggestion]);
 
   // A1/A2: Clear activeBullet when re-running (stale state from previous run)
   useEffect(() => {
@@ -346,6 +682,15 @@ export function V2StreamingDisplay({
 
           {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
+          {/* Coaching banner — shown above the resume when first complete, dismissable */}
+          {isComplete && !bannerDismissed && (
+            <CoachingBanner
+              suggestions={suggestions}
+              onAcceptAll={handleAcceptAll}
+              onDismiss={() => setBannerDismissed(true)}
+            />
+          )}
+
           {/* Resume document with inline editing */}
           {displayResume && (
             <AnimatedCard index={0}>
@@ -473,13 +818,13 @@ export function V2StreamingDisplay({
   }
 
   // ─── Processing layout (pipeline running, no resume yet) ─────────────────
-  // Shows a minimal status bar only — no stage cards, no phase dividers, no checklists.
+  // Shows OriginalScoresCard (when preScores available) + StagedProcessingViewer.
   return (
     <div
       ref={containerRef}
       className="flex-1 overflow-y-auto relative"
     >
-      <div className="mx-auto max-w-[900px] px-6 py-8">
+      <div className="mx-auto max-w-[720px] px-6 py-8">
         {/* Connection lost notice */}
         {!isComplete && !isConnected && data.stage !== 'intake' && (
           <div className="flex items-center gap-2 text-xs text-[#f0d99f]/70 mb-4" role="status">
@@ -495,16 +840,13 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Minimal processing status bar */}
-        <div
-          className="bg-white/5 border border-white/10 rounded-2xl px-6 py-8"
-        >
-          <ProcessingStatusBar
-            status={getStageStatusLabel(data.stage, isComplete)}
-            progress={getStageProgressPercent(data.stage)}
-            isComplete={isComplete}
-          />
-        </div>
+        {/* Original resume analysis — visible as soon as pre-scores arrive */}
+        {data.preScores && (
+          <OriginalScoresCard preScores={data.preScores} />
+        )}
+
+        {/* Staged processing viewer — replaces thin progress bar */}
+        <StagedProcessingViewer stage={data.stage} isComplete={isComplete} />
       </div>
     </div>
   );

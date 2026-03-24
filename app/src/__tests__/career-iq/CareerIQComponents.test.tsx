@@ -244,9 +244,9 @@ describe('Sidebar', () => {
     expect(resumeButton).toBeDisabled();
     const homeButton = screen.getByText('Home').closest('button');
     expect(homeButton).not.toBeDisabled();
-    // 'Career Profile' appears in both nav button and CoachBanner phase label;
-    // find the nav button via its description text which is unique to the nav item
-    const profileButton = screen.getByText('Define the story every tool uses').closest('button');
+    // 'Your Profile' nav button has description 'Your resume, story, and evidence in one place'
+    // which is unique to the nav item
+    const profileButton = screen.getByText('Your resume, story, and evidence in one place').closest('button');
     expect(profileButton).not.toBeDisabled();
   });
 

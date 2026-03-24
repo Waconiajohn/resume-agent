@@ -20,7 +20,11 @@ describe('Header', () => {
       />,
     );
 
+    // Open the user dropdown by clicking the display name button
     fireEvent.click(screen.getByRole('button', { name: /E2E User/i }));
+
+    // Click "Edit name" inside the dropdown to reveal the name inputs
+    fireEvent.click(screen.getByText('Edit name'));
 
     const firstInput = screen.getByPlaceholderText('First');
     const lastInput = screen.getByPlaceholderText('Last');
@@ -48,7 +52,9 @@ describe('Header', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Sign out/i }));
+    // Open the user dropdown first, then click "Sign out" inside it
+    fireEvent.click(screen.getByRole('button', { name: /E2E User/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Sign out/i }));
 
     expect(onSignOut).toHaveBeenCalledTimes(1);
   });
