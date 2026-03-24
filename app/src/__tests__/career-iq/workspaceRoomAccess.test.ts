@@ -14,7 +14,7 @@ describe('workspaceRoomAccess', () => {
 
   it('hides weak workspace rooms from direct entry', () => {
     expect(toExposedWorkspaceRoom('executive-bio')).toBe('dashboard');
-    expect(toExposedWorkspaceRoom('networking')).toBe('dashboard');
+    expect(toExposedWorkspaceRoom('networking')).toBe('networking');
     expect(toExposedWorkspaceRoom('financial')).toBe('dashboard');
   });
 
