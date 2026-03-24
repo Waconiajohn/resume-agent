@@ -28,12 +28,12 @@ export function ToolsScreen({ slug, onNavigate, onOpenCoach, userName }: ToolsSc
           <div className="mx-auto max-w-4xl px-4 py-8">
             <button
               onClick={() => onNavigate('/tools')}
-              className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
+              className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors duration-150"
             >
               <span aria-hidden="true">&#8592;</span>
               Back to Tools
             </button>
-            <p className="text-sm text-white/50">Product not found.</p>
+            <p className="text-sm text-[var(--text-soft)]">Product not found.</p>
           </div>
         </div>
       );

@@ -1,5 +1,80 @@
 # Changelog — Resume Agent
 
+## 2026-03-23 — Session 86
+**Sprint:** Platform Overhaul Guardrails | **Story:** Before/After scoring reports for resume workspace
+**Summary:** Piped full verification agent outputs (truth, ATS, tone) to the frontend via SSE and built a unified ScoringReport component replacing the scattered scoring cards.
+
+### Changes Made
+- `app/src/types/resume-v2.ts` — Added `TruthVerificationDetail`, `ATSOptimizationDetail`, `ExecutiveToneDetail`, `VerificationDetail` interfaces. Added `verificationDetail: VerificationDetail | null` to `V2PipelineData`. Updated `V2SSEEvent`'s `verification_complete` variant to carry full detail data instead of the old empty stub.
+- `app/src/hooks/useV2Pipeline.ts` — Added `verificationDetail: null` to `INITIAL_DATA`. Added full `verification_complete` handler that extracts and normalizes the three agent outputs into a `VerificationDetail` object stored in state.
+- `app/src/lib/resume-v2-session-load.ts` — Added `verificationDetail: null` to the hydrated session object so the field always exists on the returned `V2PipelineData`.
+- `app/src/components/resume-v2/ScoringReport.tsx` — New component. Renders: (1) ScoreSummaryHeader (always visible — ATS before/after delta, truth, tone, hiring manager scan pass/fail), (2) Before Report collapsible (baseline ATS, original keywords found/missing, original coverage), (3) After Report collapsible (optimized ATS with delta, keywords found/missing, placement suggestions, tone findings, flagged claims), (4) Keyword Analysis collapsible (two-column found/missing, suggestions with natural phrasing, formatting issues), (5) Full Analysis collapsible (gap analysis summary, benchmark, narrative strategy, positioning map, hiring manager scan detail). All four sections default to collapsed.
+- `app/src/components/resume-v2/ResumeWorkspaceRail.tsx` — Added `ScoringReport` import. Added `verificationDetail` and `gapAnalysis` props. Replaced the `ScoringReportCard`/`KeywordScoreDashboard`/`ScoresCard` trio with a single `ScoringReport` when `preScores` is available; falls back to `KeywordScoreDashboard` or `ScoresCard` when `preScores` is absent.
+- `app/src/components/resume-v2/V2StreamingDisplay.tsx` — Passes `data.verificationDetail` and `data.gapAnalysis` to `ResumeWorkspaceRail`.
+- `app/src/components/resume-v2/__tests__/split-screen-inline-edit.test.tsx` — Added `verificationDetail: null` to the test fixture's `V2PipelineData` constructor to satisfy the updated type.
+
+### Decisions Made
+- `ScoringReport` replaces the three existing scoring cards (`ScoringReportCard`, `KeywordScoreDashboard`, `ScoresCard`) when `preScores` is available. The existing cards remain for sessions without pre-scores (backward compatibility).
+- The server's `V2PipelineSSEEvent.verification_complete` already carried the full detail types — the only change was updating the frontend type to match and adding the handler.
+- `VerificationDetail` is nullable in `V2PipelineData` so sessions loaded from the database (which don't persist this ephemeral data) degrade gracefully to the non-detail scoring cards.
+- All four sub-sections in `ScoringReport` default to collapsed to keep the workspace rail compact.
+
+### Known Issues
+- None introduced. Two pre-existing TypeScript issues from Session 85 remain (unrelated to this work).
+
+### Next Steps
+- `ScoringReport` could be extended to show per-claim truth verification detail (the full `claims[]` array) behind a further disclosure if needed.
+
+## 2026-03-23 — Session 85
+**Sprint:** Platform Overhaul Guardrails | **Story:** Guided onboarding tour for first-time users
+**Summary:** Added an 8-step guided onboarding tour (react-joyride) that auto-starts for first-time visitors and can be replayed via a Help button in the header. Added JargonTooltip component for inline glossary of platform-specific terms.
+
+### Changes Made
+- `app/package.json` — Added `react-joyride` v3 as a production dependency (ADR-045)
+- `app/src/components/OnboardingTour.tsx` — New component. 8-step tour using react-joyride with custom `TourTooltip` matching the glass morphism design system (CSS custom properties, dark surface, 15px+ body text). Auto-starts on first visit via `careeriq_tour_completed` localStorage key. Exposes `onMountReplay` callback so the Header Help button can replay it.
+- `app/src/components/JargonTooltip.tsx` — New component. Hover/focus tooltip explaining platform-specific terms (ATS, Positioning, Blueprint, Gap Analysis, etc.). Built-in dictionary of 10 terms, extensible via `term` and `definition` props. Dotted underline indicator.
+- `app/src/components/career-iq/Sidebar.tsx` — Added `ROOM_TOUR_TARGETS` map and `data-tour` attributes on sidebar nav buttons (`nav-career-profile`, `nav-resume`, `nav-linkedin`, `nav-jobs`, `nav-interview`). Tour targets scoped to named rooms only — Home button deliberately excluded as the tour starts centered.
+- `app/src/components/Header.tsx` — Added `HelpCircle` import, `onReplayTour` optional prop, `data-tour="theme-toggle"` attribute on the theme button, and a conditionally rendered Help (HelpCircle) button that triggers `onReplayTour`. Button only renders when the prop is provided.
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Added `onRegisterTourReplay` prop, `handleTourMount` callback (stable via `useCallback`), renders `<OnboardingTour onMountReplay={handleTourMount} />` inside the desktop layout only.
+- `app/src/App.tsx` — Added `replayTourRef` and `handleTourReplay` callback. Passes `onReplayTour={handleTourReplay}` to `Header` (only when `currentView === 'workspace'`). Passes `onRegisterTourReplay` to `CareerIQScreen`.
+- `docs/DECISIONS.md` — Added ADR-045 documenting the react-joyride dependency decision.
+
+### Decisions Made
+- Tour is mounted only in the desktop layout of `CareerIQScreen`, not mobile. Mobile has a different navigation pattern (tab bar) that would require different tour targets. Mobile tour deferred to a future story.
+- `data-tour` attributes used instead of CSS classes or `id` attributes to keep tour targeting semantically separate from styling and test selectors.
+- The Help button in Header is conditionally rendered (only when `onReplayTour` is provided) so it never appears on non-workspace routes where the tour targets don't exist.
+- JargonTooltip uses a built-in dictionary pattern to allow usage without always specifying the full definition inline.
+
+### Known Issues
+- Two pre-existing TypeScript errors remain in the codebase unrelated to this work: (1) `CareerIQScreen.tsx` line 351 passes `CareerProfileRoom` without `story`/`signals`/`onUpdateWhyMeField` props, (2) `UnifiedGapAnalysisCard.tsx` line 789 has a `CoachingState` initializer mismatch. Neither was introduced by this session.
+
+### Next Steps
+- Consider a mobile tour variant using a bottom-sheet or full-screen overlay pattern.
+- `JargonTooltip` can now be applied to sidebar room descriptions and room headers.
+
+## 2026-03-23 — Session 84
+**Sprint:** Platform Overhaul Guardrails | **Story:** Unify post-interview communications into Interview Lab
+**Summary:** Added three post-interview tools to the Interview Prep writer agent and surfaced debrief, follow-up email, and enhanced thank-you note workflows natively inside the Interview Lab follow-up tab.
+
+### Changes Made
+- `server/src/agents/interview-prep/types.ts` — Added `FollowUpSituation`, `ThankYouNoteOutput`, `FollowUpEmailOutput`, `InterviewDebriefOutput`, `PostInterviewDocs` interfaces. Added `post_interview_docs?: PostInterviewDocs` to `InterviewPrepState`.
+- `server/src/agents/interview-prep/writer/tools.ts` — Added three new tools: `generate_thank_you_notes`, `generate_follow_up_email`, `generate_interview_debrief`. Updated file header comment. All three follow single-LLM-call-per-tool rule.
+- `server/src/agents/interview-prep/writer/agent.ts` — Added post-interview capabilities to `capabilities[]`. Updated system prompt with Post-Interview section describing when and how to use the three new tools. Increased `max_rounds` from 25 to 30.
+- `server/src/routes/interview-prep.ts` — Added `POST /api/interview-prep/debrief` and `POST /api/interview-prep/follow-up-email` lightweight route handlers. Both use Zod input validation, proper error handling, and rate limiting.
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — Added `Send`, `MessageSquare`, `TrendingUp` imports. Expanded `FollowUpView` type to include `'debrief'` and `'follow_up_email'`. Added `PostInterviewDebriefForm` component with form inputs and AI-generated structured output. Added `PostInterviewFollowUpEmailForm` component with five situation types, recipient fields, copy-to-clipboard. Updated follow_up section: four-button toolbar, four-card overview grid, two new sub-view renders. Added `initialFocus` routing for `'debrief'` and `'follow-up-email'`.
+
+### Decisions Made
+- The debrief and follow-up email routes use direct LLM calls (not the full agent pipeline) since these are single-turn, lightweight requests with no multi-agent coordination needed.
+- The standalone Thank You Note agent is preserved for backward compatibility — the Interview Lab now embeds the same capability via the existing `ThankYouNoteRoom` component.
+- `FollowUpSituation` is defined locally in both the server types and the frontend component rather than shared — the frontend never imports server types directly.
+
+### Known Issues
+- The `POST /api/interview-prep/debrief` and `/follow-up-email` endpoints do not persist results to the database — they are ephemeral LLM responses. Persistence is a separate story.
+
+### Next Steps
+- Add persistence for debrief and follow-up email results if desired (separate story).
+- Consider adding the `initialFocus='debrief'` deep-link from the pipeline board when a candidate moves to "Post-Interview" stage.
+
 ## 2026-03-22 — Session 83
 **Sprint:** Platform Overhaul Guardrails | **Story:** Codex operating structure and anti-drift docs
 **Summary:** Added Codex-native project guardrails so future work starts from a shared AI workflow model instead of room-local rescue logic.

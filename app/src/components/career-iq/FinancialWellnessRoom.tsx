@@ -112,19 +112,19 @@ function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: bo
       </div>
 
       <div className="max-w-sm">
-        <h3 className="text-[16px] font-semibold text-white/85 mb-2">
+        <h3 className="text-[16px] font-semibold text-[var(--text-strong)] mb-2">
           Retirement Bridge Assessment
         </h3>
-        <p className="text-[13px] text-white/45 leading-relaxed">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
           Answer a short set of questions across 7 financial dimensions. The goal is to clarify where the bridge may feel strong, fragile, or ambiguous before you sit down with a fiduciary planner.
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 w-full max-w-sm text-[12px] text-white/35">
+      <div className="grid grid-cols-3 gap-3 w-full max-w-sm text-[12px] text-[var(--text-soft)]">
         {['~5 minutes', '7 bridge checks', 'No financial advice'].map((label) => (
           <div
             key={label}
-            className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2"
+            className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-2"
           >
             {label}
           </div>
@@ -150,7 +150,7 @@ function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: bo
         )}
       </GlassButton>
 
-      <p className="text-[11px] text-white/20">
+      <p className="text-[13px] text-[var(--text-soft)]">
         We surface the questions and blind spots. Your planner provides the advice.
       </p>
     </GlassCard>
@@ -180,11 +180,11 @@ function AssessmentQuestionsView({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
         <TrendingDown size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Assessment Questions</h3>
-        <span className="ml-auto text-[12px] text-white/30">{questions.length} questions</span>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Assessment Questions</h3>
+        <span className="ml-auto text-[12px] text-[var(--text-soft)]">{questions.length} questions</span>
       </div>
 
-      <p className="text-[13px] text-white/40 leading-relaxed mb-6">
+      <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-6">
         Answer honestly — there are no right or wrong answers. The goal is to surface the
         right topics for your planner conversation.
       </p>
@@ -195,11 +195,11 @@ function AssessmentQuestionsView({
           return (
             <div key={q.id}>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                <span className="text-[12px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
                   {dimLabel}
                 </span>
               </div>
-              <p className="text-[13px] text-white/70 font-medium mb-2">
+              <p className="text-[13px] text-[var(--text-muted)] font-medium mb-2">
                 {idx + 1}. {q.question}
               </p>
               <textarea
@@ -207,7 +207,7 @@ function AssessmentQuestionsView({
                 onChange={(e) => handleChange(q.id, e.target.value)}
                 rows={3}
                 placeholder="Your answer..."
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
               />
             </div>
           );
@@ -215,7 +215,7 @@ function AssessmentQuestionsView({
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-[12px] text-white/25">
+        <p className="text-[12px] text-[var(--text-soft)]">
           {questions.filter((q) => (responses[q.id] ?? '').trim()).length} of {questions.length}{' '}
           answered
         </p>
@@ -261,10 +261,10 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
         <TrendingDown size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Retirement Bridge Analysis</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Retirement Bridge Analysis</h3>
         <button
           onClick={handleCopyShare}
-          className="ml-auto flex items-center gap-1.5 text-[12px] text-white/35 hover:text-white/60 transition-colors"
+          className="ml-auto flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           title="Copy shareable summary"
         >
           {copied ? (
@@ -282,7 +282,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
       </div>
 
       {/* Overall readiness */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-5">
+      <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 mb-5">
         <div className="flex items-center gap-2 mb-2">
           <OverallIcon size={15} className={overallConfig.color} />
           <span className={cn('text-[13px] font-semibold', overallConfig.color)}>
@@ -291,7 +291,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
         </div>
         <div className="space-y-1.5">
           {summary.key_observations.map((obs, i) => (
-            <p key={i} className="text-[12px] text-white/45 leading-relaxed pl-1">
+            <p key={i} className="text-[12px] text-[var(--text-soft)] leading-relaxed pl-1">
               {obs}
             </p>
           ))}
@@ -306,14 +306,14 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
           return (
             <div
               key={dim.dimension}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"
+              className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3"
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <div className={cn('h-2 w-2 rounded-full flex-shrink-0', config.bgColor)} />
-                <span className="text-[12px] font-semibold text-white/70">
+                <span className="text-[12px] font-semibold text-[var(--text-muted)]">
                   {DIMENSION_LABELS[dim.dimension]}
                 </span>
-                <span className={cn('ml-auto text-[11px] font-medium', config.color)}>
+                <span className={cn('ml-auto text-[13px] font-medium', config.color)}>
                   {config.label}
                 </span>
                 <DimIcon size={12} className={config.color} />
@@ -321,7 +321,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
               {dim.observations.length > 0 && (
                 <div className="pl-4 space-y-0.5">
                   {dim.observations.map((obs, i) => (
-                    <p key={i} className="text-[11px] text-white/35 leading-relaxed">
+                    <p key={i} className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                       {obs}
                     </p>
                   ))}
@@ -334,15 +334,15 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
 
       {/* Planner topics */}
       {summary.recommended_planner_topics.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <p className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
             Bring these to your planner conversation
           </p>
           <div className="space-y-1">
             {summary.recommended_planner_topics.map((topic, i) => (
               <div key={i} className="flex items-start gap-2">
                 <ChevronRight size={11} className="text-[#98b3ff]/50 mt-0.5 flex-shrink-0" />
-                <span className="text-[12px] text-white/50">{topic}</span>
+                <span className="text-[12px] text-[var(--text-soft)]">{topic}</span>
               </div>
             ))}
           </div>
@@ -372,21 +372,21 @@ function PlannerConnectionCard() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Introduction Scheduled</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Introduction Scheduled</h3>
         </div>
         <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/5 p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 size={15} className="text-[#b5dec2]" />
             <span className="text-[13px] font-semibold text-[#b5dec2]">Referral confirmed</span>
           </div>
-          <p className="text-[12px] text-white/45">
+          <p className="text-[12px] text-[var(--text-soft)]">
             A fiduciary planner will reach out within 1-2 business days to schedule your free
             30-minute introduction.
           </p>
         </div>
         <button
           onClick={reset}
-          className="text-[12px] text-white/25 hover:text-white/45 transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           Start over
         </button>
@@ -399,15 +399,15 @@ function PlannerConnectionCard() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Connect with a Planner</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
         </div>
-        <p className="text-[13px] text-white/45 leading-relaxed mb-4">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-4">
           Based on your profile, a fiduciary planner referral may not be the right fit right now.
           The educational resources below are a great starting point.
         </p>
         <button
           onClick={reset}
-          className="text-[12px] text-white/35 hover:text-white/55 transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           Try again
         </button>
@@ -420,15 +420,15 @@ function PlannerConnectionCard() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">No Planners Available</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">No Planners Available</h3>
         </div>
-        <p className="text-[13px] text-white/45 leading-relaxed mb-4">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-4">
           No fiduciary planners currently serve your area. Try a different geographic region or
           check back later as our network continues to grow.
         </p>
         <button
           onClick={reset}
-          className="text-[12px] text-white/35 hover:text-white/55 transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           Try a different location
         </button>
@@ -441,18 +441,18 @@ function PlannerConnectionCard() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Select a Planner</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Select a Planner</h3>
         </div>
         <div className="space-y-3 mb-4">
           {planners.map((planner) => (
             <div
               key={planner.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+              className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
-                  <p className="text-[13px] font-semibold text-white/80">{planner.name}</p>
-                  <p className="text-[11px] text-white/40">{planner.firm}</p>
+                  <p className="text-[13px] font-semibold text-[var(--text-strong)]">{planner.name}</p>
+                  <p className="text-[13px] text-[var(--text-soft)]">{planner.firm}</p>
                 </div>
                 <GlassButton
                   variant="primary"
@@ -468,7 +468,7 @@ function PlannerConnectionCard() {
                   {planner.specializations.map((s) => (
                     <span
                       key={s}
-                      className="text-[10px] text-[#98b3ff]/60 bg-[#98b3ff]/8 border border-[#98b3ff]/15 rounded-full px-2 py-0.5"
+                      className="text-[12px] text-[#98b3ff]/60 bg-[#98b3ff]/8 border border-[#98b3ff]/15 rounded-full px-2 py-0.5"
                     >
                       {s}
                     </span>
@@ -476,7 +476,7 @@ function PlannerConnectionCard() {
                 </div>
               )}
               {planner.bio && (
-                <p className="mt-2 text-[11px] text-white/35 leading-relaxed line-clamp-2">
+                <p className="mt-2 text-[13px] text-[var(--text-soft)] leading-relaxed line-clamp-2">
                   {planner.bio}
                 </p>
               )}
@@ -485,7 +485,7 @@ function PlannerConnectionCard() {
         </div>
         <button
           onClick={reset}
-          className="text-[12px] text-white/25 hover:text-white/45 transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           Start over
         </button>
@@ -499,22 +499,22 @@ function PlannerConnectionCard() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Connect with a Planner</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
         </div>
 
-        <p className="text-[13px] text-white/40 leading-relaxed mb-5">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-5">
           A few quick details help us match you with the right fiduciary planner.
         </p>
 
         <div className="space-y-4 mb-5">
           <div>
-            <label className="block text-[12px] text-white/40 mb-1.5">
+            <label className="block text-[12px] text-[var(--text-soft)] mb-1.5">
               Approximate investable assets
             </label>
             <select
               value={assetRange}
               onChange={(e) => setAssetRange(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
             >
               <option value="">Select a range</option>
               <option value="under_100k">Under $100k</option>
@@ -525,7 +525,7 @@ function PlannerConnectionCard() {
             </select>
           </div>
           <div>
-            <label className="block text-[12px] text-white/40 mb-1.5">
+            <label className="block text-[12px] text-[var(--text-soft)] mb-1.5">
               Geographic region (city or state)
             </label>
             <input
@@ -533,7 +533,7 @@ function PlannerConnectionCard() {
               value={geography}
               onChange={(e) => setGeography(e.target.value)}
               placeholder="e.g. Chicago, IL"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
             />
           </div>
         </div>
@@ -541,7 +541,7 @@ function PlannerConnectionCard() {
         <div className="flex gap-3">
           <button
             onClick={() => setShowForm(false)}
-            className="text-[13px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel
           </button>
@@ -572,14 +572,14 @@ function PlannerConnectionCard() {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Users size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Connect with a Planner</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
       </div>
 
-      <p className="text-[14px] text-white/50 leading-relaxed mb-2">
+      <p className="text-[14px] text-[var(--text-soft)] leading-relaxed mb-2">
         Our network includes only fiduciary financial planners — professionals legally required to
         act in your best interest, not sell you products.
       </p>
-      <p className="text-[13px] text-white/35 leading-relaxed mb-5">
+      <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-5">
         A 30-minute introductory conversation is free and comes with no obligation. Most executives
         in transition find that one conversation changes how they think about their timeline.
       </p>
@@ -592,7 +592,7 @@ function PlannerConnectionCard() {
         ].map((point) => (
           <div key={point} className="flex items-start gap-2.5">
             <Shield size={13} className="text-[#b5dec2] mt-0.5 flex-shrink-0" />
-            <span className="text-[13px] text-white/55">{point}</span>
+            <span className="text-[13px] text-[var(--text-soft)]">{point}</span>
           </div>
         ))}
       </div>
@@ -606,7 +606,7 @@ function PlannerConnectionCard() {
         <ArrowRight size={16} className="ml-2" />
       </GlassButton>
 
-      <p className="mt-3 text-center text-[11px] text-white/25">
+      <p className="mt-3 text-center text-[13px] text-[var(--text-soft)]">
         No credit card required. No sales pitch. Just a conversation.
       </p>
     </GlassCard>
@@ -618,30 +618,30 @@ function EducationalResources() {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <BookOpen size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Financial Resources</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Financial Resources</h3>
       </div>
 
       <div className="space-y-3">
         {RESOURCES.map((resource) => (
           <div
             key={resource.id}
-            className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+            className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                <span className="text-[12px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
                   {resource.category}
                 </span>
-                <span className="text-[10px] text-white/20">·</span>
-                <span className="flex items-center gap-1 text-[10px] text-white/25">
+                <span className="text-[12px] text-[var(--text-soft)]">·</span>
+                <span className="flex items-center gap-1 text-[12px] text-[var(--text-soft)]">
                   <Clock size={9} />
                   {resource.readTime}
                 </span>
               </div>
-              <h4 className="text-[13px] font-medium text-white/70">
+              <h4 className="text-[13px] font-medium text-[var(--text-muted)]">
                 {resource.title}
               </h4>
-              <p className="mt-1 text-[12px] text-white/35 leading-relaxed line-clamp-2">
+              <p className="mt-1 text-[12px] text-[var(--text-soft)] leading-relaxed line-clamp-2">
                 {resource.description}
               </p>
             </div>
@@ -659,8 +659,8 @@ function EvaluatingState() {
     <GlassCard className="p-8 flex flex-col items-center gap-4">
       <Loader2 size={28} className="text-[#98b3ff] animate-spin" />
       <div className="text-center">
-        <p className="text-[14px] font-medium text-white/70 mb-1">Evaluating your responses</p>
-        <p className="text-[12px] text-white/35">
+        <p className="text-[14px] font-medium text-[var(--text-muted)] mb-1">Evaluating your responses</p>
+        <p className="text-[12px] text-[var(--text-soft)]">
           Reviewing each dimension and identifying planner conversation topics...
         </p>
       </div>
@@ -673,8 +673,8 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
     <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
       <AlertCircle size={24} className="text-[#e8a0a0]" />
       <div>
-        <p className="text-[13px] font-medium text-white/70 mb-1">Something went wrong</p>
-        <p className="text-[12px] text-white/35">{message}</p>
+        <p className="text-[13px] font-medium text-[var(--text-muted)] mb-1">Something went wrong</p>
+        <p className="text-[12px] text-[var(--text-soft)]">{message}</p>
       </div>
       <GlassButton variant="ghost" size="sm" onClick={onRetry}>
         Try Again
@@ -728,13 +728,13 @@ export function FinancialWellnessRoom({
           <GlassCard className="p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                   Saved Bridge
                 </div>
-                <h3 className="mt-2 text-[16px] font-semibold text-white/84">
+                <h3 className="mt-2 text-[16px] font-semibold text-[var(--text-strong)]">
                   {initialSessionId ? 'Review this saved Retirement Bridge assessment' : 'Your latest Retirement Bridge assessment is ready'}
                 </h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-white/48">
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
                   Reopen the saved bridge to review the planner discussion topics, or start a fresh assessment if your situation has changed.
                 </p>
               </div>
@@ -810,11 +810,11 @@ export function FinancialWellnessRoom({
       <GlassCard className="p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
               Financial Wellness
             </div>
-            <h1 className="mt-2 text-lg font-semibold text-white/90">Retirement Bridge</h1>
-            <p className="mt-3 text-[13px] leading-relaxed text-white/48">
+            <h1 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Retirement Bridge</h1>
+            <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">
               This is not a generic calculator and it is not financial advice. It is a guided bridge assessment that helps you organize the right questions, risks, and transition signals before you speak with a fiduciary planner.
             </p>
           </div>
@@ -826,17 +826,17 @@ export function FinancialWellnessRoom({
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What this does</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Surfaces the planner conversations you should have before making a high-stakes transition decision</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">What this does</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Surfaces the planner conversations you should have before making a high-stakes transition decision</div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What it does not do</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Replace fiduciary advice, portfolio planning, or tax guidance</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">What it does not do</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Replace fiduciary advice, portfolio planning, or tax guidance</div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">Best use</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Prepare for a planner conversation with more clarity, less fear, and better context</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Best use</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Prepare for a planner conversation with more clarity, less fear, and better context</div>
           </div>
         </div>
 
@@ -858,10 +858,10 @@ export function FinancialWellnessRoom({
               copy: 'Use the output as a planner-prep brief, not as financial advice or a substitute for fiduciary guidance.',
             },
           ].map((item) => (
-            <div key={item.step} className="rounded-xl border border-white/[0.08] bg-black/10 p-4">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Step {item.step}</div>
-              <div className="mt-2 text-sm font-semibold text-white/84">{item.title}</div>
-              <div className="mt-2 text-[12px] leading-relaxed text-white/48">{item.copy}</div>
+            <div key={item.step} className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Step {item.step}</div>
+              <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
+              <div className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">{item.copy}</div>
             </div>
           ))}
         </div>
@@ -869,7 +869,7 @@ export function FinancialWellnessRoom({
 
       {priorLoading ? (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading saved bridge...
           </div>

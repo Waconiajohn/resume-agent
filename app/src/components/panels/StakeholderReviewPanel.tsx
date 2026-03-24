@@ -24,7 +24,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   critical: { label: 'Critical', color: 'text-[#f0a9a9]' },
   high: { label: 'High', color: 'text-[#f0c9a9]' },
   medium: { label: 'Medium', color: 'text-[#f0d99f]' },
-  low: { label: 'Low', color: 'text-white/45' },
+  low: { label: 'Low', color: 'text-[var(--text-soft)]' },
 };
 
 export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderReviewPanelProps) {
@@ -45,13 +45,13 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Stakeholder Map Review</span>
+            <span className="text-sm font-medium text-[var(--text-strong)]">Stakeholder Map Review</span>
           </div>
-          <span className="text-xs text-white/45 tabular-nums">
+          <span className="text-xs text-[var(--text-soft)] tabular-nums">
             {stakeholder_map.length} stakeholder{stakeholder_map.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -60,7 +60,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Guidance card */}
         <GlassCard className="p-3">
-          <p className="text-xs text-white/65 leading-relaxed">
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
             The AI inferred these stakeholders from your role context. Confirm or correct this map before the plan is written — the engagement strategies in your 90-day plan depend on it.
           </p>
         </GlassCard>
@@ -68,17 +68,17 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
         {/* Role context */}
         {role_context && (
           <GlassCard className="p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40 mb-1">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)] mb-1">
               Target Role
             </p>
-            <p className="text-xs font-medium text-white/80">{role_context.target_role}</p>
-            <p className="text-[11px] text-white/50">{role_context.target_company} · {role_context.target_industry}</p>
+            <p className="text-xs font-medium text-[var(--text-muted)]">{role_context.target_role}</p>
+            <p className="text-[13px] text-[var(--text-soft)]">{role_context.target_company} · {role_context.target_industry}</p>
           </GlassCard>
         )}
 
         {/* Stakeholder list */}
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
             Inferred Stakeholders
           </p>
           {stakeholder_map.map((stakeholder, idx) => {
@@ -87,14 +87,14 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
             return (
               <GlassCard key={idx} className="p-3">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="text-xs font-medium text-white/85">{stakeholder.name_or_role}</p>
-                  <span className={cn('shrink-0 text-[10px] font-semibold', priorityConfig.color)}>
+                  <p className="text-xs font-medium text-[var(--text-strong)]">{stakeholder.name_or_role}</p>
+                  <span className={cn('shrink-0 text-[12px] font-semibold', priorityConfig.color)}>
                     {priorityConfig.label}
                   </span>
                 </div>
-                <p className="text-[11px] text-white/50 mb-2">{relationshipLabel}</p>
+                <p className="text-[13px] text-[var(--text-soft)] mb-2">{relationshipLabel}</p>
                 {stakeholder.engagement_strategy && (
-                  <p className="text-[11px] text-white/60 leading-relaxed">
+                  <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">
                     {stakeholder.engagement_strategy}
                   </p>
                 )}
@@ -106,16 +106,16 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
         {/* Quick wins summary (for context) */}
         {quick_wins && quick_wins.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Early Quick Wins
             </p>
             <GlassCard className="p-3">
               <ul className="space-y-1.5">
                 {quick_wins.slice(0, 3).map((win, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-[11px] text-white/65">
+                  <li key={idx} className="flex items-start gap-2 text-[13px] text-[var(--text-muted)]">
                     <span className="mt-0.5 h-1.5 w-1.5 shrink-0 bg-[#afc4ff]/50" />
                     <span>{win.description}</span>
-                    <span className="shrink-0 text-white/35">{win.impact} impact</span>
+                    <span className="shrink-0 text-[var(--text-soft)]">{win.impact} impact</span>
                   </li>
                 ))}
               </ul>
@@ -126,7 +126,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
         {/* Request changes textarea */}
         {mode === 'request_changes' && (
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Correct the stakeholder map
             </label>
             <textarea
@@ -134,7 +134,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. I will not have direct reports — this is an IC role. Add the Head of Product as a cross-functional stakeholder. The CFO is a critical superior, not medium..."
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
               aria-label="Corrections to stakeholder map"
               autoFocus
             />
@@ -183,7 +183,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
               <button
                 type="button"
                 onClick={() => { setFeedback(''); setMode('review'); }}
-                className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors py-1"
+                className="w-full text-center text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors py-1"
               >
                 Cancel
               </button>

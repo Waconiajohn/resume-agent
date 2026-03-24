@@ -114,8 +114,8 @@ function parseSectionsFromLetter(text: string): LetterSection[] {
       type: 'body',
       label: `Body ${i}`,
       icon: MessageSquare,
-      color: 'text-white/50',
-      borderColor: 'border-white/[0.06]',
+      color: 'text-[var(--text-soft)]',
+      borderColor: 'border-[var(--line-soft)]',
       content: middle[i],
     });
   }
@@ -159,29 +159,29 @@ function LetterOutput({
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
-          <span className="text-sm font-medium text-white/85">Cover Letter Draft</span>
+          <span className="text-sm font-medium text-[var(--text-strong)]">Cover Letter Draft</span>
           {companyName && (
-            <span className="text-xs text-white/40">for {companyName}</span>
+            <span className="text-xs text-[var(--text-soft)]">for {companyName}</span>
           )}
         </div>
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {/* Tone badge */}
-          <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium border', toneBg)}>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[12px] font-medium border', toneBg)}>
             {toneLabel}
           </span>
           {/* Word count */}
-          <span className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             {wordCount} words
           </span>
           {/* Read time */}
-          <span className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             ~{readTime} min read
           </span>
           {/* Quality score */}
           {qualityScore != null && (
             <span
               className={cn(
-                'rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+                'rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
                 qualityScore >= 80
                   ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/15'
                   : qualityScore >= 60
@@ -199,15 +199,15 @@ function LetterOutput({
       {qualityScore != null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Draft Score</span>
+            <span className="text-[13px] text-[var(--text-soft)]">Draft Score</span>
             <span className={cn(
-              'text-[11px] font-semibold',
+              'text-[13px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
             </span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
@@ -231,11 +231,11 @@ function LetterOutput({
               >
                 <div className="flex items-center gap-2 mb-2.5">
                   <Icon className={cn('h-3.5 w-3.5', section.color)} />
-                  <span className={cn('text-[11px] font-semibold uppercase tracking-wider', section.color)}>
+                  <span className={cn('text-[13px] font-semibold uppercase tracking-wider', section.color)}>
                     {section.label}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-white/75 whitespace-pre-wrap">
+                <p className="text-sm leading-relaxed text-[var(--text-muted)] whitespace-pre-wrap">
                   {section.content}
                 </p>
               </GlassCard>
@@ -244,7 +244,7 @@ function LetterOutput({
         </div>
       ) : (
         <GlassCard className="p-6">
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-strong)]">
             {letterDraft}
           </div>
         </GlassCard>
@@ -422,7 +422,7 @@ export function CoverLetterScreen({
         <button
           type="button"
           onClick={() => onNavigate(backTarget)}
-          className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
+          className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors duration-150"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           {resolvedBackLabel}
@@ -433,7 +433,7 @@ export function CoverLetterScreen({
           <GlassCard className="mb-6 p-5">
             <div className="mb-3 flex items-center gap-2">
               <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#afc4ff]" />
-              <span className="text-sm font-medium text-white/85">
+              <span className="text-sm font-medium text-[var(--text-strong)]">
                 {currentStage
                   ? currentStage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                   : 'Starting...'}
@@ -447,8 +447,8 @@ export function CoverLetterScreen({
                     className={cn(
                       'text-xs leading-relaxed',
                       i === activityMessages.slice(-10).length - 1
-                        ? 'text-white/70'
-                        : 'text-white/40',
+                        ? 'text-[var(--text-muted)]'
+                        : 'text-[var(--text-soft)]',
                     )}
                   >
                     {msg.message}
@@ -457,7 +457,7 @@ export function CoverLetterScreen({
               </div>
             )}
             {/* Progress bar */}
-            <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-[var(--accent-muted)]">
               <div className="h-full motion-safe:animate-pulse rounded-full bg-[#afc4ff]/40" style={{ width: '60%' }} />
             </div>
           </GlassCard>
@@ -470,7 +470,7 @@ export function CoverLetterScreen({
               <AlertCircle className="h-4 w-4 text-[#f0b8b8]" />
               <span className="text-sm font-medium text-[#f0b8b8]">Something went wrong</span>
             </div>
-            <p className="mb-4 text-xs text-white/60">
+            <p className="mb-4 text-xs text-[var(--text-soft)]">
               {pipelineError ?? 'An unexpected error occurred.'}
             </p>
             <GlassButton variant="ghost" onClick={handleRetry}>

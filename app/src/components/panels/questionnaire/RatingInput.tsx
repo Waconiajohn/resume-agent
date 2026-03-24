@@ -29,7 +29,7 @@ export function RatingInput({ value, onChange, levels = DEFAULT_LEVELS }: Rating
               'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
               isActive
                 ? 'border-[#9eb8ff]/65 bg-[linear-gradient(180deg,rgba(158,184,255,0.22),rgba(158,184,255,0.11))] text-white shadow-[0_4px_18px_-10px_rgba(132,160,255,0.7)]'
-                : 'border-white/[0.1] bg-white/[0.03] text-white/60 hover:border-white/[0.18] hover:bg-white/[0.07] hover:text-white/80',
+                : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
             )}
           >
             {level}

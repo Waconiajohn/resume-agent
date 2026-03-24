@@ -115,6 +115,9 @@ export async function runCsvImportPipeline(
  * Fetch company records from the database then scrape their career pages.
  * Updates the scrape log entry on completion or failure.
  *
+ * When useApiFallback=true (default), companies that return zero regex results
+ * will be retried via JSearch and then Adzuna API adapters.
+ *
  * This is designed to be called as a background task. The caller (route handler)
  * should fire-and-forget: `void runCareerScrape(userId, logId, companyIds, targetTitles)`.
  * Errors are caught internally and reflected in the scrape log rather than thrown.
@@ -124,6 +127,7 @@ export async function runCareerScrape(
   scrapeLogId: string,
   companyIds: string[],
   targetTitles: string[],
+  useApiFallback = true,
 ): Promise<void> {
   try {
     const { data: companies, error } = await supabaseAdmin
@@ -144,7 +148,7 @@ export async function runCareerScrape(
       }),
     );
 
-    const result = await scrapeCareerPages(companyInfos, targetTitles, userId);
+    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, useApiFallback);
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {
       companies_scanned: result.companiesScanned,
@@ -152,6 +156,7 @@ export async function runCareerScrape(
       matching_jobs: result.matchingJobs,
       referral_available: result.referralAvailable,
       error_count: result.errors.length,
+      source_breakdown: result.sourceBreakdown,
     });
 
     logger.info({ userId, scrapeLogId, ...result }, 'career-scraper: scrape completed');

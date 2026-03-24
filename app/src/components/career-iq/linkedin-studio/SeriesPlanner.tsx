@@ -44,53 +44,53 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
   };
 
   const typeLabel = CONTENT_TYPE_LABELS_SHORT[post.content_type] ?? post.content_type;
-  const typeColor = CONTENT_TYPE_COLORS[post.content_type] ?? 'text-white/40 bg-white/[0.06]';
+  const typeColor = CONTENT_TYPE_COLORS[post.content_type] ?? 'text-[var(--text-soft)] bg-[var(--accent-muted)]';
   const scoreColor =
     post.quality_score >= 80
       ? 'text-[#b5dec2] bg-[#b5dec2]/10'
       : post.quality_score >= 60
       ? 'text-[#f0d99f] bg-[#f0d99f]/10'
-      : 'text-white/30 bg-white/[0.05]';
+      : 'text-[var(--text-soft)] bg-[var(--accent-muted)]';
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors"
+        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[var(--accent-muted)] transition-colors"
       >
-        <span className="w-7 h-7 rounded-full border border-white/[0.10] bg-white/[0.04] flex items-center justify-center text-[11px] font-bold text-white/40 flex-shrink-0">
+        <span className="w-7 h-7 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] flex items-center justify-center text-[13px] font-bold text-[var(--text-soft)] flex-shrink-0">
           {index + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] text-white/65 truncate leading-snug">{post.hook}</p>
-          <p className="text-[10px] text-white/30 mt-0.5">
+          <p className="text-[12px] text-[var(--text-soft)] truncate leading-snug">{post.hook}</p>
+          <p className="text-[12px] text-[var(--text-soft)] mt-0.5">
             {post.day_of_week.charAt(0).toUpperCase() + post.day_of_week.slice(1)} · {post.word_count}w
           </p>
         </div>
-        <span className={cn('text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0', typeColor)}>
+        <span className={cn('text-[12px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0', typeColor)}>
           {typeLabel}
         </span>
         {post.quality_score > 0 && (
-          <span className={cn('text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0', scoreColor)}>
+          <span className={cn('text-[12px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0', scoreColor)}>
             {post.quality_score}
           </span>
         )}
         {expanded ? (
-          <ChevronDown size={13} className="text-white/25 flex-shrink-0" />
+          <ChevronDown size={13} className="text-[var(--text-soft)] flex-shrink-0" />
         ) : (
-          <ChevronRight size={13} className="text-white/25 flex-shrink-0" />
+          <ChevronRight size={13} className="text-[var(--text-soft)] flex-shrink-0" />
         )}
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t border-white/[0.04]">
-          <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.015] p-3">
-            <pre className="text-[12px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+        <div className="px-4 pb-4 border-t border-[var(--line-soft)]">
+          <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+            <pre className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
               {[post.hook, '', post.body, '', post.cta].join('\n')}
             </pre>
             {post.hashtags.length > 0 && (
-              <p className="mt-2 text-[11px] text-[#98b3ff]/50">
+              <p className="mt-2 text-[13px] text-[#98b3ff]/50">
                 {post.hashtags.map((h) => `#${h}`).join(' ')}
               </p>
             )}
@@ -99,13 +99,13 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/65 transition-colors"
+              className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
               {copied ? 'Copied!' : 'Copy post'}
             </button>
             {post.posting_time && (
-              <span className="text-[10px] text-white/20 ml-auto">Best time: {post.posting_time}</span>
+              <span className="text-[12px] text-[var(--text-soft)] ml-auto">Best time: {post.posting_time}</span>
             )}
           </div>
         </div>
@@ -119,9 +119,9 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
     return (
       <div className="flex flex-col gap-3">
         <GlassCard className="p-6 flex flex-col items-center gap-3 text-center">
-          <Calendar size={28} className="text-white/15" />
-          <p className="text-[14px] font-medium text-white/50">No series generated yet</p>
-          <p className="text-[12px] text-white/30 max-w-[320px]">
+          <Calendar size={28} className="text-[var(--text-soft)]" />
+          <p className="text-[14px] font-medium text-[var(--text-soft)]">No series generated yet</p>
+          <p className="text-[12px] text-[var(--text-soft)] max-w-[320px]">
             Generate a content calendar above to populate your 30-day series plan.
           </p>
         </GlassCard>
@@ -142,8 +142,8 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[13px] font-medium text-white/70">{posts.length} posts across {seriesEntries.length} themes</p>
-          <p className="text-[11px] text-white/30 mt-0.5">Expand any post to preview and copy</p>
+          <p className="text-[13px] font-medium text-[var(--text-muted)]">{posts.length} posts across {seriesEntries.length} themes</p>
+          <p className="text-[13px] text-[var(--text-soft)] mt-0.5">Expand any post to preview and copy</p>
         </div>
         <GlassButton onClick={onWritePost} className="flex items-center gap-2">
           <PenLine size={13} />
@@ -153,7 +153,7 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
 
       {seriesEntries.map(([type, typePosts]) => {
         const typeLabel = CONTENT_TYPE_LABELS_SHORT[type] ?? type;
-        const typeColor = CONTENT_TYPE_COLORS[type] ?? 'text-white/40 bg-white/[0.06]';
+        const typeColor = CONTENT_TYPE_COLORS[type] ?? 'text-[var(--text-soft)] bg-[var(--accent-muted)]';
         const avgScore =
           typePosts.filter((p) => p.quality_score > 0).length > 0
             ? Math.round(
@@ -164,14 +164,14 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
         return (
           <GlassCard key={type} className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', typeColor)}>
+              <span className={cn('text-[12px] font-semibold px-2 py-0.5 rounded-full', typeColor)}>
                 {typeLabel}
               </span>
-              <span className="text-[11px] text-white/35">{typePosts.length} posts</span>
+              <span className="text-[13px] text-[var(--text-soft)]">{typePosts.length} posts</span>
               {avgScore !== null && (
                 <span
                   className={cn(
-                    'ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                    'ml-auto text-[12px] font-medium px-1.5 py-0.5 rounded-full',
                     avgScore >= 80
                       ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                       : 'text-[#f0d99f] bg-[#f0d99f]/10',

@@ -44,7 +44,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-2 rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-3 text-sm text-white/50 hover:border-[#afc4ff]/30 hover:text-white/70 transition-colors w-full text-left"
+          className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] hover:border-[#afc4ff]/30 hover:text-[var(--text-muted)] transition-colors w-full text-left"
         >
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
           Tell us what we missed — add context the AI didn't find in your resume
@@ -60,10 +60,10 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
         <GlassCard className="p-4 border-[#afc4ff]/15">
           <div className="flex items-center gap-2 mb-3">
             <MessageSquarePlus className="h-4 w-4 text-[#afc4ff]" />
-            <h4 className="text-sm font-medium text-white/80">Add Context</h4>
+            <h4 className="text-sm font-medium text-[var(--text-strong)]">Add Context</h4>
           </div>
 
-          <p className="text-xs text-white/45 mb-2">
+          <p className="text-xs text-[var(--text-soft)] mb-2">
             Tell us about experience, skills, or accomplishments the AI missed. Examples:
           </p>
 
@@ -75,7 +75,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
                 type="button"
                 onClick={() => setContext(example)}
                 disabled={loading}
-                className="rounded-lg px-3 py-1.5 text-xs text-white/35 text-left hover:bg-white/[0.06] hover:text-white/55 transition-colors disabled:pointer-events-none"
+                className="rounded-lg px-3 py-1.5 text-xs text-[var(--text-soft)] text-left hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors disabled:pointer-events-none"
               >
                 &ldquo;{example}&rdquo;
               </button>
@@ -88,9 +88,9 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
             placeholder="Be specific — mention job titles, team sizes, budget amounts, or project outcomes..."
             rows={4}
             disabled={loading}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-1"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-1"
           />
-          <p className="text-xs text-white/30 mb-2">
+          <p className="text-xs text-[var(--text-soft)] mb-2">
             {context.trim().length < 20 && context.length > 0
               ? `Be specific — ${20 - context.trim().length} more characters needed`
               : '\u00a0'}

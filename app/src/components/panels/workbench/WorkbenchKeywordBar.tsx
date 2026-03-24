@@ -48,8 +48,8 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-0.5">
-        <p className="text-[10px] font-medium tracking-wide uppercase text-white/35">Keywords</p>
-        <span className="text-[10px] text-white/40">
+        <p className="text-[12px] font-medium tracking-wide uppercase text-[var(--text-soft)]">Keywords</p>
+        <span className="text-[12px] text-[var(--text-soft)]">
           {metCount}/{enriched.length} covered
         </span>
       </div>
@@ -66,22 +66,22 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
               disabled={!isMissing}
               aria-label={`${kw.keyword} — ${status === 'met' ? 'covered' : status === 'partial' ? 'partially covered' : 'not yet included'}`}
               className={cn(
-                'rounded-md border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+                'rounded-md border px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
                 status === 'met' &&
                   'border-[#a8d7b8]/35 bg-[#a8d7b8]/[0.08] text-[#a8d7b8]/80 cursor-default',
                 status === 'partial' &&
                   'border-[#f0d99f]/30 bg-[#f0d99f]/[0.07] text-[#f0d99f]/70 cursor-default',
                 status === 'missing' &&
-                  'border-white/[0.1] bg-white/[0.02] text-white/45 hover:border-white/[0.2] hover:text-white/70 cursor-pointer',
+                  'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:text-[var(--text-muted)] cursor-pointer',
               )}
             >
-              {status === 'met' && <span className="mr-0.5 text-[9px]" aria-hidden="true">✓</span>}
-              {status === 'partial' && <span className="mr-0.5 text-[9px]" aria-hidden="true">◐</span>}
+              {status === 'met' && <span className="mr-0.5 text-[12px]" aria-hidden="true">✓</span>}
+              {status === 'partial' && <span className="mr-0.5 text-[12px]" aria-hidden="true">◐</span>}
               {kw.keyword}
               {status !== 'missing' && (
                 <span
                   className={cn(
-                    'ml-1 text-[9px] tracking-normal',
+                    'ml-1 text-[12px] tracking-normal',
                     status === 'met' ? 'text-[#a8d7b8]/60' : 'text-[#f0d99f]/50',
                   )}
                 >

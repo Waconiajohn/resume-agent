@@ -15,9 +15,9 @@ interface WatchlistManagerProps {
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
+  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
 
-const LABEL_CLASS = 'text-[11px] text-white/40 uppercase tracking-wider mb-1 block';
+const LABEL_CLASS = 'text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block';
 
 export function WatchlistManager({
   open,
@@ -81,20 +81,20 @@ export function WatchlistManager({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Manage watchlist" className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl max-h-[85vh] flex flex-col">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Manage watchlist" className="relative w-full max-w-lg rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl max-h-[85vh] flex flex-col">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-white/30 hover:text-white/60 transition-colors"
+          className="absolute right-4 top-4 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <X size={18} />
         </button>
 
-        <h2 className="text-[16px] font-semibold text-white/85 mb-5">Target Companies</h2>
+        <h2 className="text-[16px] font-semibold text-[var(--text-strong)] mb-5">Target Companies</h2>
 
         {/* Add form */}
-        <div className="space-y-3 mb-5 pb-5 border-b border-white/[0.06]">
-          <h3 className="text-[12px] text-white/45 uppercase tracking-wider">Add Company</h3>
+        <div className="space-y-3 mb-5 pb-5 border-b border-[var(--line-soft)]">
+          <h3 className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">Add Company</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className={LABEL_CLASS}>Company Name *</label>
@@ -152,21 +152,21 @@ export function WatchlistManager({
         {/* Company list */}
         <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
           {sorted.length === 0 ? (
-            <p className="text-[12px] text-white/25 text-center py-6">
+            <p className="text-[12px] text-[var(--text-soft)] text-center py-6">
               No companies added yet. Add your first target company above.
             </p>
           ) : (
             sorted.map((company) => (
               <div
                 key={company.id}
-                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+                className="flex items-center gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-white/75 truncate">
+                  <div className="text-[13px] font-medium text-[var(--text-muted)] truncate">
                     {company.name}
                   </div>
                   {company.industry && (
-                    <div className="text-[11px] text-white/30 truncate">{company.industry}</div>
+                    <div className="text-[13px] text-[var(--text-soft)] truncate">{company.industry}</div>
                   )}
                 </div>
 
@@ -179,7 +179,7 @@ export function WatchlistManager({
                       max="5"
                       value={editPriority}
                       onChange={(e) => setEditPriority(e.target.value)}
-                      className="w-12 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[12px] text-white/70 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                      className="w-12 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-[12px] text-[var(--text-muted)] text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                     />
                     <button
                       type="button"
@@ -191,13 +191,13 @@ export function WatchlistManager({
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[11px] text-white/25 tabular-nums">
+                    <span className="text-[13px] text-[var(--text-soft)] tabular-nums">
                       P{company.priority}
                     </span>
                     <button
                       type="button"
                       onClick={() => startEdit(company)}
-                      className="text-white/20 hover:text-white/50 transition-colors"
+                      className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
                     >
                       <Pencil size={12} />
                     </button>
@@ -207,7 +207,7 @@ export function WatchlistManager({
                 <button
                   type="button"
                   onClick={() => onRemove(company.id)}
-                  className="text-white/20 hover:text-red-400/60 transition-colors flex-shrink-0"
+                  className="text-[var(--text-soft)] hover:text-red-400/60 transition-colors flex-shrink-0"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -216,7 +216,7 @@ export function WatchlistManager({
           )}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-white/[0.06]">
+        <div className="mt-5 pt-4 border-t border-[var(--line-soft)]">
           <GlassButton onClick={onClose} className="w-full">
             Done
           </GlassButton>

@@ -43,13 +43,13 @@ export function PipelineProgressBar({ pipelineStage, isProcessing, sessionComple
         </div>
       </div>
       <div className="mt-0.5 flex items-center justify-between">
-        <span className="text-[11px] text-white/60" aria-live="polite" role="status">{label}</span>
+        <span className="text-[13px] text-[var(--text-soft)]" aria-live="polite" role="status">{label}</span>
         <div className="flex items-center gap-3">
           {showEstimate && (
-            <span className="text-[11px] text-white/40">~{stageInfo!.estimateMinutes} min</span>
+            <span className="text-[13px] text-[var(--text-soft)]">~{stageInfo!.estimateMinutes} min</span>
           )}
           {!sessionComplete && stepIndex !== null && (
-            <span className="text-[11px] text-white/40">
+            <span className="text-[13px] text-[var(--text-soft)]">
               Step {stepIndex} of {TOTAL_PIPELINE_STAGES}
             </span>
           )}

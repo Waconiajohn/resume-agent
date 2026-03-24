@@ -34,7 +34,7 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
           style={{ color: '#afc4ff' }}
           aria-hidden="true"
         />
-        <h2 className="text-sm font-semibold text-white/90">Your Starting Point</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-strong)]">Your Starting Point</h2>
       </div>
 
       {/* ── Score + descriptor ───────────────────────────────────── */}
@@ -52,29 +52,29 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
           >
             {preScores.ats_match}%
           </div>
-          <div className="text-[10px] text-white/40 mt-1 uppercase tracking-wide">
+          <div className="text-[12px] text-[var(--text-soft)] mt-1 uppercase tracking-wide">
             ATS Match
           </div>
         </div>
 
-        <p className="text-xs text-white/60 leading-relaxed">{descriptor}</p>
+        <p className="text-xs text-[var(--text-soft)] leading-relaxed">{descriptor}</p>
       </div>
 
       {/* ── Keywords ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
         {/* Found */}
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-white/35 mb-1.5">
+          <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--text-soft)] mb-1.5">
             Keywords Found
           </p>
           {preScores.keywords_found.length === 0 ? (
-            <p className="text-[11px] text-white/30 italic">None detected</p>
+            <p className="text-[13px] text-[var(--text-soft)] italic">None detected</p>
           ) : (
             <div className="flex flex-wrap gap-1">
               {preScores.keywords_found.map((kw, i) => (
                 <span
                   key={i}
-                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                  className="rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.08em]"
                   style={{
                     color: '#b5dec2',
                     backgroundColor: 'rgba(181,222,194,0.10)',
@@ -90,17 +90,17 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
 
         {/* Missing */}
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-white/35 mb-1.5">
+          <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--text-soft)] mb-1.5">
             Keywords Missing
           </p>
           {preScores.keywords_missing.length === 0 ? (
-            <p className="text-[11px] text-white/30 italic">None — great coverage</p>
+            <p className="text-[13px] text-[var(--text-soft)] italic">None — great coverage</p>
           ) : (
             <div className="flex flex-wrap gap-1">
               {preScores.keywords_missing.map((kw, i) => (
                 <span
                   key={i}
-                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                  className="rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.08em]"
                   style={{
                     color: '#f0b8b8',
                     backgroundColor: 'rgba(240,184,184,0.10)',

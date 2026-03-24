@@ -123,8 +123,8 @@ function WeeklySchedule() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
         <Calendar size={16} className="text-[#98b3ff]" />
-        <h3 className="text-[14px] font-semibold text-white/80">This Week's Sessions</h3>
-        <span className="ml-auto text-[10px] text-white/20 italic">sample schedule</span>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">This Week's Sessions</h3>
+        <span className="ml-auto text-[12px] text-[var(--text-soft)] italic">sample schedule</span>
       </div>
       <div className="space-y-1">
         {WEEK_SCHEDULE.map((session) => (
@@ -136,23 +136,23 @@ function WeeklySchedule() {
                 ? 'bg-red-400/[0.08] border border-red-400/15'
                 : session.isPast
                   ? 'opacity-40'
-                  : 'hover:bg-white/[0.03]',
+                  : 'hover:bg-[var(--accent-muted)]',
             )}
           >
             {/* Day/time */}
             <div className="w-[72px] flex-shrink-0">
-              <div className="text-[12px] font-semibold text-white/50">{session.day}</div>
-              <div className="text-[11px] text-white/30">{session.time}</div>
+              <div className="text-[12px] font-semibold text-[var(--text-soft)]">{session.day}</div>
+              <div className="text-[13px] text-[var(--text-soft)]">{session.time}</div>
             </div>
 
             {/* Title & host */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-white/70 truncate">
+                <span className="text-[13px] font-medium text-[var(--text-muted)] truncate">
                   {session.title}
                 </span>
                 {session.isLive && (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-red-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-1 text-[12px] font-semibold text-red-400 uppercase tracking-wider">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" style={{ animationDuration: '2s' }} />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-400" />
@@ -161,7 +161,7 @@ function WeeklySchedule() {
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-white/30 mt-0.5">with {session.host}</div>
+              <div className="text-[13px] text-[var(--text-soft)] mt-0.5">with {session.host}</div>
             </div>
 
             {/* Action */}
@@ -169,14 +169,14 @@ function WeeklySchedule() {
               {session.isLive ? (
                 <button
                   type="button"
-                  className="rounded-lg bg-red-400/15 border border-red-400/20 px-3 py-1 text-[11px] font-medium text-red-300 hover:bg-red-400/25 transition-colors"
+                  className="rounded-lg bg-red-400/15 border border-red-400/20 px-3 py-1 text-[13px] font-medium text-red-300 hover:bg-red-400/25 transition-colors"
                 >
                   Join
                 </button>
               ) : session.isPast ? (
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-[11px] text-white/30 hover:text-white/50 transition-colors"
+                  className="flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
                 >
                   <Play size={11} />
                   Replay
@@ -184,7 +184,7 @@ function WeeklySchedule() {
               ) : (
                 <button
                   type="button"
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+                  className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1 text-[13px] font-medium text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   Remind me
                 </button>
@@ -214,10 +214,10 @@ function AskBeforeSession() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare size={16} className="text-[#98b3ff]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Ask Before the Session</h3>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Ask Before the Session</h3>
       </div>
-      <p className="text-[12px] text-white/40 mb-3">
-        Submit a question for <span className="text-white/60">{nextFutureSession?.title ?? 'the next session'}</span> — the host will address top questions live.
+      <p className="text-[12px] text-[var(--text-soft)] mb-3">
+        Submit a question for <span className="text-[var(--text-soft)]">{nextFutureSession?.title ?? 'the next session'}</span> — the host will address top questions live.
       </p>
       {submitted ? (
         <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-[13px] text-[#b5dec2]/80">
@@ -230,14 +230,14 @@ function AskBeforeSession() {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="What would you like the host to cover?"
-            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="flex-1 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!question.trim()}
-            className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-white/40 hover:text-white/60 hover:bg-white/[0.07] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Send size={14} />
           </button>
@@ -251,19 +251,19 @@ function ReplayCard({ replay }: { replay: Replay }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       <div
-        className="group flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer"
+        className="group flex items-start gap-3 px-4 py-3 hover:bg-[var(--accent-muted)] transition-colors cursor-pointer"
         onClick={() => replay.summary && setExpanded(!expanded)}
       >
-        <div className="rounded-lg bg-white/[0.05] p-2 flex-shrink-0 group-hover:bg-white/[0.08] transition-colors">
-          <Video size={16} className="text-white/40 group-hover:text-white/60" />
+        <div className="rounded-lg bg-[var(--accent-muted)] p-2 flex-shrink-0 group-hover:bg-[var(--surface-1)] transition-colors">
+          <Video size={16} className="text-[var(--text-soft)] group-hover:text-[var(--text-soft)]" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium text-white/70 group-hover:text-white/85 transition-colors">
+          <div className="text-[13px] font-medium text-[var(--text-muted)] group-hover:text-[var(--text-strong)] transition-colors">
             {replay.title}
           </div>
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-white/30">
+          <div className="flex items-center gap-2 mt-1 text-[13px] text-[var(--text-soft)]">
             <span>{replay.host}</span>
             <span>·</span>
             <span>{replay.date}</span>
@@ -271,12 +271,12 @@ function ReplayCard({ replay }: { replay: Replay }) {
             <Clock size={10} />
             <span>{replay.duration}</span>
           </div>
-          <div className="mt-1.5 text-[11px] text-[#98b3ff]/50 italic">
+          <div className="mt-1.5 text-[13px] text-[#98b3ff]/50 italic">
             {replay.relevance}
           </div>
         </div>
         {replay.summary && (
-          <button type="button" className="text-white/25 hover:text-white/50 transition-colors mt-1 flex-shrink-0">
+          <button type="button" className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors mt-1 flex-shrink-0">
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         )}
@@ -284,16 +284,16 @@ function ReplayCard({ replay }: { replay: Replay }) {
 
       {/* Expandable summary */}
       {expanded && replay.summary && (
-        <div className="border-t border-white/[0.06] px-4 py-4 space-y-4">
+        <div className="border-t border-[var(--line-soft)] px-4 py-4 space-y-4">
           {/* Key takeaways */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <Lightbulb size={12} className="text-[#f0d99f]" />
-              <span className="text-[11px] font-medium text-white/45 uppercase tracking-wider">Key Takeaways</span>
+              <span className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Key Takeaways</span>
             </div>
             <ul className="space-y-2">
               {replay.summary.keyPoints.map((point, i) => (
-                <li key={i} className="text-[12px] text-white/50 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-[7px] before:h-1 before:w-1 before:rounded-full before:bg-white/20">
+                <li key={i} className="text-[12px] text-[var(--text-soft)] leading-relaxed pl-4 relative before:absolute before:left-0 before:top-[7px] before:h-1 before:w-1 before:rounded-full before:bg-[var(--line-strong)]">
                   {point}
                 </li>
               ))}
@@ -304,9 +304,9 @@ function ReplayCard({ replay }: { replay: Replay }) {
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <HelpCircle size={12} className="text-[#98b3ff]" />
-              <span className="text-[11px] font-medium text-white/45 uppercase tracking-wider">Top Question Asked</span>
+              <span className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Top Question Asked</span>
             </div>
-            <p className="text-[12px] text-white/50 italic leading-relaxed">
+            <p className="text-[12px] text-[var(--text-soft)] italic leading-relaxed">
               "{replay.summary.topQuestion}"
             </p>
           </div>
@@ -329,8 +329,8 @@ function ReplayLibrary() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
         <Play size={16} className="text-[#98b3ff]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Replay Library</h3>
-        <span className="text-[11px] text-white/20 ml-auto italic">sample content</span>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Replay Library</h3>
+        <span className="text-[13px] text-[var(--text-soft)] ml-auto italic">sample content</span>
       </div>
       <div className="space-y-3">
         {REPLAYS.map((replay) => (
@@ -349,11 +349,11 @@ function LatestSessionSummary() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
         <FileText size={16} className="text-[#98b3ff]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Latest Session Summary</h3>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Latest Session Summary</h3>
       </div>
       <div className="mb-3">
-        <div className="text-[13px] font-medium text-white/70">{latestWithSummary.title}</div>
-        <div className="text-[11px] text-white/30 mt-0.5">
+        <div className="text-[13px] font-medium text-[var(--text-muted)]">{latestWithSummary.title}</div>
+        <div className="text-[13px] text-[var(--text-soft)] mt-0.5">
           {latestWithSummary.host} · {latestWithSummary.date}
         </div>
       </div>
@@ -361,7 +361,7 @@ function LatestSessionSummary() {
         {latestWithSummary.summary.keyPoints.slice(0, 2).map((point, i) => (
           <div key={i} className="flex items-start gap-2">
             <Lightbulb size={11} className="text-[#f0d99f] mt-0.5 flex-shrink-0" />
-            <span className="text-[12px] text-white/50 leading-relaxed">{point}</span>
+            <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{point}</span>
           </div>
         ))}
       </div>
@@ -380,16 +380,16 @@ function OfficeHours() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
         <Star size={16} className="text-[#f0d99f]" />
-        <h3 className="text-[14px] font-semibold text-white/80">1:1 Office Hours</h3>
-        <span className="ml-auto rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#f0d99f]/70 uppercase tracking-wider">
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">1:1 Office Hours</h3>
+        <span className="ml-auto rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-2 py-0.5 text-[12px] font-medium text-[#f0d99f]/70 uppercase tracking-wider">
           Premium
         </span>
       </div>
-      <p className="text-[12px] text-white/40 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         Book a private 30-minute session with a career coach for personalized guidance on your search strategy.
       </p>
       <GlassButton variant="ghost" className="w-full">
-        <Lock size={14} className="mr-1.5 text-white/30" />
+        <Lock size={14} className="mr-1.5 text-[var(--text-soft)]" />
         Upgrade to Book Office Hours
       </GlassButton>
     </GlassCard>
@@ -414,7 +414,7 @@ function ResourceIcon({ name, size }: { name: string; size: number }) {
     MessageSquare,
   };
   const Icon = iconMap[name] ?? BookOpen;
-  return <Icon size={size} className="text-white/40 group-hover:text-white/60" />;
+  return <Icon size={size} className="text-[var(--text-soft)] group-hover:text-[var(--text-soft)]" />;
 }
 
 function ResourceLibrary() {
@@ -442,20 +442,20 @@ function ResourceLibrary() {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
         <BookOpen size={16} className="text-[#98b3ff]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Resource Library</h3>
-        <span className="text-[11px] text-white/30 ml-auto">{RESOURCE_LIBRARY.length} resources</span>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Resource Library</h3>
+        <span className="text-[13px] text-[var(--text-soft)] ml-auto">{RESOURCE_LIBRARY.length} resources</span>
       </div>
 
       {/* Search */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-soft)]" />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search resources..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-8 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
       </div>
@@ -466,10 +466,10 @@ function ResourceLibrary() {
           type="button"
           onClick={() => setSelectedCategory(null)}
           className={cn(
-            'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors',
+            'rounded-lg px-2.5 py-1 text-[13px] font-medium transition-colors',
             !selectedCategory
               ? 'bg-[#98b3ff]/15 text-[#98b3ff] border border-[#98b3ff]/20'
-              : 'bg-white/[0.03] text-white/40 border border-white/[0.06] hover:text-white/60',
+              : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:text-[var(--text-soft)]',
           )}
         >
           All
@@ -480,10 +480,10 @@ function ResourceLibrary() {
             type="button"
             onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
             className={cn(
-              'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors',
+              'rounded-lg px-2.5 py-1 text-[13px] font-medium transition-colors',
               selectedCategory === cat
                 ? 'bg-[#98b3ff]/15 text-[#98b3ff] border border-[#98b3ff]/20'
-                : 'bg-white/[0.03] text-white/40 border border-white/[0.06] hover:text-white/60',
+                : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:text-[var(--text-soft)]',
             )}
           >
             {cat}
@@ -494,27 +494,27 @@ function ResourceLibrary() {
       {/* Resource list */}
       <div className="space-y-2">
         {filtered.length === 0 && (
-          <div className="text-center py-6 text-[13px] text-white/30">
+          <div className="text-center py-6 text-[13px] text-[var(--text-soft)]">
             No resources match your search.
           </div>
         )}
         {filtered.map((resource) => (
           <div
             key={resource.id}
-            className="group flex items-start gap-3 rounded-xl px-3 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            className="group flex items-start gap-3 rounded-xl px-3 py-3 hover:bg-[var(--accent-muted)] transition-colors cursor-pointer"
           >
-            <div className="rounded-lg bg-white/[0.05] p-2 flex-shrink-0 group-hover:bg-white/[0.08] transition-colors">
+            <div className="rounded-lg bg-[var(--accent-muted)] p-2 flex-shrink-0 group-hover:bg-[var(--surface-1)] transition-colors">
               <ResourceIcon name={resource.icon_name} size={14} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium text-white/70 group-hover:text-white/85 transition-colors">
+              <div className="text-[13px] font-medium text-[var(--text-muted)] group-hover:text-[var(--text-strong)] transition-colors">
                 {resource.title}
               </div>
-              <div className="text-[11px] text-white/35 mt-1 leading-relaxed line-clamp-2">
+              <div className="text-[13px] text-[var(--text-soft)] mt-1 leading-relaxed line-clamp-2">
                 {resource.description}
               </div>
-              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-white/25">
-                <span className="rounded-full border border-white/[0.08] px-2 py-0.5">
+              <div className="flex items-center gap-2 mt-1.5 text-[12px] text-[var(--text-soft)]">
+                <span className="rounded-full border border-[var(--line-soft)] px-2 py-0.5">
                   {resource.category}
                 </span>
                 <span className="capitalize">{resource.content_type}</span>
@@ -537,8 +537,8 @@ export function LiveSessionsRoom() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Live Sessions</h1>
-        <p className="text-[13px] text-white/40">
+        <h1 className="text-lg font-semibold text-[var(--text-strong)]">Live Sessions</h1>
+        <p className="text-[13px] text-[var(--text-soft)]">
           Weekly coaching sessions with career experts — live interaction, not pre-recorded videos.
         </p>
       </div>

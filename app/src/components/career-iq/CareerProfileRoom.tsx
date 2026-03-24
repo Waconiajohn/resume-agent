@@ -16,6 +16,7 @@ import type { CareerProfileV2 } from '@/types/career-profile';
 import type { AssessmentQuestion, OnboardingStatus } from '@/types/onboarding';
 import type { ActivityMessage } from '@/types/activity';
 import { cn } from '@/lib/utils';
+import { WhyMeStoryCard } from './WhyMeStoryCard';
 
 interface CareerProfileRoomProps {
   profile: CareerProfileV2 | null;
@@ -108,13 +109,13 @@ export function CareerProfileRoom({
                 <Target size={16} className="text-[#98b3ff]" />
               </div>
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                   Career Profile Strategist
                 </div>
-                <h1 className="mt-1 text-lg font-semibold text-white/90">Build the story every room works from</h1>
+                <h1 className="mt-1 text-lg font-semibold text-[var(--text-strong)]">Build the story every room works from</h1>
               </div>
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-white/55">
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
               This is your shared why-me story. Be accurate here because Resume Builder, LinkedIn, Job Search, and Interview Prep all use this profile as source context, and you can review or strengthen it anytime.
             </p>
           </div>
@@ -176,13 +177,13 @@ export function CareerProfileRoom({
         <GlassCard className="p-5">
           <div className="flex items-center gap-2">
             <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
-            <div className="text-sm font-medium text-white/78">
+            <div className="text-sm font-medium text-[var(--text-strong)]">
               {currentStage === 'evaluation' ? 'Refining your Career Profile...' : 'Generating your next best questions...'}
             </div>
           </div>
           <div className="mt-3 space-y-2">
             {activityMessages.slice(-6).map((message) => (
-              <div key={message.id} className="text-xs leading-relaxed text-white/45">
+              <div key={message.id} className="text-xs leading-relaxed text-[var(--text-soft)]">
                 {message.message}
               </div>
             ))}
@@ -195,38 +196,44 @@ export function CareerProfileRoom({
           <GlassCard className="p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                   AI Career Intake
                 </div>
-                <h2 className="mt-2 text-lg font-semibold text-white/88">
+                <h2 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">
                   One question, one confirmation, one stronger profile update
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/58">
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
                   The goal is not to race through a form. Answer carefully, watch the reflection update, and confirm the wording before the rest of the workspace reuses it.
                 </p>
               </div>
-              <div className="rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-white/45">
+              <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
                 {formatCategory(currentQuestion.category)} · {currentIndex + 1}/{questions.length}
               </div>
             </div>
 
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.05] p-5">
-                <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/74">
+                <div className="flex items-center gap-2 text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/74">
                   <Brain size={13} />
                   AI strategist
                 </div>
-                <p className="mt-3 text-base leading-relaxed text-white/88">{currentQuestion.question}</p>
-                <p className="mt-3 text-sm leading-relaxed text-white/58">
+                <p className="mt-3 text-base leading-relaxed text-[var(--text-strong)]">{currentQuestion.question}</p>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
                   {currentQuestion.purpose || `This answer sharpens your ${formatCategory(currentQuestion.category)} story so the rest of the workspace can work from clearer context instead of guessing.`}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
+                <label
+                  id="career-profile-answer-label"
+                  htmlFor="career-profile-answer"
+                  className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]"
+                >
                   Your answer
-                </div>
+                </label>
                 <textarea
+                  id="career-profile-answer"
+                  aria-labelledby="career-profile-answer-label"
                   value={currentResponse}
                   onChange={(event) => {
                     const value = event.target.value;
@@ -234,8 +241,8 @@ export function CareerProfileRoom({
                   }}
                   placeholder="Answer in your own words. Include proof, constraints, scope, and the language you naturally use to describe your value."
                   className={cn(
-                    'mt-3 min-h-[180px] w-full rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3',
-                    'text-sm leading-relaxed text-white/85 placeholder:text-white/30',
+                    'mt-3 min-h-[180px] w-full rounded-xl border border-[var(--line-soft)] bg-black/20 px-4 py-3',
+                    'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
                     'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
                   )}
                 />
@@ -261,13 +268,13 @@ export function CareerProfileRoom({
             </div>
 
             <div className="mt-5 rounded-2xl border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-4 py-4">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
                 AI reflection before this answer is reused
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-white/74">{liveReflection}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{liveReflection}</p>
               <div className="mt-4 space-y-2">
                 {buildInterpretationPoints(currentQuestion, currentResponse).map((point) => (
-                  <div key={point} className="flex items-start gap-2 text-sm leading-6 text-white/68">
+                  <div key={point} className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
                     <CheckCircle2 size={14} className="mt-1 shrink-0 text-[#b5dec2]" />
                     <span>{point}</span>
                   </div>
@@ -280,7 +287,7 @@ export function CareerProfileRoom({
                 type="button"
                 onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
                 disabled={currentIndex === 0}
-                className="inline-flex items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white/70 disabled:cursor-not-allowed disabled:text-white/20"
+                className="inline-flex items-center gap-1.5 text-sm text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:text-[var(--text-soft)]"
               >
                 <ChevronLeft size={16} />
                 Review previous answer
@@ -309,9 +316,9 @@ export function CareerProfileRoom({
             <GlassCard className="p-6">
               <div className="flex items-center gap-2">
                 <Sparkles size={16} className="text-[#98b3ff]" />
-                <h3 className="text-sm font-semibold text-white/86">Conversation map</h3>
+                <h3 className="text-sm font-semibold text-[var(--text-strong)]">Conversation map</h3>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-white/54">
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
                 This keeps the intake focused. You should always know what has already been confirmed, what the AI is asking now, and what is still missing.
               </p>
 
@@ -329,14 +336,14 @@ export function CareerProfileRoom({
                           ? 'border-[#98b3ff]/24 bg-[#98b3ff]/[0.08]'
                           : isAnswered
                             ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05]'
-                            : 'border-white/[0.06] bg-white/[0.025]',
+                            : 'border-[var(--line-soft)] bg-[var(--accent-muted)]',
                       )}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs font-medium text-white/75">
+                        <div className="text-xs font-medium text-[var(--text-muted)]">
                           {index + 1}. {clipText(question.question, 90)}
                         </div>
-                        <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+                        <div className="text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
                           {isCurrent ? 'Current' : isAnswered ? 'Confirmed' : 'Queued'}
                         </div>
                       </div>
@@ -349,9 +356,9 @@ export function CareerProfileRoom({
             <GlassCard className="p-6">
             <div className="flex items-center gap-2">
               <Brain size={16} className="text-[#98b3ff]" />
-              <h3 className="text-sm font-semibold text-white/86">Live profile preview</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-strong)]">Live profile preview</h3>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-white/54">
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
               This is the story taking shape as you answer. Review it now so anything off-target gets fixed before it shows up elsewhere.
             </p>
 
@@ -361,30 +368,30 @@ export function CareerProfileRoom({
               <PreviewBlock label="Differentiation" value={summary.differentiationSnapshot} />
             </div>
 
-            <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+            <div className="mt-5 rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                 Readiness right now
               </div>
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div>
-                  <div className="text-2xl font-semibold text-white/88">{summary.readinessPercent}%</div>
-                  <div className="text-sm text-white/50">{summary.readinessLabel}</div>
+                  <div className="text-2xl font-semibold text-[var(--text-strong)]">{summary.readinessPercent}%</div>
+                  <div className="text-sm text-[var(--text-soft)]">{summary.readinessLabel}</div>
                 </div>
-                <div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/45">
+                <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
                   {answeredItems.length} answered
                 </div>
               </div>
-              <p className="mt-3 text-sm leading-6 text-white/58">{summary.statusLine}</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-soft)]">{summary.statusLine}</p>
             </div>
 
             <div className="mt-5 space-y-3">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Strongest themes taking shape</div>
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Strongest themes taking shape</div>
                 <div className="mt-3 space-y-2">
                   {(summary.highlightPoints.length > 0 ? summary.highlightPoints : [
                     'The AI will start surfacing your proof themes here as you answer.',
                   ]).map((item) => (
-                    <div key={item} className="flex items-start gap-2 text-sm text-white/68">
+                    <div key={item} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                       <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#b5dec2]" />
                       <span>{item}</span>
                     </div>
@@ -393,12 +400,12 @@ export function CareerProfileRoom({
               </div>
 
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Still needs clarity</div>
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Still needs clarity</div>
                 <div className="mt-3 space-y-2">
                   {(summary.focusAreas.length > 0 ? summary.focusAreas : [
                     'Finish the intake so Resume Builder, LinkedIn, Interview Prep, and Job Search all have the context they need.',
                   ]).slice(0, 3).map((item) => (
-                    <div key={item} className="rounded-xl border border-white/[0.06] bg-black/15 px-3 py-2 text-sm leading-6 text-white/60">
+                    <div key={item} className="rounded-xl border border-[var(--line-soft)] bg-black/15 px-3 py-2 text-sm leading-6 text-[var(--text-soft)]">
                       {item}
                     </div>
                   ))}
@@ -412,7 +419,7 @@ export function CareerProfileRoom({
 
       {profileLoading && !profile && !isRunning && onboardingStatus === 'idle' && (
         <GlassCard className="p-6">
-          <div className="flex items-center gap-2 text-sm text-white/55">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-soft)]">
             <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
             Loading your saved Career Profile...
           </div>
@@ -424,22 +431,22 @@ export function CareerProfileRoom({
           <GlassCard className="p-6">
             <div className="flex items-center gap-2">
               <Brain size={16} className="text-[#98b3ff]" />
-              <h2 className="text-sm font-semibold text-white/85">Your current Career Profile</h2>
+              <h2 className="text-sm font-semibold text-[var(--text-strong)]">Your current Career Profile</h2>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-white/54">
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
               This is the profile the workspace uses before it writes, scores, or coaches. Review it whenever your target role, proof, or story gets stronger.
             </p>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
               {profile.completeness.sections.map((section) => (
-                <div key={section.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                <div key={section.id} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">{section.label}</div>
-                    <div className="text-[11px] text-white/35">{section.score}%</div>
+                    <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{section.label}</div>
+                    <div className="text-[13px] text-[var(--text-soft)]">{section.score}%</div>
                   </div>
-                  <div className="mt-2 text-sm font-semibold text-white/84">
+                  <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
                     {section.status === 'ready' ? 'Ready' : section.status === 'partial' ? 'Partial' : 'Needs work'}
                   </div>
-                  <div className="mt-2 text-xs leading-relaxed text-white/48">{section.summary}</div>
+                  <div className="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">{section.summary}</div>
                 </div>
               ))}
             </div>
@@ -447,7 +454,7 @@ export function CareerProfileRoom({
 
           <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
             <GlassCard className="p-6">
-              <h3 className="text-sm font-semibold text-white/86">Profile backbone</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-strong)]">Profile backbone</h3>
               <div className="mt-4 space-y-4">
                 <ProfileList
                   title="Targeting"
@@ -480,7 +487,7 @@ export function CareerProfileRoom({
             </GlassCard>
 
             <GlassCard className="p-6">
-              <h3 className="text-sm font-semibold text-white/86">Why-me story agents can reuse</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-strong)]">Why-me story agents can reuse</h3>
               <div className="mt-4 space-y-3">
                 <NarrativeBlock label="What people come to you for" value={profile.narrative.colleagues_came_for_what} />
                 <NarrativeBlock label="What you want to be known for" value={profile.narrative.known_for_what} />
@@ -488,13 +495,13 @@ export function CareerProfileRoom({
               </div>
 
               {profile.evidence_positioning_statements.length > 0 && (
-                <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+                <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                     Agent-ready positioning statements
                   </div>
                   <div className="mt-3 space-y-2">
                     {profile.evidence_positioning_statements.map((item) => (
-                      <div key={item} className="flex items-start gap-2 text-sm text-white/68">
+                      <div key={item} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                         <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#b5dec2]" />
                         <span>{item}</span>
                       </div>
@@ -506,6 +513,8 @@ export function CareerProfileRoom({
           </div>
         </>
       )}
+
+      <WhyMeStoryCard />
     </div>
   );
 }
@@ -520,10 +529,10 @@ function SummaryMetric({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">{label}</div>
-      <div className="mt-2 text-sm font-semibold leading-relaxed text-white/85">{value}</div>
-      <div className="mt-2 text-xs leading-relaxed text-white/48">{detail}</div>
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{label}</div>
+      <div className="mt-2 text-sm font-semibold leading-relaxed text-[var(--text-strong)]">{value}</div>
+      <div className="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">{detail}</div>
     </div>
   );
 }
@@ -533,10 +542,10 @@ function ProfileList({ title, items }: { title: string; items: string[] }) {
 
   return (
     <div>
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">{title}</div>
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{title}</div>
       <div className="mt-3 space-y-2">
         {items.map((item) => (
-          <div key={item} className="text-sm leading-relaxed text-white/66">
+          <div key={item} className="text-sm leading-relaxed text-[var(--text-soft)]">
             {item}
           </div>
         ))}
@@ -547,9 +556,9 @@ function ProfileList({ title, items }: { title: string; items: string[] }) {
 
 function NarrativeBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">{label}</div>
-      <div className="mt-2 text-sm leading-relaxed text-white/72">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{label}</div>
+      <div className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
         {value || 'Not defined yet.'}
       </div>
     </div>
@@ -566,19 +575,19 @@ function ConversationHint({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-white/84">{value}</div>
-      <div className="mt-2 text-xs leading-relaxed text-white/48">{detail}</div>
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{value}</div>
+      <div className="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">{detail}</div>
     </div>
   );
 }
 
 function PreviewBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">{label}</div>
-      <div className="mt-2 text-sm leading-relaxed text-white/72">{value}</div>
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{label}</div>
+      <div className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{value}</div>
     </div>
   );
 }

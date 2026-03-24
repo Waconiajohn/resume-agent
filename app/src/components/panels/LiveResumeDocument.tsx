@@ -279,7 +279,7 @@ function PlaceholderSection({ name }: { name: string }) {
 function SectionStatusBadge({ source, isActive }: { source: string; isActive: boolean }) {
   if (isActive) {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500" role="status" aria-live="polite">
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-blue-500" role="status" aria-live="polite">
         <span className="h-1.5 w-1.5 animate-pulse bg-blue-400" />
         Creating...
       </span>
@@ -287,7 +287,7 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   }
   if (source === 'draft') {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-amber-500">
         <span className="h-1.5 w-1.5 bg-amber-400" />
         Draft
       </span>
@@ -295,7 +295,7 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   }
   if (source === 'approved' || source === 'resume') {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-500">
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-500">
         <span className="h-1.5 w-1.5 bg-emerald-400" />
         Complete
       </span>
@@ -337,7 +337,7 @@ function SectionWrapper({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
-            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity hover:bg-gray-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 group-hover:opacity-100"
+            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity hover:bg-gray-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 group-hover:opacity-100"
             aria-label={`Edit ${SECTION_DISPLAY_NAMES[sectionKey] ?? toTitleCase(sectionKey)}`}
           >
             <Pencil className="h-3 w-3" />
@@ -392,7 +392,7 @@ function InlineEditOverlay({
         }}
       />
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-[10px] text-gray-400">
+        <span className="text-[12px] text-gray-400">
           {/Mac|iPhone|iPad/.test(navigator.userAgent) ? '\u2318' : 'Ctrl'}+Enter to save \u00b7 Esc to cancel
         </span>
         <div className="flex gap-2">
@@ -657,7 +657,7 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
         type="button"
         onClick={handleDownloadText}
         disabled={isExporting}
-        className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
+        className="flex items-center gap-1.5 rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-40"
         aria-label="Download resume as text file"
       >
         <Download className="h-3.5 w-3.5" />
@@ -667,7 +667,7 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
         type="button"
         onClick={() => void handleDownloadDocx()}
         disabled={isExporting}
-        className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
+        className="flex items-center gap-1.5 rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-40"
         aria-label="Download resume as DOCX document"
       >
         {exportingDocx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileType2 className="h-3.5 w-3.5" />}
@@ -677,7 +677,7 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
         type="button"
         onClick={() => void handleDownloadPdf()}
         disabled={isExporting}
-        className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
+        className="flex items-center gap-1.5 rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-40"
         aria-label="Print or save resume as PDF"
       >
         {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
@@ -736,7 +736,7 @@ function QuickFixPopover({
             key={chip}
             type="button"
             onClick={() => toggleChip(chip)}
-            className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors ${
+            className={`rounded-md border px-2.5 py-1 text-[13px] font-semibold uppercase tracking-[0.18em] transition-colors ${
               selectedChips.has(chip)
                 ? 'border-blue-300 bg-blue-50 text-blue-700'
                 : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
@@ -757,7 +757,7 @@ function QuickFixPopover({
         <button
           type="button"
           onClick={onClose}
-          className="rounded px-2.5 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-100"
+          className="rounded px-2.5 py-1 text-[13px] font-medium text-gray-500 hover:bg-gray-100"
         >
           Cancel
         </button>
@@ -765,7 +765,7 @@ function QuickFixPopover({
           type="button"
           onClick={handleSend}
           disabled={selectedChips.size === 0 && !customText.trim()}
-          className="rounded bg-amber-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-amber-600 disabled:opacity-40"
+          className="rounded bg-amber-500 px-2.5 py-1 text-[13px] font-medium text-white hover:bg-amber-600 disabled:opacity-40"
         >
           Send
         </button>
@@ -905,7 +905,7 @@ export function LiveResumeDocument({
   }, [activeSectionKey]);
 
   return (
-    <div className="flex h-full flex-col items-center overflow-y-auto bg-[#1a1d23] px-6 py-8 lg:px-8 lg:py-10">
+    <div className="flex h-full flex-col items-center overflow-y-auto bg-[var(--bg-1)] px-6 py-8 lg:px-8 lg:py-10">
       {/* Toolbar: progress + quality + export */}
       <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
         {isProcessing && !allComplete && (
@@ -916,15 +916,15 @@ export function LiveResumeDocument({
                 style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
               />
             </div>
-            <span className="whitespace-nowrap text-xs text-white/50">
+            <span className="whitespace-nowrap text-xs text-[var(--text-soft)]">
               {completedCount}/{totalCount} sections
             </span>
           </div>
         )}
         {isProcessing && allComplete && !sessionComplete && (
           <div className="flex flex-1 items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-white/40" />
-            <span className="text-xs text-white/50">Finalizing...</span>
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--text-soft)]" />
+            <span className="text-xs text-[var(--text-soft)]">Finalizing...</span>
           </div>
         )}
         {(!isProcessing || (allComplete && sessionComplete)) && <div className="flex-1" />}

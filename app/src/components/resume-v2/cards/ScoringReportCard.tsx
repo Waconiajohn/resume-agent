@@ -48,7 +48,7 @@ function StatColumn({
       >
         {value}
       </div>
-      <div className="text-[10px] text-white/40 uppercase tracking-wide leading-tight">
+      <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wide leading-tight">
         {label}
       </div>
     </div>
@@ -88,7 +88,7 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
           style={{ color: '#b5dec2' }}
           aria-hidden="true"
         />
-        <h2 className="text-sm font-semibold text-white/90">How We Improved Your Resume</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-strong)]">How We Improved Your Resume</h2>
       </div>
 
       {/* ── Before → After score display ─────────────────────────── */}
@@ -101,10 +101,10 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
       >
         {/* Before */}
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-white/35 uppercase tracking-wide">Before</span>
-          <span className="text-xl font-bold tabular-nums text-white/50 leading-none">
+          <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wide">Before</span>
+          <span className="text-xl font-bold tabular-nums text-[var(--text-soft)] leading-none">
             {beforeScore}
-            <span className="text-[11px] font-normal text-white/30">%</span>
+            <span className="text-[13px] font-normal text-[var(--text-soft)]">%</span>
           </span>
         </div>
 
@@ -116,13 +116,13 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
 
         {/* After */}
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[9px] text-white/35 uppercase tracking-wide">After</span>
+          <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wide">After</span>
           <span
             className="text-xl font-bold tabular-nums leading-none"
             style={{ color: '#b5dec2' }}
           >
             {afterScore}
-            <span className="text-[11px] font-normal" style={{ color: 'rgba(181,222,194,0.55)' }}>
+            <span className="text-[13px] font-normal" style={{ color: 'rgba(181,222,194,0.55)' }}>
               %
             </span>
           </span>
@@ -155,14 +155,14 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
           backgroundColor: 'rgba(255,255,255,0.02)',
         }}
       >
-        <div className="flex-1 px-3 py-3 text-center border-r border-white/[0.06]">
+        <div className="flex-1 px-3 py-3 text-center border-r border-[var(--line-soft)]">
           <StatColumn
             label="Requirements Addressed"
             value={totalCount > 0 ? `${addressedCount}/${totalCount}` : addressedCount}
             color="#b5dec2"
           />
         </div>
-        <div className="flex-1 px-3 py-3 text-center border-r border-white/[0.06]">
+        <div className="flex-1 px-3 py-3 text-center border-r border-[var(--line-soft)]">
           <StatColumn
             label="Strategies Applied"
             value={strategiesCount}

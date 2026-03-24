@@ -93,7 +93,7 @@ function CompanyInitials({ company }: { company: string }) {
     .slice(0, 2)
     .toUpperCase();
   return (
-    <div className="h-7 w-7 rounded-lg bg-white/[0.08] flex items-center justify-center text-[10px] font-bold text-white/50 flex-shrink-0">
+    <div className="h-7 w-7 rounded-lg bg-[var(--surface-1)] flex items-center justify-center text-[12px] font-bold text-[var(--text-soft)] flex-shrink-0">
       {initials}
     </div>
   );
@@ -121,8 +121,8 @@ function PipelineCardItem({
       draggable
       onDragStart={(e) => onDragStart(e, card.id)}
       className={cn(
-        'group rounded-xl border-t-2 border border-white/[0.08] bg-white/[0.03] p-3 cursor-grab active:cursor-grabbing transition-all duration-150',
-        'hover:border-white/[0.15] hover:bg-white/[0.05] hover:shadow-lg hover:shadow-black/10',
+        'group rounded-xl border-t-2 border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 cursor-grab active:cursor-grabbing transition-all duration-150',
+        'hover:border-[var(--line-strong)] hover:bg-[var(--accent-muted)] hover:shadow-lg hover:shadow-black/10',
         isStale && 'opacity-50 hover:opacity-80',
         card.hasNewActivity && 'border-[#98b3ff]/20',
         STAGE_COLORS[card.stage],
@@ -132,7 +132,7 @@ function PipelineCardItem({
         <CompanyInitials company={card.company} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-[13px] font-medium text-white/85 truncate">
+            <span className="text-[13px] font-medium text-[var(--text-strong)] truncate">
               {card.company}
             </span>
             {card.hasNewActivity && (
@@ -140,11 +140,11 @@ function PipelineCardItem({
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[11px] text-white/45 truncate">
+            <span className="text-[13px] text-[var(--text-soft)] truncate">
               {card.role}
             </span>
             {card.stage === 'Interviewing' && card.interviewRound != null && (
-              <span className="flex-shrink-0 rounded bg-[#f0d99f]/15 border border-[#f0d99f]/20 px-1.5 py-px text-[9px] font-medium text-[#f0d99f]/80">
+              <span className="flex-shrink-0 rounded bg-[#f0d99f]/15 border border-[#f0d99f]/20 px-1.5 py-px text-[12px] font-medium text-[#f0d99f]/80">
                 {ordinal(card.interviewRound)}
               </span>
             )}
@@ -154,18 +154,18 @@ function PipelineCardItem({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onArchive(card.id); }}
-            className="rounded p-1 text-white/30 hover:text-white/60 hover:bg-white/[0.06]"
+            className="rounded p-1 text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)]"
             title="Archive"
           >
             <Archive size={12} />
           </button>
-          <div className="text-white/20 cursor-grab">
+          <div className="text-[var(--text-soft)] cursor-grab">
             <GripVertical size={12} />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-2.5 text-[11px] text-white/35">
+      <div className="flex items-center gap-2 mt-2.5 text-[13px] text-[var(--text-soft)]">
         <Clock size={11} />
         <span>
           {card.scheduledDate && formatScheduledDate(card.scheduledDate)
@@ -189,7 +189,7 @@ function PipelineCardItem({
           onClick={(e) => { e.stopPropagation(); onInterviewPrepClick?.(card); }}
           className={cn(
             'mt-2.5 w-full rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]',
-            'px-2.5 py-1.5 text-[10px] font-medium text-[#f0d99f]/70',
+            'px-2.5 py-1.5 text-[12px] font-medium text-[#f0d99f]/70',
             'hover:border-[#f0d99f]/35 hover:bg-[#f0d99f]/[0.08] hover:text-[#f0d99f] transition-colors',
             'cursor-pointer',
           )}
@@ -203,7 +203,7 @@ function PipelineCardItem({
           onClick={(e) => { e.stopPropagation(); onNegotiationPrepClick?.(card); }}
           className={cn(
             'mt-2.5 w-full rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]',
-            'px-2.5 py-1.5 text-[10px] font-medium text-[#b5dec2]/70',
+            'px-2.5 py-1.5 text-[12px] font-medium text-[#b5dec2]/70',
             'hover:border-[#b5dec2]/35 hover:bg-[#b5dec2]/[0.08] hover:text-[#b5dec2] transition-colors',
             'cursor-pointer',
           )}
@@ -340,8 +340,8 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
   return (
     <GlassCard className="p-5 flex-1 min-w-0">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-semibold text-white/80">Your Pipeline</h3>
-        <div className="flex items-center gap-4 text-[11px] text-white/40">
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Your Pipeline</h3>
+        <div className="flex items-center gap-4 text-[13px] text-[var(--text-soft)]">
           <span>{totalActive} active</span>
           <span className="flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-[#b5dec2]" />
@@ -353,9 +353,9 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
       {/* Empty state — shown once data has loaded and no applications exist */}
       {loaded && cards.length === 0 ? (
         <div className="text-center py-8">
-          <Search size={24} className="text-white/20 mx-auto mb-3" />
-          <p className="text-[13px] text-white/45 mb-1">No applications yet</p>
-          <p className="text-[11px] text-white/30">
+          <Search size={24} className="text-[var(--text-soft)] mx-auto mb-3" />
+          <p className="text-[13px] text-[var(--text-soft)] mb-1">No applications yet</p>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Start from the{' '}
             <button
               type="button"
@@ -381,10 +381,10 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
                 onDrop={(e) => handleDrop(e, stage)}
               >
                 <div className="flex items-center gap-2 mb-2.5">
-                  <span className="text-[11px] font-medium text-white/50 uppercase tracking-wider">
+                  <span className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider">
                     {stage}
                   </span>
-                  <span className="text-[10px] text-white/30 bg-white/[0.06] rounded-full px-1.5 py-0.5 tabular-nums">
+                  <span className="text-[12px] text-[var(--text-soft)] bg-[var(--accent-muted)] rounded-full px-1.5 py-0.5 tabular-nums">
                     {stageCards.length}
                   </span>
                 </div>
@@ -407,9 +407,9 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
                   {stageCards.length === 0 && (
                     <div className={cn(
                       'rounded-xl border border-dashed p-4 text-center transition-colors',
-                      isDragOver ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.04]' : 'border-white/[0.06]',
+                      isDragOver ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.04]' : 'border-[var(--line-soft)]',
                     )}>
-                      <span className="text-[11px] text-white/25">
+                      <span className="text-[13px] text-[var(--text-soft)]">
                         {isDragOver ? 'Drop here' : 'No items'}
                       </span>
                     </div>

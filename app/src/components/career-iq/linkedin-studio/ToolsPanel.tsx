@@ -41,13 +41,13 @@ export function ToolsPanel() {
               <div className="mb-1.5 flex items-center gap-2">
                 <Icon
                   size={14}
-                  className={activeTool === tool.id ? 'text-[var(--accent)]' : 'text-white/30'}
+                  className={activeTool === tool.id ? 'text-[var(--accent)]' : 'text-[var(--text-soft)]'}
                 />
-                <span className={cn('text-[12px] font-semibold', activeTool === tool.id ? 'text-white/80' : 'text-white/45')}>
+                <span className={cn('text-[12px] font-semibold', activeTool === tool.id ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]')}>
                   {tool.label}
                 </span>
               </div>
-              <p className="text-[11px] text-white/30 leading-snug">{tool.description}</p>
+              <p className="text-[13px] text-[var(--text-soft)] leading-snug">{tool.description}</p>
             </button>
           );
         })}

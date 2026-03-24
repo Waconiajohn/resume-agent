@@ -21,14 +21,14 @@ export function SessionCard({ session, onClick, onDelete, deleteDisabled = false
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           {sessionTitle ? (
-            <span className="text-sm font-medium text-white/85 truncate max-w-[200px]">
+            <span className="text-sm font-medium text-[var(--text-strong)] truncate max-w-[200px]">
               {sessionTitle}
             </span>
           ) : null}
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/70 w-fit">
+          <span className="rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] w-fit">
             {phaseLabel}
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-white/60">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--text-soft)]">
             <Clock className="h-3 w-3" />
             {timeAgo}
           </div>
@@ -42,13 +42,13 @@ export function SessionCard({ session, onClick, onDelete, deleteDisabled = false
                   onDelete();
                 }}
                 disabled={deleteDisabled}
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/74 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Delete session"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
           )}
-          <ArrowRight className="h-4 w-4 text-white/30" />
+          <ArrowRight className="h-4 w-4 text-[var(--text-soft)]" />
         </div>
       </div>
     </GlassCard>

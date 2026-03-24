@@ -23,7 +23,7 @@ function CharCounter({ value, label }: { value: string; label: string }) {
   return (
     <p
       className={cn(
-        'text-[10px] transition-colors duration-200',
+        'text-[12px] transition-colors duration-200',
         met ? 'text-[#b5dec2]/60' : 'text-[#f0b8b8]/60',
       )}
       aria-live="polite"
@@ -103,15 +103,15 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-16">
         {/* Header */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.12] bg-white/[0.04]">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line-strong)] bg-[var(--surface-1)]">
             <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-white/90">Position Your Resume</h1>
+          <h1 className="mb-2 text-3xl font-bold text-[var(--text-strong)]">Position Your Resume</h1>
 
           {/* Value proposition tagline */}
           <div className="mt-3 mb-1">
-            <p className="text-xl font-semibold text-white/90">Position yourself as the benchmark</p>
-            <p className="mt-1 max-w-xl text-sm text-white/40">
+            <p className="text-xl font-semibold text-[var(--text-strong)]">Position yourself as the benchmark</p>
+            <p className="mt-1 max-w-xl text-sm text-[var(--text-soft)]">
               Paste your resume and target job description. Our AI agents will craft a resume that makes you the standard others are measured against.
             </p>
           </div>
@@ -132,7 +132,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
           <form onSubmit={handleSubmit} className="space-y-8" noValidate>
             {/* Resume */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-white/80" htmlFor="v2-resume">
+              <label className="block text-sm font-medium text-[var(--text-strong)]" htmlFor="v2-resume">
                 Your Resume
               </label>
               <GlassTextarea
@@ -143,7 +143,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                 rows={10}
                 disabled={loading}
                 aria-required="true"
-                className="min-h-[200px] resize-y bg-white/[0.03] border-white/[0.08] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-white/80 placeholder:text-white/20"
+                className="min-h-[200px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
               />
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
@@ -152,7 +152,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                     type="button"
                     onClick={() => resumeFileRef.current?.click()}
                     disabled={loading || resumeFileLoading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-white/[0.12] px-2 py-1.5 text-xs text-white/50 transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-white/70 disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[var(--line-strong)] px-2 py-1.5 text-xs text-[var(--text-soft)] transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-[var(--text-muted)] disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
                     aria-label="Upload resume file"
                   >
                     {resumeFileLoading
@@ -160,10 +160,10 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                       : <Upload className="h-3 w-3" />
                     }
                     {resumeFileLoading ? 'Reading file...' : 'Upload file'}
-                    <span className="text-white/30">.txt, .docx, .pdf</span>
+                    <span className="text-[var(--text-soft)]">.txt, .docx, .pdf</span>
                   </button>
                   {resumeFileError && (
-                    <p className="text-[10px] text-[#f0b8b8]" role="alert">{resumeFileError}</p>
+                    <p className="text-[12px] text-[#f0b8b8]" role="alert">{resumeFileError}</p>
                   )}
                 </div>
                 <CharCounter value={resumeText} label="Resume" />
@@ -180,7 +180,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
 
             {/* Job Description */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-white/80" htmlFor="v2-jd">
+              <label className="block text-sm font-medium text-[var(--text-strong)]" htmlFor="v2-jd">
                 Job Description
               </label>
               <GlassTextarea
@@ -191,7 +191,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                 rows={8}
                 disabled={loading}
                 aria-required="true"
-                className="min-h-[200px] resize-y bg-white/[0.03] border-white/[0.08] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-white/80 placeholder:text-white/20"
+                className="min-h-[200px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
               />
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
@@ -200,7 +200,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                     type="button"
                     onClick={() => jdFileRef.current?.click()}
                     disabled={loading || jdFileLoading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-white/[0.12] px-2 py-1.5 text-xs text-white/50 transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-white/70 disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[var(--line-strong)] px-2 py-1.5 text-xs text-[var(--text-soft)] transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-[var(--text-muted)] disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
                     aria-label="Upload job description file"
                   >
                     {jdFileLoading
@@ -208,10 +208,10 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                       : <Upload className="h-3 w-3" />
                     }
                     {jdFileLoading ? 'Reading file...' : 'Upload file'}
-                    <span className="text-white/30">.txt, .docx, .pdf, .html</span>
+                    <span className="text-[var(--text-soft)]">.txt, .docx, .pdf, .html</span>
                   </button>
                   {jdFileError && (
-                    <p className="text-[10px] text-[#f0b8b8]" role="alert">{jdFileError}</p>
+                    <p className="text-[12px] text-[#f0b8b8]" role="alert">{jdFileError}</p>
                   )}
                 </div>
                 <CharCounter value={jobDescription} label="Job description" />

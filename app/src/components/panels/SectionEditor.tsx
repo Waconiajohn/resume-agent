@@ -21,7 +21,7 @@ export function SectionEditor({ content, section, onSave, onCancel }: SectionEdi
   const sectionLabel = section.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <GlassCard className="p-5 space-y-3 bg-white/[0.03] border-white/[0.08]">
+    <GlassCard className="p-5 space-y-3 bg-[var(--accent-muted)] border-[var(--line-soft)]">
       <GlassTextarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -31,7 +31,7 @@ export function SectionEditor({ content, section, onSave, onCancel }: SectionEdi
       />
       <span className="sr-only" aria-live="polite">{words} {words === 1 ? 'word' : 'words'}</span>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-white/40" aria-hidden="true">{words} {words === 1 ? 'word' : 'words'}</span>
+        <span className="text-xs text-[var(--text-soft)]" aria-hidden="true">{words} {words === 1 ? 'word' : 'words'}</span>
         <div className="flex items-center gap-2">
           <GlassButton variant="ghost" onClick={onCancel}>
             <X className="mr-1.5 h-3.5 w-3.5" />

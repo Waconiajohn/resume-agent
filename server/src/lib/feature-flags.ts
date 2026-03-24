@@ -1,42 +1,49 @@
-// ─── Production Feature Flag Reference ───────────────────────────────────────
+// ─── Production Feature Flag Defaults ────────────────────────────────────────
 //
-// All flags default to false (or their dev-appropriate value) in this file.
-// In production, set the following env vars to "true" via Railway dashboard
-// or your deployment environment. Do NOT change the defaults here — defaults
-// are intentionally conservative to protect local dev and staging environments.
+// Consumer-ready features default to TRUE. Niche/B2B/incomplete features
+// default to FALSE. In any environment, override with env vars (e.g.
+// FF_COVER_LETTER=false) via Railway dashboard or server/.env.
 //
-// BUILT AGENTS — set these to true in production:
+// ENABLED BY DEFAULT (consumer-ready agents and features):
 //
-//   FF_COVER_LETTER=true          Cover Letter Writer (Agent #8)
-//   FF_NETWORK_INTELLIGENCE=true  Network Intelligence (Agent #9)
-//   FF_INTERVIEW_PREP=true        Interview Prep Agent (Agent #10)
-//   FF_LINKEDIN_OPTIMIZER=true    LinkedIn Optimizer (Agent #11)
-//   FF_CONTENT_CALENDAR=true      Content Calendar (Agent #12)
-//   FF_NETWORKING_OUTREACH=true   Networking Outreach (Agent #13)
-//   FF_JOB_TRACKER=true           Job Application Tracker (Agent #14)
-//   FF_SALARY_NEGOTIATION=true    Salary Negotiation (Agent #15)
-//   FF_EXECUTIVE_BIO=true         Executive Bio (Agent #16)
-//   FF_CASE_STUDY=true            Portfolio / Case Study (Agent #17)
-//   FF_THANK_YOU_NOTE=true        Thank You Note Writer (Agent #18)
-//   FF_NINETY_DAY_PLAN=true       90-Day Plan Generator (Agent #20)
-//   FF_ONBOARDING=true            Onboarding Assessment Agent (Phase 1A)
-//   FF_MOCK_INTERVIEW=true        Mock Interview Simulation
-//   FF_JOB_FINDER=true            Job Finder
-//   FF_APPLICATION_PIPELINE=true  Application Pipeline CRUD
-//   FF_LINKEDIN_CONTENT=true      LinkedIn Content Writer
-//   FF_LINKEDIN_EDITOR=true       LinkedIn Profile Editor
-//   FF_NETWORKING_CRM=true        Networking CRM
-//   FF_INTERVIEW_DEBRIEF=true     Interview Debrief
-//   FF_MOMENTUM=true              Momentum Tracking (Phase 5)
-//   FF_RETIREMENT_BRIDGE=true     Retirement Bridge Assessment (Phase 6)
-//   FF_B2B_OUTPLACEMENT=true      B2B Outplacement Admin Portal (Phase 7)
+//   FF_COVER_LETTER           Cover Letter Writer
+//   FF_NETWORK_INTELLIGENCE   Network Intelligence
+//   FF_INTERVIEW_PREP         Interview Prep Agent
+//   FF_LINKEDIN_OPTIMIZER     LinkedIn Optimizer
+//   FF_LINKEDIN_EDITOR        LinkedIn Profile Editor
+//   FF_LINKEDIN_CONTENT       LinkedIn Content Writer
+//   FF_LINKEDIN_TOOLS         LinkedIn Studio utility endpoints
+//   FF_CONTENT_CALENDAR       Content Calendar
+//   FF_NETWORKING_OUTREACH    Networking Outreach
+//   FF_NETWORKING_CRM         Networking CRM
+//   FF_JOB_TRACKER            Job Application Tracker
+//   FF_JOB_FINDER             Job Finder
+//   FF_JOB_SEARCH             Job Search API (JSearch + Adzuna adapters)
+//   FF_APPLICATION_PIPELINE   Application Pipeline CRUD
+//   FF_SALARY_NEGOTIATION     Salary Negotiation
+//   FF_EXECUTIVE_BIO          Executive Bio
+//   FF_THANK_YOU_NOTE         Thank You Note Writer
+//   FF_NINETY_DAY_PLAN        90-Day Plan Generator
+//   FF_ONBOARDING             Onboarding Assessment Agent
+//   FF_MOCK_INTERVIEW         Mock Interview Simulation
+//   FF_INTERVIEW_DEBRIEF      Interview Debrief
+//   FF_MOMENTUM               Momentum Tracking
+//   FF_VIRTUAL_COACH          Virtual Coach conversational agent
+//   FF_RESUME_V2              Resume v2 pipeline (current production pipeline)
+//
+// DISABLED BY DEFAULT (niche, B2B, or incomplete):
+//
+//   FF_RETIREMENT_BRIDGE      Retirement Bridge (niche financial product)
+//   FF_B2B_OUTPLACEMENT       B2B Outplacement admin portal (enterprise only)
+//   FF_EXTENSION              Chrome Extension API (not yet released)
+//   FF_CASE_STUDY             Portfolio / Case Study (incomplete)
 //
 // INFRASTRUCTURE FLAGS — leave false unless scaling requires it:
 //
-//   FF_REDIS_BUS=false            Requires REDIS_URL; do not enable until agent
-//                                 loops are resumable and horizontal scaling needed
-//   FF_REDIS_RATE_LIMIT=false     Requires REDIS_URL; falls back to in-memory if
-//                                 Redis is unavailable
+//   FF_REDIS_BUS              Requires REDIS_URL; do not enable until agent
+//                             loops are resumable and horizontal scaling needed
+//   FF_REDIS_RATE_LIMIT       Requires REDIS_URL; falls back to in-memory if
+//                             Redis is unavailable
 //
 // Full deployment instructions: docs/DEPLOYMENT.md
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +80,7 @@ export const FF_REDIS_RATE_LIMIT = envBool('FF_REDIS_RATE_LIMIT', false);
 /**
  * FF_COVER_LETTER — Enable the Cover Letter product routes.
  *
- * Enabled by default because Cover Letter is a core workflow product.
+ * Default: true (consumer-ready).
  * Set FF_COVER_LETTER=false in server/.env to deactivate.
  */
 export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', true);
@@ -81,151 +88,151 @@ export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', true);
 /**
  * FF_NETWORK_INTELLIGENCE — Enable the Network Intelligence routes.
  *
- * When false (default), /api/ni/* returns 404.
- * Set FF_NETWORK_INTELLIGENCE=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_NETWORK_INTELLIGENCE=false in server/.env to deactivate.
  */
-export const FF_NETWORK_INTELLIGENCE = envBool('FF_NETWORK_INTELLIGENCE', false);
+export const FF_NETWORK_INTELLIGENCE = envBool('FF_NETWORK_INTELLIGENCE', true);
 
 /**
- * FF_INTERVIEW_PREP — Enable the Interview Prep Agent (#10) routes.
+ * FF_INTERVIEW_PREP — Enable the Interview Prep Agent routes.
  *
- * When false (default), /api/interview-prep/* returns 404.
- * Set FF_INTERVIEW_PREP=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_INTERVIEW_PREP=false in server/.env to deactivate.
  */
-export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', false);
+export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', true);
 
 /**
- * FF_LINKEDIN_OPTIMIZER — Enable the LinkedIn Optimizer Agent (#11) routes.
+ * FF_LINKEDIN_OPTIMIZER — Enable the LinkedIn Optimizer Agent routes.
  *
- * When false (default), /api/linkedin-optimizer/* returns 404.
- * Set FF_LINKEDIN_OPTIMIZER=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_LINKEDIN_OPTIMIZER=false in server/.env to deactivate.
  */
-export const FF_LINKEDIN_OPTIMIZER = envBool('FF_LINKEDIN_OPTIMIZER', false);
+export const FF_LINKEDIN_OPTIMIZER = envBool('FF_LINKEDIN_OPTIMIZER', true);
 
 /**
- * FF_CONTENT_CALENDAR — Enable the Content Calendar Agent (#12) routes.
+ * FF_CONTENT_CALENDAR — Enable the Content Calendar Agent routes.
  *
- * When false (default), /api/content-calendar/* returns 404.
- * Set FF_CONTENT_CALENDAR=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_CONTENT_CALENDAR=false in server/.env to deactivate.
  */
-export const FF_CONTENT_CALENDAR = envBool('FF_CONTENT_CALENDAR', false);
+export const FF_CONTENT_CALENDAR = envBool('FF_CONTENT_CALENDAR', true);
 
 /**
- * FF_NETWORKING_OUTREACH — Enable the Networking Outreach Agent (#13) routes.
+ * FF_NETWORKING_OUTREACH — Enable the Networking Outreach Agent routes.
  *
- * When false (default), /api/networking-outreach/* returns 404.
- * Set FF_NETWORKING_OUTREACH=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_NETWORKING_OUTREACH=false in server/.env to deactivate.
  */
-export const FF_NETWORKING_OUTREACH = envBool('FF_NETWORKING_OUTREACH', false);
+export const FF_NETWORKING_OUTREACH = envBool('FF_NETWORKING_OUTREACH', true);
 
 /**
- * FF_JOB_TRACKER — Enable the Job Application Tracker Agent (#14) routes.
+ * FF_JOB_TRACKER — Enable the Job Application Tracker Agent routes.
  *
- * When false (default), /api/job-tracker/* returns 404.
- * Set FF_JOB_TRACKER=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_JOB_TRACKER=false in server/.env to deactivate.
  */
-export const FF_JOB_TRACKER = envBool('FF_JOB_TRACKER', false);
+export const FF_JOB_TRACKER = envBool('FF_JOB_TRACKER', true);
 
 /**
- * FF_SALARY_NEGOTIATION — Enable the Salary Negotiation Agent (#15) routes.
+ * FF_SALARY_NEGOTIATION — Enable the Salary Negotiation Agent routes.
  *
- * Enabled by default because Salary Negotiation is part of the core job-workspace flow.
+ * Default: true (consumer-ready, core job-workspace flow).
  * Set FF_SALARY_NEGOTIATION=false in server/.env to deactivate.
  */
 export const FF_SALARY_NEGOTIATION = envBool('FF_SALARY_NEGOTIATION', true);
 
 /**
- * FF_EXECUTIVE_BIO — Enable the Executive Bio Agent (#16) routes.
+ * FF_EXECUTIVE_BIO — Enable the Executive Bio Agent routes.
  *
- * When false (default), /api/executive-bio/* returns 404.
- * Set FF_EXECUTIVE_BIO=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_EXECUTIVE_BIO=false in server/.env to deactivate.
  */
-export const FF_EXECUTIVE_BIO = envBool('FF_EXECUTIVE_BIO', false);
+export const FF_EXECUTIVE_BIO = envBool('FF_EXECUTIVE_BIO', true);
 
 /**
- * FF_CASE_STUDY — Enable the Case Study Agent (#17) routes.
+ * FF_CASE_STUDY — Enable the Case Study Agent routes.
  *
- * When false (default), /api/case-study/* returns 404.
+ * Default: false (incomplete product).
  * Set FF_CASE_STUDY=true in server/.env to activate.
  */
 export const FF_CASE_STUDY = envBool('FF_CASE_STUDY', false);
 
 /**
- * FF_THANK_YOU_NOTE — Enable the Thank You Note Agent (#18) routes.
+ * FF_THANK_YOU_NOTE — Enable the Thank You Note Agent routes.
  *
- * When false (default), /api/thank-you-note/* returns 404.
- * Set FF_THANK_YOU_NOTE=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_THANK_YOU_NOTE=false in server/.env to deactivate.
  */
-export const FF_THANK_YOU_NOTE = envBool('FF_THANK_YOU_NOTE', false);
+export const FF_THANK_YOU_NOTE = envBool('FF_THANK_YOU_NOTE', true);
 
 /**
- * FF_NINETY_DAY_PLAN — Enable the 90-Day Plan Agent (#20) routes.
+ * FF_NINETY_DAY_PLAN — Enable the 90-Day Plan Agent routes.
  *
- * When false (default), /api/ninety-day-plan/* returns 404.
- * Set FF_NINETY_DAY_PLAN=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_NINETY_DAY_PLAN=false in server/.env to deactivate.
  */
-export const FF_NINETY_DAY_PLAN = envBool('FF_NINETY_DAY_PLAN', false);
+export const FF_NINETY_DAY_PLAN = envBool('FF_NINETY_DAY_PLAN', true);
 
 /**
  * FF_ONBOARDING — Enable the Onboarding Assessment Agent routes.
  *
- * When false (default), /api/onboarding/* returns 404.
- * Set FF_ONBOARDING=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_ONBOARDING=false in server/.env to deactivate.
  */
-export const FF_ONBOARDING = envBool('FF_ONBOARDING', false);
+export const FF_ONBOARDING = envBool('FF_ONBOARDING', true);
 
 // ─── Phase 4: CareerIQ Simulation Suite ──────────────────────────────
 
 /**
  * FF_MOCK_INTERVIEW — Enable the Mock Interview Simulation routes.
  *
- * When false (default), /api/mock-interview/* returns 404.
- * Set FF_MOCK_INTERVIEW=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_MOCK_INTERVIEW=false in server/.env to deactivate.
  */
-export const FF_MOCK_INTERVIEW = envBool('FF_MOCK_INTERVIEW', false);
+export const FF_MOCK_INTERVIEW = envBool('FF_MOCK_INTERVIEW', true);
 
 // ─── Phase 3: Active Campaign Suite ──────────────────────────────────
 
 /**
  * FF_JOB_FINDER — Enable the Job Finder agent routes.
  *
- * When false (default), /api/job-finder/* returns 404.
- * Set FF_JOB_FINDER=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_JOB_FINDER=false in server/.env to deactivate.
  */
-export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', false);
+export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', true);
 
 /**
  * FF_APPLICATION_PIPELINE — Enable the Application Pipeline CRUD routes.
  *
- * When false (default), /api/applications/* returns 404.
- * Set FF_APPLICATION_PIPELINE=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_APPLICATION_PIPELINE=false in server/.env to deactivate.
  */
-export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', false);
+export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', true);
 
 /**
  * FF_JOB_SEARCH — Enable the Job Search API routes (JSearch + Adzuna adapters).
  *
- * When false (default), /api/job-search/* returns 404.
- * Set FF_JOB_SEARCH=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_JOB_SEARCH=false in server/.env to deactivate.
  * Requires: JSEARCH_API_KEY (RapidAPI) and/or ADZUNA_APP_ID + ADZUNA_API_KEY.
  */
-export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', false);
+export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', true);
 
 /**
  * FF_LINKEDIN_CONTENT — Enable the LinkedIn Content Writer agent routes.
  *
- * When false (default), /api/linkedin-content/* returns 404.
- * Set FF_LINKEDIN_CONTENT=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_LINKEDIN_CONTENT=false in server/.env to deactivate.
  */
-export const FF_LINKEDIN_CONTENT = envBool('FF_LINKEDIN_CONTENT', false);
+export const FF_LINKEDIN_CONTENT = envBool('FF_LINKEDIN_CONTENT', true);
 
 /**
  * FF_LINKEDIN_EDITOR — Enable the LinkedIn Profile Editor agent routes.
  *
- * When false (default), /api/linkedin-editor/* returns 404.
- * Set FF_LINKEDIN_EDITOR=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_LINKEDIN_EDITOR=false in server/.env to deactivate.
  */
-export const FF_LINKEDIN_EDITOR = envBool('FF_LINKEDIN_EDITOR', false);
+export const FF_LINKEDIN_EDITOR = envBool('FF_LINKEDIN_EDITOR', true);
 
 /**
  * FF_LINKEDIN_TOOLS — Enable the LinkedIn Studio utility tool endpoints.
@@ -234,46 +241,46 @@ export const FF_LINKEDIN_EDITOR = envBool('FF_LINKEDIN_EDITOR', false);
  *   /api/linkedin-tools/recruiter-sim    — Recruiter search simulator
  *   /api/linkedin-tools/writing-analyzer — Writing quality analyzer
  *
- * When false (default), /api/linkedin-tools/* returns 404.
- * Set FF_LINKEDIN_TOOLS=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_LINKEDIN_TOOLS=false in server/.env to deactivate.
  */
-export const FF_LINKEDIN_TOOLS = envBool('FF_LINKEDIN_TOOLS', false);
+export const FF_LINKEDIN_TOOLS = envBool('FF_LINKEDIN_TOOLS', true);
 
 /**
  * FF_NETWORKING_CRM — Enable the Networking CRM CRUD routes.
  *
- * When false (default), /api/networking/* returns 404.
- * Set FF_NETWORKING_CRM=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_NETWORKING_CRM=false in server/.env to deactivate.
  */
-export const FF_NETWORKING_CRM = envBool('FF_NETWORKING_CRM', false);
+export const FF_NETWORKING_CRM = envBool('FF_NETWORKING_CRM', true);
 
 // ─── Phase 4: Interview Prep Enhancement ──────────────────────────────────────
 
 /**
  * FF_INTERVIEW_DEBRIEF — Enable the Interview Debrief CRUD routes.
  *
- * When false (default), /api/interview-debriefs/* returns 404.
- * Set FF_INTERVIEW_DEBRIEF=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_INTERVIEW_DEBRIEF=false in server/.env to deactivate.
  */
-export const FF_INTERVIEW_DEBRIEF = envBool('FF_INTERVIEW_DEBRIEF', false);
+export const FF_INTERVIEW_DEBRIEF = envBool('FF_INTERVIEW_DEBRIEF', true);
 
 // ─── Phase 5: Emotional Intelligence Layer ────────────────────────────────────
 
 /**
  * FF_MOMENTUM — Enable Momentum Tracking routes (Sprint 49, Stories 5-1 to 5-3).
  *
- * When false (default), /api/momentum/* returns 404.
- * Set FF_MOMENTUM=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_MOMENTUM=false in server/.env to deactivate.
  * Enables: activity logging, streak computation, coaching nudges, stall detection.
  */
-export const FF_MOMENTUM = envBool('FF_MOMENTUM', false);
+export const FF_MOMENTUM = envBool('FF_MOMENTUM', true);
 
 // ─── Phase 6: Retirement Bridge ───────────────────────────────────────────────
 
 /**
  * FF_RETIREMENT_BRIDGE — Enable the Retirement Bridge Assessment Agent routes.
  *
- * When false (default), /api/retirement-bridge/* returns 404.
+ * Default: false (niche financial product, not consumer-ready for general audience).
  * Set FF_RETIREMENT_BRIDGE=true in server/.env to activate.
  * Assesses retirement readiness across 7 dimensions. Never gives financial advice.
  */
@@ -284,7 +291,7 @@ export const FF_RETIREMENT_BRIDGE = envBool('FF_RETIREMENT_BRIDGE', false);
 /**
  * FF_B2B_OUTPLACEMENT — Enable the B2B Outplacement admin portal routes.
  *
- * When false (default), /api/b2b/* returns 404.
+ * Default: false (enterprise/B2B product, not for general consumer use).
  * Set FF_B2B_OUTPLACEMENT=true in server/.env to activate.
  * Governs: organization CRUD, contract management, seat provisioning/activation,
  * cohort management, and aggregate engagement metrics endpoints.
@@ -296,7 +303,7 @@ export const FF_B2B_OUTPLACEMENT = envBool('FF_B2B_OUTPLACEMENT', false);
 /**
  * FF_EXTENSION — Enable the Chrome Extension API routes.
  *
- * When false (default), /api/extension/* returns 404.
+ * Default: false (extension not yet released).
  * Set FF_EXTENSION=true in server/.env to activate.
  * Provides: resume-lookup, job-discover, apply-status, auth-verify, infer-field.
  */
@@ -307,12 +314,12 @@ export const FF_EXTENSION = envBool('FF_EXTENSION', false);
 /**
  * FF_VIRTUAL_COACH — Enable the Virtual Coach conversational agent routes.
  *
- * When false (default), /api/coach/* returns 404.
- * Set FF_VIRTUAL_COACH=true in server/.env to activate.
+ * Default: true (consumer-ready).
+ * Set FF_VIRTUAL_COACH=false in server/.env to deactivate.
  * The Virtual Coach guides clients through the 8-phase coaching journey,
  * orients them on next steps, and routes them to the appropriate product.
  */
-export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', false);
+export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', true);
 
 // ─── Resume v2 Pipeline ───────────────────────────────────────────────────────
 

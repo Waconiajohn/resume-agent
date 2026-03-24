@@ -60,7 +60,7 @@ function NetworkBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
     <span
-      className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
+      className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
       title={`${count} network contact${count === 1 ? '' : 's'} at this company`}
     >
       <Users size={9} />
@@ -76,12 +76,12 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
       ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
       : score >= 60
         ? 'bg-[#98b3ff]/10 border-[#98b3ff]/20 text-[#98b3ff]'
-        : 'bg-white/[0.04] border-white/[0.08] text-white/50';
+        : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)]';
 
   return (
     <span
       className={cn(
-        'inline-flex flex-shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] tabular-nums',
+        'inline-flex flex-shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] tabular-nums',
         colorClass,
       )}
     >
@@ -124,9 +124,9 @@ export function RadarSection({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Radar Search</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Radar Search</h3>
         {jobs.length > 0 && (
-          <span className="ml-auto text-[11px] text-white/30">{jobs.length} results</span>
+          <span className="ml-auto text-[13px] text-[var(--text-soft)]">{jobs.length} results</span>
         )}
       </div>
 
@@ -135,7 +135,7 @@ export function RadarSection({
         <div className="relative flex-[3]">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-soft)] pointer-events-none"
           />
           <input
             type="text"
@@ -143,13 +143,13 @@ export function RadarSection({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Job title, keywords..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div className="relative flex-[2]">
           <MapPin
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-soft)] pointer-events-none"
           />
           <input
             type="text"
@@ -157,7 +157,7 @@ export function RadarSection({
             onChange={(e) => setLocation(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Location or Remote"
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
       </div>
@@ -167,7 +167,7 @@ export function RadarSection({
         <select
           value={datePosted}
           onChange={(e) => setDatePosted(e.target.value as RadarSearchFilters['datePosted'])}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
         >
           <option value="any">Any time</option>
           <option value="24h">Last 24h</option>
@@ -179,7 +179,7 @@ export function RadarSection({
         <select
           value={remoteType}
           onChange={(e) => setRemoteType(e.target.value as RadarSearchFilters['remoteType'])}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
         >
           <option value="any">Any work type</option>
           <option value="remote">Remote</option>
@@ -225,8 +225,8 @@ export function RadarSection({
       {/* Empty state */}
       {!loading && !error && jobs.length === 0 && (
         <div className="py-8 text-center">
-          <Search size={24} className="mx-auto mb-3 text-white/15" />
-          <p className="text-[12px] text-white/25">
+          <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
+          <p className="text-[12px] text-[var(--text-soft)]">
             Search for jobs to see results here. Enter a title and location above.
           </p>
         </div>
@@ -240,25 +240,25 @@ export function RadarSection({
             return (
               <div
                 key={job.external_id}
-                className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all"
+                className="group rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 hover:bg-[var(--accent-muted)] hover:border-[var(--line-strong)] transition-all"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="text-[14px] font-medium text-white/80 group-hover:text-white/90 transition-colors leading-snug">
+                      <div className="text-[14px] font-medium text-[var(--text-muted)] group-hover:text-[var(--text-strong)] transition-colors leading-snug">
                         {job.title}
                       </div>
                       <ScoreBadge score={job.match_score} />
                     </div>
 
-                    <div className="flex items-center gap-2 text-[12px] text-white/40 flex-wrap">
+                    <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)] flex-wrap">
                       <span className="flex items-center gap-1">
                         <Building2 size={11} />
                         {job.company}
                       </span>
                       {job.location && (
                         <>
-                          <span className="text-white/20">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <span className="flex items-center gap-1">
                             <MapPin size={11} />
                             {job.location}
@@ -267,7 +267,7 @@ export function RadarSection({
                       )}
                       {salary && (
                         <>
-                          <span className="text-white/20">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <span className="flex items-center gap-1">
                             <DollarSign size={11} />
                             {salary}
@@ -276,29 +276,29 @@ export function RadarSection({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-white/25 flex-wrap">
+                    <div className="flex items-center gap-2 mt-1 text-[13px] text-[var(--text-soft)] flex-wrap">
                       <span>{formatPostedDate(job.posted_date)}</span>
                       {job.source && (
                         <>
-                          <span className="text-white/15">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <span className="capitalize">{job.source}</span>
                         </>
                       )}
                       {job.remote_type && (
                         <>
-                          <span className="text-white/15">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <span className="capitalize">{job.remote_type}</span>
                         </>
                       )}
                       {job.employment_type && (
                         <>
-                          <span className="text-white/15">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <span className="capitalize">{job.employment_type}</span>
                         </>
                       )}
                       {(job.network_contacts?.length ?? 0) > 0 && (
                         <>
-                          <span className="text-white/15">·</span>
+                          <span className="text-[var(--text-soft)]">·</span>
                           <NetworkBadge count={job.network_contacts!.length} />
                         </>
                       )}
@@ -310,7 +310,7 @@ export function RadarSection({
                     <button
                       type="button"
                       onClick={() => onPromote(job)}
-                      className="flex items-center gap-1 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-2.5 py-1.5 text-[11px] text-[#b5dec2]/60 hover:text-[#b5dec2]/90 hover:bg-[#b5dec2]/[0.08] transition-colors"
+                      className="flex items-center gap-1 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-2.5 py-1.5 text-[13px] text-[#b5dec2]/60 hover:text-[#b5dec2]/90 hover:bg-[#b5dec2]/[0.08] transition-colors"
                     >
                       <Plus size={11} />
                       Promote
@@ -318,7 +318,7 @@ export function RadarSection({
                     <button
                       type="button"
                       onClick={() => onDismiss(job.external_id)}
-                      className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[11px] text-white/30 hover:text-white/55 hover:bg-white/[0.05] transition-colors"
+                      className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
                     >
                       <X size={11} />
                       Dismiss

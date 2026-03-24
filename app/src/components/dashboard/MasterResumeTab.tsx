@@ -204,7 +204,7 @@ export function MasterResumeTab({
       <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <GlassCard key={i} className="p-4">
-            <div className="h-4 w-2/3 motion-safe:animate-pulse rounded-lg bg-white/[0.05]" />
+            <div className="h-4 w-2/3 motion-safe:animate-pulse rounded-lg bg-[var(--accent-muted)]" />
           </GlassCard>
         ))}
       </div>
@@ -213,9 +213,9 @@ export function MasterResumeTab({
 
   if (!resumeLoading && !resume) {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-12 text-center">
-        <p className="text-sm text-white/40">No master resume found.</p>
-        <p className="mt-1 text-xs text-white/30">Complete a session and save your resume to get started.</p>
+      <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-6 py-12 text-center">
+        <p className="text-sm text-[var(--text-soft)]">No master resume found.</p>
+        <p className="mt-1 text-xs text-[var(--text-soft)]">Complete a session and save your resume to get started.</p>
       </div>
     );
   }
@@ -229,7 +229,7 @@ export function MasterResumeTab({
             <select
               value={selectedResumeId ?? ''}
               onChange={(e) => void handleSelectResume(e.target.value)}
-              className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-1.5 text-xs text-white/80 outline-none focus:border-white/[0.22]"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-muted)] outline-none focus:border-[var(--line-strong)]"
             >
               {resumes.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -239,7 +239,7 @@ export function MasterResumeTab({
             </select>
           )}
           {resume && (
-            <div className="flex items-center gap-2 text-xs text-white/40">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]">
               <span>v{resume.version}</span>
               <span>·</span>
               <span>Updated {timeAgo(resume.updated_at)}</span>
@@ -273,18 +273,18 @@ export function MasterResumeTab({
 
       {resumeLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+          <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
         </div>
       ) : draft ? (
         <>
           {/* Contact Info */}
           {draft.contact_info && (
             <GlassCard className="p-4">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Contact</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Contact</h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(['name', 'email', 'phone', 'linkedin', 'location'] as const).map((field) => (
                   <div key={field}>
-                    <label className="mb-0.5 block text-[10px] uppercase tracking-wider text-white/35">
+                    <label className="mb-0.5 block text-[12px] uppercase tracking-wider text-[var(--text-soft)]">
                       {field}
                     </label>
                     <EditableField
@@ -305,7 +305,7 @@ export function MasterResumeTab({
 
           {/* Summary */}
           <GlassCard className="p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Summary</h3>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Summary</h3>
             <EditableField
               value={draft.summary}
               onSave={updateSummary}
@@ -325,7 +325,7 @@ export function MasterResumeTab({
             );
             return (
               <div>
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Experience</h3>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Experience</h3>
                 <div className="space-y-2">
                   {draft.experience.map((role, i) => {
                     const roleEvidence = byRole.get(i) ?? [];
@@ -339,20 +339,20 @@ export function MasterResumeTab({
                         />
                         {roleEvidence.length > 0 && (
                           <div className="ml-4 mt-1 mb-2 space-y-1">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/35">Evidence ({roleEvidence.length})</span>
+                            <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">Evidence ({roleEvidence.length})</span>
                             {roleEvidence.map((item) => {
                               const originalIndex = (resume?.evidence_items ?? []).indexOf(item);
                               const badge = SOURCE_BADGE[item.source] ?? SOURCE_BADGE.crafted;
                               return (
-                                <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
-                                  <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
-                                  <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
+                                <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] px-3 py-2">
+                                  <p className="flex-1 min-w-0 text-xs leading-relaxed text-[var(--text-muted)]">{item.text}</p>
+                                  <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
                                     {badge.label}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => void deleteEvidence(originalIndex)}
-                                    className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/25 transition-colors hover:text-[#f0b8b8]"
+                                    className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
                                     aria-label="Delete evidence"
                                   >
                                     <Trash2 className="h-3 w-3" />
@@ -370,26 +370,26 @@ export function MasterResumeTab({
                 {/* Unmatched evidence */}
                 {unmatched.length > 0 && (
                   <div className="mt-4">
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/35">Unassigned Evidence ({unmatched.length})</h3>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Unassigned Evidence ({unmatched.length})</h3>
                     <div className="space-y-1">
                       {unmatched.map((item) => {
                         const originalIndex = (resume?.evidence_items ?? []).indexOf(item);
                         const badge = SOURCE_BADGE[item.source] ?? SOURCE_BADGE.crafted;
                         return (
-                          <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
-                            <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
-                            <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
+                          <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] px-3 py-2">
+                            <p className="flex-1 min-w-0 text-xs leading-relaxed text-[var(--text-muted)]">{item.text}</p>
+                            <span className={cn('shrink-0 rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]', badge.classes)}>
                               {badge.label}
                             </span>
                             {item.category && (
-                              <span className="shrink-0 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/45">
+                              <span className="shrink-0 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-soft)]">
                                 {item.category}
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => void deleteEvidence(originalIndex)}
-                              className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/25 transition-colors hover:text-[#f0b8b8]"
+                              className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
                               aria-label="Delete evidence"
                             >
                               <Trash2 className="h-3 w-3" />
@@ -407,7 +407,7 @@ export function MasterResumeTab({
           {/* Skills */}
           {Object.keys(draft.skills).length > 0 && (
             <div>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Skills</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Skills</h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {Object.entries(draft.skills).map(([category, items]) => (
                   <SkillsCategoryCard
@@ -426,14 +426,14 @@ export function MasterResumeTab({
           {/* Education */}
           {draft.education.length > 0 && (
             <GlassCard className="p-4">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Education</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Education</h3>
               <div className="space-y-2">
                 {draft.education.map((edu, i) => (
-                  <div key={i} className="text-sm text-white/80">
+                  <div key={i} className="text-sm text-[var(--text-muted)]">
                     <span className="font-medium">{edu.degree}</span>
                     {edu.field && <span> in {edu.field}</span>}
                     {edu.institution && <span>, {edu.institution}</span>}
-                    {edu.year && <span className="text-white/50"> ({edu.year})</span>}
+                    {edu.year && <span className="text-[var(--text-soft)]"> ({edu.year})</span>}
                   </div>
                 ))}
               </div>
@@ -443,13 +443,13 @@ export function MasterResumeTab({
           {/* Certifications */}
           {draft.certifications.length > 0 && (
             <GlassCard className="p-4">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Certifications</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Certifications</h3>
               <div className="space-y-1.5">
                 {draft.certifications.map((cert, i) => (
-                  <div key={i} className="text-sm text-white/80">
+                  <div key={i} className="text-sm text-[var(--text-muted)]">
                     <span className="font-medium">{cert.name}</span>
-                    {cert.issuer && <span className="text-white/55"> — {cert.issuer}</span>}
-                    {cert.year && <span className="text-white/40"> ({cert.year})</span>}
+                    {cert.issuer && <span className="text-[var(--text-soft)]"> — {cert.issuer}</span>}
+                    {cert.year && <span className="text-[var(--text-soft)]"> ({cert.year})</span>}
                   </div>
                 ))}
               </div>
@@ -459,12 +459,12 @@ export function MasterResumeTab({
           {/* Version history */}
           {history.length > 0 && !isEditing && (
             <GlassCard className="p-4">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Version History</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">Version History</h3>
               <div className="space-y-2">
                 {history.map((entry) => (
                   <div key={entry.id} className="flex items-start justify-between gap-3">
-                    <p className="text-xs text-white/70">{entry.changes_summary}</p>
-                    <span className="shrink-0 text-xs text-white/35">{timeAgo(entry.created_at)}</span>
+                    <p className="text-xs text-[var(--text-muted)]">{entry.changes_summary}</p>
+                    <span className="shrink-0 text-xs text-[var(--text-soft)]">{timeAgo(entry.created_at)}</span>
                   </div>
                 ))}
               </div>

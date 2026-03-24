@@ -11,6 +11,7 @@ export type LoadableV2PipelineSnapshot = {
   narrativeStrategy?: V2PipelineData['narrativeStrategy'];
   resumeDraft?: V2PipelineData['resumeDraft'];
   assembly?: V2PipelineData['assembly'];
+  inlineSuggestions?: V2PipelineData['inlineSuggestions'];
   error?: string | null;
   stageMessages?: V2PipelineData['stageMessages'];
 };
@@ -58,6 +59,8 @@ export function hydrateV2SessionLoad(
       narrativeStrategy: pd.narrativeStrategy ?? null,
       resumeDraft: pd.resumeDraft ?? null,
       assembly: pd.assembly ?? null,
+      inlineSuggestions: pd.inlineSuggestions ?? [],
+      verificationDetail: null,
       error: pd.error ?? body.error_message ?? null,
       stageMessages: pd.stageMessages ?? [],
     },

@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type { PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const STAGE_COLORS: Record<PipelineStage, string> = {
-  saved: 'bg-white/10 text-white/50',
+  saved: 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
   researching: 'bg-[#98b3ff]/10 text-[#98b3ff]',
   applied: 'bg-[#f0d99f]/10 text-[#f0d99f]',
   screening: 'bg-[#f0d99f]/15 text-[#f0d99f]',
@@ -16,7 +16,7 @@ export function StageBadge({ stage }: { stage: PipelineStage }) {
   return (
     <span
       className={cn(
-        'rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+        'rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
         STAGE_COLORS[stage],
       )}
     >

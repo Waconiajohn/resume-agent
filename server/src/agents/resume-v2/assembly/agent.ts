@@ -10,6 +10,11 @@
 import type {
   AssemblyInput,
   AssemblyOutput,
+  CandidateIntelligenceOutput,
+  GapAnalysisOutput,
+  HiringManagerScan,
+  InlineSuggestion,
+  JobIntelligenceOutput,
   ResumeDraftOutput,
   PositioningAssessment,
   PositioningAssessmentEntry,
@@ -29,6 +34,16 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
     ? buildPositioningAssessment(input)
     : undefined;
 
+  // Run hiring manager scan on the finalized resume
+  const hiring_manager_scan = input.job_intelligence
+    ? computeHiringManagerScan(final_resume, input.job_intelligence)
+    : undefined;
+
+  // Compute inline suggestions against the final (tone-fixed) resume, not the raw draft
+  const inline_suggestions = input.candidate_intelligence && input.gap_analysis
+    ? computeInlineSuggestions(input.candidate_intelligence, final_resume, input.gap_analysis)
+    : undefined;
+
   return {
     final_resume,
     scores: {
@@ -38,6 +53,8 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
     },
     quick_wins,
     positioning_assessment,
+    hiring_manager_scan,
+    inline_suggestions,
   };
 }
 
@@ -237,4 +254,788 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
     after_score,
     strategies_applied,
   };
+}
+
+// ─── Hiring Manager Scan ─────────────────────────────────────────────────────
+
+/**
+ * Simulates the 5-8 second hiring manager scan.
+ *
+ * Pure text analysis of the finalized resume against JD signals.
+ * No LLM call — deterministic, fast, runs at the end of assembly.
+ *
+ * Scoring rubric (each dimension 0-100, final score is weighted average):
+ *   header_impact        — 20%
+ *   summary_clarity      — 30%
+ *   above_fold_strength  — 25%
+ *   keyword_visibility   — 25%
+ */
+export function computeHiringManagerScan(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): HiringManagerScan {
+  const header = scoreHeaderImpact(resume, jd);
+  const summary = scoreSummaryClarity(resume, jd);
+  const aboveFold = scoreAboveFoldStrength(resume, jd);
+  const keywords = scoreKeywordVisibility(resume, jd);
+
+  const scan_score = Math.round(
+    header.score * 0.20 +
+    summary.score * 0.30 +
+    aboveFold.score * 0.25 +
+    keywords.score * 0.25,
+  );
+
+  const red_flags = detectRedFlags(resume, jd);
+  const quick_wins = buildQuickWins(header, summary, aboveFold, keywords, red_flags);
+
+  // A resume passes the scan if it scores >= 60 and has no high-severity red flags
+  const pass = scan_score >= 60 && red_flags.length === 0;
+
+  return {
+    pass,
+    scan_score,
+    header_impact: header,
+    summary_clarity: summary,
+    above_fold_strength: aboveFold,
+    keyword_visibility: keywords,
+    red_flags,
+    quick_wins,
+  };
+}
+
+// ─── Dimension scorers ────────────────────────────────────────────────────────
+
+/**
+ * Header Impact (2-second check).
+ *
+ * Checks:
+ * - Branded title is present (25 pts)
+ * - Branded title contains a keyword from the JD role title or core competencies (50 pts)
+ * - Contact info is complete — name + email + phone (25 pts)
+ */
+function scoreHeaderImpact(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): { score: number; note: string } {
+  let score = 0;
+  const notes: string[] = [];
+
+  const brandedTitle = resume.header.branded_title?.trim() ?? '';
+  const titleLower = brandedTitle.toLowerCase();
+
+  if (brandedTitle.length > 0) {
+    score += 25;
+  } else {
+    notes.push('No branded title in header');
+  }
+
+  // Check title alignment with JD role and top competencies
+  const jdSignals = [
+    jd.role_title,
+    ...jd.core_competencies.filter(c => c.importance === 'must_have').map(c => c.competency),
+    ...jd.language_keywords.slice(0, 5),
+  ].map(s => s.toLowerCase());
+
+  const titleMatches = jdSignals.filter(signal =>
+    signal.split(/\s+/).some(word => word.length > 3 && titleLower.includes(word)),
+  );
+
+  if (titleMatches.length >= 2) {
+    score += 50;
+  } else if (titleMatches.length === 1) {
+    score += 30;
+    notes.push('Branded title has weak alignment with role requirements');
+  } else {
+    notes.push('Branded title does not reflect target role language');
+  }
+
+  // Contact completeness
+  const hasName = (resume.header.name?.trim().length ?? 0) > 0;
+  const hasEmail = (resume.header.email?.trim().length ?? 0) > 0;
+  const hasPhone = (resume.header.phone?.trim().length ?? 0) > 0;
+
+  if (hasName && hasEmail && hasPhone) {
+    score += 25;
+  } else {
+    const missing: string[] = [];
+    if (!hasName) missing.push('name');
+    if (!hasEmail) missing.push('email');
+    if (!hasPhone) missing.push('phone');
+    notes.push(`Header missing: ${missing.join(', ')}`);
+  }
+
+  const note = notes.length > 0
+    ? notes.join('. ')
+    : 'Header is compelling and role-aligned';
+
+  return { score: Math.min(score, 100), note };
+}
+
+/**
+ * Summary Clarity (3-second check).
+ *
+ * Checks:
+ * - Summary is present and non-trivial (>= 50 chars)
+ * - First 2 sentences contain JD role title or must-have competency
+ * - Summary is concise (< 600 chars — avoids wall-of-text)
+ * - No generic filler phrases ("results-driven", "dynamic", "passionate about")
+ */
+const GENERIC_FILLER = [
+  'results-driven',
+  'results driven',
+  'dynamic professional',
+  'passionate about',
+  'highly motivated',
+  'team player',
+  'strategic thinker',
+  'thought leader',
+  'leverage synergies',
+  'hit the ground running',
+  'go-getter',
+];
+
+function scoreSummaryClarity(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): { score: number; note: string } {
+  const summary = resume.executive_summary.content?.trim() ?? '';
+  const notes: string[] = [];
+  let score = 0;
+
+  if (summary.length < 50) {
+    return { score: 0, note: 'No executive summary found — a missing summary kills the scan' };
+  }
+
+  // Summary present and non-trivial
+  score += 25;
+
+  // First-two-sentences clarity: check whether they name the candidate's domain and value
+  const sentences = summary.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
+  const firstTwo = sentences.slice(0, 2).join(' ').toLowerCase();
+
+  const mustHaveCompetencies = jd.core_competencies
+    .filter(c => c.importance === 'must_have')
+    .map(c => c.competency.toLowerCase());
+
+  const roleTitleWords = jd.role_title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+  const firstTwoMatchesRole = roleTitleWords.some(w => firstTwo.includes(w));
+  const firstTwoMatchesCompetency = mustHaveCompetencies.some(comp =>
+    comp.split(/\s+/).some(w => w.length > 3 && firstTwo.includes(w)),
+  );
+
+  if (firstTwoMatchesRole && firstTwoMatchesCompetency) {
+    score += 40;
+  } else if (firstTwoMatchesRole || firstTwoMatchesCompetency) {
+    score += 25;
+    notes.push('First two sentences could more directly signal the target role and core competencies');
+  } else {
+    notes.push('First two sentences do not reflect the target role or must-have competencies');
+  }
+
+  // Conciseness
+  if (summary.length <= 600) {
+    score += 20;
+  } else {
+    notes.push('Summary is too long — hiring managers stop reading after ~4 lines');
+  }
+
+  // Filler-free
+  const summaryLower = summary.toLowerCase();
+  const fillerFound = GENERIC_FILLER.filter(f => summaryLower.includes(f));
+  if (fillerFound.length === 0) {
+    score += 15;
+  } else {
+    notes.push(`Remove generic filler: "${fillerFound[0]}"`);
+  }
+
+  const note = notes.length > 0
+    ? notes.join('. ')
+    : 'Summary is clear, concise, and role-aligned';
+
+  return { score: Math.min(score, 100), note };
+}
+
+/**
+ * Above-the-Fold Strength.
+ *
+ * "Above the fold" = header + summary + core competencies + selected accomplishments.
+ * Checks:
+ * - Core competencies are present (at least 3)
+ * - At least 2 competencies match JD must-have or important signals
+ * - Selected accomplishments present (at least 1)
+ * - At least 1 accomplishment contains a quantified metric
+ */
+const METRIC_PATTERN = /\b\d[\d,.]*\s*(%|x|X|\$|M|B|K|million|billion|thousand|percent|pts?|points?|basis points?)\b|\b\d{1,3}(,\d{3})+\b|\$[\d,.]+/;
+
+function scoreAboveFoldStrength(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): { score: number; note: string } {
+  const notes: string[] = [];
+  let score = 0;
+
+  const competencies = resume.core_competencies ?? [];
+  const accomplishments = resume.selected_accomplishments ?? [];
+
+  // Core competencies presence
+  if (competencies.length >= 3) {
+    score += 20;
+  } else if (competencies.length > 0) {
+    score += 10;
+    notes.push('Add more core competencies to signal breadth quickly');
+  } else {
+    notes.push('No core competencies section — hiring managers scan this immediately');
+  }
+
+  // Competency JD alignment
+  const jdSignalWords = [
+    ...jd.core_competencies.map(c => c.competency.toLowerCase()),
+    ...jd.language_keywords.map(k => k.toLowerCase()),
+  ];
+
+  const competencyLowers = competencies.map(c => c.toLowerCase());
+  const competencyMatches = jdSignalWords.filter(signal =>
+    competencyLowers.some(comp =>
+      signal.split(/\s+/).some(w => w.length > 3 && comp.includes(w)),
+    ),
+  );
+
+  if (competencyMatches.length >= 3) {
+    score += 30;
+  } else if (competencyMatches.length >= 1) {
+    score += 15;
+    notes.push('Core competencies could better mirror the job description language');
+  } else {
+    notes.push('Core competencies do not reflect JD keywords — easy win to fix');
+  }
+
+  // Selected accomplishments presence
+  if (accomplishments.length >= 1) {
+    score += 20;
+  } else {
+    notes.push('No selected accomplishments — this section signals immediate impact');
+  }
+
+  // At least one accomplishment has a quantified metric
+  const quantified = accomplishments.filter(a => METRIC_PATTERN.test(a.content));
+  if (quantified.length >= 1) {
+    score += 30;
+  } else if (accomplishments.length > 0) {
+    notes.push('Accomplishments lack quantified metrics — numbers command attention in a scan');
+  }
+
+  const note = notes.length > 0
+    ? notes.join('. ')
+    : 'Above-the-fold content is strong — key qualifications are immediately visible';
+
+  return { score: Math.min(score, 100), note };
+}
+
+/**
+ * Keyword Visibility.
+ *
+ * Simulates a quick-glance read of the first 3 bullets of the most recent role.
+ * Checks:
+ * - Most recent experience entry has at least 2 bullets
+ * - At least 1 of those bullets contains a JD must-have keyword or competency
+ * - At least 1 of those bullets contains a metric
+ */
+function scoreKeywordVisibility(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): { score: number; note: string } {
+  const notes: string[] = [];
+  let score = 0;
+
+  const experiences = resume.professional_experience ?? [];
+  if (experiences.length === 0) {
+    return { score: 0, note: 'No professional experience section found' };
+  }
+
+  const mostRecent = experiences[0];
+  const topBullets = mostRecent.bullets.slice(0, 3);
+
+  if (topBullets.length < 2) {
+    notes.push('Most recent role has fewer than 2 bullets — pad it to show scope quickly');
+    score += 10;
+  } else {
+    score += 20;
+  }
+
+  const mustHaveKeywords = [
+    ...jd.core_competencies
+      .filter(c => c.importance === 'must_have')
+      .map(c => c.competency.toLowerCase()),
+    ...jd.language_keywords.slice(0, 10).map(k => k.toLowerCase()),
+  ];
+
+  const bulletText = topBullets.map(b => b.text.toLowerCase()).join(' ');
+
+  const keywordMatches = mustHaveKeywords.filter(kw =>
+    kw.split(/\s+/).some(w => w.length > 3 && bulletText.includes(w)),
+  );
+
+  if (keywordMatches.length >= 3) {
+    score += 50;
+  } else if (keywordMatches.length >= 1) {
+    score += 30;
+    notes.push('First bullets of recent role could mirror more JD language for quick-glance recognition');
+  } else {
+    notes.push('First bullets of most recent role lack JD keywords — these are the most-read lines');
+  }
+
+  const topBulletsHaveMetric = topBullets.some(b => METRIC_PATTERN.test(b.text));
+  if (topBulletsHaveMetric) {
+    score += 30;
+  } else {
+    notes.push('No quantified metrics in the first 3 bullets of your recent role — add numbers to command attention');
+  }
+
+  const note = notes.length > 0
+    ? notes.join('. ')
+    : 'Recent experience leads with JD language and strong metrics';
+
+  return { score: Math.min(score, 100), note };
+}
+
+// ─── Red flag detection ───────────────────────────────────────────────────────
+
+/**
+ * Detect obvious disqualifiers visible during a quick scan.
+ *
+ * Checks:
+ * - Most recent role title is drastically different from the target (seniority mismatch)
+ * - Most recent role has no bullets at all
+ * - No quantified metrics anywhere in the resume (pattern-based)
+ * - Missing required credentials when JD lists certifications
+ * - Summary missing
+ */
+function detectRedFlags(
+  resume: ResumeDraftOutput,
+  jd: JobIntelligenceOutput,
+): string[] {
+  const flags: string[] = [];
+
+  // Missing summary
+  if (!resume.executive_summary.content?.trim()) {
+    flags.push('No executive summary — resume opens with experience, no context for the reader');
+  }
+
+  // Most recent role has no bullets
+  const mostRecent = resume.professional_experience?.[0];
+  if (mostRecent && mostRecent.bullets.length === 0) {
+    flags.push(`Most recent role (${mostRecent.title} at ${mostRecent.company}) has no bullet points`);
+  }
+
+  // Seniority mismatch: JD is director/vp/c_suite but recent title is junior
+  const juniorSignals = ['analyst', 'associate', 'coordinator', 'assistant', 'junior', 'specialist'];
+  const seniorJD = ['director', 'vp', 'vice president', 'c_suite', 'chief', 'svp', 'evp'].includes(
+    jd.seniority_level.toLowerCase(),
+  );
+  if (seniorJD && mostRecent) {
+    const recentTitleLower = mostRecent.title.toLowerCase();
+    const isJuniorTitle = juniorSignals.some(s => recentTitleLower.includes(s));
+    if (isJuniorTitle) {
+      flags.push(`Most recent title "${mostRecent.title}" signals a junior level — likely disqualifying for a ${jd.seniority_level} role`);
+    }
+  }
+
+  // No metrics anywhere in the resume
+  const allBulletText = resume.professional_experience
+    .flatMap(exp => exp.bullets.map(b => b.text))
+    .join(' ') + resume.selected_accomplishments.map(a => a.content).join(' ');
+
+  if (allBulletText.trim().length > 0 && !METRIC_PATTERN.test(allBulletText)) {
+    flags.push('No quantified metrics found anywhere in the resume — executives are expected to show numbers');
+  }
+
+  return flags;
+}
+
+// ─── Quick wins builder ───────────────────────────────────────────────────────
+
+/**
+ * Synthesize the top 3 most impactful things to improve for scan performance.
+ * Ordered by score gap: the dimension with the lowest score gets the first recommendation.
+ */
+function buildQuickWins(
+  header: { score: number; note: string },
+  summary: { score: number; note: string },
+  aboveFold: { score: number; note: string },
+  keywords: { score: number; note: string },
+  redFlags: string[],
+): string[] {
+  const wins: string[] = [];
+
+  // Any red flag is an immediate call-to-action
+  if (redFlags.length > 0) {
+    wins.push(`Fix disqualifier: ${redFlags[0]}`);
+  }
+
+  // Rank dimensions by score ascending — lowest score = most room to improve
+  const dimensions = [
+    { label: 'Header', score: header.score, note: header.note },
+    { label: 'Summary', score: summary.score, note: summary.note },
+    { label: 'Above-the-fold', score: aboveFold.score, note: aboveFold.note },
+    { label: 'Keyword visibility', score: keywords.score, note: keywords.note },
+  ].sort((a, b) => a.score - b.score);
+
+  for (const dim of dimensions) {
+    if (wins.length >= 3) break;
+    // Only add a win if the score is below 80 (there's meaningful room to improve)
+    if (dim.score < 80 && dim.note && !dim.note.toLowerCase().startsWith('no executive summary')) {
+      wins.push(`${dim.label}: ${dim.note}`);
+    }
+  }
+
+  // If everything scored well, offer a positive note
+  if (wins.length === 0) {
+    wins.push('Resume performs well on quick-scan — focus on tailoring keywords for each application');
+  }
+
+  return wins.slice(0, 3);
+}
+
+// ─── Inline Suggestion Computation ───────────────────────────────────────────
+
+/**
+ * Compute inline suggestions by diffing original resume sections against AI-drafted ones.
+ *
+ * Deterministic — no LLM call. Uses string comparison and keyword overlap to:
+ * 1. Identify changed sections (summary, bullets, accomplishments, competencies)
+ * 2. Match each change to the most relevant gap analysis requirement
+ * 3. Produce a rationale from the matched requirement or a generic fallback
+ *
+ * Importance mapping: must_have → 'critical', important → 'important', nice_to_have → 'supporting'
+ */
+export function computeInlineSuggestions(
+  candidateIntel: CandidateIntelligenceOutput,
+  draft: ResumeDraftOutput,
+  gapAnalysis: GapAnalysisOutput,
+): InlineSuggestion[] {
+  const suggestions: InlineSuggestion[] = [];
+  let index = 0;
+
+  const makeId = (sectionId: string): string => `suggestion-${sectionId}-${index++}`;
+
+  const importanceToRequirementPriority = (
+    importance: 'must_have' | 'important' | 'nice_to_have',
+  ): InlineSuggestion['requirementPriority'] => {
+    if (importance === 'must_have') return 'critical';
+    if (importance === 'important') return 'important';
+    return 'supporting';
+  };
+
+  // ── 1. Executive Summary ──────────────────────────────────────────────────
+
+  const originalSummary = extractOriginalSummary(candidateIntel);
+  const draftedSummary = draft.executive_summary.content?.trim() ?? '';
+
+  if (draftedSummary && originalSummary !== draftedSummary) {
+    const sectionId = 'executive_summary';
+    const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
+      draftedSummary,
+      gapAnalysis,
+      importanceToRequirementPriority,
+      'Strengthens executive summary with targeted positioning',
+    );
+
+    suggestions.push({
+      id: makeId(sectionId),
+      sectionId,
+      originalText: originalSummary,
+      suggestedText: draftedSummary,
+      changeType: originalSummary ? 'replacement' : 'addition',
+      requirementText,
+      requirementPriority,
+      requirementSource,
+      rationale,
+    });
+  }
+
+  // ── 2. Core Competencies ──────────────────────────────────────────────────
+
+  // Build a broader original competency set to reduce false-positive "additions".
+  // Include technologies, career_themes, and industry_depth alongside raw tech strings.
+  const originalCompetencies = new Set([
+    ...(Array.isArray(candidateIntel.technologies) ? candidateIntel.technologies : []),
+    ...(Array.isArray(candidateIntel.career_themes) ? candidateIntel.career_themes : []),
+    ...(Array.isArray(candidateIntel.industry_depth) ? candidateIntel.industry_depth : []),
+  ].map(t => t.toLowerCase()));
+  const addedCompetencies = draft.core_competencies.filter(
+    c => !originalCompetencies.has(c.toLowerCase()),
+  );
+
+  for (const comp of addedCompetencies) {
+    const sectionId = 'core_competencies';
+    const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
+      comp,
+      gapAnalysis,
+      importanceToRequirementPriority,
+      `Adds "${comp}" to core competencies`,
+    );
+
+    suggestions.push({
+      id: makeId(sectionId),
+      sectionId,
+      originalText: '',
+      suggestedText: comp,
+      changeType: 'addition',
+      requirementText,
+      requirementPriority,
+      requirementSource,
+      rationale,
+    });
+  }
+
+  // ── 3. Selected Accomplishments ───────────────────────────────────────────
+
+  for (let i = 0; i < draft.selected_accomplishments.length; i++) {
+    const acc = draft.selected_accomplishments[i];
+    if (!acc.is_new) continue;
+
+    const sectionId = `selected_accomplishments_${i}`;
+    const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
+      acc.content,
+      gapAnalysis,
+      importanceToRequirementPriority,
+      'Adds a quantified accomplishment to demonstrate impact',
+    );
+
+    suggestions.push({
+      id: makeId(sectionId),
+      sectionId,
+      originalText: '',
+      suggestedText: acc.content,
+      changeType: 'addition',
+      requirementText,
+      requirementPriority,
+      requirementSource,
+      rationale,
+    });
+  }
+
+  // ── 4. Professional Experience Bullets ───────────────────────────────────
+
+  for (const draftedExp of draft.professional_experience) {
+    // Find the matching original experience entry by company + title
+    const originalExp = candidateIntel.experience.find(
+      e =>
+        normalizeText(e.company) === normalizeText(draftedExp.company) &&
+        normalizeText(e.title) === normalizeText(draftedExp.title),
+    );
+
+    const originalBulletSet = new Set(
+      (originalExp?.bullets ?? []).map(b => normalizeText(b)),
+    );
+
+    for (let bulletIdx = 0; bulletIdx < draftedExp.bullets.length; bulletIdx++) {
+      const bullet = draftedExp.bullets[bulletIdx];
+
+      // Skip bullets that are direct copies of the original
+      if (!bullet.is_new && originalBulletSet.has(normalizeText(bullet.text))) {
+        continue;
+      }
+
+      // Find the closest original bullet for replacement detection
+      const closestOriginal = findClosestOriginal(bullet.text, originalExp?.bullets ?? []);
+      const changeType: InlineSuggestion['changeType'] = closestOriginal ? 'replacement' : 'addition';
+
+      const sectionId = `experience_${normalizeText(draftedExp.company)}_${bulletIdx}`;
+      const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
+        bullet.text,
+        gapAnalysis,
+        importanceToRequirementPriority,
+        'Improves clarity and impact',
+      );
+
+      suggestions.push({
+        id: makeId(sectionId),
+        sectionId,
+        originalText: closestOriginal ?? '',
+        suggestedText: bullet.text,
+        changeType,
+        requirementText,
+        requirementPriority,
+        requirementSource,
+        rationale,
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+/**
+ * Extract the original executive summary text from candidate intelligence.
+ *
+ * Strategy:
+ * 1. Check raw_text for a summary-like opening block (paragraph heuristic).
+ * 2. If heuristic returns empty, fall back to career_themes joined as a
+ *    sentence — enough to detect a meaningful diff against the AI draft.
+ * 3. If both are empty, return '' so that the summary suggestion is skipped
+ *    rather than marking the entire AI-drafted summary as "added".
+ */
+function extractOriginalSummary(candidateIntel: CandidateIntelligenceOutput): string {
+  const raw = candidateIntel.raw_text?.trim() ?? '';
+
+  if (raw) {
+    // Heuristic: the summary is usually the first non-contact-info paragraph.
+    // Split on double newlines; skip very short segments (contact info lines).
+    const paragraphs = raw.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+    for (const para of paragraphs) {
+      // Skip paragraphs that look like contact info (short, contain @, phone patterns, or URLs)
+      const isContactInfo = para.length < 120 ||
+        /@|linkedin\.com|http|^\+?1?\s*[\(\d]/.test(para) ||
+        para.split('\n').every(line => line.trim().length < 60);
+
+      if (!isContactInfo && para.length > 80) {
+        return para;
+      }
+    }
+  }
+
+  // Fallback: career_themes gives enough signal for a meaningful diff.
+  // If this is also empty, return '' so we skip the summary suggestion.
+  const themes = candidateIntel.career_themes;
+  if (Array.isArray(themes) && themes.length > 0) {
+    return themes.join('. ');
+  }
+
+  return '';
+}
+
+/**
+ * Normalise text for comparison: lowercase, collapse whitespace, strip punctuation.
+ */
+function normalizeText(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Find the closest matching original bullet to a drafted bullet using word overlap.
+ * Returns the original bullet text if overlap is above 30%, otherwise undefined.
+ */
+function findClosestOriginal(draftedText: string, originalBullets: string[]): string | undefined {
+  if (originalBullets.length === 0) return undefined;
+
+  const draftedWords = new Set(normalizeText(draftedText).split(' ').filter(w => w.length > 3));
+  if (draftedWords.size === 0) return undefined;
+
+  let bestMatch: string | undefined;
+  let bestOverlap = 0;
+
+  for (const orig of originalBullets) {
+    const origWords = normalizeText(orig).split(' ').filter(w => w.length > 3);
+    if (origWords.length === 0) continue;
+
+    const shared = origWords.filter(w => draftedWords.has(w)).length;
+    const overlap = shared / Math.max(origWords.length, draftedWords.size);
+
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      bestMatch = orig;
+    }
+  }
+
+  // Only treat as a replacement if there is meaningful overlap
+  return bestOverlap >= 0.30 ? bestMatch : undefined;
+}
+
+/**
+ * Match a suggestion text to the most relevant gap analysis requirement.
+ *
+ * Strategy: tokenise both the suggestion text and each requirement string,
+ * count word overlap (ignoring stop-words and short tokens), and pick the
+ * requirement with the highest overlap count.
+ *
+ * Returns a fallback requirementText and rationale when no requirement matches.
+ */
+function matchRequirement(
+  text: string,
+  gapAnalysis: GapAnalysisOutput,
+  toRequirementPriority: (imp: 'must_have' | 'important' | 'nice_to_have') => InlineSuggestion['requirementPriority'],
+  fallbackRationale: string,
+): { requirementText: string; requirementPriority: InlineSuggestion['requirementPriority']; requirementSource: InlineSuggestion['requirementSource']; rationale: string } {
+  const STOP_WORDS = new Set([
+    'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+    'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+    'been', 'has', 'have', 'had', 'do', 'does', 'did', 'will', 'would',
+    'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'that',
+    'this', 'their', 'our', 'your', 'my', 'its', 'they', 'we', 'you',
+    'he', 'she', 'it', 'all', 'each', 'more', 'also', 'than', 'into',
+  ]);
+
+  const tokenise = (s: string): string[] =>
+    s.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !STOP_WORDS.has(w));
+
+  const textTokens = new Set(tokenise(text));
+
+  if (textTokens.size === 0 || !gapAnalysis.requirements?.length) {
+    return {
+      requirementText: 'Resume improvement',
+      requirementPriority: 'supporting',
+      requirementSource: 'benchmark',
+      rationale: fallbackRationale,
+    };
+  }
+
+  let bestReq = gapAnalysis.requirements[0];
+  let bestScore = 0;
+
+  for (const req of gapAnalysis.requirements) {
+    const reqTokens = tokenise(req.requirement);
+    const shared = reqTokens.filter(t => textTokens.has(t)).length;
+    const score = reqTokens.length > 0 ? shared / reqTokens.length : 0;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestReq = req;
+    }
+  }
+
+  if (bestScore === 0) {
+    // No requirement matched — use a clean fallback with no spurious requirement label
+    return {
+      requirementText: '',
+      requirementPriority: 'supporting',
+      requirementSource: 'benchmark',
+      rationale: fallbackRationale,
+    };
+  }
+
+  const requirementPriority = toRequirementPriority(bestReq.importance);
+
+  // Map RequirementSource to the InlineSuggestion source field.
+  // 'job_description' → 'jd', 'benchmark' → 'benchmark'
+  const requirementSource: InlineSuggestion['requirementSource'] =
+    bestReq.source === 'job_description' ? 'jd' : 'benchmark';
+
+  return {
+    requirementText: bestReq.requirement,
+    requirementPriority,
+    requirementSource,
+    rationale: buildRationale(text, bestReq.requirement, requirementPriority),
+  };
+}
+
+/**
+ * Build a concise human-readable rationale for a suggestion.
+ */
+function buildRationale(
+  suggestedText: string,
+  requirementText: string,
+  priority: InlineSuggestion['requirementPriority'],
+): string {
+  const priorityLabel = priority === 'critical' ? 'critical' : priority === 'important' ? 'important' : 'supporting';
+  // Truncate the suggested text to a readable snippet
+  const snippet = suggestedText.length > 80
+    ? `${suggestedText.slice(0, 80).trim()}...`
+    : suggestedText;
+  return `Addresses ${priorityLabel} requirement "${requirementText}" — "${snippet}"`;
 }

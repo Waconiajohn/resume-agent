@@ -118,17 +118,17 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
   }, [content]);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       {/* Note header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2">
           <Mail className="h-3.5 w-3.5 text-[#A396E2]" />
-          <span className="text-[13px] font-semibold text-white/80">{title}</span>
+          <span className="text-[13px] font-semibold text-[var(--text-strong)]">{title}</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Delivery timing badge */}
           <span className={cn(
-            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
             delivery.color, delivery.bg, delivery.border,
           )}>
             <Zap className="h-2.5 w-2.5" />
@@ -136,18 +136,18 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
           </span>
           {/* Tone indicator */}
           <span className={cn(
-            'rounded-md px-1.5 py-0.5 text-[10px] border bg-white/[0.04] border-white/[0.06]',
+            'rounded-md px-1.5 py-0.5 text-[12px] border bg-[var(--accent-muted)] border-[var(--line-soft)]',
             tone.color,
           )}>
             {tone.label}
           </span>
           {/* Word count */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             <Hash className="h-2.5 w-2.5" />
             {wordCount}w
           </span>
           {/* Read time */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             <Clock className="h-2.5 w-2.5" />
             ~{readTime}m read
           </span>
@@ -156,10 +156,10 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
             type="button"
             onClick={handleCopy}
             className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border transition-all',
+              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] border transition-all',
               copied
                 ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
-                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
             {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
@@ -169,7 +169,7 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
       </div>
       {/* Note body */}
       <div className="px-5 py-4">
-        <p className="text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap">{content}</p>
+        <p className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">{content}</p>
       </div>
     </div>
   );
@@ -237,7 +237,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
   const label = interviewer.name.trim() || `Interviewer ${index + 1}`;
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.02] overflow-hidden">
+    <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-white/[0.04] to-white/[0.02] overflow-hidden">
       {/* Header */}
       <div
         role="button"
@@ -249,15 +249,15 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
             setExpanded((v) => !v);
           }
         }}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[var(--accent-muted)] transition-colors"
       >
         <div className="h-8 w-8 rounded-full bg-[#A396E2]/10 flex items-center justify-center flex-shrink-0">
           <User size={14} className="text-[#A396E2]" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-[14px] font-medium text-white/80">{label}</span>
+          <span className="text-[14px] font-medium text-[var(--text-strong)]">{label}</span>
           {interviewer.title && (
-            <span className="text-[12px] text-white/40 ml-2">{interviewer.title}</span>
+            <span className="text-[12px] text-[var(--text-soft)] ml-2">{interviewer.title}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -265,45 +265,45 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(index); }}
-              className="p-1 rounded-lg text-white/20 hover:text-[#f0b8b8]/70 hover:bg-[#f0b8b8]/5 transition-colors"
+              className="p-1 rounded-lg text-[var(--text-soft)] hover:text-[#f0b8b8]/70 hover:bg-[#f0b8b8]/5 transition-colors"
               aria-label="Remove interviewer"
             >
               <Trash2 size={13} />
             </button>
           )}
-          {expanded ? <ChevronUp size={14} className="text-white/25" /> : <ChevronDown size={14} className="text-white/25" />}
+          {expanded ? <ChevronUp size={14} className="text-[var(--text-soft)]" /> : <ChevronDown size={14} className="text-[var(--text-soft)]" />}
         </div>
       </div>
 
       {/* Body */}
       {expanded && (
-        <div className="px-5 pb-5 space-y-4 border-t border-white/[0.06]">
+        <div className="px-5 pb-5 space-y-4 border-t border-[var(--line-soft)]">
           <div className="grid grid-cols-2 gap-3 pt-4">
             <div>
-              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Name</label>
+              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Name</label>
               <input
                 type="text"
                 value={interviewer.name}
                 onChange={(e) => update({ name: e.target.value })}
                 placeholder="e.g. Sarah Chen"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Title</label>
+              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Title</label>
               <input
                 type="text"
                 value={interviewer.title}
                 onChange={(e) => update({ title: e.target.value })}
                 placeholder="e.g. VP of Engineering"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
-              Topics Discussed <span className="text-white/20 normal-case font-normal">(comma-separated)</span>
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Topics Discussed <span className="text-[var(--text-soft)] normal-case font-normal">(comma-separated)</span>
             </label>
             <input
               type="text"
@@ -311,26 +311,26 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               onChange={(e) => setTopicsRaw(e.target.value)}
               onBlur={handleTopicsBlur}
               placeholder="e.g. supply chain transformation, Q3 targets, team structure"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
-              Rapport Notes <span className="text-white/20 normal-case font-normal">(optional)</span>
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Rapport Notes <span className="text-[var(--text-soft)] normal-case font-normal">(optional)</span>
             </label>
             <textarea
               value={interviewer.rapport_notes ?? ''}
               onChange={(e) => update({ rapport_notes: e.target.value })}
               placeholder="Shared interests, personal anecdotes, memorable moments..."
               rows={2}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
-              Key Questions Asked <span className="text-white/20 normal-case font-normal">(one per line, optional)</span>
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Key Questions Asked <span className="text-[var(--text-soft)] normal-case font-normal">(one per line, optional)</span>
             </label>
             <textarea
               value={keyQsRaw}
@@ -338,7 +338,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               onBlur={handleKeyQsBlur}
               placeholder="Tell me about a transformation you led..."
               rows={2}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -387,18 +387,18 @@ function ActivityFeed({
           </div>
         </div>
         <div>
-          <h3 className="text-[17px] font-semibold text-white/90">
+          <h3 className="text-[17px] font-semibold text-[var(--text-strong)]">
             Writing notes for {company || 'your interview'}
           </h3>
-          <p className="text-[13px] text-white/40 mt-0.5">{stageLabel}</p>
+          <p className="text-[13px] text-[var(--text-soft)] mt-0.5">{stageLabel}</p>
         </div>
       </div>
 
       <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
         {activityMessages.length === 0 ? (
           <div className="text-center py-12">
-            <Loader2 size={24} className="text-white/20 mx-auto mb-3 animate-spin" />
-            <p className="text-[13px] text-white/30">Connecting to pipeline...</p>
+            <Loader2 size={24} className="text-[var(--text-soft)] mx-auto mb-3 animate-spin" />
+            <p className="text-[13px] text-[var(--text-soft)]">Connecting to pipeline...</p>
           </div>
         ) : (
           activityMessages.map((msg, i) => {
@@ -410,7 +410,7 @@ function ActivityFeed({
                 style={{ opacity }}
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-[#A396E2]/50 mt-2 flex-shrink-0" />
-                <span className="text-[13px] text-white/60 leading-relaxed">{msg.message}</span>
+                <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
               </div>
             );
           })
@@ -465,7 +465,7 @@ function ReportView({
         <button
           type="button"
           onClick={onReset}
-          className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <ArrowLeft size={14} />
           Draft another version
@@ -490,8 +490,8 @@ function ReportView({
             <CheckCircle2 size={18} className="text-[#b5dec2]" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-white/90">Thank-You Notes — {company}</h2>
-            <p className="text-[12px] text-white/40 mt-0.5">{role}</p>
+            <h2 className="text-[16px] font-semibold text-[var(--text-strong)]">Thank-You Notes — {company}</h2>
+            <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{role}</p>
           </div>
         </div>
       </GlassCard>
@@ -500,15 +500,15 @@ function ReportView({
       {qualityScore !== null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Note Strength</span>
+            <span className="text-[13px] text-[var(--text-soft)]">Note Strength</span>
             <span className={cn(
-              'text-[11px] font-semibold',
+              'text-[13px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
             </span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
@@ -536,16 +536,16 @@ function ReportView({
         <GlassCard className="p-8 relative overflow-hidden">
           <div
             className="prose prose-invert prose-sm max-w-none
-              prose-headings:text-white/85 prose-headings:font-semibold
-              prose-h1:text-[18px] prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+              prose-h1:text-[18px] prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
               prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
               prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
-              prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
-              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-              prose-strong:text-white/75
-              prose-em:text-white/50
-              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:italic
-              prose-hr:border-white/[0.08]"
+              prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
+              prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-[var(--text-muted)]
+              prose-em:text-[var(--text-soft)]
+              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
+              prose-hr:border-[var(--line-soft)]"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
         </GlassCard>
@@ -734,8 +734,8 @@ export function ThankYouNoteRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Thank-You Notes</h1>
-          <p className="text-[13px] text-white/40 mt-1">Drafting tailored follow-up notes for each interviewer</p>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Thank-You Notes</h1>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">Drafting tailored follow-up notes for each interviewer</p>
         </div>
         <ActivityFeed
           activityMessages={activityMessages}
@@ -746,7 +746,7 @@ export function ThankYouNoteRoom({
           <button
             type="button"
             onClick={handleReset}
-            className="text-[12px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel
           </button>
@@ -782,8 +782,8 @@ export function ThankYouNoteRoom({
           <Mail size={20} className="text-[#A396E2]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Thank-You Notes</h1>
-          <p className="text-[13px] text-white/40 leading-relaxed mt-1">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Thank-You Notes</h1>
+          <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mt-1">
             Draft notes for each interviewer that reference the conversation, reinforce your fit, and make the follow-up easier to send.
           </p>
         </div>
@@ -796,7 +796,7 @@ export function ThankYouNoteRoom({
       {/* Prior result */}
       {priorLoading && (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading saved draft...
           </div>
@@ -805,20 +805,20 @@ export function ThankYouNoteRoom({
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">
+            <h3 className="text-sm font-medium text-[var(--text-muted)]">
               {initialSessionId ? 'Saved thank-you notes for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"
               onClick={clearPrior}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               Start New Draft
             </button>
           </div>
           <div
-            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            className="prose prose-invert prose-sm max-w-none text-[var(--text-strong)] max-h-96 overflow-y-auto"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
           />
         </GlassCard>
@@ -826,7 +826,7 @@ export function ThankYouNoteRoom({
 
       {/* Resume status */}
       {loadingResume ? (
-        <div className="flex items-center gap-2 text-[12px] text-white/30">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
           <Loader2 size={12} className="animate-spin" />
           Loading your resume...
         </div>
@@ -846,13 +846,13 @@ export function ThankYouNoteRoom({
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <Building2 size={16} className="text-[#98b3ff]" />
-          <h2 className="text-[15px] font-semibold text-white/80">Interview Details</h2>
-          <div className="flex-1 h-px bg-white/[0.06]" />
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Interview Details</h2>
+          <div className="flex-1 h-px bg-[var(--accent-muted)]" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Company <span className="text-[#98b3ff]/60">*</span>
             </label>
             <input
@@ -860,11 +860,11 @@ export function ThankYouNoteRoom({
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Medtronic"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Role <span className="text-[#98b3ff]/60">*</span>
             </label>
             <input
@@ -872,25 +872,25 @@ export function ThankYouNoteRoom({
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g. VP of Supply Chain"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
-              Interview Date <span className="text-white/20 normal-case font-normal">(optional)</span>
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Interview Date <span className="text-[var(--text-soft)] normal-case font-normal">(optional)</span>
             </label>
             <input
               type="date"
               value={interviewDate}
               onChange={(e) => setInterviewDate(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors [color-scheme:dark]"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors [color-scheme:dark]"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-2">
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-2">
               Interview Type
             </label>
             <div className="flex gap-2 flex-wrap">
@@ -903,7 +903,7 @@ export function ThankYouNoteRoom({
                     'flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium border transition-all',
                     interviewType === value
                       ? 'border-[#98b3ff]/30 bg-[#98b3ff]/10 text-[#98b3ff]'
-                      : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:text-white/60 hover:border-white/[0.1]',
+                      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:border-[var(--line-soft)]',
                   )}
                 >
                   <Icon size={12} />
@@ -934,8 +934,8 @@ export function ThankYouNoteRoom({
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <User size={16} className="text-[#A396E2]" />
-          <h2 className="text-[15px] font-semibold text-white/80">Interviewers</h2>
-          <div className="flex-1 h-px bg-white/[0.06]" />
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Interviewers</h2>
+          <div className="flex-1 h-px bg-[var(--accent-muted)]" />
           <button
             type="button"
             onClick={handleAddInterviewer}
@@ -970,7 +970,7 @@ export function ThankYouNoteRoom({
 
       {/* Submit */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-white/25">
+        <p className="text-[12px] text-[var(--text-soft)]">
           Notes will reference specific moments and close with forward momentum.
         </p>
         <GlassButton

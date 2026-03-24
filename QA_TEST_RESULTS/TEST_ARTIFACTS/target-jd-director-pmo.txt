@@ -1,0 +1,68 @@
+DIRECTOR, PROJECT MANAGEMENT OFFICE (PMO)
+TechVantage Solutions — Minneapolis, MN (Hybrid: 3 days onsite)
+Compensation: $145,000 – $175,000 base + 15% annual bonus + equity
+Reports to: VP of Technology Operations
+
+ABOUT TECHVANTAGE SOLUTIONS
+TechVantage Solutions is a fast-growing enterprise SaaS company (Series D, $280M raised) providing AI-powered supply chain optimization to Fortune 500 manufacturers. We are scaling from 400 to 700 employees and need a seasoned PMO leader to build the infrastructure that supports our next phase of growth.
+
+THE ROLE
+We are seeking an experienced Director of PMO to establish and lead our enterprise Project Management Office. This is a high-visibility leadership role responsible for standardizing project delivery, driving portfolio governance, and ensuring our $25M+ annual project portfolio delivers measurable business outcomes.
+
+You will build and lead a team of 12-15 project managers, establish PMO governance from the ground up, and serve as a trusted advisor to the C-suite on project investment decisions.
+
+RESPONSIBILITIES
+- Build, lead, and mentor a team of 12-15 project managers across engineering, product, and operations
+- Establish PMO governance framework including project intake, prioritization, and portfolio management
+- Own the enterprise project portfolio ($25M+ annual investment) and drive portfolio-level reporting to the executive team
+- Develop and implement standardized project delivery methodologies (Agile, SAFe, hybrid) appropriate to each business unit
+- Create executive dashboards and portfolio health metrics using modern PMO tooling
+- Partner with Finance on project budgeting, forecasting, and ROI analysis for the technology portfolio
+- Drive organizational change management for PMO adoption across business units
+- Establish resource capacity planning and demand management processes
+- Implement and optimize PPM tooling (e.g., Planview, ServiceNow SPM, or equivalent)
+- Manage vendor relationships and oversee $5M+ in outsourced project delivery
+- Conduct quarterly portfolio reviews with C-suite stakeholders
+- Develop project management career paths and competency frameworks for the PM team
+- Ensure compliance with SOC 2 Type II, ISO 27001, and relevant regulatory requirements for project deliverables
+- Champion continuous improvement through retrospectives, lessons learned, and PMO maturity assessments
+
+REQUIRED QUALIFICATIONS
+- 12+ years of progressive project management experience, with 5+ years in a PMO leadership role
+- Proven track record of building or transforming a PMO from the ground up in a technology company
+- Experience managing project portfolios of $10M+ with demonstrated ROI tracking
+- Deep expertise in Agile, SAFe, and hybrid delivery methodologies at enterprise scale
+- Experience leading and developing teams of 10+ project management professionals
+- Strong financial acumen: P&L awareness, project budgeting, and business case development
+- Excellent executive communication skills with experience presenting to C-suite audiences
+- Experience with regulated environments (SOC 2, ISO, FDA, or similar compliance frameworks)
+- Bachelor's degree in Business, IT, Engineering, or related field
+
+PREFERRED QUALIFICATIONS
+- PMP certification (required) and SAFe certification (strongly preferred)
+- MBA or Master's degree in relevant field
+- Experience in SaaS or enterprise software companies
+- Experience with AI/ML product development lifecycles
+- Track record in high-growth companies (scaling 2x-3x headcount)
+- Familiarity with modern PMO tooling: Planview, Monday.com, Smartsheet, or Jira Portfolio
+- Experience managing vendor relationships with major consulting firms
+- Healthcare, medical device, or supply chain industry background a plus
+- Six Sigma or Lean certification
+
+WHAT WE OFFER
+- Competitive base salary ($145K-$175K) plus 15% annual performance bonus
+- Equity package (stock options with 4-year vest)
+- Comprehensive benefits: medical, dental, vision, 401(k) with 4% match
+- Flexible hybrid work: 3 days onsite at our Minneapolis headquarters
+- $5,000 annual professional development budget
+- Leadership coaching program for all Director+ roles
+- Paid parental leave (16 weeks)
+
+INTERVIEW PROCESS
+1. Recruiter screen (30 min)
+2. Hiring manager interview with VP Technology Operations (60 min)
+3. Panel interview: CTO, CFO, VP Engineering (90 min)
+4. Case study: Present PMO transformation plan (60 min)
+5. Culture fit conversations with PM team leads (45 min)
+
+TechVantage Solutions is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees.

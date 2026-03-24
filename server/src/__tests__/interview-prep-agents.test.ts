@@ -114,14 +114,17 @@ describe('Interview Prep Agent Registration', () => {
     expect(desc!.tools).toContain('emit_transparency');
   });
 
-  it('writer has 5 tools (4 + emit_transparency)', () => {
+  it('writer has 8 tools (7 + emit_transparency)', () => {
     const desc = agentRegistry.describe('interview-prep', 'writer');
     expect(desc).toBeDefined();
-    expect(desc!.tools).toHaveLength(5);
+    expect(desc!.tools).toHaveLength(8);
     expect(desc!.tools).toContain('write_section');
     expect(desc!.tools).toContain('self_review_section');
     expect(desc!.tools).toContain('build_career_story');
     expect(desc!.tools).toContain('assemble_report');
+    expect(desc!.tools).toContain('generate_thank_you_notes');
+    expect(desc!.tools).toContain('generate_follow_up_email');
+    expect(desc!.tools).toContain('generate_interview_debrief');
     expect(desc!.tools).toContain('emit_transparency');
   });
 
@@ -158,6 +161,9 @@ describe('Interview Prep Tool Model Tiers', () => {
       self_review_section: 'mid',
       build_career_story: 'primary',
       assemble_report: 'light',
+      generate_thank_you_notes: 'primary',
+      generate_follow_up_email: 'primary',
+      generate_interview_debrief: 'mid',
     };
     for (const tool of writerTools) {
       expect(tool.model_tier).toBe(tierMap[tool.name]);

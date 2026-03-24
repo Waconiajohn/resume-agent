@@ -212,16 +212,23 @@ export interface GapAnalysisOutput {
 
 // ─── Agent 5: Narrative Strategy ─────────────────────────────────────
 
+/** An approved gap strategy with optional user-specified placement intent */
+export interface ApprovedStrategy {
+  requirement: string;
+  strategy: GapStrategy;
+  /** Where the user wants this placed. Absent means writer decides. */
+  target_section?: GapPlacementTarget;
+  /** For 'experience' placement — which company's bullets should carry this */
+  target_company?: string;
+}
+
 export interface NarrativeStrategyInput {
   gap_analysis: GapAnalysisOutput;
   candidate: CandidateIntelligenceOutput;
   job_intelligence: JobIntelligenceOutput;
   career_profile?: CareerProfileV2;
   /** Strategies the user approved from gap analysis */
-  approved_strategies: Array<{
-    requirement: string;
-    strategy: GapStrategy;
-  }>;
+  approved_strategies: ApprovedStrategy[];
   /** Differentiators from the Benchmark Candidate agent — raw material for the unique combination angle */
   benchmark_differentiators?: string[];
 }
@@ -273,10 +280,7 @@ export interface ResumeWriterInput {
   gap_analysis: GapAnalysisOutput;
   narrative: NarrativeStrategyOutput;
   career_profile?: CareerProfileV2;
-  approved_strategies: Array<{
-    requirement: string;
-    strategy: GapStrategy;
-  }>;
+  approved_strategies: ApprovedStrategy[];
 }
 
 export interface ResumeBullet {
@@ -396,7 +400,50 @@ export interface ExecutiveToneOutput {
   banned_phrases_found: string[];
 }
 
+// ─── Inline Suggestions (diff between original and AI-drafted resume) ──────
+
+/**
+ * A single inline suggestion representing a change between the original resume
+ * and the AI-drafted resume, linked to the gap analysis requirement it addresses.
+ * Computed deterministically in Assembly (no LLM call).
+ */
+export interface InlineSuggestion {
+  id: string;
+  requirementText: string;
+  requirementPriority: 'critical' | 'important' | 'supporting';
+  /** Whether this requirement came from the job description or from the benchmark profile */
+  requirementSource: 'jd' | 'benchmark';
+  sectionId: string;
+  originalText: string;
+  suggestedText: string;
+  changeType: 'addition' | 'replacement' | 'deletion';
+  rationale: string;
+}
+
 // ─── Agent 10: Resume Assembly ───────────────────────────────────────
+
+/**
+ * Simulates a hiring manager's 5-8 second resume scan.
+ * Deterministic text analysis — no LLM call.
+ */
+export interface HiringManagerScan {
+  /** Would this resume survive a 5-8 second hiring manager glance? */
+  pass: boolean;
+  /** Overall scan impact score 0-100 */
+  scan_score: number;
+  /** Is the branded title immediately compelling and role-matched? */
+  header_impact: { score: number; note: string };
+  /** Does the summary tell a clear story in the first 2 lines? */
+  summary_clarity: { score: number; note: string };
+  /** Are the most impressive qualifications visible in the top third? */
+  above_fold_strength: { score: number; note: string };
+  /** Do the first few bullets of recent experience use JD language? */
+  keyword_visibility: { score: number; note: string };
+  /** Obvious disqualifiers visible at a glance */
+  red_flags: string[];
+  /** Top 3 improvements for immediate scan impact */
+  quick_wins: string[];
+}
 
 export interface PositioningAssessmentEntry {
   requirement: string;
@@ -421,6 +468,10 @@ export interface AssemblyInput {
   executive_tone: ExecutiveToneOutput;
   gap_analysis?: GapAnalysisOutput;
   pre_scores?: PreScores;
+  /** Job intelligence used for hiring manager scan keyword matching */
+  job_intelligence?: JobIntelligenceOutput;
+  /** Candidate intelligence used for inline suggestion diff (raw_text = original resume) */
+  candidate_intelligence?: CandidateIntelligenceOutput;
 }
 
 export interface AssemblyOutput {
@@ -439,6 +490,10 @@ export interface AssemblyOutput {
   }>;
   /** Narrative assessment mapping resume to JD requirements */
   positioning_assessment?: PositioningAssessment;
+  /** Simulated 5-8 second hiring manager scan result */
+  hiring_manager_scan?: HiringManagerScan;
+  /** Diff-based inline suggestions between original and AI-drafted resume */
+  inline_suggestions?: InlineSuggestion[];
 }
 
 // ─── Pre-Scores (before optimization baseline) ──────────────────
@@ -476,10 +531,16 @@ export interface GapCoachingCard {
   coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
+export type GapPlacementTarget = 'auto' | 'summary' | 'competencies' | 'accomplishments' | 'experience';
+
 export interface GapCoachingResponse {
   requirement: string;
   action: 'approve' | 'context' | 'skip';
   user_context?: string;
+  /** Where the user wants this strategy placed. Defaults to 'auto' (writer decides). */
+  target_section?: GapPlacementTarget;
+  /** For 'experience' placement — which company's bullets should carry this strategy */
+  target_company?: string;
 }
 
 // ─── Orchestrator State ──────────────────────────────────────────────
@@ -520,10 +581,7 @@ export interface V2PipelineState {
   pre_scores?: PreScores;
 
   // User decisions
-  approved_strategies: Array<{
-    requirement: string;
-    strategy: GapStrategy;
-  }>;
+  approved_strategies: ApprovedStrategy[];
 
   // Gap coaching responses from user
   gap_coaching_responses?: GapCoachingResponse[];
@@ -555,6 +613,8 @@ export type V2PipelineSSEEvent =
       tone: ExecutiveToneOutput;
     }}
   | { type: 'assembly_complete'; data: AssemblyOutput }
+  | { type: 'hiring_manager_scan'; data: HiringManagerScan }
+  | { type: 'inline_suggestions'; data: { suggestions: InlineSuggestion[] } }
   | { type: 'pipeline_complete'; session_id: string }
   | { type: 'pipeline_error'; stage: V2PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: V2PipelineStage };

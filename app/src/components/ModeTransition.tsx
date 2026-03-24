@@ -102,7 +102,7 @@ export function ModeTransition({ uiMode, children }: ModeTransitionProps) {
     const message = TRANSITION_MESSAGE[key] ?? '';
     return (
       <div className="flex h-full items-center justify-center mode-fade-in">
-        <p className="text-sm font-medium text-white/60">{message}</p>
+        <p className="text-sm font-medium text-[var(--text-soft)]">{message}</p>
       </div>
     );
   }

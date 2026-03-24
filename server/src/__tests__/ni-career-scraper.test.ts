@@ -34,6 +34,12 @@ const mockSupabase = vi.hoisted(() => {
   };
 });
 
+/** Controlled mock for the JSearch adapter. */
+const mockJSearchSearch = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+
+/** Controlled mock for the Adzuna adapter. */
+const mockAdzunaSearch = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: mockSupabase,
 }));
@@ -50,9 +56,21 @@ vi.mock('../lib/logger.js', () => ({
   },
 }));
 
+vi.mock('../lib/job-search/adapters/jsearch.js', () => ({
+  JSearchAdapter: class {
+    search(...args: Parameters<typeof mockJSearchSearch>) { return mockJSearchSearch(...args); }
+  },
+}));
+
+vi.mock('../lib/job-search/adapters/adzuna.js', () => ({
+  AdzunaAdapter: class {
+    search(...args: Parameters<typeof mockAdzunaSearch>) { return mockAdzunaSearch(...args); }
+  },
+}));
+
 // ─── Module under test ─────────────────────────────────────────────────────────
 
-import { scrapeCareerPages } from '../lib/ni/career-scraper.js';
+import { scrapeCareerPages, searchJobsByCompany } from '../lib/ni/career-scraper.js';
 import { insertJobMatch } from '../lib/ni/job-matches-store.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,6 +111,9 @@ function mockFetchNotFound(): void {
 describe('scrapeCareerPages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: JSearch and Adzuna return nothing (fallback disabled by default in most tests)
+    mockJSearchSearch.mockResolvedValue([]);
+    mockAdzunaSearch.mockResolvedValue([]);
     // Default: no referral program
     const chainFn = () => {
       const chain: Record<string, unknown> = {};
@@ -271,5 +292,246 @@ describe('scrapeCareerPages', () => {
       const insertedUrl: string = calls[0][1].url ?? '';
       expect(insertedUrl).toMatch(/^https?:\/\//);
     }
+  });
+
+  it('includes sourceBreakdown in result with career_page count when regex scraping succeeds', async () => {
+    const html = makeCareerHtml([
+      { title: 'Director of Engineering', url: '/jobs/dir-eng' },
+    ]);
+    mockFetchSuccess(html);
+
+    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1');
+
+    expect(result.sourceBreakdown).toBeDefined();
+    expect(typeof result.sourceBreakdown.career_page).toBe('number');
+    expect(typeof result.sourceBreakdown.jsearch_api).toBe('number');
+    expect(typeof result.sourceBreakdown.adzuna_api).toBe('number');
+    // Regex scraping found results, so career_page should be the active source
+    expect(result.sourceBreakdown.jsearch_api).toBe(0);
+    expect(result.sourceBreakdown.adzuna_api).toBe(0);
+  });
+
+  it('falls back to JSearch when regex scraping finds nothing and JSEARCH_API_KEY is set', async () => {
+    mockFetchNotFound();
+    process.env.JSEARCH_API_KEY = 'test-api-key';
+
+    mockJSearchSearch.mockResolvedValue([
+      {
+        external_id: 'jsearch_abc',
+        title: 'Director of Operations',
+        company: 'Acme Corp',
+        location: 'New York, NY',
+        salary_min: null,
+        salary_max: null,
+        description: null,
+        posted_date: new Date().toISOString(),
+        apply_url: 'https://example.com/jobs/123',
+        source: 'jsearch',
+        remote_type: null,
+        employment_type: 'full-time',
+        required_skills: null,
+      },
+    ]);
+
+    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', true);
+
+    expect(result.jobsFound).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.jsearch_api).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.career_page).toBe(0);
+    expect(insertJobMatch).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ metadata: { source: 'jsearch_api' } }),
+    );
+
+    delete process.env.JSEARCH_API_KEY;
+  });
+
+  it('falls back to Adzuna when both regex and JSearch find nothing', async () => {
+    mockFetchNotFound();
+    process.env.JSEARCH_API_KEY = 'test-api-key';
+    process.env.ADZUNA_APP_ID = 'test-app-id';
+    process.env.ADZUNA_API_KEY = 'test-adzuna-key';
+
+    mockJSearchSearch.mockResolvedValue([]);
+    mockAdzunaSearch.mockResolvedValue([
+      {
+        external_id: 'adzuna_xyz',
+        title: 'Vice President of Marketing',
+        company: 'Acme Corp',
+        location: 'Chicago, IL',
+        salary_min: null,
+        salary_max: null,
+        description: null,
+        posted_date: new Date().toISOString(),
+        apply_url: 'https://adzuna.com/jobs/xyz',
+        source: 'adzuna',
+        remote_type: null,
+        employment_type: null,
+        required_skills: null,
+      },
+    ]);
+
+    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Vice President'], 'user-1', true);
+
+    expect(result.jobsFound).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.adzuna_api).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.jsearch_api).toBe(0);
+    expect(result.sourceBreakdown.career_page).toBe(0);
+    expect(insertJobMatch).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ metadata: { source: 'adzuna_api' } }),
+    );
+
+    delete process.env.JSEARCH_API_KEY;
+    delete process.env.ADZUNA_APP_ID;
+    delete process.env.ADZUNA_API_KEY;
+  });
+
+  it('skips API fallback when useApiFallback=false', async () => {
+    mockFetchNotFound();
+    process.env.JSEARCH_API_KEY = 'test-api-key';
+
+    mockJSearchSearch.mockResolvedValue([
+      {
+        external_id: 'jsearch_abc',
+        title: 'Director of Operations',
+        company: 'Acme Corp',
+        location: null,
+        salary_min: null,
+        salary_max: null,
+        description: null,
+        posted_date: new Date().toISOString(),
+        apply_url: null,
+        source: 'jsearch',
+        remote_type: null,
+        employment_type: null,
+        required_skills: null,
+      },
+    ]);
+
+    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', false);
+
+    expect(result.jobsFound).toBe(0);
+    expect(mockJSearchSearch).not.toHaveBeenCalled();
+    expect(result.sourceBreakdown.jsearch_api).toBe(0);
+
+    delete process.env.JSEARCH_API_KEY;
+  });
+
+  it('deduplicates API results by title+location', async () => {
+    mockFetchNotFound();
+    process.env.JSEARCH_API_KEY = 'test-api-key';
+
+    const duplicateResult = {
+      external_id: 'jsearch_1',
+      title: 'Director of Engineering',
+      company: 'Acme Corp',
+      location: 'New York, NY',
+      salary_min: null,
+      salary_max: null,
+      description: null,
+      posted_date: new Date().toISOString(),
+      apply_url: 'https://example.com/jobs/1',
+      source: 'jsearch',
+      remote_type: null,
+      employment_type: null,
+      required_skills: null,
+    };
+
+    mockJSearchSearch.mockResolvedValue([duplicateResult, { ...duplicateResult, external_id: 'jsearch_2' }]);
+
+    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', true);
+
+    // Despite two results returned, deduplication should reduce to 1 unique job
+    expect(result.jobsFound).toBe(1);
+
+    delete process.env.JSEARCH_API_KEY;
+  });
+});
+
+// ─── searchJobsByCompany (public export) ──────────────────────────────────────
+
+describe('searchJobsByCompany', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockJSearchSearch.mockResolvedValue([]);
+    mockAdzunaSearch.mockResolvedValue([]);
+  });
+
+  it('returns empty ScrapeResult when both APIs have no key set', async () => {
+    delete process.env.JSEARCH_API_KEY;
+    delete process.env.ADZUNA_APP_ID;
+    delete process.env.ADZUNA_API_KEY;
+
+    const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
+
+    expect(result.companiesScanned).toBe(1);
+    expect(result.jobsFound).toBe(0);
+    expect(result.matchingJobs).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('returns JSearch results when available', async () => {
+    process.env.JSEARCH_API_KEY = 'test-key';
+
+    mockJSearchSearch.mockResolvedValue([
+      {
+        external_id: 'jsearch_1',
+        title: 'Director of Finance',
+        company: 'Acme Corp',
+        location: null,
+        salary_min: null,
+        salary_max: null,
+        description: null,
+        posted_date: new Date().toISOString(),
+        apply_url: null,
+        source: 'jsearch',
+        remote_type: null,
+        employment_type: null,
+        required_skills: null,
+      },
+    ]);
+
+    const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
+
+    expect(result.jobsFound).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.jsearch_api).toBeGreaterThan(0);
+
+    delete process.env.JSEARCH_API_KEY;
+  });
+
+  it('falls back to Adzuna when JSearch returns nothing', async () => {
+    process.env.JSEARCH_API_KEY = 'test-key';
+    process.env.ADZUNA_APP_ID = 'app-id';
+    process.env.ADZUNA_API_KEY = 'api-key';
+
+    mockJSearchSearch.mockResolvedValue([]);
+    mockAdzunaSearch.mockResolvedValue([
+      {
+        external_id: 'adzuna_1',
+        title: 'Director of Product',
+        company: 'Acme Corp',
+        location: null,
+        salary_min: null,
+        salary_max: null,
+        description: null,
+        posted_date: new Date().toISOString(),
+        apply_url: null,
+        source: 'adzuna',
+        remote_type: null,
+        employment_type: null,
+        required_skills: null,
+      },
+    ]);
+
+    const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
+
+    expect(result.jobsFound).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.adzuna_api).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.jsearch_api).toBe(0);
+
+    delete process.env.JSEARCH_API_KEY;
+    delete process.env.ADZUNA_APP_ID;
+    delete process.env.ADZUNA_API_KEY;
   });
 });

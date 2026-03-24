@@ -63,9 +63,9 @@ function HighlightedString({ value }: { value: string }) {
           return <span key={i} className="text-[#f0d99f]">{token}</span>;
         }
         if (/^[()]$/.test(token)) {
-          return <span key={i} className="text-white/35">{token}</span>;
+          return <span key={i} className="text-[var(--text-soft)]">{token}</span>;
         }
-        return <span key={i} className="text-white/70">{token}</span>;
+        return <span key={i} className="text-[var(--text-muted)]">{token}</span>;
       })}
     </code>
   );
@@ -130,7 +130,7 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
 
   return (
     <div
-      className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-5 flex flex-col gap-4"
+      className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-[var(--accent-muted)] to-[var(--accent-muted)] p-5 flex flex-col gap-4"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -141,7 +141,7 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
           >
             <Icon size={15} style={{ color: platform.accent }} />
           </div>
-          <span className="text-[14px] font-semibold text-white/85">{platform.label}</span>
+          <span className="text-[14px] font-semibold text-[var(--text-strong)]">{platform.label}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -150,7 +150,7 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
               type="button"
               onClick={() => setEditing(true)}
               title="Edit search string"
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors"
             >
               <Pencil size={11} />
               Edit
@@ -161,14 +161,14 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
               <button
                 type="button"
                 onClick={handleSave}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[#57CDA4]/70 hover:text-[#57CDA4] hover:bg-[#57CDA4]/[0.06] transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-[#57CDA4]/70 hover:text-[#57CDA4] hover:bg-[#57CDA4]/[0.06] transition-colors"
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] text-white/25 hover:text-white/50 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               >
                 <X size={11} />
               </button>
@@ -178,7 +178,7 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
             type="button"
             onClick={handleCopy}
             title="Copy to clipboard"
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors"
           >
             {copied ? (
               <><Check size={11} className="text-[#57CDA4]" /> Copied</>
@@ -196,10 +196,10 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={4}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none leading-relaxed"
+          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 font-mono text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none leading-relaxed"
         />
       ) : (
-        <div className="rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3">
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--bg-1)] px-4 py-3">
           <HighlightedString value={value} />
         </div>
       )}
@@ -217,7 +217,7 @@ interface TermPillProps {
 function TermPill({ label, color }: TermPillProps) {
   return (
     <span
-      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium"
       style={{ color, backgroundColor: `${color}15` }}
     >
       {label}
@@ -234,12 +234,12 @@ function ExtractedTerms({ terms }: ExtractedTermsProps) {
   if (!hasAny) return null;
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col gap-4">
-      <h3 className="text-[13px] font-semibold text-white/60">Extracted Terms</h3>
+    <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5 flex flex-col gap-4">
+      <h3 className="text-[13px] font-semibold text-[var(--text-soft)]">Extracted Terms</h3>
       <div className="flex flex-col gap-3">
         {terms.titles.length > 0 && (
           <div>
-            <span className="text-[11px] text-white/30 uppercase tracking-wider">Titles</span>
+            <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">Titles</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {terms.titles.map((t) => <TermPill key={t} label={t} color="#98b3ff" />)}
             </div>
@@ -247,7 +247,7 @@ function ExtractedTerms({ terms }: ExtractedTermsProps) {
         )}
         {terms.skills.length > 0 && (
           <div>
-            <span className="text-[11px] text-white/30 uppercase tracking-wider">Skills</span>
+            <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">Skills</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {terms.skills.map((s) => <TermPill key={s} label={s} color="#57CDA4" />)}
             </div>
@@ -255,7 +255,7 @@ function ExtractedTerms({ terms }: ExtractedTermsProps) {
         )}
         {terms.industries.length > 0 && (
           <div>
-            <span className="text-[11px] text-white/30 uppercase tracking-wider">Industries</span>
+            <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">Industries</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {terms.industries.map((ind) => <TermPill key={ind} label={ind} color="#f0d99f" />)}
             </div>
@@ -361,14 +361,14 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
   return (
     <div className="flex flex-col gap-6">
       {/* Intro + input card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-[#98b3ff]/[0.05] to-white/[0.01] p-6 flex flex-col gap-5">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-[#98b3ff]/[0.05] to-[var(--accent-muted)] p-6 flex flex-col gap-5">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-xl bg-[#98b3ff]/10 flex items-center justify-center flex-shrink-0">
             <Search size={18} className="text-[#98b3ff]" />
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-white/85 mb-1">Boolean Search Generator</h3>
-            <p className="text-[13px] text-white/45 leading-relaxed">
+            <h3 className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Boolean Search Generator</h3>
+            <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
               Generate optimized Boolean search strings for LinkedIn, Indeed, and Google X-Ray from your
               resume. Use them to find roles — or to see how recruiters are finding candidates like you.
             </p>
@@ -377,9 +377,9 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
 
         {/* Resume text */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="bool-resume" className="text-[12px] text-white/40 font-medium">
+          <label htmlFor="bool-resume" className="text-[12px] text-[var(--text-soft)] font-medium">
             Resume Text
-            {resumeLoading && <span className="ml-2 text-white/25 font-normal">Loading...</span>}
+            {resumeLoading && <span className="ml-2 text-[var(--text-soft)] font-normal">Loading...</span>}
           </label>
           <textarea
             id="bool-resume"
@@ -388,14 +388,14 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
             placeholder={resumeLoading ? 'Loading your resume...' : 'Paste your resume text here (min 50 characters)'}
             rows={5}
             disabled={resumeLoading}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none disabled:opacity-40"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none disabled:opacity-40"
           />
         </div>
 
         {/* Optional target titles */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="bool-titles" className="text-[12px] text-white/40 font-medium">
-            Target Titles <span className="text-white/25 font-normal">(optional, comma-separated)</span>
+          <label htmlFor="bool-titles" className="text-[12px] text-[var(--text-soft)] font-medium">
+            Target Titles <span className="text-[var(--text-soft)] font-normal">(optional, comma-separated)</span>
           </label>
           <input
             id="bool-titles"
@@ -403,7 +403,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
             value={targetTitles}
             onChange={(e) => setTargetTitles(e.target.value)}
             placeholder="e.g. VP of Operations, Director of Supply Chain"
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
           />
         </div>
 
@@ -423,7 +423,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
           </GlassButton>
 
           {result && !isLoading && (
-            <span className="text-[11px] text-white/25">
+            <span className="text-[13px] text-[var(--text-soft)]">
               Generated {new Date(result.generatedAt).toLocaleDateString()}
             </span>
           )}
@@ -442,7 +442,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
       {isLoading && (
         <GlassCard className="p-6 flex items-center gap-3">
           <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
-          <span className="text-[13px] text-white/55">Analyzing your resume and building search strings...</span>
+          <span className="text-[13px] text-[var(--text-soft)]">Analyzing your resume and building search strings...</span>
         </GlassCard>
       )}
 
@@ -451,10 +451,10 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
         <>
           {/* Legend */}
           <div className="flex items-center gap-4 px-1">
-            <span className="text-[11px] text-white/25 uppercase tracking-wider">Syntax</span>
-            <span className="text-[11px] text-[#98b3ff]">AND / OR</span>
-            <span className="text-[11px] text-[#f0d99f]">NOT</span>
-            <span className="text-[11px] text-[#57CDA4]">"quoted phrase"</span>
+            <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">Syntax</span>
+            <span className="text-[13px] text-[#98b3ff]">AND / OR</span>
+            <span className="text-[13px] text-[#f0d99f]">NOT</span>
+            <span className="text-[13px] text-[#57CDA4]">"quoted phrase"</span>
           </div>
 
           {/* Platform cards */}

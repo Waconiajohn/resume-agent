@@ -23,6 +23,11 @@ import {
   renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
+import {
+  processNewTouchpoint,
+  getContactWithHistory,
+} from '../../lib/networking-crm-service.js';
+import { FF_NETWORKING_CRM } from '../../lib/feature-flags.js';
 
 export function createNetworkingOutreachProductConfig(): ProductConfig<NetworkingOutreachState, NetworkingOutreachSSEEvent> {
   return {
@@ -96,8 +101,28 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
             name: 'sequence_review',
             condition: (state) => Array.isArray(state.messages) && state.messages.length > 0,
             onResponse: (response, state) => {
-              if (response === true || response === 'approved') {
+              const approved = response === true || response === 'approved';
+              if (approved) {
                 state.revision_feedback = undefined;
+
+                // Auto-log a CRM touchpoint when the user approves and a contact is linked
+                if (FF_NETWORKING_CRM && state.crm_contact_id) {
+                  const method = state.messaging_method ?? 'group_message';
+                  // Map messaging method to allowed touchpoint types
+                  const touchpointType = method === 'inmail' ? 'inmail' : 'email';
+                  const contactName = state.target_input?.target_name ?? 'contact';
+                  processNewTouchpoint({
+                    userId: state.user_id,
+                    contactId: state.crm_contact_id,
+                    type: touchpointType,
+                    notes: `Outreach sequence approved (${state.messages.length} messages, method: ${method}). Target: ${contactName}.`,
+                  }).catch((err: unknown) => {
+                    logger.warn(
+                      { error: err instanceof Error ? err.message : String(err), contactId: state.crm_contact_id },
+                      'sequence_review gate: CRM touchpoint log failed (non-fatal)',
+                    );
+                  });
+                }
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.feedback === 'string') {
@@ -121,6 +146,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       shared_context: input.shared_context as NetworkingOutreachState['shared_context'],
       target_input: input.target_input as NetworkingOutreachState['target_input'],
       messaging_method: (input.messaging_method as MessagingMethod | undefined) ?? 'group_message',
+      crm_contact_id: typeof input.crm_contact_id === 'string' ? input.crm_contact_id : undefined,
       messages: [],
     }),
 
@@ -139,6 +165,59 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           `Title: ${ti?.target_title ?? ''}`,
           `Company: ${ti?.target_company ?? ''}`,
         ];
+
+        // Load CRM history when a contact_id is provided and the CRM feature is on
+        if (FF_NETWORKING_CRM && state.crm_contact_id) {
+          try {
+            const history = await getContactWithHistory(state.crm_contact_id, state.user_id);
+            if (history) {
+              // Store history in state so persistResult can use it later
+              state.crm_contact_history = history.touchpoints;
+
+              parts.push('');
+              parts.push('## CRM Contact History');
+              parts.push(`Relationship strength: ${history.contact.relationship_strength}/5`);
+              if (history.contact.last_contact_date) {
+                const lastContact = new Date(history.contact.last_contact_date).toLocaleDateString('en-US', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                });
+                parts.push(`Last contact: ${lastContact}`);
+              }
+              if (history.contact.notes) {
+                parts.push(`Notes: ${history.contact.notes}`);
+              }
+              if (history.contact.tags && history.contact.tags.length > 0) {
+                parts.push(`Tags: ${history.contact.tags.join(', ')}`);
+              }
+
+              if (history.touchpoints.length > 0) {
+                parts.push('');
+                parts.push('### Past Touchpoints');
+                for (const tp of history.touchpoints.slice(0, 10)) {
+                  const tpDate = new Date(tp.created_at).toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                  });
+                  const tpNote = tp.notes ? ` — ${tp.notes}` : '';
+                  parts.push(`- ${tpDate}: ${tp.type}${tpNote}`);
+                }
+              }
+
+              if (history.outreachHistory.length > 0) {
+                parts.push('');
+                parts.push('### Previously Generated Outreach Messages');
+                parts.push('These were generated in earlier sessions. Use them to avoid repetition and build on what has already been sent.');
+                for (const msg of history.outreachHistory.slice(0, 5)) {
+                  parts.push(`- ${msg.type}: ${msg.body.slice(0, 120)}...`);
+                }
+              }
+            }
+          } catch (err) {
+            logger.warn(
+              { error: err instanceof Error ? err.message : String(err), contactId: state.crm_contact_id },
+              'buildAgentMessage(researcher): CRM history load failed (non-fatal)',
+            );
+          }
+        }
 
         if (ti?.target_linkedin_url) {
           parts.push(`LinkedIn: ${ti.target_linkedin_url}`);
@@ -303,6 +382,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
         common_ground: unknown;
       };
 
+      // Persist the outreach report
       try {
         await supabaseAdmin
           .from('networking_outreach_reports')
@@ -323,6 +403,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           'Networking outreach: failed to persist report (non-fatal)',
         );
       }
+
     },
 
     validateAfterAgent: (agentName, state) => {

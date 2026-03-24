@@ -98,14 +98,14 @@ export function CoverLetterIntakeForm({
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
+          className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors duration-150"
         >
           <span aria-hidden="true">&#8592;</span>
           {backLabel}
         </button>
 
-        <h1 className="mb-2 text-2xl font-semibold text-white/90">Cover Letter</h1>
-        <p className="mb-8 text-sm text-white/50">
+        <h1 className="mb-2 text-2xl font-semibold text-[var(--text-strong)]">Cover Letter</h1>
+        <p className="mb-8 text-sm text-[var(--text-soft)]">
           Paste your resume, the job description, and the company name. We'll generate a targeted cover letter that tells the WHY ME story — not a resume rehash.
         </p>
 
@@ -120,13 +120,13 @@ export function CoverLetterIntakeForm({
             {/* Resume Text */}
             <div>
               <div className="mb-1.5 flex items-center gap-2">
-                <label htmlFor="cl-resume" className="block text-xs font-medium text-white/70">
+                <label htmlFor="cl-resume" className="block text-xs font-medium text-[var(--text-muted)]">
                   Resume Text
                 </label>
                 {resumeLoading && (
                   <span
                     data-testid="resume-loading-indicator"
-                    className="flex items-center gap-1 text-xs text-white/40"
+                    className="flex items-center gap-1 text-xs text-[var(--text-soft)]"
                     aria-live="polite"
                     aria-label="Loading resume"
                   >
@@ -152,7 +152,7 @@ export function CoverLetterIntakeForm({
 
             {/* Job Description */}
             <div>
-              <label htmlFor="cl-jd" className="mb-1.5 block text-xs font-medium text-white/70">
+              <label htmlFor="cl-jd" className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
                 Job Description
               </label>
               <GlassTextarea
@@ -167,7 +167,7 @@ export function CoverLetterIntakeForm({
 
             {/* Company Name */}
             <div>
-              <label htmlFor="cl-company" className="mb-1.5 block text-xs font-medium text-white/70">
+              <label htmlFor="cl-company" className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
                 Company Name
               </label>
               <GlassInput
@@ -182,8 +182,8 @@ export function CoverLetterIntakeForm({
             {/* Tone Selector */}
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-medium text-white/70">Letter Tone</span>
-                <span className="text-[10px] text-white/30">Choose the voice that fits the company culture</span>
+                <span className="text-xs font-medium text-[var(--text-muted)]">Letter Tone</span>
+                <span className="text-[12px] text-[var(--text-soft)]">Choose the voice that fits the company culture</span>
               </div>
               <div className="grid grid-cols-3 gap-2.5">
                 {TONE_OPTIONS.map(({ id, label, description, icon: Icon }) => {
@@ -198,14 +198,14 @@ export function CoverLetterIntakeForm({
                         'flex flex-col items-center gap-2 rounded-xl border p-3.5 text-center transition-all',
                         isSelected
                           ? 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]'
-                          : 'border-white/[0.06] bg-white/[0.02] text-white/35 hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-white/55',
+                          : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                         loading && 'cursor-not-allowed opacity-50',
                       )}
                     >
                       <Icon className="h-4 w-4" />
                       <div>
                         <div className="text-[12px] font-semibold">{label}</div>
-                        <div className="mt-0.5 text-[10px] opacity-60 leading-tight">{description}</div>
+                        <div className="mt-0.5 text-[12px] opacity-60 leading-tight">{description}</div>
                       </div>
                     </button>
                   );

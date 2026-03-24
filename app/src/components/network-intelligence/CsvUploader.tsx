@@ -113,7 +113,7 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
         state === 'dragging' && 'border-[#afc4ff]/50 bg-[#afc4ff]/[0.05]',
         state === 'error' && 'border-[#f0b8b8]/30',
         state === 'complete' && 'border-[#b5dec2]/30',
-        state !== 'dragging' && state !== 'error' && state !== 'complete' && 'border-white/10',
+        state !== 'dragging' && state !== 'error' && state !== 'complete' && 'border-[var(--line-soft)]',
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -130,10 +130,10 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
 
       {state === 'idle' && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-white/70">
+          <p className="text-sm font-medium text-[var(--text-muted)]">
             Drop your LinkedIn Connections CSV here
           </p>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-[var(--text-soft)]">
             or click to browse — .csv files only, max 5MB
           </p>
         </div>
@@ -145,10 +145,10 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
 
       {state === 'uploading' && (
         <div className="space-y-2">
-          <div className="mx-auto h-1 w-32 overflow-hidden rounded-full bg-white/10">
+          <div className="mx-auto h-1 w-32 overflow-hidden rounded-full bg-[var(--line-soft)]">
             <div className="h-full motion-safe:animate-pulse rounded-full bg-[#afc4ff]/60" style={{ width: '60%' }} />
           </div>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-[var(--text-soft)]">
             Uploading {fileName}...
           </p>
         </div>

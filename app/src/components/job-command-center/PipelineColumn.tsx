@@ -28,17 +28,17 @@ export function PipelineColumn({ stageKey, label, color, count, children }: Pipe
     <div className="min-w-[160px] flex flex-col">
       <div className="flex items-center gap-1.5 mb-2">
         <span className={cn('h-2 w-2 rounded-full flex-shrink-0', STAGE_DOT[stageKey])} />
-        <span className={cn('text-[11px] font-semibold uppercase tracking-wider', color)}>
+        <span className={cn('text-[13px] font-semibold uppercase tracking-wider', color)}>
           {label}
         </span>
-        <span className="text-[10px] text-white/25 tabular-nums ml-auto">{count}</span>
+        <span className="text-[12px] text-[var(--text-soft)] tabular-nums ml-auto">{count}</span>
       </div>
 
       <div
         ref={setNodeRef}
         className={cn(
           'flex-1 space-y-2 rounded-xl p-1 min-h-[60px] transition-colors',
-          isOver && 'bg-white/[0.03] ring-1 ring-white/[0.08]',
+          isOver && 'bg-[var(--accent-muted)] ring-1 ring-[var(--line-soft)]',
         )}
       >
         {children}

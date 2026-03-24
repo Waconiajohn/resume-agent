@@ -12,7 +12,7 @@ function AtsScorePanel({ value }: { value: number }) {
       <div className="text-3xl font-semibold tracking-tight" style={{ color }}>
         {value}%
       </div>
-      <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/45">ATS Match</div>
+      <div className="mt-1 text-[13px] uppercase tracking-[0.16em] text-[var(--text-soft)]">ATS Match</div>
     </div>
   );
 }
@@ -31,7 +31,7 @@ export function ScoresCard({
       <div className="room-meta-strip">
         <div className="room-meta-item">
           <span className="eyebrow-label">Scoring Snapshot</span>
-          <span className="text-sm text-white/60">Truth, tone, and fast improvements in one place.</span>
+          <span className="text-sm text-[var(--text-soft)]">Truth, tone, and fast improvements in one place.</span>
         </div>
       </div>
 
@@ -54,10 +54,10 @@ export function ScoresCard({
             {quickWins.map((w, i) => (
               <li
                 key={i}
-                className="flex items-start gap-2 rounded-md border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs transition-colors hover:bg-white/[0.05] hover:border-white/[0.12]"
+                className="flex items-start gap-2 rounded-md border border-[var(--line-soft)] bg-black/20 px-3 py-2.5 text-xs transition-colors hover:bg-[var(--surface-1)] hover:border-[var(--line-strong)]"
               >
                 <ImpactDot impact={w.impact} />
-                <span className="text-white/60">{w.description}</span>
+                <span className="text-[var(--text-soft)]">{w.description}</span>
               </li>
             ))}
           </ul>

@@ -106,9 +106,9 @@ function StatCard({
 
   return (
     <GlassCard className="p-4">
-      <p className="text-xs text-white/50 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-1">{label}</p>
       <p className={cn('text-2xl font-semibold', accentClass)}>{value}</p>
-      {sub && <p className="text-xs text-white/40 mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-[var(--text-soft)] mt-0.5">{sub}</p>}
     </GlassCard>
   );
 }
@@ -231,11 +231,11 @@ export function AdminDashboard() {
       <div className="min-h-screen bg-surface flex items-center justify-center p-6">
         <GlassCard className="p-8 max-w-sm w-full">
           <h1 className="text-xl font-semibold text-white mb-1">Admin Dashboard</h1>
-          <p className="text-sm text-white/50 mb-6">Enter your admin API key to continue.</p>
+          <p className="text-sm text-[var(--text-soft)] mb-6">Enter your admin API key to continue.</p>
           <div className="flex flex-col gap-3">
             <input
               type="password"
-              className="rounded-lg bg-white/[0.06] border border-white/[0.1] text-white text-sm px-3 py-2.5 outline-none focus:border-[#afc4ff]/50 placeholder-white/30"
+              className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-sm px-3 py-2.5 outline-none focus:border-[#afc4ff]/50 placeholder-[var(--text-soft)]"
               placeholder="Admin API key"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
@@ -324,11 +324,11 @@ export function AdminDashboard() {
 
         {Object.keys(p.completions_by_domain).length > 0 && (
           <GlassCard className="p-4">
-            <p className="text-xs text-white/50 uppercase tracking-wider mb-3">Completions by Domain</p>
+            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Completions by Domain</p>
             <div className="space-y-1.5">
               {Object.entries(p.completions_by_domain).map(([domain, count]) => (
                 <div key={domain} className="flex items-center justify-between text-sm">
-                  <span className="text-white/70">{domain}</span>
+                  <span className="text-[var(--text-muted)]">{domain}</span>
                   <span className="text-[#b5dec2] font-medium">{count}</span>
                 </div>
               ))}
@@ -336,7 +336,7 @@ export function AdminDashboard() {
           </GlassCard>
         )}
 
-        <p className="text-xs text-white/30 text-right">
+        <p className="text-xs text-[var(--text-soft)] text-right">
           Generated {formatDate(stats.generated_at)}
         </p>
       </div>
@@ -349,7 +349,7 @@ export function AdminDashboard() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-[var(--text-soft)]">
             {errors.total} total error sessions
           </p>
           <div className="flex gap-2">
@@ -361,11 +361,11 @@ export function AdminDashboard() {
                 setErrorsPage(next);
                 void loadErrors(next * PAGE_SIZE);
               }}
-              className="text-xs text-white/40 hover:text-white/70 disabled:opacity-30 px-2 py-1"
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-30 px-2 py-1"
             >
               Previous
             </button>
-            <span className="text-xs text-white/40 px-2 py-1">
+            <span className="text-xs text-[var(--text-soft)] px-2 py-1">
               Page {errorsPage + 1}
             </span>
             <button
@@ -376,7 +376,7 @@ export function AdminDashboard() {
                 setErrorsPage(next);
                 void loadErrors(next * PAGE_SIZE);
               }}
-              className="text-xs text-white/40 hover:text-white/70 disabled:opacity-30 px-2 py-1"
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-30 px-2 py-1"
             >
               Next
             </button>
@@ -385,7 +385,7 @@ export function AdminDashboard() {
 
         {errors.errors.length === 0 ? (
           <GlassCard className="p-6 text-center">
-            <p className="text-white/40 text-sm">No errors found.</p>
+            <p className="text-[var(--text-soft)] text-sm">No errors found.</p>
           </GlassCard>
         ) : (
           <div className="space-y-2">
@@ -394,14 +394,14 @@ export function AdminDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-mono text-[#afc4ff] truncate">{row.session_id}</p>
-                    <p className="text-xs text-white/50 mt-0.5">
+                    <p className="text-xs text-[var(--text-soft)] mt-0.5">
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
                     {row.error_message && (
                       <p className="text-xs text-[#f0a0a0] mt-1 truncate">{row.error_message}</p>
                     )}
                   </div>
-                  <p className="text-xs text-white/30 whitespace-nowrap shrink-0">
+                  <p className="text-xs text-[var(--text-soft)] whitespace-nowrap shrink-0">
                     {formatDate(row.timestamp)}
                   </p>
                 </div>
@@ -419,7 +419,7 @@ export function AdminDashboard() {
     error: 'text-[#f0a0a0]',
     active: 'text-[#afc4ff]',
     processing: 'text-[#f0d99f]',
-    pending: 'text-white/50',
+    pending: 'text-[var(--text-soft)]',
   };
 
   const renderSessions = () => {
@@ -427,7 +427,7 @@ export function AdminDashboard() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-[var(--text-soft)]">
             {sessions.total} total sessions
           </p>
           <div className="flex gap-2">
@@ -439,11 +439,11 @@ export function AdminDashboard() {
                 setSessionsPage(next);
                 void loadSessions(next * PAGE_SIZE);
               }}
-              className="text-xs text-white/40 hover:text-white/70 disabled:opacity-30 px-2 py-1"
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-30 px-2 py-1"
             >
               Previous
             </button>
-            <span className="text-xs text-white/40 px-2 py-1">
+            <span className="text-xs text-[var(--text-soft)] px-2 py-1">
               Page {sessionsPage + 1}
             </span>
             <button
@@ -454,7 +454,7 @@ export function AdminDashboard() {
                 setSessionsPage(next);
                 void loadSessions(next * PAGE_SIZE);
               }}
-              className="text-xs text-white/40 hover:text-white/70 disabled:opacity-30 px-2 py-1"
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-30 px-2 py-1"
             >
               Next
             </button>
@@ -463,7 +463,7 @@ export function AdminDashboard() {
 
         {sessions.sessions.length === 0 ? (
           <GlassCard className="p-6 text-center">
-            <p className="text-white/40 text-sm">No sessions found.</p>
+            <p className="text-[var(--text-soft)] text-sm">No sessions found.</p>
           </GlassCard>
         ) : (
           <div className="space-y-2">
@@ -472,7 +472,7 @@ export function AdminDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-mono text-[#afc4ff] truncate">{row.id}</p>
-                    <p className="text-xs text-white/50 mt-0.5">
+                    <p className="text-xs text-[var(--text-soft)] mt-0.5">
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
                     {row.error_message && (
@@ -480,10 +480,10 @@ export function AdminDashboard() {
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={cn('text-xs font-medium', STATUS_COLORS[row.status] ?? 'text-white/50')}>
+                    <span className={cn('text-xs font-medium', STATUS_COLORS[row.status] ?? 'text-[var(--text-soft)]')}>
                       {row.status}
                     </span>
-                    <span className="text-xs text-white/30">
+                    <span className="text-xs text-[var(--text-soft)]">
                       {formatDate(row.created_at)}
                     </span>
                   </div>
@@ -509,7 +509,7 @@ export function AdminDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold text-white">Admin Dashboard</h1>
-            <p className="text-sm text-white/40 mt-0.5">Platform analytics and session management</p>
+            <p className="text-sm text-[var(--text-soft)] mt-0.5">Platform analytics and session management</p>
           </div>
           <button
             type="button"
@@ -519,14 +519,14 @@ export function AdminDashboard() {
               setAdminKey('');
               setKeyInput('');
             }}
-            className="text-xs text-white/40 hover:text-white/60 transition-colors px-3 py-1.5 rounded-lg border border-white/[0.1]"
+            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors px-3 py-1.5 rounded-lg border border-[var(--line-soft)]"
           >
             Sign out
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-white/[0.08] pb-0">
+        <div className="flex gap-1 mb-6 border-b border-[var(--line-soft)] pb-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -536,7 +536,7 @@ export function AdminDashboard() {
                 'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
                 activeTab === tab.id
                   ? 'border-[#afc4ff] text-[#afc4ff]'
-                  : 'border-transparent text-white/50 hover:text-white/70',
+                  : 'border-transparent text-[var(--text-soft)] hover:text-[var(--text-muted)]',
               )}
             >
               {tab.label}
@@ -549,7 +549,7 @@ export function AdminDashboard() {
               if (activeTab === 'errors') void loadErrors(errorsPage * PAGE_SIZE);
               if (activeTab === 'sessions') void loadSessions(sessionsPage * PAGE_SIZE);
             }}
-            className="ml-auto text-xs text-white/30 hover:text-white/50 transition-colors px-3 py-2"
+            className="ml-auto text-xs text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors px-3 py-2"
           >
             Refresh
           </button>
@@ -558,7 +558,7 @@ export function AdminDashboard() {
         {/* Content */}
         {loading && (
           <div className="flex items-center justify-center py-16">
-            <div className="h-6 w-6 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+            <div className="h-6 w-6 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
           </div>
         )}
 

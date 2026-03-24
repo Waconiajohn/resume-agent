@@ -68,10 +68,10 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
     >
       <GlassCard role="dialog" aria-modal="true" aria-label="Saved Resume" className="room-shell flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden p-0">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-5 py-4">
           <div>
             <div className="eyebrow-label">Saved Asset</div>
-            <h2 className="mt-1 text-sm font-semibold text-white/90">Saved Resume</h2>
+            <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">Saved Resume</h2>
           </div>
           <div className="flex items-center gap-2">
             {resume && (
@@ -88,7 +88,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
             )}
             <button
               onClick={onClose}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/85"
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+              <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
             </div>
           )}
 
@@ -111,11 +111,11 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
           )}
 
           {!loading && !error && !resume && (
-            <p className="py-8 text-center text-sm text-white/40">No saved resume was found for this session.</p>
+            <p className="py-8 text-center text-sm text-[var(--text-soft)]">No saved resume was found for this session.</p>
           )}
 
           {!loading && !error && resume && (
-            <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/80">
+            <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-[var(--text-muted)]">
               {resumeToText(resume)}
             </pre>
           )}

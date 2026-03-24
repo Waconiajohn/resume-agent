@@ -6,6 +6,7 @@ import type { FinalResume, ContactInfo } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { saveBlobWithFilename } from '@/lib/download';
+import type { TemplateId } from '@/lib/export-templates';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -16,6 +17,9 @@ import { saveBlobWithFilename } from '@/lib/download';
 // ---------------------------------------------------------------------------
 
 const FONT = 'Calibri';
+const FONT_EXEC = 'Georgia';
+// Navy accent color used in executive template
+const EXEC_NAVY = '1e3a5f';
 
 const paragraphStyles = [
   {
@@ -103,11 +107,103 @@ const paragraphStyles = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// Executive template paragraph styles
+// ---------------------------------------------------------------------------
+
+const execParagraphStyles = [
+  {
+    id: 'ResumeName',
+    name: 'Resume Name',
+    basedOn: 'Normal',
+    next: 'Normal',
+    quickFormat: true,
+    paragraph: {
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+    },
+    run: { bold: true, size: 48, font: FONT_EXEC, color: EXEC_NAVY }, // 24pt
+  },
+  {
+    id: 'ContactLine',
+    name: 'Contact Line',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+    },
+    run: { size: 20, font: FONT_EXEC, color: '555555' }, // 10pt
+  },
+  {
+    id: 'SectionHeading',
+    name: 'Section Heading',
+    basedOn: 'Normal',
+    next: 'Normal',
+    quickFormat: true,
+    paragraph: {
+      keepNext: true,
+      spacing: { before: 320, after: 140 },
+      // Left border as accent line instead of bottom rule
+      border: { left: { style: BorderStyle.THICK, size: 16, color: EXEC_NAVY } },
+      indent: { left: 120 },
+    },
+    run: { bold: true, size: 24, font: FONT_EXEC, color: EXEC_NAVY }, // 12pt
+  },
+  {
+    id: 'JobTitle',
+    name: 'Job Title',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepNext: true,
+      keepLines: true,
+      spacing: { before: 240, after: 40 },
+    },
+    run: { bold: true, size: 22, font: FONT_EXEC, color: EXEC_NAVY }, // 11pt navy
+  },
+  {
+    id: 'CompanyLine',
+    name: 'Company Line',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepNext: true,
+      spacing: { after: 60 },
+    },
+    run: { size: 20, font: FONT_EXEC, color: '666666' }, // 10pt
+  },
+  {
+    id: 'BulletItem',
+    name: 'Bullet Item',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepLines: true,
+      spacing: { after: 60 },
+      indent: { left: 360, hanging: 360 },
+    },
+    run: { size: 20, font: FONT_EXEC },                  // 10pt
+  },
+  {
+    id: 'BodyText',
+    name: 'Body Text Resume',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      spacing: { after: 140 },
+      widowControl: true,
+    },
+    run: { size: 20, font: FONT_EXEC },                  // 10pt
+  },
+] as const;
+
+// ---------------------------------------------------------------------------
 // Contact header (document body, page 1 only)
 // ---------------------------------------------------------------------------
 
-function contactHeaderParagraphs(contactInfo: ContactInfo): Paragraph[] {
+function contactHeaderParagraphs(contactInfo: ContactInfo, templateId: TemplateId): Paragraph[] {
   const paras: Paragraph[] = [];
+  const isExec = templateId === 'executive';
 
   if (contactInfo.name) {
     paras.push(
@@ -125,19 +221,22 @@ function contactHeaderParagraphs(contactInfo: ContactInfo): Paragraph[] {
   if (contactInfo.location) parts.push(contactInfo.location);
 
   if (parts.length > 0) {
+    // Executive: pipe-separated on one line; ATS: semicolon-separated
+    const separator = isExec ? ' \u2022 ' : '; ';
     paras.push(
       new Paragraph({
         style: 'ContactLine',
-        children: [new TextRun({ text: parts.join('; ') })],
+        children: [new TextRun({ text: parts.join(separator) })],
       }),
     );
   }
 
-  // Horizontal rule
+  // Horizontal rule under contact block
+  const ruleColor = isExec ? EXEC_NAVY : '999999';
   paras.push(
     new Paragraph({
-      spacing: { after: 120 },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: '999999' } },
+      spacing: { after: isExec ? 160 : 120 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: isExec ? 4 : 2, color: ruleColor } },
       children: [],
     }),
   );
@@ -149,7 +248,11 @@ function contactHeaderParagraphs(contactInfo: ContactInfo): Paragraph[] {
 // Page 2+ header (Section X-D)
 // ---------------------------------------------------------------------------
 
-function pageHeader(contactInfo?: ContactInfo): Header {
+function pageHeader(contactInfo: ContactInfo | undefined, templateId: TemplateId): Header {
+  const isExec = templateId === 'executive';
+  const font = isExec ? FONT_EXEC : FONT;
+  const borderColor = isExec ? EXEC_NAVY : 'CCCCCC';
+
   const parts: string[] = [];
   if (contactInfo?.name) parts.push(contactInfo.name);
   if (contactInfo?.email) parts.push(contactInfo.email);
@@ -162,12 +265,12 @@ function pageHeader(contactInfo?: ContactInfo): Header {
       new Paragraph({
         tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
         spacing: { after: 120 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColor } },
         children: [
-          new TextRun({ text: leftText, size: 18, font: FONT, color: '999999' }),
-          new TextRun({ children: ['\t'], size: 18, font: FONT }),
-          new TextRun({ text: 'Page ', size: 18, font: FONT, color: '999999' }),
-          new TextRun({ children: [PageNumber.CURRENT], size: 18, font: FONT, color: '999999' }),
+          new TextRun({ text: leftText, size: 18, font, color: '999999' }),
+          new TextRun({ children: ['\t'], size: 18, font }),
+          new TextRun({ text: 'Page ', size: 18, font, color: '999999' }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 18, font, color: '999999' }),
         ],
       }),
     ],
@@ -178,12 +281,19 @@ function pageHeader(contactInfo?: ContactInfo): Header {
 // Section heading
 // ---------------------------------------------------------------------------
 
-function sectionHeading(text: string): Paragraph {
+function sectionHeading(text: string, templateId: TemplateId = 'ats-classic'): Paragraph {
+  const isExec = templateId === 'executive';
   return new Paragraph({
     style: 'SectionHeading',
     heading: HeadingLevel.HEADING_2,
-    children: [new TextRun({ text: text.toUpperCase() })],
+    // Executive: sentence-case; ATS: all-caps for parsing
+    children: [new TextRun({ text: isExec ? toTitleCase(text) : text.toUpperCase() })],
   });
+}
+
+/** Simple title-case conversion for executive template headings */
+function toTitleCase(str: string): string {
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ---------------------------------------------------------------------------
@@ -202,13 +312,13 @@ function bulletParagraph(text: string): Paragraph {
 // Section renderers
 // ---------------------------------------------------------------------------
 
-type SectionRenderer = (resume: FinalResume) => Paragraph[];
+type SectionRenderer = (resume: FinalResume, templateId: TemplateId) => Paragraph[];
 
 const sectionRenderers: Record<string, SectionRenderer> = {
-  summary: (resume) => {
+  summary: (resume, templateId) => {
     if (!resume.summary) return [];
     return [
-      sectionHeading('Professional Summary'),
+      sectionHeading('Professional Summary', templateId),
       new Paragraph({
         style: 'BodyText',
         children: [new TextRun({ text: resume.summary })],
@@ -216,9 +326,9 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     ];
   },
 
-  selected_accomplishments: (resume) => {
+  selected_accomplishments: (resume, templateId) => {
     if (!resume.selected_accomplishments) return [];
-    const paras = [sectionHeading('Selected Accomplishments')];
+    const paras = [sectionHeading('Selected Accomplishments', templateId)];
     const lines = resume.selected_accomplishments.split('\n').filter(l => l.trim());
     for (const line of lines) {
       const clean = line.replace(/^\s*[•\-*]\s*/, '').trim();
@@ -229,18 +339,19 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     return paras;
   },
 
-  skills: (resume) => {
+  skills: (resume, templateId) => {
     if (!resume.skills || typeof resume.skills !== 'object' || Array.isArray(resume.skills)) return [];
     if (Object.keys(resume.skills).length === 0) return [];
-    const paras = [sectionHeading('Core Competencies')];
+    const font = templateId === 'executive' ? FONT_EXEC : FONT;
+    const paras = [sectionHeading('Core Competencies', templateId)];
     for (const [category, items] of Object.entries(resume.skills)) {
       const itemText = Array.isArray(items) ? items.join(' \u2022 ') : String(items);
       const children = category
         ? [
-            new TextRun({ text: `${category}: `, bold: true, size: 20, font: FONT }),
-            new TextRun({ text: itemText, size: 20, font: FONT }),
+            new TextRun({ text: `${category}: `, bold: true, size: 20, font }),
+            new TextRun({ text: itemText, size: 20, font }),
           ]
-        : [new TextRun({ text: itemText, size: 20, font: FONT })];
+        : [new TextRun({ text: itemText, size: 20, font })];
       paras.push(
         new Paragraph({
           style: 'BodyText',
@@ -253,8 +364,9 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     return paras;
   },
 
-  experience: (resume) => {
+  experience: (resume, templateId) => {
     if (!Array.isArray(resume.experience) || resume.experience.length === 0) return [];
+    const font = templateId === 'executive' ? FONT_EXEC : FONT;
     const roleSectionKeys = Object.keys(resume._raw_sections ?? {})
       .filter((k) => k.startsWith('experience_role_'))
       .sort((a, b) => {
@@ -263,7 +375,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
         return ai - bi;
       });
     if (roleSectionKeys.length > 0) {
-      const parsedParas = [sectionHeading('Professional Experience')];
+      const parsedParas = [sectionHeading('Professional Experience', templateId)];
       for (const key of roleSectionKeys) {
         const roleText = resume._raw_sections?.[key];
         if (typeof roleText !== 'string' || !roleText.trim()) continue;
@@ -276,7 +388,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
       return parsedParas;
     }
 
-    const paras = [sectionHeading('Professional Experience')];
+    const paras = [sectionHeading('Professional Experience', templateId)];
     for (const exp of resume.experience) {
       // Job title — keepNext so it stays with company line
       paras.push(
@@ -288,7 +400,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
             new TextRun({ children: ['\t'] }),
             new TextRun({
               text: `${exp.start_date} \u2013 ${exp.end_date}`,
-              bold: false, size: 20, font: FONT, color: '666666',
+              bold: false, size: 20, font, color: '666666',
             }),
           ],
         }),
@@ -313,9 +425,10 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     return paras;
   },
 
-  education: (resume) => {
+  education: (resume, templateId) => {
     if (!Array.isArray(resume.education) || resume.education.length === 0) return [];
-    const paras = [sectionHeading('Education')];
+    const font = templateId === 'executive' ? FONT_EXEC : FONT;
+    const paras = [sectionHeading('Education', templateId)];
     for (const edu of resume.education) {
       // Build line conditionally — mirrors PDF export logic to avoid "in ," or
       // ", undefined" artifacts when field, institution, or year are empty.
@@ -330,7 +443,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
           keepLines: true,
           spacing: { after: 60 },
           children: [
-            new TextRun({ text: line, size: 20, font: FONT }),
+            new TextRun({ text: line, size: 20, font }),
           ],
         }),
       );
@@ -338,9 +451,10 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     return paras;
   },
 
-  certifications: (resume) => {
+  certifications: (resume, templateId) => {
     if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return [];
-    const paras = [sectionHeading('Certifications')];
+    const font = templateId === 'executive' ? FONT_EXEC : FONT;
+    const paras = [sectionHeading('Certifications', templateId)];
     for (const cert of resume.certifications) {
       // Build line conditionally to avoid trailing "— " when issuer is empty
       let line = cert.name;
@@ -352,7 +466,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
           keepLines: true,
           spacing: { after: 60 },
           children: [
-            new TextRun({ text: line, size: 20, font: FONT }),
+            new TextRun({ text: line, size: 20, font }),
           ],
         }),
       );
@@ -365,7 +479,10 @@ const sectionRenderers: Record<string, SectionRenderer> = {
 // Resume DOCX export
 // ---------------------------------------------------------------------------
 
-export async function exportDocx(resume: FinalResume): Promise<{ success: boolean; error?: string }> {
+export async function exportDocx(
+  resume: FinalResume,
+  templateId: TemplateId = 'ats-classic',
+): Promise<{ success: boolean; error?: string }> {
  try {
   const preflight = preflightCheck(resume);
   if (!preflight.valid) {
@@ -374,7 +491,7 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
   if (preflight.warnings.length > 0) {
     console.warn('[export-docx] preflight warnings:', preflight.warnings.join('; '));
   }
-  return await _exportDocxInner(resume);
+  return await _exportDocxInner(resume, templateId);
  } catch (err) {
   const message = err instanceof Error ? err.message : 'Unknown error generating DOCX';
   console.error('[export-docx] Resume export failed:', message);
@@ -588,12 +705,19 @@ function rawSectionToParagraphs(sectionName: string, text: string, isFirstExperi
   return paras;
 }
 
-async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean }> {
+async function _exportDocxInner(
+  resume: FinalResume,
+  templateId: TemplateId,
+): Promise<{ success: boolean }> {
   const children: Paragraph[] = [];
+  const isExec = templateId === 'executive';
+  const activeFont = isExec ? FONT_EXEC : FONT;
+  // Executive template uses 0.8" margins (1152 twips); ATS uses 0.5" (720 twips)
+  const pageMargin = isExec ? 1152 : 720;
 
   // Contact header in document body (NOT in Word header — ATS requirement)
   if (resume.contact_info?.name) {
-    children.push(...contactHeaderParagraphs(resume.contact_info));
+    children.push(...contactHeaderParagraphs(resume.contact_info, templateId));
   }
 
   const hasStructuredContent =
@@ -610,14 +734,14 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     for (const sectionName of order) {
       const renderer = sectionRenderers[sectionName];
       if (renderer) {
-        children.push(...renderer(resume));
+        children.push(...renderer(resume, templateId));
         rendered.add(sectionName);
       }
     }
     for (const sectionName of DEFAULT_SECTION_ORDER) {
       if (rendered.has(sectionName)) continue;
       const renderer = sectionRenderers[sectionName];
-      if (renderer) children.push(...renderer(resume));
+      if (renderer) children.push(...renderer(resume, templateId));
     }
   } else {
     // Fallback: raw section text from pipeline v2.
@@ -651,6 +775,8 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     }
   }
 
+  const activeStyles = isExec ? execParagraphStyles : paragraphStyles;
+
   const doc = new Document({
     // Document metadata (Section X-F)
     title: resume.contact_info?.name ? `${resume.contact_info.name} Resume` : 'Resume',
@@ -666,22 +792,22 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     styles: {
       default: {
         document: {
-          run: { font: FONT },
+          run: { font: activeFont },
         },
       },
-      paragraphStyles: [...paragraphStyles],
+      paragraphStyles: [...activeStyles],
     },
     sections: [
       {
         properties: {
           page: {
-            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            margin: { top: pageMargin, right: pageMargin, bottom: pageMargin, left: pageMargin },
           },
           // Suppress header on page 1 — contact info in body (Section X-D)
           titlePage: true,
         },
         headers: {
-          default: pageHeader(resume.contact_info),
+          default: pageHeader(resume.contact_info, templateId),
         },
         children,
       },

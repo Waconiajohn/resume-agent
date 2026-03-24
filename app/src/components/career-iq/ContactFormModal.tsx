@@ -80,8 +80,8 @@ export function ContactFormModal({
   };
 
   const inputClass =
-    'w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
-  const labelClass = 'block text-[11px] text-white/40 mb-1';
+    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
+  const labelClass = 'block text-[13px] text-[var(--text-soft)] mb-1';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -100,11 +100,11 @@ export function ContactFormModal({
         className="relative w-full max-w-lg p-6 z-10"
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[15px] font-semibold text-white/85">{title}</h2>
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/30 hover:text-white/60 transition-colors"
+            className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             aria-label="Close"
           >
             <X size={16} />
@@ -235,7 +235,7 @@ export function ContactFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-[13px] text-white/40 hover:text-white/60 transition-colors"
+            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel
           </button>

@@ -218,7 +218,7 @@ function makeGapAnalysis(): GapAnalysis {
   };
 }
 
-/** Minimal V2PipelineData that satisfies canShowSplitScreen */
+/** Minimal V2PipelineData that satisfies canShowResumeDocument */
 function makePipelineDataWithResume(overrides: Partial<V2PipelineData> = {}): V2PipelineData {
   return {
     sessionId: 'test-session',
@@ -232,6 +232,8 @@ function makePipelineDataWithResume(overrides: Partial<V2PipelineData> = {}): V2
     narrativeStrategy: null,
     resumeDraft: makeResumeDraft(),
     assembly: null,
+    inlineSuggestions: [],
+    verificationDetail: null,
     error: null,
     stageMessages: [],
     ...overrides,
@@ -761,20 +763,20 @@ describe('InlineEditPanel — requirement tags', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// V2StreamingDisplay — canShowSplitScreen
+// V2StreamingDisplay — canShowResumeDocument
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('V2StreamingDisplay — split-screen activation', () => {
-  it('renders the split layout with the rewrite queue when hasResume + jobIntelligence + gapAnalysis exist', () => {
+describe('V2StreamingDisplay — layout modes', () => {
+  it('renders the full-width resume document when a draft exists', () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
 
-    expect(screen.getByText('Requirements to Match')).toBeInTheDocument();
-    expect(screen.getByText('Open Full Analysis')).toBeInTheDocument();
+    // Resume document is rendered — bullets are visible
+    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
+    // Left panel (RewriteQueuePanel) is NOT rendered
+    expect(screen.queryByText('Requirements to Match')).not.toBeInTheDocument();
   });
 
-  it('reveals live analysis progress one step at a time while analysis is running', () => {
-    vi.useFakeTimers();
-
+  it('renders the processing status bar when no resume draft exists', () => {
     const props = makeDisplayProps({
       isComplete: false,
       editableResume: null,
@@ -791,67 +793,62 @@ describe('V2StreamingDisplay — split-screen activation', () => {
 
     render(<V2StreamingDisplay {...props} />);
 
-    expect(screen.getByText('Live progress')).toBeInTheDocument();
-    expect(screen.getByText('Read the strongest proof already on the resume')).toBeInTheDocument();
-    expect(screen.queryByText('Pull direct requirements from the job description')).not.toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1300);
-    });
-
-    expect(screen.getByText('Pull direct requirements from the job description')).toBeInTheDocument();
-
-    vi.useRealTimers();
+    expect(screen.getByText('Reading your resume...')).toBeInTheDocument();
   });
 
-  it('keeps the live activity panel visible even after early analysis findings arrive', () => {
-    const props = makeDisplayProps({
-      isComplete: false,
-      editableResume: null,
-      data: makePipelineDataWithResume({
-        stage: 'analysis',
-        candidateIntelligence: null,
-        benchmarkCandidate: null,
-        resumeDraft: null,
-        assembly: null,
-        gapAnalysis: null,
-      }),
-    });
+  it('shows the correct status text for each pipeline stage', () => {
+    const stages: Array<{ stage: string; label: string }> = [
+      { stage: 'strategy', label: 'Building your positioning strategy...' },
+      { stage: 'writing', label: 'Drafting your resume...' },
+      { stage: 'verification', label: 'Running quality checks...' },
+      { stage: 'assembly', label: 'Preparing your suggestions...' },
+    ];
 
-    render(<V2StreamingDisplay {...props} />);
-
-    expect(screen.getByText('Live progress')).toBeInTheDocument();
-    expect(screen.getByText('Findings collected so far')).toBeInTheDocument();
-    expect(screen.getByTestId('job-intelligence-card')).toBeInTheDocument();
+    for (const { stage, label } of stages) {
+      cleanup();
+      const props = makeDisplayProps({
+        isComplete: false,
+        editableResume: null,
+        data: makePipelineDataWithResume({
+          stage: stage as import('@/types/resume-v2').V2Stage,
+          resumeDraft: null,
+          assembly: null,
+        }),
+      });
+      render(<V2StreamingDisplay {...props} />);
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
   });
 
-  it('does NOT render split layout when isRerunning is true', () => {
+  it('does NOT render resume document when isRerunning is true', () => {
     render(<V2StreamingDisplay {...makeDisplayProps({ isRerunning: true })} />);
 
+    // Rerunning hides the (stale) resume and shows the processing bar
     expect(screen.queryByTestId('gap-analysis-report')).not.toBeInTheDocument();
   });
 
-  it('does NOT render split layout when jobIntelligence is null', () => {
+  it('renders resume document even when jobIntelligence is null', () => {
     const props = makeDisplayProps({
       data: makePipelineDataWithResume({ jobIntelligence: null }),
     });
     render(<V2StreamingDisplay {...props} />);
 
-    expect(screen.queryByTestId('gap-analysis-report')).not.toBeInTheDocument();
+    // Full-width resume still renders — it no longer requires jobIntelligence
+    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
   });
 
-  it('does NOT render split layout when gapAnalysis is null', () => {
+  it('renders resume document even when gapAnalysis is null', () => {
     const props = makeDisplayProps({
       data: makePipelineDataWithResume({ gapAnalysis: null }),
     });
     render(<V2StreamingDisplay {...props} />);
 
-    expect(screen.queryByTestId('gap-analysis-report')).not.toBeInTheDocument();
+    // Full-width resume still renders — it no longer requires gapAnalysis
+    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
   });
 
-  it('does NOT render split layout when editableResume is null', () => {
+  it('renders processing bar when both editableResume and resumeDraft are null', () => {
     const props = makeDisplayProps({ editableResume: null });
-    // Also null out resumeDraft so hasResume is false
     const data = makePipelineDataWithResume({ resumeDraft: null });
     render(<V2StreamingDisplay {...props} data={data} />);
 

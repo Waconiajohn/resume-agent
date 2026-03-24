@@ -89,8 +89,8 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Here's What We Found</span>
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--text-strong)]">Here's What We Found</span>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -104,11 +104,11 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
           <GlassCard className="p-4">
             <div className="flex flex-wrap items-center gap-2">
               {parseConfidence && (
-                <span className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${confidenceTone}`}>
+                <span className={`rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] ${confidenceTone}`}>
                   {confidenceLabel}
                 </span>
               )}
-              <span className="text-[11px] text-white/58">
+              <span className="text-[13px] text-[var(--text-soft)]">
                 Here's what we pulled from your resume. Let us know if anything looks off.
               </span>
             </div>
@@ -116,8 +116,8 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
               <div className="mt-2 space-y-1.5">
                 {parseWarnings.map((warning, i) => (
                   <div key={`${warning.slice(0, 32)}-${i}`} className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/55" />
-                    <span className="text-xs text-white/72">{warning}</span>
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--text-soft)]" />
+                    <span className="text-xs text-[var(--text-muted)]">{warning}</span>
                   </div>
                 ))}
               </div>
@@ -128,8 +128,8 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
         {/* Stat cards */}
         <div>
           <div className="mb-2">
-            <span className="text-[11px] text-white/55">What we found in your resume</span>
-            <p className="text-[10px] text-white/25 mt-1">Edits are for your reference only and don't affect processing.</p>
+            <span className="text-[13px] text-[var(--text-soft)]">What we found in your resume</span>
+            <p className="text-[12px] text-[var(--text-soft)] mt-1">Edits are for your reference only and don't affect processing.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.filter(({ value }) => value != null).map(({ label, value, icon: Icon }, i) => {
@@ -139,13 +139,13 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
               <GlassCard key={label} className="motion-safe:opacity-0 motion-safe:animate-card-stagger p-3" style={{ animationDelay: `${i * 75}ms` }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="h-3.5 w-3.5 text-[#afc4ff]" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)] flex-1">
                     {label}
                   </span>
                   <button
                     type="button"
                     onClick={() => setEditingLabel(isEditing ? null : label)}
-                    className="text-white/30 hover:text-white/60 transition-colors"
+                    className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
                     aria-label={`Edit ${label}`}
                   >
                     <Pencil className="h-3 w-3" />
@@ -159,10 +159,10 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
                     onBlur={() => setEditingLabel(null)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingLabel(null); }}
                     autoFocus
-                    className="w-full rounded border border-white/[0.15] bg-white/[0.06] px-2 py-1 text-sm font-semibold text-white focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+                    className="w-full rounded border border-[var(--line-strong)] bg-[var(--accent-muted)] px-2 py-1 text-sm font-semibold text-[var(--text-strong)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
                   />
                 ) : (
-                  <span className="text-lg font-semibold text-white">{displayValue}</span>
+                  <span className="text-lg font-semibold text-[var(--text-strong)]">{displayValue}</span>
                 )}
               </GlassCard>
             );
@@ -173,14 +173,14 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
         {/* Strengths */}
         {strengths.length > 0 && (
           <GlassCard className="p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/60">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Your Standout Strengths
             </h3>
             <div className="space-y-2">
               {strengths.map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
-                  <span className="text-sm text-white/90">{s}</span>
+                  <span className="text-sm text-[var(--text-strong)]">{s}</span>
                 </div>
               ))}
             </div>
@@ -190,14 +190,14 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
         {/* Opportunities */}
         {opportunities.length > 0 && (
           <GlassCard className="p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/60">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Opportunities to Address
             </h3>
             <div className="space-y-2">
               {opportunities.map((o, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/58" />
-                  <span className="text-sm text-white/90">{o}</span>
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--text-soft)]" />
+                  <span className="text-sm text-[var(--text-strong)]">{o}</span>
                 </div>
               ))}
             </div>

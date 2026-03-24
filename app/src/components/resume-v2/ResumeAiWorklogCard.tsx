@@ -21,7 +21,7 @@ function WorklogRow({ step }: { step: WorklogStep }) {
     ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]'
     : step.status === 'active'
       ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04] text-[#afc4ff]'
-      : 'border-white/[0.08] bg-white/[0.015] text-white/42';
+      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
 
   return (
     <div className="support-callout flex items-start gap-3 px-4 py-3.5">
@@ -35,8 +35,8 @@ function WorklogRow({ step }: { step: WorklogStep }) {
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-medium text-white/84">{step.label}</p>
-        <p className="mt-1 text-sm leading-6 text-white/56">{step.detail}</p>
+        <p className="text-sm font-medium text-[var(--text-strong)]">{step.label}</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">{step.detail}</p>
       </div>
     </div>
   );
@@ -124,19 +124,19 @@ export function ResumeAiWorklogCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="eyebrow-label text-[#c9d7ff]/72">Live AI review</p>
-          <p className="mt-2 text-base font-semibold text-white/86">What AI is doing right now</p>
+          <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">What AI is doing right now</p>
         </div>
-        <div className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-[#c9d7ff]/78">
+        <div className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] px-3 py-1.5 text-[12px] uppercase tracking-[0.18em] text-[#c9d7ff]/78">
           Updates as the review moves
         </div>
       </div>
 
       <div className="support-callout border-[#afc4ff]/16 bg-[#afc4ff]/[0.06] px-4 py-3">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Right now</p>
-        <p className="mt-2 text-sm leading-6 text-white/76">{activeStepLabel}</p>
+        <p className="text-[13px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Right now</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{activeStepLabel}</p>
       </div>
 
-      <p className="text-sm leading-6 text-white/54">
+      <p className="text-sm leading-6 text-[var(--text-soft)]">
         You should not have to guess what the system is doing. This panel stays plain-English while AI reads the role, maps the requirements, and prepares the next edit.
       </p>
 

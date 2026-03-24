@@ -54,16 +54,16 @@ function CollapsibleSection({ icon, title, count, children, defaultOpen = false 
         aria-label={`${title}: ${count} ${count === 1 ? 'item' : 'items'}`}
       >
         {icon}
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1" id={`section-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)] flex-1" id={`section-${title.replace(/\s+/g, '-').toLowerCase()}`}>
           {title}
         </h3>
-        <span className="text-[10px] text-white/50 mr-2">
+        <span className="text-[12px] text-[var(--text-soft)] mr-2">
           {count} {count === 1 ? 'item' : 'items'}
         </span>
         {open ? (
-          <ChevronUp className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          <ChevronUp className="h-3.5 w-3.5 text-[var(--text-soft)] shrink-0" />
         ) : (
-          <ChevronDown className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          <ChevronDown className="h-3.5 w-3.5 text-[var(--text-soft)] shrink-0" />
         )}
       </button>
       {open && <div className="mt-3">{children}</div>}
@@ -134,10 +134,10 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white/85">Quality Scores</span>
-          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-amber-400/60">AI estimate</span>
+          <span className="text-sm font-medium text-[var(--text-strong)]">Quality Scores</span>
+          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-amber-400/60">AI estimate</span>
         </div>
       </div>
       <span className="sr-only" aria-live="polite">
@@ -174,10 +174,10 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
 
             {/* Secondary metrics as text rows */}
             {secondaryMetrics.length > 0 && (
-              <div className={cn('space-y-2', primaryRings.length > 0 && 'mt-4 border-t border-white/[0.08] pt-4')}>
+              <div className={cn('space-y-2', primaryRings.length > 0 && 'mt-4 border-t border-[var(--line-soft)] pt-4')}>
                 {secondaryMetrics.map((metric) => (
                   <div key={metric.label} className="flex items-center justify-between text-xs" title="AI-estimated score based on pattern analysis — not a guarantee of outcome">
-                    <span className="text-white/60">{metric.label}</span>
+                    <span className="text-[var(--text-soft)]">{metric.label}</span>
                     <span className={cn('font-medium', secondaryScoreColor(metric.score))}>
                       {metric.score}%
                     </span>
@@ -188,11 +188,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
 
             {keyword_coverage != null && (
               <div className={cn(
-                'flex items-center justify-between text-xs border-t border-white/[0.08] pt-3',
+                'flex items-center justify-between text-xs border-t border-[var(--line-soft)] pt-3',
                 (primaryRings.length > 0 || secondaryMetrics.length > 0) ? 'mt-3' : '',
               )}>
-                <span className="text-white/60">Key Requirements Matched</span>
-                <span className="text-white/85">{keyword_coverage}%</span>
+                <span className="text-[var(--text-soft)]">Key Requirements Matched</span>
+                <span className="text-[var(--text-strong)]">{keyword_coverage}%</span>
               </div>
             )}
           </GlassCard>
@@ -207,22 +207,22 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <GlassCard className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <ShieldCheck className="h-3.5 w-3.5 text-[#afc4ff]" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                   Score Details
                 </h3>
-                <span className="ml-auto text-[10px] text-white/50">
+                <span className="ml-auto text-[12px] text-[var(--text-soft)]">
                   {hiring_manager.checklist_total ?? 0} / {hiring_manager.checklist_max ?? 50}
                 </span>
               </div>
               {needsWork.length > 0 && (
                 <div className="mb-3">
-                  <span className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/58">
+                  <span className="block mb-1.5 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                     Needs Improvement
                   </span>
                   <div className="space-y-1.5">
                     {needsWork.map(([key, score]) => (
-                      <div key={key} className="flex items-center justify-between rounded border border-white/[0.1] bg-white/[0.03] px-2 py-1">
-                        <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
+                      <div key={key} className="flex items-center justify-between rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1">
+                        <span className="text-xs text-[var(--text-muted)] capitalize">{key.replace(/_/g, ' ')}</span>
                         <span className="text-xs font-medium text-[#f0b8b8]">{score}/5</span>
                       </div>
                     ))}
@@ -231,13 +231,13 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
               )}
               {strong.length > 0 && (
                 <div>
-                  <span className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/58">
+                  <span className="block mb-1.5 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                     Strong
                   </span>
                   <div className="space-y-1.5">
                     {strong.map(([key, score]) => (
-                      <div key={key} className="flex items-center justify-between rounded border border-white/[0.1] bg-white/[0.03] px-2 py-1">
-                        <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
+                      <div key={key} className="flex items-center justify-between rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1">
+                        <span className="text-xs text-[var(--text-muted)] capitalize">{key.replace(/_/g, ' ')}</span>
                         <span className="text-xs font-medium text-[#b5dec2]">{score}/5</span>
                       </div>
                     ))}
@@ -253,11 +253,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <ScanSearch className="h-3.5 w-3.5 text-[#afc4ff]" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Assessment
               </h3>
             </div>
-            <p className="text-xs text-white/85 leading-relaxed">
+            <p className="text-xs text-[var(--text-strong)] leading-relaxed">
               {typeof overall_assessment === 'string'
                 ? cleanText(overall_assessment)
                 : JSON.stringify(overall_assessment)}
@@ -281,18 +281,18 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                 };
                 const badgeStyle =
                   priorityStyles[finding.priority?.toLowerCase()] ??
-                  'border-white/[0.1] bg-white/[0.04] text-white/60';
+                  'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
                 return (
                   <div
                     key={`ats-finding-${i}`}
-                    className="flex items-start gap-2 rounded border border-white/[0.08] bg-white/[0.02] px-2.5 py-2"
+                    className="flex items-start gap-2 rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2"
                   >
                     <span
-                      className={`mt-0.5 shrink-0 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeStyle}`}
+                      className={`mt-0.5 shrink-0 rounded-md border px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider ${badgeStyle}`}
                     >
                       {finding.priority ?? 'low'}
                     </span>
-                    <span className="text-xs text-white/75 leading-relaxed">
+                    <span className="text-xs text-[var(--text-muted)] leading-relaxed">
                       {cleanText(finding.issue)}
                     </span>
                   </div>
@@ -312,8 +312,8 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-1.5">
               {humanize_issues!.map((issue, i) => (
                 <div key={`humanize-${i}`} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/38" />
-                  <span className="text-xs text-white/70 leading-relaxed">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--line-strong)]" />
+                  <span className="text-xs text-[var(--text-muted)] leading-relaxed">
                     {cleanText(issue)}
                   </span>
                 </div>
@@ -332,8 +332,8 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-1.5">
               {coherence_issues!.map((issue, i) => (
                 <div key={`coherence-${i}`} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/38" />
-                  <span className="text-xs text-white/70 leading-relaxed">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--line-strong)]" />
+                  <span className="text-xs text-[var(--text-muted)] leading-relaxed">
                     {cleanText(issue)}
                   </span>
                 </div>
@@ -346,15 +346,15 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {risk_flags && risk_flags.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] ${
+              <span className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] ${
                 highRiskCount > 0
                   ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
-                  : 'border-white/[0.08] bg-white/[0.02] text-white/48'
+                  : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
               }`}>
                 {highRiskCount > 0 ? 'Action required' : 'Review'}
               </span>
-              <Flag className="h-3.5 w-3.5 text-white/62" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+              <Flag className="h-3.5 w-3.5 text-[var(--text-soft)]" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Items to Review
               </h3>
             </div>
@@ -364,11 +364,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                   low: 'border-[#b5dec2]/20 bg-[#b5dec2]/10',
                   medium: 'border-[#f0d99f]/20 bg-[#f0d99f]/10',
                   high: 'border-[#f0b8b8]/20 bg-[#f0b8b8]/10',
-                } as Record<string, string>)[rf.severity] ?? 'border-white/[0.1] bg-white/[0.04]';
+                } as Record<string, string>)[rf.severity] ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
                 return (
                   <div key={`risk-flag-${rf.flag.slice(0, 30)}-${i}`} className={`rounded-lg border p-2.5 ${severityColor}`}>
-                    <p className="text-xs text-white/85">{cleanText(rf.flag)}</p>
-                    <p className="mt-1 text-[10px] text-white/60">{cleanText(rf.recommendation)}</p>
+                    <p className="text-xs text-[var(--text-strong)]">{cleanText(rf.flag)}</p>
+                    <p className="mt-1 text-[12px] text-[var(--text-soft)]">{cleanText(rf.recommendation)}</p>
                   </div>
                 );
               })}
@@ -380,19 +380,19 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-md border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
+              <span className="rounded-md border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
                 Action required
               </span>
-              <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+              <AlertTriangle className="h-3.5 w-3.5 text-[var(--text-soft)]" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Age-Bias Risks
               </h3>
             </div>
             <div className="space-y-1.5">
               {age_bias_risks.map((risk, i) => (
                 <div key={`age-bias-${risk.slice(0, 30)}-${i}`} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/38" />
-                  <span className="text-xs text-white/70">{cleanText(risk)}</span>
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--line-strong)]" />
+                  <span className="text-xs text-[var(--text-muted)]">{cleanText(risk)}</span>
                 </div>
               ))}
             </div>

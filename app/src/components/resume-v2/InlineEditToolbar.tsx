@@ -94,7 +94,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-white/[0.12] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
+      className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-[var(--line-strong)] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
       style={{
         top: flipped ? position.bottom + 8 : position.top,
         left: getSafeLeft(),
@@ -104,7 +104,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
       aria-label="AI editing actions"
     >
       {isEditing ? (
-        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/50">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-soft)]">
           <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
           Editing...
         </div>
@@ -118,7 +118,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
             onKeyDown={(e) => { if (e.key === 'Enter') handleCustomSubmit(); }}
             placeholder="What should I do?"
             maxLength={500}
-            className="w-48 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40"
+            className="w-48 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none focus:border-[#afc4ff]/40"
           />
           <button
             type="button"
@@ -136,7 +136,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
               key={action}
               type="button"
               onClick={() => handleAction(action)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white/90 transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] transition-colors"
               title={label}
             >
               <Icon className="h-3 w-3" />

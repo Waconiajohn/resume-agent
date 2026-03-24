@@ -42,8 +42,8 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
       <GlassCard className="relative z-10 w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2">
           <Sparkles className="h-8 w-8 text-[#afc4ff]" />
-          <h1 className="text-xl font-semibold text-white/90">Resume Agent</h1>
-          <p className="text-sm text-white/50">Your AI resume coach</p>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Resume Agent</h1>
+          <p className="text-sm text-[var(--text-soft)]">Your AI resume coach</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,15 +132,15 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
         <div className="mt-4 flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-xs text-white/30">or</span>
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <div className="h-px flex-1 bg-[var(--accent-muted)]" />
+            <span className="text-xs text-[var(--text-soft)]">or</span>
+            <div className="h-px flex-1 bg-[var(--accent-muted)]" />
           </div>
 
           <GlassButton
             variant="ghost"
             onClick={() => onGoogleSignIn()}
-            className="w-full border border-white/[0.06]"
+            className="w-full border border-[var(--line-soft)]"
           >
             Continue with Google
           </GlassButton>
@@ -148,7 +148,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-xs text-white/60 hover:text-white/80 transition-colors"
+            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>

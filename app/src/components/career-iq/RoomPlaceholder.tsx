@@ -29,14 +29,14 @@ export function RoomPlaceholder({ room }: { room: CareerIQRoom }) {
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
       <GlassCard className="p-8 text-center">
-        <div className="text-[11px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-2">
+        <div className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-2">
           Coming Soon
         </div>
-        <h2 className="text-xl font-semibold text-white/90">{info.title}</h2>
-        <p className="mt-3 text-[14px] text-white/50 max-w-md mx-auto leading-relaxed">
+        <h2 className="text-xl font-semibold text-[var(--text-strong)]">{info.title}</h2>
+        <p className="mt-3 text-[14px] text-[var(--text-soft)] max-w-md mx-auto leading-relaxed">
           {info.description}
         </p>
-        <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[12px] text-white/40">
+        <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-2 text-[12px] text-[var(--text-soft)]">
           This room is being built by the agent team
         </div>
       </GlassCard>

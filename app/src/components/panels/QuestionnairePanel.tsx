@@ -226,7 +226,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
       <div data-panel-root className="flex h-full flex-col">
         <ProgressHeader title={title} currentStep={1} totalSteps={0} />
         <div data-panel-scroll className="flex-1 overflow-y-auto flex items-center justify-center p-8">
-          <p className="text-sm text-white/40">No questions available.</p>
+          <p className="text-sm text-[var(--text-soft)]">No questions available.</p>
         </div>
       </div>
     );
@@ -273,10 +273,10 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentVisiblePos === 0 && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+                <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
                   {batchModeLabel}
                 </span>
-                <span className="text-[11px] text-white/65">
+                <span className="text-[13px] text-[var(--text-soft)]">
                   Answer the questions below, then submit your answers. We'll use them to strengthen your resume.
                 </span>
               </div>
@@ -284,7 +284,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           )}
 
           {currentVisiblePos === 0 && subtitle && (
-            <p className="text-xs text-white/50 leading-relaxed">{subtitle}</p>
+            <p className="text-xs text-[var(--text-soft)] leading-relaxed">{subtitle}</p>
           )}
 
           {(currentQuestion.impact_tier || currentQuestion.payoff_hint) && (
@@ -292,26 +292,26 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               {currentQuestion.impact_tier && (
                 <span
                   className={cn(
-                    'rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em]',
+                    'rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em]',
                     currentQuestion.impact_tier === 'high'
                       ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                       : currentQuestion.impact_tier === 'medium'
                         ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.07] text-[#afc4ff]/85'
-                        : 'border-white/[0.1] bg-white/[0.03] text-white/60',
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
                   )}
                 >
                   {currentQuestion.impact_tier === 'high' ? 'High Impact' : currentQuestion.impact_tier === 'medium' ? 'Medium Impact' : 'Low Impact'}
                 </span>
               )}
               {currentQuestion.payoff_hint && (
-                <span className="text-[11px] text-white/62">{currentQuestion.payoff_hint}</span>
+                <span className="text-[13px] text-[var(--text-soft)]">{currentQuestion.payoff_hint}</span>
               )}
             </div>
           )}
 
           {/* Question text */}
           <div>
-            <p className="text-base font-medium text-white leading-snug">
+            <p className="text-base font-medium text-[var(--text-strong)] leading-snug">
               {currentQuestion.question_text}
             </p>
           </div>
@@ -320,9 +320,9 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentQuestion.context && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="mb-1.5 flex items-center gap-2">
-                <span className="text-[11px] text-white/50">Context / guidance</span>
+                <span className="text-[13px] text-[var(--text-soft)]">Context / guidance</span>
               </div>
-              <p className="text-xs text-white/55 leading-relaxed">{currentQuestion.context}</p>
+              <p className="text-xs text-[var(--text-soft)] leading-relaxed">{currentQuestion.context}</p>
             </GlassCard>
           )}
 
@@ -356,7 +356,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {/* Custom text input */}
           {currentQuestion.allow_custom && (
             <div className="space-y-1">
-              <label className="flex items-center gap-2 text-xs text-white/50 pl-0.5">
+              <label className="flex items-center gap-2 text-xs text-[var(--text-soft)] pl-0.5">
                 <span>
                   {currentResponse.selected_option_ids.length > 0
                     ? 'Add detail (optional)'
@@ -380,7 +380,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
       </div>
 
       {/* Pinned action bar */}
-      <div className="border-t border-white/[0.1] px-4 py-3 flex items-center gap-2">
+      <div className="border-t border-[var(--line-soft)] px-4 py-3 flex items-center gap-2">
         {/* Back */}
         <GlassButton
           variant="ghost"
@@ -436,7 +436,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           <ArrowRight className="h-3.5 w-3.5" />
         </GlassButton>
       </div>
-      <div className="border-t border-white/[0.04] px-4 pb-2 text-center text-[10px] text-white/35">
+      <div className="border-t border-[var(--line-soft)] px-4 pb-2 text-center text-[12px] text-[var(--text-soft)]">
         We'll use your answers to strengthen your resume.
       </div>
     </div>

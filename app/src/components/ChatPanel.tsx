@@ -123,7 +123,7 @@ export function ChatPanel({
           ? 'text-[#f0d99f]/90'
           : runtimeState === 'complete'
             ? 'text-[#b5dec2]/90'
-            : (connected ? 'text-[#b5dec2]/90' : 'text-white/70');
+            : (connected ? 'text-[#b5dec2]/90' : 'text-[var(--text-muted)]');
   const lastActivityText = (() => {
     if (!lastBackendActivityAt) return null;
     const ms = Date.now() - new Date(lastBackendActivityAt).getTime();
@@ -176,8 +176,8 @@ export function ChatPanel({
         {PHASE_LABELS[currentPhase] ?? currentPhase}
       </span>
       {/* Phase indicator bar */}
-      <div className="flex items-center gap-2 border-b border-white/[0.1] px-4 py-2">
-        <span className="text-sm font-medium text-white/85">
+      <div className="flex items-center gap-2 border-b border-[var(--line-soft)] px-4 py-2">
+        <span className="text-sm font-medium text-[var(--text-muted)]">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
         <div className="ml-auto flex items-center gap-2">
@@ -190,7 +190,7 @@ export function ChatPanel({
               type="button"
               variant="ghost"
               onClick={onReconnectStream}
-              className="h-auto px-2 py-1 text-[11px] uppercase tracking-[0.12em]"
+              className="h-auto px-2 py-1 text-[13px] uppercase tracking-[0.1em]"
             >
               Reconnect
             </GlassButton>
@@ -200,7 +200,7 @@ export function ChatPanel({
               type="button"
               onClick={() => { void onRefreshWorkflowState(); }}
               disabled={isRefreshingWorkflowState}
-              className="rounded p-1 text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-40"
+              className="rounded p-1 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] disabled:opacity-40"
               aria-label="Refresh workflow state"
               title="Refresh workflow state"
             >
@@ -223,8 +223,8 @@ export function ChatPanel({
               setUserScrolledUp(false);
             }}
             className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-1.5
-              rounded-md border border-white/[0.12] bg-black/60 backdrop-blur-lg px-3 py-1.5
-              text-[11px] text-white/70 shadow-lg transition-all hover:bg-black/80 hover:text-white/90"
+              rounded-md border border-[var(--line-soft)] bg-black/60 backdrop-blur-lg px-3 py-1.5
+              text-[13px] text-[var(--text-muted)] shadow-lg transition-all hover:bg-black/80 hover:text-[var(--text-strong)]"
           >
             <ChevronDown className="h-3 w-3" />
             New messages
@@ -239,7 +239,7 @@ export function ChatPanel({
         {tools.filter((t) => t.status === 'running').map((tool) => (
           <div key={tool.name} className="flex items-center gap-2 px-4 py-2" role="status" aria-label={tool.description ?? 'Processing'}>
             <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
-            <span className="text-xs text-white/50">{tool.description}</span>
+            <span className="text-xs text-[var(--text-soft)]">{tool.description}</span>
           </div>
         ))}
 
@@ -247,7 +247,7 @@ export function ChatPanel({
         {isProcessing && !streamingText && tools.every((t) => t.status !== 'running') && (
           <div className="flex items-center gap-2 px-4 py-3" role="status" aria-label="Coach is thinking">
             <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
-            <span className="text-sm text-white/50">Your coach is thinking...</span>
+            <span className="text-sm text-[var(--text-soft)]">Your coach is thinking...</span>
           </div>
         )}
 
@@ -260,19 +260,19 @@ export function ChatPanel({
 
         {/* Phase gate confirmation */}
         {phaseGate && (
-          <div className="mx-4 my-3 rounded-lg border border-white/[0.12] bg-white/[0.035] p-4">
+          <div className="mx-4 my-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="mb-2 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-[var(--text-strong)]">
                 {PHASE_LABELS[phaseGate.currentPhase] ?? phaseGate.currentPhase} complete
               </span>
             </div>
-            <p className="mb-3 text-sm text-white/70">{phaseGate.phaseSummary}</p>
-            <div className="mb-3 flex items-center gap-2 text-xs text-white/50">
+            <p className="mb-3 text-sm text-[var(--text-muted)]">{phaseGate.phaseSummary}</p>
+            <div className="mb-3 flex items-center gap-2 text-xs text-[var(--text-soft)]">
               <ArrowRight className="h-3 w-3" />
-              <span>Next: <strong className="text-white/80">{PHASE_LABELS[phaseGate.nextPhase] ?? phaseGate.nextPhase}</strong></span>
+              <span>Next: <strong className="text-[var(--text-muted)]">{PHASE_LABELS[phaseGate.nextPhase] ?? phaseGate.nextPhase}</strong></span>
             </div>
-            <p className="mb-4 text-xs text-white/75">{phaseGate.nextPhasePreview}</p>
+            <p className="mb-4 text-xs text-[var(--text-muted)]">{phaseGate.nextPhasePreview}</p>
             <div className="flex gap-2">
               <GlassButton
                 variant="primary"
@@ -291,9 +291,9 @@ export function ChatPanel({
         )}
 
         {!hideWorkProduct && panelData && panelType !== 'section_review' && (
-          <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
-            <div className="flex items-center justify-between border-b border-white/[0.1] px-3 py-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+          <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
+            <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
                 Current View
               </span>
               <div className="flex items-center gap-2">
@@ -303,12 +303,12 @@ export function ChatPanel({
                     variant="ghost"
                     onClick={() => setShowResumePreview((prev) => !prev)}
                     aria-label={showResumePreview ? 'Back to panel view' : 'Open resume preview'}
-                    className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
+                    className="h-auto px-2 py-1 text-[12px] uppercase tracking-[0.1em]"
                   >
                     {showResumePreview ? 'Back To Panel' : 'Open Resume Preview'}
                   </GlassButton>
                 )}
-                <span className="text-[10px] text-white/58">
+                <span className="text-[12px] text-[var(--text-soft)]">
                   {(panelType ?? panelData.type).replace(/_/g, ' ')}
                 </span>
               </div>
@@ -344,7 +344,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t border-white/[0.1] p-4">
+      <div className="border-t border-[var(--line-soft)] p-4">
         <div className="flex gap-2">
           <GlassTextarea
             value={input}
@@ -374,7 +374,7 @@ export function ChatPanel({
           </GlassButton>
         </div>
         {isGateLocked && (
-          <p className="mt-1.5 text-center text-[11px] text-white/40">Respond using the panel to continue</p>
+          <p className="mt-1.5 text-center text-[13px] text-[var(--text-soft)]">Respond using the panel to continue</p>
         )}
       </div>
     </div>

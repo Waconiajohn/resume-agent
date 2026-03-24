@@ -69,15 +69,15 @@ function statusStyles(status: WorkflowNodeStatus) {
       };
     case 'ready':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full border border-white/45',
-        pill: 'text-white/72 border-white/[0.12] bg-white/[0.04]',
+        dot: 'h-1.5 w-1.5 rounded-full border border-[var(--line-strong)]',
+        pill: 'text-[var(--text-muted)] border-[var(--line-soft)] bg-[var(--accent-muted)]',
         label: '',
       };
     case 'locked':
     default:
       return {
-        dot: 'h-[3px] w-1.5 rounded-[1px] bg-white/20',
-        pill: 'text-white/45 border-white/[0.08] bg-white/[0.02]',
+        dot: 'h-[3px] w-1.5 rounded-[1px] bg-[var(--line-strong)]',
+        pill: 'text-[var(--text-soft)] border-[var(--line-soft)] bg-[var(--accent-muted)]',
         label: '',
       };
   }
@@ -134,7 +134,7 @@ export function WorkspaceShell({
         <div className="border-b border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
           <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-[14px] border border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <Sparkles className="h-3.5 w-3.5 text-[#f0d99f]/90" />
-            <p className="min-w-0 flex-1 truncate text-[11px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
+            <p className="min-w-0 flex-1 truncate text-[13px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
               {selectedNode === activeGate.activeNode
                 ? `Your input is needed${activeGate.label ? `: ${activeGate.label}` : ''}`
                 : `Your input is needed on a different step${activeGate.label ? `: ${activeGate.label}` : ''}`}
@@ -144,7 +144,7 @@ export function WorkspaceShell({
                 type="button"
                 variant="ghost"
                 onClick={activeGate.onReturn}
-                className="h-auto px-2 py-1 text-[11px]"
+                className="h-auto px-2 py-1 text-[13px]"
               >
                 Return
               </GlassButton>
@@ -155,7 +155,7 @@ export function WorkspaceShell({
                 variant="ghost"
                 onClick={activeGate.onGenerateDraftNow}
                 disabled={activeGate.isGenerateDraftNowPending}
-                className="h-auto px-2 py-1 text-[11px]"
+                className="h-auto px-2 py-1 text-[13px]"
               >
                 {activeGate.isGenerateDraftNowPending ? 'Requesting...' : 'Generate Draft Now'}
               </GlassButton>
@@ -203,7 +203,7 @@ export function WorkspaceShell({
                       )}
                     >
                       <div className="relative shrink-0">
-                        <Icon className={cn('h-5 w-5', isSelected ? 'text-[var(--accent)]' : 'text-white/60')} />
+                        <Icon className={cn('h-5 w-5', isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-soft)]')} />
                         {/* Status dot */}
                         <span className={cn('absolute -right-0.5 -top-0.5', styles.dot)} />
                       </div>
@@ -212,11 +212,11 @@ export function WorkspaceShell({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-strong)]">{node.label}</span>
-                            {node.status === 'locked' && <Lock className="h-3 w-3 text-white/35" />}
+                            {node.status === 'locked' && <Lock className="h-3 w-3 text-[var(--text-soft)]" />}
                           </div>
-                          <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[var(--text-soft)]">{node.description}</div>
+                          <div className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[var(--text-soft)]">{node.description}</div>
                           {node.detailLabel && (
-                            <div className="mt-2 text-[11px] text-[var(--text-muted)]">{node.detailLabel}</div>
+                            <div className="mt-2 text-[13px] text-[var(--text-muted)]">{node.detailLabel}</div>
                           )}
                         </div>
                       )}
@@ -249,7 +249,7 @@ export function WorkspaceShell({
                     disabled={isLocked}
                     onClick={() => onSelectNode(node.key)}
                     className={cn(
-                      'shrink-0 rounded-[12px] border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors',
+                      'shrink-0 rounded-[12px] border px-3 py-2 text-[13px] font-semibold uppercase tracking-[0.08em] transition-colors',
                       selectedNode === node.key
                         ? 'border-[rgba(238,243,248,0.3)] bg-[rgba(255,255,255,0.06)] text-[var(--text-strong)]'
                         : 'border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] text-[var(--text-muted)]',

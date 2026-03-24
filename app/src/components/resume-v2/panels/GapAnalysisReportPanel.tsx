@@ -191,7 +191,7 @@ function SummaryHeader({
   const benchmarkCoverage = scoreBreakdown?.benchmark?.coverage_score ?? null;
 
   return (
-    <div className="px-5 pt-5 pb-4 space-y-4 shrink-0 border-b border-white/[0.06]">
+    <div className="px-5 pt-5 pb-4 space-y-4 shrink-0 border-b border-[var(--line-soft)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: REPORT_COLORS.heading, lineHeight: 1.3 }}>
@@ -312,14 +312,14 @@ function ImportanceGroupHeader({ importance, count }: { importance: string; coun
   return (
     <div className="flex items-center gap-2 px-5 py-3 mt-2" style={{ borderBottom: `1px solid ${style.borderColor}` }}>
       <span
-        className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
+        className="rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] shrink-0"
         style={style}
         data-testid="importance-pill"
       >
         {importanceLabel(importance)}
       </span>
       <div className="flex-1 h-px" style={{ backgroundColor: style.borderColor }} />
-      <span className="text-[10px] tabular-nums" style={{ color: REPORT_COLORS.tertiary }}>
+      <span className="text-[12px] tabular-nums" style={{ color: REPORT_COLORS.tertiary }}>
         {count}
       </span>
     </div>

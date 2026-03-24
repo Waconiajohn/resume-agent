@@ -52,7 +52,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
 
       {/* Slide-over panel */}
       <div
-        className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-white/[0.08] bg-[#0d1117] shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
+        className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-[var(--line-soft)] bg-[var(--bg-1)] shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
@@ -62,15 +62,15 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
         aria-label={title ?? 'Context panel'}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
-          <span className="text-sm font-medium text-white/85">
+        <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-4 py-3">
+          <span className="text-sm font-medium text-[var(--text-strong)]">
             {title ?? 'Context'}
           </span>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]"
+            className="rounded p-1 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]"
             aria-label="Close context panel"
           >
             <X className="h-4 w-4" />

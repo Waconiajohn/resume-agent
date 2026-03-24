@@ -47,9 +47,9 @@ const NUDGE_STYLES: Record<string, NudgeStyle> = {
 };
 
 const DEFAULT_NUDGE_STYLE: NudgeStyle = {
-  border: 'border-white/10',
-  bg: 'bg-white/[0.03]',
-  iconColor: 'text-white/50',
+  border: 'border-[var(--line-soft)]',
+  bg: 'bg-[var(--accent-muted)]',
+  iconColor: 'text-[var(--text-soft)]',
   Icon: AlertCircle,
 };
 
@@ -78,13 +78,13 @@ function NudgeCard({ nudge, onDismiss }: { nudge: CoachingNudge; onDismiss: (id:
           nudge.trigger_type === 'rejection_streak' && 'bg-[#98b3ff]/10',
           nudge.trigger_type === 'stalled_pipeline' && 'bg-[#f0d99f]/10',
           nudge.trigger_type === 'milestone' && 'bg-[#b5dec2]/10',
-          !NUDGE_STYLES[nudge.trigger_type] && 'bg-white/[0.06]',
+          !NUDGE_STYLES[nudge.trigger_type] && 'bg-[var(--accent-muted)]',
         )}
       >
         <Icon size={15} className={style.iconColor} />
       </div>
 
-      <p className="flex-1 min-w-0 text-[13px] text-white/75 leading-relaxed">
+      <p className="flex-1 min-w-0 text-[13px] text-[var(--text-muted)] leading-relaxed">
         {nudge.message}
       </p>
 
@@ -92,7 +92,7 @@ function NudgeCard({ nudge, onDismiss }: { nudge: CoachingNudge; onDismiss: (id:
         type="button"
         aria-label="Dismiss nudge"
         onClick={() => onDismiss(nudge.id)}
-        className="flex-shrink-0 text-white/25 hover:text-white/50 transition-colors"
+        className="flex-shrink-0 text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
       >
         <X size={14} />
       </button>

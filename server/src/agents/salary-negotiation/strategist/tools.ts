@@ -24,7 +24,9 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import {
   renderPositioningStrategySection,
   renderWhyMeStorySection,
+  renderCareerNarrativeSection,
 } from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type StrategistTool = AgentTool<SalaryNegotiationState, SalaryNegotiationSSEEvent>;
 
@@ -105,14 +107,24 @@ function buildStateContext(state: SalaryNegotiationState): string {
     }
   }
 
-  // Platform context
-  if (state.platform_context?.positioning_strategy) {
+  // Positioning strategy — prefer shared_context, fall back to platform_context
+  const sharedContext = state.shared_context;
+  if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy) || state.platform_context?.positioning_strategy) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+        ? sharedContext?.positioningStrategy
+        : undefined,
+      legacyStrategy: state.platform_context?.positioning_strategy,
     }));
   }
-  if (state.platform_context?.why_me_story) {
+  // Career narrative — prefer shared_context careerNarrative, fall back to why_me_story
+  if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative',
+      sharedNarrative: sharedContext?.careerNarrative,
+    }));
+  } else if (state.platform_context?.why_me_story) {
     parts.push(...renderWhyMeStorySection({
       heading: '## Why-Me Narrative',
       legacyWhyMeStory: state.platform_context.why_me_story,

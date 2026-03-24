@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Minus,
   Shield,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiHelperHint } from '@/components/shared/AiHelperHint';
@@ -23,6 +24,7 @@ import type {
   GapCoachingAction,
   GapCoachingResponse,
   GapClassification,
+  GapPlacementTarget,
   RequirementGap,
   ResumeDraft,
   PositioningAssessment,
@@ -43,6 +45,12 @@ interface CoachingState {
   showContextInput: boolean;
   /** Per-question answers keyed by question index */
   questionAnswers: Record<number, string>;
+  /** Show placement picker after clicking "Use this draft" */
+  showPlacementPicker: boolean;
+  /** User-selected section placement for approved strategies */
+  target_section: GapPlacementTarget;
+  /** For 'experience' placement — which company */
+  target_company: string;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────
@@ -59,6 +67,8 @@ interface UnifiedGapAnalysisCardProps {
   disabled?: boolean;
   /** Assembly positioning assessment — used to find the correct bullet for each requirement */
   positioningAssessment?: PositioningAssessment | null;
+  /** Company names from candidate experience — used for placement dropdown */
+  experienceCompanies?: string[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -138,12 +148,13 @@ interface RequirementRowProps {
   classification: GapClassification;
   disabled?: boolean;
   positioningAssessment?: PositioningAssessment | null;
+  experienceCompanies?: string[];
 }
 
 function RequirementRow({
   req, coaching, coachingState, onCoachingChange,
   onRequestEdit, currentResume, isComplete, classification, disabled,
-  positioningAssessment,
+  positioningAssessment, experienceCompanies = [],
 }: RequirementRowProps) {
   const [expanded, setExpanded] = useState(classification !== 'strong');
   const hasCoaching = coaching && coachingState && onCoachingChange;
@@ -203,7 +214,7 @@ function RequirementRow({
     const statusConfig = {
       approve: { dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />, label: 'Draft queued', color: 'text-[#b5dec2]' },
       context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'More context added', color: 'text-[#afc4ff]' },
-      skip: { dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />, label: 'Left as-is', color: 'text-white/35' },
+      skip: { dot: <Minus className="h-3 w-3 text-[var(--text-soft)] shrink-0" />, label: 'Left as-is', color: 'text-[var(--text-soft)]' },
     }[coachingState!.action!];
 
     return (
@@ -212,9 +223,9 @@ function RequirementRow({
         data-coaching-requirement={req.requirement}
       >
         {statusConfig.dot}
-        <span className="flex-1 min-w-0 text-sm text-white/50 truncate">{req.requirement}</span>
+        <span className="flex-1 min-w-0 text-sm text-[var(--text-soft)] truncate">{req.requirement}</span>
         <span className={cn('text-xs font-medium shrink-0', statusConfig.color)}>{statusConfig.label}</span>
-        <ChevronRight className="h-3.5 w-3.5 text-white/20 shrink-0" />
+        <ChevronRight className="h-3.5 w-3.5 text-[var(--text-soft)] shrink-0" />
       </div>
     );
   }
@@ -228,20 +239,20 @@ function RequirementRow({
       <button
         type="button"
         onClick={() => setExpanded(prev => !prev)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-[var(--accent-muted)] transition-colors"
         aria-expanded={expanded}
       >
         <ChevronDown
           className={cn(
-            'h-3 w-3 text-white/30 shrink-0 transition-transform duration-200',
+            'h-3 w-3 text-[var(--text-soft)] shrink-0 transition-transform duration-200',
             expanded ? 'rotate-0' : '-rotate-90',
           )}
           aria-hidden="true"
         />
         {classificationIcon(classification)}
         <div className="min-w-0 flex-1">
-          <span className="block text-base text-white/84 leading-snug truncate">{req.requirement}</span>
-          <span className="mt-1 block text-sm leading-6 text-white/50">
+          <span className="block text-base text-[var(--text-strong)] leading-snug truncate">{req.requirement}</span>
+          <span className="mt-1 block text-sm leading-6 text-[var(--text-soft)]">
             {classification === 'strong'
               ? 'This requirement already has solid proof on the current resume.'
               : classification === 'partial'
@@ -249,17 +260,17 @@ function RequirementRow({
                 : 'This requirement still needs a believable bridge from your experience.'}
           </span>
         </div>
-        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45 shrink-0">
+        <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-0.5 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)] shrink-0">
           {requirementSourceLabel(req.source)}
         </span>
         <span
-          className="inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase shrink-0"
+          className="inline-flex items-center rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase shrink-0"
           style={importanceStyle(req.importance)}
         >
           {importanceLabel(req.importance)}
         </span>
         {coaching?.previously_approved && (
-          <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
+          <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
             <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
             Previously approved
           </span>
@@ -274,34 +285,34 @@ function RequirementRow({
         )}
       >
         <div className="px-4 pb-4">
-          <div className="support-callout border-white/[0.08] bg-white/[0.03] px-4 py-4">
+          <div className="support-callout border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4">
             <div className="space-y-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-white/42">What still needs to be clearer</p>
-                <p className="mt-2 text-base leading-7 text-white/78">{issueText}</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">What still needs to be clearer</p>
+                <p className="mt-2 text-base leading-7 text-[var(--text-muted)]">{issueText}</p>
               </div>
 
               {(bestEvidence || relatedEvidence.length > 0) && (
-                <div className="border-t border-white/[0.06] pt-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-white/42">Best evidence on your resume</p>
+                <div className="border-t border-[var(--line-soft)] pt-4">
+                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Best evidence on your resume</p>
                   {bestEvidence ? (
                     <>
                       {bestEvidenceSection && (
-                        <p className="mt-2 text-xs leading-5 text-white/42">{bestEvidenceSection}</p>
+                        <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">{bestEvidenceSection}</p>
                       )}
-                      <p className="mt-1 text-base leading-7 text-white/76">{bestEvidence}</p>
+                      <p className="mt-1 text-base leading-7 text-[var(--text-muted)]">{bestEvidence}</p>
                     </>
                   ) : (
-                    <p className="mt-2 text-base leading-7 text-white/58">
+                    <p className="mt-2 text-base leading-7 text-[var(--text-soft)]">
                       We do not have a strong line on the resume for this yet.
                     </p>
                   )}
 
                   {relatedEvidence.length > 0 && (
                     <div className="mt-3 space-y-2">
-                      <p className="text-xs uppercase tracking-[0.14em] text-white/34">Other related evidence</p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Other related evidence</p>
                       {relatedEvidence.map((evidence, index) => (
-                        <p key={`${evidence}-${index}`} className="text-sm leading-6 text-white/58">
+                        <p key={`${evidence}-${index}`} className="text-sm leading-6 text-[var(--text-soft)]">
                           {evidence}
                         </p>
                       ))}
@@ -328,15 +339,15 @@ function RequirementRow({
                       Draft to start from
                     </span>
                   </div>
-                  <p className="mt-3 text-lg leading-8 text-white/84">{req.strategy.positioning}</p>
+                  <p className="mt-3 text-lg leading-8 text-[var(--text-strong)]">{req.strategy.positioning}</p>
 
                   {req.strategy.inferred_metric && (
-                    <div className="mt-3 flex items-start gap-1.5 border-t border-white/[0.06] pt-3">
+                    <div className="mt-3 flex items-start gap-1.5 border-t border-[var(--line-soft)] pt-3">
                       <Ruler className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#f0d99f]/70" />
                       <div className="text-sm leading-6">
                         <span className="text-[#f0d99f]/84">{req.strategy.inferred_metric}</span>
                         {req.strategy.inference_rationale && (
-                          <span className="ml-1.5 text-white/36">— {req.strategy.inference_rationale}</span>
+                          <span className="ml-1.5 text-[var(--text-soft)]">— {req.strategy.inference_rationale}</span>
                         )}
                       </div>
                     </div>
@@ -353,8 +364,8 @@ function RequirementRow({
                 /* Structured interview questions */
                 questions.map((q, qi) => (
                   <div key={qi} className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] px-3 py-2.5">
-                    <p className="text-sm text-white/80 leading-relaxed mb-1.5">{q.question}</p>
-                    <p className="text-[10px] text-white/30 mb-2 italic">{q.looking_for}</p>
+                    <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-1.5">{q.question}</p>
+                    <p className="text-[12px] text-[var(--text-soft)] mb-2 italic">{q.looking_for}</p>
                     <textarea
                       value={coachingState.questionAnswers[qi] ?? ''}
                       onChange={e => onCoachingChange({
@@ -363,7 +374,7 @@ function RequirementRow({
                       disabled={disabled}
                       placeholder="Your answer..."
                       rows={2}
-                      className="w-full rounded-md border border-[#afc4ff]/20 bg-white/[0.03] px-2.5 py-1.5 text-sm text-white/80 placeholder-white/20 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full rounded-md border border-[#afc4ff]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label={`Answer for: ${q.question}`}
                     />
                   </div>
@@ -376,7 +387,7 @@ function RequirementRow({
                   disabled={disabled}
                   placeholder={coachingPrompt ?? "Share any relevant experience, projects, or context that wasn't in your resume..."}
                   rows={3}
-                  className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={`Additional context for: ${req.requirement}`}
                 />
               )}
@@ -410,83 +421,151 @@ function RequirementRow({
             {/* Coaching action buttons (partial/missing items) */}
             {hasCoaching && !isResponded && (
               <>
-                {/* Approve */}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onCoachingChange({ action: 'approve', showContextInput: false })}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label={`Approve strategy for: ${req.requirement}`}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Use this draft
-                </button>
-
-                {/* Context toggle/submit */}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    if (coachingState.showContextInput) {
-                      // Check for answers: structured questions or fallback textarea
-                      const hasAnswers = Object.values(coachingState.questionAnswers).some(a => a.trim());
-                      const hasText = coachingState.contextText.trim();
-                      if (hasAnswers || hasText) {
-                        onCoachingChange({ action: 'context', showContextInput: false });
+                {/* Placement picker — shown after clicking "Use this draft" */}
+                {coachingState.showPlacementPicker && (
+                  <div className="w-full mb-2 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2.5 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-[#afc4ff]/70 shrink-0" />
+                      <span className="text-[12px] font-semibold text-[#afc4ff]/70 uppercase tracking-wider">
+                        Where should this appear?
+                      </span>
+                    </div>
+                    <select
+                      value={coachingState.target_section === 'experience' && coachingState.target_company
+                        ? `experience:${coachingState.target_company}`
+                        : coachingState.target_section}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val.startsWith('experience:')) {
+                          onCoachingChange({ target_section: 'experience', target_company: val.slice('experience:'.length) });
+                        } else {
+                          onCoachingChange({ target_section: val as GapPlacementTarget, target_company: '' });
+                        }
+                      }}
+                      disabled={disabled}
+                      className="w-full rounded-md border border-[#afc4ff]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Choose placement section"
+                    >
+                      <option value="auto">Let AI decide (recommended)</option>
+                      <option value="summary">Executive Summary</option>
+                      <option value="competencies">Core Competencies</option>
+                      <option value="accomplishments">Selected Accomplishments</option>
+                      {experienceCompanies.length > 0
+                        ? experienceCompanies.map(company => (
+                            <option key={company} value={`experience:${company}`}>
+                              Experience — {company}
+                            </option>
+                          ))
+                        : <option value="experience">Experience (most recent role)</option>
                       }
-                    } else {
-                      onCoachingChange({ showContextInput: true });
+                    </select>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onCoachingChange({ action: 'approve', showPlacementPicker: false, showContextInput: false })}
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        aria-label={`Confirm strategy placement for: ${req.requirement}`}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onCoachingChange({ showPlacementPicker: false })}
+                        className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
+                        aria-label="Cancel placement selection"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Approve — opens placement picker */}
+                {!coachingState.showPlacementPicker && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onCoachingChange({ showPlacementPicker: true, showContextInput: false })}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label={`Approve strategy for: ${req.requirement}`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Use this draft
+                  </button>
+                )}
+
+                {/* Context toggle/submit — hidden when placement picker is open */}
+                {!coachingState.showPlacementPicker && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      if (coachingState.showContextInput) {
+                        // Check for answers: structured questions or fallback textarea
+                        const hasAnswers = Object.values(coachingState.questionAnswers).some(a => a.trim());
+                        const hasText = coachingState.contextText.trim();
+                        if (hasAnswers || hasText) {
+                          onCoachingChange({ action: 'context', showContextInput: false });
+                        }
+                      } else {
+                        onCoachingChange({ showContextInput: true });
+                      }
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                      coachingState.showContextInput
+                        ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
+                        : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
+                    )}
+                    aria-label={
+                      coachingState.showContextInput
+                        ? `Submit context for: ${req.requirement}`
+                        : `Add context for: ${req.requirement}`
                     }
-                  }}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                    coachingState.showContextInput
-                      ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
-                      : 'bg-white/[0.04] text-white/60 border-white/[0.08] hover:bg-white/[0.07] hover:text-white/80',
-                  )}
-                  aria-label={
-                    coachingState.showContextInput
-                      ? `Submit context for: ${req.requirement}`
-                      : `Add context for: ${req.requirement}`
-                  }
-                  aria-expanded={coachingState.showContextInput}
-                >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {coachingState.showContextInput
-                    ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
-                      ? 'Submit context'
-                      : 'Answer above...'
-                    : 'Tell AI one more detail'}
-                </button>
+                    aria-expanded={coachingState.showContextInput}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {coachingState.showContextInput
+                      ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
+                        ? 'Submit context'
+                        : 'Answer above...'
+                      : 'Tell AI one more detail'}
+                  </button>
+                )}
 
                 {/* Cancel context */}
-                {coachingState.showContextInput && (
+                {coachingState.showContextInput && !coachingState.showPlacementPicker && (
                   <button
                     type="button"
                     disabled={disabled}
                     onClick={() => onCoachingChange({ showContextInput: false, contextText: '', questionAnswers: {} })}
-                    className="text-xs text-white/35 hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
+                    className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
                     aria-label="Cancel adding context"
                   >
                     Cancel
                   </button>
                 )}
 
-                {/* Skip */}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onCoachingChange({ action: 'skip', showContextInput: false })}
-                  title="This gap won't be addressed on your resume."
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white/35 border border-transparent hover:text-white/55 hover:border-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                    !coachingState.showContextInput && 'ml-auto',
-                  )}
-                  aria-label={`Skip gap for: ${req.requirement}`}
-                >
-                  <SkipForward className="h-3.5 w-3.5" />
-                  Skip
-                </button>
+                {/* Skip — hidden when placement picker is open */}
+                {!coachingState.showPlacementPicker && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onCoachingChange({ action: 'skip', showContextInput: false })}
+                    title="This gap won't be addressed on your resume."
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-[var(--text-soft)] border border-transparent hover:text-[var(--text-muted)] hover:border-[var(--line-soft)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                      !coachingState.showContextInput && 'ml-auto',
+                    )}
+                    aria-label={`Skip gap for: ${req.requirement}`}
+                  >
+                    <SkipForward className="h-3.5 w-3.5" />
+                    Skip
+                  </button>
+                )}
 
               </>
             )}
@@ -547,12 +626,12 @@ function RequirementInventory({
         <div key={group.key} className="room-shell space-y-3 px-4 py-4">
           <div className="space-y-1">
             <div className="room-meta-strip">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/44">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
                 {group.title}
               </span>
-              <span className="text-[10px] text-white/30">({group.items.length})</span>
+              <span className="text-[12px] text-[var(--text-soft)]">({group.items.length})</span>
             </div>
-            <p className="text-sm leading-6 text-white/56">{group.description}</p>
+            <p className="text-sm leading-6 text-[var(--text-soft)]">{group.description}</p>
           </div>
 
           <div className="space-y-2">
@@ -564,23 +643,23 @@ function RequirementInventory({
               return (
                 <div
                   key={`${group.key}:${item.requirement}`}
-                  className="support-callout px-3 py-3 transition-colors hover:bg-white/[0.05]"
+                  className="support-callout px-3 py-3 transition-colors hover:bg-[var(--surface-1)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium leading-6 text-white/84">{item.requirement}</span>
+                        <span className="text-sm font-medium leading-6 text-[var(--text-strong)]">{item.requirement}</span>
                         <span
-                          className="rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]"
+                          className="rounded-md border px-2 py-0.5 text-[12px] uppercase tracking-[0.12em]"
                           style={importanceStyle(item.importance)}
                         >
                           {importanceLabel(item.importance)}
                         </span>
-                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                        <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-0.5 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
                           {requirementSourceLabel(item.source)}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-white/50">
+                      <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
                         {mappedEvidence
                           ? `Currently shown in ${mappedEvidence.section}: ${shortenText(mappedEvidence.text)}`
                           : 'Not clearly mapped to a specific line in the current resume yet.'}
@@ -589,7 +668,7 @@ function RequirementInventory({
                     <div className="flex shrink-0 items-center gap-2">
                       <span
                         className={cn(
-                          'rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+                          'rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                           item.classification === 'strong'
                             ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
                             : item.classification === 'partial'
@@ -624,6 +703,7 @@ function SectionGroup({
   isComplete,
   disabled,
   positioningAssessment,
+  experienceCompanies,
 }: {
   classification: GapClassification;
   requirements: RequirementGap[];
@@ -635,6 +715,7 @@ function SectionGroup({
   isComplete?: boolean;
   disabled?: boolean;
   positioningAssessment?: PositioningAssessment | null;
+  experienceCompanies?: string[];
 }) {
   if (requirements.length === 0) return null;
 
@@ -645,12 +726,12 @@ function SectionGroup({
     <section className="space-y-3">
       <div className="room-meta-strip">
         <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: config.accent }} />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: config.accent }}>
+        <span className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: config.accent }}>
           {config.label}
         </span>
-        <span className="text-[10px] text-white/30">({requirements.length})</span>
+        <span className="text-[12px] text-[var(--text-soft)]">({requirements.length})</span>
       </div>
-      <p className="text-sm leading-6 text-white/54">
+      <p className="text-sm leading-6 text-[var(--text-soft)]">
         {classification === 'strong'
           ? 'These requirements are already represented well enough on the current resume.'
           : classification === 'partial'
@@ -673,6 +754,7 @@ function SectionGroup({
               classification={classification}
               disabled={disabled}
               positioningAssessment={positioningAssessment}
+              experienceCompanies={experienceCompanies}
             />
           );
         })}
@@ -694,6 +776,7 @@ export function UnifiedGapAnalysisCard({
   isComplete,
   disabled = false,
   positioningAssessment,
+  experienceCompanies = [],
 }: UnifiedGapAnalysisCardProps) {
   const strong = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'strong'), [gapAnalysis]);
   const partial = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'partial'), [gapAnalysis]);
@@ -704,7 +787,15 @@ export function UnifiedGapAnalysisCard({
 
   // Coaching state tracking — reset is handled by `key` prop at call site
   const [coachingStates, setCoachingStates] = useState<CoachingState[]>(() =>
-      (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false, questionAnswers: {} })),
+      (gapCoachingCards ?? []).map(() => ({
+        action: null,
+        contextText: '',
+        showContextInput: false,
+        questionAnswers: {},
+        showPlacementPicker: false,
+        target_section: 'auto' as GapPlacementTarget,
+        target_company: '',
+      })),
   );
 
   const hasCoaching = gapCoachingCards !== null && gapCoachingCards.length > 0;
@@ -743,6 +834,12 @@ export function UnifiedGapAnalysisCard({
           resp.user_context = s.contextText.trim();
         }
       }
+      if (s.action === 'approve' && s.target_section && s.target_section !== 'auto') {
+        resp.target_section = s.target_section;
+        if (s.target_section === 'experience' && s.target_company) {
+          resp.target_company = s.target_company;
+        }
+      }
       return resp;
     });
     onRespondGapCoaching(responses);
@@ -759,18 +856,18 @@ export function UnifiedGapAnalysisCard({
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="eyebrow-label">Requirement Coverage</div>
-            <h3 className="text-lg font-semibold tracking-tight text-white/90">{title}</h3>
+            <h3 className="text-lg font-semibold tracking-tight text-[var(--text-strong)]">{title}</h3>
           </div>
           <div className="support-callout min-w-[120px] px-4 py-3 text-right">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">Coverage</div>
-            <span className="text-3xl font-semibold tracking-tight text-white/90">{gapAnalysis.coverage_score}%</span>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">Coverage</div>
+            <span className="text-3xl font-semibold tracking-tight text-[var(--text-strong)]">{gapAnalysis.coverage_score}%</span>
           </div>
         </div>
-        <p className="text-sm text-white/60 mb-3">{gapAnalysis.strength_summary}</p>
+        <p className="text-sm text-[var(--text-soft)] mb-3">{gapAnalysis.strength_summary}</p>
 
         {/* Stacked bar */}
         {gapAnalysis.requirements.length > 0 && (
-          <div className="h-2.5 w-full overflow-hidden flex bg-white/[0.06]">
+          <div className="h-2.5 w-full overflow-hidden flex bg-[var(--surface-1)]">
             {strong.length > 0 && (
               <div
                 className="h-full bg-[#b5dec2] transition-all duration-700"
@@ -810,10 +907,10 @@ export function UnifiedGapAnalysisCard({
       {hasCoaching && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Review Progress</span>
-            <span className="text-xs text-white/40">{respondedCount} / {gapCoachingCards!.length} reviewed</span>
+            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Review Progress</span>
+            <span className="text-xs text-[var(--text-soft)]">{respondedCount} / {gapCoachingCards!.length} reviewed</span>
           </div>
-          <div className="h-1 w-full overflow-hidden bg-white/[0.06]">
+          <div className="h-1 w-full overflow-hidden bg-[var(--surface-1)]">
             <div
               className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
               style={{ width: gapCoachingCards!.length > 0 ? `${(respondedCount / gapCoachingCards!.length) * 100}%` : '0%' }}
@@ -834,6 +931,7 @@ export function UnifiedGapAnalysisCard({
         isComplete={isComplete}
         disabled={disabled}
         positioningAssessment={positioningAssessment}
+        experienceCompanies={experienceCompanies}
       />
 
       {/* Section C: Partial */}
@@ -848,6 +946,7 @@ export function UnifiedGapAnalysisCard({
         isComplete={isComplete}
         disabled={disabled}
         positioningAssessment={positioningAssessment}
+        experienceCompanies={experienceCompanies}
       />
 
       {/* Section D: Missing */}
@@ -862,6 +961,7 @@ export function UnifiedGapAnalysisCard({
         isComplete={isComplete}
         disabled={disabled}
         positioningAssessment={positioningAssessment}
+        experienceCompanies={experienceCompanies}
       />
 
       {/* Section E: Critical Gaps */}
@@ -869,16 +969,16 @@ export function UnifiedGapAnalysisCard({
         <div className="space-y-3">
           <div className="room-meta-strip">
             <Shield className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />
-            <span className="text-[10px] font-semibold text-[#f0b8b8] uppercase tracking-[0.16em]">
+            <span className="text-[12px] font-semibold text-[#f0b8b8] uppercase tracking-[0.16em]">
               Critical Gaps
             </span>
-            <span className="text-[10px] text-white/30 ml-1">({gapAnalysis.critical_gaps.length})</span>
+            <span className="text-[12px] text-[var(--text-soft)] ml-1">({gapAnalysis.critical_gaps.length})</span>
           </div>
           <div className="space-y-1.5">
             {gapAnalysis.critical_gaps.map((gap, i) => (
               <div
                 key={i}
-                className="support-callout border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2.5 text-sm text-white/60"
+                className="support-callout border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2.5 text-sm text-[var(--text-soft)]"
               >
                 {gap}
               </div>
@@ -898,7 +998,7 @@ export function UnifiedGapAnalysisCard({
               'w-full flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] transition-all disabled:opacity-30 disabled:cursor-not-allowed',
               allResponded && !disabled
                 ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
-                : 'border border-white/[0.06] text-white/30',
+                : 'border border-[var(--line-soft)] text-[var(--text-soft)]',
             )}
             aria-disabled={!allResponded || disabled}
             aria-label="Continue to resume writing"
@@ -907,16 +1007,16 @@ export function UnifiedGapAnalysisCard({
             <ArrowRight className="h-4 w-4" />
           </button>
           {!allResponded && (
-            <p className="text-center text-xs text-white/30 mt-2">
+            <p className="text-center text-xs text-[var(--text-soft)] mt-2">
               Review all {gapCoachingCards!.length} items to continue
             </p>
           )}
           {allResponded && coachingStates.every(s => s.action === 'skip') && (
             <div className="support-callout mt-3 px-4 py-3">
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-[var(--text-soft)]">
                 Your resume will highlight your direct matches — no inferred positioning will be used.
               </p>
-              <p className="text-xs text-white/35 mt-1">
+              <p className="text-xs text-[var(--text-soft)] mt-1">
                 You can add context anytime to unlock new strategies.
               </p>
             </div>

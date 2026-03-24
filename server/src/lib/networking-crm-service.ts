@@ -15,6 +15,7 @@
 
 import { supabaseAdmin } from './supabase.js';
 import logger from './logger.js';
+import type { OutreachMessage } from '../agents/networking-outreach/types.js';
 
 // ─── Four-Touch constants ─────────────────────────────────────────────────────
 
@@ -39,6 +40,34 @@ export interface TouchpointRow {
   type: string;
   notes: string | null;
   created_at: string;
+}
+
+export interface NetworkingContact {
+  id: string;
+  user_id: string;
+  name: string;
+  title: string | null;
+  company: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  phone: string | null;
+  relationship_type: string;
+  relationship_strength: number;
+  tags: string[];
+  notes: string | null;
+  last_contact_date: string | null;
+  next_followup_at: string | null;
+  application_id: string | null;
+  contact_role: string | null;
+  ni_connection_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactWithHistory {
+  contact: NetworkingContact;
+  touchpoints: TouchpointRow[];
+  outreachHistory: OutreachMessage[];
 }
 
 export interface ProcessNewTouchpointInput {
@@ -152,4 +181,84 @@ export async function processNewTouchpoint(
   }
 
   return { touchpoint: touchpoint as TouchpointRow };
+}
+
+// ─── getContactWithHistory ────────────────────────────────────────────────────
+
+/**
+ * Load a CRM contact along with its full touchpoint history and any previously
+ * generated outreach messages (stored in networking_outreach_reports).
+ *
+ * Returns null when the contact does not exist or does not belong to the user.
+ * All sub-queries are non-fatal on failure — partial results are returned with
+ * empty arrays rather than throwing.
+ */
+export async function getContactWithHistory(
+  contactId: string,
+  userId: string,
+): Promise<ContactWithHistory | null> {
+  // Load contact — ownership enforced by user_id filter
+  const { data: contact, error: contactError } = await supabaseAdmin
+    .from('networking_contacts')
+    .select('*')
+    .eq('id', contactId)
+    .eq('user_id', userId)
+    .single();
+
+  if (contactError || !contact) {
+    return null;
+  }
+
+  // Load touchpoints — most recent first
+  const { data: touchpoints, error: touchpointsError } = await supabaseAdmin
+    .from('contact_touchpoints')
+    .select('*')
+    .eq('contact_id', contactId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (touchpointsError) {
+    logger.warn(
+      { error: touchpointsError.message, contactId, userId },
+      'getContactWithHistory: touchpoints query failed (non-fatal)',
+    );
+  }
+
+  // Load previously generated outreach messages from reports
+  // A report is linked to this contact when target_name + target_company match
+  // OR when the report was explicitly tagged with the contact (future: add contact_id FK).
+  // For now we match on target_name to surface any prior work.
+  let outreachHistory: OutreachMessage[] = [];
+  const contactName = (contact as NetworkingContact).name;
+  if (contactName) {
+    const { data: reports, error: reportsError } = await supabaseAdmin
+      .from('networking_outreach_reports')
+      .select('messages, created_at')
+      .eq('user_id', userId)
+      .eq('target_name', contactName)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (reportsError) {
+      logger.warn(
+        { error: reportsError.message, contactId, userId },
+        'getContactWithHistory: outreach reports query failed (non-fatal)',
+      );
+    } else if (reports && reports.length > 0) {
+      // Flatten messages from all matching reports
+      for (const report of reports) {
+        const msgs = report.messages;
+        if (Array.isArray(msgs)) {
+          outreachHistory = outreachHistory.concat(msgs as OutreachMessage[]);
+        }
+      }
+    }
+  }
+
+  return {
+    contact: contact as NetworkingContact,
+    touchpoints: (touchpoints ?? []) as TouchpointRow[],
+    outreachHistory,
+  };
 }

@@ -179,11 +179,11 @@ export function PipelineIntakeForm({
 
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.12] bg-white/[0.04]">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
             <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-white/90">Let's Build Your Resume</h1>
-          <p className="max-w-md text-sm text-white/50">
+          <h1 className="mb-2 text-3xl font-bold text-[var(--text-strong)]">Let's Build Your Resume</h1>
+          <p className="max-w-md text-sm text-[var(--text-soft)]">
             Upload your resume and paste the job posting. We'll take it from there.
           </p>
         </div>
@@ -198,10 +198,10 @@ export function PipelineIntakeForm({
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {/* Resume field */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-white/80" htmlFor="resume-text">
-                Resume <span className="text-white/62">*</span>
+              <label className="block text-sm font-medium text-[var(--text-muted)]" htmlFor="resume-text">
+                Resume <span className="text-[var(--text-soft)]">*</span>
               </label>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+              <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
                 {savedResumes.length === 0 ? (
                   <GlassButton
                     type="button"
@@ -214,7 +214,7 @@ export function PipelineIntakeForm({
                   </GlassButton>
                 ) : (
                   <>
-                    <div className="mb-2 text-xs font-medium text-white/72">Start from a saved resume</div>
+                    <div className="mb-2 text-xs font-medium text-[var(--text-muted)]">Start from a saved resume</div>
                     {hasDefaultSavedResume && (
                       <div className="mb-2">
                         <GlassButton
@@ -239,10 +239,10 @@ export function PipelineIntakeForm({
                           value={selectedSavedResumeId}
                           onChange={(e) => setSelectedSavedResumeId(e.target.value)}
                           disabled={loading || savedResumeLoadLoading}
-                          className="min-w-0 flex-1 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-xs text-white/85 outline-none focus:border-[#afc4ff]/40"
+                          className="min-w-0 flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[#afc4ff]/40"
                         >
                           {savedResumes.map((resume) => (
-                            <option key={resume.id} value={resume.id} className="bg-[#0a0d14] text-white">
+                            <option key={resume.id} value={resume.id} className="bg-[var(--bg-1)] text-[var(--text-strong)]">
                               {resume.is_default ? 'Default • ' : ''}v{resume.version} • {new Date(resume.updated_at).toLocaleDateString()}
                             </option>
                           ))}
@@ -262,9 +262,9 @@ export function PipelineIntakeForm({
                       </div>
                     )}
                     <div className="flex items-center gap-3 my-2">
-                      <div className="flex-1 border-t border-white/[0.08]" />
-                      <span className="text-[10px] text-white/40 uppercase tracking-wider">or start fresh</span>
-                      <div className="flex-1 border-t border-white/[0.08]" />
+                      <div className="flex-1 border-t border-[var(--line-soft)]" />
+                      <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">or start fresh</span>
+                      <div className="flex-1 border-t border-[var(--line-soft)]" />
                     </div>
                     <GlassButton
                       type="button"
@@ -297,7 +297,7 @@ export function PipelineIntakeForm({
                   onClick={handleFileClick}
                   disabled={loading || fileLoading}
                   id="file-upload-hint"
-                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
                   aria-label="Upload a resume file (.txt, .docx, .pdf)"
                 >
                   {fileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -327,8 +327,8 @@ export function PipelineIntakeForm({
 
             {/* Job Description field */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-white/80" htmlFor="job-description">
-                Job Description <span className="text-white/62">*</span>
+              <label className="block text-sm font-medium text-[var(--text-muted)]" htmlFor="job-description">
+                Job Description <span className="text-[var(--text-soft)]">*</span>
               </label>
               <GlassTextarea
                 id="job-description"
@@ -339,7 +339,7 @@ export function PipelineIntakeForm({
                 disabled={loading}
                 aria-required="true"
               />
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-[var(--text-soft)]">
                 You can paste the full job description or a job link (URL). Uploads support .txt, .docx, .pdf, and .html.
               </p>
               <div className="flex items-center gap-2">
@@ -347,7 +347,7 @@ export function PipelineIntakeForm({
                   type="button"
                   onClick={handleJobFileClick}
                   disabled={loading || jobFileLoading}
-                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
                   aria-label="Upload a job description file (.txt, .docx, .pdf, .html)"
                 >
                   {jobFileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -372,8 +372,8 @@ export function PipelineIntakeForm({
 
             {/* Company Name field */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-white/80" htmlFor="company-name">
-                Company Name <span className="text-white/62">*</span>
+              <label className="block text-sm font-medium text-[var(--text-muted)]" htmlFor="company-name">
+                Company Name <span className="text-[var(--text-soft)]">*</span>
               </label>
               <GlassInput
                 id="company-name"

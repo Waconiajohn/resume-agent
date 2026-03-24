@@ -74,7 +74,7 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle size={18} className="text-red-400/70" />
-          <h3 className="text-[15px] font-semibold text-white/85">Job Finder Error</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Job Finder Error</h3>
         </div>
         <p className="text-[12px] text-red-400/60 mb-4">{error}</p>
         <GlassButton onClick={onReset} className="w-full">
@@ -89,25 +89,25 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
-          <h3 className="text-[15px] font-semibold text-white/85">
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
             {status === 'connecting' ? 'Connecting...' : 'Finding Matches'}
           </h3>
         </div>
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 text-[12px]">
-              <span className="text-white/20 tabular-nums flex-shrink-0">
+              <span className="text-[var(--text-soft)] tabular-nums flex-shrink-0">
                 {new Date(msg.timestamp).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
                 })}
               </span>
-              <span className="text-white/50">{msg.message}</span>
+              <span className="text-[var(--text-soft)]">{msg.message}</span>
             </div>
           ))}
           {activityMessages.length === 0 && (
-            <p className="text-[12px] text-white/30">Initializing search...</p>
+            <p className="text-[12px] text-[var(--text-soft)]">Initializing search...</p>
           )}
         </div>
       </GlassCard>
@@ -119,10 +119,10 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#f0d99f]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Review Matches</h3>
-          <span className="ml-auto text-[11px] text-white/30">Action required</span>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review Matches</h3>
+          <span className="ml-auto text-[13px] text-[var(--text-soft)]">Action required</span>
         </div>
-        <p className="text-[12px] text-white/40 mb-4">
+        <p className="text-[12px] text-[var(--text-soft)] mb-4">
           The Job Finder has finished. Save these matches if they are worth working from Today and Pipeline.
         </p>
         <div className="flex gap-2">
@@ -147,9 +147,9 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Smart Matches</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Smart Matches</h3>
         </div>
-        <p className="text-[12px] text-white/35 mb-4">
+        <p className="text-[12px] text-[var(--text-soft)] mb-4">
           AI-curated roles matched to your Career Profile. Run the Job Finder to discover your best
           opportunities.
         </p>
@@ -164,12 +164,12 @@ function SmartMatches({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Star size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Smart Matches</h3>
-        <span className="ml-auto text-[11px] text-white/30">{matches.length} roles found</span>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Smart Matches</h3>
+        <span className="ml-auto text-[13px] text-[var(--text-soft)]">{matches.length} roles found</span>
         <button
           type="button"
           onClick={onReset}
-          className="text-[11px] text-white/25 hover:text-white/45 transition-colors ml-2"
+          className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors ml-2"
         >
           <RotateCcw size={12} />
         </button>
@@ -179,7 +179,7 @@ function SmartMatches({
         {matches.map((job) => (
           <div
             key={job.id}
-            className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all"
+            className="group rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 hover:bg-[var(--accent-muted)] hover:border-[var(--line-soft)] transition-all"
           >
             <div className="flex items-start gap-3">
               {/* Match score */}
@@ -190,7 +190,7 @@ function SmartMatches({
                     ? 'bg-[#b5dec2]/10 border border-[#b5dec2]/20'
                     : job.fit_score >= 80
                       ? 'bg-[#98b3ff]/10 border border-[#98b3ff]/20'
-                      : 'bg-white/[0.04] border border-white/[0.08]',
+                      : 'bg-[var(--accent-muted)] border border-[var(--line-soft)]',
                 )}
               >
                 <div
@@ -200,20 +200,20 @@ function SmartMatches({
                       ? 'text-[#b5dec2]'
                       : job.fit_score >= 80
                         ? 'text-[#98b3ff]'
-                        : 'text-white/50',
+                        : 'text-[var(--text-soft)]',
                   )}
                 >
                   {job.fit_score}
                 </div>
-                <div className="text-[9px] text-white/30 uppercase">match</div>
+                <div className="text-[12px] text-[var(--text-soft)] uppercase">match</div>
               </div>
 
               {/* Job details */}
               <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-medium text-white/80 group-hover:text-white/90 transition-colors">
+                <div className="text-[14px] font-medium text-[var(--text-strong)] group-hover:text-[var(--text-strong)] transition-colors">
                   {job.title}
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-[12px] text-white/40 flex-wrap">
+                <div className="flex items-center gap-2 mt-1 text-[12px] text-[var(--text-soft)] flex-wrap">
                   <span className="flex items-center gap-1">
                     <Building2 size={11} />
                     {job.company}
@@ -238,7 +238,7 @@ function SmartMatches({
                   )}
                 </div>
                 {(job.posted_date || job.work_type) && (
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-white/25">
+                  <div className="flex items-center gap-2 mt-1 text-[13px] text-[var(--text-soft)]">
                     {job.posted_date && <span>{job.posted_date}</span>}
                     {job.posted_date && job.work_type && <span>·</span>}
                     {job.work_type && <span className="capitalize">{job.work_type}</span>}
@@ -255,7 +255,7 @@ function SmartMatches({
                 <button
                   type="button"
                   onClick={() => onNavigate('/workspace?room=resume')}
-                  className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+                  className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   <FileText size={11} />
                   Resume + Letter
@@ -284,9 +284,9 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Search size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Search Strings</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Strings</h3>
       </div>
-      <p className="text-[12px] text-white/35 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         AI-generated search strings for the sites you use when the main discovery view is not enough.
       </p>
 
@@ -297,13 +297,13 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
       ) : (
         <div className="space-y-3">
           {searches.map((search, i) => (
-            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+            <div key={i} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-semibold text-white/60">{search.platform}</span>
+                <span className="text-[12px] font-semibold text-[var(--text-soft)]">{search.platform}</span>
                 <button
                   type="button"
                   onClick={() => handleCopy(search.query, i)}
-                  className="flex items-center gap-1 text-[11px] text-white/30 hover:text-white/55 transition-colors"
+                  className="flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
                 >
                   {copied === i ? (
                     <>
@@ -316,7 +316,7 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
                   )}
                 </button>
               </div>
-              <code className="text-[11px] text-white/40 leading-relaxed block break-all font-mono">
+              <code className="text-[13px] text-[var(--text-soft)] leading-relaxed block break-all font-mono">
                 {search.query}
               </code>
             </div>
@@ -389,52 +389,52 @@ function SearchPreferences() {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Settings2 size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Search Preferences</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Preferences</h3>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
             Target Titles
           </label>
           <input
             type="text"
             value={prefs.titles}
             onChange={(e) => handleChange('titles', e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div>
-          <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
             Locations
           </label>
           <input
             type="text"
             value={prefs.locations}
             onChange={(e) => handleChange('locations', e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Min Salary
             </label>
             <input
               type="text"
               value={prefs.salaryMin}
               onChange={(e) => handleChange('salaryMin', e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
           <div className="flex-1">
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Work Type
             </label>
             <select
               value={prefs.remote}
               onChange={(e) => handleChange('remote', e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             >
               <option value="any">Any</option>
               <option value="remote">Remote</option>
@@ -510,16 +510,16 @@ function TrackerGenerator() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Application Tracker</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Application Tracker</h3>
         </div>
-        <p className="text-[12px] text-white/35 mb-4">
+        <p className="text-[12px] text-[var(--text-soft)] mb-4">
           Analyze your job applications, score fit, and generate personalized follow-up messages.
         </p>
 
         <div className="mb-4">
           <label
             htmlFor="tracker-resume"
-            className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block"
+            className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block"
           >
             Resume Text
           </label>
@@ -528,20 +528,20 @@ function TrackerGenerator() {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             placeholder="Paste your resume text here..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px] resize-y"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px] resize-y"
             rows={3}
           />
         </div>
 
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-[11px] text-white/40 uppercase tracking-wider">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">
               Applications
             </label>
             <button
               type="button"
               onClick={addApp}
-              className="flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+              className="flex items-center gap-1 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
             >
               <Plus size={12} /> Add Application
             </button>
@@ -551,15 +551,15 @@ function TrackerGenerator() {
             {applications.map((app, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2"
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 space-y-2"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-white/30">Application {i + 1}</span>
+                  <span className="text-[13px] text-[var(--text-soft)]">Application {i + 1}</span>
                   {applications.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeApp(i)}
-                      className="text-white/20 hover:text-red-400/60 transition-colors"
+                      className="text-[var(--text-soft)] hover:text-red-400/60 transition-colors"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -572,7 +572,7 @@ function TrackerGenerator() {
                     value={app.company}
                     onChange={(e) => updateApp(i, 'company', e.target.value)}
                     placeholder="Company"
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                   <input
                     id={`app-role-${i}`}
@@ -580,7 +580,7 @@ function TrackerGenerator() {
                     value={app.role}
                     onChange={(e) => updateApp(i, 'role', e.target.value)}
                     placeholder="Role Title"
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -590,14 +590,14 @@ function TrackerGenerator() {
                     type="date"
                     value={app.date_applied}
                     onChange={(e) => updateApp(i, 'date_applied', e.target.value)}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                   <select
                     id={`app-status-${i}`}
                     aria-label={`Application ${i + 1} status`}
                     value={app.status}
                     onChange={(e) => updateApp(i, 'status', e.target.value)}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   >
                     <option value="applied">Applied</option>
                     <option value="followed_up">Followed Up</option>
@@ -614,7 +614,7 @@ function TrackerGenerator() {
                   value={app.contact_name ?? ''}
                   onChange={(e) => updateApp(i, 'contact_name', e.target.value)}
                   placeholder="Contact name (optional)"
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                  className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                 />
                 <textarea
                   id={`app-jd-${i}`}
@@ -622,7 +622,7 @@ function TrackerGenerator() {
                   value={app.jd_text}
                   onChange={(e) => updateApp(i, 'jd_text', e.target.value)}
                   placeholder="Paste job description here..."
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[60px] resize-y"
+                  className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[60px] resize-y"
                   rows={2}
                 />
               </div>
@@ -643,7 +643,7 @@ function TrackerGenerator() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
-          <h3 className="text-[15px] font-semibold text-white/85">
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
             {tracker.status === 'connecting'
               ? 'Connecting...'
               : `Analyzing — ${tracker.currentStage ?? 'processing'}`}
@@ -653,14 +653,14 @@ function TrackerGenerator() {
         <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
           {tracker.activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 text-[12px]">
-              <span className="text-white/20 tabular-nums flex-shrink-0">
+              <span className="text-[var(--text-soft)] tabular-nums flex-shrink-0">
                 {new Date(msg.timestamp).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
                 })}
               </span>
-              <span className="text-white/50">{msg.message}</span>
+              <span className="text-[var(--text-soft)]">{msg.message}</span>
             </div>
           ))}
         </div>
@@ -673,7 +673,7 @@ function TrackerGenerator() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle size={18} className="text-red-400/70" />
-          <h3 className="text-[15px] font-semibold text-white/85">Error</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Error</h3>
         </div>
         <p className="text-[12px] text-red-400/60 mb-4">{tracker.error}</p>
         <GlassButton onClick={handleReset} className="w-full">
@@ -688,32 +688,32 @@ function TrackerGenerator() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart3 size={18} className="text-[#b5dec2]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Tracker Report</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Tracker Report</h3>
         </div>
         <div className="flex items-center gap-2">
           {tracker.qualityScore != null && (
             <span
               className={cn(
-                'text-[11px] font-medium px-2 py-0.5 rounded-full',
+                'text-[13px] font-medium px-2 py-0.5 rounded-full',
                 tracker.qualityScore >= 80
                   ? 'bg-[#b5dec2]/10 text-[#b5dec2]'
                   : tracker.qualityScore >= 60
                     ? 'bg-[#98b3ff]/10 text-[#98b3ff]'
-                    : 'bg-white/[0.06] text-white/40',
+                    : 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
               )}
             >
               Tracker Score: {tracker.qualityScore}/100
             </span>
           )}
-          <span className="text-[11px] text-white/30">
+          <span className="text-[13px] text-[var(--text-soft)]">
             {tracker.applicationCount ?? 0} apps · {tracker.followUpCount ?? 0} follow-ups
           </span>
         </div>
       </div>
 
       {tracker.report && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-4 max-h-[500px] overflow-y-auto">
-          <pre className="text-[12px] text-white/60 whitespace-pre-wrap font-sans leading-relaxed">
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 mb-4 max-h-[500px] overflow-y-auto">
+          <pre className="text-[12px] text-[var(--text-soft)] whitespace-pre-wrap font-sans leading-relaxed">
             {tracker.report}
           </pre>
         </div>
@@ -986,10 +986,10 @@ export function JobCommandCenterRoom({
 
           {showSearchTools ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
                 <div>
-                  <div className="text-sm font-semibold text-white/82">Advanced search</div>
-                  <div className="mt-1 text-xs leading-relaxed text-white/45">
+                  <div className="text-sm font-semibold text-[var(--text-strong)]">Advanced search</div>
+                  <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
                     Open these when you want more control over search strings and filters.
                   </div>
                 </div>
@@ -1005,10 +1005,10 @@ export function JobCommandCenterRoom({
 
               {showSearchPreferences ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
                     <div>
-                      <div className="text-sm font-semibold text-white/82">Search filters</div>
-                      <div className="mt-1 text-xs leading-relaxed text-white/45">
+                      <div className="text-sm font-semibold text-[var(--text-strong)]">Search filters</div>
+                      <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
                         Tune titles, locations, and work style here.
                       </div>
                     </div>
@@ -1022,8 +1022,8 @@ export function JobCommandCenterRoom({
                 <GlassCard className="p-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-white/82">Search filters</div>
-                      <div className="mt-1 text-xs leading-relaxed text-white/45">
+                      <div className="text-sm font-semibold text-[var(--text-strong)]">Search filters</div>
+                      <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
                         Open this when you want to tune titles, locations, or work style.
                       </div>
                     </div>
@@ -1038,8 +1038,8 @@ export function JobCommandCenterRoom({
             <GlassCard className="p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-white/82">Advanced search</div>
-                  <div className="mt-1 text-xs leading-relaxed text-white/45">
+                  <div className="text-sm font-semibold text-[var(--text-strong)]">Advanced search</div>
+                  <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
                     Open this when you want boolean strings or deeper search controls.
                   </div>
                 </div>
@@ -1055,28 +1055,28 @@ export function JobCommandCenterRoom({
       {/* Daily Ops tab — display:none preserves state */}
       <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px]">
-            <span className="text-white/40">
+          <div className="flex items-center gap-6 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-5 py-3 text-[13px]">
+            <span className="text-[var(--text-soft)]">
               Active:{' '}
-              <span className="font-semibold text-white/75">{dailyOps.activeCount}</span>
+              <span className="font-semibold text-[var(--text-muted)]">{dailyOps.activeCount}</span>
             </span>
-            <span className="text-white/20">|</span>
-            <span className="text-white/40">
+            <span className="text-[var(--text-soft)]">|</span>
+            <span className="text-[var(--text-soft)]">
               Interviewing:{' '}
               <span className="font-semibold text-[#98b3ff]">{dailyOps.interviewCount}</span>
             </span>
-            <span className="text-white/20">|</span>
-            <span className="text-white/40">
+            <span className="text-[var(--text-soft)]">|</span>
+            <span className="text-[var(--text-soft)]">
               Offers:{' '}
               <span className="font-semibold text-[#b5dec2]">{dailyOps.offerCount}</span>
             </span>
-            <span className="text-white/20">|</span>
-            <span className="text-white/40">
+            <span className="text-[var(--text-soft)]">|</span>
+            <span className="text-[var(--text-soft)]">
               Due:{' '}
               <span
                 className={cn(
                   'font-semibold',
-                  dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-white/75',
+                  dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-[var(--text-muted)]',
                 )}
               >
                 {dailyOps.dueActions.length}

@@ -197,10 +197,14 @@ export interface CompanyInfo {
   domain: string | null;
 }
 
+export type ScrapeSource = 'career_page' | 'jsearch_api' | 'adzuna_api';
+
 export interface ScrapeResult {
   companiesScanned: number;
   jobsFound: number;
   matchingJobs: number;
   referralAvailable: number;
   errors: { company: string; error: string }[];
+  /** Per-company breakdown of which source found jobs. */
+  sourceBreakdown: Record<ScrapeSource, number>;
 }

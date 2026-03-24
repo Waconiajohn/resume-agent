@@ -16,6 +16,8 @@ export const startSchema = z.object({
     requirement: z.string().min(1),
     action: z.enum(['approve', 'context', 'skip']),
     user_context: z.string().optional(),
+    target_section: z.enum(['auto', 'summary', 'competencies', 'accomplishments', 'experience']).optional(),
+    target_company: z.string().optional(),
   })).optional(),
   pre_scores: z.object({
     ats_match: z.number().int().min(0).max(100),

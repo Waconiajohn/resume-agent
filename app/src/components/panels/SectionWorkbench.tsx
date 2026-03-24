@@ -297,17 +297,17 @@ export function SectionWorkbench({
 
           {/* Section title */}
           <div className="text-center space-y-1">
-            <h2 className="text-xl font-semibold text-white/90 tracking-tight">
+            <h2 className="text-xl font-semibold text-[var(--text-strong)] tracking-tight">
               {toTitleCase(section)}
             </h2>
             {positioningAngle && (
-              <p className="text-xs text-white/45 leading-relaxed max-w-sm mx-auto">
+              <p className="text-xs text-[var(--text-soft)] leading-relaxed max-w-sm mx-auto">
                 {positioningAngle}
               </p>
             )}
           </div>
 
-          <p className="text-center text-xs text-white/50 max-w-md mx-auto">
+          <p className="text-center text-xs text-[var(--text-soft)] max-w-md mx-auto">
             Read this section. If it looks right, approve it. If you'd like changes, tell us what to fix.
           </p>
 
@@ -322,36 +322,36 @@ export function SectionWorkbench({
           {reviewStrategy === 'bundled' && (
             <div className="room-shell p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   Grouped Sections
                 </span>
-                <span className="text-xs text-white/60">
+                <span className="text-xs text-[var(--text-soft)]">
                   We've grouped {reviewRequiredSections.length || 1} section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'} for your review
                 </span>
                 {reviewRequiredSections.includes(section) ? (
-                  <span className="text-[11px] text-[#b5dec2]/85">Please review this section.</span>
+                  <span className="text-[13px] text-[#b5dec2]/85">Please review this section.</span>
                 ) : (
-                  <span className="text-[11px] text-white/45">This section was approved automatically, but you can still edit it.</span>
+                  <span className="text-[13px] text-[var(--text-soft)]">This section was approved automatically, but you can still edit it.</span>
                 )}
               </div>
               {reviewRequiredSections.length > 0 && (
                 <div className="support-callout mt-2 bg-black/20 p-2.5">
-                  <div className="mb-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                  <div className="mb-2 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                      <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
                         Your Next Step
                       </span>
                       {reviewRequiredSections.includes(section) ? (
-                        <span className="text-white/78">
+                        <span className="text-[var(--text-muted)]">
                           Review this draft, then approve it or request changes.
                         </span>
                       ) : (
-                        <span className="text-white/62">
+                        <span className="text-[var(--text-soft)]">
                           This section is not blocking progress. You can still edit it if you want.
                         </span>
                       )}
                       {currentBundleMeta && (
-                        <span className="text-white/52">
+                        <span className="text-[var(--text-soft)]">
                           Current group: {currentBundleMeta.label}
                         </span>
                       )}
@@ -362,7 +362,7 @@ export function SectionWorkbench({
                       <button
                         type="button"
                         onClick={() => setShowBundleDetails((prev) => !prev)}
-                        className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-left text-[11px] text-white/68 transition-colors hover:bg-white/[0.03] hover:text-white/82"
+                        className="flex w-full items-center justify-between rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2 text-left text-[13px] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
                       >
                         <span>Details and section list</span>
                         {showBundleDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -379,19 +379,19 @@ export function SectionWorkbench({
                           : bundle.status === 'in_progress'
                             ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
                             : bundle.status === 'auto_approved'
-                              ? 'border-white/[0.08] bg-white/[0.02]'
-                              : 'border-white/[0.06] bg-white/[0.015]';
+                              ? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'
+                              : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
                         return (
                           <div key={`bundle-card-${bundle.key}`} className={`rounded-lg border p-2 ${toneClass}`}>
                             <div className="flex items-center justify-between gap-2">
-                              <div className="text-[11px] font-medium text-white/82">{bundle.label}</div>
-                              <div className="text-[10px] text-white/45">
+                              <div className="text-[13px] font-medium text-[var(--text-muted)]">{bundle.label}</div>
+                              <div className="text-[12px] text-[var(--text-soft)]">
                                 {bundle.status === 'auto_approved'
                                   ? 'auto'
                                   : `${bundle.reviewed_required}/${bundle.review_required}`}
                               </div>
                             </div>
-                            <div className="mt-1 text-[10px] text-white/50">
+                            <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                               {isCurrentBundle ? 'Reviewing now' : (
                                 bundle.status === 'complete'
                                   ? 'Complete'
@@ -411,24 +411,24 @@ export function SectionWorkbench({
                                   return (
                                     <div
                                       key={`${bundle.key}:${bundleSection}`}
-                                      className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 text-[10px] ${
+                                      className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 text-[12px] ${
                                         isCurrentSection
                                           ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
                                           : isApproved
                                             ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]/85'
-                                            : 'border-white/[0.05] bg-white/[0.01] text-white/60'
+                                            : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                                       }`}
                                       title={toTitleCase(bundleSection)}
                                     >
                                       <span className="truncate">{toTitleCase(bundleSection)}</span>
-                                      <span className="text-[9px] text-white/45">
+                                      <span className="text-[12px] text-[var(--text-soft)]">
                                         {isCurrentSection ? 'reviewing' : isApproved ? 'approved' : (requiresReview ? 'needs review' : 'auto-approved')}
                                       </span>
                                     </div>
                                   );
                                 })}
                                 {bundleSections.length > 4 && (
-                                  <div className="px-1.5 text-[10px] text-white/40">
+                                  <div className="px-1.5 text-[12px] text-[var(--text-soft)]">
                                     +{bundleSections.length - 4} more section{bundleSections.length - 4 === 1 ? '' : 's'}
                                   </div>
                                 )}
@@ -448,12 +448,12 @@ export function SectionWorkbench({
                           : bundle.status === 'in_progress'
                             ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
                             : bundle.status === 'auto_approved'
-                              ? 'border-white/[0.08] bg-white/[0.03] text-white/65'
-                              : 'border-white/[0.06] bg-white/[0.02] text-white/50';
+                              ? 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-muted)]'
+                              : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
                         return (
                           <span
                             key={`bundle-pill-${bundle.key}`}
-                            className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] ${toneClass}`}
+                            className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.08em] ${toneClass}`}
                             title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} sections approved`}
                           >
                             {bundle.label}
@@ -466,11 +466,11 @@ export function SectionWorkbench({
                       })}
                     </div>
                   )}
-                  <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/65">
+                  <div className="mb-1.5 flex items-center justify-between text-[13px] text-[var(--text-muted)]">
                     <span>Your progress</span>
                     <span>{approvedReviewSections.length}/{reviewRequiredSections.length} approved</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden bg-white/[0.06]">
+                  <div className="h-1.5 overflow-hidden bg-[var(--accent-muted)]">
                     <div
                       className="h-full bg-gradient-to-r from-[#7cb5ff]/80 to-[#b3e1ff]/85 transition-all duration-300"
                       style={{ width: `${reviewProgressPct}%` }}
@@ -484,12 +484,12 @@ export function SectionWorkbench({
                         return (
                           <span
                             key={reviewSection}
-                            className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] ${
+                            className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.08em] ${
                               isApproved
                                 ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
                                 : isCurrent
                                   ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
-                                  : 'border-white/[0.08] bg-white/[0.02] text-white/55'
+                                  : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                             }`}
                             title={toTitleCase(reviewSection)}
                           >
@@ -501,11 +501,11 @@ export function SectionWorkbench({
                     </div>
                   )}
                   {(currentBundleMeta || nextPendingReviewBundleMeta || autoApprovedBundleCount > 0) && (
-                    <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-[11px] text-white/65">
+                    <div className="mt-2 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2 text-[13px] text-[var(--text-muted)]">
                       <div className="flex flex-wrap items-center gap-2">
                         {currentBundleMeta && (
                           <span>
-                            Current group: <span className="text-white/82">{currentBundleMeta.label}</span>
+                            Current group: <span className="text-[var(--text-strong)]">{currentBundleMeta.label}</span>
                             {typeof currentBundleMeta.reviewed_required === 'number' && typeof currentBundleMeta.review_required === 'number'
                               ? ` (${currentBundleMeta.reviewed_required}/${currentBundleMeta.review_required})`
                               : ''}
@@ -513,7 +513,7 @@ export function SectionWorkbench({
                         )}
                         {nextPendingReviewBundleMeta && (
                           <span>
-                            Next: <span className="text-white/78">{nextPendingReviewBundleMeta.label}</span>
+                            Next: <span className="text-[var(--text-muted)]">{nextPendingReviewBundleMeta.label}</span>
                             {typeof nextPendingReviewBundleMeta.review_required === 'number'
                               ? ` (${nextPendingReviewBundleMeta.review_required} section${nextPendingReviewBundleMeta.review_required === 1 ? '' : 's'} to review)`
                               : ''}
@@ -523,7 +523,7 @@ export function SectionWorkbench({
                           <span className="text-[#b5dec2]/80">This group is complete.</span>
                         )}
                         {autoApprovedBundleCount > 0 && (
-                          <span className="text-white/45">
+                          <span className="text-[var(--text-soft)]">
                             {autoApprovedBundleCount} group{autoApprovedBundleCount === 1 ? '' : 's'} auto-approved
                           </span>
                         )}
@@ -533,7 +533,7 @@ export function SectionWorkbench({
                 </div>
               )}
               {reviewRequiredSections.length > 0 && showBundleDetails && (
-                <p className="mt-2 text-[11px] leading-relaxed text-white/50">
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
                   Sections for review: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
                 </p>
               )}
@@ -544,7 +544,7 @@ export function SectionWorkbench({
                 && onApproveCurrentBundle)
                 || (reviewRequiredSections.includes(section) && remainingReviewSections.length > 0 && onApproveRemainingBundle)) && (
                 <details className="mt-2">
-                  <summary className="text-[11px] text-white/50 cursor-pointer">More options</summary>
+                  <summary className="text-[13px] text-[var(--text-soft)] cursor-pointer">More options</summary>
                   {reviewRequiredSections.includes(section)
                     && currentBundleMeta
                     && currentBundleMeta.review_required > 1
@@ -560,7 +560,7 @@ export function SectionWorkbench({
                       >
                         Approve Remaining in This Group
                       </GlassButton>
-                      <p className="mt-1 text-[10px] text-white/35">
+                      <p className="mt-1 text-[12px] text-[var(--text-soft)]">
                         Approves the remaining sections in this group{nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
                       </p>
                     </div>
@@ -576,7 +576,7 @@ export function SectionWorkbench({
                       >
                         Approve All Remaining ({remainingReviewSections.length})
                       </GlassButton>
-                      <p className="mt-1 text-[10px] text-white/35">
+                      <p className="mt-1 text-[12px] text-[var(--text-soft)]">
                         Approves all remaining sections and moves to quality review.
                       </p>
                     </div>
@@ -584,7 +584,7 @@ export function SectionWorkbench({
                 </details>
               )}
               {autoApprovedSections.length > 0 && (
-                <p className="mt-1 text-[11px] leading-relaxed text-white/40">
+                <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
                   {showBundleDetails ? (
                     <>
                       Auto-approved: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
@@ -617,7 +617,7 @@ export function SectionWorkbench({
                   : 'AI is rewriting this section based on the instruction you selected.'}
                 tip="You do not need to type the whole answer from scratch here. Wait for the updated draft, then review and fine-tune it inline."
               />
-              <div className="mt-2 h-0.5 w-full overflow-hidden bg-white/[0.06]">
+              <div className="mt-2 h-0.5 w-full overflow-hidden bg-[var(--accent-muted)]">
                 <div className="h-full w-1/3 bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
               </div>
             </div>
@@ -646,16 +646,16 @@ export function SectionWorkbench({
 
           {/* Advanced guidance — staged reveal to reduce cognitive load */}
           {hasAdvancedContext && (
-            <div className="rounded-2xl border border-white/[0.1] bg-white/[0.02] p-3">
+            <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
               <button
                 type="button"
                 onClick={() => setShowAdvanced((prev) => !prev)}
-                className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left text-xs text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white/90"
+                className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
               >
                 <span>
                   Advanced Guidance
                   {context && (
-                    <span className="ml-2 text-[10px] text-white/40">
+                    <span className="ml-2 text-[12px] text-[var(--text-soft)]">
                       v{contextVersion} · {gapCount} open requirement{gapCount === 1 ? '' : 's'}
                     </span>
                   )}
@@ -699,7 +699,7 @@ export function SectionWorkbench({
       )}
 
       {/* Sticky bottom CTA bar */}
-      <div className="border-t border-white/[0.12] bg-black/30 backdrop-blur-sm px-3 py-3 sm:px-5">
+      <div className="border-t border-[var(--line-soft)] bg-black/30 backdrop-blur-sm px-3 py-3 sm:px-5">
         <div className="mx-auto max-w-3xl">
           {hasLocalEdits ? (
             <div className="flex items-center gap-2">
@@ -792,7 +792,7 @@ export function SectionWorkbench({
               </GlassButton>
             </div>
           )}
-          <p className="mt-1.5 text-center text-[10px] text-white/25">
+          <p className="mt-1.5 text-center text-[12px] text-[var(--text-soft)]">
             {hasLocalEdits ? 'Save your inline edits or discard' : 'Cmd+Enter to approve'}
           </p>
         </div>

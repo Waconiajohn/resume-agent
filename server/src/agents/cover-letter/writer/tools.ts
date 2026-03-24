@@ -59,22 +59,20 @@ const writeLetterTool: CoverLetterTool = {
     const evidenceItemSource = hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
       ? sharedContext?.evidenceInventory.evidenceItems
       : platformCtx?.evidence_items;
+    const hasSharedPositioning = hasMeaningfulSharedValue(sharedContext?.positioningStrategy);
+    const hasSharedEvidence = hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems);
     const positioningStrategyBlock = positioningStrategySource
       ? renderPositioningStrategySection({
           heading: 'POSITIONING STRATEGY FROM RESUME STRATEGIST',
-          sharedStrategy: hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
-            ? sharedContext?.positioningStrategy
-            : undefined,
-          legacyStrategy: positioningStrategySource,
+          sharedStrategy: hasSharedPositioning ? sharedContext?.positioningStrategy : undefined,
+          legacyStrategy: hasSharedPositioning ? undefined : platformCtx?.positioning_strategy,
         }).join('\n')
       : '';
     const evidenceItemsBlock = Array.isArray(evidenceItemSource) && evidenceItemSource.length > 0
       ? renderEvidenceInventorySection({
           heading: 'KEY EVIDENCE ITEMS',
-          sharedInventory: hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)
-            ? sharedContext?.evidenceInventory
-            : undefined,
-          legacyEvidence: evidenceItemSource,
+          sharedInventory: hasSharedEvidence ? sharedContext?.evidenceInventory : undefined,
+          legacyEvidence: hasSharedEvidence ? undefined : (platformCtx?.evidence_items ?? undefined),
           maxItems: 8,
         }).join('\n')
       : '';

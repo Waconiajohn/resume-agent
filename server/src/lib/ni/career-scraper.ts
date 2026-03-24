@@ -9,7 +9,10 @@
 import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import logger from '../logger.js';
-import type { CompanyInfo, ScrapeResult } from './types.js';
+import { JSearchAdapter } from '../job-search/adapters/jsearch.js';
+import { AdzunaAdapter } from '../job-search/adapters/adzuna.js';
+import type { CompanyInfo, ScrapeResult, ScrapeSource } from './types.js';
+import type { JobResult, SearchFilters } from '../job-search/types.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -209,12 +212,166 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
   }
 }
 
+// ─── API-based company search helpers ────────────────────────────────────────
+
+const API_SEARCH_FILTERS: SearchFilters = {
+  datePosted: '30d',
+};
+
+/**
+ * Map a JobResult array from a search adapter into the ParsedJob format used
+ * by the rest of the scraper pipeline.
+ */
+function jobResultsToParsedJobs(results: JobResult[]): ParsedJob[] {
+  const seen = new Set<string>();
+  const jobs: ParsedJob[] = [];
+
+  for (const r of results) {
+    const key = `${r.title.toLowerCase()}|${r.location?.toLowerCase() ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    jobs.push({
+      title: r.title,
+      url: r.apply_url ?? '',
+      location: r.location ?? '',
+    });
+  }
+
+  return jobs;
+}
+
+/**
+ * Search JSearch API for jobs at a specific company by name.
+ * Returns empty array when JSEARCH_API_KEY is missing or on any error.
+ */
+async function searchJobsByCompanyViaJSearch(
+  companyName: string,
+  targetTitles: string[],
+): Promise<ParsedJob[]> {
+  if (!process.env.JSEARCH_API_KEY) {
+    logger.warn({ companyName }, 'career-scraper: JSEARCH_API_KEY not set — skipping JSearch fallback');
+    return [];
+  }
+
+  try {
+    const adapter = new JSearchAdapter();
+
+    const queries = targetTitles.length > 0
+      ? targetTitles.map((t) => `"${t}" at "${companyName}"`)
+      : [`jobs at "${companyName}"`];
+
+    const allResults: JobResult[] = [];
+    for (const query of queries.slice(0, 3)) { // cap at 3 queries per company
+      const results = await adapter.search(query, '', API_SEARCH_FILTERS);
+      // Only keep results that actually match the target company
+      const filtered = results.filter((r) =>
+        r.company.toLowerCase().includes(companyName.toLowerCase()) ||
+        companyName.toLowerCase().includes(r.company.toLowerCase()),
+      );
+      allResults.push(...filtered);
+    }
+
+    return jobResultsToParsedJobs(allResults);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn({ companyName, error: message }, 'career-scraper: JSearch company search failed');
+    return [];
+  }
+}
+
+/**
+ * Search Adzuna API for jobs at a specific company by name.
+ * Returns empty array when ADZUNA credentials are missing or on any error.
+ */
+async function searchJobsByCompanyViaAdzuna(
+  companyName: string,
+  targetTitles: string[],
+): Promise<ParsedJob[]> {
+  if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_API_KEY) {
+    logger.warn({ companyName }, 'career-scraper: Adzuna credentials not set — skipping Adzuna fallback');
+    return [];
+  }
+
+  try {
+    const adapter = new AdzunaAdapter();
+
+    const queries = targetTitles.length > 0
+      ? targetTitles.map((t) => `${t} ${companyName}`)
+      : [companyName];
+
+    const allResults: JobResult[] = [];
+    for (const query of queries.slice(0, 3)) { // cap at 3 queries per company
+      const results = await adapter.search(query, '', API_SEARCH_FILTERS);
+      // Only keep results that actually match the target company
+      const filtered = results.filter((r) =>
+        r.company.toLowerCase().includes(companyName.toLowerCase()) ||
+        companyName.toLowerCase().includes(r.company.toLowerCase()),
+      );
+      allResults.push(...filtered);
+    }
+
+    return jobResultsToParsedJobs(allResults);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn({ companyName, error: message }, 'career-scraper: Adzuna company search failed');
+    return [];
+  }
+}
+
+/**
+ * Public API: search for jobs at a specific company using JSearch then Adzuna as fallback.
+ * This is the three-tier fallback chain exposed for direct use by other callers.
+ */
+export async function searchJobsByCompany(
+  companyName: string,
+  targetTitles: string[],
+  _userId: string,
+): Promise<ScrapeResult> {
+  let jobs = await searchJobsByCompanyViaJSearch(companyName, targetTitles);
+  let source: ScrapeSource = 'jsearch_api';
+
+  if (jobs.length === 0) {
+    jobs = await searchJobsByCompanyViaAdzuna(companyName, targetTitles);
+    source = 'adzuna_api';
+  }
+
+  if (jobs.length === 0) {
+    return {
+      companiesScanned: 1,
+      jobsFound: 0,
+      matchingJobs: 0,
+      referralAvailable: 0,
+      errors: [],
+      sourceBreakdown: { career_page: 0, jsearch_api: 0, adzuna_api: 0 },
+    };
+  }
+
+  // This function returns summary counts only. Callers that need per-job DB
+  // storage should use scrapeCareerPages(), which passes a real company_id.
+  const matchingJobs = jobs.filter((j) => titleMatchesTargets(j.title, targetTitles));
+
+  return {
+    companiesScanned: 1,
+    jobsFound: jobs.length,
+    matchingJobs: matchingJobs.length,
+    referralAvailable: 0,
+    errors: [],
+    sourceBreakdown: {
+      career_page: 0,
+      jsearch_api: source === 'jsearch_api' ? matchingJobs.length : 0,
+      adzuna_api: source === 'adzuna_api' ? matchingJobs.length : 0,
+    },
+  };
+}
+
 // ─── Per-company scraper ──────────────────────────────────────────────────────
 
 interface CompanyScrapeResult {
   jobsFound: number;
   matchingJobs: number;
   referralAvailable: number;
+  source: ScrapeSource;
   error?: string;
 }
 
@@ -222,21 +379,23 @@ async function scrapeCompany(
   company: CompanyInfo,
   targetTitles: string[],
   userId: string,
+  useApiFallback: boolean,
 ): Promise<CompanyScrapeResult> {
   if (!company.domain) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, error: 'No domain' };
+    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'career_page', error: 'No domain' };
   }
 
   if (isPrivateDomain(company.domain)) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, error: 'Blocked private domain' };
+    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'career_page', error: 'Blocked private domain' };
   }
 
   const baseUrl = `https://${company.domain}`;
   const referral = await hasReferralProgram(company.id);
 
   let allJobs: ParsedJob[] = [];
+  let source: ScrapeSource = 'career_page';
 
-  // Try career path patterns until we find jobs or exhaust options
+  // Tier 1: regex scrape of career pages
   outer: for (const path of CAREER_PATHS) {
     for (const suffix of SEARCH_SUFFIXES) {
       const url = `${baseUrl}${path}${suffix}`;
@@ -277,8 +436,34 @@ async function scrapeCompany(
     }
   }
 
+  // Tier 2: JSearch API fallback when regex scraping found nothing
+  if (allJobs.length === 0 && useApiFallback) {
+    const jsearchResults = await searchJobsByCompanyViaJSearch(company.name, targetTitles);
+    if (jsearchResults.length > 0) {
+      allJobs = jsearchResults;
+      source = 'jsearch_api';
+      logger.info(
+        { companyId: company.id, companyName: company.name, jobCount: allJobs.length },
+        'career-scraper: JSearch fallback found jobs',
+      );
+    }
+  }
+
+  // Tier 3: Adzuna API fallback when JSearch also found nothing
+  if (allJobs.length === 0 && useApiFallback) {
+    const adzunaResults = await searchJobsByCompanyViaAdzuna(company.name, targetTitles);
+    if (adzunaResults.length > 0) {
+      allJobs = adzunaResults;
+      source = 'adzuna_api';
+      logger.info(
+        { companyId: company.id, companyName: company.name, jobCount: allJobs.length },
+        'career-scraper: Adzuna fallback found jobs',
+      );
+    }
+  }
+
   if (allJobs.length === 0) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0 };
+    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
   }
 
   // Filter to matching jobs and store
@@ -295,7 +480,7 @@ async function scrapeCompany(
       match_score: score,
       referral_available: referral,
       scraped_at: new Date().toISOString(),
-      metadata: { source: 'career_page_scraper' },
+      metadata: { source },
     });
     if (inserted) storedCount++;
   }
@@ -304,6 +489,7 @@ async function scrapeCompany(
     jobsFound: allJobs.length,
     matchingJobs: storedCount,
     referralAvailable: referral && storedCount > 0 ? storedCount : 0,
+    source,
   };
 }
 
@@ -313,6 +499,9 @@ async function scrapeCompany(
  * Scrape career pages for the given companies, match against target titles,
  * and store results via insertJobMatch().
  *
+ * Three-tier fallback per company: regex scrape → JSearch API → Adzuna API.
+ * API fallback is enabled by default and skipped when useApiFallback=false.
+ *
  * Rate-limited to 2-second delay between companies.
  * Max 50 companies per scrape run.
  */
@@ -320,6 +509,7 @@ export async function scrapeCareerPages(
   companies: CompanyInfo[],
   targetTitles: string[],
   userId: string,
+  useApiFallback = true,
 ): Promise<ScrapeResult> {
   const limited = companies.slice(0, MAX_COMPANIES);
   const errors: { company: string; error: string }[] = [];
@@ -328,6 +518,11 @@ export async function scrapeCareerPages(
   let jobsFound = 0;
   let matchingJobs = 0;
   let referralAvailable = 0;
+  const sourceBreakdown: Record<ScrapeSource, number> = {
+    career_page: 0,
+    jsearch_api: 0,
+    adzuna_api: 0,
+  };
 
   for (let i = 0; i < limited.length; i++) {
     const company = limited[i];
@@ -342,11 +537,14 @@ export async function scrapeCareerPages(
     );
 
     try {
-      const result = await scrapeCompany(company, targetTitles, userId);
+      const result = await scrapeCompany(company, targetTitles, userId, useApiFallback);
       companiesScanned++;
       jobsFound += result.jobsFound;
       matchingJobs += result.matchingJobs;
       referralAvailable += result.referralAvailable;
+      if (result.matchingJobs > 0) {
+        sourceBreakdown[result.source] += result.matchingJobs;
+      }
 
       if (result.error) {
         errors.push({ company: company.name, error: result.error });
@@ -358,5 +556,5 @@ export async function scrapeCareerPages(
     }
   }
 
-  return { companiesScanned, jobsFound, matchingJobs, referralAvailable, errors };
+  return { companiesScanned, jobsFound, matchingJobs, referralAvailable, errors, sourceBreakdown };
 }

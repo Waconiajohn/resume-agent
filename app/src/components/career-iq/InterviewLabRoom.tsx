@@ -21,6 +21,9 @@ import {
   AlertTriangle,
   Star,
   Mail,
+  Send,
+  MessageSquare,
+  TrendingUp,
 } from 'lucide-react';
 import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
@@ -140,7 +143,7 @@ function ReadinessGauge({ score, size = 72 }: { score: number; size?: number }) 
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-[13px] font-bold leading-none" style={{ color }}>{score}</span>
-        <span className="text-[8px] text-white/30 mt-0.5">%</span>
+        <span className="text-[12px] text-[var(--text-soft)] mt-0.5">%</span>
       </div>
     </div>
   );
@@ -153,7 +156,7 @@ const CATEGORY_CONFIG = {
   technical: { label: 'Technical', bg: 'bg-[#b5dec2]/10', border: 'border-[#b5dec2]/20', text: 'text-[#b5dec2]' },
   situational: { label: 'Situational', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
   strategic: { label: 'Strategic', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
-  'culture-fit': { label: 'Culture Fit', bg: 'bg-white/[0.06]', border: 'border-white/[0.1]', text: 'text-white/50' },
+  'culture-fit': { label: 'Culture Fit', bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]' },
   trap: { label: 'Trap', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/25', text: 'text-[#f0b8b8]' },
 } as const;
 
@@ -163,7 +166,7 @@ function CategoryBadge({ category }: { category: QuestionCategory }) {
   const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.behavioral;
   return (
     <span className={cn(
-      'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+      'inline-flex items-center rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
       cfg.bg, cfg.border, cfg.text,
     )}>
       {cfg.label}
@@ -185,7 +188,7 @@ function DifficultyBadge({ level }: { level: Difficulty }) {
   const dots = level === 'easy' ? 1 : level === 'medium' ? 2 : 3;
 
   return (
-    <span className={cn('flex items-center gap-0.5 text-[10px] font-medium', cfg.color)}>
+    <span className={cn('flex items-center gap-0.5 text-[12px] font-medium', cfg.color)}>
       {Array.from({ length: 3 }).map((_, i) => (
         <span
           key={i}
@@ -215,7 +218,7 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
+        className="flex items-center gap-1.5 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
       >
         <Brain size={11} />
         Coaching Notes
@@ -226,37 +229,37 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
         <div className="mt-2 rounded-lg border border-[#afc4ff]/10 bg-[#afc4ff]/[0.03] p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <Lightbulb size={11} className="text-[#f0d99f]/60" />
-            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">STAR Framework Guide</span>
+            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">STAR Framework Guide</span>
           </div>
 
           {notes ? (
             <div className="space-y-2">
               {(['situation', 'task', 'action', 'result'] as const).map((key) => (
                 <div key={key}>
-                  <span className="text-[10px] font-semibold text-[#afc4ff]/60 uppercase tracking-wider">
+                  <span className="text-[12px] font-semibold text-[#afc4ff]/60 uppercase tracking-wider">
                     {key.charAt(0).toUpperCase() + key.slice(1)}
                   </span>
-                  <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">{notes[key]}</p>
+                  <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mt-0.5">{notes[key]}</p>
                 </div>
               ))}
             </div>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                 <span className="text-[#afc4ff]/70 font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
               </p>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                 <span className="text-[#afc4ff]/70 font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
               </p>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                 <span className="text-[#afc4ff]/70 font-medium">A</span>ction: <span className="text-[#f0d99f]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
               </p>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                 <span className="text-[#afc4ff]/70 font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
               </p>
               {questionText && (
-                <div className="mt-2 pt-2 border-t border-white/[0.06]">
-                  <p className="text-[10px] text-white/30 italic">Tip: Reference a specific project from your resume to anchor this answer.</p>
+                <div className="mt-2 pt-2 border-t border-[var(--line-soft)]">
+                  <p className="text-[12px] text-[var(--text-soft)] italic">Tip: Reference a specific project from your resume to anchor this answer.</p>
                 </div>
               )}
             </div>
@@ -284,9 +287,9 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
         <GlassCard className="p-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2">
             <Building2 size={13} className="text-[#afc4ff]" />
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Company Overview</span>
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Company Overview</span>
           </div>
-          <p className="text-[12px] text-white/60 leading-relaxed">{data.overview}</p>
+          <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{data.overview}</p>
         </GlassCard>
       )}
 
@@ -294,11 +297,11 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Star size={12} className="text-[#f0d99f]" />
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Recent Signals</span>
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Recent Signals</span>
           </div>
           <ul className="space-y-1.5">
             {data.recentNews.map((item, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+              <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
                 <span className="h-1 w-1 rounded-full bg-[#f0d99f]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
@@ -311,11 +314,11 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb size={12} className="text-[#b5dec2]" />
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Culture Signals</span>
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Culture Signals</span>
           </div>
           <ul className="space-y-1.5">
             {data.cultureSignals.map((item, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+              <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
                 <span className="h-1 w-1 rounded-full bg-[#b5dec2]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
@@ -328,11 +331,11 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={12} className="text-[#f0b8b8]" />
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Risk Factors</span>
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Risk Factors</span>
           </div>
           <ul className="space-y-1.5">
             {data.risks.map((item, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+              <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
                 <span className="h-1 w-1 rounded-full bg-[#f0b8b8]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
@@ -344,12 +347,12 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
       {data.competitors && data.competitors.length > 0 && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Building2 size={12} className="text-white/40" />
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Competitors</span>
+            <Building2 size={12} className="text-[var(--text-soft)]" />
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Competitors</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.competitors.map((c, i) => (
-              <span key={i} className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[11px] text-white/50">
+              <span key={i} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-[13px] text-[var(--text-soft)]">
                 {c}
               </span>
             ))}
@@ -397,11 +400,11 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
       <div className="flex items-center gap-4">
         <ReadinessGauge score={readinessScore} size={72} />
         <div>
-          <div className="text-[13px] font-semibold text-white/80">Readiness Score</div>
-          <div className="text-[12px] text-white/40 mt-0.5">
+          <div className="text-[13px] font-semibold text-[var(--text-strong)]">Readiness Score</div>
+          <div className="text-[12px] text-[var(--text-soft)] mt-0.5">
             {practicedIds.size} of {questions.length} questions practiced
           </div>
-          <div className="text-[11px] text-white/25 mt-1">
+          <div className="text-[13px] text-[var(--text-soft)] mt-1">
             Click the checkmark on each question after practicing it
           </div>
         </div>
@@ -413,10 +416,10 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
           type="button"
           onClick={() => setActiveCategory('all')}
           className={cn(
-            'rounded-md px-2.5 py-1 text-[11px] font-medium border transition-colors',
+            'rounded-md px-2.5 py-1 text-[13px] font-medium border transition-colors',
             activeCategory === 'all'
-              ? 'border-white/[0.15] bg-white/[0.07] text-white/80'
-              : 'border-white/[0.06] bg-transparent text-white/40 hover:text-white/60',
+              ? 'border-[var(--line-strong)] bg-[var(--surface-1)] text-[var(--text-strong)]'
+              : 'border-[var(--line-soft)] bg-transparent text-[var(--text-soft)] hover:text-[var(--text-soft)]',
           )}
         >
           All ({questions.length})
@@ -431,10 +434,10 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
               type="button"
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                'rounded-md px-2.5 py-1 text-[11px] font-medium border transition-colors',
+                'rounded-md px-2.5 py-1 text-[13px] font-medium border transition-colors',
                 activeCategory === cat
                   ? `${cfg.bg} ${cfg.border} ${cfg.text}`
-                  : 'border-white/[0.06] bg-transparent text-white/40 hover:text-white/60',
+                  : 'border-[var(--line-soft)] bg-transparent text-[var(--text-soft)] hover:text-[var(--text-soft)]',
               )}
             >
               {cfg.label} ({count})
@@ -452,8 +455,8 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
             <div
               key={i}
               className={cn(
-                'rounded-xl border bg-white/[0.02] p-4 transition-all',
-                practiced ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.02]' : 'border-white/[0.06]',
+                'rounded-xl border bg-[var(--accent-muted)] p-4 transition-all',
+                practiced ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.02]' : 'border-[var(--line-soft)]',
               )}
             >
               <div className="flex items-start gap-3">
@@ -464,7 +467,7 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
                     'flex-shrink-0 mt-0.5 h-4 w-4 rounded-full border transition-colors',
                     practiced
                       ? 'border-[#b5dec2]/50 bg-[#b5dec2]/15'
-                      : 'border-white/[0.15] bg-transparent hover:border-[#b5dec2]/30',
+                      : 'border-[var(--line-strong)] bg-transparent hover:border-[#b5dec2]/30',
                   )}
                   title={practiced ? 'Mark as not practiced' : 'Mark as practiced'}
                 >
@@ -480,7 +483,7 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
                   </div>
                   <p className={cn(
                     'text-[13px] leading-relaxed',
-                    practiced ? 'text-white/40 line-through' : 'text-white/75',
+                    practiced ? 'text-[var(--text-soft)] line-through' : 'text-[var(--text-muted)]',
                   )}>
                     {item.question}
                   </p>
@@ -507,14 +510,14 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Calendar size={18} className="text-[#afc4ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Upcoming Interviews</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Upcoming Interviews</h3>
       </div>
 
       {interviews.length === 0 ? (
         <div className="text-center py-6">
-          <Mic size={24} className="text-white/20 mx-auto mb-2" />
-          <p className="text-[13px] text-white/40">No interviews scheduled</p>
-          <p className="text-[11px] text-white/25 mt-1">Move a pipeline card to "Interviewing" or add one manually</p>
+          <Mic size={24} className="text-[var(--text-soft)] mx-auto mb-2" />
+          <p className="text-[13px] text-[var(--text-soft)]">No interviews scheduled</p>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">Move a pipeline card to "Interviewing" or add one manually</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -526,22 +529,22 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
                 className={cn(
                   'w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all',
                   selectedId === interview.id
-                    ? 'bg-white/[0.06] border border-white/[0.1]'
-                    : 'border border-transparent hover:bg-white/[0.03]',
+                    ? 'bg-[var(--accent-muted)] border border-[var(--line-soft)]'
+                    : 'border border-transparent hover:bg-[var(--accent-muted)]',
                 )}
               >
                 <div className="rounded-lg bg-[#afc4ff]/10 p-2 flex-shrink-0">
                   <Building2 size={16} className="text-[#afc4ff]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-white/75">{interview.company}</div>
-                  <div className="text-[12px] text-white/40">{interview.role}</div>
-                  <div className="text-[11px] text-white/25 mt-0.5">{interview.round}</div>
+                  <div className="text-[13px] font-medium text-[var(--text-muted)]">{interview.company}</div>
+                  <div className="text-[12px] text-[var(--text-soft)]">{interview.role}</div>
+                  <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{interview.round}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-[12px] font-medium text-white/60">{interview.date}</div>
-                  <div className="text-[11px] text-white/30">{interview.time}</div>
-                  <div className="text-[10px] text-white/20 capitalize mt-0.5">{interview.type}</div>
+                  <div className="text-[12px] font-medium text-[var(--text-soft)]">{interview.date}</div>
+                  <div className="text-[13px] text-[var(--text-soft)]">{interview.time}</div>
+                  <div className="text-[12px] text-[var(--text-soft)] capitalize mt-0.5">{interview.type}</div>
                 </div>
               </button>
               {selectedId === interview.id && (
@@ -601,17 +604,17 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Clock size={18} className="text-[#afc4ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Interview History</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Interview History</h3>
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onAddDebrief}
-            className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
+            className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
           >
             <ClipboardList size={12} />
             Add Debrief
             {debriefCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-[#afc4ff]/15 px-1.5 py-0.5 text-[10px] text-[#afc4ff]/70">
+              <span className="ml-0.5 rounded-full bg-[#afc4ff]/15 px-1.5 py-0.5 text-[12px] text-[#afc4ff]/70">
                 {debriefCount}
               </span>
             )}
@@ -619,7 +622,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+            className="flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             <Plus size={12} />
             Add Interview
@@ -635,14 +638,14 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
               placeholder="Company"
               value={newCompany}
               onChange={(e) => setNewCompany(e.target.value)}
-              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
             />
             <input
               type="text"
               placeholder="Role"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
-              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
             />
           </div>
           <input
@@ -650,7 +653,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
             placeholder="Notes (optional)"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
           />
           <div className="flex gap-2">
             <GlassButton variant="primary" onClick={handleSubmit} size="sm">Save</GlassButton>
@@ -669,9 +672,9 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
         {history.map((interview) => {
           const outcome = outcomeConfig[interview.outcome];
           return (
-            <div key={interview.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+            <div key={interview.id} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[13px] font-medium text-white/65">{interview.company}</span>
+                <span className="text-[13px] font-medium text-[var(--text-soft)]">{interview.company}</span>
                 <div className="flex items-center gap-1">
                   {outcomes.map((o) => {
                     const cfg = outcomeConfig[o];
@@ -682,8 +685,8 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
                         type="button"
                         onClick={() => onUpdateOutcome(interview.id, o)}
                         className={cn(
-                          'text-[10px] px-1.5 py-0.5 rounded-full transition-colors',
-                          isActive ? `${cfg.color} font-medium` : 'text-white/20 hover:text-white/40',
+                          'text-[12px] px-1.5 py-0.5 rounded-full transition-colors',
+                          isActive ? `${cfg.color} font-medium` : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
                         )}
                         title={cfg.label}
                       >
@@ -693,9 +696,9 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
                   })}
                 </div>
               </div>
-              <div className="text-[12px] text-white/35">{interview.role} · {interview.date}</div>
+              <div className="text-[12px] text-[var(--text-soft)]">{interview.role} · {interview.date}</div>
               {interview.notes && (
-                <p className="mt-1.5 text-[11px] text-white/30 leading-relaxed">{interview.notes}</p>
+                <p className="mt-1.5 text-[13px] text-[var(--text-soft)] leading-relaxed">{interview.notes}</p>
               )}
             </div>
           );
@@ -730,10 +733,10 @@ function PrepProgress({ company, activityMessages, currentStage }: {
           <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
         </div>
         <div>
-          <h3 className="text-[15px] font-semibold text-white/85">
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
             Preparing for {company}
           </h3>
-          <p className="text-[12px] text-white/40">
+          <p className="text-[12px] text-[var(--text-soft)]">
             {currentStage ? stageLabels[currentStage] ?? currentStage : 'Starting...'}
           </p>
         </div>
@@ -743,7 +746,7 @@ function PrepProgress({ company, activityMessages, currentStage }: {
         {activityMessages.map((msg) => (
           <div key={msg.id} className="flex items-start gap-2 py-1">
             <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/40 mt-1.5 flex-shrink-0" />
-            <span className="text-[12px] text-white/50 leading-relaxed">{msg.message}</span>
+            <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
           </div>
         ))}
         <div ref={bottomRef} />
@@ -751,8 +754,8 @@ function PrepProgress({ company, activityMessages, currentStage }: {
 
       {activityMessages.length === 0 && (
         <div className="text-center py-8">
-          <Loader2 size={20} className="text-white/20 mx-auto mb-2 animate-spin" />
-          <p className="text-[12px] text-white/30">Connecting to pipeline...</p>
+          <Loader2 size={20} className="text-[var(--text-soft)] mx-auto mb-2 animate-spin" />
+          <p className="text-[12px] text-[var(--text-soft)]">Connecting to pipeline...</p>
         </div>
       )}
     </GlassCard>
@@ -796,7 +799,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <ArrowLeft size={14} />
           Back to Interview Prep
@@ -811,10 +814,10 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
               <FileText size={18} className="text-[#afc4ff]" />
             </div>
             <div>
-              <h3 className="text-[15px] font-semibold text-white/90">
+              <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
                 Interview Brief — {company}
               </h3>
-              <p className="text-[12px] text-white/40">{role}</p>
+              <p className="text-[12px] text-[var(--text-soft)]">{role}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -825,7 +828,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 mt-4 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06] w-fit">
+        <div className="flex items-center gap-1 mt-4 p-1 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] w-fit">
           {([['report', 'Interview Brief'], ['questions', 'Practice Questions']] as const).map(([tab, label]) => (
             <button
               key={tab}
@@ -834,8 +837,8 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
               className={cn(
                 'px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
                 activeTab === tab
-                  ? 'bg-white/[0.08] text-white/85 shadow-sm'
-                  : 'text-white/40 hover:text-white/60',
+                  ? 'bg-[var(--surface-1)] text-[var(--text-strong)] shadow-sm'
+                  : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
               )}
             >
               {label}
@@ -853,16 +856,16 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
           <div
             className="prose prose-invert prose-sm max-w-none
-              prose-headings:text-white/85 prose-headings:font-semibold
-              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-2 prose-h1:mb-4
+              prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-2 prose-h1:mb-4
               prose-h2:text-[15px] prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[#afc4ff]/90
               prose-h3:text-[14px] prose-h3:mt-4 prose-h3:mb-2
-              prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
-              prose-li:text-white/55 prose-li:text-[13px]
-              prose-strong:text-white/80
-              prose-em:text-white/50
-              prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-white/60 prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg
-              prose-hr:border-white/[0.08]"
+              prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
+              prose-li:text-[var(--text-soft)] prose-li:text-[13px]
+              prose-strong:text-[var(--text-strong)]
+              prose-em:text-[var(--text-soft)]
+              prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg
+              prose-hr:border-[var(--line-soft)]"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
         </GlassCard>
@@ -875,11 +878,543 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
   );
 }
 
+// --- Post-Interview Debrief Form ---
+
+type DebriefImpression = 'positive' | 'neutral' | 'negative';
+
+interface PostInterviewDebriefFormProps {
+  company: string;
+  role: string;
+  onBack: () => void;
+}
+
+function PostInterviewDebriefForm({ company, role, onBack }: PostInterviewDebriefFormProps) {
+  const [whatWentWell, setWhatWentWell] = useState('');
+  const [whatWasDifficult, setWhatWasDifficult] = useState('');
+  const [questionsInput, setQuestionsInput] = useState('');
+  const [companySignals, setCompanySignals] = useState('');
+  const [impression, setImpression] = useState<DebriefImpression>('neutral');
+  const [result, setResult] = useState<null | {
+    strengths_demonstrated: string[];
+    areas_to_improve: string[];
+    follow_up_items: string[];
+    lessons_for_next: string[];
+    company_signals: string[];
+  }>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const questions = questionsInput
+        .split('\n')
+        .map((q) => q.trim())
+        .filter(Boolean);
+
+      const res = await fetch('/api/interview-prep/debrief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company,
+          role,
+          what_went_well: whatWentWell,
+          what_was_difficult: whatWasDifficult,
+          questions_asked: questions,
+          company_signals: companySignals,
+          overall_impression: impression,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setError(data.error ?? 'Failed to generate debrief. Please try again.');
+        return;
+      }
+
+      const data = await res.json() as {
+        strengths_demonstrated: string[];
+        areas_to_improve: string[];
+        follow_up_items: string[];
+        lessons_for_next: string[];
+        company_signals: string[];
+      };
+      setResult(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [company, role, whatWentWell, whatWasDifficult, questionsInput, companySignals, impression]);
+
+  const impressionConfig: Record<DebriefImpression, { label: string; color: string }> = {
+    positive: { label: 'Positive', color: 'text-[#b5dec2]' },
+    neutral: { label: 'Neutral', color: 'text-[#f0d99f]' },
+    negative: { label: 'Negative', color: 'text-[#f0b8b8]' },
+  };
+
+  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30 resize-none';
+  const labelClass = 'block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5';
+
+  if (result) {
+    return (
+      <GlassCard className="p-6 space-y-5">
+        <div className="flex items-center gap-3 mb-2">
+          <button
+            type="button"
+            onClick={() => setResult(null)}
+            className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          >
+            <ArrowLeft size={13} />
+            Edit responses
+          </button>
+          <div className="ml-auto">
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-[#afc4ff]/10 p-2">
+            <ClipboardList size={15} className="text-[#afc4ff]" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Interview Debrief</h3>
+            <p className="text-[13px] text-[var(--text-soft)]">{company} — {role}</p>
+          </div>
+          <div className={cn('ml-auto text-[13px] font-medium', impressionConfig[impression].color)}>
+            {impressionConfig[impression].label}
+          </div>
+        </div>
+
+        {result.strengths_demonstrated.length > 0 && (
+          <div>
+            <div className={labelClass}>What you demonstrated</div>
+            <ul className="space-y-1.5">
+              {result.strengths_demonstrated.map((s, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
+                  <CheckCircle2 size={12} className="text-[#b5dec2] mt-0.5 flex-shrink-0" />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.areas_to_improve.length > 0 && (
+          <div>
+            <div className={labelClass}>Areas to strengthen</div>
+            <ul className="space-y-1.5">
+              {result.areas_to_improve.map((a, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
+                  <TrendingUp size={12} className="text-[#f0d99f] mt-0.5 flex-shrink-0" />
+                  {a}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.follow_up_items.length > 0 && (
+          <div>
+            <div className={labelClass}>Follow-up actions</div>
+            <ul className="space-y-1.5">
+              {result.follow_up_items.map((f, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
+                  <span className="h-1 w-1 rounded-full bg-[#afc4ff]/50 mt-2 flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.lessons_for_next.length > 0 && (
+          <div>
+            <div className={labelClass}>For next time</div>
+            <ul className="space-y-1.5">
+              {result.lessons_for_next.map((l, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
+                  <span className="h-1 w-1 rounded-full bg-[var(--line-strong)] mt-2 flex-shrink-0" />
+                  {l}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.company_signals.length > 0 && (
+          <div>
+            <div className={labelClass}>Company signals</div>
+            <ul className="space-y-1.5">
+              {result.company_signals.map((c, i) => (
+                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
+                  <Building2 size={12} className="text-[var(--text-soft)] mt-0.5 flex-shrink-0" />
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard className="p-6 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
+          <ClipboardList size={15} className="text-[#afc4ff]" />
+        </div>
+        <div>
+          <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Interview Debrief</h3>
+          <p className="text-[13px] text-[var(--text-soft)]">Capture what happened while it is still fresh — {company}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="ml-auto text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <div>
+        <label className={labelClass}>Overall impression</label>
+        <div className="flex gap-2">
+          {(['positive', 'neutral', 'negative'] as DebriefImpression[]).map((imp) => {
+            const cfg = impressionConfig[imp];
+            return (
+              <button
+                key={imp}
+                type="button"
+                onClick={() => setImpression(imp)}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors',
+                  impression === imp
+                    ? `border-current bg-[var(--accent-muted)] ${cfg.color}`
+                    : 'border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-soft)]',
+                )}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>What went well</label>
+        <textarea
+          rows={3}
+          placeholder="Specific moments, answers, or interactions that felt strong..."
+          value={whatWentWell}
+          onChange={(e) => setWhatWentWell(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>What was difficult or uncertain</label>
+        <textarea
+          rows={3}
+          placeholder="Questions you struggled with, answers that felt vague, moments of uncertainty..."
+          value={whatWasDifficult}
+          onChange={(e) => setWhatWasDifficult(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>Questions they asked (one per line)</label>
+        <textarea
+          rows={4}
+          placeholder={"Tell me about a time you...\nHow would you approach...\nWhy are you interested in..."}
+          value={questionsInput}
+          onChange={(e) => setQuestionsInput(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>Company or culture signals observed</label>
+        <textarea
+          rows={2}
+          placeholder="What you noticed about the team, the pace, the culture, or how they talked about the role..."
+          value={companySignals}
+          onChange={(e) => setCompanySignals(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-3 py-2">
+          <AlertCircle size={13} className="text-[#f0b8b8] flex-shrink-0" />
+          <span className="text-[12px] text-[#f0b8b8]/80">{error}</span>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <GlassButton
+          variant="primary"
+          onClick={() => void handleGenerate()}
+          disabled={loading || (!whatWentWell && !whatWasDifficult && !questionsInput)}
+          className="text-[13px]"
+        >
+          {loading ? (
+            <Loader2 size={13} className="mr-1.5 animate-spin" />
+          ) : (
+            <ClipboardList size={13} className="mr-1.5" />
+          )}
+          {loading ? 'Processing...' : 'Generate Debrief'}
+        </GlassButton>
+        <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
+          Cancel
+        </GlassButton>
+      </div>
+    </GlassCard>
+  );
+}
+
+// --- Post-Interview Follow-Up Email Form ---
+
+type FollowUpSituation = 'post_interview' | 'no_response' | 'rejection_graceful' | 'keep_warm' | 'negotiation_counter';
+
+const FOLLOW_UP_SITUATION_LABELS: Record<FollowUpSituation, { label: string; description: string }> = {
+  post_interview: { label: 'Status check-in', description: '5-7 days after interview, no word yet' },
+  no_response: { label: 'No response (2+ weeks)', description: 'Polite persistence after silence' },
+  rejection_graceful: { label: 'Graceful rejection response', description: 'Keep the door open, build the relationship' },
+  keep_warm: { label: 'Keep warm', description: 'A contact worth maintaining for future opportunities' },
+  negotiation_counter: { label: 'Negotiation counter', description: 'Acknowledge offer + frame your counter' },
+};
+
+interface PostInterviewFollowUpEmailFormProps {
+  company: string;
+  role: string;
+  onBack: () => void;
+}
+
+function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterviewFollowUpEmailFormProps) {
+  const [situation, setSituation] = useState<FollowUpSituation>('post_interview');
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientTitle, setRecipientTitle] = useState('');
+  const [specificContext, setSpecificContext] = useState('');
+  const [result, setResult] = useState<null | { subject: string; body: string; tone_notes: string; timing_guidance: string }>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/interview-prep/follow-up-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company,
+          role,
+          situation,
+          recipient_name: recipientName || undefined,
+          recipient_title: recipientTitle || undefined,
+          specific_context: specificContext || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setError(data.error ?? 'Failed to generate email. Please try again.');
+        return;
+      }
+
+      const data = await res.json() as { subject: string; body: string; tone_notes: string; timing_guidance: string };
+      setResult(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [company, role, situation, recipientName, recipientTitle, specificContext]);
+
+  const handleCopy = useCallback(async () => {
+    if (!result) return;
+    const text = `Subject: ${result.subject}\n\n${result.body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [result]);
+
+  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
+  const labelClass = 'block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5';
+
+  return (
+    <GlassCard className="p-6 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
+          <Send size={15} className="text-[#afc4ff]" />
+        </div>
+        <div>
+          <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Follow-Up Email</h3>
+          <p className="text-[13px] text-[var(--text-soft)]">{company} — {role}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="ml-auto text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <div>
+        <label className={labelClass}>Situation</label>
+        <div className="space-y-1.5">
+          {(Object.entries(FOLLOW_UP_SITUATION_LABELS) as Array<[FollowUpSituation, { label: string; description: string }]>).map(([key, cfg]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSituation(key)}
+              className={cn(
+                'w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+                situation === key
+                  ? 'border-[#afc4ff]/25 bg-[#afc4ff]/[0.06]'
+                  : 'border-[var(--line-soft)] hover:border-[var(--line-soft)] hover:bg-[var(--accent-muted)]',
+              )}
+            >
+              <div className={cn(
+                'mt-0.5 h-3 w-3 rounded-full border-2 flex-shrink-0',
+                situation === key ? 'border-[#afc4ff] bg-[#afc4ff]/30' : 'border-[var(--line-strong)]',
+              )} />
+              <div>
+                <div className={cn('text-[12px] font-medium', situation === key ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]')}>
+                  {cfg.label}
+                </div>
+                <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{cfg.description}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Recipient name</label>
+          <input
+            type="text"
+            placeholder="e.g. Sarah Chen"
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Recipient title</label>
+          <input
+            type="text"
+            placeholder="e.g. VP of Engineering"
+            value={recipientTitle}
+            onChange={(e) => setRecipientTitle(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          {situation === 'negotiation_counter'
+            ? 'Offer details and what you want to counter'
+            : situation === 'rejection_graceful'
+            ? 'Any specific connection or moment worth referencing'
+            : 'Any additional context'}
+        </label>
+        <textarea
+          rows={3}
+          placeholder={
+            situation === 'negotiation_counter'
+              ? 'e.g. Offer was $180k base. I was expecting $200k based on market and my experience...'
+              : situation === 'rejection_graceful'
+              ? 'e.g. We discussed the supply chain restructuring project — that was a great conversation...'
+              : 'Anything specific you want woven in...'
+          }
+          value={specificContext}
+          onChange={(e) => setSpecificContext(e.target.value)}
+          className={`${inputClass} resize-none`}
+        />
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-3 py-2">
+          <AlertCircle size={13} className="text-[#f0b8b8] flex-shrink-0" />
+          <span className="text-[12px] text-[#f0b8b8]/80">{error}</span>
+        </div>
+      )}
+
+      {result && (
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Generated email</span>
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              className="ml-auto text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors flex items-center gap-1"
+            >
+              {copied ? <CheckCircle2 size={11} /> : <FileText size={11} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <div>
+            <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Subject</div>
+            <p className="text-[12px] text-[var(--text-muted)] font-medium">{result.subject}</p>
+          </div>
+          <div>
+            <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Body</div>
+            <p className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{result.body}</p>
+          </div>
+          {result.timing_guidance && (
+            <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
+              <p className="text-[13px] text-[#f0d99f]/70">{result.timing_guidance}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <GlassButton
+          variant="primary"
+          onClick={() => void handleGenerate()}
+          disabled={loading}
+          className="text-[13px]"
+        >
+          {loading ? (
+            <Loader2 size={13} className="mr-1.5 animate-spin" />
+          ) : (
+            <Send size={13} className="mr-1.5" />
+          )}
+          {loading ? 'Writing...' : result ? 'Regenerate' : 'Generate Email'}
+        </GlassButton>
+        <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
+          Done
+        </GlassButton>
+      </div>
+    </GlassCard>
+  );
+}
+
 // --- Main component ---
 
 type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
 type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
-type FollowUpView = 'overview' | 'thank_you' | 'negotiation';
+type FollowUpView = 'overview' | 'thank_you' | 'negotiation' | 'debrief' | 'follow_up_email';
 
 const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
   prep: {
@@ -896,7 +1431,7 @@ const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string 
   },
   follow_up: {
     label: 'Follow-up',
-    description: 'Handle thank-you notes, offer-stage negotiation prep, and post-interview follow-through in one place.',
+    description: 'Debrief, thank-you notes, follow-up emails, and negotiation prep — all in one place after the interview.',
   },
 };
 
@@ -992,6 +1527,18 @@ export function InterviewLabRoom({
     if (initialFocus === 'negotiation') {
       setActiveSection('follow_up');
       setFollowUpView('negotiation');
+      setDocumentsView('overview');
+      return;
+    }
+    if (initialFocus === 'debrief') {
+      setActiveSection('follow_up');
+      setFollowUpView('debrief');
+      setDocumentsView('overview');
+      return;
+    }
+    if (initialFocus === 'follow-up-email') {
+      setActiveSection('follow_up');
+      setFollowUpView('follow_up_email');
       setDocumentsView('overview');
       return;
     }
@@ -1222,7 +1769,7 @@ export function InterviewLabRoom({
           <GlassCard className="p-6">
             <div className="flex items-center gap-3">
               <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
-              <span className="text-[13px] text-white/50">Loading resume and job details...</span>
+              <span className="text-[13px] text-[var(--text-soft)]">Loading resume and job details...</span>
             </div>
           </GlassCard>
         ) : error ? (
@@ -1260,7 +1807,7 @@ export function InterviewLabRoom({
           <button
             type="button"
             onClick={handleBack}
-            className="text-[12px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel and return
           </button>
@@ -1291,7 +1838,7 @@ export function InterviewLabRoom({
 
       {savedPrepLoading && initialFocus === 'prep' && initialAssetSessionId && (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading saved interview prep...
           </div>
@@ -1345,7 +1892,7 @@ export function InterviewLabRoom({
       {activeSection === 'practice' && (
         <GlassCard className="p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl text-sm leading-relaxed text-white/54">
+            <div className="max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
               Run the mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
             </div>
             <GlassButton
@@ -1387,10 +1934,18 @@ export function InterviewLabRoom({
         <div className="space-y-4">
           <GlassCard className="p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-3xl text-sm leading-relaxed text-white/54">
-                Keep debriefs, thank-you notes, and negotiation prep tied to the same story you used in prep and practice.
+              <div className="max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
+                Debrief, thank-you notes, follow-up emails, and negotiation prep — all tied to the same story you built in prep.
               </div>
               <div className="flex flex-wrap gap-2">
+                <GlassButton
+                  variant="ghost"
+                  onClick={() => setFollowUpView((current) => (current === 'debrief' ? 'overview' : 'debrief'))}
+                  className="text-[13px]"
+                >
+                  <ClipboardList size={14} className="mr-1.5" />
+                  {followUpView === 'debrief' ? 'Hide Debrief' : 'Debrief'}
+                </GlassButton>
                 <GlassButton
                   variant="ghost"
                   onClick={() => setFollowUpView((current) => (current === 'thank_you' ? 'overview' : 'thank_you'))}
@@ -1398,6 +1953,14 @@ export function InterviewLabRoom({
                 >
                   <Mail size={14} className="mr-1.5" />
                   {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Thank You Note'}
+                </GlassButton>
+                <GlassButton
+                  variant="ghost"
+                  onClick={() => setFollowUpView((current) => (current === 'follow_up_email' ? 'overview' : 'follow_up_email'))}
+                  className="text-[13px]"
+                >
+                  <Send size={14} className="mr-1.5" />
+                  {followUpView === 'follow_up_email' ? 'Hide Follow-Up Email' : 'Follow-Up Email'}
                 </GlassButton>
                 <GlassButton
                   variant="ghost"
@@ -1414,11 +1977,26 @@ export function InterviewLabRoom({
           {followUpView === 'overview' && (
             <GlassCard className="p-5">
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    Interview Debrief
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+                    Capture what happened while it is still fresh — strengths, weak spots, follow-up actions, and company signals.
+                  </p>
+                  <div className="mt-4">
+                    <GlassButton variant="ghost" onClick={() => setFollowUpView('debrief')} className="text-[13px]">
+                      <ClipboardList size={14} className="mr-1.5" />
+                      Open Debrief
+                    </GlassButton>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                     Thank You Note
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
                     Turn the debrief into a focused follow-up note while the conversation is still fresh.
                   </p>
                   <div className="mt-4">
@@ -1429,11 +2007,26 @@ export function InterviewLabRoom({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    Follow-Up Email
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+                    Status check-in, no-response nudge, graceful rejection response, or negotiation counter — generated and ready to send.
+                  </p>
+                  <div className="mt-4">
+                    <GlassButton variant="ghost" onClick={() => setFollowUpView('follow_up_email')} className="text-[13px]">
+                      <Send size={14} className="mr-1.5" />
+                      Open Follow-Up Email
+                    </GlassButton>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                     Negotiation Prep
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
                     Get ready for the offer conversation without leaving this workflow.
                   </p>
                   <div className="mt-4">
@@ -1447,12 +2040,28 @@ export function InterviewLabRoom({
             </GlassCard>
           )}
 
+          {followUpView === 'debrief' && (
+            <PostInterviewDebriefForm
+              company={activeCompany || 'Unknown company'}
+              role={activeRole || 'Unknown role'}
+              onBack={() => setFollowUpView('overview')}
+            />
+          )}
+
           {followUpView === 'thank_you' && (
             <ThankYouNoteRoom
               initialCompany={activeCompany}
               initialRole={activeRole}
               initialJobApplicationId={activeJobApplicationId}
               initialSessionId={initialFocus === 'thank-you' ? initialAssetSessionId : undefined}
+            />
+          )}
+
+          {followUpView === 'follow_up_email' && (
+            <PostInterviewFollowUpEmailForm
+              company={activeCompany || 'Unknown company'}
+              role={activeRole || 'Unknown role'}
+              onBack={() => setFollowUpView('overview')}
             />
           )}
 

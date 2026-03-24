@@ -1,15 +1,17 @@
 /**
- * LinkedIn Content Strategist — Tool definitions.
+ * LinkedIn Content Strategist -- Tool definitions.
  *
- * 4 tools:
+ * 6 tools:
  * - analyze_expertise: Reads platform context to identify expertise areas
  * - suggest_topics: Generates 3-5 thought leadership topic ideas
  * - present_topics: Emits topics_ready SSE event for user topic selection
+ * - plan_series: Plans a 12-16 post thought leadership series
+ * - present_series: Emits series_plan_ready SSE event for user series approval
  * - emit_transparency: Shared transparency tool
  */
 
-import type { LinkedInContentTool, TopicSuggestion } from '../types.js';
-import { llm, MODEL_MID } from '../../../lib/llm.js';
+import type { LinkedInContentTool, TopicSuggestion, ContentSeries, SeriesPost } from '../types.js';
+import { llm, MODEL_MID, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
@@ -18,9 +20,10 @@ import {
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
+  renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
 
-// ─── Tool: analyze_expertise ───────────────────────────────────────────
+// --- Tool: analyze_expertise -------------------------------------------
 
 const analyzeExpertiseTool: LinkedInContentTool = {
   name: 'analyze_expertise',
@@ -47,7 +50,7 @@ const analyzeExpertiseTool: LinkedInContentTool = {
     const sharedContext = state.shared_context;
 
     if (!hasMeaningfulSharedValue(sharedContext?.positioningStrategy) && !platformContext?.positioning_strategy && !hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems) && !platformContext?.evidence_items) {
-      // No platform context — return generic analysis placeholder
+      // No platform context -- return generic analysis placeholder
       const fallback = {
         expertise_areas: ['professional leadership', 'industry expertise', 'strategic thinking'],
         industry_focus: 'executive management',
@@ -117,7 +120,9 @@ Return JSON in this exact structure:
   "industry_focus": "primary industry or function",
   "positioning_angle": "how they are uniquely positioned as an expert",
   "key_differentiators": ["differentiator1", "differentiator2"],
-  "authentic_phrases": ["phrase from their experience that sounds genuinely them"]
+  "authentic_phrases": ["phrase from their experience that sounds genuinely them"],
+  "signature_strengths": ["the 2-3 things they are most distinctively known for"],
+  "career_themes": ["recurring theme or pattern across their career arc"]
 }`,
         },
       ],
@@ -135,6 +140,8 @@ Return JSON in this exact structure:
         positioning_angle: 'experienced executive with proven results',
         key_differentiators: ['track record', 'leadership depth'],
         authentic_phrases: [],
+        signature_strengths: [],
+        career_themes: [],
       };
     }
 
@@ -144,13 +151,13 @@ Return JSON in this exact structure:
   },
 };
 
-// ─── Tool: suggest_topics ──────────────────────────────────────────────
+// --- Tool: suggest_topics ----------------------------------------------
 
 const suggestTopicsTool: LinkedInContentTool = {
   name: 'suggest_topics',
   description:
     'Generates 3-5 LinkedIn post topic ideas. Each topic positions the user as a ' +
-    'thought leader in their niche — not generic advice. Topics are rooted in real ' +
+    'thought leader in their niche -- not generic advice. Topics are rooted in real ' +
     'experience and evidence items. Stores suggestions in scratchpad.',
   model_tier: 'mid',
   input_schema: {
@@ -263,13 +270,13 @@ const suggestTopicsTool: LinkedInContentTool = {
   },
 };
 
-// ─── Tool: present_topics ──────────────────────────────────────────────
+// --- Tool: present_topics ----------------------------------------------
 
 const presentTopicsTool: LinkedInContentTool = {
   name: 'present_topics',
   description:
     'Emits the topics_ready SSE event to present the generated topic suggestions ' +
-    'to the user for selection. No LLM call — just formats and emits. ' +
+    'to the user for selection. No LLM call -- just formats and emits. ' +
     'Call this after suggest_topics.',
   model_tier: 'light',
   input_schema: {
@@ -282,7 +289,7 @@ const presentTopicsTool: LinkedInContentTool = {
     const topics = (ctx.scratchpad.suggested_topics ?? state.suggested_topics ?? []) as TopicSuggestion[];
 
     if (topics.length === 0) {
-      return { success: false, reason: 'No topics to present — call suggest_topics first' };
+      return { success: false, reason: 'No topics to present -- call suggest_topics first' };
     }
 
     ctx.emit({
@@ -295,11 +302,230 @@ const presentTopicsTool: LinkedInContentTool = {
   },
 };
 
-// ─── Tool exports ──────────────────────────────────────────────────────
+// --- Tool: plan_series -------------------------------------------------
+
+const planSeriesTool: LinkedInContentTool = {
+  name: 'plan_series',
+  description:
+    'Plans a 12-16 post thought leadership series rooted in the user\'s signature ' +
+    'strengths, career themes, and evidence inventory. The series tells a cohesive story ' +
+    'across all posts -- each post stands alone but threads into a shared narrative arc. ' +
+    'Mixes post categories: foundation, deep_dive, case_study, contrarian, vision. ' +
+    'Every post is backed by real experience from the user\'s evidence library. ' +
+    'Stores the series plan in scratchpad.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {
+      post_count: {
+        type: 'number',
+        description: 'Number of posts in the series. Must be between 12 and 16. Default: 14.',
+      },
+    },
+    required: [],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const postCount = typeof input.post_count === 'number'
+      ? Math.min(16, Math.max(12, input.post_count))
+      : 14;
+
+    ctx.emit({
+      type: 'transparency',
+      stage: state.current_stage,
+      message: `Planning a ${postCount}-part thought leadership series...`,
+    });
+
+    const expertiseAnalysis = ctx.scratchpad.expertise_analysis as Record<string, unknown> | undefined;
+    const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
+
+    const contextParts: string[] = [
+      `Plan a ${postCount}-post thought leadership series for this executive.`,
+      'The series must tell a cohesive story -- each post stands alone but connects to the thread.',
+      '',
+    ];
+
+    if (expertiseAnalysis) {
+      contextParts.push(
+        '## Expertise Analysis',
+        JSON.stringify(expertiseAnalysis, null, 2),
+        '',
+      );
+    }
+
+    if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy',
+        sharedStrategy: sharedContext?.positioningStrategy,
+      }));
+    } else if (platformContext?.positioning_strategy) {
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy',
+        legacyStrategy: platformContext.positioning_strategy,
+      }));
+    }
+
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Inventory (root every post in specific evidence)',
+        sharedInventory: sharedContext?.evidenceInventory,
+        maxItems: 15,
+      }));
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Inventory (root every post in specific evidence)',
+        legacyEvidence: platformContext.evidence_items,
+        maxItems: 15,
+      }));
+    }
+
+    if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## Career Narrative (the authentic voice and career arc)',
+        sharedNarrative: sharedContext?.careerNarrative,
+      }));
+    } else if (platformContext?.career_narrative) {
+      contextParts.push(...renderCareerNarrativeSection({
+        heading: '## Career Narrative (the authentic voice and career arc)',
+        legacyNarrative: platformContext.career_narrative,
+      }));
+    }
+
+    // Why Me story gives the series its invisible thread
+    const whyMeStory = (sharedContext as Record<string, unknown> | undefined)?.why_me_story
+      ?? (platformContext as Record<string, unknown> | undefined)?.why_me_story;
+    if (whyMeStory) {
+      contextParts.push(...renderWhyMeStorySection({
+        heading: '## Why Me Story (the invisible thread through the series)',
+        legacyWhyMeStory: whyMeStory,
+      }));
+    }
+
+    contextParts.push(
+      '',
+      '## Series Design Requirements',
+      `- Exactly ${postCount} posts`,
+      '- Each post must stand alone as a useful read, but also reference the series arc',
+      '- Mix of categories across the series: foundation (1-2), deep_dive (4-6), case_study (3-4), contrarian (1-2), vision (1-2)',
+      '- Every post must be backed by a specific evidence item from the inventory above',
+      '- The series arc should describe an intellectual journey: problem -> framework -> proof -> future',
+      '- Posts should build on each other naturally, not feel like a random list',
+      '- The series title should be memorable and position the author as THE expert in this domain',
+      '',
+      'Return ONLY valid JSON matching this exact structure:',
+      `{
+  "series_title": "The [Domain] Leader's [Something]",
+  "series_theme": "The overarching insight or argument that runs through all posts",
+  "total_posts": ${postCount},
+  "target_audience": "Who reads this series and what they get from it",
+  "series_arc": "How the series builds: 'Starts with X, moves through Y, culminates in Z'",
+  "posts": [
+    {
+      "post_number": 1,
+      "title": "Specific title for this post",
+      "hook": "The exact opening line (must stop the scroll as a standalone post)",
+      "key_points": ["point 1", "point 2", "point 3"],
+      "evidence_source": "Which specific evidence item or experience backs this post",
+      "cta": "The closing question or invitation to engage",
+      "category": "foundation"
+    }
+  ]
+}`,
+    );
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 8192,
+      system:
+        'You are a LinkedIn thought leadership strategist for senior executives. You design ' +
+        'content series that systematically build authority in a domain -- not generic content ' +
+        'calendars, but cohesive arguments that unfold over weeks. Every post must be ' +
+        'grounded in the executive\'s specific experience. ' +
+        'Return ONLY valid JSON, no markdown fencing.',
+      messages: [
+        {
+          role: 'user',
+          content: contextParts.join('\n'),
+        },
+      ],
+    });
+
+    const raw = response.text ?? '{}';
+    let series: ContentSeries;
+
+    try {
+      const parsed = repairJSON<ContentSeries>(raw);
+      if (!parsed || !Array.isArray(parsed.posts) || parsed.posts.length === 0) {
+        throw new Error('Invalid series structure');
+      }
+      series = parsed;
+    } catch {
+      // Graceful fallback -- empty series that the user can see failed
+      series = {
+        series_title: 'Executive Thought Leadership Series',
+        series_theme: 'Sharing hard-won expertise from a career at the top of the field',
+        total_posts: postCount,
+        target_audience: 'Senior professionals navigating similar challenges',
+        series_arc: 'Foundations -> Deep dives -> Case studies -> Vision',
+        posts: [],
+      };
+    }
+
+    // Enforce post_number sequencing and valid category values
+    const validCategories = new Set<SeriesPost['category']>(['foundation', 'deep_dive', 'case_study', 'contrarian', 'vision']);
+    series.posts = series.posts.map((p, i) => ({
+      ...p,
+      post_number: i + 1,
+      category: validCategories.has(p.category) ? p.category : 'deep_dive',
+    }));
+
+    ctx.scratchpad.series_plan = series;
+    ctx.updateState({ series_plan: series });
+
+    return { series_title: series.series_title, total_posts: series.posts.length };
+  },
+};
+
+// --- Tool: present_series ----------------------------------------------
+
+const presentSeriesTool: LinkedInContentTool = {
+  name: 'present_series',
+  description:
+    'Emits the series_plan_ready SSE event to present the full series plan to the user ' +
+    'for review and approval before writing begins. No LLM call -- just formats and emits. ' +
+    'Call this after plan_series.',
+  model_tier: 'light',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+  async execute(_input, ctx) {
+    const state = ctx.getState();
+    const series = (ctx.scratchpad.series_plan ?? state.series_plan) as ContentSeries | undefined;
+
+    if (!series || !Array.isArray(series.posts) || series.posts.length === 0) {
+      return { success: false, reason: 'No series plan to present -- call plan_series first' };
+    }
+
+    ctx.emit({
+      type: 'series_plan_ready',
+      session_id: state.session_id,
+      series,
+    });
+
+    return { presented: true, total_posts: series.posts.length };
+  },
+};
+
+// --- Tool exports ------------------------------------------------------
 
 export const strategistTools: LinkedInContentTool[] = [
   analyzeExpertiseTool,
   suggestTopicsTool,
   presentTopicsTool,
+  planSeriesTool,
+  presentSeriesTool,
   createEmitTransparency<LinkedInContentState, LinkedInContentSSEEvent>({ prefix: 'Strategist: ' }),
 ];

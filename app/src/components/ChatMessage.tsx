@@ -20,40 +20,40 @@ export function ChatMessage({ role, content, animate = true }: ChatMessageProps)
     >
       <div
         className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.1]',
-          role === 'user' ? 'bg-white/[0.08]' : 'bg-white/[0.04]',
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--line-soft)]',
+          role === 'user' ? 'bg-[var(--accent-muted)]' : 'bg-[var(--accent-muted)]',
         )}
       >
         {role === 'user' ? (
           <User className="h-4 w-4 text-[#afc4ff]" />
         ) : (
-          <Bot className="h-4 w-4 text-white/62" />
+          <Bot className="h-4 w-4 text-[var(--text-soft)]" />
         )}
       </div>
 
       <div
         className={cn(
-          'max-w-[80%] min-w-0 rounded-2xl border border-white/[0.1] px-4 py-3 text-sm break-words',
+          'max-w-[80%] min-w-0 rounded-2xl border border-[var(--line-soft)] px-4 py-3 text-sm break-words',
           role === 'user'
-            ? 'bg-white/[0.07] text-white/92'
-            : 'bg-white/[0.03] text-white/82',
+            ? 'bg-[var(--accent-muted)] text-[var(--text-strong)]'
+            : 'bg-[var(--accent-muted)] text-[var(--text-muted)]',
         )}
       >
         <ReactMarkdown
           rehypePlugins={[rehypeSanitize]}
           components={{
             p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-            strong: ({ children }) => <strong className="font-semibold text-white/90">{children}</strong>,
+            strong: ({ children }) => <strong className="font-semibold text-[var(--text-strong)]">{children}</strong>,
             ul: ({ children }) => <ul className="ml-4 list-disc space-y-1">{children}</ul>,
             ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1">{children}</ol>,
-            li: ({ children }) => <li className="text-white/70">{children}</li>,
+            li: ({ children }) => <li className="text-[var(--text-muted)]">{children}</li>,
             pre: ({ children }) => (
-              <pre className="my-2 overflow-x-auto rounded-lg bg-white/[0.06] p-3 text-xs font-mono text-white/70 whitespace-pre-wrap break-words">
+              <pre className="my-2 overflow-x-auto rounded-lg bg-[var(--accent-muted)] p-3 text-xs font-mono text-[var(--text-muted)] whitespace-pre-wrap break-words">
                 {children}
               </pre>
             ),
             code: ({ children }) => (
-              <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-xs font-mono text-white/70 break-words">
+              <code className="rounded bg-[var(--accent-muted)] px-1.5 py-0.5 text-xs font-mono text-[var(--text-muted)] break-words">
                 {children}
               </code>
             ),

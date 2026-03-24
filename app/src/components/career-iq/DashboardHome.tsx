@@ -22,7 +22,6 @@ interface DashboardHomeProps {
   onOpenCoach?: () => void;
   coachRecommendation?: CoachRecommendation | null;
   coachLoading?: boolean;
-  mockPipelineCards?: PipelineCard[];
   onInterviewPrepClick?: (card: PipelineCard) => void;
   onNegotiationPrepClick?: (card: PipelineCard) => void;
 }
@@ -97,24 +96,24 @@ function HomeGuideCard({
   return (
     <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
       <div className="p-6 sm:p-7">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
           {primaryAction.eyebrow}
         </div>
-        <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-white/92 sm:text-[2rem]">
+        <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-[var(--text-strong)] sm:text-[2rem]">
           {primaryAction.title}
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58 sm:text-[15px]">
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--text-soft)] sm:text-[15px]">
           {primaryAction.description}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-white/52">
+        <div className="mt-4 flex flex-wrap gap-2 text-[13px] text-[var(--text-soft)]">
           {signalSummary.map((item) => (
-            <span key={item} className="rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 uppercase tracking-[0.08em]">
+            <span key={item} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 uppercase tracking-[0.08em]">
               {item}
             </span>
           ))}
         </div>
         {coachRecommendationTitle && (
-          <p className="mt-4 text-xs leading-relaxed text-white/45">
+          <p className="mt-4 text-xs leading-relaxed text-[var(--text-soft)]">
             Coach says: {coachRecommendationTitle}
           </p>
         )}
@@ -129,7 +128,7 @@ function HomeGuideCard({
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-white/[0.06] bg-black/10 p-5 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-5 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <StepCard
           icon={Target}
           title="Career Profile backbone"
@@ -146,7 +145,7 @@ function HomeGuideCard({
             : 'Create a tailored resume for a target job and keep the strongest additions for future use.'}
           actionLabel={hasResumeSessions ? 'Open saved work' : 'Start a tailored resume'}
           onClick={() => onNavigateRoom?.('resume')}
-          className="border-white/[0.08] bg-white/[0.04]"
+          className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
         />
         <StepCard
           icon={Search}
@@ -177,14 +176,14 @@ function StepCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 ${className ?? 'border-white/[0.08] bg-white/[0.03]'}`}>
+    <div className={`rounded-2xl border p-4 ${className ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
       <div className="flex items-center gap-2">
         <div className="rounded-xl bg-black/20 p-2.5">
           <Icon size={16} className="text-[#98b3ff]" />
         </div>
-        <div className="text-sm font-semibold text-white/85">{title}</div>
+        <div className="text-sm font-semibold text-[var(--text-strong)]">{title}</div>
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-white/45">{description}</p>
+      <p className="mt-3 text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
       <button
         type="button"
         onClick={onClick}
@@ -210,7 +209,6 @@ export function DashboardHome({
   onOpenCoach,
   coachRecommendation,
   coachLoading = false,
-  mockPipelineCards,
   onInterviewPrepClick,
   onNegotiationPrepClick,
 }: DashboardHomeProps) {
@@ -276,7 +274,6 @@ export function DashboardHome({
         <div className="space-y-4">
           <ZoneYourPipeline
             onNavigateRoom={onNavigateRoom}
-            mockCards={mockPipelineCards}
             onInterviewPrepClick={onInterviewPrepClick}
             onNegotiationPrepClick={onNegotiationPrepClick}
           />

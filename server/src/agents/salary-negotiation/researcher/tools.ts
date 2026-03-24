@@ -23,7 +23,9 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import {
   renderPositioningStrategySection,
   renderWhyMeStorySection,
+  renderCareerNarrativeSection,
 } from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type SalaryNegotiationTool = AgentTool<SalaryNegotiationState, SalaryNegotiationSSEEvent>;
 
@@ -457,14 +459,23 @@ const identifyLeveragePointsTool: SalaryNegotiationTool = {
     const rd = state.resume_data;
     const od = state.offer_details;
     const breakdown = state.total_comp_breakdown;
+    const sharedContext = state.shared_context;
     const positioningSection = renderPositioningStrategySection({
       heading: 'POSITIONING STRATEGY',
+      sharedStrategy: hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+        ? sharedContext?.positioningStrategy
+        : undefined,
       legacyStrategy: state.platform_context?.positioning_strategy,
     }).join('\n');
-    const whyMeSection = renderWhyMeStorySection({
-      heading: 'WHY-ME NARRATIVE',
-      legacyWhyMeStory: state.platform_context?.why_me_story,
-    }).join('\n');
+    const narrativeSection = hasMeaningfulSharedValue(sharedContext?.careerNarrative)
+      ? renderCareerNarrativeSection({
+          heading: 'WHY-ME NARRATIVE',
+          sharedNarrative: sharedContext?.careerNarrative,
+        }).join('\n')
+      : renderWhyMeStorySection({
+          heading: 'WHY-ME NARRATIVE',
+          legacyWhyMeStory: state.platform_context?.why_me_story,
+        }).join('\n');
 
     const leveragePrompt = `Identify the candidate's strongest negotiation leverage points for this offer.
 
@@ -493,7 +504,7 @@ OFFER:
 COMP BREAKDOWN:
 ${breakdown?.map((b) => `- ${b.component}: current=${b.current_value ?? 'N/A'}, market=${b.market_value}, negotiable=${b.negotiable}`).join('\n') || 'Not yet analyzed'}
 
-${positioningSection ? `${positioningSection}\n` : ''}${whyMeSection ? `${whyMeSection}\n` : ''}
+${positioningSection ? `${positioningSection}\n` : ''}${narrativeSection ? `${narrativeSection}\n` : ''}
 
 Return JSON array of leverage points (aim for 4-8):
 [

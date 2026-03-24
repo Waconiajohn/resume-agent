@@ -54,16 +54,16 @@ function ActivityFeed({
     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
       {messages.length === 0 ? (
         <div className="text-center py-8">
-          <Loader2 size={20} className="text-white/20 mx-auto mb-2 animate-spin" />
-          <p className="text-[12px] text-white/30">Connecting...</p>
+          <Loader2 size={20} className="text-[var(--text-soft)] mx-auto mb-2 animate-spin" />
+          <p className="text-[12px] text-[var(--text-soft)]">Connecting...</p>
         </div>
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-white/70' : age <= 2 ? 'text-white/50' : age <= 5 ? 'text-white/35' : 'text-white/20';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#b5dec2]' : 'bg-white/20')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#b5dec2]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -86,22 +86,22 @@ function CaseStudySlider({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">Number of Case Studies</label>
+        <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Number of Case Studies</label>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onChange(Math.max(1, value - 1))}
             disabled={value <= 1}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--accent-muted)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Minus size={12} />
           </button>
-          <span className="w-8 text-center text-[16px] font-bold text-white/80">{value}</span>
+          <span className="w-8 text-center text-[16px] font-bold text-[var(--text-strong)]">{value}</span>
           <button
             type="button"
             onClick={() => onChange(Math.min(5, value + 1))}
             disabled={value >= 5}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--accent-muted)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Plus size={12} />
           </button>
@@ -115,12 +115,12 @@ function CaseStudySlider({
             onClick={() => onChange(n)}
             className={cn(
               'flex-1 h-2 rounded-full transition-all',
-              n <= value ? 'bg-[#b5dec2]/60' : 'bg-white/[0.08]',
+              n <= value ? 'bg-[#b5dec2]/60' : 'bg-[var(--surface-1)]',
             )}
           />
         ))}
       </div>
-      <p className="text-[11px] text-white/30">
+      <p className="text-[13px] text-[var(--text-soft)]">
         {value === 1 ? 'One deep-dive case study' : `${value} consulting-grade case studies`}
       </p>
     </div>
@@ -138,7 +138,7 @@ function MetricHighlight({ metric }: { metric: MetricChip }) {
   return (
     <div className="flex flex-col items-center rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] px-4 py-3 min-w-[80px]">
       <span className="text-[20px] font-bold text-[#b5dec2] leading-none">{metric.value}</span>
-      <span className="text-[10px] text-white/40 mt-1 text-center leading-tight">{metric.label}</span>
+      <span className="text-[12px] text-[var(--text-soft)] mt-1 text-center leading-tight">{metric.label}</span>
     </div>
   );
 }
@@ -286,24 +286,24 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
   }, [title, content, onAddToPortfolio]);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       {/* Card header */}
-      <div className="flex items-start justify-between px-5 py-4 border-b border-white/[0.06] bg-white/[0.01]">
+      <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="rounded-lg bg-[#b5dec2]/10 p-1.5 flex-shrink-0">
             <BookOpen size={14} className="text-[#b5dec2]" />
           </div>
-          <h3 className="text-[14px] font-semibold text-white/85 truncate">{title}</h3>
+          <h3 className="text-[14px] font-semibold text-[var(--text-strong)] truncate">{title}</h3>
         </div>
         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
           <button
             type="button"
             onClick={handleCopy}
             className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] border transition-all',
+              'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
               copied
                 ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
-                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
             {copied ? <Check size={10} /> : <Copy size={10} />}
@@ -313,10 +313,10 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
             type="button"
             onClick={handleAddToPortfolio}
             className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] border transition-all',
+              'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
               addedToPortfolio
                 ? 'bg-[#afc4ff]/10 border-[#afc4ff]/20 text-[#afc4ff]'
-                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
             <Bookmark size={10} />
@@ -342,30 +342,30 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
               const sectionContent = sections[type];
               if (!sectionContent) return null;
               return (
-                <div key={type} className={cn('rounded-lg border p-3.5', border, 'bg-white/[0.01]')}>
+                <div key={type} className={cn('rounded-lg border p-3.5', border, 'bg-[var(--accent-muted)]')}>
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className={cn('h-3 w-3', color)} />
-                    <span className={cn('text-[10px] font-semibold uppercase tracking-wider', color)}>
+                    <span className={cn('text-[12px] font-semibold uppercase tracking-wider', color)}>
                       {label}
                     </span>
                   </div>
-                  <p className="text-[12px] text-white/65 leading-relaxed whitespace-pre-wrap">{sectionContent}</p>
+                  <p className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{sectionContent}</p>
                 </div>
               );
             })}
           </div>
         ) : (
-          <p className="text-[13px] text-white/65 leading-relaxed whitespace-pre-wrap">{content}</p>
+          <p className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{content}</p>
         )}
 
         {/* Tags */}
         {tags.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap pt-1">
-            <Tag className="h-3 w-3 text-white/25 flex-shrink-0" />
+            <Tag className="h-3 w-3 text-[var(--text-soft)] flex-shrink-0" />
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40"
+                className="rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]"
               >
                 {tag}
               </span>
@@ -441,13 +441,13 @@ function ReportView({
             <BookOpen size={18} className="text-[#b5dec2]" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-white/90">Case Study Portfolio</h2>
-            <p className="text-[13px] text-white/40">Consulting-grade narratives from your real achievements</p>
+            <h2 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Portfolio</h2>
+            <p className="text-[13px] text-[var(--text-soft)]">Consulting-grade narratives from your real achievements</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {portfolioCount > 0 && (
-            <span className="rounded-md px-2 py-0.5 text-[11px] bg-[#afc4ff]/10 border border-[#afc4ff]/20 text-[#afc4ff]">
+            <span className="rounded-md px-2 py-0.5 text-[13px] bg-[#afc4ff]/10 border border-[#afc4ff]/20 text-[#afc4ff]">
               {portfolioCount} added to portfolio
             </span>
           )}
@@ -478,15 +478,15 @@ function ReportView({
       {qualityScore !== null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Portfolio Quality</span>
+            <span className="text-[13px] text-[var(--text-soft)]">Portfolio Quality</span>
             <span className={cn(
-              'text-[11px] font-semibold',
+              'text-[13px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
             )}>
               {qualityScore >= 80 ? 'Consulting-Grade' : qualityScore >= 60 ? 'Strong' : 'Needs Work'}
             </span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
@@ -514,16 +514,16 @@ function ReportView({
         <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div
             className="prose prose-invert prose-sm max-w-none
-              prose-headings:text-white/85 prose-headings:font-semibold
-              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
               prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#b5dec2]/90
-              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-              prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
-              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-              prose-strong:text-white/80
+              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
+              prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
+              prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-[var(--text-strong)]
               prose-em:text-[#f0d99f]/80
-              prose-blockquote:border-[#b5dec2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#b5dec2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
-              prose-hr:border-white/[0.06] prose-hr:my-6"
+              prose-blockquote:border-[#b5dec2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#b5dec2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-hr:border-[var(--line-soft)] prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
         </GlassCard>
@@ -619,8 +619,8 @@ export function CaseStudyRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Case Study Generator</h1>
-          <p className="text-[13px] text-white/40">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Generator</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Building {maxCaseStudies} consulting-grade case stud{maxCaseStudies !== 1 ? 'ies' : 'y'}...
           </p>
         </div>
@@ -634,16 +634,16 @@ export function CaseStudyRoom() {
             return (
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
+                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
                   isActive ? 'bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25'
                     : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2]/60 border border-[#b5dec2]/15'
-                    : 'bg-white/[0.04] text-white/25 border border-white/[0.06]',
+                    : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
                   {isDone && <Check size={10} />}
                   {STAGE_LABELS[stage]}
                 </div>
-                {i < arr.length - 1 && <ChevronRight size={12} className="text-white/15 flex-shrink-0" />}
+                {i < arr.length - 1 && <ChevronRight size={12} className="text-[var(--text-soft)] flex-shrink-0" />}
               </div>
             );
           })}
@@ -656,10 +656,10 @@ export function CaseStudyRoom() {
               <Loader2 size={16} className="text-[#b5dec2] animate-spin" />
             </div>
             <div>
-              <h3 className="text-[14px] font-semibold text-white/80">
+              <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
                 {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : 'Starting...'}
               </h3>
-              <p className="text-[12px] text-white/35">Building compelling stories from your achievements</p>
+              <p className="text-[12px] text-[var(--text-soft)]">Building compelling stories from your achievements</p>
             </div>
           </div>
           <ActivityFeed messages={activityMessages} currentStage={currentStage} />
@@ -668,7 +668,7 @@ export function CaseStudyRoom() {
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-white/25 hover:text-white/45 transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -681,14 +681,14 @@ export function CaseStudyRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Case Study Generator</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Generator</h1>
         </div>
         <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
-              <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
+              <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
@@ -708,8 +708,8 @@ export function CaseStudyRoom() {
           <BookOpen size={20} className="text-[#b5dec2]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Case Study Generator</h1>
-          <p className="text-[13px] text-white/40">Transform your achievements into compelling business stories — structured with metrics, narrative arc, and what only you could have done</p>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Generator</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">Transform your achievements into compelling business stories — structured with metrics, narrative arc, and what only you could have done</p>
         </div>
       </div>
       <ContextLoadedBadge
@@ -720,7 +720,7 @@ export function CaseStudyRoom() {
       {/* Prior result */}
       {priorLoading && (
         <GlassCard className="p-4 mb-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading previous result...
           </div>
@@ -729,18 +729,18 @@ export function CaseStudyRoom() {
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <h3 className="text-sm font-medium text-[var(--text-muted)]">Previous Result</h3>
             <button
               type="button"
               onClick={clearPrior}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               New Case Studies
             </button>
           </div>
           <div
-            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            className="prose prose-invert prose-sm max-w-none text-[var(--text-strong)] max-h-96 overflow-y-auto"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
           />
         </GlassCard>
@@ -750,11 +750,11 @@ export function CaseStudyRoom() {
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles size={15} className="text-[#b5dec2]" />
-          <h2 className="text-[14px] font-semibold text-white/75">Your Resume</h2>
+          <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Your Resume</h2>
         </div>
 
         {resumeLoading ? (
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading from Resume Strategist...
           </div>
@@ -767,7 +767,7 @@ export function CaseStudyRoom() {
             <button
               type="button"
               onClick={() => setResumeText('')}
-              className="text-[11px] text-white/25 hover:text-white/45 transition-colors"
+              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               Clear and paste manually
             </button>
@@ -783,7 +783,7 @@ export function CaseStudyRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
             />
           </div>
         )}
@@ -796,15 +796,15 @@ export function CaseStudyRoom() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-2">
               <Target size={15} className="text-[#b5dec2]" />
-              <h2 className="text-[14px] font-semibold text-white/75">Focus Areas <span className="text-[11px] font-normal text-white/30">optional</span></h2>
+              <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Focus Areas <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
             </div>
-            <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">What to emphasize</label>
+            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">What to emphasize</label>
             <textarea
               value={focusAreas}
               onChange={(e) => setFocusAreas(e.target.value)}
               placeholder="e.g. Cost reduction, team leadership, digital transformation, supply chain optimization..."
               rows={3}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
             />
           </div>
 
@@ -815,34 +815,34 @@ export function CaseStudyRoom() {
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
             <BarChart3 size={15} className="text-[#98b3ff]" />
-            <h2 className="text-[14px] font-semibold text-white/75">Target Context <span className="text-[11px] font-normal text-white/30">optional</span></h2>
+            <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Target Context <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
           </div>
-          <p className="text-[12px] text-white/35 -mt-3">Tailor the case studies for a specific role or industry</p>
+          <p className="text-[12px] text-[var(--text-soft)] -mt-3">Tailor the case studies for a specific role or industry</p>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">Target Role</label>
+            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Role</label>
             <input
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Chief Operating Officer"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">Target Industry</label>
+            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Industry</label>
             <input
               type="text"
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g. Healthcare Technology"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
             />
           </div>
 
           {/* What you'll get */}
           <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4 mt-auto">
-            <p className="text-[11px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider mb-2">What you'll get</p>
+            <p className="text-[13px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider mb-2">What you'll get</p>
             <ul className="space-y-1">
               {[
                 'Challenge → Approach → Results → Impact structure',
@@ -851,7 +851,7 @@ export function CaseStudyRoom() {
                 'Industry and skill tags',
                 'Ready for interviews, proposals, and portfolio',
               ].map((item) => (
-                <li key={item} className="flex items-start gap-2 text-[11px] text-white/40">
+                <li key={item} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
                   <Check size={10} className="text-[#b5dec2]/60 mt-0.5 flex-shrink-0" />
                   {item}
                 </li>
@@ -863,7 +863,7 @@ export function CaseStudyRoom() {
 
       {/* Submit */}
       <div className="flex items-center justify-between pt-2">
-        <p className="text-[12px] text-white/30">
+        <p className="text-[12px] text-[var(--text-soft)]">
           Generating {maxCaseStudies} case stud{maxCaseStudies !== 1 ? 'ies' : 'y'}. Takes 1-3 minutes.
         </p>
         <GlassButton

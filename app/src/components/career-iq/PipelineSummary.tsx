@@ -21,7 +21,7 @@ const STAGE_DB_MAP: Record<string, string> = {
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  Discovered: 'bg-white/20',
+  Discovered: 'bg-[var(--line-strong)]',
   Applied: 'bg-[#98b3ff]/50',
   Interviewing: 'bg-[#f0d99f]/50',
   Offer: 'bg-[#b5dec2]/50',
@@ -77,12 +77,12 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-white/80">Pipeline Summary</h3>
-        <span className="text-[11px] text-white/30">{totalActive} active</span>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Pipeline Summary</h3>
+        <span className="text-[13px] text-[var(--text-soft)]">{totalActive} active</span>
       </div>
 
       {/* Horizontal bar */}
-      <div className="mb-3 flex h-3 gap-0.5 overflow-hidden bg-white/[0.04]">
+      <div className="mb-3 flex h-3 gap-0.5 overflow-hidden bg-[var(--surface-1)]">
         {STAGES.map((stage) => {
           const count = stageCounts[stage] ?? 0;
           if (count === 0 || totalActive === 0) return null;
@@ -105,8 +105,8 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
           return (
             <div key={stage} className="flex items-center gap-1.5">
               <span className={cn('h-2 w-2', STAGE_COLORS[stage])} />
-              <span className="text-[11px] text-white/40">{stage}</span>
-              <span className="text-[11px] font-medium text-white/55 tabular-nums">{count}</span>
+              <span className="text-[13px] text-[var(--text-soft)]">{stage}</span>
+              <span className="text-[13px] font-medium text-[var(--text-soft)] tabular-nums">{count}</span>
             </div>
           );
         })}
@@ -116,7 +116,7 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
         <button
           type="button"
           onClick={() => onNavigateDashboard('dashboard')}
-          className="mt-3 flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+          className="mt-3 flex items-center gap-1 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
         >
           View Full Pipeline <ArrowRight size={11} />
         </button>

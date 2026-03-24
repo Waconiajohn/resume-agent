@@ -122,7 +122,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${classes[status] ?? 'border-white/10 bg-white/5 text-white/50'}`}
+      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] ${classes[status] ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'}`}
     >
       {label[status] ?? status}
     </span>
@@ -243,7 +243,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 motion-safe:animate-spin text-white/40" />
+        <Loader2 className="h-6 w-6 motion-safe:animate-spin text-[var(--text-soft)]" />
       </div>
     );
   }
@@ -252,7 +252,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <AlertCircle className="h-8 w-8 text-[#f0b8b8]" />
-        <p className="text-sm text-white/60">{error}</p>
+        <p className="text-sm text-[var(--text-soft)]">{error}</p>
         <GlassButton variant="ghost" onClick={() => void fetchSubscription()}>
           <RefreshCw className="h-4 w-4" />
           Retry
@@ -277,20 +277,20 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         <div className="room-meta-strip">
           <div className="room-meta-item">
             <span className="eyebrow-label">Billing</span>
-            <span className="text-sm text-white/60">Plan status, billing controls, and account usage in one place.</span>
+            <span className="text-sm text-[var(--text-soft)]">Plan status, billing controls, and account usage in one place.</span>
           </div>
         </div>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/5">
-              <CreditCard className="h-5 w-5 text-white/60" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)]">
+              <CreditCard className="h-5 w-5 text-[var(--text-soft)]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-semibold tracking-tight text-white">{plan.name}</span>
+                <span className="text-lg font-semibold tracking-tight text-[var(--text-strong)]">{plan.name}</span>
                 <StatusBadge status={subscription?.status ?? 'active'} />
               </div>
-              <div className="text-sm text-white/50">{formatPrice(plan.monthly_price_cents)}</div>
+              <div className="text-sm text-[var(--text-soft)]">{formatPrice(plan.monthly_price_cents)}</div>
             </div>
           </div>
 
@@ -321,7 +321,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         </div>
 
         {subscription?.current_period_end && !isFreePlan && (
-          <div className="mt-4 border-t border-white/[0.06] pt-4 text-sm text-white/50">
+          <div className="mt-4 border-t border-[var(--line-soft)] pt-4 text-sm text-[var(--text-soft)]">
             Next billing date: {formatDate(subscription.current_period_end)}
           </div>
         )}
@@ -330,19 +330,19 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       {/* Usage this period */}
       <GlassCard className="space-y-4 p-5">
         <div className="room-meta-strip">
-          <BarChart2 className="h-4 w-4 text-white/50" />
+          <BarChart2 className="h-4 w-4 text-[var(--text-soft)]" />
           <span className="eyebrow-label">Usage this month</span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
-          <span className="text-2xl font-bold text-white">{usage.sessions_this_period}</span>
+          <span className="text-2xl font-bold text-[var(--text-strong)]">{usage.sessions_this_period}</span>
           <span className="text-sm text-white/40">
             of {plan.included_sessions} included runs
           </span>
         </div>
 
         {/* Progress bar */}
-        <div className="mt-3 h-1.5 w-full overflow-hidden bg-white/10">
+        <div className="mt-3 h-1.5 w-full overflow-hidden bg-[var(--accent-muted)]">
           <div
             className={`h-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#f0b8b8]' : usagePercent >= 70 ? 'bg-[#f0d99f]' : 'bg-[#9eb8ff]'}`}
             style={{ width: `${usagePercent}%` }}
@@ -350,7 +350,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         </div>
 
         {plan.max_sessions_per_month && (
-          <div className="mt-2 text-xs text-white/30">
+          <div className="mt-2 text-xs text-[var(--text-soft)]">
             Max {plan.max_sessions_per_month} runs / month on this plan
           </div>
         )}

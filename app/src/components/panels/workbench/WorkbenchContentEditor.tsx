@@ -97,7 +97,7 @@ export function WorkbenchContentEditor({
   const wc = wordCount(localContent || content);
 
   return (
-    <div className="relative rounded-[18px] border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+    <div className="relative rounded-[18px] border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       {/* Shimmer overlay when refining */}
       {isRefining && (
         <div className="absolute inset-0 z-10 rounded-[18px] overflow-hidden pointer-events-none">
@@ -118,13 +118,13 @@ export function WorkbenchContentEditor({
                 key={i}
                 className={cn(
                   'group flex items-start gap-2 px-2 py-1.5 rounded-lg transition-colors duration-100 cursor-text',
-                  !isRefining && 'hover:bg-white/[0.04]',
-                  isActive && 'bg-white/[0.04]',
+                  !isRefining && 'hover:bg-[var(--accent-muted)]',
+                  isActive && 'bg-[var(--accent-muted)]',
                 )}
                 onClick={() => handleLineClick(i, line)}
               >
                 {bullet && !isActive && (
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white/40" />
+                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--line-strong)]" />
                 )}
                 {isActive ? (
                   <div className="flex-1 border-l-2 border-[#98b3ff] pl-2">
@@ -135,28 +135,28 @@ export function WorkbenchContentEditor({
                       onBlur={handleLineBlur}
                       onKeyDown={handleLineKeyDown}
                       aria-label="Edit resume line"
-                      className="w-full resize-none bg-transparent text-sm leading-relaxed text-white/90 outline-none placeholder:text-white/30"
+                      className="w-full resize-none bg-transparent text-sm leading-relaxed text-[var(--text-strong)] outline-none placeholder:text-[var(--text-soft)]"
                       rows={1}
                     />
                   </div>
                 ) : (
-                  <p className="flex-1 text-sm leading-relaxed text-white/85">{displayText}</p>
+                  <p className="flex-1 text-sm leading-relaxed text-[var(--text-strong)]">{displayText}</p>
                 )}
               </div>
             );
           })
         ) : (
-          <p className="text-sm text-white/40 italic px-2 py-1.5">No content to display.</p>
+          <p className="text-sm text-[var(--text-soft)] italic px-2 py-1.5">No content to display.</p>
         )}
       </div>
 
       {/* Word count + edit status */}
-      <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-2">
+      <div className="flex items-center justify-between border-t border-[var(--line-soft)] px-5 py-2">
         {hasLocalEdits && (
-          <span className="text-[10px] text-[#98b3ff]/80 font-medium">Unsaved edits</span>
+          <span className="text-[12px] text-[#98b3ff]/80 font-medium">Unsaved edits</span>
         )}
         {!hasLocalEdits && <span />}
-        <span className="text-[10px] text-white/30">{wc} words</span>
+        <span className="text-[12px] text-[var(--text-soft)]">{wc} words</span>
       </div>
     </div>
   );

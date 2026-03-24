@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
+import { OnboardingTour } from '@/components/OnboardingTour';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import { useCareerProfile } from './CareerProfileContext';
 import { CareerProfileRoom } from './CareerProfileRoom';
@@ -14,29 +15,12 @@ import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { supabase } from '@/lib/supabase';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
 import type { RealFeedEvent } from './ZoneAgentFeed';
-import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import type { PipelineCard } from './ZoneYourPipeline';
 import { toExposedWorkspaceRoom } from './workspaceRoomAccess';
 
 const COMING_SOON_ROOMS = new Set<string>();
-
-const MOCK_PIPELINE_CARDS: PipelineCard[] = [
-  { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true, interviewRound: 2, scheduledDate: new Date(Date.now() + 3 * 86400000).toISOString() },
-  { id: 'mp-2', company: 'Microsoft', role: 'Principal PM', stage: 'Applied', daysSinceMovement: 3, hasNewActivity: false },
-  { id: 'mp-3', company: 'Amazon', role: 'Sr. TPM', stage: 'Discovered', daysSinceMovement: 0, hasNewActivity: true },
-];
-
-const MOCK_COACH_REC: CoachRecommendation = {
-  action: 'Strengthen your Career Profile first, then open Resume Builder and tailor the resume for your top target role.',
-  product: 'Resume Builder',
-  room: 'career-profile',
-  urgency: 'immediate',
-  phase: 'active_search',
-  phase_label: 'Active Job Search',
-  rationale: 'Your profile sharpens the recommendations every other tool gives you, so it is the fastest leverage point.',
-};
 
 const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then((module) => ({ default: module.LiveSessionsRoom })));
 const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));
@@ -98,6 +82,8 @@ interface CareerIQScreenProps {
   onGetResumeHistory?: (resumeId: string) => Promise<Array<{ id: string; changes_summary: string; created_at: string }>>;
   onSetDefaultResume?: (resumeId: string) => Promise<boolean>;
   onDeleteResume?: (resumeId: string) => Promise<boolean>;
+  /** Called with the tour replay function so the parent can wire it to the Help button */
+  onRegisterTourReplay?: (replayFn: () => void) => void;
 }
 
 export function CareerIQScreen({
@@ -122,6 +108,7 @@ export function CareerIQScreen({
   onGetResumeHistory,
   onSetDefaultResume,
   onDeleteResume,
+  onRegisterTourReplay,
 }: CareerIQScreenProps) {
   const location = useLocation();
   const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toExposedWorkspaceRoom(initialRoom));
@@ -318,6 +305,13 @@ export function CareerIQScreen({
     onNavigate(`/workspace?${params.toString()}`);
   };
 
+  const handleTourMount = useCallback(
+    (replayFn: () => void) => {
+      onRegisterTourReplay?.(replayFn);
+    },
+    [onRegisterTourReplay],
+  );
+
   const openCareerProfile = () => handleRoomNavigate('career-profile');
   const breadcrumbItems = activeRoom === 'dashboard'
     ? [{ label: 'Workspace' }]
@@ -332,7 +326,6 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'dashboard') {
-      const isDemo = sessions.length === 0 && coverLetterSessions.length === 0;
       return (
         <DashboardHome
           userName={userName}
@@ -340,16 +333,15 @@ export function CareerIQScreen({
           dashboardState={dashboardState}
           onNavigateRoom={handleRoomNavigate}
           onRefineWhyMe={openCareerProfile}
-          hasResumeSessions={isDemo ? true : sessions.length > 0}
-          sessionCount={isDemo ? 3 : sessions.length}
+          hasResumeSessions={sessions.length > 0}
+          sessionCount={sessions.length}
           nudges={nudges}
           onDismissNudge={dismissNudge}
           onOpenCoach={() => setCoachDrawerOpen(true)}
-          coachRecommendation={isDemo ? MOCK_COACH_REC : coachRec}
-          coachLoading={isDemo ? false : coachLoading}
-          mockPipelineCards={isDemo ? MOCK_PIPELINE_CARDS : undefined}
-          onInterviewPrepClick={isDemo ? undefined : handleInterviewPrepClick}
-          onNegotiationPrepClick={isDemo ? undefined : handleNegotiationPrepClick}
+          coachRecommendation={coachRec}
+          coachLoading={coachLoading}
+          onInterviewPrepClick={handleInterviewPrepClick}
+          onNegotiationPrepClick={handleNegotiationPrepClick}
         />
       );
     }
@@ -570,6 +562,8 @@ export function CareerIQScreen({
           onClose={() => setCoachDrawerOpen(false)}
         />
       </Suspense>
+
+      <OnboardingTour onMountReplay={handleTourMount} />
     </div>
   );
 }

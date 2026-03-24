@@ -86,22 +86,22 @@ const classificationConfig = {
   strong: {
     icon: CheckCircle,
     color: 'text-[#a8d7b8]',
-    border: 'border-white/[0.12]',
-    bg: 'bg-white/[0.035]',
+    border: 'border-[var(--line-soft)]',
+    bg: 'bg-[var(--accent-muted)]',
     label: 'Strong Match',
   },
   partial: {
     icon: AlertTriangle,
     color: 'text-[#dcc390]',
-    border: 'border-white/[0.12]',
-    bg: 'bg-white/[0.03]',
+    border: 'border-[var(--line-soft)]',
+    bg: 'bg-[var(--accent-muted)]',
     label: 'Partial Match',
   },
   gap: {
     icon: XCircle,
     color: 'text-[#e1a4a4]',
-    border: 'border-white/[0.12]',
-    bg: 'bg-white/[0.03]',
+    border: 'border-[var(--line-soft)]',
+    bg: 'bg-[var(--accent-muted)]',
     label: 'Needs Attention',
   },
 };
@@ -120,18 +120,18 @@ function RequirementRow({ item, userContext, onUserContextChange }: {
       <div className="flex items-start gap-2">
         <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${config.color}`} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white/90">{cleanText(item.requirement)}</p>
+          <p className="text-sm text-[var(--text-strong)]">{cleanText(item.requirement)}</p>
           {item.evidence && (
-            <p className="mt-1 text-xs text-white/70">{cleanText(item.evidence)}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{cleanText(item.evidence)}</p>
           )}
           {item.strategy && (
-            <p className="mt-1 text-xs italic text-white/62">{cleanText(item.strategy)}</p>
+            <p className="mt-1 text-xs italic text-[var(--text-soft)]">{cleanText(item.strategy)}</p>
           )}
           {!showInput && !userContext && (
             <button
               type="button"
               onClick={() => setShowInput(true)}
-              className="mt-1.5 text-[10px] text-white/30 hover:text-white/50 transition-colors"
+              className="mt-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
               + Add context
             </button>
@@ -145,17 +145,17 @@ function RequirementRow({ item, userContext, onUserContextChange }: {
                 onBlur={() => { if (!userContext) setShowInput(false); }}
                 placeholder="Add evidence or dispute this assessment..."
                 autoFocus
-                className="w-full rounded border border-white/[0.12] bg-white/[0.04] px-2 py-1 text-xs text-white/80 placeholder:text-white/30 focus:border-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+                className="w-full rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
               />
             </div>
           )}
           {userContext && !showInput && (
             <div className="mt-1.5 flex items-start gap-1.5">
-              <span className="text-[10px] text-white/40 italic flex-1">{userContext}</span>
+              <span className="text-[12px] text-[var(--text-soft)] italic flex-1">{userContext}</span>
               <button
                 type="button"
                 onClick={() => setShowInput(true)}
-                className="text-[10px] text-white/30 hover:text-white/50 transition-colors shrink-0"
+                className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors shrink-0"
               >
                 Edit
               </button>
@@ -176,10 +176,10 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white/85">How Your Experience Matches</span>
-          <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5 ml-2">AI assessment</span>
+          <span className="text-sm font-medium text-[var(--text-strong)]">How Your Experience Matches</span>
+          <span className="text-[12px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5 ml-2">AI assessment</span>
         </div>
       </div>
 
@@ -194,18 +194,18 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         {/* Progress bar */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-white/70">How Well You Match</span>
-            <span className="text-xs font-medium text-white/85">
+            <span className="text-xs text-[var(--text-muted)]">How Well You Match</span>
+            <span className="text-xs font-medium text-[var(--text-strong)]">
               {addressed} of {total}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.10] overflow-hidden" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`${addressed} of ${total} requirements matched`}>
+          <div className="h-2 rounded-full bg-[var(--accent-muted)] overflow-hidden" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`${addressed} of ${total} requirements matched`}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#9cb6ff] to-[#c2d2ff] transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="mt-2 text-[11px] text-white/60">
+          <p className="mt-2 text-[13px] text-[var(--text-soft)]">
             <span className="text-[#b5dec2] font-medium">{strong_count} strong</span>
             {', '}
             <span className="text-[#f0d99f] font-medium">{partial_count} partial</span>
@@ -221,19 +221,19 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
             return (
               <div key={key} className="flex items-center gap-1.5">
                 <Icon className={`h-3 w-3 ${config.color}`} />
-                <span className="text-[10px] text-white/50">{config.label}</span>
+                <span className="text-[12px] text-[var(--text-soft)]">{config.label}</span>
               </div>
             );
           })}
         </div>
 
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/58">
+        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
           This updates as we learn more about your experience. If something doesn't look right, you can fix it by answering the follow-up questions.
         </div>
 
         {/* Requirement list — collapsible */}
         <details className="group">
-          <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+          <summary className="cursor-pointer list-none rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors select-none">
             <span>Requirement Details</span>
           </summary>
           <div className="mt-2 space-y-2">

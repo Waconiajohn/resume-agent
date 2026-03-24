@@ -9,12 +9,15 @@
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { InterviewPrepState, InterviewPrepSSEEvent } from '../types.js';
-import { queryPerplexity } from '../../../lib/perplexity.js';
+import { queryPerplexity, queryWithFallback } from '../../../lib/perplexity.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createSessionLogger } from '../../../lib/logger.js';
 
 type InterviewPrepTool = AgentTool<InterviewPrepState, InterviewPrepSSEEvent>;
+
+/** Maximum Perplexity calls allowed per session across all researcher tools. */
+const MAX_PERPLEXITY_CALLS = 3;
 
 // ─── Tool: parse_inputs ─────────────────────────────────────────────
 
@@ -174,6 +177,7 @@ const researchCompanyTool: InterviewPrepTool = {
     const companyName = String(input.company_name ?? '');
     const industryHint = String(input.industry_hint ?? '');
     const log = createSessionLogger(ctx.getState().session_id);
+    const sessionId = ctx.getState().session_id;
 
     if (!companyName || companyName === 'Unknown Company') {
       return JSON.stringify({ success: false, error: 'No company name available for research' });
@@ -185,40 +189,107 @@ const researchCompanyTool: InterviewPrepTool = {
       message: `Researching ${companyName}...`,
     });
 
-    // Query 1: Company overview, revenue, growth, risks
-    const overviewQuery = `Provide a comprehensive business overview of ${companyName}${industryHint ? ` in the ${industryHint} industry` : ''}. Include:
-1. What the company does, its primary products/services, approximate size, headquarters, founding year
-2. Primary revenue streams and business lines (be specific — name actual products or services)
-3. Where the company is investing or signaling growth over the next 12-24 months (cite recent news, earnings calls, or press releases if available)
-4. 3-5 strategic, operational, or competitive risks the company faces (be specific, not generic)
-5. 4-6 direct competitors with one sentence each on how they differentiate`;
+    // ── Query 1: Company overview, revenue, growth, risks, competitors ──────
 
+    const overviewQuery =
+      `Provide a comprehensive business overview of ${companyName}` +
+      `${industryHint ? ` in the ${industryHint} industry` : ''}. Include:\n` +
+      `1. What the company does, its primary products/services, approximate size, headquarters, founding year\n` +
+      `2. Primary revenue streams and business lines (be specific — name actual products or services)\n` +
+      `3. Where the company is investing or signaling growth over the next 12-24 months ` +
+      `(cite recent news, earnings calls, or press releases if available)\n` +
+      `4. 3-5 strategic, operational, or competitive risks the company faces (be specific, not generic)\n` +
+      `5. 4-6 direct competitors with one sentence each on how they differentiate`;
+
+    const callCount1 = (ctx.scratchpad.perplexity_call_count as number | undefined) ?? 0;
     let rawResearch: string;
-    try {
-      rawResearch = await queryPerplexity([
-        { role: 'system', content: 'You are a business research analyst providing detailed company intelligence for interview preparation. Be specific and cite real data when available.' },
-        { role: 'user', content: overviewQuery },
-      ], { max_tokens: 4096 });
-    } catch (err) {
-      log.warn({ error: err instanceof Error ? err.message : String(err) }, 'Perplexity unavailable for company research, using LLM fallback');
-      ctx.emit({
-        type: 'right_panel_update',
-        panelType: 'transparency',
-        data: {
-          stage: 'research_company',
-          message: 'Live web research unavailable — company data is from AI training (knowledge cutoff: mid-2025). Verify key facts before your interview.',
+    if (callCount1 < MAX_PERPLEXITY_CALLS) {
+      rawResearch = await queryWithFallback(
+        sessionId,
+        [
+          {
+            role: 'system',
+            content:
+              'You are a business research analyst providing detailed company intelligence for interview preparation. Be specific and cite real data when available.',
+          },
+          { role: 'user', content: overviewQuery },
+        ],
+        {
+          system:
+            'You are a business research analyst. Provide the best company information you can from your training data. Note when information may be outdated.',
+          prompt:
+            `\u26a0\ufe0f NOTE: This research is from AI training data, not live web sources. Information may be outdated.\n\n` +
+            overviewQuery,
         },
-      });
-      const fallbackResult = await llm.chat({
+      );
+      ctx.scratchpad.perplexity_call_count = callCount1 + 1;
+    } else {
+      log.warn({ callCount: callCount1 }, 'research_company: Perplexity budget exhausted for overview query, using LLM fallback');
+      rawResearch = (await llm.chat({
         model: MODEL_MID,
         max_tokens: 4096,
-        system: 'You are a business research analyst. Provide the best company information you can from your training data. Note when information may be outdated.',
+        system:
+          'You are a business research analyst. Provide the best company information you can from your training data. Note when information may be outdated.',
         messages: [{ role: 'user', content: overviewQuery }],
-      });
-      rawResearch = `\u26a0\ufe0f NOTE: This research is from AI training data, not live web sources. Information may be outdated.\n\n${fallbackResult.text}`;
+      })).text;
     }
 
-    // Parse the research into structured format
+    // ── Query 2: Role-specific intelligence (strategic priorities, culture, role impact) ──
+
+    const state = ctx.getState();
+    const roleTitle = state.jd_analysis?.role_title ?? '';
+
+    const roleQuery =
+      `For ${companyName}${industryHint ? ` (${industryHint})` : ''}, answer the following:\n` +
+      `1. What are the company's TOP 3-5 named strategic priorities or initiatives for this year? ` +
+      `(Name specific programs, OKRs, or publicly stated goals — not generic observations.)\n` +
+      `2. What does the company culture look like in practice? ` +
+      `(What do Glassdoor reviews, LinkedIn posts, or press coverage reveal about how they work, ` +
+      `what they reward, and what the day-to-day environment is like?)\n` +
+      `3. How does the ${roleTitle || 'this role'} directly impact the company's revenue or core operations? ` +
+      `(Be specific — what P&L, ARR percentage, cost center, or operational metric does this role own or influence?)`;
+
+    let rawRoleResearch = '';
+    try {
+      const callCount2 = (ctx.scratchpad.perplexity_call_count as number | undefined) ?? 0;
+      if (callCount2 < MAX_PERPLEXITY_CALLS) {
+        rawRoleResearch = await queryWithFallback(
+          sessionId,
+          [
+            {
+              role: 'system',
+              content:
+                'You are a senior business analyst specializing in organizational intelligence. ' +
+                'Be concrete, cite evidence when available, and avoid generic platitudes.',
+            },
+            { role: 'user', content: roleQuery },
+          ],
+          {
+            system:
+              'You are a senior business analyst. Provide the best role-intelligence you can from your training data. Note when information may be outdated.',
+            prompt: roleQuery,
+          },
+        );
+        ctx.scratchpad.perplexity_call_count = callCount2 + 1;
+      } else {
+        log.warn({ callCount: callCount2 }, 'research_company: Perplexity budget exhausted for role-intelligence query, using LLM fallback');
+        rawRoleResearch = (await llm.chat({
+          model: MODEL_MID,
+          max_tokens: 2048,
+          system:
+            'You are a senior business analyst. Provide the best role-intelligence you can from your training data. Note when information may be outdated.',
+          messages: [{ role: 'user', content: roleQuery }],
+        })).text;
+      }
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'research_company: role-intelligence query failed, continuing without it',
+      );
+    }
+
+    // ── Parse Query 1 into structured format ─────────────────────────────────
+
     const parseResponse = await llm.chat({
       model: MODEL_LIGHT,
       max_tokens: 4096,
@@ -258,8 +329,56 @@ ${rawResearch}`,
       };
     }
 
-    const state = ctx.getState();
+    // ── Parse Query 2 into structured fields ─────────────────────────────────
+
+    if (rawRoleResearch.trim()) {
+      const roleParseResponse = await llm.chat({
+        model: MODEL_LIGHT,
+        max_tokens: 2048,
+        system: 'Extract structured data from company role-intelligence text. Return ONLY valid JSON.',
+        messages: [{
+          role: 'user',
+          content: `Parse this role-intelligence research into JSON format:
+{
+  "strategic_priorities": ["named priority 1", "named priority 2"],
+  "culture_signals": ["culture observation 1", "culture observation 2"],
+  "role_impact": "one paragraph describing how this role impacts revenue or operations"
+}
+
+Research text:
+${rawRoleResearch}`,
+        }],
+      });
+
+      try {
+        const roleParsed = JSON.parse(repairJSON(roleParseResponse.text) ?? roleParseResponse.text);
+        if (Array.isArray(roleParsed.strategic_priorities) && roleParsed.strategic_priorities.length > 0) {
+          companyResearch.strategic_priorities = roleParsed.strategic_priorities;
+        }
+        if (Array.isArray(roleParsed.culture_signals) && roleParsed.culture_signals.length > 0) {
+          companyResearch.culture_signals = roleParsed.culture_signals;
+        }
+        if (typeof roleParsed.role_impact === 'string' && roleParsed.role_impact.trim()) {
+          companyResearch.role_impact = roleParsed.role_impact;
+        }
+      } catch {
+        log.warn({}, 'research_company: role-intelligence parse failed, raw text preserved');
+      }
+
+      companyResearch.raw_role_research = rawRoleResearch;
+    }
+
     state.company_research = companyResearch;
+
+    log.info(
+      {
+        company: companyName,
+        has_strategic_priorities: (companyResearch.strategic_priorities?.length ?? 0) > 0,
+        has_culture_signals: (companyResearch.culture_signals?.length ?? 0) > 0,
+        has_role_impact: !!companyResearch.role_impact,
+      },
+      'research_company: research complete',
+    );
 
     return JSON.stringify({
       success: true,
@@ -267,6 +386,9 @@ ${rawResearch}`,
       growth_areas_count: companyResearch.growth_areas?.length ?? 0,
       risks_count: companyResearch.risks?.length ?? 0,
       competitors_count: companyResearch.competitors?.length ?? 0,
+      strategic_priorities_count: companyResearch.strategic_priorities?.length ?? 0,
+      culture_signals_count: companyResearch.culture_signals?.length ?? 0,
+      has_role_impact: !!companyResearch.role_impact,
     });
   },
 };
@@ -313,14 +435,26 @@ const findInterviewQuestionsTool: InterviewPrepTool = {
     // Search for company-specific interview questions
     const searchQuery = `Find real interview questions that have been asked at ${companyName} for ${roleTitle} or similar roles. Search Glassdoor reviews, Reddit threads, Indeed interview reviews, and other sources. For each question found, note the source. If company-specific questions are unavailable, find the most common interview questions for "${roleTitle}" in the ${industry || 'relevant'} industry. Include a mix of technical, behavioral, and culture fit questions. Return at least 10 questions.`;
 
+    const callCountQ = (ctx.scratchpad.perplexity_call_count as number | undefined) ?? 0;
     let rawQuestions: string;
-    try {
-      rawQuestions = await queryPerplexity([
-        { role: 'system', content: 'You search for real interview questions from public sources like Glassdoor, Reddit, and Indeed. Be specific about sources when available.' },
-        { role: 'user', content: searchQuery },
-      ], { max_tokens: 4096 });
-    } catch (err) {
-      log.warn({ error: err instanceof Error ? err.message : String(err) }, 'Perplexity unavailable for interview questions, using LLM fallback');
+    if (callCountQ < MAX_PERPLEXITY_CALLS) {
+      try {
+        rawQuestions = await queryPerplexity([
+          { role: 'system', content: 'You search for real interview questions from public sources like Glassdoor, Reddit, and Indeed. Be specific about sources when available.' },
+          { role: 'user', content: searchQuery },
+        ], { max_tokens: 4096 });
+        ctx.scratchpad.perplexity_call_count = callCountQ + 1;
+      } catch (err) {
+        log.warn({ error: err instanceof Error ? err.message : String(err) }, 'Perplexity unavailable for interview questions, using LLM fallback');
+        rawQuestions = (await llm.chat({
+          model: MODEL_LIGHT,
+          max_tokens: 4096,
+          system: 'Generate realistic interview questions that would likely be asked for this role.',
+          messages: [{ role: 'user', content: searchQuery }],
+        })).text;
+      }
+    } else {
+      log.warn({ callCount: callCountQ }, 'find_interview_questions: Perplexity budget exhausted, using LLM fallback');
       rawQuestions = (await llm.chat({
         model: MODEL_LIGHT,
         max_tokens: 4096,

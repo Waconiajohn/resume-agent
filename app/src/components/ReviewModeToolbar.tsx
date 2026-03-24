@@ -35,7 +35,7 @@ export function ReviewModeToolbar({
     : null;
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/[0.08] bg-white/[0.02] px-4 py-2.5 backdrop-blur-sm">
+    <div className="flex items-center gap-2 border-b border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-2.5 backdrop-blur-sm">
       {/* Section dots */}
       <div className="flex items-center gap-1.5">
         {sectionBuildOrder.map((key) => {
@@ -52,18 +52,18 @@ export function ReviewModeToolbar({
                     ? 'bg-[#a8d7b8]'
                     : isActive
                       ? 'bg-[#afc4ff] ring-2 ring-[#afc4ff]/30 dot-current'
-                      : 'border border-white/30 bg-transparent'
+                      : 'border border-[var(--text-soft)] bg-transparent'
                 }`}
                 role="img"
                 aria-label={`${SECTION_DISPLAY_NAMES[key] ?? toTitleCase(key)}: ${isApproved ? 'approved' : isActive ? 'reviewing now' : 'pending'}`}
               />
               <span
-                className={`hidden text-[11px] font-medium sm:inline ${
+                className={`hidden text-[13px] font-medium sm:inline ${
                   isApproved
                     ? 'text-[#a8d7b8]/80'
                     : isActive
                       ? 'text-[#afc4ff]'
-                      : 'text-white/40'
+                      : 'text-[var(--text-soft)]'
                 }`}
               >
                 {SECTION_DISPLAY_NAMES[key] ?? toTitleCase(key)}
@@ -74,7 +74,7 @@ export function ReviewModeToolbar({
       </div>
 
       {/* Status label */}
-      <span className="ml-auto text-xs text-white/50" aria-live="polite" role="status">
+      <span className="ml-auto text-xs text-[var(--text-soft)]" aria-live="polite" role="status">
         {isProcessing && activeLabel
           ? `Writing your ${activeLabel}...`
           : activeLabel

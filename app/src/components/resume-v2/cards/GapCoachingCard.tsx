@@ -46,20 +46,20 @@ function classificationIcon(c: GapClassification) {
 function importanceBadge(importance: GapCoachingCard['importance']) {
   if (importance === 'must_have') {
     return (
-      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
         Must Have
       </span>
     );
   }
   if (importance === 'important') {
     return (
-      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-[#f0d99f]/20 text-[#f0d99f] border border-[#f0d99f]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[#f0d99f]/20 text-[#f0d99f] border border-[#f0d99f]/30">
         Important
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-white/10 text-white/60 border border-white/20">
+    <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[var(--surface-1)] text-[var(--text-soft)] border border-[var(--line-strong)]">
       Nice to Have
     </span>
   );
@@ -90,10 +90,10 @@ function collapsedStatus(action: GapCoachingAction): {
     };
   }
   return {
-    dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />,
+    dot: <Minus className="h-3 w-3 text-[var(--text-soft)] shrink-0" />,
     label: 'Skipped',
-    wrapperClass: 'bg-white/[0.02] border-white/[0.06]',
-    labelClass: 'text-white/35',
+    wrapperClass: 'bg-[var(--accent-muted)] border-[var(--line-soft)]',
+    labelClass: 'text-[var(--text-soft)]',
   };
 }
 
@@ -122,9 +122,9 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         data-coaching-requirement={card.requirement}
       >
         {dot}
-        <span className="flex-1 min-w-0 text-sm text-white/50 truncate">{card.requirement}</span>
+        <span className="flex-1 min-w-0 text-sm text-[var(--text-soft)] truncate">{card.requirement}</span>
         <span className={cn('text-xs font-medium shrink-0', labelClass)}>{label}</span>
-        <ChevronRight className="h-3.5 w-3.5 text-white/20 shrink-0" />
+        <ChevronRight className="h-3.5 w-3.5 text-[var(--text-soft)] shrink-0" />
       </div>
     );
   }
@@ -139,11 +139,11 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         <div className="mt-0.5">{classificationIcon(card.classification)}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white/90 leading-snug">{card.requirement}</span>
+            <span className="text-sm font-medium text-[var(--text-strong)] leading-snug">{card.requirement}</span>
             <div className="flex items-center gap-1.5 flex-wrap">
               {importanceBadge(card.importance)}
               {card.previously_approved && (
-                <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30">
+                <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30">
                   <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
                   Previously approved
                 </span>
@@ -158,7 +158,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         {/* Avatar */}
         <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
           <div className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#afc4ff]/30 bg-[#afc4ff]/15">
-            <span className="text-[9px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
+            <span className="text-[12px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
           </div>
           {/* Connector line */}
           <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
@@ -176,10 +176,10 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             }}
           />
           <div className="support-callout border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
-            <div className="text-[9px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
+            <div className="text-[12px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
               AI Coach
             </div>
-            <p className="text-[14px] text-white/75 leading-[1.7]">{card.ai_reasoning}</p>
+            <p className="text-[14px] text-[var(--text-muted)] leading-[1.7]">{card.ai_reasoning}</p>
           </div>
         </div>
       </div>
@@ -192,20 +192,20 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
           <div className="flex items-center gap-1.5 mb-1.5">
             <Lightbulb className="h-3 w-3 text-[#b5dec2]/70 shrink-0" />
-            <span className="text-[10px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">
+            <span className="text-[12px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">
               Proposed strategy
             </span>
           </div>
-          <p className="text-sm text-white/75 leading-relaxed">{card.proposed_strategy}</p>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">{card.proposed_strategy}</p>
 
           {/* Inferred metric */}
           {card.inferred_metric && (
-            <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-start gap-1.5">
+            <div className="mt-2 pt-2 border-t border-[var(--line-soft)] flex items-start gap-1.5">
               <Ruler className="h-3 w-3 text-[#f0d99f]/60 shrink-0 mt-0.5" />
               <div>
                 <span className="text-xs text-[#f0d99f]/80">{card.inferred_metric}</span>
                 {card.inference_rationale && (
-                  <span className="text-xs text-white/30 ml-1.5">— {card.inference_rationale}</span>
+                  <span className="text-xs text-[var(--text-soft)] ml-1.5">— {card.inference_rationale}</span>
                 )}
               </div>
             </div>
@@ -216,14 +216,14 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
       {/* Evidence chips */}
       {card.evidence_found.length > 0 && (
         <div className="mx-4 mb-3">
-          <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+          <div className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-2">
             Evidence found
           </div>
           <div className="flex flex-wrap gap-1.5">
             {card.evidence_found.map((e, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-[10px] px-2.5 py-1 text-xs text-white/60 bg-white/[0.05] border border-white/[0.10] hover:border-white/[0.16] transition-colors"
+                className="inline-flex items-center gap-1 rounded-[10px] px-2.5 py-1 text-xs text-[var(--text-soft)] bg-[var(--surface-1)] border border-[var(--line-soft)] hover:border-[var(--line-strong)] transition-colors"
               >
                 <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
                 {e}
@@ -246,7 +246,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           disabled={disabled}
           placeholder="Share any relevant experience, projects, or context that wasn't in your resume…"
           rows={3}
-          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
           aria-label={`Additional context for: ${card.requirement}`}
         />
       </div>
@@ -282,7 +282,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             'flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
             state.showContextInput
               ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
-              : 'bg-white/[0.04] text-white/60 border-white/[0.08] hover:bg-white/[0.07] hover:text-white/80',
+              : 'bg-[var(--surface-1)] text-[var(--text-soft)] border-[var(--line-soft)] hover:bg-[var(--surface-2)] hover:text-[var(--text-muted)]',
           )}
           aria-label={
             state.showContextInput
@@ -305,7 +305,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             type="button"
             disabled={disabled}
             onClick={() => onChange({ showContextInput: false, contextText: '' })}
-            className="text-xs text-white/35 hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
+            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
             aria-label="Cancel adding context"
           >
             Cancel
@@ -319,7 +319,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           onClick={() => onChange({ action: 'skip', showContextInput: false })}
           title="This gap won't be addressed on your resume. That's OK — your direct matches are strong."
           className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white/35 border border-transparent hover:text-white/55 hover:border-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+            'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-[var(--text-soft)] border border-transparent hover:text-[var(--text-muted)] hover:border-[var(--line-soft)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
             !state.showContextInput && 'ml-auto',
           )}
           aria-label={`Skip gap for: ${card.requirement}`}
@@ -331,7 +331,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
       {/* What this means */}
       <div className="px-4 pb-3 -mt-1">
-        <p className="text-[11px] text-white/25 leading-relaxed">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
           {card.classification === 'missing'
             ? 'Approving lets the AI position adjacent experience to address this gap on your resume.'
             : 'Approving lets the AI strengthen how this requirement is presented using your related experience.'}
@@ -379,14 +379,14 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
       {/* Section header */}
       <div className="flex items-center gap-2">
         <MessageSquare className="h-4 w-4 text-[#afc4ff]" />
-        <h3 className="text-sm font-semibold text-white/90">Gap Coaching</h3>
-        <span className="ml-auto text-xs text-white/40">
+        <h3 className="text-sm font-semibold text-[var(--text-strong)]">Gap Coaching</h3>
+        <span className="ml-auto text-xs text-[var(--text-soft)]">
           {respondedCount} / {cards.length} reviewed
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 w-full overflow-hidden bg-white/[0.06]">
+      <div className="h-1 w-full overflow-hidden bg-[var(--surface-1)]">
         <div
           className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
           style={{ width: cards.length > 0 ? `${(respondedCount / cards.length) * 100}%` : '0%' }}
@@ -417,7 +417,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
             'w-full flex items-center justify-center gap-2 rounded-[12px] px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
             allResponded && !disabled
               ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
-              : 'border border-white/[0.06] text-white/30',
+              : 'border border-[var(--line-soft)] text-[var(--text-soft)]',
           )}
           aria-disabled={!allResponded || disabled}
           aria-label="Continue to resume writing"
@@ -426,16 +426,16 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
           <ArrowRight className="h-4 w-4" />
         </button>
         {!allResponded && (
-          <p className="text-center text-xs text-white/30 mt-2">
+          <p className="text-center text-xs text-[var(--text-soft)] mt-2">
             Review all {cards.length} gaps to continue
           </p>
         )}
         {allResponded && cardStates.every(s => s.action === 'skip') && (
-          <div className="support-callout mt-3 border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-            <p className="text-sm text-white/60">
+          <div className="support-callout mt-3 border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
+            <p className="text-sm text-[var(--text-soft)]">
               Your resume will highlight your direct matches — no inferred positioning will be used.
             </p>
-            <p className="text-xs text-white/35 mt-1">
+            <p className="text-xs text-[var(--text-soft)] mt-1">
               You can add context anytime to unlock new strategies.
             </p>
           </div>

@@ -27,7 +27,7 @@ const PHASE_NARRATIVE: Record<string, string> = {
 function NarrativeStatusLine({ phase }: { phase: string }) {
   const message = PHASE_NARRATIVE[phase] ?? PHASE_NARRATIVE.intake;
   return (
-    <p role="status" aria-live="polite" className="px-4 py-3 text-center text-sm font-medium text-white/70">
+    <p role="status" aria-live="polite" className="px-4 py-3 text-center text-sm font-medium text-[var(--text-muted)]">
       {message}
     </p>
   );
@@ -93,7 +93,7 @@ export function InterviewLayout({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Narrative status line */}
-      <div className="flex-shrink-0 border-b border-white/[0.08]">
+      <div className="flex-shrink-0 border-b border-[var(--line-soft)]">
         <NarrativeStatusLine phase={effectiveCurrentPhase} />
       </div>
 
@@ -118,7 +118,7 @@ export function InterviewLayout({
           {/* Welcome narrative during processing dead zone */}
           {showWelcomeNarrative && !victoryMessage && (
             <GlassCard className="p-6 text-center">
-              <p className="text-sm leading-relaxed text-white/70">
+              <p className="text-sm leading-relaxed text-[var(--text-muted)]">
                 We're reading your resume and studying the job posting. In a moment,
                 we'll show you what we found and start asking a few questions to
                 strengthen your positioning. This usually takes about 30 seconds.

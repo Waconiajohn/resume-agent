@@ -90,7 +90,7 @@ describe('PipelineFilters — stage filter pills', () => {
   it('applies inactive color class to non-active pills', () => {
     renderFilters({ activeStageFilter: 'applied' });
     const allButton = screen.getByText('All');
-    expect(allButton.className).toContain('text-white/35');
+    expect(allButton.className).toContain('text-[var(--text-soft)]');
   });
 
   it('applies active class to "All" pill when activeStageFilter is "all"', () => {

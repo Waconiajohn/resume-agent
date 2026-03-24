@@ -60,8 +60,8 @@ export function NetworkIntelligenceTab({ accessToken }: NetworkIntelligenceTabPr
   if (tabState === 'loading') {
     return (
       <div className="space-y-4">
-        <div className="h-24 motion-safe:animate-pulse rounded-[18px] bg-white/[0.04]" />
-        <div className="h-40 motion-safe:animate-pulse rounded-[18px] bg-white/[0.04]" />
+        <div className="h-24 motion-safe:animate-pulse rounded-[18px] bg-[var(--accent-muted)]" />
+        <div className="h-40 motion-safe:animate-pulse rounded-[18px] bg-[var(--accent-muted)]" />
       </div>
     );
   }
@@ -70,8 +70,8 @@ export function NetworkIntelligenceTab({ accessToken }: NetworkIntelligenceTabPr
     return (
       <div className="space-y-4">
         <GlassCard className="p-6">
-          <h2 className="mb-2 text-lg font-semibold text-white/90">Network Intelligence</h2>
-          <p className="text-sm text-white/60">
+          <h2 className="mb-2 text-lg font-semibold text-[var(--text-strong)]">Network Intelligence</h2>
+          <p className="text-sm text-[var(--text-soft)]">
             Upload your LinkedIn connections to discover job opportunities at companies where you
             already have contacts. We'll match open positions to your target roles and identify
             referral paths.
@@ -82,23 +82,23 @@ export function NetworkIntelligenceTab({ accessToken }: NetworkIntelligenceTabPr
 
         {uploadSummary && (
           <GlassCard className="p-6">
-            <h3 className="mb-3 text-sm font-semibold text-white/80">Import Summary</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[var(--text-muted)]">Import Summary</h3>
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-white/40">Connections</p>
-                <p className="text-lg font-medium text-white/90">{uploadSummary.validRows}</p>
+                <p className="text-[var(--text-soft)]">Connections</p>
+                <p className="text-lg font-medium text-[var(--text-strong)]">{uploadSummary.validRows}</p>
               </div>
               <div>
-                <p className="text-white/40">Companies</p>
-                <p className="text-lg font-medium text-white/90">{uploadSummary.uniqueCompanies}</p>
+                <p className="text-[var(--text-soft)]">Companies</p>
+                <p className="text-lg font-medium text-[var(--text-strong)]">{uploadSummary.uniqueCompanies}</p>
               </div>
               <div>
-                <p className="text-white/40">Duplicates</p>
-                <p className="text-lg font-medium text-white/90">{uploadSummary.duplicatesRemoved}</p>
+                <p className="text-[var(--text-soft)]">Duplicates</p>
+                <p className="text-lg font-medium text-[var(--text-strong)]">{uploadSummary.duplicatesRemoved}</p>
               </div>
               <div>
-                <p className="text-white/40">Skipped</p>
-                <p className="text-lg font-medium text-white/90">{uploadSummary.skippedRows}</p>
+                <p className="text-[var(--text-soft)]">Skipped</p>
+                <p className="text-lg font-medium text-[var(--text-strong)]">{uploadSummary.skippedRows}</p>
               </div>
             </div>
           </GlassCard>
@@ -111,7 +111,7 @@ export function NetworkIntelligenceTab({ accessToken }: NetworkIntelligenceTabPr
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white/90">Network Intelligence</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Network Intelligence</h2>
         <GlassButton variant="ghost" size="sm" onClick={handleReimport}>
           Re-import
         </GlassButton>

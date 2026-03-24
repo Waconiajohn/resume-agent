@@ -12,7 +12,7 @@ import { OpportunityCard } from './OpportunityCard';
 import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
-  { key: 'saved', label: 'Saved', color: 'text-white/50' },
+  { key: 'saved', label: 'Saved', color: 'text-[var(--text-soft)]' },
   { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
   { key: 'applied', label: 'Applied', color: 'text-[#f0d99f]' },
   { key: 'screening', label: 'Screening', color: 'text-[#f0d99f]' },
@@ -69,13 +69,13 @@ export function PipelineBoard({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Briefcase size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Application Pipeline</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Application Pipeline</h3>
         {loading && <Loader2 size={14} className="text-[#98b3ff] animate-spin ml-1" />}
         {onAddApplication && (
           <button
             type="button"
             onClick={onAddApplication}
-            className="ml-auto flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+            className="ml-auto flex items-center gap-1 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
           >
             <span className="text-base leading-none">+</span> Add Application
           </button>
@@ -105,8 +105,8 @@ export function PipelineBoard({
                   />
                 ))}
                 {cards.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-white/[0.05] bg-white/[0.01] p-3 text-center">
-                    <span className="text-[11px] text-white/20">Empty</span>
+                  <div className="rounded-xl border border-dashed border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 text-center">
+                    <span className="text-[13px] text-[var(--text-soft)]">Empty</span>
                   </div>
                 )}
               </PipelineColumn>

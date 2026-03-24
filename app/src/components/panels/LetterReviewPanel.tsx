@@ -35,7 +35,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
 
   const scoreColor =
     quality_score == null
-      ? 'text-white/50'
+      ? 'text-[var(--text-soft)]'
       : quality_score >= 80
         ? 'text-[#a8d7b8]'
         : quality_score >= 65
@@ -45,11 +45,11 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Cover Letter Review</span>
+            <span className="text-sm font-medium text-[var(--text-strong)]">Cover Letter Review</span>
           </div>
           {quality_score != null && (
             <span className={cn('text-xs font-semibold tabular-nums', scoreColor)}>
@@ -62,7 +62,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Guidance card */}
         <GlassCard className="p-3">
-          <p className="text-xs text-white/65 leading-relaxed">
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
             Review your cover letter below. Approve it as-is, request specific changes, or edit it directly before finalizing.
           </p>
         </GlassCard>
@@ -70,27 +70,27 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
         {/* Letter text */}
         {mode === 'edit_directly' ? (
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Editing Letter
             </label>
             <textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
               rows={18}
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2.5 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
               aria-label="Edit cover letter directly"
             />
           </div>
         ) : (
           <GlassCard className="p-4">
-            <p className="whitespace-pre-wrap text-xs text-white/85 leading-relaxed">{letter}</p>
+            <p className="whitespace-pre-wrap text-xs text-[var(--text-strong)] leading-relaxed">{letter}</p>
           </GlassCard>
         )}
 
         {/* Request changes textarea */}
         {mode === 'request_changes' && (
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               What would you like changed?
             </label>
             <textarea
@@ -98,7 +98,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. Strengthen the opening hook, make the tone less formal, add a reference to the company's recent product launch..."
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
               aria-label="Feedback for cover letter revision"
               autoFocus
             />
@@ -159,7 +159,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               <button
                 type="button"
                 onClick={() => { setFeedback(''); setMode('review'); }}
-                className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors py-1"
+                className="w-full text-center text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors py-1"
               >
                 Cancel
               </button>
@@ -182,7 +182,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               <button
                 type="button"
                 onClick={() => setMode('review')}
-                className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors py-1"
+                className="w-full text-center text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors py-1"
               >
                 Cancel
               </button>

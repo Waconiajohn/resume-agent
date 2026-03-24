@@ -76,8 +76,8 @@ export function EvidenceLibraryTab({
               onClick={() => setSourceFilter(opt.id)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                 sourceFilter === opt.id
-                  ? 'bg-white/[0.1] text-white'
-                  : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
+                  ? 'bg-[var(--surface-1)] text-[var(--text-strong)]'
+                  : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]'
               }`}
             >
               {opt.label}
@@ -89,10 +89,10 @@ export function EvidenceLibraryTab({
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           placeholder="Search evidence..."
-          className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-1.5 text-xs text-white/80 placeholder-white/30 outline-none focus:border-white/[0.22] sm:w-60"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-muted)] placeholder-[var(--text-soft)] outline-none focus:border-[var(--line-strong)] sm:w-60"
         />
         {resume && (
-          <span className="ml-auto text-xs text-white/40">
+          <span className="ml-auto text-xs text-[var(--text-soft)]">
             {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -102,17 +102,17 @@ export function EvidenceLibraryTab({
       {loading ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 motion-safe:animate-pulse rounded-xl bg-white/[0.04]" />
+            <div key={i} className="h-20 motion-safe:animate-pulse rounded-xl bg-[var(--accent-muted)]" />
           ))}
         </div>
       ) : !resume ? (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-white/40">No master resume found.</p>
-          <p className="mt-1 text-xs text-white/30">Complete a session to generate evidence items.</p>
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-6 py-12 text-center">
+          <p className="text-sm text-[var(--text-soft)]">No master resume found.</p>
+          <p className="mt-1 text-xs text-[var(--text-soft)]">Complete a session to generate evidence items.</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 text-center">
-          <p className="text-sm text-white/40">No evidence items match your filters.</p>
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-6 py-8 text-center">
+          <p className="text-sm text-[var(--text-soft)]">No evidence items match your filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

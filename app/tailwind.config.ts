@@ -12,7 +12,11 @@ export default {
         },
       },
       fontSize: {
-        body: ['0.8125rem', { lineHeight: '1.4' }],
+        // Override Tailwind defaults upward for 55+ executive audience
+        xs: ['0.8125rem', { lineHeight: '1.5' }],   // 13px (was 12px)
+        sm: ['0.9375rem', { lineHeight: '1.5' }],   // 15px (was 14px)
+        base: ['1rem', { lineHeight: '1.6' }],       // 16px (unchanged)
+        body: ['0.9375rem', { lineHeight: '1.5' }],  // 15px (was 13px)
       },
       keyframes: {
         'panel-enter': {

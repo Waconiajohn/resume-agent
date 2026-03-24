@@ -1,0 +1,366 @@
+- generic [ref=e2]:
+  - generic [ref=e849]:
+    - banner [ref=e850]:
+      - generic [ref=e851]:
+        - generic [ref=e852]:
+          - img [ref=e853]
+          - generic [ref=e855]: Resume Agent
+        - navigation [ref=e856]:
+          - button "Tools" [ref=e857] [cursor=pointer]
+          - button "Job Applier" [ref=e858] [cursor=pointer]
+          - button "CareerIQ" [ref=e859] [cursor=pointer]
+          - button "Dashboard" [ref=e860] [cursor=pointer]
+          - button "Pricing" [ref=e861] [cursor=pointer]
+          - button "Billing" [ref=e862] [cursor=pointer]
+          - button "Affiliate" [ref=e863] [cursor=pointer]
+        - generic [ref=e864]:
+          - generic [ref=e865]: jjschrup@yahoo.com
+          - button "Sign out" [ref=e866] [cursor=pointer]:
+            - img [ref=e867]
+    - generic [ref=e1239]:
+      - complementary [ref=e1240]:
+        - generic [ref=e1242]:
+          - button "Open AI jjschrup@yahoo.com" [ref=e1243] [cursor=pointer]:
+            - generic [ref=e1245]: AI
+            - generic [ref=e1246]:
+              - generic [ref=e1247]: AI jjschrup@yahoo.com
+              - generic [ref=e1248]: Getting Started
+          - button "Collapse sidebar" [expanded] [ref=e1249] [cursor=pointer]:
+            - img [ref=e1250]
+        - navigation [ref=e1252]:
+          - generic [ref=e1253]:
+            - generic [ref=e1254]: Your Foundation
+            - generic [ref=e1255]:
+              - button "Dashboard" [ref=e1638] [cursor=pointer]:
+                - img [ref=e1257]
+                - generic [ref=e1264]: Dashboard
+              - button "Resume Workshop" [ref=e1818] [cursor=pointer]:
+                - img [ref=e1267]
+                - generic [ref=e1272]: Resume Workshop
+          - generic [ref=e1273]:
+            - generic [ref=e1274]: Documents & Writing
+            - generic [ref=e1275]:
+              - button "Executive Bio" [ref=e1919] [cursor=pointer]:
+                - img [ref=e1277]
+                - generic [ref=e1282]: Executive Bio
+              - button "Case Studies" [ref=e2005] [cursor=pointer]:
+                - img [ref=e1284]
+                - generic [ref=e1288]: Case Studies
+              - button "Thank You Notes" [ref=e2103] [cursor=pointer]:
+                - img [ref=e1290]
+                - generic [ref=e1295]: Thank You Notes
+          - generic [ref=e1296]:
+            - generic [ref=e1297]: LinkedIn & Brand
+            - generic [ref=e1298]:
+              - button "LinkedIn Studio" [ref=e2157] [cursor=pointer]:
+                - img [ref=e1300]
+                - generic [ref=e1306]: LinkedIn Studio
+              - button "Content Calendar" [ref=e2177] [cursor=pointer]:
+                - img [ref=e1308]
+                - generic [ref=e1312]: Content Calendar
+              - button "Personal Brand" [ref=e2235] [cursor=pointer]:
+                - img [ref=e1314]
+                - generic [ref=e1318]: Personal Brand
+          - generic [ref=e1319]:
+            - generic [ref=e1320]: Job Search & Network
+            - generic [ref=e1321]:
+              - button "Job Command Center" [ref=e2389] [cursor=pointer]:
+                - img [ref=e1323]
+                - generic [ref=e1328]: Job Command Center
+              - button "Networking Hub" [ref=e2487] [cursor=pointer]:
+                - img [ref=e1330]
+                - generic [ref=e1337]: Networking Hub
+              - button "Network Intelligence" [ref=e2545] [cursor=pointer]:
+                - img [ref=e1339]
+                - generic [ref=e1346]: Network Intelligence
+          - generic [ref=e1347]:
+            - generic [ref=e1348]: Interview & Offers
+            - generic [ref=e1349]:
+              - button "Interview Lab" [ref=e2585] [cursor=pointer]:
+                - img [ref=e1351]
+                - generic [ref=e1356]: Interview Lab
+              - button "Salary Negotiation" [ref=e2704] [cursor=pointer]:
+                - img [ref=e1358]
+                - generic [ref=e1362]: Salary Negotiation
+              - button "90-Day Plan" [ref=e2797] [cursor=pointer]:
+                - img [ref=e1364]
+                - generic [ref=e1370]: 90-Day Plan
+          - generic [ref=e1372]:
+            - button "Financial Wellness" [ref=e2872] [cursor=pointer]:
+              - img [ref=e1374]
+              - generic [ref=e1378]: Financial Wellness
+            - button "Live Sessions Coaching, replays & office hours" [active] [ref=e2873] [cursor=pointer]:
+              - img [ref=e1380]
+              - generic [ref=e1383]:
+                - generic [ref=e1385]: Live Sessions
+                - generic [ref=e2874]: Coaching, replays & office hours
+        - generic [ref=e1387]: CareerIQ Platform
+      - main [ref=e1388]:
+        - generic [ref=e2875]:
+          - generic [ref=e2876]:
+            - heading "Live Sessions" [level=1] [ref=e2877]
+            - paragraph [ref=e2878]: Weekly coaching sessions with career experts — live interaction, not pre-recorded videos.
+          - generic [ref=e2879]:
+            - generic [ref=e2880]:
+              - img [ref=e2881]
+              - heading "Latest Session Summary" [level=3] [ref=e2884]
+            - generic [ref=e2885]:
+              - generic [ref=e2886]: Why-Me Story Workshop — Week 9
+              - generic [ref=e2887]: Sarah Chen · Feb 24
+            - generic [ref=e2888]:
+              - generic [ref=e2889]:
+                - img [ref=e2890]
+                - generic [ref=e2892]: Your Why-Me story should be speakable in 30 seconds — if you can't say it out loud, it's not ready.
+              - generic [ref=e2893]:
+                - img [ref=e2894]
+                - generic [ref=e2896]: The "Why-Not-Me" is just as powerful as the "Why-Me" — it sharpens your targeting and saves you from bad-fit applications.
+            - generic [ref=e2897]:
+              - img [ref=e2898]
+              - generic [ref=e2900]: Review your Why-Me story and check if Clarity is green — if not, focus on the first prompt.
+          - generic [ref=e2901]:
+            - generic [ref=e2903]:
+              - generic [ref=e2904]:
+                - img [ref=e2905]
+                - heading "This Week's Sessions" [level=3] [ref=e2907]
+                - generic [ref=e2908]: sample schedule
+              - generic [ref=e2909]:
+                - generic [ref=e2910]:
+                  - generic [ref=e2911]:
+                    - generic [ref=e2912]: Mon
+                    - generic [ref=e2913]: 11:00 AM
+                  - generic [ref=e2914]:
+                    - generic [ref=e2916]: Why-Me Story Workshop
+                    - generic [ref=e2917]: with Sarah Chen
+                  - button "Replay" [ref=e2919] [cursor=pointer]:
+                    - img [ref=e2920]
+                    - text: Replay
+                - generic [ref=e2922]:
+                  - generic [ref=e2923]:
+                    - generic [ref=e2924]: Tue
+                    - generic [ref=e2925]: 2:00 PM
+                  - generic [ref=e2926]:
+                    - generic [ref=e2928]: LinkedIn Headline Masterclass
+                    - generic [ref=e2929]: with Marcus Rivera
+                  - button "Replay" [ref=e2931] [cursor=pointer]:
+                    - img [ref=e2932]
+                    - text: Replay
+                - generic [ref=e2934]:
+                  - generic [ref=e2935]:
+                    - generic [ref=e2936]: Wed
+                    - generic [ref=e2937]: 11:00 AM
+                  - generic [ref=e2938]:
+                    - generic [ref=e2939]:
+                      - generic [ref=e2940]: Interview Confidence for Executives
+                      - generic [ref=e2941]: Live
+                    - generic [ref=e2945]: with Dr. Amy Walsh
+                  - button "Join" [ref=e2947] [cursor=pointer]
+                - generic [ref=e2948]:
+                  - generic [ref=e2949]:
+                    - generic [ref=e2950]: Thu
+                    - generic [ref=e2951]: 3:00 PM
+                  - generic [ref=e2952]:
+                    - generic [ref=e2954]: Networking Without the Cringe
+                    - generic [ref=e2955]: with James Okafor
+                  - button "Remind me" [ref=e2957] [cursor=pointer]
+                - generic [ref=e2958]:
+                  - generic [ref=e2959]:
+                    - generic [ref=e2960]: Fri
+                    - generic [ref=e2961]: 10:00 AM
+                  - generic [ref=e2962]:
+                    - generic [ref=e2964]: Resume Positioning Deep-Dive
+                    - generic [ref=e2965]: with Sarah Chen
+                  - button "Remind me" [ref=e2967] [cursor=pointer]
+            - generic [ref=e2968]:
+              - generic [ref=e2969]:
+                - generic [ref=e2970]:
+                  - img [ref=e2971]
+                  - heading "Ask Before the Session" [level=3] [ref=e2973]
+                - paragraph [ref=e2974]: Submit a question for Networking Without the Cringe — the host will address top questions live.
+                - generic [ref=e2975]:
+                  - textbox "What would you like the host to cover?" [ref=e2976]
+                  - button [disabled] [ref=e2977]:
+                    - img [ref=e2978]
+              - generic [ref=e2981]:
+                - generic [ref=e2982]:
+                  - img [ref=e2983]
+                  - heading "1:1 Office Hours" [level=3] [ref=e2985]
+                  - generic [ref=e2986]: Premium
+                - paragraph [ref=e2987]: Book a private 30-minute session with a career coach for personalized guidance on your search strategy.
+                - button "Upgrade to Book Office Hours" [ref=e2988] [cursor=pointer]:
+                  - img [ref=e2989]
+                  - text: Upgrade to Book Office Hours
+          - generic [ref=e2992]:
+            - generic [ref=e2993]:
+              - img [ref=e2994]
+              - heading "Replay Library" [level=3] [ref=e2996]
+              - generic [ref=e2997]: sample content
+            - generic [ref=e2998]:
+              - generic [ref=e3000] [cursor=pointer]:
+                - img [ref=e3002]
+                - generic [ref=e3005]:
+                  - generic [ref=e3006]: Why-Me Story Workshop — Week 9
+                  - generic [ref=e3007]:
+                    - generic [ref=e3008]: Sarah Chen
+                    - generic [ref=e3009]: ·
+                    - generic [ref=e3010]: Feb 24
+                    - generic [ref=e3011]: ·
+                    - img [ref=e3012]
+                    - generic [ref=e3015]: 47 min
+                  - generic [ref=e3016]: Because you're refining your Why-Me story
+                - button [ref=e3017]:
+                  - img [ref=e3018]
+              - generic [ref=e3021] [cursor=pointer]:
+                - img [ref=e3023]
+                - generic [ref=e3026]:
+                  - generic [ref=e3027]: LinkedIn Profile Optimization
+                  - generic [ref=e3028]:
+                    - generic [ref=e3029]: Marcus Rivera
+                    - generic [ref=e3030]: ·
+                    - generic [ref=e3031]: Feb 21
+                    - generic [ref=e3032]: ·
+                    - img [ref=e3033]
+                    - generic [ref=e3036]: 52 min
+                  - generic [ref=e3037]: Because you're working on LinkedIn
+                - button [ref=e3038]:
+                  - img [ref=e3039]
+              - generic [ref=e3042] [cursor=pointer]:
+                - img [ref=e3044]
+                - generic [ref=e3047]:
+                  - generic [ref=e3048]: Salary Negotiation Tactics
+                  - generic [ref=e3049]:
+                    - generic [ref=e3050]: Patricia Dunn
+                    - generic [ref=e3051]: ·
+                    - generic [ref=e3052]: Feb 19
+                    - generic [ref=e3053]: ·
+                    - img [ref=e3054]
+                    - generic [ref=e3057]: 38 min
+                  - generic [ref=e3058]: Recommended for your pipeline stage
+                - button [ref=e3059]:
+                  - img [ref=e3060]
+          - generic [ref=e3062]:
+            - generic [ref=e3064]:
+              - generic [ref=e3065]:
+                - img [ref=e3066]
+                - heading "Resource Library" [level=3] [ref=e3068]
+                - generic [ref=e3069]: 8 articles
+              - generic [ref=e3071]:
+                - img [ref=e3072]
+                - textbox "Search resources..." [ref=e3075]
+              - generic [ref=e3076]:
+                - button "All" [ref=e3077] [cursor=pointer]
+                - button "Resume Strategy" [ref=e3078] [cursor=pointer]
+                - button "Positioning" [ref=e3079] [cursor=pointer]
+                - button "Emotional Intelligence" [ref=e3080] [cursor=pointer]
+                - button "Job Search" [ref=e3081] [cursor=pointer]
+                - button "Negotiation" [ref=e3082] [cursor=pointer]
+                - button "LinkedIn" [ref=e3083] [cursor=pointer]
+              - generic [ref=e3084]:
+                - generic [ref=e3085] [cursor=pointer]:
+                  - img [ref=e3087]
+                  - generic [ref=e3090]:
+                    - generic [ref=e3091]: "The 1% Problem: Why Your Resume Misrepresents You"
+                    - generic [ref=e3092]: Most executives' resumes capture only 1% of their professional experience. Learn how to identify the hidden 99% through structured self-reflection.
+                    - generic [ref=e3093]:
+                      - generic [ref=e3094]: Resume Strategy
+                      - generic [ref=e3095]:
+                        - img [ref=e3096]
+                        - text: 5 min
+                - generic [ref=e3099] [cursor=pointer]:
+                  - img [ref=e3101]
+                  - generic [ref=e3103]:
+                    - generic [ref=e3104]: Building Your Benchmark Candidate Profile
+                    - generic [ref=e3105]: For every role you target, there's an ideal candidate profile. Learn how to reverse-engineer it and position yourself as that benchmark — the standard everyone else is measured against.
+                    - generic [ref=e3106]:
+                      - generic [ref=e3107]: Positioning
+                      - generic [ref=e3108]:
+                        - img [ref=e3109]
+                        - text: 7 min
+                - generic [ref=e3112] [cursor=pointer]:
+                  - img [ref=e3114]
+                  - generic [ref=e3116]:
+                    - generic [ref=e3117]: The Five Emotional Phases of Career Transition
+                    - generic [ref=e3118]: "From shock to acceptance: understanding the emotional arc of job loss and career change. Practical strategies for each phase based on 19 years of executive coaching."
+                    - generic [ref=e3119]:
+                      - generic [ref=e3120]: Emotional Intelligence
+                      - generic [ref=e3121]:
+                        - img [ref=e3122]
+                        - text: 6 min
+                - generic [ref=e3125] [cursor=pointer]:
+                  - img [ref=e3127]
+                  - generic [ref=e3130]:
+                    - generic [ref=e3131]: "Hidden Job Boards: Where 80% Don't Look"
+                    - generic [ref=e3132]: Google Job Board aggregates every job site, LinkedIn hidden postings get 1/100th the applicants, and Facebook Groups connect you to local hiring managers. Here's how to use them.
+                    - generic [ref=e3133]:
+                      - generic [ref=e3134]: Job Search
+                      - generic [ref=e3135]:
+                        - img [ref=e3136]
+                        - text: 4 min
+                - generic [ref=e3139] [cursor=pointer]:
+                  - img [ref=e3141]
+                  - generic [ref=e3143]:
+                    - generic [ref=e3144]: The Multi-Channel Application Protocol
+                    - generic [ref=e3145]: Apply where found, apply on the company site, find the hiring manager on LinkedIn, connect with a personalized message. Four steps that quadruple your response rate.
+                    - generic [ref=e3146]:
+                      - generic [ref=e3147]: Job Search
+                      - generic [ref=e3148]:
+                        - img [ref=e3149]
+                        - text: 5 min
+                - generic [ref=e3152] [cursor=pointer]:
+                  - img [ref=e3154]
+                  - generic [ref=e3156]:
+                    - generic [ref=e3157]: "Age as an Asset: Positioning Experience Correctly"
+                    - generic [ref=e3158]: "Traditional advice says hide your age. Better advice: position your 20+ years as exactly what makes you the benchmark candidate. Here's how to make experience work for you."
+                    - generic [ref=e3159]:
+                      - generic [ref=e3160]: Positioning
+                      - generic [ref=e3161]:
+                        - img [ref=e3162]
+                        - text: 6 min
+                - generic [ref=e3165] [cursor=pointer]:
+                  - img [ref=e3167]
+                  - generic [ref=e3169]:
+                    - generic [ref=e3170]: "Salary Negotiation: Never Give a Number First"
+                    - generic [ref=e3171]: Anchor around value delivery, not salary history. Total compensation matters more than base. Practice the uncomfortable silence. Three techniques that change the conversation.
+                    - generic [ref=e3172]:
+                      - generic [ref=e3173]: Negotiation
+                      - generic [ref=e3174]:
+                        - img [ref=e3175]
+                        - text: 5 min
+                - generic [ref=e3178] [cursor=pointer]:
+                  - img [ref=e3180]
+                  - generic [ref=e3182]:
+                    - generic [ref=e3183]: Your LinkedIn Headline Is Your Most Valuable Real Estate
+                    - generic [ref=e3184]: It appears in search results, connection requests, and every comment you leave. Replace your job title with your Why-Me statement — and watch engagement change.
+                    - generic [ref=e3185]:
+                      - generic [ref=e3186]: LinkedIn
+                      - generic [ref=e3187]:
+                        - img [ref=e3188]
+                        - text: 4 min
+            - generic [ref=e3192]:
+              - generic [ref=e3193]:
+                - img [ref=e3194]
+                - heading "Ask a Coach" [level=3] [ref=e3197]
+              - paragraph [ref=e3198]: Need personalized guidance? Submit a question and a career coach will respond within 1-2 business days.
+              - generic [ref=e3199]:
+                - generic [ref=e3200]:
+                  - generic [ref=e3201]: Topic
+                  - combobox [ref=e3202]:
+                    - option "Select a topic..." [selected]
+                    - option "Resume Strategy"
+                    - option "Interview Preparation"
+                    - option "Salary Negotiation"
+                    - option "Career Direction"
+                    - option "Emotional Support"
+                    - option "Other"
+                - generic [ref=e3203]:
+                  - generic [ref=e3204]: Your Question
+                  - textbox "Describe what you need help with..." [ref=e3205]
+                - generic [ref=e3206]:
+                  - generic [ref=e3207]: Urgency
+                  - generic [ref=e3208]:
+                    - button "Low" [ref=e3209] [cursor=pointer]
+                    - button "Normal" [ref=e3210] [cursor=pointer]
+                    - button "High" [ref=e3211] [cursor=pointer]
+                - button "Submit Request" [disabled]
+      - button "Open AI Coach" [ref=e1629] [cursor=pointer]:
+        - img [ref=e1630]
+  - status

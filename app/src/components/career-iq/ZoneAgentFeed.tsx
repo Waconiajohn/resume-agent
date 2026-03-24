@@ -75,28 +75,28 @@ function FeedItem({
       onClick={() => item.targetRoom && onNavigate?.(item.targetRoom)}
       className={cn(
         'group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150',
-        'hover:bg-white/[0.04]',
+        'hover:bg-[var(--surface-1)]',
         isOld && 'opacity-40',
       )}
     >
-      <div className="rounded-lg bg-white/[0.06] p-1.5 mt-0.5 flex-shrink-0">
+      <div className="rounded-lg bg-[var(--accent-muted)] p-1.5 mt-0.5 flex-shrink-0">
         <Icon size={14} className="text-[#98b3ff]" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[12px] font-medium text-white/70 truncate">
+          <span className="text-[12px] font-medium text-[var(--text-muted)] truncate">
             {item.agent}
           </span>
           <ArrowUpRight
             size={10}
-            className="text-white/0 group-hover:text-white/40 transition-colors flex-shrink-0"
+            className="text-transparent group-hover:text-[var(--text-soft)] transition-colors flex-shrink-0"
           />
         </div>
-        <div className="text-[12px] text-white/45 leading-snug mt-0.5">
+        <div className="text-[12px] text-[var(--text-soft)] leading-snug mt-0.5">
           {item.message}
         </div>
       </div>
-      <span className="text-[10px] text-white/30 flex-shrink-0 mt-0.5 tabular-nums">
+      <span className="text-[12px] text-[var(--text-soft)] flex-shrink-0 mt-0.5 tabular-nums">
         {timeAgo(item.timestamp)}
       </span>
     </button>
@@ -123,15 +123,15 @@ export function ZoneAgentFeed({ onNavigateRoom, realEvents }: ZoneAgentFeedProps
   return (
     <GlassCard className="p-5 w-full lg:w-[340px] flex-shrink-0">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-white/80">Agent Activity</h3>
-        <span className="text-[10px] text-white/30 tabular-nums">
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Agent Activity</h3>
+        <span className="text-[12px] text-[var(--text-soft)] tabular-nums">
           {recentItems.length} recent
         </span>
       </div>
 
       <div className="space-y-0.5 max-h-[400px] overflow-y-auto">
         {recentItems.length === 0 && historyItems.length === 0 ? (
-          <p className="px-3 py-6 text-[12px] text-white/35 text-center leading-relaxed">
+          <p className="px-3 py-6 text-[12px] text-[var(--text-soft)] text-center leading-relaxed">
             Your agents will report activity here as you use the platform.
           </p>
         ) : (
@@ -142,11 +142,11 @@ export function ZoneAgentFeed({ onNavigateRoom, realEvents }: ZoneAgentFeedProps
       </div>
 
       {historyItems.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-white/[0.06]">
+        <div className="mt-2 pt-2 border-t border-[var(--line-soft)]">
           <button
             type="button"
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/50 transition-colors w-full"
+            className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors w-full"
           >
             <ChevronDown
               size={12}

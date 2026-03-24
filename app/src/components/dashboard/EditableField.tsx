@@ -45,14 +45,14 @@ export function EditableField({
 
   if (!isEditing) {
     return (
-      <span className={cn('text-white/80', !value && 'italic text-white/30', className)}>
+      <span className={cn('text-[var(--text-muted)]', !value && 'italic text-[var(--text-soft)]', className)}>
         {value || placeholder || '—'}
       </span>
     );
   }
 
   const sharedClass = cn(
-    'w-full rounded-lg border border-white/[0.12] bg-white/[0.05] px-2 py-1 text-sm text-white/90 placeholder-white/30 outline-none focus:border-white/[0.24] focus:bg-white/[0.08]',
+    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] outline-none focus:border-[var(--line-strong)] focus:bg-[var(--surface-2)]',
     className,
   );
 

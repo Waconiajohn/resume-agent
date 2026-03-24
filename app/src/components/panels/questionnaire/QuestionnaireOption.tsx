@@ -6,7 +6,7 @@ import type { QuestionnaireOption as QuestionnaireOptionType } from '@/types/ses
 const SOURCE_BADGE: Record<NonNullable<QuestionnaireOptionType['source']>, { label: string; className: string }> = {
   resume: {
     label: 'From Resume',
-    className: 'border border-white/[0.14] bg-white/[0.06] text-white/76',
+    className: 'border border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-muted)]',
   },
   jd: {
     label: 'From JD',
@@ -14,11 +14,11 @@ const SOURCE_BADGE: Record<NonNullable<QuestionnaireOptionType['source']>, { lab
   },
   inferred: {
     label: 'Inferred',
-    className: 'bg-white/[0.08] text-white/50 border border-white/10',
+    className: 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
   },
   system: {
     label: 'System',
-    className: 'bg-white/[0.05] text-white/40 border border-white/[0.08]',
+    className: 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
   },
 };
 
@@ -44,8 +44,8 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
       className={cn(
         'p-3.5 cursor-pointer transition-all duration-200 min-h-[44px]',
         isSelected
-          ? 'border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
-          : 'hover:border-white/20 hover:bg-white/[0.10]',
+          ? 'border-[var(--line-strong)] bg-[var(--surface-1)] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
+          : 'hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]',
       )}
       role={selectionMode === 'single' ? 'radio' : 'checkbox'}
       tabIndex={0}
@@ -60,7 +60,7 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
           <div
             className={cn(
               'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition-all duration-200 flex items-center justify-center',
-              isSelected ? 'border-white/70 bg-white/70' : 'border-white/30 bg-transparent',
+              isSelected ? 'border-[var(--text-muted)] bg-[var(--text-muted)]' : 'border-[var(--text-soft)] bg-transparent',
             )}
             aria-hidden="true"
           >
@@ -71,7 +71,7 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
           <div
             className={cn(
               'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition-all duration-200 flex items-center justify-center',
-              isSelected ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30' : 'border-white/30 bg-transparent',
+              isSelected ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30' : 'border-[var(--text-soft)] bg-transparent',
             )}
             aria-hidden="true"
           >
@@ -89,7 +89,7 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
             <span
               className={cn(
                 'text-sm font-medium leading-snug',
-                isSelected ? 'text-white' : 'text-white/85',
+                isSelected ? 'text-[var(--text-strong)]' : 'text-[var(--text-strong)]',
               )}
             >
               {option.label}
@@ -97,7 +97,7 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
             {badge && (
             <span
               className={cn(
-                'shrink-0 rounded-md px-2 py-1 text-[9px] font-semibold uppercase tracking-wider',
+                'shrink-0 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-wider',
                 badge.className,
               )}
             >
@@ -106,13 +106,13 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
             )}
           </div>
           {option.description && (
-            <p className="mt-1 text-xs text-white/60 leading-relaxed">{option.description}</p>
+            <p className="mt-1 text-xs text-[var(--text-soft)] leading-relaxed">{option.description}</p>
           )}
         </div>
 
         {/* Selected checkmark (single mode only) */}
         {isSelected && selectionMode === 'single' && (
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-white/74" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
         )}
       </div>
     </GlassCard>

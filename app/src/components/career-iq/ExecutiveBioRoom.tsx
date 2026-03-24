@@ -74,16 +74,16 @@ function ActivityFeed({
     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
       {messages.length === 0 ? (
         <div className="text-center py-8">
-          <Loader2 size={20} className="text-white/20 mx-auto mb-2 animate-spin" />
-          <p className="text-[12px] text-white/30">Connecting...</p>
+          <Loader2 size={20} className="text-[var(--text-soft)] mx-auto mb-2 animate-spin" />
+          <p className="text-[12px] text-[var(--text-soft)]">Connecting...</p>
         </div>
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-white/70' : age <= 2 ? 'text-white/50' : age <= 5 ? 'text-white/35' : 'text-white/20';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#A396E2]' : 'bg-white/20')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#A396E2]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -116,18 +116,18 @@ function BioSectionCard({ title, content }: BioSectionCardProps) {
   }, [content]);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
       {/* Bio header row */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[13px] font-semibold text-[#A396E2]/90">{title}</h3>
         <div className="flex items-center gap-2">
           {/* Word count chip */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             <Hash className="h-2.5 w-2.5" />
             {wordCount}w
           </span>
           {/* Read time chip */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
             <Clock className="h-2.5 w-2.5" />
             ~{readTime}m
           </span>
@@ -136,10 +136,10 @@ function BioSectionCard({ title, content }: BioSectionCardProps) {
             type="button"
             onClick={handleCopy}
             className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border transition-all',
+              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] border transition-all',
               copied
                 ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
-                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
             {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
@@ -147,7 +147,7 @@ function BioSectionCard({ title, content }: BioSectionCardProps) {
           </button>
         </div>
       </div>
-      <p className="text-[13px] text-white/65 leading-relaxed whitespace-pre-wrap">{content}</p>
+      <p className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{content}</p>
     </div>
   );
 }
@@ -212,8 +212,8 @@ function ReportView({
             <User size={18} className="text-[#A396E2]" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-white/90">Executive Bio Collection</h2>
-            <p className="text-[13px] text-white/40">Your bios, ready to deploy across every channel</p>
+            <h2 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Collection</h2>
+            <p className="text-[13px] text-[var(--text-soft)]">Your bios, ready to deploy across every channel</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -244,15 +244,15 @@ function ReportView({
       {qualityScore !== null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Bio Collection Quality</span>
+            <span className="text-[13px] text-[var(--text-soft)]">Bio Collection Quality</span>
             <span className={cn(
-              'text-[11px] font-semibold',
+              'text-[13px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
             </span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
@@ -275,16 +275,16 @@ function ReportView({
         <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div
             className="prose prose-invert prose-sm max-w-none
-              prose-headings:text-white/85 prose-headings:font-semibold
-              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
               prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#A396E2]/90
-              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-              prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
-              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-              prose-strong:text-white/80
+              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
+              prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
+              prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-[var(--text-strong)]
               prose-em:text-[#f0d99f]/80
-              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
-              prose-hr:border-white/[0.06] prose-hr:my-6"
+              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-hr:border-[var(--line-soft)] prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
         </GlassCard>
@@ -392,8 +392,8 @@ export function ExecutiveBioRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Executive Bio Suite</h1>
-          <p className="text-[13px] text-white/40">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Suite</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Drafting {selectedFormats.length} bio{selectedFormats.length !== 1 ? 's' : ''} in {selectedLengths.join(' & ')} formats...
           </p>
         </div>
@@ -407,16 +407,16 @@ export function ExecutiveBioRoom() {
             return (
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
+                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
                   isActive ? 'bg-[#A396E2]/15 text-[#A396E2] border border-[#A396E2]/25'
                     : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20'
-                    : 'bg-white/[0.04] text-white/25 border border-white/[0.06]',
+                    : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
                   {isDone && <Check size={10} />}
                   {STAGE_LABELS[stage]}
                 </div>
-                {i < arr.length - 1 && <ChevronRight size={12} className="text-white/15 flex-shrink-0" />}
+                {i < arr.length - 1 && <ChevronRight size={12} className="text-[var(--text-soft)] flex-shrink-0" />}
               </div>
             );
           })}
@@ -429,10 +429,10 @@ export function ExecutiveBioRoom() {
               <Loader2 size={16} className="text-[#A396E2] animate-spin" />
             </div>
             <div>
-              <h3 className="text-[14px] font-semibold text-white/80">
+              <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
                 {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : 'Starting...'}
               </h3>
-              <p className="text-[12px] text-white/35">Crafting bios that position you as the benchmark</p>
+              <p className="text-[12px] text-[var(--text-soft)]">Crafting bios that position you as the benchmark</p>
             </div>
           </div>
           <ActivityFeed messages={activityMessages} currentStage={currentStage} />
@@ -441,7 +441,7 @@ export function ExecutiveBioRoom() {
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-white/25 hover:text-white/45 transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -454,14 +454,14 @@ export function ExecutiveBioRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Executive Bio Suite</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Suite</h1>
         </div>
         <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
-              <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
+              <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
@@ -481,8 +481,8 @@ export function ExecutiveBioRoom() {
           <User size={20} className="text-[#A396E2]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Executive Bio Suite</h1>
-          <p className="text-[13px] text-white/40">Generate professional bios for every channel — speaker, board, LinkedIn, and more</p>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Suite</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">Generate professional bios for every channel — speaker, board, LinkedIn, and more</p>
         </div>
       </div>
       <ContextLoadedBadge
@@ -493,7 +493,7 @@ export function ExecutiveBioRoom() {
       {/* Prior result */}
       {priorLoading && (
         <GlassCard className="p-4 mb-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading previous result...
           </div>
@@ -502,18 +502,18 @@ export function ExecutiveBioRoom() {
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <h3 className="text-sm font-medium text-[var(--text-muted)]">Previous Result</h3>
             <button
               type="button"
               onClick={clearPrior}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               New Bio Suite
             </button>
           </div>
           <div
-            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            className="prose prose-invert prose-sm max-w-none text-[var(--text-strong)] max-h-96 overflow-y-auto"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
           />
         </GlassCard>
@@ -523,11 +523,11 @@ export function ExecutiveBioRoom() {
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-4">
           <Award size={15} className="text-[#A396E2]" />
-          <h2 className="text-[14px] font-semibold text-white/75">Your Resume</h2>
+          <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Your Resume</h2>
         </div>
 
         {resumeLoading ? (
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading from Resume Strategist...
           </div>
@@ -540,7 +540,7 @@ export function ExecutiveBioRoom() {
             <button
               type="button"
               onClick={() => setResumeText('')}
-              className="text-[11px] text-white/25 hover:text-white/45 transition-colors"
+              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               Clear and paste manually
             </button>
@@ -556,7 +556,7 @@ export function ExecutiveBioRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
         )}
@@ -566,8 +566,8 @@ export function ExecutiveBioRoom() {
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-5">
           <LayoutGrid size={15} className="text-[#A396E2]" />
-          <h2 className="text-[14px] font-semibold text-white/75">Bio Formats</h2>
-          <span className="ml-auto text-[11px] text-white/30">Select all that apply</span>
+          <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Bio Formats</h2>
+          <span className="ml-auto text-[13px] text-[var(--text-soft)]">Select all that apply</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -582,13 +582,13 @@ export function ExecutiveBioRoom() {
                   'flex flex-col items-center gap-2 rounded-xl p-4 border text-center transition-all',
                   isSelected
                     ? 'bg-[#A396E2]/10 border-[#A396E2]/30 text-[#A396E2]'
-                    : 'bg-white/[0.02] border-white/[0.06] text-white/35 hover:bg-white/[0.04] hover:text-white/55',
+                    : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-soft)]',
                 )}
               >
                 <Icon size={18} />
                 <div>
                   <div className="text-[12px] font-semibold">{label}</div>
-                  <div className="text-[10px] opacity-60 mt-0.5">{description}</div>
+                  <div className="text-[12px] opacity-60 mt-0.5">{description}</div>
                 </div>
               </button>
             );
@@ -599,7 +599,7 @@ export function ExecutiveBioRoom() {
       {/* Length + optional fields */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
-          <h2 className="text-[14px] font-semibold text-white/75 mb-4">Bio Length</h2>
+          <h2 className="text-[14px] font-semibold text-[var(--text-muted)] mb-4">Bio Length</h2>
           <div className="flex gap-3">
             {LENGTH_OPTIONS.map(({ id, label, description }) => {
               const isSelected = selectedLengths.includes(id);
@@ -612,11 +612,11 @@ export function ExecutiveBioRoom() {
                     'flex-1 flex flex-col items-center gap-1 rounded-xl p-4 border transition-all',
                     isSelected
                       ? 'bg-[#98b3ff]/10 border-[#98b3ff]/30 text-[#98b3ff]'
-                      : 'bg-white/[0.02] border-white/[0.06] text-white/35 hover:bg-white/[0.04] hover:text-white/55',
+                      : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-soft)]',
                   )}
                 >
                   <span className="text-[13px] font-semibold">{label}</span>
-                  <span className="text-[11px] opacity-60">{description}</span>
+                  <span className="text-[13px] opacity-60">{description}</span>
                 </button>
               );
             })}
@@ -624,25 +624,25 @@ export function ExecutiveBioRoom() {
         </GlassCard>
 
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-4">
-          <h2 className="text-[14px] font-semibold text-white/75">Target Context <span className="text-[11px] font-normal text-white/30">optional</span></h2>
+          <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Target Context <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">Target Role</label>
+            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Role</label>
             <input
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Chief Operating Officer"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">Target Industry</label>
+            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Industry</label>
             <input
               type="text"
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g. Healthcare Technology"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
         </GlassCard>
@@ -650,7 +650,7 @@ export function ExecutiveBioRoom() {
 
       {/* Submit */}
       <div className="flex items-center justify-between pt-2">
-        <p className="text-[12px] text-white/30">
+        <p className="text-[12px] text-[var(--text-soft)]">
           Generating {selectedFormats.length || 0} bio{selectedFormats.length !== 1 ? 's' : ''} × {selectedLengths.length || 0} length{selectedLengths.length !== 1 ? 's' : ''}.
           Takes 1-2 minutes.
         </p>

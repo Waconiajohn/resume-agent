@@ -83,10 +83,10 @@ export function EmptyStateIllustration({
   message?: string;
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 py-8 text-white/40', className)}>
+    <div className={cn('flex flex-col items-center justify-center gap-3 py-8 text-[var(--text-soft)]', className)}>
       {illustrations[variant]}
       {message && (
-        <p className="text-xs text-white/40 text-center max-w-[200px]">{message}</p>
+        <p className="text-xs text-[var(--text-soft)] text-center max-w-[200px]">{message}</p>
       )}
     </div>
   );

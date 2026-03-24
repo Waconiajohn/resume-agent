@@ -20,8 +20,8 @@ export function ResumePanel({ resume }: ResumePanelProps) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <FileText className="h-10 w-10 text-white/20" />
-          <p className="text-sm text-white/60">
+          <FileText className="h-10 w-10 text-[var(--text-soft)]" />
+          <p className="text-sm text-[var(--text-soft)]">
             Your tailored resume will appear here as we work together.
           </p>
         </div>
@@ -95,11 +95,11 @@ export function ResumePanel({ resume }: ResumePanelProps) {
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Resume Preview</span>
+      <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--text-strong)]">Resume Preview</span>
         <div className="flex items-center gap-2">
           {resume.ats_score > 0 && (
-            <span className="rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/78">
+            <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
               ATS {resume.ats_score}%
             </span>
           )}

@@ -2113,7 +2113,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runTruthVerification(input);
 
-      expect(result).toEqual(TRUTH_OUTPUT);
+      expect(result).toMatchObject(TRUTH_OUTPUT);
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
@@ -2127,7 +2127,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runTruthVerification(input);
 
-      expect(result).toEqual(TRUTH_OUTPUT);
+      expect(result).toMatchObject(TRUTH_OUTPUT);
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 

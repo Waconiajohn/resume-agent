@@ -391,7 +391,23 @@ function buildUserMessage(input: ResumeWriterInput): string {
   );
 
   for (const s of input.approved_strategies) {
-    parts.push(`- ${s.requirement}: ${s.strategy.positioning}${s.strategy.inferred_metric ? ` [use: ${s.strategy.inferred_metric}]` : ''}`);
+    const metricNote = s.strategy.inferred_metric ? ` [use: ${s.strategy.inferred_metric}]` : '';
+    const baseLine = `- ${s.requirement}: ${s.strategy.positioning}${metricNote}`;
+    if (!s.target_section || s.target_section === 'auto') {
+      parts.push(baseLine);
+    } else if (s.target_section === 'experience' && s.target_company) {
+      parts.push(baseLine);
+      parts.push(`  PLACEMENT: Experience bullets for ${s.target_company}`);
+    } else {
+      const sectionLabel: Record<string, string> = {
+        summary: 'Executive Summary',
+        competencies: 'Core Competencies',
+        accomplishments: 'Selected Accomplishments',
+        experience: 'Experience (most recent role)',
+      };
+      parts.push(baseLine);
+      parts.push(`  PLACEMENT: ${sectionLabel[s.target_section] ?? s.target_section}`);
+    }
   }
 
   parts.push(

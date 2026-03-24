@@ -32,8 +32,8 @@ function isGenericConcernQuestion(value: string | undefined): boolean {
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-md border border-white/[0.10] bg-white/[0.06] px-4 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-        <p className="text-sm leading-6 text-white/88">{content}</p>
+      <div className="max-w-[85%] rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <p className="text-sm leading-6 text-[var(--text-strong)]">{content}</p>
       </div>
     </div>
   );
@@ -68,7 +68,7 @@ function AssistantBubble({
     <div className="flex justify-start">
       <div className="max-w-[92%] space-y-2">
         <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-          <p className="text-sm leading-6 text-white/76">{message.content}</p>
+          <p className="text-sm leading-6 text-[var(--text-muted)]">{message.content}</p>
           {visibleQuestion && (
             <p className="mt-2 text-xs italic text-[#f0d99f]/85">
               Next question: {visibleQuestion}
@@ -78,10 +78,10 @@ function AssistantBubble({
 
         {message.suggestedLanguage && (
           <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
+            <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
               Suggested Resume Language
             </span>
-            <p className="mt-1 text-xs leading-5 text-white/58">
+            <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
               Work directly in this box, then apply the draft when it says what you mean.
             </p>
             <textarea
@@ -89,7 +89,7 @@ function AssistantBubble({
               onChange={(event) => setDraftValue(event.target.value)}
               rows={6}
               aria-label="Edit final review draft"
-              className="mt-3 min-h-[160px] w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
+              className="mt-3 min-h-[160px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
             />
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               <button
@@ -114,9 +114,9 @@ function AssistantBubble({
         )}
 
         {!message.suggestedLanguage && message.recommendedNextAction && (
-          <div className="rounded-md border border-white/[0.06] bg-white/[0.025] px-3 py-2">
-            <p className="text-[11px] text-white/42">
-              Recommended next step: <span className="text-white/60">{message.recommendedNextAction.replaceAll('_', ' ')}</span>
+          <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+            <p className="text-[13px] text-[var(--text-soft)]">
+              Recommended next step: <span className="text-[var(--text-muted)]">{message.recommendedNextAction.replaceAll('_', ' ')}</span>
             </p>
           </div>
         )}
@@ -246,7 +246,7 @@ export function FinalReviewConcernThread({
           <Sparkles className="h-3.5 w-3.5 text-[#b5dec2]" />
           <span className="text-sm font-medium text-[#b5dec2]">Accepted Final Review edit</span>
         </div>
-        <p className="mt-2 text-sm leading-6 text-white/70">&ldquo;{resolvedLanguage}&rdquo;</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">&ldquo;{resolvedLanguage}&rdquo;</p>
       </div>
     );
   }
@@ -254,31 +254,31 @@ export function FinalReviewConcernThread({
   return (
     <div className="room-shell mt-3 overflow-hidden border-[#afc4ff]/12 bg-black/15" data-testid="final-review-thread">
       {messages.length === 0 && (
-        <div className="space-y-3 border-b border-white/[0.06] px-4 py-4">
-          <div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/42">
+        <div className="space-y-3 border-b border-[var(--line-soft)] px-4 py-4">
+          <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
               What needs to be fixed
             </p>
-            <p className="mt-2 text-base leading-7 text-white/82">
+            <p className="mt-2 text-base leading-7 text-[var(--text-strong)]">
               {context.relatedRequirement ?? context.observation}
             </p>
           </div>
 
           <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#afc4ff]">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#afc4ff]">
               Best next detail to add
             </p>
-            <p className="mt-2 text-sm leading-6 text-white/76">
+            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
               {context.clarifyingQuestion ?? context.fixStrategy}
             </p>
           </div>
 
           {context.suggestedResumeEdit && (
             <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
                 Suggested rewrite to start from
               </p>
-              <p className="mt-1 text-xs leading-5 text-white/58">
+              <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
                 Start here if this sounds close. Edit it until it says exactly what you mean, then send it to review.
               </p>
               <textarea
@@ -286,7 +286,7 @@ export function FinalReviewConcernThread({
                 onChange={(event) => setStarterDraftValue(event.target.value)}
                 rows={5}
                 aria-label="Edit the suggested final review rewrite"
-                className="mt-3 min-h-[150px] w-full resize-y rounded-md border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-6 text-white/88 outline-none transition-colors focus:border-white/[0.24]"
+                className="mt-3 min-h-[150px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
               />
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <button
@@ -327,12 +327,12 @@ export function FinalReviewConcernThread({
       )}
 
       {!resolvedLanguage && (
-        <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-3 py-2.5">
+        <div className="flex flex-wrap gap-2 border-t border-[var(--line-soft)] px-3 py-2.5">
           <button
             type="button"
             onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
+            className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
           >
             Ask AI What Detail Is Missing
           </button>
@@ -340,7 +340,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestDraft}
             disabled={isLoading}
-            className="rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:opacity-40"
+            className="rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:opacity-40"
           >
             Draft Stronger Version
           </button>
@@ -349,7 +349,7 @@ export function FinalReviewConcernThread({
               type="button"
               onClick={requestAlternative}
               disabled={isLoading}
-              className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-40"
             >
               Try Another Version
             </button>
@@ -358,7 +358,7 @@ export function FinalReviewConcernThread({
             <button
               type="button"
               onClick={onCloseThread}
-              className="rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/48 transition-colors hover:bg-white/[0.05] hover:text-white/70"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
             >
               Skip for Now
             </button>
@@ -375,7 +375,7 @@ export function FinalReviewConcernThread({
               type="button"
               onClick={handleRetry}
               disabled={isLoading}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[#afc4ff] transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[#afc4ff] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-30"
             >
               <RotateCcw className="h-3 w-3" />
               Retry
@@ -384,7 +384,7 @@ export function FinalReviewConcernThread({
         </div>
       )}
 
-      <div className="flex items-end gap-2 border-t border-white/[0.06] px-3 py-2.5">
+      <div className="flex items-end gap-2 border-t border-[var(--line-soft)] px-3 py-2.5">
         <textarea
           ref={inputRef}
           value={inputValue}
@@ -399,7 +399,7 @@ export function FinalReviewConcernThread({
             : 'Add the next detail or ask AI for a stronger version...'}
           rows={1}
           disabled={isLoading}
-          className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-sm leading-6 text-white/86 transition-colors focus:outline-none disabled:opacity-50"
+          className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-sm leading-6 text-[var(--text-strong)] transition-colors focus:outline-none disabled:opacity-50"
           style={{ minHeight: 110, maxHeight: 220 }}
         />
         <button

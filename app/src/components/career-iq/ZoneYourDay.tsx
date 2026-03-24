@@ -33,12 +33,12 @@ function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   const colors: Record<SignalLevel, string> = {
     green: 'bg-[#b5dec2]',
     yellow: 'bg-[#f0d99f]',
-    red: 'bg-white/20',
+    red: 'bg-[var(--line-strong)]',
   };
   return (
     <div className="flex items-center gap-1.5">
       <div className={cn('h-2.5 w-2.5 rounded-full transition-colors duration-500', colors[level])} />
-      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[13px] text-[var(--text-soft)]">{label}</span>
     </div>
   );
 }
@@ -51,10 +51,10 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         {/* Left: Greeting + Insight */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-white/90">
+          <h2 className="text-lg font-semibold text-[var(--text-strong)]">
             Good {getTimeOfDay()}, {displayName}
           </h2>
-          <p className="mt-2 text-[14px] leading-relaxed text-white/60 max-w-xl">
+          <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-soft)] max-w-xl">
             <Sparkles size={14} className="inline mr-1.5 text-[#98b3ff] -mt-0.5" />
             {getRotatingInsight(dashboardState)}
           </p>
@@ -71,7 +71,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
               <button
                 type="button"
                 onClick={onRefineWhyMe}
-                className="flex items-center gap-1.5 text-[12px] text-white/35 hover:text-white/55 transition-colors"
+                className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
               >
                 <Pencil size={12} />
                 Refine story
@@ -82,8 +82,8 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
 
         {/* Right: profile signals */}
         <div className="flex flex-col items-end gap-3 flex-shrink-0">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-            <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
+            <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
               Career Profile Signals
             </div>
             <div className="flex gap-4">

@@ -26,11 +26,11 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
   const sourceBadge = {
     resume: {
       label: 'From Resume',
-      className: 'border border-white/[0.14] bg-white/[0.06] text-white/76',
+      className: 'border border-[var(--line-strong)] bg-[var(--accent-muted)] text-[var(--text-muted)]',
     },
     inferred: {
       label: 'Inferred',
-      className: 'bg-white/[0.08] text-white/50 border border-white/10',
+      className: 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
     },
     jd: {
       label: 'From JD',
@@ -46,8 +46,8 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
       className={cn(
         'p-3.5 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
         isSelected
-          ? 'border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
-          : 'hover:border-white/20 hover:bg-white/[0.10]',
+          ? 'border-[var(--line-strong)] bg-[var(--accent-muted)] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
+          : 'hover:border-[var(--line-strong)] hover:bg-[var(--accent-muted)]',
       )}
       onClick={onClick}
       onKeyDown={(e: React.KeyboardEvent) => {
@@ -64,12 +64,12 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
             'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition-all duration-200 flex items-center justify-center',
             isSelected
               ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30'
-              : 'border-white/30 bg-transparent',
+              : 'border-[var(--line-strong)] bg-transparent',
           )}
           aria-hidden="true"
         >
           {isSelected && (
-            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none">
+            <svg className="h-2.5 w-2.5 text-[var(--text-strong)]" viewBox="0 0 10 10" fill="none">
               <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
@@ -81,7 +81,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
             <span
               className={cn(
                 'text-sm font-medium leading-snug',
-                isSelected ? 'text-white' : 'text-white/85',
+                isSelected ? 'text-[var(--text-strong)]' : 'text-[var(--text-strong)]',
               )}
             >
               {label}
@@ -89,7 +89,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
             {/* Source badge */}
             <span
               className={cn(
-                'shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider',
+                'shrink-0 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-wider',
                 sourceBadge.className,
               )}
             >
@@ -97,7 +97,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
             </span>
           </div>
           {description && (
-            <p className="mt-1 text-xs text-white/60 leading-relaxed">{description}</p>
+            <p className="mt-1 text-xs text-[var(--text-soft)] leading-relaxed">{description}</p>
           )}
 
           {/* Inline edit textarea — shown when selected */}
@@ -110,11 +110,11 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
               rows={2}
               aria-label={`Edit suggestion: ${label}`}
               className={cn(
-                'mt-2 w-full resize-none rounded-lg border bg-white/[0.06] px-3 py-2',
-                'text-xs text-white/85 placeholder:text-white/35',
+                'mt-2 w-full resize-none rounded-lg border bg-[var(--accent-muted)] px-3 py-2',
+                'text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
                 'backdrop-blur-xl transition-all duration-200',
                 'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
-                'border-white/[0.15] focus:border-white/25',
+                'border-[var(--line-strong)] focus:border-[var(--line-strong)]',
               )}
               placeholder="Edit this suggestion or leave as-is..."
             />
@@ -123,7 +123,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
 
         {/* Selected checkmark */}
         {isSelected && (
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-white/74" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
         )}
       </div>
     </GlassCard>
@@ -149,17 +149,17 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             {/* Label pill */}
             <span
               className={cn(
-                'shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap',
+                'shrink-0 rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wider whitespace-nowrap',
                 isComplete
                   ? 'bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/25'
-                  : 'bg-white/[0.06] text-white/45 border border-white/[0.10]',
+                  : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
               )}
             >
               {cat.label}
             </span>
             {/* Progress track */}
             <div
-              className="flex-1 h-1.5 overflow-hidden bg-white/[0.08]"
+              className="flex-1 h-1.5 overflow-hidden bg-[var(--accent-muted)]"
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}
@@ -175,7 +175,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
               />
             </div>
             {/* Count */}
-            <span className="shrink-0 text-[10px] text-white/35 tabular-nums">
+            <span className="shrink-0 text-[12px] text-[var(--text-soft)] tabular-nums">
               {cat.answered}/{cat.total}
             </span>
           </div>
@@ -195,15 +195,15 @@ function WhyThisQuestion({ requirements }: { requirements: string[] }) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1.5 text-[11px] text-white/45 transition-colors hover:text-white/65"
+        className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
       >
         <ChevronDown className={cn('h-3 w-3 transition-transform', isOpen && 'rotate-180')} />
         Why we're asking
       </button>
       {isOpen && (
         <GlassCard className="mt-2 px-3 py-2.5">
-          <p className="text-xs text-white/60 leading-relaxed">
-            This question helps us address: <span className="text-white/75">{requirements.join(', ')}</span>.
+          <p className="text-xs text-[var(--text-soft)] leading-relaxed">
+            This question helps us address: <span className="text-[var(--text-muted)]">{requirements.join(', ')}</span>.
             A strong answer here will strengthen your positioning for this role.
           </p>
         </GlassCard>
@@ -336,10 +336,10 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {suggestions.length > 0 && (
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
               Select Your Answer
             </span>
-            <span className="text-[11px] text-white/55">
+            <span className="text-[13px] text-[var(--text-soft)]">
               Select one or more suggestions. Click to edit any selection.
             </span>
           </div>
@@ -367,10 +367,10 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {/* Custom answer textarea */}
       <div className="relative">
         <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-md border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+          <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
             Your Answer
           </span>
-          <span className="text-[11px] text-white/48">
+          <span className="text-[13px] text-[var(--text-soft)]">
             {hasSelection
               ? 'Add extra context or leave blank to submit selected suggestions.'
               : 'Type your own answer, or select suggestions above.'}
@@ -383,13 +383,13 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
           rows={3}
           aria-label="Custom answer"
           className={cn(
-            'w-full resize-none rounded-xl border bg-white/[0.06] px-3.5 py-2.5',
-            'text-sm text-white/85 placeholder:text-white/35',
+            'w-full resize-none rounded-xl border bg-[var(--accent-muted)] px-3.5 py-2.5',
+            'text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
             'backdrop-blur-xl transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
             hasSelection
-              ? 'border-white/[0.2] focus:border-white/[0.26]'
-              : 'border-white/[0.12] focus:border-white/25',
+              ? 'border-[var(--line-strong)] focus:border-[var(--line-strong)]'
+              : 'border-[var(--line-soft)] focus:border-[var(--line-strong)]',
           )}
         />
       </div>
@@ -446,15 +446,15 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Panel header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Why Me Interview</span>
+            <span className="text-sm font-medium text-[var(--text-strong)]">Why Me Interview</span>
           </div>
           {/* Show simple counter only when no category progress */}
           {questions_total > 0 && !hasCategoryProgress && (
-            <span className="text-xs font-medium text-white/50" aria-label={`Question ${displayedIndex} of ${questions_total}`}>
+            <span className="text-xs font-medium text-[var(--text-soft)]" aria-label={`Question ${displayedIndex} of ${questions_total}`}>
               {displayedIndex} / {questions_total}
             </span>
           )}
@@ -467,7 +467,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
           /* Fallback: simple overall progress bar */
           questions_total > 0 && (
             <div
-              className="mt-2 h-1.5 w-full overflow-hidden bg-white/[0.10]"
+              className="mt-2 h-1.5 w-full overflow-hidden bg-[var(--accent-muted)]"
               role="progressbar"
               aria-valuenow={progressPct}
               aria-valuemin={0}
@@ -501,7 +501,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
                 <div className="w-0.5 self-stretch rounded-full bg-[#afc4ff]/50" aria-hidden="true" />
                 <div className="flex items-center gap-1.5">
                   <GitBranch className="h-3 w-3 text-[#afc4ff]/70" aria-hidden="true" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
+                  <span className="text-[12px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
                     Follow-up
                   </span>
                 </div>
@@ -510,18 +510,18 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
 
             {/* Question text — indented slightly when it's a follow-up */}
             <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-[#afc4ff]/25')}>
-              <p className="text-base font-medium text-white leading-snug">
+              <p className="text-base font-medium text-[var(--text-strong)] leading-snug">
                 {current_question.question_text}
               </p>
 
               {/* JD requirement map badges */}
               {Array.isArray(current_question.requirement_map) && current_question.requirement_map.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Helps address">
-                  <span className="text-[10px] text-white/40 self-center">Helps address:</span>
+                  <span className="text-[12px] text-[var(--text-soft)] self-center">Helps address:</span>
                   {current_question.requirement_map.map((req) => (
                     <span
                       key={req}
-                      className="rounded-md bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#afc4ff]/80"
+                      className="rounded-md bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.08em] text-[#afc4ff]/80"
                     >
                       {req}
                     </span>
@@ -539,9 +539,9 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             {current_question.context && (
               <GlassCard className="px-3.5 py-2.5">
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="text-[11px] text-white/50">Context / guidance</span>
+                  <span className="text-[13px] text-[var(--text-soft)]">Context / guidance</span>
                 </div>
-                <p className="text-xs text-white/55 leading-relaxed">
+                <p className="text-xs text-[var(--text-soft)] leading-relaxed">
                   {current_question.context}
                 </p>
               </GlassCard>
@@ -559,8 +559,8 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
           /* Empty state while question loads */
           <div className="flex h-full items-center justify-center py-16">
             <div className="flex flex-col items-center gap-3 text-center">
-              <MessageSquare className="h-8 w-8 text-white/20" aria-hidden="true" />
-              <p className="text-sm text-white/40">
+              <MessageSquare className="h-8 w-8 text-[var(--text-soft)]" aria-hidden="true" />
+              <p className="text-sm text-[var(--text-soft)]">
                 Loading next question...
               </p>
             </div>

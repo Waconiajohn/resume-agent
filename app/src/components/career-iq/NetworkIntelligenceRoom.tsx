@@ -95,14 +95,14 @@ export function NetworkIntelligenceRoom() {
         return (
           <div className="space-y-6">
             {/* Intro card */}
-            <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-[#98b3ff]/[0.06] to-white/[0.02] p-6">
+            <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-[#98b3ff]/[0.06] to-white/[0.02] p-6">
               <div className="flex items-start gap-4">
                 <div className="h-10 w-10 rounded-xl bg-[#98b3ff]/10 flex items-center justify-center flex-shrink-0">
                   <Upload size={18} className="text-[#98b3ff]" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-white/85 mb-1">Import Your LinkedIn Network</h3>
-                  <p className="text-[13px] text-white/45 leading-relaxed">
+                  <h3 className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Import Your LinkedIn Network</h3>
+                  <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
                     Upload your LinkedIn connections export to discover job opportunities at companies where
                     you already have contacts. We match open positions to your target roles and surface
                     warm referral paths — so you bypass the applicant queue.
@@ -124,8 +124,8 @@ export function NetworkIntelligenceRoom() {
                     { label: 'Skipped', value: uploadSummary.skippedRows },
                   ].map(({ label, value }) => (
                     <div key={label} className="text-center">
-                      <div className="text-[22px] font-bold text-white/85 tabular-nums">{value}</div>
-                      <div className="text-[11px] text-white/35 mt-0.5">{label}</div>
+                      <div className="text-[22px] font-bold text-[var(--text-strong)] tabular-nums">{value}</div>
+                      <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{label}</div>
                     </div>
                   ))}
                 </div>
@@ -156,8 +156,8 @@ export function NetworkIntelligenceRoom() {
       {/* Room header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Network Intelligence</h1>
-          <p className="text-[13px] text-white/40">
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">Network Intelligence</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Find jobs where your network gives you an inside track. Warm referrals beat cold applications every time.
           </p>
         </div>
@@ -189,7 +189,7 @@ export function NetworkIntelligenceRoom() {
       )}
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-1">
+      <div className="flex items-center gap-1 rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -206,15 +206,15 @@ export function NetworkIntelligenceRoom() {
                 isActive
                   ? 'bg-[#98b3ff]/10 text-[#98b3ff] shadow-sm'
                   : isLocked
-                    ? 'text-white/20 cursor-not-allowed'
-                    : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]',
+                    ? 'text-[var(--text-soft)] cursor-not-allowed'
+                    : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
               )}
             >
               <Icon
                 size={15}
                 className={cn(
                   'flex-shrink-0',
-                  isActive ? 'text-[#98b3ff]' : isLocked ? 'text-white/15' : 'text-white/35',
+                  isActive ? 'text-[#98b3ff]' : isLocked ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]',
                 )}
               />
               <span className="hidden sm:inline">{tab.label}</span>

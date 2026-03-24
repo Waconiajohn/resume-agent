@@ -13,7 +13,7 @@ export function StatusBadge({
     case 'strong':
       return (
         <span
-          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#b5dec2',
             backgroundColor: 'rgba(181,222,194,0.08)',
@@ -28,7 +28,7 @@ export function StatusBadge({
     case 'repositioned':
       return (
         <span
-          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#afc4ff',
             backgroundColor: 'rgba(175,196,255,0.08)',
@@ -43,7 +43,7 @@ export function StatusBadge({
     case 'gap':
       return (
         <span
-          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#f0b8b8',
             backgroundColor: 'rgba(240,184,184,0.08)',

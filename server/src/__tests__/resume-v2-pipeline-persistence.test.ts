@@ -76,6 +76,10 @@ vi.mock('../agents/resume-v2/orchestrator.js', () => ({
   runV2Pipeline: mockRunV2Pipeline,
 }));
 
+vi.mock('../lib/career-profile-context.js', () => ({
+  loadCareerProfileContext: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('../lib/llm.js', () => ({
   llm: { chat: vi.fn() },
 }));
@@ -537,13 +541,16 @@ describe('GET /api/resume-v2/:sessionId/result — null/empty tailored_sections'
     expect(body).not.toHaveProperty('pipeline_data');
   });
 
-  it('still requires pipeline_status === "complete" before checking tailored_sections', async () => {
-    // Even with a stored snapshot, an incomplete pipeline must return 409.
+  it('returns v2 snapshot with running status when pipeline is still in progress', async () => {
+    // A v2 snapshot is returned immediately when available, even during a running
+    // pipeline — the caller uses the embedded status field to check completion.
     const chain = buildSingleChain({
       data: {
         id: SESSION_ID,
         user_id: 'test-user-123',
         pipeline_status: 'running',
+        pipeline_stage: 'research',
+        error_message: null,
         tailored_sections: FULL_V2_SNAPSHOT,
       },
       error: null,
@@ -552,8 +559,9 @@ describe('GET /api/resume-v2/:sessionId/result — null/empty tailored_sections'
 
     const res = await callApp(`/api/resume-v2/${SESSION_ID}/result`);
 
-    expect(res.status).toBe(409);
-    const body = await res.json() as { error: string; status: string };
+    expect(res.status).toBe(200);
+    const body = await res.json() as { version: string; status: string };
+    expect(body.version).toBe('v2');
     expect(body.status).toBe('running');
   });
 
@@ -759,13 +767,17 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
     expect(snapshot.pipeline_data['assembly']).toEqual({ summary: 'done' });
   });
 
-  it('sets pipeline_status to "error" and does NOT write a snapshot when pipeline throws', async () => {
+  it('sets pipeline_status to "error" and persists error snapshot when pipeline throws', async () => {
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
-    const errorUpdateChain = buildUpdateChain({ error: null });
+    // The error path calls queueSnapshotPersist (snapshot update) then a separate
+    // error_message update — both use mockFrom so we need three chains.
+    const snapshotErrorChain = buildUpdateChain({ error: null });
+    const errorMessageChain = buildUpdateChain({ error: null });
 
     mockFrom
       .mockReturnValueOnce(insertChain)
-      .mockReturnValueOnce(errorUpdateChain);
+      .mockReturnValueOnce(snapshotErrorChain)
+      .mockReturnValueOnce(errorMessageChain);
 
     mockRunV2Pipeline.mockRejectedValue(new Error('LLM provider timeout'));
 
@@ -776,13 +788,18 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
 
     await new Promise<void>((resolve) => setTimeout(resolve, 20));
 
-    const updateCall = errorUpdateChain['update'] as ReturnType<typeof vi.fn>;
-    expect(updateCall).toHaveBeenCalledOnce();
+    // The snapshot update (first update call) must set pipeline_status to 'error'
+    const snapshotUpdateCall = snapshotErrorChain['update'] as ReturnType<typeof vi.fn>;
+    expect(snapshotUpdateCall).toHaveBeenCalledOnce();
 
-    const [updateArg] = updateCall.mock.calls[0] as [Record<string, unknown>];
-    expect(updateArg.pipeline_status).toBe('error');
-    expect(updateArg.error_message).toBe('LLM provider timeout');
-    // No tailored_sections written on error path
-    expect(updateArg).not.toHaveProperty('tailored_sections');
+    const [snapshotUpdateArg] = snapshotUpdateCall.mock.calls[0] as [Record<string, unknown>];
+    expect(snapshotUpdateArg.pipeline_status).toBe('error');
+
+    // The error_message update (second update call) carries the error text
+    const errorMessageUpdateCall = errorMessageChain['update'] as ReturnType<typeof vi.fn>;
+    expect(errorMessageUpdateCall).toHaveBeenCalledOnce();
+
+    const [errorMessageArg] = errorMessageUpdateCall.mock.calls[0] as [Record<string, unknown>];
+    expect(errorMessageArg.error_message).toBe('LLM provider timeout');
   });
 });

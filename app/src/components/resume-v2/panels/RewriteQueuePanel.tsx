@@ -115,9 +115,9 @@ function QueueStat({
 }) {
   return (
     <div className={`support-callout px-3 py-3 ${tone}`}>
-      <p className="text-[12px] uppercase tracking-[0.16em] text-white/46">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white/88">{value}</p>
-      {detail && <p className="mt-1 text-xs leading-5 text-white/50">{detail}</p>}
+      <p className="text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-[var(--text-strong)]">{value}</p>
+      {detail && <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">{detail}</p>}
     </div>
   );
 }
@@ -206,8 +206,8 @@ function PlacementWarning({ message }: { message: string }) {
 function RequirementSourcePreview({ item }: { item: RewriteQueueItem }) {
   return (
     <div className="support-callout px-4 py-3">
-      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">{sourceSectionTitle(item.source)}</p>
-      <p className="mt-2 text-base leading-7 text-white/82">
+      <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">{sourceSectionTitle(item.source)}</p>
+      <p className="mt-2 text-base leading-7 text-[var(--text-strong)]">
         {sourceCardSummary(item)}
       </p>
     </div>
@@ -219,8 +219,8 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   if (!firstEvidence) {
     return (
       <div className="support-callout px-4 py-3">
-        <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">2. From your resume</p>
-        <p className="mt-2 text-base leading-7 text-white/62">
+        <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">2. From your resume</p>
+        <p className="mt-2 text-base leading-7 text-[var(--text-soft)]">
           We do not have a direct line on the resume that proves this requirement yet.
         </p>
       </div>
@@ -231,18 +231,18 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
 
   return (
     <div className="support-callout px-4 py-3">
-      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">
+      <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">
         {isNearbyEvidence ? '2. Related proof from your background' : '2. From your resume'}
       </p>
-      <p className="mt-2 text-[12px] uppercase tracking-[0.14em] text-white/38">
+      <p className="mt-2 text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
         {firstEvidence.section ? `${firstEvidence.section}` : isNearbyEvidence ? 'Related background evidence' : 'Resume evidence'}
       </p>
       {isNearbyEvidence && (
-        <p className="mt-2 text-sm leading-6 text-white/56">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-soft)]">
           This line is related, but it does not directly prove the requirement yet.
         </p>
       )}
-      <p className="mt-2 text-base leading-7 text-white/80">{firstEvidence.text}</p>
+      <p className="mt-2 text-base leading-7 text-[var(--text-muted)]">{firstEvidence.text}</p>
     </div>
   );
 }
@@ -253,14 +253,14 @@ function SuggestedDraftPreview({ item }: { item: RewriteQueueItem }) {
       <p className="text-[12px] uppercase tracking-[0.15em] text-[#afc4ff]/78">4. Suggested rewrite for your resume</p>
       {item.suggestedDraft ? (
         <>
-          <p className="mt-3 text-[17px] leading-8 text-white/86">{item.suggestedDraft}</p>
-          <p className="mt-3 text-sm leading-6 text-white/56">
+          <p className="mt-3 text-[17px] leading-8 text-[var(--text-strong)]">{item.suggestedDraft}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--text-soft)]">
             This is the resume line we recommend from what we already know. Send it to review as-is or improve it first before it goes onto the resume.
           </p>
         </>
       ) : (
         <>
-          <p className="mt-3 text-base leading-7 text-white/70">
+          <p className="mt-3 text-base leading-7 text-[var(--text-muted)]">
             We are ready to draft this, but we still need one concrete detail before we should write it into the resume.
           </p>
         </>
@@ -280,23 +280,23 @@ function EvidenceList({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">{title}</p>
+      <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">{title}</p>
       {items.length === 0 ? (
-        <div className="support-callout px-4 py-3 text-base leading-7 text-white/56">
+        <div className="support-callout px-4 py-3 text-base leading-7 text-[var(--text-soft)]">
           {emptyLabel}
         </div>
       ) : (
         items.slice(0, 2).map((item, index) => (
           <div key={`${item.text}-${index}`} className="support-callout px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              {item.section && <p className="text-[12px] text-white/44">{item.section}</p>}
+              {item.section && <p className="text-[12px] text-[var(--text-soft)]">{item.section}</p>}
               {item.basis === 'nearby' && (
-                <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/38">
+                <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
                   Related, but not direct yet
                 </span>
               )}
             </div>
-            <p className="mt-2 text-base leading-7 text-white/78">{item.text}</p>
+            <p className="mt-2 text-base leading-7 text-[var(--text-muted)]">{item.text}</p>
           </div>
         ))
       )}
@@ -452,25 +452,25 @@ export function RewriteQueuePanel({
 
   return (
     <div className="h-full overflow-y-auto bg-[#0b1018]">
-      <div className="space-y-4 border-b border-white/[0.06] px-5 py-5">
+      <div className="space-y-4 border-b border-[var(--line-soft)] px-5 py-5">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] p-2.5">
             <Target className="h-4 w-4 text-[#afc4ff]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white/88">Requirements to Match</h2>
-            <p className="mt-1 text-sm leading-6 text-white/54">
+            <h2 className="text-base font-semibold text-[var(--text-strong)]">Requirements to Match</h2>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
               We pulled requirements from the job description first and added benchmark signals second. For each one, we show the language from the role, the closest line from your resume, what is still missing, and the rewrite we recommend next.
             </p>
           </div>
         </div>
 
         <div className="support-callout px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">How to use this</p>
-          <p className="mt-2 text-sm leading-6 text-white/74">
+          <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">How to use this</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
             Start with the first requirement below. Read what the role is asking for, compare it with what your resume says now, then either use the suggested rewrite or improve it with AI.
           </p>
-          <p className="mt-2 text-sm leading-6 text-white/56">
+          <p className="mt-2 text-sm leading-6 text-[var(--text-soft)]">
             Job Description items are direct asks from the posting. Benchmark items are executive-level signals strong candidates usually show even when the posting is incomplete. If you want the full analysis report, open it below.
           </p>
         </div>
@@ -478,13 +478,13 @@ export function RewriteQueuePanel({
         <details className="room-shell px-4 py-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Optional deeper report</p>
-              <p className="mt-1 text-sm font-medium text-white/84">Open Full Analysis</p>
-              <p className="mt-1 text-sm leading-6 text-white/54">
+              <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Optional deeper report</p>
+              <p className="mt-1 text-sm font-medium text-[var(--text-strong)]">Open Full Analysis</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
                 Open the full role, resume, benchmark, and positioning analysis if you want the deeper report behind this workspace.
               </p>
             </div>
-            <ChevronDown className="h-4 w-4 shrink-0 text-white/34" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />
           </summary>
 
           <div className="mt-4 space-y-4">
@@ -495,13 +495,13 @@ export function RewriteQueuePanel({
 
             {gapAnalysis.critical_gaps.length > 0 && (
               <div className="support-callout border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#f0b8b8]/78">Potential deal-breakers to verify</p>
-                <div className="mt-2 space-y-2 text-sm leading-6 text-white/68">
+                <p className="text-[13px] uppercase tracking-[0.18em] text-[#f0b8b8]/78">Potential deal-breakers to verify</p>
+                <div className="mt-2 space-y-2 text-sm leading-6 text-[var(--text-muted)]">
                   {gapAnalysis.critical_gaps.map((gap, index) => (
                     <p key={`${gap}-${index}`}>{gap}</p>
                   ))}
                 </div>
-                <p className="mt-3 text-xs leading-5 text-white/46">
+                <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
                   These are already reflected in the working queue below, so you can address them there instead of reading a separate report first.
                 </p>
               </div>
@@ -538,16 +538,16 @@ export function RewriteQueuePanel({
           <div className="room-shell border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">
+                <p className="text-[13px] uppercase tracking-[0.18em] text-[#afc4ff]/72">
                   Next requirement from {sourceCardPhrase(nextItem.source)}
                 </p>
-                <p className="mt-2 text-lg font-semibold leading-8 text-white/90">{nextItem.title}</p>
+                <p className="mt-2 text-lg font-semibold leading-8 text-[var(--text-strong)]">{nextItem.title}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
                   {SOURCE_LABELS[nextItem.source]}
                 </span>
-                <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[#afc4ff]">
                   {CATEGORY_LABELS[nextItem.category]}
                 </span>
               </div>
@@ -557,16 +557,16 @@ export function RewriteQueuePanel({
               <RequirementSourcePreview item={nextItem} />
               <CurrentProofPreview item={nextItem} />
               <div className="support-callout px-4 py-3">
-                <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">3. What is still missing</p>
-                <p className="mt-2 text-base leading-7 text-white/74">{missingExplanation(nextItem)}</p>
-                <p className="mt-3 text-sm leading-6 text-white/56">
+                <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">3. What is still missing</p>
+                <p className="mt-2 text-base leading-7 text-[var(--text-muted)]">{missingExplanation(nextItem)}</p>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-soft)]">
                   To make this strong enough, tell us: {nextDetailPrompt(nextItem)}
                 </p>
               </div>
               <SuggestedDraftPreview item={nextItem} />
 
               {nextItem.riskNote && (
-                <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
+                <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-[var(--text-muted)]">
                   {nextItem.riskNote}
                 </div>
               )}
@@ -632,8 +632,8 @@ export function RewriteQueuePanel({
             <section key={bucket.id} className="space-y-3" aria-label={bucket.title}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-white/84">{bucket.title}</h3>
-                  <p className="mt-1 text-xs leading-5 text-white/46">{bucket.description}</p>
+                  <h3 className="text-sm font-semibold text-[var(--text-strong)]">{bucket.title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">{bucket.description}</p>
                 </div>
                 {(isResolvedBucket || hiddenFixFirstCount > 0) && (
                   <button
@@ -645,7 +645,7 @@ export function RewriteQueuePanel({
                       }
                       setShowAllFixFirst((previous) => !previous);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/56 transition-colors hover:bg-white/[0.06] hover:text-white/78"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
                     aria-expanded={isResolvedBucket ? bucketOpen : showAllFixFirst}
                   >
                     <ChevronRight
@@ -674,10 +674,10 @@ export function RewriteQueuePanel({
                           isHelperOpen || isContextOpen
                             ? isPrimary
                               ? 'border-[#afc4ff]/28 bg-[#afc4ff]/[0.06]'
-                              : 'border-white/[0.14] bg-white/[0.045]'
+                              : 'border-[var(--line-strong)] bg-[var(--surface-1)]'
                             : isPrimary
                               ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
-                              : 'border-white/[0.06] bg-white/[0.025]'
+                              : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -689,7 +689,7 @@ export function RewriteQueuePanel({
                             ) : isPrimary ? (
                               <Target className="h-4 w-4 shrink-0 text-[#afc4ff]" />
                             ) : (
-                              <AlertCircle className="h-4 w-4 shrink-0 text-white/26" />
+                              <AlertCircle className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />
                             )}
                           </div>
 
@@ -698,14 +698,14 @@ export function RewriteQueuePanel({
                               <div className="min-w-0 flex-1 space-y-3">
                                 <div className="flex flex-wrap items-center gap-2">
                                   {isPrimary && item.bucket !== 'resolved' && (
-                                    <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                                    <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[#afc4ff]">
                                       Next up
                                     </span>
                                   )}
-                                  <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                                  <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
                                     {SOURCE_LABELS[item.source]}
                                   </span>
-                                  <span className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                                  <span className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] ${
                                     item.category === 'hard_gap'
                                       ? 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] text-[#f0d99f]'
                                       : 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] text-[#afc4ff]'
@@ -715,8 +715,8 @@ export function RewriteQueuePanel({
                                 </div>
 
                                 <div>
-                                  <p className="text-base font-semibold leading-7 text-white/88">{item.title}</p>
-                                  <p className="mt-1 text-base leading-7 text-white/62">{item.whyItMatters}</p>
+                                  <p className="text-base font-semibold leading-7 text-[var(--text-strong)]">{item.title}</p>
+                                  <p className="mt-1 text-base leading-7 text-[var(--text-soft)]">{item.whyItMatters}</p>
                                 </div>
 
                                 <CurrentProofPreview item={item} />
@@ -750,7 +750,7 @@ export function RewriteQueuePanel({
                               <button
                                 type="button"
                                 onClick={() => setOpenContextItemId((previous) => previous === item.id ? null : item.id)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
                                 aria-expanded={isContextOpen}
                                 aria-label={`Toggle more context for ${item.title}`}
                               >
@@ -771,18 +771,18 @@ export function RewriteQueuePanel({
                                 <RequirementSourcePreview item={item} />
 
                                 {item.starterQuestion && item.bucket !== 'resolved' && (
-                                  <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-sm leading-6 text-white/72">
+                                  <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-sm leading-6 text-[var(--text-muted)]">
                                     To make this strong enough, tell us: {item.starterQuestion}
                                   </div>
                                 )}
 
                                 <div className="support-callout px-4 py-3">
-                                  <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">3. What is still missing</p>
-                                  <p className="mt-2 text-base leading-7 text-white/74">{missingExplanation(item)}</p>
+                                  <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--text-soft)]">3. What is still missing</p>
+                                  <p className="mt-2 text-base leading-7 text-[var(--text-muted)]">{missingExplanation(item)}</p>
                                 </div>
 
                                 {item.riskNote && (
-                                  <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
+                                  <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-[var(--text-muted)]">
                                     {item.riskNote}
                                   </div>
                                 )}

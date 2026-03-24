@@ -41,12 +41,12 @@ export function SkillsCategoryCard({
   return (
     <GlassCard className="p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h4 className="text-xs font-semibold text-white/70">{category}</h4>
+        <h4 className="text-xs font-semibold text-[var(--text-muted)]">{category}</h4>
         {isEditing && onDelete && (
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#f0b8b8]"
+            className="inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
             aria-label={`Delete ${category} category`}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -58,14 +58,14 @@ export function SkillsCategoryCard({
         {skills.map((skill, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium text-white/75"
+            className="inline-flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-muted)]"
           >
             {skill}
             {isEditing && (
               <button
                 type="button"
                 onClick={() => handleRemoveSkill(i)}
-                className="text-white/40 hover:text-[#f0b8b8] transition-colors"
+                className="text-[var(--text-soft)] hover:text-[#f0b8b8] transition-colors"
                 aria-label={`Remove ${skill}`}
               >
                 <X className="h-3 w-3" />
@@ -82,12 +82,12 @@ export function SkillsCategoryCard({
               onChange={(e) => setNewSkill(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Add skill..."
-              className="w-28 rounded-md border border-white/[0.12] bg-white/[0.05] px-2.5 py-1 text-[10px] text-white/80 placeholder-white/30 outline-none focus:border-white/[0.22]"
+              className="w-28 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] text-[var(--text-muted)] placeholder-[var(--text-soft)] outline-none focus:border-[var(--line-strong)]"
             />
             <button
               type="button"
               onClick={handleAddSkill}
-              className="inline-flex items-center justify-center rounded-md p-1 text-white/40 transition-colors hover:text-white/80"
+              className="inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
               aria-label="Add skill"
             >
               <Plus className="h-3.5 w-3.5" />

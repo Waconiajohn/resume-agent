@@ -416,6 +416,7 @@ ${selected.map((a) => `- [${a.id}] "${a.title}" at ${a.company} (${a.role}) — 
 
 ${renderEvidenceInventorySection({
   heading: 'EVIDENCE FROM RESUME PIPELINE',
+  sharedInventory: state.shared_context?.evidenceInventory,
   legacyEvidence: state.platform_context?.evidence_items,
   maxItems: 8,
 }).join('\n')}

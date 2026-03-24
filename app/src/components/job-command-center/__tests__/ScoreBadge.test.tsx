@@ -67,16 +67,16 @@ describe('ScoreBadge — color tiers', () => {
   it('applies neutral class for low score (<60)', () => {
     render(<ScoreBadge score={45} />);
     const badge = screen.getByText('45');
-    expect(badge.className).toContain('text-white/35');
+    expect(badge.className).toContain('text-[var(--text-soft)]');
   });
 
   it('applies neutral class at 59 (just below medium threshold)', () => {
     render(<ScoreBadge score={59} />);
-    expect(screen.getByText('59').className).toContain('text-white/35');
+    expect(screen.getByText('59').className).toContain('text-[var(--text-soft)]');
   });
 
   it('applies neutral class for score 0', () => {
     render(<ScoreBadge score={0} />);
-    expect(screen.getByText('0').className).toContain('text-white/35');
+    expect(screen.getByText('0').className).toContain('text-[var(--text-soft)]');
   });
 });

@@ -12,6 +12,7 @@
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { SharedContext } from '../../contracts/shared-context.js';
+import type { TouchpointRow } from '../../lib/networking-crm-service.js';
 
 // ─── Messaging Methods ───────────────────────────────────────────────
 
@@ -226,6 +227,12 @@ export interface NetworkingOutreachState extends BaseState {
 
   /** Final assembled sequence report (markdown) */
   final_report?: string;
+
+  /** CRM contact ID — if set, this outreach is linked to a CRM contact */
+  crm_contact_id?: string;
+
+  /** Past touchpoints for this contact, loaded from CRM at pipeline start */
+  crm_contact_history?: TouchpointRow[];
 
   /** Overall sequence quality score (0-100) */
   quality_score?: number;

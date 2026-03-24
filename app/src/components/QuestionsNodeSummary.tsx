@@ -77,13 +77,13 @@ export function QuestionsNodeSummary({
   return (
     <div className="h-full p-3 md:p-4">
       <GlassCard className="h-full p-6">
-        <div className="mb-2 flex items-center gap-2 text-white/78">
-          <History className="h-4 w-4 text-white/45" />
+        <div className="mb-2 flex items-center gap-2 text-[var(--text-muted)]">
+          <History className="h-4 w-4 text-[var(--text-soft)]" />
           <h3 className="text-sm font-semibold">Questions</h3>
         </div>
         {remaining.length > 0 ? (
           <>
-            <p className="max-w-2xl text-sm text-white/56">
+            <p className="max-w-2xl text-sm text-[var(--text-soft)]">
               {isActiveNode
                 ? 'The coach is between question batches. These are the highest-impact remaining areas it is likely to ask about next.'
                 : 'These are the highest-impact remaining areas the coach is likely to ask about next.'}
@@ -92,15 +92,15 @@ export function QuestionsNodeSummary({
               {remaining.slice(0, 6).map((item, index) => (
                 <div
                   key={`${item.requirement}-${index}`}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-2.5 py-2 text-xs text-white/80"
+                  className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2 text-xs text-[var(--text-muted)]"
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[12px] ${
                       item.priority === 'must_have'
                         ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                         : item.priority === 'implicit'
                           ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
-                          : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                          : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                     }`}>
                       {item.priority === 'must_have' ? 'Must-have' : item.priority === 'implicit' ? 'Implicit' : 'Nice-to-have'}
                     </span>
@@ -114,41 +114,41 @@ export function QuestionsNodeSummary({
             </div>
             {questionMetrics && questionMetrics.total > 0 && (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Question Progress</div>
-                  <div className="mt-1 text-xs text-white/78">
+                <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+                  <div className="text-[12px] uppercase tracking-[0.1em] text-[var(--text-soft)]">Question Progress</div>
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
                     Answered {questionMetrics.answered} • Deferred {questionMetrics.deferred} • Skipped {questionMetrics.skipped}
                   </div>
                   {questionMetrics.latest_activity_at && (
-                    <div className="mt-1 text-[10px] text-white/45">
+                    <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                       Last activity: {new Date(questionMetrics.latest_activity_at).toLocaleString()}
                     </div>
                   )}
                 </div>
-                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">High-Impact Questions</div>
-                  <div className="mt-1 text-xs text-white/78">
+                <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+                  <div className="text-[12px] uppercase tracking-[0.1em] text-[var(--text-soft)]">High-Impact Questions</div>
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
                     Answered {questionMetrics.by_impact.high.answered} / {questionMetrics.by_impact.high.total}
                   </div>
-                  <div className="mt-1 text-[10px] text-white/50">
+                  <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                     Deferred {questionMetrics.by_impact.high.deferred} • Skipped {questionMetrics.by_impact.high.skipped}
                   </div>
                 </div>
               </div>
             )}
             {Array.isArray(questionHistory) && questionHistory.length > 0 && (
-              <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Recent Question Rationale</div>
+              <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+                <div className="text-[12px] uppercase tracking-[0.1em] text-[var(--text-soft)]">Recent Question Rationale</div>
                 <div className="mt-2 space-y-1.5">
                   {questionHistory.slice(0, 5).map((item, index) => (
-                    <div key={`${item.questionnaire_id}:${item.question_id}:${index}`} className="rounded-md border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <div key={`${item.questionnaire_id}:${item.question_id}:${index}`} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.impact_tag === 'high'
                             ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                             : item.impact_tag === 'medium'
                               ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/85'
-                              : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                              : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                         }`}>
                           {item.impact_tag ? `${item.impact_tag} impact` : 'untagged'}
                         </span>
@@ -157,13 +157,13 @@ export function QuestionsNodeSummary({
                             ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.08] text-[#b5dec2]/85'
                             : item.status === 'deferred'
                               ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
-                              : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                              : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                         }`}>
                           {item.status}
                         </span>
-                        <span className="text-white/45">{item.stage.replace(/_/g, ' ')}</span>
+                        <span className="text-[var(--text-soft)]">{item.stage.replace(/_/g, ' ')}</span>
                       </div>
-                      <div className="mt-1 text-[11px] leading-relaxed text-white/74">
+                      <div className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
                         {item.payoff_hint}
                       </div>
                     </div>
@@ -172,25 +172,25 @@ export function QuestionsNodeSummary({
               </div>
             )}
             {Array.isArray(questionReuseSummaries) && questionReuseSummaries.length > 0 && (
-              <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Question Reuse (to reduce repeats)</div>
+              <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+                <div className="text-[12px] uppercase tracking-[0.1em] text-[var(--text-soft)]">Question Reuse (to reduce repeats)</div>
                 {questionReuseMetrics && questionReuseMetrics.total_skipped > 0 && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/55">Reuse Savings</div>
-                      <div className="mt-1 text-xs text-white/78">
+                    <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2">
+                      <div className="text-[12px] uppercase tracking-[0.08em] text-[var(--text-soft)]">Reuse Savings</div>
+                      <div className="mt-1 text-xs text-[var(--text-muted)]">
                         Reused {questionReuseMetrics.total_skipped} lower-impact question{questionReuseMetrics.total_skipped === 1 ? '' : 's'}
                       </div>
-                      <div className="mt-1 text-[10px] text-white/45">
+                      <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                         Positioning {questionReuseMetrics.by_stage.positioning.skipped_count} • Gap Analysis {questionReuseMetrics.by_stage.gap_analysis.skipped_count}
                       </div>
                     </div>
-                    <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/55">Reuse Basis</div>
-                      <div className="mt-1 text-xs text-white/78">
+                    <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2">
+                      <div className="text-[12px] uppercase tracking-[0.08em] text-[var(--text-soft)]">Reuse Basis</div>
+                      <div className="mt-1 text-xs text-[var(--text-muted)]">
                         Topic match {questionReuseMetrics.matched_by_topic_count} • Payoff match {questionReuseMetrics.matched_by_payoff_count}
                       </div>
-                      <div className="mt-1 text-[10px] text-white/45">
+                      <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                         Prior answered {questionReuseMetrics.prior_answered_count} • Prior deferred {questionReuseMetrics.prior_deferred_count}
                       </div>
                     </div>
@@ -198,28 +198,28 @@ export function QuestionsNodeSummary({
                 )}
                 <div className="mt-2 space-y-1.5">
                   {questionReuseSummaries.slice(0, 4).map((item, index) => (
-                    <div key={`${item.stage}:${item.version ?? index}:${index}`} className="rounded-md border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                        <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-1.5 py-0.5 text-white/70">
+                    <div key={`${item.stage}:${item.version ?? index}:${index}`} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+                        <span className="rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-1.5 py-0.5 text-[var(--text-soft)]">
                           {item.stage === 'positioning' ? 'Positioning' : 'Gap Analysis'}
                         </span>
                         <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-1.5 py-0.5 text-[#afc4ff]/85">
                           Reused {item.skipped_count}
                         </span>
-                        <span className="text-white/45">
+                        <span className="text-[var(--text-soft)]">
                           topic {item.matched_by_topic_count} • payoff {item.matched_by_payoff_count}
                         </span>
                         {typeof item.benchmark_edit_version === 'number' && (
-                          <span className="text-white/40">benchmark v{item.benchmark_edit_version}</span>
+                          <span className="text-[var(--text-soft)]">benchmark v{item.benchmark_edit_version}</span>
                         )}
                       </div>
                       {item.message && (
-                        <div className="mt-1 text-[11px] leading-relaxed text-white/72">
+                        <div className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
                           {item.message}
                         </div>
                       )}
                       {(item.prior_answered_count > 0 || item.prior_deferred_count > 0) && (
-                        <div className="mt-1 text-[10px] text-white/48">
+                        <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                           Based on prior {item.prior_answered_count > 0 ? `${item.prior_answered_count} answered` : '0 answered'}
                           {item.prior_deferred_count > 0 ? ` and ${item.prior_deferred_count} deferred` : ''} response
                           {item.prior_answered_count + item.prior_deferred_count === 1 ? '' : 's'}.
@@ -230,7 +230,7 @@ export function QuestionsNodeSummary({
                           {item.sample_payoffs.slice(0, 2).map((payoff, payoffIndex) => (
                             <span
                               key={`${payoff}-${payoffIndex}`}
-                              className="rounded-full border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-white/60"
+                              className="rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-1.5 py-0.5 text-[12px] text-[var(--text-soft)]"
                               title={payoff}
                             >
                               {payoff.length > 44 ? `${payoff.slice(0, 44)}...` : payoff}
@@ -252,7 +252,7 @@ export function QuestionsNodeSummary({
             )}
           </>
         ) : (
-          <p className="max-w-xl text-sm text-white/56">
+          <p className="max-w-xl text-sm text-[var(--text-soft)]">
             {isActiveNode
               ? 'Your coach is working on this step. Results will appear here shortly.'
               : 'This step hasn\'t been reached yet. Continue your session to see results here.'}

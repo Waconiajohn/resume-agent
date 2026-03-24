@@ -105,7 +105,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
             }}
           >
             <span
-              className="text-[10px] font-semibold uppercase tracking-wide"
+              className="text-[12px] font-semibold uppercase tracking-wide"
               style={{ color: '#b5dec2' }}
             >
               Resume line ready to review
@@ -118,7 +118,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
               onChange={(event) => setDraftValue(event.target.value)}
               rows={6}
               aria-label="Edit suggested resume language"
-              className="mt-3 min-h-[160px] w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
+              className="mt-3 min-h-[160px] w-full resize-y rounded-lg border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-relaxed text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
             />
             <div className="mt-2 flex flex-wrap justify-end gap-2">
               <button
@@ -365,7 +365,7 @@ export function GapChatThread({
       data-testid="gap-chat-thread"
     >
       {messages.length === 0 && !resolvedLanguage && (
-        <div className="space-y-3 border-b border-white/[0.06] px-4 py-4">
+        <div className="space-y-3 border-b border-[var(--line-soft)] px-4 py-4">
           <div
             className="rounded-lg px-4 py-3"
             style={{
@@ -373,7 +373,7 @@ export function GapChatThread({
               border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
               {introSourceLabel}
             </p>
             <p className="mt-2" style={{ fontSize: 16, lineHeight: 1.7, color: REPORT_COLORS.heading }}>
@@ -388,7 +388,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.12)',
             }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
               Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
@@ -408,7 +408,7 @@ export function GapChatThread({
               border: '1px solid rgba(181,222,194,0.18)',
             }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
               Suggested rewrite to start from
             </p>
             {initialSuggestedLanguage ? (
@@ -421,7 +421,7 @@ export function GapChatThread({
                   onChange={(event) => setStarterDraftValue(event.target.value)}
                   rows={5}
                   aria-label="Edit the suggested rewrite"
-                  className="mt-3 min-h-[150px] w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
+                  className="mt-3 min-h-[150px] w-full resize-y rounded-lg border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-relaxed text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
@@ -452,7 +452,7 @@ export function GapChatThread({
       )}
 
       {messages.length > 0 && !resolvedLanguage && (
-        <div className="space-y-2 border-b border-white/[0.06] px-4 py-4">
+        <div className="space-y-2 border-b border-[var(--line-soft)] px-4 py-4">
           <div
             className="rounded-lg px-4 py-3"
             style={{
@@ -460,7 +460,7 @@ export function GapChatThread({
               border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
               {introSourceLabel}
             </p>
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading }}>
@@ -475,7 +475,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.12)',
             }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
               Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
@@ -540,7 +540,7 @@ export function GapChatThread({
             type="button"
             onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               color: '#afc4ff',
               backgroundColor: 'rgba(175,196,255,0.06)',
@@ -553,7 +553,7 @@ export function GapChatThread({
             type="button"
             onClick={requestDraft}
             disabled={isLoading}
-            className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               color: '#b5dec2',
               backgroundColor: 'rgba(181,222,194,0.08)',
@@ -567,7 +567,7 @@ export function GapChatThread({
               type="button"
               onClick={requestAlternative}
               disabled={isLoading}
-              className="rounded-lg px-3 py-1.5 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 color: REPORT_COLORS.secondary,
                 backgroundColor: 'rgba(255,255,255,0.04)',
@@ -581,7 +581,7 @@ export function GapChatThread({
             <button
               type="button"
               onClick={onSkip}
-              className="rounded-lg px-3 py-1.5 text-[11px] transition-colors hover:opacity-80"
+              className="rounded-lg px-3 py-1.5 text-[13px] transition-colors hover:opacity-80"
               style={{
                 color: REPORT_COLORS.tertiary,
                 backgroundColor: 'rgba(255,255,255,0.02)',
@@ -595,7 +595,7 @@ export function GapChatThread({
       )}
 
       {!resolvedLanguage && (
-        <div className="px-4 pb-1 text-xs leading-5 text-white/44">
+        <div className="px-4 pb-1 text-xs leading-5 text-[var(--text-soft)]">
           Fastest path: add one concrete detail below, and AI will rewrite from that instead of guessing.
         </div>
       )}
@@ -610,7 +610,7 @@ export function GapChatThread({
               type="button"
               onClick={handleRetry}
               disabled={isLoading}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 hover:bg-white/[0.06] transition-colors disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 hover:bg-[var(--surface-1)] transition-colors disabled:opacity-30"
               style={{ color: REPORT_COLORS.secondary, fontSize: 12 }}
             >
               <RotateCcw className="h-3 w-3" />
@@ -660,7 +660,7 @@ export function GapChatThread({
             type="button"
             onClick={handleSend}
             disabled={!inputValue.trim() || isLoading}
-            className="rounded-lg p-2 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/[0.08]"
+            className="rounded-lg p-2 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--surface-1)]"
             style={{
               color: inputValue.trim() ? '#afc4ff' : REPORT_COLORS.tertiary,
             }}

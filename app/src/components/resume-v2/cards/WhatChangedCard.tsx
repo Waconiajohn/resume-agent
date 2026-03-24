@@ -262,7 +262,7 @@ function JumpToSection({ sectionKey }: { sectionKey: string }) {
     <button
       type="button"
       onClick={handleClick}
-      className="text-[10px] text-[#afc4ff]/50 hover:text-[#afc4ff]/80 transition-colors shrink-0"
+      className="text-[12px] text-[#afc4ff]/50 hover:text-[#afc4ff]/80 transition-colors shrink-0"
       aria-label={`View ${sectionKey} in resume`}
     >
       View in resume ↓
@@ -289,7 +289,7 @@ function BulletLine({ change }: { change: BulletChange }) {
   return (
     <div className={`flex items-start gap-2 rounded px-2 py-1.5 ${bg}`}>
       <span className={`text-xs font-bold shrink-0 ${color}`} aria-hidden="true">{prefix}</span>
-      <span className="text-xs text-white/70 leading-relaxed">{change.text}</span>
+      <span className="text-xs text-[var(--text-muted)] leading-relaxed">{change.text}</span>
     </div>
   );
 }
@@ -304,7 +304,7 @@ function ExperienceDiffSection({ diff }: { diff: SectionBulletDiff }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-white/50">
+        <div className="text-xs font-medium text-[var(--text-soft)]">
           {diff.company} — <span className="font-normal">{diff.title}</span>
         </div>
         <JumpToSection sectionKey={sectionKey} />
@@ -326,20 +326,20 @@ function StringListDiff({ added, removed, label }: { added: string[]; removed: s
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-white/50">{label}</div>
+        <div className="text-xs font-medium text-[var(--text-soft)]">{label}</div>
         {sectionKey && <JumpToSection sectionKey={sectionKey} />}
       </div>
       <div className="space-y-1 pl-1">
         {removed.map((item, i) => (
           <div key={`r-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
             <span className="text-xs font-bold shrink-0 text-[#f0b8b8]" aria-hidden="true">−</span>
-            <span className="text-xs text-white/70">{item}</span>
+            <span className="text-xs text-[var(--text-muted)]">{item}</span>
           </div>
         ))}
         {added.map((item, i) => (
           <div key={`a-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#b5dec2]/[0.05]">
             <span className="text-xs font-bold shrink-0 text-[#b5dec2]" aria-hidden="true">+</span>
-            <span className="text-xs text-white/70">{item}</span>
+            <span className="text-xs text-[var(--text-muted)]">{item}</span>
           </div>
         ))}
       </div>
@@ -353,17 +353,17 @@ function SummaryDiffSection({ diff }: { diff: SummaryDiff }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-white/50">Executive Summary</div>
+        <div className="text-xs font-medium text-[var(--text-soft)]">Executive Summary</div>
         <JumpToSection sectionKey="executive_summary" />
       </div>
       <div className="pl-1 space-y-1">
         <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
           <span className="text-xs font-bold shrink-0 text-[#f0b8b8]" aria-hidden="true">−</span>
-          <span className="text-xs text-white/70 line-clamp-3">{diff.previous}</span>
+          <span className="text-xs text-[var(--text-muted)] line-clamp-3">{diff.previous}</span>
         </div>
         <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#b5dec2]/[0.05]">
           <span className="text-xs font-bold shrink-0 text-[#b5dec2]" aria-hidden="true">+</span>
-          <span className="text-xs text-white/70 line-clamp-3">{diff.current}</span>
+          <span className="text-xs text-[var(--text-muted)] line-clamp-3">{diff.current}</span>
         </div>
       </div>
     </div>
@@ -388,11 +388,11 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
       {/* Header row */}
       <div className="flex items-center gap-2 mb-4">
         <ArrowLeftRight className="h-4 w-4 text-[#afc4ff] shrink-0" />
-        <h3 className="text-sm font-semibold text-white/90 flex-1">What Changed</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-strong)] flex-1">What Changed</h3>
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-lg p-1 text-white/30 hover:bg-white/[0.06] hover:text-white/60 transition-colors"
+          className="rounded-lg p-1 text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors"
           aria-label="Dismiss changes summary"
         >
           <X className="h-4 w-4" />
@@ -404,19 +404,19 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
         {changes.totalAdded > 0 && (
           <span className="flex items-center gap-1 text-[#b5dec2]">
             <span className="font-bold text-sm">+{changes.totalAdded}</span>
-            <span className="text-white/50">added</span>
+            <span className="text-[var(--text-soft)]">added</span>
           </span>
         )}
         {changes.totalRemoved > 0 && (
           <span className="flex items-center gap-1 text-[#f0b8b8]">
             <span className="font-bold text-sm">−{changes.totalRemoved}</span>
-            <span className="text-white/50">removed</span>
+            <span className="text-[var(--text-soft)]">removed</span>
           </span>
         )}
         {changes.totalModified > 0 && (
           <span className="flex items-center gap-1 text-[#afc4ff]">
             <span className="font-bold text-sm">~{changes.totalModified}</span>
-            <span className="text-white/50">modified</span>
+            <span className="text-[var(--text-soft)]">modified</span>
           </span>
         )}
       </div>
@@ -425,7 +425,7 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors mb-1"
+        className="flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors mb-1"
         aria-expanded={expanded}
       >
         {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -459,7 +459,7 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/50 hover:bg-white/[0.08] hover:text-white/70 transition-colors"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] transition-colors"
         >
           Got it
         </button>

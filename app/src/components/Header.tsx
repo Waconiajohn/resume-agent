@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, LogOut, Menu, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, HelpCircle, LogOut, Menu, Moon, Settings2, Sparkles, Sun, X } from 'lucide-react';
 import { GlassButton } from './GlassButton';
 import { PipelineProgressBar } from './PipelineProgressBar';
+import { AccessibilitySettings } from './AccessibilitySettings';
+import { useTheme } from '@/hooks/useTheme';
 
 interface HeaderProps {
   email?: string;
@@ -12,15 +14,19 @@ interface HeaderProps {
   isProcessing?: boolean;
   sessionComplete?: boolean;
   onNavigate?: (view: string) => void;
+  /** Called when the user clicks the Help button to replay the onboarding tour */
+  onReplayTour?: () => void;
 }
 
-export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate }: HeaderProps) {
+export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate, onReplayTour }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [a11yOpen, setA11yOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameFirst, setNameFirst] = useState('');
   const [nameLast, setNameLast] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
   const menuPanelRef = useRef<HTMLDivElement>(null);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const startEditName = () => {
     const parts = (displayName ?? '').split(' ');
@@ -70,7 +76,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(12,18,24,0.92),rgba(12,18,24,0.84))] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[var(--line-soft)] bg-[var(--header-bg)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-4">
           <button
@@ -79,7 +85,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             className="group flex items-center gap-3 text-left"
             aria-label="Go to Workspace home"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] text-[var(--accent)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 group-hover:border-[rgba(238,243,248,0.34)] group-hover:bg-[var(--accent-strong)] group-hover:text-[var(--accent-ink)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-low)] transition-all duration-200 group-hover:border-[var(--line-strong)] group-hover:bg-[var(--accent-strong)] group-hover:text-[var(--accent-ink)]">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="min-w-0">
@@ -106,63 +112,107 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
           )}
         </div>
 
-        {email && (
-          <div className="hidden items-center gap-3 lg:flex">
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={nameFirst}
-                  onChange={(e) => setNameFirst(e.target.value)}
-                  placeholder="First"
-                  className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[rgba(238,243,248,0.36)]"
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
-                />
-                <input
-                  type="text"
-                  value={nameLast}
-                  onChange={(e) => setNameLast(e.target.value)}
-                  placeholder="Last"
-                  className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[rgba(238,243,248,0.36)]"
-                  onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
-                />
-                <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded-[10px] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">
-                  {nameSaving ? '...' : 'Save'}
+        <div className="flex items-center gap-2">
+          {email && (
+            <div className="hidden items-center gap-3 lg:flex">
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nameFirst}
+                    onChange={(e) => setNameFirst(e.target.value)}
+                    placeholder="First"
+                    className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
+                  />
+                  <input
+                    type="text"
+                    value={nameLast}
+                    onChange={(e) => setNameLast(e.target.value)}
+                    placeholder="Last"
+                    className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
+                  />
+                  <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded-[10px] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:bg-[var(--accent-muted)] disabled:opacity-50">
+                    {nameSaving ? '...' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditingName(false)} className="rounded-[10px] px-2 py-2 text-xs uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)]">
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={startEditName}
+                  className="flex flex-col items-end text-right"
+                  title="Click to edit your name"
+                >
+                  <span className="eyebrow-label">Signed in as</span>
+                  <span className="text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:text-[var(--accent)]">
+                    {displayName || email}
+                  </span>
                 </button>
-                <button onClick={() => setEditingName(false)} className="rounded-[10px] px-2 py-2 text-xs uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-white/[0.06]">
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={startEditName}
-                className="flex flex-col items-end text-right"
-                title="Click to edit your name"
-              >
-                <span className="eyebrow-label">Signed in as</span>
-                <span className="text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:text-white">
-                  {displayName || email}
-                </span>
-              </button>
-            )}
-            <GlassButton variant="secondary" size="sm" onClick={() => onNavigate?.('billing')} title="Billing & plan" aria-label="Billing">
-              Billing
-            </GlassButton>
-            <GlassButton variant="ghost" size="sm" onClick={onSignOut} aria-label="Sign out" title="Sign out">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-            </GlassButton>
-          </div>
-        )}
+              )}
+              <GlassButton variant="secondary" size="sm" onClick={() => onNavigate?.('billing')} title="Billing & plan" aria-label="Billing">
+                Billing
+              </GlassButton>
+              <GlassButton variant="ghost" size="sm" onClick={onSignOut} aria-label="Sign out" title="Sign out">
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+              </GlassButton>
+            </div>
+          )}
 
-        <button
-          className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[rgba(238,243,248,0.28)] hover:text-[var(--text-strong)] lg:hidden"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-        >
-          <Menu className="h-5 w-5" aria-hidden="true" />
-        </button>
+          {/* Theme toggle — visible at all breakpoints */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            data-tour="theme-toggle"
+            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Moon className="h-5 w-5" aria-hidden="true" />
+            )}
+          </button>
+
+          {/* Help / tour replay button */}
+          {onReplayTour && (
+            <button
+              type="button"
+              onClick={onReplayTour}
+              aria-label="Replay onboarding tour"
+              title="Take a guided tour of the workspace"
+              className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+            >
+              <HelpCircle className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
+
+          {/* Accessibility settings */}
+          <button
+            type="button"
+            onClick={() => setA11yOpen(true)}
+            aria-label="Accessibility settings"
+            title="Accessibility settings"
+            aria-expanded={a11yOpen}
+            aria-controls="accessibility-settings-panel"
+            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+          >
+            <Settings2 className="h-5 w-5" aria-hidden="true" />
+          </button>
+
+          <button
+            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)] lg:hidden"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <PipelineProgressBar
@@ -171,16 +221,21 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
         sessionComplete={sessionComplete ?? false}
       />
 
+      {/* Accessibility settings panel */}
+      <div id="accessibility-settings-panel">
+        <AccessibilitySettings isOpen={a11yOpen} onClose={() => setA11yOpen(false)} />
+      </div>
+
       {/* Mobile menu overlay */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" aria-hidden="false">
-          <div className="absolute inset-0 bg-[rgba(7,10,14,0.66)] backdrop-blur-sm" aria-hidden="true" />
+          <div className="absolute inset-0 bg-[var(--mobile-overlay-bg)] backdrop-blur-sm" aria-hidden="true" />
 
           <div
             ref={menuPanelRef}
             role="dialog"
             aria-label="Navigation menu"
-            className="absolute right-0 top-0 flex h-full w-80 flex-col border-l border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(18,25,32,0.98),rgba(11,16,22,0.98))] shadow-[0_30px_90px_-40px_rgba(0,0,0,0.95)]"
+            className="absolute right-0 top-0 flex h-full w-80 flex-col border-l border-[var(--line-soft)] bg-[var(--mobile-menu-bg)] shadow-[var(--shadow-mid)]"
             style={{ transform: 'translateX(0)', transition: 'transform 0.2s ease-out' }}
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--line-soft)] px-5">
@@ -190,7 +245,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               </div>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[rgba(238,243,248,0.28)] hover:text-[var(--text-strong)]"
+                className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" aria-hidden="true" />

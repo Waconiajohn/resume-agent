@@ -54,9 +54,11 @@ const analyzeInterviewContextTool: WriterTool = {
       `- ${i.name} (${i.title}): Topics: ${i.topics_discussed.join(', ')}${i.rapport_notes ? `. Rapport: ${i.rapport_notes}` : ''}${i.key_questions?.length ? `. Key questions: ${i.key_questions.join('; ')}` : ''}`,
     ).join('\n');
 
+    const sharedContext = state.shared_context;
     const platformContextSections = [
       ...renderPositioningStrategySection({
         heading: '## Platform Positioning Strategy',
+        sharedStrategy: sharedContext?.positioningStrategy,
         legacyStrategy: state.platform_context?.positioning_strategy,
       }),
       ...renderWhyMeStorySection({

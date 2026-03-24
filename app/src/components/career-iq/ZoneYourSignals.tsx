@@ -72,10 +72,10 @@ function computeMarketAlignment(stats?: PipelineStats): { level: SignalLevel; de
   return { level: 'needs-work', detail: `${stats.total} applications, none advancing yet — review your positioning` };
 }
 
-const MOCK_SIGNALS: Signal[] = [
-  { label: 'Positioning Strength', description: 'How well your materials tell your Career Profile story', level: 'strong', icon: Target, detail: 'Resume + LinkedIn aligned with your Career Profile narrative' },
-  { label: 'Activity Score', description: 'Your consistent engagement across the platform', level: 'building', icon: Activity, detail: '3 applications this week — 5+ keeps momentum strong' },
-  { label: 'Market Alignment', description: 'How well your targeting matches market opportunity', level: 'needs-work', icon: TrendingUp, detail: 'Your Boolean search covers 12 of 30+ title variations' },
+const SIGNAL_DEFINITIONS: Pick<Signal, 'label' | 'description' | 'icon'>[] = [
+  { label: 'Positioning Strength', description: 'How well your materials tell your Career Profile story', icon: Target },
+  { label: 'Activity Score', description: 'Your consistent engagement across the platform', icon: Activity },
+  { label: 'Market Alignment', description: 'How well your targeting matches market opportunity', icon: TrendingUp },
 ];
 
 const LEVEL_CONFIG: Record<SignalLevel, { color: string; bg: string; border: string; label: string; barWidth: string }> = {
@@ -91,27 +91,27 @@ function SignalCard({ signal }: { signal: Signal }) {
   return (
     <div
       className={cn(
-        'group flex-1 min-w-[220px] rounded-xl border bg-white/[0.02] p-4 transition-all duration-150',
-        'hover:bg-white/[0.04] cursor-pointer',
+        'group flex-1 min-w-[220px] rounded-xl border bg-[var(--accent-muted)] p-4 transition-all duration-150',
+        'hover:bg-[var(--surface-1)] cursor-pointer',
         config.border,
       )}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="rounded-lg bg-white/[0.06] p-2">
-          <Icon size={16} className="text-white/50" />
+        <div className="rounded-lg bg-[var(--accent-muted)] p-2">
+          <Icon size={16} className="text-[var(--text-soft)]" />
         </div>
         <div className="flex items-center gap-1">
-          <span className={cn('text-[11px] font-medium px-2 py-0.5 rounded-full', config.bg, config.color)}>
+          <span className={cn('text-[13px] font-medium px-2 py-0.5 rounded-full', config.bg, config.color)}>
             {config.label}
           </span>
-          <ArrowUpRight size={12} className="text-white/0 group-hover:text-white/40 transition-colors" />
+          <ArrowUpRight size={12} className="text-transparent group-hover:text-[var(--text-soft)] transition-colors" />
         </div>
       </div>
 
-      <div className="text-[13px] font-medium text-white/80">{signal.label}</div>
-      <div className="text-[11px] text-white/40 mt-1 leading-relaxed">{signal.description}</div>
+      <div className="text-[13px] font-medium text-[var(--text-strong)]">{signal.label}</div>
+      <div className="text-[13px] text-[var(--text-soft)] mt-1 leading-relaxed">{signal.description}</div>
 
-      <div className="mt-3 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="mt-3 h-1 rounded-full bg-[var(--accent-muted)] overflow-hidden">
         <div
           className={cn(
             'h-full rounded-full transition-all duration-700',
@@ -123,27 +123,23 @@ function SignalCard({ signal }: { signal: Signal }) {
         />
       </div>
 
-      <div className="mt-2.5 text-[11px] text-white/35 leading-relaxed">{signal.detail}</div>
+      <div className="mt-2.5 text-[13px] text-[var(--text-soft)] leading-relaxed">{signal.detail}</div>
     </div>
   );
 }
 
 export function ZoneYourSignals({ whyMeSignals, sessionCount, pipelineStats }: ZoneYourSignalsProps) {
-  const hasRealData = whyMeSignals || sessionCount !== undefined || pipelineStats;
-
-  const signals: Signal[] = hasRealData
-    ? [
-        { ...MOCK_SIGNALS[0], ...computePositioningStrength(whyMeSignals) },
-        { ...MOCK_SIGNALS[1], ...computeActivityScore(sessionCount, pipelineStats) },
-        { ...MOCK_SIGNALS[2], ...computeMarketAlignment(pipelineStats) },
-      ]
-    : MOCK_SIGNALS;
+  const signals: Signal[] = [
+    { ...SIGNAL_DEFINITIONS[0], ...computePositioningStrength(whyMeSignals) },
+    { ...SIGNAL_DEFINITIONS[1], ...computeActivityScore(sessionCount, pipelineStats) },
+    { ...SIGNAL_DEFINITIONS[2], ...computeMarketAlignment(pipelineStats) },
+  ];
 
   return (
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-semibold text-white/80">Your Signals</h3>
-        <span className="text-[11px] text-white/30">
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Your Signals</h3>
+        <span className="text-[13px] text-[var(--text-soft)]">
           Quality of effort, not raw outcomes
         </span>
       </div>

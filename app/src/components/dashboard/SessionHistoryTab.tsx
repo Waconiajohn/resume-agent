@@ -168,8 +168,8 @@ export function SessionHistoryTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-white/85">Job Workspaces</h3>
-          <p className="mt-1 text-xs text-white/45">
+          <h3 className="text-sm font-semibold text-[var(--text-strong)]">Job Workspaces</h3>
+          <p className="mt-1 text-xs text-[var(--text-soft)]">
             Each record stays lightweight until the job advances. Interview and offer-stage assets only show up when the stage justifies them.
           </p>
         </div>
@@ -183,8 +183,8 @@ export function SessionHistoryTab({
                 onClick={() => setStatusFilter(option.id)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   statusFilter === option.id
-                    ? 'bg-white/[0.1] text-white'
-                    : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
+                    ? 'bg-[var(--surface-1)] text-[var(--text-strong)]'
+                    : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]'
                 }`}
               >
                 {option.label}
@@ -196,7 +196,7 @@ export function SessionHistoryTab({
             <select
               value={productFilter}
               onChange={(event) => setProductFilter(event.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-white/80 outline-none transition-colors hover:bg-white/[0.08]"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] outline-none transition-colors hover:bg-[var(--surface-1)]"
               aria-label="Filter by asset type"
             >
               <option value="all">All Assets</option>
@@ -211,7 +211,7 @@ export function SessionHistoryTab({
       </div>
 
       <GlassCard className="overflow-hidden p-0">
-        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
+        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] gap-4 border-b border-[var(--line-soft)] px-5 py-3 text-[13px] font-medium uppercase tracking-wider text-[var(--text-soft)] lg:grid">
           <div>Company and role</div>
           <div>Date</div>
           <div>Stage</div>
@@ -222,15 +222,15 @@ export function SessionHistoryTab({
         {loading ? (
           <div className="space-y-0">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="border-b border-white/[0.04] px-5 py-4 last:border-b-0">
-                <div className="mb-2 h-4 w-2/3 animate-pulse rounded bg-white/[0.05]" />
-                <div className="h-3 w-1/3 animate-pulse rounded bg-white/[0.03]" />
+              <div key={index} className="border-b border-[var(--line-soft)] px-5 py-4 last:border-b-0">
+                <div className="mb-2 h-4 w-2/3 animate-pulse rounded bg-[var(--surface-1)]" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-[var(--accent-muted)]" />
               </div>
             ))}
           </div>
         ) : jobRecords.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="text-sm text-white/45">No saved tailored work found for this filter.</p>
+            <p className="text-sm text-[var(--text-soft)]">No saved tailored work found for this filter.</p>
           </div>
         ) : (
           <div className="divide-y divide-white/[0.04]">
@@ -259,21 +259,21 @@ export function SessionHistoryTab({
                   <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] lg:items-start">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="truncate text-sm font-semibold text-white/85">{record.company}</div>
-                        <span className="rounded-md border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#c9d7ff]">
+                        <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{record.company}</div>
+                        <span className="rounded-md border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#c9d7ff]">
                           Job workspace
                         </span>
                       </div>
-                      <div className="mt-1 truncate text-xs text-white/45">{record.role}</div>
+                      <div className="mt-1 truncate text-xs text-[var(--text-soft)]">{record.role}</div>
                     </div>
 
-                    <div className="text-xs text-white/55">{formatDate(record.createdAt)}</div>
+                    <div className="text-xs text-[var(--text-soft)]">{formatDate(record.createdAt)}</div>
 
                     <div>
-                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${jobStage.classes}`}>
+                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] ${jobStage.classes}`}>
                         {jobStage.label}
                       </span>
-                      <div className="mt-2 text-[11px] text-white/40">
+                      <div className="mt-2 text-[13px] text-[var(--text-soft)]">
                         Pipeline state: {record.status.label}
                       </div>
                     </div>
@@ -283,13 +283,13 @@ export function SessionHistoryTab({
                         {Object.entries(assetCounts).map(([type, count]) => (
                           <span
                             key={type}
-                            className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/50"
+                            className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]"
                           >
                             {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
                           </span>
                         ))}
                       </div>
-                      <div className="text-[11px] text-white/42">
+                      <div className="text-[13px] text-[var(--text-soft)]">
                         Available now: {stageActions.unlocked.join(' • ')}
                       </div>
                     </div>
@@ -335,7 +335,7 @@ export function SessionHistoryTab({
                         <button
                           type="button"
                           onClick={() => void onDeleteSession(record.latestSession.id)}
-                          className="inline-flex h-8 items-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+                          className="inline-flex h-8 items-center rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 text-xs text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
                           aria-label={`Delete ${record.company} ${record.role} session`}
                         >
                           <Trash2 size={12} className="mr-1.5" />
@@ -356,7 +356,7 @@ export function SessionHistoryTab({
                     </div>
                   </div>
                   {!nextActionRoute && (
-                    <div className="mt-3 text-[11px] text-white/38">
+                    <div className="mt-3 text-[13px] text-[var(--text-soft)]">
                       {stageActions.nextActionLabel}
                     </div>
                   )}

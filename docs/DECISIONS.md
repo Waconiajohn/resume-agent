@@ -1,5 +1,13 @@
 # Architecture Decision Records — Resume Agent
 
+## ADR-045: react-joyride for Guided Onboarding Tour
+**Date:** 2026-03-23
+**Status:** accepted
+**Context:** The platform serves 55+ executives who may be unfamiliar with complex web applications. No guided onboarding existed; new users landed on the workspace with no context about where to start or what each room does.
+**Decision:** Install `react-joyride` v3 and build an 8-step guided tour that auto-starts on first visit (gated by `localStorage` key `careeriq_tour_completed`). The tour is replayable via a Help (HelpCircle) button in the header. A separate `JargonTooltip` component provides inline glossary hover-tooltips for platform-specific terms.
+**Reasoning:** react-joyride is React-native (no jQuery dependency), TypeScript-typed, lightweight, and compatible with React 19. The custom `tooltipComponent` prop allows full design-system compliance (CSS custom properties, matching `--surface-elevated` background and `--text-strong` text). Shepherd.js was considered but is heavier and less React-native. A built-from-scratch implementation was considered but unnecessary given the library is well-maintained.
+**Consequences:** `react-joyride` added as a production dependency. Tour targets are set via `data-tour` attributes on sidebar nav buttons and the theme toggle. The `OnboardingTour` is mounted only inside `CareerIQScreen` (desktop layout) so it only runs on the workspace route. The `HelpCircle` button in `Header` is conditionally rendered only when `onReplayTour` is provided (currently only on the `/workspace` route).
+
 ## ADR-001: 3-Agent Architecture (Strategist / Craftsman / Producer)
 **Date:** 2026-02-26
 **Status:** accepted

@@ -41,7 +41,7 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
     <GlassCard
       hover={isNavigable}
       className={cn(
-        'flex flex-col gap-2 rounded-2xl border border-white/[0.06] bg-black/10 p-4',
+        'flex flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-black/10 p-4',
         isNavigable ? 'cursor-pointer' : 'opacity-60 cursor-default',
       )}
       onClick={isNavigable ? () => onNavigate(product.route) : undefined}
@@ -53,12 +53,12 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
       <div className="flex items-start justify-between">
         <span className="text-2xl" aria-hidden="true">{product.icon}</span>
         {product.status === 'coming_soon' && (
-          <span className="rounded-full bg-white/[0.07] border border-white/[0.1] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">
+          <span className="rounded-full bg-[var(--surface-1)] border border-[var(--line-soft)] px-2 py-0.5 text-[12px] font-medium uppercase tracking-wider text-[var(--text-soft)]">
             Coming Soon
           </span>
         )}
         {isBeta && (
-          <span className="rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
+          <span className="rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-2 py-0.5 text-[12px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
             Beta
           </span>
         )}
@@ -67,18 +67,18 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
       <div className="flex flex-col gap-0.5">
         <h4 className={cn(
           'text-sm font-semibold',
-          isNavigable ? 'text-white/90' : 'text-white/40',
+          isNavigable ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]',
         )}>
           {product.name}
         </h4>
         <p className={cn(
           'text-xs leading-relaxed',
-          isNavigable ? 'text-white/55' : 'text-white/30',
+          isNavigable ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]',
         )}>
           {product.shortDescription}
         </p>
         {usesCareerProfile && (
-          <div className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
+          <div className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[12px] uppercase tracking-[0.16em] text-[#c9d7ff]">
             Uses Career Profile
           </div>
         )}
@@ -121,29 +121,29 @@ function FeaturedToolCard({
       aria-label={isNavigable ? `Open ${product.name}` : `${product.name} — coming soon`}
     >
       <div>
-        <div className="text-[11px] uppercase tracking-[0.18em] text-[#98b3ff]/70">{eyebrow}</div>
+        <div className="text-[13px] uppercase tracking-[0.18em] text-[#98b3ff]/70">{eyebrow}</div>
         <div className="mt-3 flex items-start justify-between gap-3">
           <div>
             <span className="text-2xl" aria-hidden="true">{product.icon}</span>
-            <div className="mt-3 text-base font-semibold text-white/90">{product.name}</div>
+            <div className="mt-3 text-base font-semibold text-[var(--text-strong)]">{product.name}</div>
           </div>
           {product.status !== 'active' && (
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/45">
+            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-0.5 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
               {product.status === 'beta' ? 'Beta' : 'Coming Soon'}
             </span>
           )}
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-white/58">{product.shortDescription}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">{product.shortDescription}</p>
         {usesCareerProfile && (
-          <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
+          <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[12px] uppercase tracking-[0.16em] text-[#c9d7ff]">
             Uses Career Profile
           </div>
         )}
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-white/38">{product.ctaLabel}</span>
-        <span className="rounded-full border border-[#98b3ff]/18 bg-[#98b3ff]/[0.08] px-2.5 py-1 text-[11px] font-medium text-[#c9d7ff]">
+        <span className="text-xs text-[var(--text-soft)]">{product.ctaLabel}</span>
+        <span className="rounded-full border border-[#98b3ff]/18 bg-[#98b3ff]/[0.08] px-2.5 py-1 text-[13px] font-medium text-[#c9d7ff]">
           Open
         </span>
       </div>
@@ -168,14 +168,14 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-semibold text-white/90">AI Career Tools</h1>
+        <h1 className="text-lg font-semibold text-[var(--text-strong)]">AI Career Tools</h1>
         {onOpenCoach && (
           <button
             type="button"
             onClick={onOpenCoach}
             className="flex items-center gap-2 rounded-full bg-indigo-600/30 border border-indigo-400/25 px-4 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-600/50 hover:border-indigo-400/40 transition-all duration-200"
           >
-            <span className="w-6 h-6 rounded-full bg-indigo-600/50 border border-indigo-400/30 flex items-center justify-center text-[10px] font-bold text-indigo-300">AI</span>
+            <span className="w-6 h-6 rounded-full bg-indigo-600/50 border border-indigo-400/30 flex items-center justify-center text-[12px] font-bold text-indigo-300">AI</span>
             Chat with {coachLabel}
           </button>
         )}
@@ -183,11 +183,11 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
 
       <div className="grid gap-6">
         <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.18),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
             Start Here
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-white/88">Use the platform in this order</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/54">
+          <h2 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Use the platform in this order</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
             We are simplifying the surface on purpose. Start with the shared story, tailor it to a real opportunity, then manage the search around that work.
           </p>
 
@@ -203,12 +203,12 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
           </div>
         </GlassCard>
 
-        <GlassCard className="border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-5">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
+        <GlassCard className="border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-5">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
             Continue Your Search
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-white/88">Only the next two workspaces stay front and center</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/54">
+          <h2 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Only the next two workspaces stay front and center</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
             Once your profile and resume are in place, the day-to-day work narrows to visibility and interview preparation. Everything else should appear inside the workflow where it belongs.
           </p>
 
@@ -218,9 +218,9 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
             ))}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/[0.06] bg-black/10 p-4">
-            <div className="text-sm font-semibold text-white/82">Later-stage and secondary tools are still available, just not as separate starting points.</div>
-            <p className="mt-2 text-sm leading-relaxed text-white/48">
+          <div className="mt-6 rounded-2xl border border-[var(--line-soft)] bg-black/10 p-4">
+            <div className="text-sm font-semibold text-[var(--text-strong)]">Later-stage and secondary tools are still available, just not as separate starting points.</div>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
               We are moving these behind the workflow where they make sense so the app stops feeling like a wall of random agents.
             </p>
 
@@ -228,10 +228,10 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
               {secondaryTools.map(({ product, belongsIn }) => (
                 <div
                   key={product.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2"
+                  className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2"
                 >
-                  <div className="text-sm font-medium text-white/82">{product.name}</div>
-                  <div className="mt-1 text-xs text-white/46">Open this from {belongsIn}.</div>
+                  <div className="text-sm font-medium text-[var(--text-strong)]">{product.name}</div>
+                  <div className="mt-1 text-xs text-[var(--text-soft)]">Open this from {belongsIn}.</div>
                 </div>
               ))}
             </div>

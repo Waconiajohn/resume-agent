@@ -5,10 +5,13 @@
 import { useState, useCallback } from 'react';
 import { Download, FileType2, Loader2, AlertCircle, Clipboard, ClipboardCheck } from 'lucide-react';
 import { GlassButton } from '../GlassButton';
+import { TemplateSelector } from '../TemplateSelector';
 import type { ResumeDraft } from '@/types/resume-v2';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { getExportGateState } from '@/lib/export-bar-gating';
 import { trackProductEvent } from '@/lib/product-telemetry';
+import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
+import type { TemplateId } from '@/lib/export-templates';
 
 interface ExportBarProps {
   resume: ResumeDraft;
@@ -47,6 +50,7 @@ export function ExportBar({
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const { hasWarnings, exportBlocked } = getExportGateState({
     hasCompletedFinalReview,
     isFinalReviewStale,
@@ -74,7 +78,7 @@ export function ExportBar({
     setError(null);
     try {
       const { exportDocx } = await import('@/lib/export-docx');
-      const result = await exportDocx(getFinalResume());
+      const result = await exportDocx(getFinalResume(), selectedTemplate);
       if (!result.success) setError(result.error ?? 'DOCX export failed');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
@@ -88,6 +92,7 @@ export function ExportBar({
     isFinalReviewStale,
     queueNeedsAttentionCount,
     queuePartialCount,
+    selectedTemplate,
     unresolvedCriticalCount,
     unresolvedHardGapCount,
   ]);
@@ -107,7 +112,7 @@ export function ExportBar({
     setError(null);
     try {
       const { exportPdf } = await import('@/lib/export-pdf');
-      const result = exportPdf(getFinalResume());
+      const result = exportPdf(getFinalResume(), selectedTemplate);
       if (!result.success) setError(result.error ?? 'PDF export failed');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
@@ -121,6 +126,7 @@ export function ExportBar({
     isFinalReviewStale,
     queueNeedsAttentionCount,
     queuePartialCount,
+    selectedTemplate,
     unresolvedCriticalCount,
     unresolvedHardGapCount,
   ]);
@@ -164,8 +170,8 @@ export function ExportBar({
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-white/84">Export warning</p>
-              <div className="mt-1 space-y-1 text-xs leading-5 text-white/62">
+              <p className="text-sm font-medium text-[var(--text-strong)]">Export warning</p>
+              <div className="mt-1 space-y-1 text-xs leading-5 text-[var(--text-soft)]">
                 {!hasCompletedFinalReview && (
                   <p>Final Review has not been run yet, so the draft has not been pressure-tested with the recruiter scan and hiring manager critique.</p>
                 )}
@@ -202,7 +208,7 @@ export function ExportBar({
                   I understand, enable export
                 </GlassButton>
               ) : (
-                <p className="mt-3 text-xs text-white/50">
+                <p className="mt-3 text-xs text-[var(--text-soft)]">
                   Warning acknowledged. Export is enabled, but the draft still has open review warnings.
                 </p>
               )}
@@ -212,11 +218,17 @@ export function ExportBar({
       )}
 
       {!hasWarnings && (queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
-        <div className="support-callout px-4 py-3 text-xs leading-5 text-white/58">
+        <div className="support-callout px-4 py-3 text-xs leading-5 text-[var(--text-soft)]">
           Export is available, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
           {nextQueueItemLabel ? ` If you want to keep improving the draft first, start with "${nextQueueItemLabel}".` : ''}
         </div>
       )}
+
+      <TemplateSelector
+        selected={selectedTemplate}
+        onChange={setSelectedTemplate}
+        className="pb-1"
+      />
 
       <div className="flex items-center gap-2 flex-wrap">
         <GlassButton
@@ -232,7 +244,7 @@ export function ExportBar({
           )}
           Download DOCX
           {exporting === 'pdf' && (
-            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-white/20 animate-pulse" aria-hidden="true" />
+            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[var(--line-strong)] animate-pulse" aria-hidden="true" />
           )}
         </GlassButton>
 
@@ -250,7 +262,7 @@ export function ExportBar({
           )}
           Download PDF
           {exporting === 'docx' && (
-            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-white/20 animate-pulse" aria-hidden="true" />
+            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[var(--line-strong)] animate-pulse" aria-hidden="true" />
           )}
         </GlassButton>
 

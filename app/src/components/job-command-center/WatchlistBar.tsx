@@ -14,19 +14,19 @@ export function WatchlistBar({ companies, onSearchCompany, onManage }: Watchlist
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[11px] text-white/30 uppercase tracking-wider flex-shrink-0">
+      <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider flex-shrink-0">
         Target Companies
       </span>
 
       {topFive.length === 0 ? (
-        <span className="text-[12px] text-white/25 italic">Add target companies to watch</span>
+        <span className="text-[12px] text-[var(--text-soft)] italic">Add target companies to watch</span>
       ) : (
         topFive.map((company) => (
           <button
             key={company.id}
             type="button"
             onClick={() => onSearchCompany(company.name)}
-            className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/55 transition-all hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/80"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-soft)] transition-all hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
           >
             <Building2 size={11} className="flex-shrink-0 text-[#98b3ff]/60" />
             {company.name}
@@ -37,7 +37,7 @@ export function WatchlistBar({ companies, onSearchCompany, onManage }: Watchlist
       <button
         type="button"
         onClick={onManage}
-        className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35 transition-all hover:bg-white/[0.04] hover:text-white/55"
+        className="flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)] transition-all hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
         title="Manage watchlist"
       >
         <Plus size={12} />

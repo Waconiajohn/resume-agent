@@ -59,7 +59,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
         'rounded-lg border p-3 transition-all duration-200',
         used
           ? 'border-[#a8d7b8]/25 bg-[#a8d7b8]/[0.04]'
-          : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]',
+          : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
       )}
     >
       {/* Result headline */}
@@ -68,14 +68,14 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           <p
             className={cn(
               'text-sm font-medium leading-snug line-clamp-1',
-              used ? 'text-[#a8d7b8]/80' : 'text-white/80',
+              used ? 'text-[#a8d7b8]/80' : 'text-[var(--text-muted)]',
             )}
           >
             {item.result || 'No result recorded'}
           </p>
         </div>
         {used && (
-          <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-[#a8d7b8]/70 font-medium">
+          <span className="flex-shrink-0 flex items-center gap-0.5 text-[12px] text-[#a8d7b8]/70 font-medium">
             <Check className="h-3 w-3" />
             Used
           </span>
@@ -88,7 +88,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           {scopeBadges.map(([k, v]) => (
             <span
               key={k}
-              className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]"
             >
               {k.replace(/_/g, ' ')}: {v}
             </span>
@@ -102,7 +102,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           {item.mapped_requirements.slice(0, 3).map((req) => (
             <span
               key={req}
-              className="rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
+              className="rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.07] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
             >
               {truncate(req, 30)}
             </span>
@@ -112,21 +112,21 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
 
       {/* Expanded STAR detail */}
       {expanded && (
-        <div className="mt-3 space-y-2 border-t border-white/[0.06] pt-3">
+        <div className="mt-3 space-y-2 border-t border-[var(--line-soft)] pt-3">
           {item.situation && (
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-white/35 mb-0.5">
+              <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--text-soft)] mb-0.5">
                 Situation
               </p>
-              <p className="text-xs text-white/65 leading-relaxed">{item.situation}</p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.situation}</p>
             </div>
           )}
           {item.action && (
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-white/35 mb-0.5">
+              <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--text-soft)] mb-0.5">
                 Action
               </p>
-              <p className="text-xs text-white/65 leading-relaxed">{item.action}</p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.action}</p>
             </div>
           )}
         </div>
@@ -137,7 +137,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
         <button
           type="button"
           onClick={() => setExpanded((p) => !p)}
-          className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/60 transition-colors"
+          className="flex items-center gap-1 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           aria-label={expanded ? 'Show less detail' : 'Show more detail'}
         >
           {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -148,7 +148,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           <button
             type="button"
             onClick={() => onWeaveIn(item)}
-            className="flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-all duration-150 hover:border-white/[0.2] hover:text-white/80"
+            className="flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-all duration-150 hover:border-[var(--line-strong)] hover:text-[var(--text-muted)]"
             aria-label="Add this achievement to the section"
           >
             <Layers className="h-3 w-3" />
@@ -174,7 +174,7 @@ export function WorkbenchEvidenceCards({
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-medium tracking-wide uppercase text-white/35 px-0.5">
+      <p className="text-[12px] font-medium tracking-wide uppercase text-[var(--text-soft)] px-0.5">
         Your Achievements
       </p>
       <div className="space-y-2">
@@ -191,7 +191,7 @@ export function WorkbenchEvidenceCards({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="w-full rounded-md border border-white/[0.06] bg-white/[0.02] py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45 transition-all duration-150 hover:border-white/[0.1] hover:text-white/65"
+          className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] py-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)] transition-all duration-150 hover:border-[var(--line-strong)] hover:text-[var(--text-muted)]"
           aria-label={`Show ${hiddenCount} more achievements`}
         >
           Show {hiddenCount} more

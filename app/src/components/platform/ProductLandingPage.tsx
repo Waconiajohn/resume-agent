@@ -39,9 +39,9 @@ function WaitlistForm({ productSlug }: { productSlug: string }) {
           placeholder="your@email.com"
           required
           className={cn(
-            'h-9 flex-1 rounded-lg border border-white/[0.1] bg-white/[0.04]',
-            'px-3 text-sm text-white/80 placeholder:text-white/30',
-            'focus:border-white/[0.2] focus:outline-none focus:ring-0',
+            'h-9 flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)]',
+            'px-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
+            'focus:border-[var(--line-strong)] focus:outline-none focus:ring-0',
             'transition-colors',
           )}
         />
@@ -70,7 +70,7 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
     <div className="mx-auto max-w-4xl px-4 py-8">
       <button
         onClick={() => onNavigate('/tools')}
-        className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
+        className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors duration-150"
       >
         <span aria-hidden="true">&#8592;</span>
         Back to Tools
@@ -79,22 +79,22 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
       <div className="mb-8 flex items-center gap-4">
         <span className="text-5xl" aria-label={`${product.name} icon`}>{product.icon}</span>
         <div>
-          <h1 className="text-2xl font-semibold text-white/90">{product.name}</h1>
+          <h1 className="text-2xl font-semibold text-[var(--text-strong)]">{product.name}</h1>
           {isComingSoon && (
-            <span className="mt-1 inline-block rounded-full bg-white/[0.07] border border-white/[0.1] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">
+            <span className="mt-1 inline-block rounded-full bg-[var(--surface-1)] border border-[var(--line-soft)] px-2.5 py-0.5 text-[12px] font-medium uppercase tracking-wider text-[var(--text-soft)]">
               Coming Soon
             </span>
           )}
         </div>
       </div>
 
-      <p className="mb-10 text-base leading-relaxed text-white/60">{product.longDescription}</p>
+      <p className="mb-10 text-base leading-relaxed text-[var(--text-soft)]">{product.longDescription}</p>
 
       <div className={cn('mb-10 grid gap-4', 'grid-cols-1 md:grid-cols-2')}>
         {product.features.map((feature) => (
           <GlassCard key={feature.title} className="p-5 flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-white/85">{feature.title}</h3>
-            <p className="text-xs leading-relaxed text-white/50">{feature.description}</p>
+            <h3 className="text-sm font-semibold text-[var(--text-strong)]">{feature.title}</h3>
+            <p className="text-xs leading-relaxed text-[var(--text-soft)]">{feature.description}</p>
           </GlassCard>
         ))}
       </div>
@@ -121,7 +121,7 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
           )
         ) : isComingSoon ? (
           <div className="w-full max-w-sm">
-            <p className="mb-3 text-sm text-white/50">Get notified when this launches:</p>
+            <p className="mb-3 text-sm text-[var(--text-soft)]">Get notified when this launches:</p>
             <WaitlistForm productSlug={product.slug} />
           </div>
         ) : (

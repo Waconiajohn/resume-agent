@@ -112,10 +112,10 @@ export function SectionReviewPanel({
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/85">Review This Section</span>
-          <span className="rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/78">
+          <span className="text-sm font-medium text-[var(--text-strong)]">Review This Section</span>
+          <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
             {sectionTitle(section)}
           </span>
         </div>
@@ -132,9 +132,9 @@ export function SectionReviewPanel({
             onCancel={() => setMode('view')}
           />
         ) : (
-          <GlassCard className="p-5 space-y-1 bg-white/[0.03] border-white/[0.08]">
+          <GlassCard className="p-5 space-y-1 bg-[var(--accent-muted)] border-[var(--line-soft)]">
             {/* Section heading */}
-            <h3 className="text-base font-semibold text-white/90 mb-3 pb-2 border-b border-white/[0.08]">
+            <h3 className="text-base font-semibold text-[var(--text-strong)] mb-3 pb-2 border-b border-[var(--line-soft)]">
               {sectionTitle(section)}
             </h3>
 
@@ -147,14 +147,14 @@ export function SectionReviewPanel({
                   return (
                     <div key={i} className="flex items-start gap-2 px-1 py-1.5">
                       {bullet && (
-                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white/40" />
+                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--line-strong)]" />
                       )}
-                      <p className="flex-1 text-sm leading-relaxed text-white/85">{displayText}</p>
+                      <p className="flex-1 text-sm leading-relaxed text-[var(--text-strong)]">{displayText}</p>
                     </div>
                   );
                 })
               ) : (
-                <p className="text-sm text-white/40 italic">No content to display.</p>
+                <p className="text-sm text-[var(--text-soft)] italic">No content to display.</p>
               )}
             </div>
           </GlassCard>
@@ -163,7 +163,7 @@ export function SectionReviewPanel({
         {/* Quick Fix chips — shown below content card in 'quickfix' mode */}
         {mode === 'quickfix' && (
           <div ref={chipsRef} className="space-y-3">
-            <p className="text-xs text-white/50 font-medium tracking-wide uppercase px-0.5">
+            <p className="text-xs text-[var(--text-soft)] font-medium tracking-wide uppercase px-0.5">
               Select quick fixes
             </p>
             <div className="flex flex-wrap gap-2">
@@ -177,8 +177,8 @@ export function SectionReviewPanel({
                     className={cn(
                       'rounded-md border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.08em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
                       active
-                        ? 'border-[#9eb8ff]/55 bg-[rgba(158,184,255,0.18)] text-white'
-                        : 'border-white/[0.1] bg-white/[0.03] text-white/60 hover:border-white/[0.2] hover:bg-white/[0.07] hover:text-white/85',
+                        ? 'border-[#9eb8ff]/55 bg-[rgba(158,184,255,0.18)] text-[var(--text-strong)]'
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                     )}
                     aria-pressed={active}
                   >
@@ -202,7 +202,7 @@ export function SectionReviewPanel({
 
       {/* Fixed action bar — hidden in edit mode (editor has its own Save/Cancel) */}
       {mode !== 'edit' && (
-        <div className="border-t border-white/[0.12] px-4 py-3">
+        <div className="border-t border-[var(--line-soft)] px-4 py-3">
           <div className="flex items-center gap-2">
             <GlassButton
               variant="primary"

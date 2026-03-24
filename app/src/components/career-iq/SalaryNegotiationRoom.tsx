@@ -70,11 +70,11 @@ function ConfidenceGauge({ score, size = 80, label }: { score: number; size?: nu
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-[14px] font-bold leading-none" style={{ color }}>{score}</span>
-          <span className="text-[9px] text-white/30 mt-0.5">%</span>
+          <span className="text-[12px] text-[var(--text-soft)] mt-0.5">%</span>
         </div>
       </div>
-      {label && <span className="text-[10px] text-white/40">{label}</span>}
-      <span className="text-[10px] font-medium" style={{ color }}>{strengthLabel}</span>
+      {label && <span className="text-[12px] text-[var(--text-soft)]">{label}</span>}
+      <span className="text-[12px] font-medium" style={{ color }}>{strengthLabel}</span>
     </div>
   );
 }
@@ -111,16 +111,16 @@ function SalaryRangeBar({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">{label}</span>
+        <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">{label}</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/60" />
-            <span className="text-[10px] text-white/30">Market P50</span>
+            <span className="text-[12px] text-[var(--text-soft)]">Market P50</span>
           </div>
           {offer !== undefined && (
             <div className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/60" />
-              <span className="text-[10px] text-white/30">Your offer</span>
+              <span className="text-[12px] text-[var(--text-soft)]">Your offer</span>
             </div>
           )}
         </div>
@@ -130,7 +130,7 @@ function SalaryRangeBar({
       <div className="relative h-6">
         {/* Background range */}
         <div className="absolute inset-y-0 left-0 right-0 flex items-center">
-          <div className="w-full h-2 rounded-full bg-white/[0.04]" />
+          <div className="w-full h-2 rounded-full bg-[var(--accent-muted)]" />
         </div>
         {/* Colored range fill (min to max) */}
         <div className="absolute inset-y-0 left-0 right-0 flex items-center">
@@ -169,18 +169,18 @@ function SalaryRangeBar({
 
       {/* Labels */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-white/30">{formatK(min)}</span>
+        <span className="text-[12px] text-[var(--text-soft)]">{formatK(min)}</span>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-medium text-[#afc4ff]/70">{formatK(mid)}</span>
-          <span className="text-[9px] text-white/20">P50</span>
+          <span className="text-[12px] font-medium text-[#afc4ff]/70">{formatK(mid)}</span>
+          <span className="text-[12px] text-[var(--text-soft)]">P50</span>
         </div>
-        <span className="text-[10px] text-white/30">{formatK(max)}</span>
+        <span className="text-[12px] text-[var(--text-soft)]">{formatK(max)}</span>
       </div>
 
       {/* Position commentary */}
       {offer !== undefined && (
         <div className={cn(
-          'rounded-lg px-3 py-2 text-[11px] border',
+          'rounded-lg px-3 py-2 text-[13px] border',
           offer >= mid
             ? 'bg-[#b5dec2]/[0.04] border-[#b5dec2]/15 text-[#b5dec2]/80'
             : offer >= min
@@ -218,26 +218,26 @@ function LeverCardDisplay({ card }: { card: LeverCard }) {
   }[card.flexibility];
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-2.5">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 space-y-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-white/40">{card.icon}</span>
-        <span className="text-[13px] font-semibold text-white/75">{card.lever}</span>
+        <span className="text-[var(--text-soft)]">{card.icon}</span>
+        <span className="text-[13px] font-semibold text-[var(--text-muted)]">{card.lever}</span>
         <div className="ml-auto flex items-center gap-1.5">
           <span className={cn('h-1.5 w-1.5 rounded-full', flexConfig.dot)} />
-          <span className={cn('text-[10px] font-medium', flexConfig.color)}>{flexConfig.label}</span>
+          <span className={cn('text-[12px] font-medium', flexConfig.color)}>{flexConfig.label}</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <span className="text-[10px] text-white/30 block mb-0.5">Current</span>
-          <span className="text-[12px] text-white/55">{card.current}</span>
+          <span className="text-[12px] text-[var(--text-soft)] block mb-0.5">Current</span>
+          <span className="text-[12px] text-[var(--text-soft)]">{card.current}</span>
         </div>
         <div>
-          <span className="text-[10px] text-white/30 block mb-0.5">Target</span>
-          <span className="text-[12px] text-white/70 font-medium">{card.target}</span>
+          <span className="text-[12px] text-[var(--text-soft)] block mb-0.5">Target</span>
+          <span className="text-[12px] text-[var(--text-muted)] font-medium">{card.target}</span>
         </div>
       </div>
-      <p className="text-[11px] text-white/35 leading-relaxed border-t border-white/[0.04] pt-2">{card.tip}</p>
+      <p className="text-[13px] text-[var(--text-soft)] leading-relaxed border-t border-[var(--line-soft)] pt-2">{card.tip}</p>
     </div>
   );
 }
@@ -256,21 +256,21 @@ function TalkingPointItem({ point, index }: { point: string; index: number }) {
   }, [point]);
 
   return (
-    <div className="group relative rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-[#afc4ff]/20 transition-all">
+    <div className="group relative rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 hover:border-[#afc4ff]/20 transition-all">
       <div className="flex items-start gap-3">
-        <span className="flex-shrink-0 h-5 w-5 rounded-full border border-[#afc4ff]/25 bg-[#afc4ff]/[0.08] flex items-center justify-center text-[10px] font-bold text-[#afc4ff]/70 mt-0.5">
+        <span className="flex-shrink-0 h-5 w-5 rounded-full border border-[#afc4ff]/25 bg-[#afc4ff]/[0.08] flex items-center justify-center text-[12px] font-bold text-[#afc4ff]/70 mt-0.5">
           {index + 1}
         </span>
-        <p className="flex-1 text-[13px] text-white/65 leading-relaxed italic">{point}</p>
+        <p className="flex-1 text-[13px] text-[var(--text-soft)] leading-relaxed italic">{point}</p>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-white/[0.06]"
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-[var(--accent-muted)]"
           title="Copy to clipboard"
         >
           {copied
             ? <Check size={13} className="text-[#b5dec2]" />
-            : <Copy size={13} className="text-white/30" />
+            : <Copy size={13} className="text-[var(--text-soft)]" />
           }
         </button>
       </div>
@@ -295,7 +295,7 @@ function RedLinesSection() {
     <GlassCard className="p-5 border-[#f0b8b8]/10">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle size={15} className="text-[#f0b8b8]/70" />
-        <h3 className="text-[14px] font-semibold text-white/75">Red Lines — What NOT to Say</h3>
+        <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Red Lines — What NOT to Say</h3>
       </div>
       <div className="space-y-2">
         {RED_LINES.map((line, i) => (
@@ -343,28 +343,28 @@ function CounterScenarioCards() {
       {COUNTER_SCENARIOS.map((sc, i) => {
         const isExpanded = expandedIdx === i;
         return (
-          <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <div key={i} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
             <button
               type="button"
               onClick={() => setExpandedIdx(isExpanded ? null : i)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
             >
               <MessageSquare size={14} className="text-[#afc4ff]/50 flex-shrink-0" />
-              <span className="flex-1 text-[13px] font-medium text-white/70">{sc.scenario}</span>
+              <span className="flex-1 text-[13px] font-medium text-[var(--text-muted)]">{sc.scenario}</span>
               {isExpanded
-                ? <ChevronRight size={13} className="text-white/25 rotate-90" />
-                : <ChevronRight size={13} className="text-white/25" />
+                ? <ChevronRight size={13} className="text-[var(--text-soft)] rotate-90" />
+                : <ChevronRight size={13} className="text-[var(--text-soft)]" />
               }
             </button>
             {isExpanded && (
-              <div className="px-4 pb-4 space-y-3 border-t border-white/[0.04]">
+              <div className="px-4 pb-4 space-y-3 border-t border-[var(--line-soft)]">
                 <div className="mt-3">
-                  <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">They say</span>
-                  <p className="mt-1 text-[12px] text-white/45 leading-relaxed italic">{sc.employer_says}</p>
+                  <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">They say</span>
+                  <p className="mt-1 text-[12px] text-[var(--text-soft)] leading-relaxed italic">{sc.employer_says}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-semibold text-[#afc4ff]/50 uppercase tracking-wider">You say</span>
-                  <p className="mt-1 text-[13px] text-white/70 leading-relaxed">{sc.recommended_response}</p>
+                  <span className="text-[12px] font-semibold text-[#afc4ff]/50 uppercase tracking-wider">You say</span>
+                  <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{sc.recommended_response}</p>
                 </div>
               </div>
             )}
@@ -394,16 +394,16 @@ function ActivityFeed({
     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
       {messages.length === 0 ? (
         <div className="text-center py-8">
-          <Loader2 size={20} className="text-white/20 mx-auto mb-2 animate-spin" />
-          <p className="text-[12px] text-white/30">Connecting...</p>
+          <Loader2 size={20} className="text-[var(--text-soft)] mx-auto mb-2 animate-spin" />
+          <p className="text-[12px] text-[var(--text-soft)]">Connecting...</p>
         </div>
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-white/70' : age <= 2 ? 'text-white/50' : age <= 5 ? 'text-white/35' : 'text-white/20';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#afc4ff]' : 'bg-white/20')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#afc4ff]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -508,8 +508,8 @@ function ReportView({
             <TrendingUp size={18} className="text-[#afc4ff]" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-white/90">Negotiation Strategy</h2>
-            <p className="text-[13px] text-white/40">Your working negotiation brief</p>
+            <h2 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Strategy</h2>
+            <p className="text-[13px] text-[var(--text-soft)]">Your working negotiation brief</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -538,15 +538,15 @@ function ReportView({
             label="Base Salary — Market Range"
           />
           {strategyReviewData?.data_confidence && (
-            <p className="mt-3 text-[10px] text-white/25">
-              Market read: <span className="text-white/40 capitalize">{strategyReviewData.data_confidence}</span> confidence based on role, industry, and geography
+            <p className="mt-3 text-[12px] text-[var(--text-soft)]">
+              Market read: <span className="text-[var(--text-soft)] capitalize">{strategyReviewData.data_confidence}</span> confidence based on role, industry, and geography
             </p>
           )}
         </GlassCard>
       )}
 
       {/* Tab switcher */}
-      <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06] w-fit">
+      <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] w-fit">
         {([
           ['playbook', 'Strategy Brief'],
           ['leverage', 'Leverage Levers'],
@@ -559,8 +559,8 @@ function ReportView({
             className={cn(
               'px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
               activeTab === tab
-                ? 'bg-white/[0.08] text-white/85 shadow-sm'
-                : 'text-white/40 hover:text-white/60',
+                ? 'bg-[var(--surface-1)] text-[var(--text-strong)] shadow-sm'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
             )}
           >
             {label}
@@ -574,8 +574,8 @@ function ReportView({
           <GlassCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <MessageSquare size={15} className="text-[#afc4ff]/60" />
-              <h3 className="text-[14px] font-semibold text-white/75">Verbatim Talking Points</h3>
-              <span className="text-[11px] text-white/30 ml-1">use or adapt these word-for-word</span>
+              <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Verbatim Talking Points</h3>
+              <span className="text-[13px] text-[var(--text-soft)] ml-1">use or adapt these word-for-word</span>
             </div>
             <div className="space-y-2.5">
               {STATIC_TALKING_POINTS.map((point, i) => (
@@ -588,7 +588,7 @@ function ReportView({
           <GlassCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Swords size={14} className="text-[#f0d99f]/60" />
-              <h3 className="text-[14px] font-semibold text-white/75">Counter-Offer Scenarios</h3>
+              <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Counter-Offer Scenarios</h3>
             </div>
             <CounterScenarioCards />
           </GlassCard>
@@ -597,16 +597,16 @@ function ReportView({
           <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
             <div
               className="prose prose-invert prose-sm max-w-none
-                prose-headings:text-white/85 prose-headings:font-semibold
-                prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+                prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+                prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
                 prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#afc4ff]/90
-                prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-                prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
-                prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-                prose-strong:text-white/80
+                prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
+                prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
+                prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+                prose-strong:text-[var(--text-strong)]
                 prose-em:text-[#f0d99f]/80
-                prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-white/60 prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
-                prose-hr:border-white/[0.06] prose-hr:my-6"
+                prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+                prose-hr:border-[var(--line-soft)] prose-hr:my-6"
               dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
             />
           </GlassCard>
@@ -675,10 +675,10 @@ function InputField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">{label}</label>
+      <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">{label}</label>
       <div className="relative">
         {prefix && (
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/30">{prefix}</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-[var(--text-soft)]">{prefix}</span>
         )}
         <input
           type={type}
@@ -686,7 +686,7 @@ function InputField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-3 text-[13px] text-white/80 placeholder:text-white/25',
+            'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all',
             prefix ? 'pl-7 pr-4' : 'px-4',
           )}
@@ -711,13 +711,13 @@ function TextareaField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">{label}</label>
+      <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">{label}</label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all"
+        className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all"
       />
     </div>
   );
@@ -896,8 +896,8 @@ export function SalaryNegotiationRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Negotiation Prep</h1>
-          <p className="text-[13px] text-white/40">Building your negotiation brief...</p>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Prep</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">Building your negotiation brief...</p>
         </div>
 
         {/* Stage indicators */}
@@ -911,16 +911,16 @@ export function SalaryNegotiationRoom({
             return (
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
+                  'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
                   isActive ? 'bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/25'
                     : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20'
-                    : 'bg-white/[0.04] text-white/25 border border-white/[0.06]',
+                    : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
                   {isDone && <Check size={10} />}
                   {STAGE_LABELS[stage]}
                 </div>
-                {i < arr.length - 1 && <ChevronRight size={12} className="text-white/15 flex-shrink-0" />}
+                {i < arr.length - 1 && <ChevronRight size={12} className="text-[var(--text-soft)] flex-shrink-0" />}
               </div>
             );
           })}
@@ -932,10 +932,10 @@ export function SalaryNegotiationRoom({
               <Loader2 size={16} className="text-[#afc4ff] animate-spin" />
             </div>
             <div>
-              <h3 className="text-[14px] font-semibold text-white/80">
+              <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
                 {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : 'Starting analysis...'}
               </h3>
-              <p className="text-[12px] text-white/35">Reviewing market context and shaping your negotiation brief</p>
+              <p className="text-[12px] text-[var(--text-soft)]">Reviewing market context and shaping your negotiation brief</p>
             </div>
           </div>
           <ActivityFeed messages={activityMessages} currentStage={currentStage} />
@@ -944,7 +944,7 @@ export function SalaryNegotiationRoom({
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-white/25 hover:text-white/45 transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -957,14 +957,14 @@ export function SalaryNegotiationRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Negotiation Prep</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Prep</h1>
         </div>
         <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[13px] text-[#f0b8b8] font-medium">Analysis failed</p>
-              <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
+              <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
@@ -1001,13 +1001,13 @@ export function SalaryNegotiationRoom({
                 <DollarSign size={20} className="text-[#afc4ff]" />
               </div>
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#afc4ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[#afc4ff]/70">
                   Negotiation Prep
                 </div>
-                <h1 className="mt-1 text-xl font-semibold text-white/90">Build one clear compensation strategy before you respond</h1>
+                <h1 className="mt-1 text-xl font-semibold text-[var(--text-strong)]">Build one clear compensation strategy before you respond</h1>
               </div>
             </div>
-            <p className="mt-3 text-[13px] leading-relaxed text-white/48">
+            <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">
               This should feel like a guided strategy brief, not a report generator. Load the offer, anchor it to your market story, and walk away with leverage points plus language you can actually use.
             </p>
           </div>
@@ -1030,17 +1030,17 @@ export function SalaryNegotiationRoom({
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What goes in</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Offer details, current baseline, and the story behind your leverage</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">What goes in</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Offer details, current baseline, and the story behind your leverage</div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What comes out</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Market benchmarks, negotiation posture, and scripts you can actually say out loud</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">What comes out</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Market benchmarks, negotiation posture, and scripts you can actually say out loud</div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">How to use it</div>
-            <div className="mt-2 text-sm font-semibold text-white/84">Decide what to press, what to trade, and when to hold the line</div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">How to use it</div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">Decide what to press, what to trade, and when to hold the line</div>
           </div>
         </div>
 
@@ -1052,7 +1052,7 @@ export function SalaryNegotiationRoom({
 
       {priorLoading && (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading saved draft...
           </div>
@@ -1061,21 +1061,21 @@ export function SalaryNegotiationRoom({
       {priorResult && !isPipelineActive && showPriorResult && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">
+            <h3 className="text-sm font-medium text-[var(--text-muted)]">
               {initialSessionId ? 'Saved negotiation strategy for this job' : 'Earlier draft'}
             </h3>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowPriorResult(false)}
-                className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
               >
                 Hide
               </button>
               <button
                 type="button"
                 onClick={clearPrior}
-                className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
                 Start New Draft
@@ -1083,7 +1083,7 @@ export function SalaryNegotiationRoom({
             </div>
           </div>
           <div
-            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            className="prose prose-invert prose-sm max-w-none text-[var(--text-strong)] max-h-96 overflow-y-auto"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
           />
         </GlassCard>
@@ -1092,14 +1092,14 @@ export function SalaryNegotiationRoom({
       <GlassCard className="p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">Resume context</div>
-            <h2 className="mt-2 text-base font-semibold text-white/86">This strategy gets stronger when the platform can see your full scope and proof</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/50">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Resume context</div>
+            <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">This strategy gets stronger when the platform can see your full scope and proof</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
               If your master resume is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
             </p>
           </div>
           {resumeText.length > 50 && !resumeLoading && (
-            <div className="rounded-full border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#b5dec2]/78">
+            <div className="rounded-full border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-[#b5dec2]/78">
               Resume loaded
             </div>
           )}
@@ -1107,7 +1107,7 @@ export function SalaryNegotiationRoom({
 
         <div className="mt-4">
           {resumeLoading ? (
-            <div className="flex items-center gap-2 text-[12px] text-white/35">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
               <Loader2 size={12} className="animate-spin" />
               Loading your resume...
             </div>
@@ -1148,7 +1148,7 @@ export function SalaryNegotiationRoom({
             <div className="rounded-lg bg-[#afc4ff]/10 p-1.5">
               <Target size={14} className="text-[#afc4ff]" />
             </div>
-            <h2 className="text-[15px] font-semibold text-white/80">The Offer</h2>
+            <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">The Offer</h2>
           </div>
 
           <InputField
@@ -1203,7 +1203,7 @@ export function SalaryNegotiationRoom({
               <div className="rounded-lg bg-[#b5dec2]/10 p-1.5">
                 <Shield size={14} className="text-[#b5dec2]" />
               </div>
-              <h2 className="text-[15px] font-semibold text-white/80">Your Current Position</h2>
+              <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Current Position</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1237,8 +1237,8 @@ export function SalaryNegotiationRoom({
               <div className="rounded-lg bg-[#f0d99f]/10 p-1.5">
                 <Briefcase size={14} className="text-[#f0d99f]" />
               </div>
-              <h2 className="text-[15px] font-semibold text-white/80">
-                Target Context <span className="text-[11px] font-normal text-white/30 ml-1">optional</span>
+              <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">
+                Target Context <span className="text-[13px] font-normal text-[var(--text-soft)] ml-1">optional</span>
               </h2>
             </div>
 
@@ -1260,7 +1260,7 @@ export function SalaryNegotiationRoom({
 
       {/* Submit */}
       <div className="flex items-center justify-between pt-2">
-        <p className="text-[12px] text-white/30">
+        <p className="text-[12px] text-[var(--text-soft)]">
           This takes 1–3 minutes. You will get market benchmarks, leverage points, and language you can actually use.
         </p>
         <GlassButton

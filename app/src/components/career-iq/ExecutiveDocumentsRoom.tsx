@@ -43,8 +43,8 @@ export function ExecutiveDocumentsRoom({
 
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-white/90">Executive Documents</h2>
-        <p className="text-sm text-white/50 mt-1">
+        <h2 className="text-xl font-bold text-[var(--text-strong)]">Executive Documents</h2>
+        <p className="text-sm text-[var(--text-soft)] mt-1">
           Professional bios and consulting-grade case studies
         </p>
       </div>
@@ -63,12 +63,12 @@ export function ExecutiveDocumentsRoom({
                 className={cn(
                   'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
                   isActive
-                    ? 'bg-white/[0.08] text-white'
-                    : 'text-white/50 hover:bg-white/[0.04] hover:text-white/70',
+                    ? 'bg-[var(--surface-1)] text-[var(--text-strong)]'
+                    : 'text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                 )}
                 title={tab.description}
               >
-                <Icon size={16} className={isActive ? 'text-[#98b3ff]' : 'text-white/40'} />
+                <Icon size={16} className={isActive ? 'text-[#98b3ff]' : 'text-[var(--text-soft)]'} />
                 {tab.label}
               </button>
             );

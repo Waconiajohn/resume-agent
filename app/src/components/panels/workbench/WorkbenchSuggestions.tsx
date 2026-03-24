@@ -170,7 +170,7 @@ export function WorkbenchSuggestions({
         <Check
           className={cn('h-4 w-4 text-[#b5dec2]/70', 'suggestion-resolved')}
         />
-        <span className="text-xs text-white/40">All suggestions addressed</span>
+        <span className="text-xs text-[var(--text-soft)]">All suggestions addressed</span>
       </div>
     );
   }
@@ -188,7 +188,7 @@ export function WorkbenchSuggestions({
     <div
       key={currentSuggestion.id}
       className={cn(
-        'rounded-2xl border border-white/[0.1] bg-white/[0.03] p-5',
+        'rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5',
         isHighPriority && 'border-l-2 border-l-[#98b3ff]',
         isResolvedAnim ? 'suggestion-resolved' : slideDir === 'out' ? 'suggestion-slide-out' : 'suggestion-slide-in',
       )}
@@ -202,31 +202,31 @@ export function WorkbenchSuggestions({
 
       {/* Header row: intent icon + label + counter */}
       <div className="flex items-center gap-2">
-        <span className="text-white/50">
+        <span className="text-[var(--text-soft)]">
           {INTENT_ICONS[currentSuggestion.intent]}
         </span>
-        <span className="text-xs font-medium uppercase tracking-wide text-white/50">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-soft)]">
           {INTENT_LABELS[currentSuggestion.intent]}
         </span>
-        <span className="ml-auto text-xs text-white/40">
+        <span className="ml-auto text-xs text-[var(--text-soft)]">
           {displayIndex} of {total}
         </span>
       </div>
 
       {/* Question text */}
-      <p className="mt-3 text-sm leading-relaxed text-white/80">
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
         {currentSuggestion.question_text}
       </p>
 
       {/* Context (optional) */}
       {currentSuggestion.context && (
-        <p className="mt-2 text-xs text-white/40">{currentSuggestion.context}</p>
+        <p className="mt-2 text-xs text-[var(--text-soft)]">{currentSuggestion.context}</p>
       )}
 
       {/* Skip reason UI */}
       {showSkipReason && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs text-white/50">Why are you skipping this?</p>
+          <p className="text-xs text-[var(--text-soft)]">Why are you skipping this?</p>
           <div className="flex flex-wrap gap-2">
             {SKIP_REASON_PRESETS.map((preset) => (
               <button
@@ -235,8 +235,8 @@ export function WorkbenchSuggestions({
                 onClick={() => handleSkipConfirm(preset)}
                 disabled={disabled}
                 className={cn(
-                  'rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white/60 transition',
-                  !disabled && 'hover:bg-white/[0.08] hover:text-white/80 cursor-pointer',
+                  'rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-xs text-[var(--text-soft)] transition',
+                  !disabled && 'hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] cursor-pointer',
                   disabled && 'opacity-50 pointer-events-none',
                 )}
               >
@@ -252,8 +252,8 @@ export function WorkbenchSuggestions({
               placeholder="Or type a reason..."
               disabled={disabled}
               className={cn(
-                'flex-1 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white/70 placeholder-white/30 outline-none transition',
-                'focus:border-white/[0.2] focus:bg-white/[0.07]',
+                'flex-1 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-muted)] placeholder-[var(--text-soft)] outline-none transition',
+                'focus:border-[var(--line-strong)] focus:bg-[var(--surface-1)]',
                 disabled && 'opacity-50 pointer-events-none',
               )}
               onKeyDown={(e) => {
@@ -267,8 +267,8 @@ export function WorkbenchSuggestions({
               onClick={() => handleSkipConfirm(skipReasonInput.trim() || undefined)}
               disabled={disabled}
               className={cn(
-                'rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white/50 transition',
-                !disabled && 'hover:bg-white/[0.08] hover:text-white/70 cursor-pointer',
+                'rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-soft)] transition',
+                !disabled && 'hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] cursor-pointer',
                 disabled && 'opacity-50 pointer-events-none',
               )}
             >
@@ -286,8 +286,8 @@ export function WorkbenchSuggestions({
             onClick={handleApply}
             disabled={disabled}
             className={cn(
-              'min-h-[44px] rounded-xl bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white/80 transition',
-              !disabled && 'hover:bg-white/[0.14] hover:text-white/95 cursor-pointer',
+              'min-h-[44px] rounded-xl bg-[var(--surface-1)] px-4 py-2.5 text-sm font-medium text-[var(--text-muted)] transition',
+              !disabled && 'hover:bg-[var(--surface-2)] hover:text-[var(--text-strong)] cursor-pointer',
               disabled && 'opacity-50 pointer-events-none cursor-default',
             )}
           >
@@ -298,8 +298,8 @@ export function WorkbenchSuggestions({
             onClick={handleSkip}
             disabled={disabled}
             className={cn(
-              'min-h-[44px] rounded-xl px-4 py-2.5 text-sm text-white/40 transition',
-              !disabled && 'hover:bg-white/[0.04] hover:text-white/60 cursor-pointer',
+              'min-h-[44px] rounded-xl px-4 py-2.5 text-sm text-[var(--text-soft)] transition',
+              !disabled && 'hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] cursor-pointer',
               disabled && 'opacity-50 pointer-events-none cursor-default',
             )}
           >

@@ -29,10 +29,11 @@ import { runAssembly } from './assembly/agent.js';
 import type {
   V2PipelineState,
   V2PipelineSSEEvent,
-  GapStrategy,
   PreScores,
   GapCoachingCard,
   GapAnalysisOutput,
+  ApprovedStrategy,
+  GapPlacementTarget,
 } from './types.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
@@ -47,11 +48,17 @@ export interface RunPipelineOptions {
   signal?: AbortSignal;
   career_profile?: CareerProfileV2;
   /** Pre-approved strategies (from "Add Context" re-run) */
-  approved_strategies?: Array<{ requirement: string; strategy: GapStrategy }>;
+  approved_strategies?: ApprovedStrategy[];
   /** Additional context from user */
   user_context?: string;
   /** User responses to gap coaching cards (from gate) */
-  gap_coaching_responses?: Array<{ requirement: string; action: 'approve' | 'context' | 'skip'; user_context?: string }>;
+  gap_coaching_responses?: Array<{
+    requirement: string;
+    action: 'approve' | 'context' | 'skip';
+    user_context?: string;
+    target_section?: GapPlacementTarget;
+    target_company?: string;
+  }>;
   /** Pre-computed baseline scores (passed on re-run) */
   pre_scores?: PreScores;
 }
@@ -169,7 +176,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     // 1. "Add Context" re-run — caller passes previously approved strategies via options.approved_strategies.
     // 2. Gap coaching responses — user approved/skipped/provided context for each strategy.
     // 3. First run — pending_strategies are implicitly approved by default.
-    let allApproved: Array<{ requirement: string; strategy: GapStrategy }>;
+    let allApproved: ApprovedStrategy[];
 
     if (state.approved_strategies.length > 0) {
       // Case 1: Re-run with pre-approved strategies
@@ -183,21 +190,27 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
         if (!ps) continue;
 
         if (response.action === 'approve') {
-          allApproved.push(ps);
+          allApproved.push({
+            ...ps,
+            target_section: response.target_section,
+            target_company: response.target_company,
+          });
         } else if (response.action === 'context' && response.user_context) {
-          // User provided additional context — enrich the strategy
+          // User provided additional context — enrich the strategy and carry placement
           allApproved.push({
             requirement: ps.requirement,
             strategy: {
               ...ps.strategy,
               real_experience: `${ps.strategy.real_experience}. Additional context from candidate: ${response.user_context}`,
             },
+            target_section: response.target_section,
+            target_company: response.target_company,
           });
         }
         // 'skip' — not included in allApproved
       }
     } else {
-      // Case 3: First run — implicit approval
+      // Case 3: First run — implicit approval (no placement specified)
       allApproved = gapAnalysis.pending_strategies;
     }
 
@@ -276,10 +289,21 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       executive_tone: tone,
       gap_analysis: gapAnalysis,
       pre_scores: state.pre_scores,
+      job_intelligence: jobIntel,
+      candidate_intelligence: candidateIntel,
     });
     state.final_resume = assembled;
 
     emit({ type: 'assembly_complete', data: assembled });
+
+    if (assembled.hiring_manager_scan) {
+      emit({ type: 'hiring_manager_scan', data: assembled.hiring_manager_scan });
+    }
+
+    if (assembled.inline_suggestions && assembled.inline_suggestions.length > 0) {
+      emit({ type: 'inline_suggestions', data: { suggestions: assembled.inline_suggestions } });
+    }
+
     emit({ type: 'stage_complete', stage: 'assembly', message: 'Assembly complete', duration_ms: Date.now() - assemblyStart });
 
     // ─── Complete ────────────────────────────────────────────────────

@@ -117,13 +117,13 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-3 flex items-start gap-3">
-      <div className="mt-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2">
-        <Icon className="h-4 w-4 text-white/60" />
+      <div className="mt-0.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-2">
+        <Icon className="h-4 w-4 text-[var(--text-soft)]" />
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-white/88">{title}</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-strong)]">{title}</h3>
         {description && (
-          <p className="mt-1 text-xs leading-relaxed text-white/48">{description}</p>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
         )}
       </div>
     </div>
@@ -139,7 +139,7 @@ function ToneBadge({
 }) {
   return (
     <span
-      className="inline-flex border-l-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+      className="inline-flex border-l-2 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.16em]"
       style={{ color: tone.color, backgroundColor: tone.bg, borderColor: tone.border }}
     >
       {label}
@@ -158,7 +158,7 @@ function AssessmentPill({
 
   return (
     <div className="support-callout p-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/32">{label}</p>
+      <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</p>
       <div className="mt-2">
         <ToneBadge label={tone.label} tone={tone} />
       </div>
@@ -177,13 +177,13 @@ function TextList({
     ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]'
     : tone === 'warning'
       ? 'border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]'
-      : 'border-white/[0.06] bg-white/[0.025]';
+      : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
 
   return (
     <div className="space-y-2">
       {items.map((item, index) => (
         <div key={`${item}-${index}`} className={`rounded-lg border px-3 py-2 ${toneClass}`}>
-          <p className="text-xs leading-relaxed text-white/68">{item}</p>
+          <p className="text-xs leading-relaxed text-[var(--text-muted)]">{item}</p>
         </div>
       ))}
     </div>
@@ -212,13 +212,13 @@ export function HiringManagerReviewCard({
         <div className="flex items-start gap-3">
           <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#afc4ff]" />
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-white/90">Final Review</h3>
-            <p className="mt-1 text-sm leading-relaxed text-white/52">
+            <h3 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h3>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
               Combine a six-second recruiter scan with a deeper hiring manager critique before you export.
               This stage tells the user what is obvious immediately, what still weakens interview odds,
               and which fixes are worth making now.
             </p>
-            <div className="room-meta-strip mt-4 text-[11px]">
+            <div className="room-meta-strip mt-4 text-[13px]">
               <div className="room-meta-item">Recruiter Scan</div>
               <div className="room-meta-item">Hiring Manager Verdict</div>
               <div className="room-meta-item">Benchmark Comparison</div>
@@ -244,8 +244,8 @@ export function HiringManagerReviewCard({
         <div className="flex items-center gap-3">
           <Loader2 className="h-5 w-5 text-[#afc4ff] motion-safe:animate-spin" />
           <div>
-            <h3 className="text-sm font-semibold text-white/90">Running Final Review...</h3>
-            <p className="mt-0.5 text-xs text-white/40">
+            <h3 className="text-sm font-semibold text-[var(--text-strong)]">Running Final Review...</h3>
+            <p className="mt-0.5 text-xs text-[var(--text-soft)]">
               Simulating the recruiter skim and the {roleTitle} hiring manager at {companyName}
             </p>
           </div>
@@ -287,9 +287,9 @@ export function HiringManagerReviewCard({
         <div>
           <div className="flex items-center gap-2">
             <UserCheck className="h-4 w-4 shrink-0 text-[#afc4ff]" />
-            <h2 className="text-sm font-semibold text-white/90">Final Review</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h2>
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-white/50">
+          <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
             Job-description fit drives the verdict. Benchmark alignment shows how competitive the resume looks against stronger peers.
           </p>
         </div>
@@ -308,7 +308,7 @@ export function HiringManagerReviewCard({
           />
           <div className="shell-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="max-w-3xl text-sm leading-relaxed text-white/68">
+              <p className="max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
                 {result.six_second_scan.reason}
               </p>
               <ToneBadge label={recruiterTone.label} tone={recruiterTone} />
@@ -316,7 +316,7 @@ export function HiringManagerReviewCard({
 
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
               <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                   Signals Seen
                 </p>
                 <div className="mt-3 space-y-3">
@@ -324,35 +324,35 @@ export function HiringManagerReviewCard({
                     result.six_second_scan.top_signals_seen.map((signal, index) => (
                       <div key={`${signal.signal}-${index}`} className="text-xs">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-white/78">{signal.signal}</p>
+                          <p className="text-[var(--text-muted)]">{signal.signal}</p>
                           <ToneBadge
                             label={signal.visible_in_top_third ? 'Top Third' : 'Too Low'}
                             tone={signal.visible_in_top_third ? SCAN_CONFIG.continue_reading : ASSESSMENT_CONFIG.moderate}
                           />
                         </div>
-                        <p className="mt-1 text-white/42">{signal.why_it_matters}</p>
+                        <p className="mt-1 text-[var(--text-soft)]">{signal.why_it_matters}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-white/42">No clear strengths were surfaced in the recruiter skim.</p>
+                    <p className="text-xs text-[var(--text-soft)]">No clear strengths were surfaced in the recruiter skim.</p>
                   )}
                 </div>
               </div>
 
               <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                   Still Missing
                 </p>
                 <div className="mt-3 space-y-3">
                   {result.six_second_scan.important_signals_missing.length > 0 ? (
                     result.six_second_scan.important_signals_missing.map((signal, index) => (
                       <div key={`${signal.signal}-${index}`} className="text-xs">
-                        <p className="text-white/78">{signal.signal}</p>
-                        <p className="mt-1 text-white/42">{signal.why_it_matters}</p>
+                        <p className="text-[var(--text-muted)]">{signal.signal}</p>
+                        <p className="mt-1 text-[var(--text-soft)]">{signal.why_it_matters}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-white/42">No major top-of-page omissions were flagged.</p>
+                    <p className="text-xs text-[var(--text-soft)]">No major top-of-page omissions were flagged.</p>
                   )}
                 </div>
               </div>
@@ -367,7 +367,7 @@ export function HiringManagerReviewCard({
             description={`This is the deeper interview-readiness view for the ${roleTitle} role.`}
           />
           <div className="shell-panel p-4">
-            <p className="text-sm leading-relaxed text-white/70">{result.hiring_manager_verdict.summary}</p>
+            <p className="text-sm leading-relaxed text-[var(--text-muted)]">{result.hiring_manager_verdict.summary}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <AssessmentPill label="Job Description Fit" value={result.fit_assessment.job_description_fit} />
               <AssessmentPill label="Benchmark Alignment" value={result.fit_assessment.benchmark_alignment} />
@@ -389,18 +389,18 @@ export function HiringManagerReviewCard({
                 <div key={`${win.win}-${index}`} className="shell-panel p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-white/84">{win.win}</p>
-                      <p className="mt-1 text-xs text-white/44">Supports: {win.aligned_requirement}</p>
+                      <p className="text-sm font-medium text-[var(--text-strong)]">{win.win}</p>
+                      <p className="mt-1 text-xs text-[var(--text-soft)]">Supports: {win.aligned_requirement}</p>
                     </div>
                     <ToneBadge
                       label={win.prominent_enough ? 'Placed Well' : 'Move Higher'}
                       tone={win.prominent_enough ? ASSESSMENT_CONFIG.strong : ASSESSMENT_CONFIG.moderate}
                     />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-white/65">{win.why_powerful}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{win.why_powerful}</p>
                   {!win.prominent_enough && (
                     <div className="support-callout mt-3 border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
-                      <p className="text-xs text-white/68">{win.repositioning_recommendation}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{win.repositioning_recommendation}</p>
                     </div>
                   )}
                 </div>
@@ -443,18 +443,18 @@ export function HiringManagerReviewCard({
                         }
                         setExpandedConcern(concern.id);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+                      className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-[var(--accent-muted)]"
                       aria-expanded={isExpanded}
                     >
                       <ChevronDown
                         className={cn(
-                          'h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-200',
+                          'h-3.5 w-3.5 shrink-0 text-[var(--text-soft)] transition-transform duration-200',
                           isExpanded ? 'rotate-0' : '-rotate-90',
                         )}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-white/74">{concern.observation}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/28">
+                        <p className="text-sm text-[var(--text-muted)]">{concern.observation}</p>
+                        <p className="mt-1 text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">
                           {CONCERN_LABELS[concern.type]}
                         </p>
                       </div>
@@ -472,11 +472,11 @@ export function HiringManagerReviewCard({
                         isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
                       )}
                     >
-                      <div className="space-y-3 border-t border-white/[0.06] px-3 pb-4 pt-3">
-                        <p className="text-sm leading-relaxed text-white/62">{concern.why_it_hurts}</p>
+                      <div className="space-y-3 border-t border-[var(--line-soft)] px-3 pb-4 pt-3">
+                        <p className="text-sm leading-relaxed text-[var(--text-soft)]">{concern.why_it_hurts}</p>
 
                         {(concern.target_section || concern.related_requirement) && (
-                          <div className="room-meta-strip gap-2 text-[11px] text-white/42">
+                          <div className="room-meta-strip gap-2 text-[13px] text-[var(--text-soft)]">
                             {concern.target_section && (
                               <span className="room-meta-item">
                                 Section: {concern.target_section}
@@ -491,32 +491,32 @@ export function HiringManagerReviewCard({
                         )}
 
                         <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
+                          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
                             Fix Strategy
                           </p>
-                          <p className="mt-2 text-sm leading-relaxed text-white/70">{concern.fix_strategy}</p>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.fix_strategy}</p>
                         </div>
 
                         {concern.suggested_resume_edit && (
                           <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                               Sample Language
                             </p>
-                            <p className="mt-2 text-sm leading-relaxed text-white/72">{concern.suggested_resume_edit}</p>
+                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.suggested_resume_edit}</p>
                           </div>
                         )}
 
                         {concern.clarifying_question && (
                           <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                               Candidate Question
                             </p>
-                            <p className="mt-2 text-sm leading-relaxed text-white/72">{concern.clarifying_question}</p>
+                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.clarifying_question}</p>
                           </div>
                         )}
 
                         {isResolved && (
-                          <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-white/70">
+                          <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-[var(--text-muted)]">
                             This concern already has an accepted edit on the resume. If you undo that change, it will show up as unresolved again.
                           </div>
                         )}
@@ -527,7 +527,7 @@ export function HiringManagerReviewCard({
                               type="button"
                               onClick={() => onApplyRecommendation(concern)}
                               disabled={isEditing}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors"
+                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                               style={{
                                 color: severityTone.color,
                                 backgroundColor: severityTone.bg,
@@ -543,7 +543,7 @@ export function HiringManagerReviewCard({
                             <button
                               type="button"
                               onClick={() => setThreadConcernId(isThreadOpen ? null : concern.id)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] font-medium text-white/68 transition-colors hover:bg-white/[0.06] hover:text-white/88"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
                             >
                               <Sparkles className="h-3 w-3" />
                               {isThreadOpen ? 'Hide Coaching Thread' : concern.requires_candidate_input ? 'Open Coaching Thread' : 'Brainstorm Another Fix'}
@@ -588,7 +588,7 @@ export function HiringManagerReviewCard({
               {result.structure_recommendations.map((recommendation, index) => (
                 <div key={`${recommendation.issue}-${index}`} className="shell-panel p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-white/80">{recommendation.issue}</p>
+                    <p className="text-sm font-medium text-[var(--text-strong)]">{recommendation.issue}</p>
                     <ToneBadge
                       label={`${recommendation.priority} priority`}
                       tone={recommendation.priority === 'high'
@@ -598,7 +598,7 @@ export function HiringManagerReviewCard({
                           : ASSESSMENT_CONFIG.strong}
                     />
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-white/62">{recommendation.recommendation}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">{recommendation.recommendation}</p>
                 </div>
               ))}
             </div>
@@ -613,7 +613,7 @@ export function HiringManagerReviewCard({
           />
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                 Advantages
               </p>
               {result.benchmark_comparison.advantages_vs_benchmark.length > 0 ? (
@@ -621,12 +621,12 @@ export function HiringManagerReviewCard({
                   <TextList items={result.benchmark_comparison.advantages_vs_benchmark} tone="good" />
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-white/42">No clear advantages were called out versus the benchmark.</p>
+                <p className="mt-3 text-xs text-[var(--text-soft)]">No clear advantages were called out versus the benchmark.</p>
               )}
             </div>
 
             <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                 Competitive Gaps
               </p>
               {result.benchmark_comparison.gaps_vs_benchmark.length > 0 ? (
@@ -634,12 +634,12 @@ export function HiringManagerReviewCard({
                   <TextList items={result.benchmark_comparison.gaps_vs_benchmark} tone="warning" />
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-white/42">No major benchmark gaps were highlighted.</p>
+                <p className="mt-3 text-xs text-[var(--text-soft)]">No major benchmark gaps were highlighted.</p>
               )}
             </div>
 
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/42">
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
                 Reframing Opportunities
               </p>
               {result.benchmark_comparison.reframing_opportunities.length > 0 ? (
@@ -647,7 +647,7 @@ export function HiringManagerReviewCard({
                   <TextList items={result.benchmark_comparison.reframing_opportunities} />
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-white/42">No additional reframing opportunities were suggested.</p>
+                <p className="mt-3 text-xs text-[var(--text-soft)]">No additional reframing opportunities were suggested.</p>
               )}
             </div>
           </div>

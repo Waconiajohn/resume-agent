@@ -21,13 +21,13 @@ export function EvidenceItemCard({ item, onDelete }: EvidenceItemCardProps) {
     <GlassCard className="p-3 relative">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="mb-2 text-xs leading-relaxed text-white/80">{item.text}</p>
+          <p className="mb-2 text-xs leading-relaxed text-[var(--text-muted)]">{item.text}</p>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={cn('rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]', cfg.classes)}>
+            <span className={cn('rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]', cfg.classes)}>
               {cfg.label}
             </span>
             {item.category && (
-              <span className="rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/50">
+              <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-soft)]">
                 {item.category}
               </span>
             )}
@@ -37,7 +37,7 @@ export function EvidenceItemCard({ item, onDelete }: EvidenceItemCardProps) {
           <button
             type="button"
             onClick={onDelete}
-            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#f0b8b8]"
+            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
             aria-label="Delete evidence item"
           >
             <Trash2 className="h-3.5 w-3.5" />

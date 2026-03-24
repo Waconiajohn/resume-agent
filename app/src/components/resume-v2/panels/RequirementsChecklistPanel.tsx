@@ -77,13 +77,13 @@ function GroupHeader({ importance, count }: { importance: Importance; count: num
   return (
     <div className="flex items-center gap-2 mb-2 mt-1">
       <span
-        className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
+        className="rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] shrink-0"
         style={style}
       >
         {importanceLabel(importance)}
       </span>
       <div className="flex-1 h-px" style={{ backgroundColor: style.borderColor }} />
-      <span className="text-[10px] tabular-nums text-white/30">{count}</span>
+      <span className="text-[12px] tabular-nums text-[var(--text-soft)]">{count}</span>
     </div>
   );
 }
@@ -101,7 +101,7 @@ function StatusLine({
 }) {
   if (status === 'gap') {
     return (
-      <span className="text-[10px] font-medium tracking-wide" style={{ color: '#f0b8b8' }}>
+      <span className="text-[12px] font-medium tracking-wide" style={{ color: '#f0b8b8' }}>
         GAP — Not addressed in resume
       </span>
     );
@@ -109,7 +109,7 @@ function StatusLine({
 
   if (status === 'repositioned' && strategyUsed) {
     return (
-      <span className="text-[10px] leading-snug" style={{ color: '#afc4ff' }}>
+      <span className="text-[12px] leading-snug" style={{ color: '#afc4ff' }}>
         Repositioned: {strategyUsed}
       </span>
     );
@@ -122,12 +122,12 @@ function StatusLine({
         ? first.bullet_text.slice(0, 80).trimEnd() + '…'
         : first.bullet_text;
     return (
-      <span className="text-[10px] text-white/45 leading-snug">
+      <span className="text-[12px] text-[var(--text-soft)] leading-snug">
         Addressed by:{' '}
-        <span className="text-white/60 italic">&ldquo;{snippet}&rdquo;</span>
+        <span className="text-[var(--text-soft)] italic">&ldquo;{snippet}&rdquo;</span>
         {' '}in{' '}
         <span
-          className="rounded-md px-1.5 py-0.5 text-[9px] font-medium not-italic"
+          className="rounded-md px-1.5 py-0.5 text-[12px] font-medium not-italic"
           style={{
             color: 'rgba(255,255,255,0.50)',
             backgroundColor: 'rgba(255,255,255,0.06)',
@@ -240,14 +240,14 @@ function CoachingDrawer({
       {/* Evidence chips */}
       {evidence.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">
+          <div className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
             Your Relevant Experience
           </div>
           <div className="flex flex-wrap gap-1">
             {evidence.map((e, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] text-white/60 bg-white/[0.05] border border-white/[0.10]"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[13px] text-[var(--text-soft)] bg-[var(--surface-1)] border border-[var(--line-soft)]"
               >
                 <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
                 {e}
@@ -262,11 +262,11 @@ function CoachingDrawer({
         <div className="flex gap-2.5">
           <div className="shrink-0 mt-0.5">
             <div className="h-6 w-6 rounded-lg bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
-              <span className="text-[8px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
+              <span className="text-[12px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
             </div>
           </div>
           <div className="flex-1 rounded-lg border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3 py-2">
-            <p className="text-[12px] text-white/70 leading-[1.6]">{coaching.ai_reasoning}</p>
+            <p className="text-[12px] text-[var(--text-muted)] leading-[1.6]">{coaching.ai_reasoning}</p>
           </div>
         </div>
       )}
@@ -274,7 +274,7 @@ function CoachingDrawer({
       {/* Strategy card */}
       {strategy?.positioning && (
         <div
-          className="relative rounded-lg border bg-white/[0.03] pl-3.5 pr-2.5 py-2 overflow-hidden"
+          className="relative rounded-lg border bg-[var(--accent-muted)] pl-3.5 pr-2.5 py-2 overflow-hidden"
           style={{ borderColor: `${accentColor}20` }}
         >
           <div
@@ -284,13 +284,13 @@ function CoachingDrawer({
           <div className="flex items-center gap-1.5 mb-1">
             <Lightbulb className="h-3 w-3 shrink-0" style={{ color: `${accentColor}B3` }} />
             <span
-              className="text-[9px] font-semibold uppercase tracking-wider"
+              className="text-[12px] font-semibold uppercase tracking-wider"
               style={{ color: `${accentColor}B3` }}
             >
               {status === 'gap' ? 'Safe Resume Language' : 'Suggested Language'}
             </span>
           </div>
-          <p className="text-[12px] text-white/70 leading-relaxed">{strategy.positioning}</p>
+          <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">{strategy.positioning}</p>
         </div>
       )}
 
@@ -299,11 +299,11 @@ function CoachingDrawer({
         <div className="flex items-start gap-1.5 px-1">
           <Ruler className="h-3 w-3 text-[#f0d99f]/60 shrink-0 mt-0.5" />
           <div>
-            <span className="text-[11px] text-[#f0d99f]/80">
+            <span className="text-[13px] text-[#f0d99f]/80">
               {coaching?.inferred_metric ?? strategy?.inferred_metric}
             </span>
             {(coaching?.inference_rationale || strategy?.inference_rationale) && (
-              <span className="text-[11px] text-white/30 ml-1">
+              <span className="text-[13px] text-[var(--text-soft)] ml-1">
                 — {coaching?.inference_rationale ?? strategy?.inference_rationale}
               </span>
             )}
@@ -319,7 +319,7 @@ function CoachingDrawer({
             onChange={(e) => setContextText(e.target.value)}
             placeholder="Share relevant experience, projects, or context not in your resume..."
             rows={3}
-            className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-2.5 py-2 text-[12px] text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+            className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-2.5 py-2 text-[12px] text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
             aria-label={`Additional context for: ${requirement}`}
           />
           <div className="flex gap-2">
@@ -327,7 +327,7 @@ function CoachingDrawer({
               type="button"
               disabled={!contextText.trim() || isEditing}
               onClick={handleSubmitContext}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               data-testid="submit-context"
             >
               Submit & Rewrite
@@ -335,7 +335,7 @@ function CoachingDrawer({
             <button
               type="button"
               onClick={() => { setShowContextInput(false); setContextText(''); }}
-              className="text-[11px] text-white/35 hover:text-white/55 transition-colors px-1"
+              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors px-1"
             >
               Cancel
             </button>
@@ -351,7 +351,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleStrengthen}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
                 data-testid="action-strengthen"
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -360,7 +360,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleAddMetrics}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
                 data-testid="action-add-metrics"
               >
                 <Ruler className="h-3 w-3" />
@@ -374,7 +374,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleStrengthen}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
                 data-testid="action-strengthen"
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -384,7 +384,7 @@ function CoachingDrawer({
                 <button
                   type="button"
                   onClick={handleApplyStrategy}
-                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
                   data-testid="action-refine-positioning"
                 >
                   <Lightbulb className="h-3 w-3" />
@@ -398,7 +398,7 @@ function CoachingDrawer({
             <button
               type="button"
               onClick={handleApplyStrategy}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
               data-testid="action-apply-strategy"
             >
               <Lightbulb className="h-3 w-3" />
@@ -410,7 +410,7 @@ function CoachingDrawer({
             <button
               type="button"
               onClick={() => setShowContextInput(true)}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-white/[0.04] text-white/50 border border-white/[0.08] hover:bg-white/[0.07] hover:text-white/70 transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] transition-colors"
               data-testid="action-add-context"
             >
               <MessageSquare className="h-3 w-3" />
@@ -484,7 +484,7 @@ function RequirementRow({
         'border',
         isActive
           ? 'border-[#afc4ff]/40 bg-[#afc4ff]/[0.06]'
-          : 'border-white/[0.06] bg-white/[0.01]',
+          : 'border-[var(--line-soft)] bg-[var(--accent-muted)]',
       ].join(' ')}
       style={
         isActive
@@ -495,7 +495,7 @@ function RequirementRow({
       <button
         type="button"
         onClick={handleHeaderClick}
-        className="w-full text-left px-3 py-2.5 cursor-pointer hover:bg-white/[0.04] transition-colors"
+        className="w-full text-left px-3 py-2.5 cursor-pointer hover:bg-[var(--accent-muted)] transition-colors"
         aria-pressed={isActive}
         aria-expanded={hasDrawer ? expanded : undefined}
       >
@@ -504,7 +504,7 @@ function RequirementRow({
           {hasDrawer && (
             <ChevronDown
               className={[
-                'h-3 w-3 text-white/30 shrink-0 mt-0.5 transition-transform duration-200',
+                'h-3 w-3 text-[var(--text-soft)] shrink-0 mt-0.5 transition-transform duration-200',
                 expanded ? 'rotate-0' : '-rotate-90',
               ].join(' ')}
               aria-hidden="true"
@@ -513,11 +513,11 @@ function RequirementRow({
           <div className="mt-0.5">
             <StatusIcon status={status} />
           </div>
-          <span className="flex-1 min-w-0 text-xs text-white/80 leading-snug">
+          <span className="flex-1 min-w-0 text-xs text-[var(--text-muted)] leading-snug">
             {requirement}
           </span>
           <span
-            className="rounded-md px-1.5 py-0.5 text-[9px] font-medium shrink-0"
+            className="rounded-md px-1.5 py-0.5 text-[12px] font-medium shrink-0"
             style={importanceStyle(importance)}
           >
             {importanceLabel(importance)}
@@ -533,10 +533,10 @@ function RequirementRow({
               borderLeft: '2px solid rgba(255,255,255,0.10)',
             }}
           >
-            <span className="text-[9px] uppercase tracking-wide font-medium text-white/30 block mb-0.5">
+            <span className="text-[12px] uppercase tracking-wide font-medium text-[var(--text-soft)] block mb-0.5">
               Benchmark
             </span>
-            <span className="text-[10px] text-white/45 leading-snug">{benchmarkContext}</span>
+            <span className="text-[12px] text-[var(--text-soft)] leading-snug">{benchmarkContext}</span>
           </div>
         )}
 
@@ -554,7 +554,7 @@ function RequirementRow({
             expanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0',
           ].join(' ')}
         >
-          <div className="border-t border-white/[0.04]">
+          <div className="border-t border-[var(--line-soft)]">
             <CoachingDrawer
               coaching={coaching}
               gapReq={gapReq}
@@ -598,10 +598,10 @@ function ProgressSummary({
       style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(0,0,0,0.15)' }}
     >
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] text-white/40 font-medium">
+        <span className="text-[12px] text-[var(--text-soft)] font-medium">
           {addressedCount} of {total} requirements addressed
         </span>
-        <span className="text-[10px] tabular-nums text-white/30">
+        <span className="text-[12px] tabular-nums text-[var(--text-soft)]">
           {Math.round((addressedCount / total) * 100)}%
         </span>
       </div>
@@ -634,19 +634,19 @@ function ProgressSummary({
       {/* Legend */}
       <div className="flex items-center gap-3 mt-1.5">
         {strongCount > 0 && (
-          <span className="flex items-center gap-1 text-[9px]" style={{ color: '#b5dec2' }}>
+          <span className="flex items-center gap-1 text-[12px]" style={{ color: '#b5dec2' }}>
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#b5dec2' }} />
             {strongCount} strong
           </span>
         )}
         {repoCount > 0 && (
-          <span className="flex items-center gap-1 text-[9px]" style={{ color: '#afc4ff' }}>
+          <span className="flex items-center gap-1 text-[12px]" style={{ color: '#afc4ff' }}>
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#afc4ff' }} />
             {repoCount} repositioned
           </span>
         )}
         {gapCount > 0 && (
-          <span className="flex items-center gap-1 text-[9px]" style={{ color: '#f0b8b8' }}>
+          <span className="flex items-center gap-1 text-[12px]" style={{ color: '#f0b8b8' }}>
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#f0b8b8' }} />
             {gapCount} gap{gapCount !== 1 ? 's' : ''}
           </span>
@@ -743,11 +743,11 @@ export function RequirementsChecklistPanel({
         className="px-4 py-3 shrink-0 border-b"
         style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(0,0,0,0.10)' }}
       >
-        <h2 className="text-xs font-semibold text-white/70 uppercase tracking-wide">
+        <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
           Requirements Checklist
         </h2>
         {jobIntelligence.role_title && (
-          <p className="text-[10px] text-white/40 mt-0.5 truncate">
+          <p className="text-[12px] text-[var(--text-soft)] mt-0.5 truncate">
             {jobIntelligence.role_title}
             {jobIntelligence.company_name ? ` — ${jobIntelligence.company_name}` : ''}
           </p>
@@ -819,7 +819,7 @@ export function RequirementsChecklistPanel({
             <section>
               <div className="flex items-center gap-2 mb-2 mt-1">
                 <span
-                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
+                  className="rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] shrink-0"
                   style={{
                     color: '#f0b8b8',
                     backgroundColor: 'rgba(240,184,184,0.10)',
@@ -832,7 +832,7 @@ export function RequirementsChecklistPanel({
                   className="flex-1 h-px"
                   style={{ backgroundColor: 'rgba(240,184,184,0.15)' }}
                 />
-                <span className="text-[10px] tabular-nums text-white/30">{extraGaps.length}</span>
+                <span className="text-[12px] tabular-nums text-[var(--text-soft)]">{extraGaps.length}</span>
               </div>
               <div className="space-y-1.5">
                 {extraGaps.map((req) => {

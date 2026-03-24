@@ -17,13 +17,13 @@ export function RoomSkeleton() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Primary column */}
         <div className="flex-[3] min-w-0 flex flex-col gap-3">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
             <GlassSkeleton className="h-4 w-32 mb-4" />
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center gap-3"
+                  className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 flex items-center gap-3"
                 >
                   <GlassSkeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
                   <div className="flex-1 space-y-2">
@@ -38,7 +38,7 @@ export function RoomSkeleton() {
 
         {/* Secondary column */}
         <div className="flex-[2] flex flex-col gap-4">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
             <GlassSkeleton className="h-4 w-28 mb-4" />
             <div className="space-y-3">
               <GlassSkeleton className="h-3 w-full" />

@@ -3,6 +3,7 @@ import { Download, FileText, CheckCircle, Loader2, FileDown, Save, Lock } from '
 import { buildPositioningSummaryText } from '@/lib/export-positioning-summary';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
+import { TemplateSelector } from '../TemplateSelector';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
@@ -12,6 +13,8 @@ import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import type { FinalResume } from '@/types/resume';
 import type { CompletionData } from '@/types/panels';
+import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
+import type { TemplateId } from '@/lib/export-templates';
 
 interface CompletionPanelProps {
   data: CompletionData;
@@ -23,9 +26,9 @@ interface CompletionPanelProps {
 
 function StatBadge({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.03] px-4 py-3">
-      <span className="text-xl font-bold text-white">{value}</span>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">{label}</span>
+    <div className="flex flex-col items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
+      <span className="text-xl font-bold text-[var(--text-strong)]">{value}</span>
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">{label}</span>
     </div>
   );
 }
@@ -40,7 +43,7 @@ function toneClass(tone: 'error' | 'warning' | 'success' | 'info'): string {
       return 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90';
     case 'info':
     default:
-      return 'border-white/[0.14] bg-white/[0.04] text-white/74';
+      return 'border-[var(--line-strong)] bg-[var(--accent-muted)] text-[var(--text-muted)]';
   }
 }
 
@@ -56,6 +59,7 @@ export function CompletionPanel({
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   // Set to true when server returns 402 for DOCX export (plan does not include it)
   const [docxBlocked, setDocxBlocked] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const validationIssues = validateResumeForExport(resume);
   const blockingIssue = validationIssues.find((i) => i.severity === 'error');
   const hasWarnings = validationIssues.some((i) => i.severity === 'warning') || Boolean(data.export_validation && !data.export_validation.passed);
@@ -88,7 +92,7 @@ export function CompletionPanel({
       }
 
       const { exportDocx } = await import('@/lib/export-docx');
-      const result = await exportDocx(resume);
+      const result = await exportDocx(resume, selectedTemplate);
       if (!result.success) {
         const message = result.error ?? 'Failed to generate resume DOCX';
         recordExportDiagnostic(resume, 'docx', 'failure', message);
@@ -125,7 +129,7 @@ export function CompletionPanel({
     recordExportDiagnostic(resume, 'pdf', 'attempt');
     try {
       const { exportPdf } = await import('@/lib/export-pdf');
-      const result = exportPdf(resume);
+      const result = exportPdf(resume, selectedTemplate);
       if (!result.success) {
         const message = result.error ?? 'Failed to generate PDF';
         recordExportDiagnostic(resume, 'pdf', 'failure', message);
@@ -167,12 +171,12 @@ export function CompletionPanel({
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="motion-safe:animate-celebration-check rounded-full motion-safe:animate-celebration-glow">
             <CheckCircle className="h-8 w-8 text-[#a8d7b8]" />
           </div>
-          <span className="text-lg font-semibold text-white/85" aria-live="assertive" role="status">
+          <span className="text-lg font-semibold text-[var(--text-strong)]" aria-live="assertive" role="status">
             Your Resume Is Ready!
           </span>
         </div>
@@ -189,7 +193,7 @@ export function CompletionPanel({
           nextOverride="Use this version for this job, or save it as your go-to resume for future applications."
         />
 
-        <p className="text-sm text-white/60">Download your resume below, or save it for future applications.</p>
+        <p className="text-sm text-[var(--text-soft)]">Download your resume below, or save it for future applications.</p>
 
         {/* Export error banner */}
         {exportError && (
@@ -254,14 +258,19 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
+            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
               Action
             </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
-            <h3 className="text-sm font-medium text-white/85">Download Your Resume</h3>
+            <h3 className="text-sm font-medium text-[var(--text-strong)]">Download Your Resume</h3>
           </div>
           {resume ? (
             <div className="space-y-2">
+              <TemplateSelector
+                selected={selectedTemplate}
+                onChange={setSelectedTemplate}
+                className="pb-1"
+              />
               <GlassButton variant="primary" className="w-full" onClick={() => void handleResumeDocx()} disabled={exportingResume || !!blockingIssue} aria-label="Download resume as Word document">
                 {exportingResume ? (
                   <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
@@ -272,7 +281,7 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
                 {docxBlocked && (
-                  <span className="ml-2 rounded-md border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-2 py-1 text-[9px] uppercase tracking-wider text-[#f0d99f]/80">
+                  <span className="ml-2 rounded-md border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-2 py-1 text-[12px] uppercase tracking-wider text-[#f0d99f]/80">
                     Upgrade
                   </span>
                 )}
@@ -287,20 +296,20 @@ export function CompletionPanel({
               </GlassButton>
             </div>
           ) : (
-            <p className="text-xs text-white/50">Resume data not available for export.</p>
+            <p className="text-xs text-[var(--text-soft)]">Resume data not available for export.</p>
           )}
         </GlassCard>
 
         {resume && onSaveCurrentResumeAsBase && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
                 Optional
               </span>
               <Save className="h-4 w-4 text-[#a8d7b8]" />
-              <h3 className="text-sm font-medium text-white/85">Save for Future Applications</h3>
+              <h3 className="text-sm font-medium text-[var(--text-strong)]">Save for Future Applications</h3>
             </div>
-            <p className="mb-3 text-xs text-white/55">
+            <p className="mb-3 text-xs text-[var(--text-soft)]">
               Want to use this improved version as your starting point for future job applications?
             </p>
             <div className="space-y-2">
@@ -338,13 +347,13 @@ export function CompletionPanel({
 
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/48">
+            <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
               Optional
             </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
-            <h3 className="text-sm font-medium text-white/85">Positioning Summary</h3>
+            <h3 className="text-sm font-medium text-[var(--text-strong)]">Positioning Summary</h3>
           </div>
-          <p className="mb-3 text-xs text-white/50">
+          <p className="mb-3 text-xs text-[var(--text-soft)]">
             Download a text summary of your positioning results for this session.
           </p>
           <GlassButton
@@ -367,8 +376,8 @@ export function CompletionPanel({
         </GlassCard>
 
         <GlassCard className="p-4">
-          <h3 className="text-sm font-medium text-white/85 mb-3">What To Do Next</h3>
-          <ul className="space-y-2 text-xs text-white/60">
+          <h3 className="text-sm font-medium text-[var(--text-strong)] mb-3">What To Do Next</h3>
+          <ul className="space-y-2 text-xs text-[var(--text-soft)]">
             <li>1. Download your resume in the format you prefer</li>
             <li>2. Review it one final time before submitting</li>
             <li>3. Optionally save this version as your starting point for future applications</li>

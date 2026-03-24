@@ -58,13 +58,13 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom }:
 
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
-      <div className="text-[11px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-3">
+      <div className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-3">
         Your One Action Today
       </div>
-      <h2 className="text-lg font-semibold text-white/90 mb-2">
+      <h2 className="text-lg font-semibold text-[var(--text-strong)] mb-2">
         Good {getTimeOfDay()}, {displayName}
       </h2>
-      <p className="text-[14px] text-white/55 leading-relaxed flex-1">
+      <p className="text-[14px] text-[var(--text-soft)] leading-relaxed flex-1">
         <Sparkles size={14} className="inline mr-1.5 text-[#98b3ff] -mt-0.5" />
         {insight}
       </p>
@@ -99,13 +99,13 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
       <div className="flex items-center gap-2 mb-4">
         <Bot size={16} className="text-[#98b3ff]" />
-        <span className="text-[11px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
+        <span className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
           Agent Activity
         </span>
       </div>
       {events.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-[13px] text-white/50 text-center leading-relaxed">
+          <p className="text-[13px] text-[var(--text-soft)] text-center leading-relaxed">
             No recent agent activity.
           </p>
         </div>
@@ -115,8 +115,8 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
             <div key={`${event.type}-${event.timestamp}-${i}`} className="flex items-start gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-white/60 leading-relaxed">{event.detail}</p>
-                <p className="text-[10px] text-white/45 mt-0.5">{relativeTime(event.timestamp)}</p>
+                <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{event.detail}</p>
+                <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{relativeTime(event.timestamp)}</p>
               </div>
             </div>
           ))}
@@ -181,7 +181,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
           disabled={activeIndex === 0}
           aria-label="Previous card"
-          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-[var(--text-soft)] hover:text-[var(--text-soft)] disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronLeft size={20} />
         </button>
@@ -196,7 +196,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
               onClick={() => setActiveIndex(i)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
-                i === activeIndex ? 'w-6 bg-[#98b3ff]' : 'w-2 bg-white/20',
+                i === activeIndex ? 'w-6 bg-[#98b3ff]' : 'w-2 bg-[var(--line-strong)]',
               )}
             />
           ))}
@@ -206,7 +206,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           onClick={() => setActiveIndex((i) => Math.min(validChildren.length - 1, i + 1))}
           disabled={activeIndex === validChildren.length - 1}
           aria-label="Next card"
-          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-[var(--text-soft)] hover:text-[var(--text-soft)] disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronRight size={20} />
         </button>
@@ -227,7 +227,7 @@ const MOBILE_TABS: { id: CareerIQRoom; label: string; icon: typeof Home }[] = [
 
 function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavigate: (room: CareerIQRoom) => void }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-white/[0.08] bg-[var(--bg-1)]/95 backdrop-blur-xl px-2 py-2 safe-area-pb">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-[var(--line-soft)] bg-[var(--bg-1)]/95 backdrop-blur-xl px-2 py-2 safe-area-pb">
       {MOBILE_TABS.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -238,11 +238,11 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
             onClick={() => onNavigate(tab.id)}
             className={cn(
               'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
-              isActive ? 'text-[#98b3ff]' : 'text-white/50',
+              isActive ? 'text-[#98b3ff]' : 'text-[var(--text-soft)]',
             )}
           >
             <Icon size={20} />
-            <span className="text-[10px] font-medium">{tab.label}</span>
+            <span className="text-[12px] font-medium">{tab.label}</span>
           </button>
         );
       })}
@@ -262,7 +262,7 @@ export function MobileBriefing({ userName, signals, dashboardState, activeRoom, 
     <div className="flex flex-col min-h-screen pb-20">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <span className="text-[11px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
+        <span className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
           Daily Briefing
         </span>
       </div>

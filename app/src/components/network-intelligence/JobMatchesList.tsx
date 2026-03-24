@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<JobMatchStatus, string> = {
   referred: 'bg-[#b5dec2]/20 text-[#b5dec2]/80',
   interviewing: 'bg-[#f0d99f]/20 text-[#f0d99f]/80',
   rejected: 'bg-[#f0b8b8]/20 text-[#f0b8b8]/80',
-  archived: 'bg-white/10 text-white/40',
+  archived: 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
 };
 
 export function JobMatchesList({ accessToken }: JobMatchesListProps) {
@@ -114,7 +114,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 motion-safe:animate-pulse rounded-[18px] bg-white/[0.04]" />
+          <div key={i} className="h-16 motion-safe:animate-pulse rounded-[18px] bg-[var(--accent-muted)]" />
         ))}
       </div>
     );
@@ -122,8 +122,8 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
 
   if (matches.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[0.08] p-8 text-center">
-        <p className="text-sm text-white/40">
+      <div className="rounded-xl border border-[var(--line-soft)] p-8 text-center">
+        <p className="text-sm text-[var(--text-soft)]">
           No job matches yet — matches appear as we find openings at your connected companies
         </p>
       </div>
@@ -132,21 +132,21 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-white/80">Job Matches</h3>
+      <h3 className="text-sm font-semibold text-[var(--text-muted)]">Job Matches</h3>
       {matches.map((match) => (
         <GlassCard key={match.id} className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="truncate text-sm font-medium text-white/90">{match.title}</h4>
+                <h4 className="truncate text-sm font-medium text-[var(--text-strong)]">{match.title}</h4>
                 {match.referralAvailable && (
-                  <span className="shrink-0 rounded-md bg-[#b5dec2]/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#b5dec2]/80">
+                  <span className="shrink-0 rounded-md bg-[#b5dec2]/15 px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b5dec2]/80">
                     Referral
                   </span>
                 )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/40">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-soft)]">
                 {match.location && <span>{match.location}</span>}
                 {match.salaryRange && <span>{match.salaryRange}</span>}
                 {match.connectionCount > 0 && (
@@ -156,13 +156,13 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
 
               {match.matchScore !== null && (
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="h-1 flex-1 bg-white/[0.08]">
+                  <div className="h-1 flex-1 bg-[var(--line-soft)]">
                     <div
                       className="h-full bg-[#afc4ff]/60"
                       style={{ width: `${Math.min(match.matchScore, 100)}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-white/40">{match.matchScore}%</span>
+                  <span className="text-[12px] text-[var(--text-soft)]">{match.matchScore}%</span>
                 </div>
               )}
             </div>
@@ -171,7 +171,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
               value={match.status}
               onChange={(e) => void handleStatusChange(match.id, e.target.value as JobMatchStatus)}
               className={cn(
-                'shrink-0 rounded-md border-0 px-2 py-1 text-[10px] font-medium outline-none',
+                'shrink-0 rounded-md border-0 px-2 py-1 text-[12px] font-medium outline-none',
                 STATUS_COLORS[match.status],
               )}
             >

@@ -42,14 +42,14 @@ function scoreBg(score: number): string {
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[11px] text-white/40 w-32 flex-shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 overflow-hidden bg-white/[0.06]">
+      <span className="text-[13px] text-[var(--text-soft)] w-32 flex-shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 overflow-hidden bg-[var(--accent-muted)]">
         <div
           className={cn('h-full transition-all', scoreBg(value))}
           style={{ width: `${value}%`, opacity: 0.7 }}
         />
       </div>
-      <span className={cn('text-[11px] font-medium w-8 text-right flex-shrink-0', scoreColor(value))}>
+      <span className={cn('text-[13px] font-medium w-8 text-right flex-shrink-0', scoreColor(value))}>
         {value}
       </span>
     </div>
@@ -66,33 +66,33 @@ function EvaluationCard({
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
       >
         <span
           className={cn(
-            'shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
-            CATEGORY_COLORS[evaluation.question_type] ?? 'text-white/40 bg-white/[0.06]',
+            'shrink-0 rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
+            CATEGORY_COLORS[evaluation.question_type] ?? 'text-[var(--text-soft)] bg-[var(--accent-muted)]',
           )}
         >
           {evaluation.question_type}
         </span>
-        <span className="text-[13px] text-white/60 flex-1 truncate">{evaluation.question}</span>
+        <span className="text-[13px] text-[var(--text-soft)] flex-1 truncate">{evaluation.question}</span>
         <span className={cn('text-[13px] font-semibold flex-shrink-0', scoreColor(evaluation.overall_score))}>
           {evaluation.overall_score}
         </span>
         {expanded ? (
-          <ChevronUp size={14} className="text-white/25 flex-shrink-0" />
+          <ChevronUp size={14} className="text-[var(--text-soft)] flex-shrink-0" />
         ) : (
-          <ChevronDown size={14} className="text-white/25 flex-shrink-0" />
+          <ChevronDown size={14} className="text-[var(--text-soft)] flex-shrink-0" />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-white/[0.06] px-4 py-4 space-y-4">
+        <div className="border-t border-[var(--line-soft)] px-4 py-4 space-y-4">
           {/* Score bars */}
           <div className="space-y-2">
             <ScoreBar label="STAR Completeness" value={evaluation.scores.star_completeness} />
@@ -104,7 +104,7 @@ function EvaluationCard({
           {/* Strengths */}
           {evaluation.strengths.length > 0 && (
             <div>
-              <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+              <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
                 Strengths
               </div>
               <ul className="space-y-1">
@@ -121,7 +121,7 @@ function EvaluationCard({
           {/* Improvements */}
           {evaluation.improvements.length > 0 && (
             <div>
-              <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+              <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
                 Areas for Improvement
               </div>
               <ul className="space-y-1">
@@ -138,7 +138,7 @@ function EvaluationCard({
           {/* Model answer hint */}
           {evaluation.model_answer_hint && (
             <div className="rounded-lg border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-3 py-2.5">
-              <div className="text-[11px] font-medium text-[#98b3ff]/60 mb-1">Coaching Tip</div>
+              <div className="text-[13px] font-medium text-[#98b3ff]/60 mb-1">Coaching Tip</div>
               <p className="text-[12px] text-[#98b3ff]/50 leading-relaxed">
                 {evaluation.model_answer_hint}
               </p>
@@ -147,10 +147,10 @@ function EvaluationCard({
 
           {/* Answer preview */}
           <div>
-            <div className="text-[11px] font-medium text-white/30 uppercase tracking-wider mb-1.5">
+            <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Your Answer
             </div>
-            <p className="text-[12px] text-white/30 leading-relaxed italic line-clamp-3">
+            <p className="text-[12px] text-[var(--text-soft)] leading-relaxed italic line-clamp-3">
               {evaluation.answer}
             </p>
           </div>
@@ -174,21 +174,21 @@ function QuestionCard({
       <div className="flex items-center gap-3 mb-4">
         <span
           className={cn(
-            'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
-            CATEGORY_COLORS[question.type] ?? 'text-white/40 bg-white/[0.06]',
+            'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
+            CATEGORY_COLORS[question.type] ?? 'text-[var(--text-soft)] bg-[var(--accent-muted)]',
           )}
         >
           {question.type}
         </span>
         {mode === 'full' && totalQuestions !== undefined && (
-          <span className="text-[12px] text-white/35 ml-auto">
+          <span className="text-[12px] text-[var(--text-soft)] ml-auto">
             Question {question.index + 1} of {totalQuestions}
           </span>
         )}
       </div>
-      <p className="text-[16px] font-medium text-white/85 leading-relaxed">{question.question}</p>
+      <p className="text-[16px] font-medium text-[var(--text-strong)] leading-relaxed">{question.question}</p>
       {question.context && (
-        <p className="mt-3 text-[13px] text-white/40 leading-relaxed italic">{question.context}</p>
+        <p className="mt-3 text-[13px] text-[var(--text-soft)] leading-relaxed italic">{question.context}</p>
       )}
     </GlassCard>
   );
@@ -211,8 +211,8 @@ function ConnectingView({
         <div className="rounded-xl bg-[#98b3ff]/10 p-4">
           <Loader2 size={28} className="text-[#98b3ff] animate-spin" />
         </div>
-        <h3 className="text-[16px] font-semibold text-white/85">Preparing your interview...</h3>
-        <p className="text-[13px] text-white/40 text-center">
+        <h3 className="text-[16px] font-semibold text-[var(--text-strong)]">Preparing your interview...</h3>
+        <p className="text-[13px] text-[var(--text-soft)] text-center">
           Analyzing your resume and generating tailored questions
         </p>
       </div>
@@ -222,7 +222,7 @@ function ConnectingView({
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 py-0.5">
               <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#98b3ff]/40" />
-              <span className="text-[12px] text-white/45 leading-relaxed">{msg.message}</span>
+              <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
             </div>
           ))}
           <div ref={bottomRef} />
@@ -257,14 +257,14 @@ function SummaryView({
             {summary.overall_score}
           </div>
           <div>
-            <div className="text-[15px] font-semibold text-white/85">Overall Score</div>
-            <div className="text-[12px] text-white/40">
+            <div className="text-[15px] font-semibold text-[var(--text-strong)]">Overall Score</div>
+            <div className="text-[12px] text-[var(--text-soft)]">
               {summary.total_questions} question{summary.total_questions !== 1 ? 's' : ''} answered
             </div>
           </div>
           <div
             className={cn(
-              'ml-auto rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+              'ml-auto rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
               summary.overall_score >= 80
                 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                 : summary.overall_score >= 60
@@ -283,7 +283,7 @@ function SummaryView({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Strengths */}
           <div>
-            <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+            <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
               Strengths
             </div>
             <ul className="space-y-1.5">
@@ -298,7 +298,7 @@ function SummaryView({
 
           {/* Areas for improvement */}
           <div>
-            <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+            <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
               Areas for Improvement
             </div>
             <ul className="space-y-1.5">
@@ -315,7 +315,7 @@ function SummaryView({
         {/* Recommendation */}
         {summary.recommendation && (
           <div className="rounded-lg border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3">
-            <div className="text-[11px] font-medium text-[#98b3ff]/60 mb-1">Recommendation</div>
+            <div className="text-[13px] font-medium text-[#98b3ff]/60 mb-1">Recommendation</div>
             <p className="text-[13px] text-[#98b3ff]/60 leading-relaxed">{summary.recommendation}</p>
           </div>
         )}
@@ -324,7 +324,7 @@ function SummaryView({
       {/* Individual evaluations */}
       {evaluations.length > 0 && (
         <div className="space-y-2">
-          <div className="text-[12px] font-medium text-white/40 uppercase tracking-wider px-1">
+          <div className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider px-1">
             Question by Question
           </div>
           {evaluations.map((ev, i) => (
@@ -430,13 +430,13 @@ export function MockInterviewView({
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
+            className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             <ArrowLeft size={14} />
             Back to Interview Prep
           </button>
-          <span className="text-white/20">/</span>
-          <span className="text-[13px] text-white/50">
+          <span className="text-[var(--text-soft)]">/</span>
+          <span className="text-[13px] text-[var(--text-soft)]">
             {mode === 'practice' ? 'Practice Session' : 'Mock Interview'} — Complete
           </span>
         </div>
@@ -459,7 +459,7 @@ export function MockInterviewView({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors w-fit"
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors w-fit"
         >
           <ArrowLeft size={14} />
           Back to Interview Prep
@@ -470,7 +470,7 @@ export function MockInterviewView({
             <AlertCircle size={18} className="text-[#e8a0a0] flex-shrink-0 mt-0.5" />
             <div>
               <div className="text-[14px] font-medium text-[#e8a0a0] mb-1">Session Error</div>
-              <p className="text-[13px] text-white/50">{error}</p>
+              <p className="text-[13px] text-[var(--text-soft)]">{error}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -493,10 +493,10 @@ export function MockInterviewView({
     return (
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">
             {mode === 'practice' ? 'Practice Session' : 'Mock Interview'}
           </h1>
-          <p className="text-[13px] text-white/40">
+          <p className="text-[13px] text-[var(--text-soft)]">
             {companyName ? `Preparing for ${companyName}...` : 'Setting up your interview session...'}
           </p>
         </div>
@@ -507,7 +507,7 @@ export function MockInterviewView({
           <button
             type="button"
             onClick={onBack}
-            className="text-[12px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel and return
           </button>
@@ -523,17 +523,17 @@ export function MockInterviewView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-0.5">
-          <h1 className="text-lg font-semibold text-white/90">
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">
             {mode === 'practice' ? 'Practice Session' : 'Mock Interview'}
           </h1>
           {companyName && (
-            <p className="text-[13px] text-white/40">{companyName}</p>
+            <p className="text-[13px] text-[var(--text-soft)]">{companyName}</p>
           )}
         </div>
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[12px] text-white/30 hover:text-white/55 transition-colors"
+          className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           <ArrowLeft size={13} />
           Exit
@@ -556,10 +556,10 @@ export function MockInterviewView({
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 <Loader2 size={16} className="text-[#98b3ff] animate-spin" />
-                <span className="text-[13px] text-white/50">Evaluating your answer...</span>
+                <span className="text-[13px] text-[var(--text-soft)]">Evaluating your answer...</span>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                <p className="text-[13px] text-white/35 leading-relaxed whitespace-pre-wrap">
+              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
+                <p className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">
                   {answer}
                 </p>
               </div>
@@ -567,7 +567,7 @@ export function MockInterviewView({
           ) : (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider block mb-2">
+                <label className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider block mb-2">
                   Your Answer
                 </label>
                 <textarea
@@ -576,16 +576,16 @@ export function MockInterviewView({
                   placeholder="Type your answer here. Use the STAR method: Situation, Task, Action, Result..."
                   rows={5}
                   className={cn(
-                    'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
-                    'text-[13px] text-white/75 placeholder:text-white/20 leading-relaxed',
+                    'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3',
+                    'text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] leading-relaxed',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-y',
                   )}
                 />
                 <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[11px] text-white/25">
+                  <span className="text-[13px] text-[var(--text-soft)]">
                     Tip: Aim for 150-300 words with specific examples and metrics
                   </span>
-                  <span className="text-[11px] text-white/25">{answer.length} chars</span>
+                  <span className="text-[13px] text-[var(--text-soft)]">{answer.length} chars</span>
                 </div>
               </div>
 
@@ -608,7 +608,7 @@ export function MockInterviewView({
           <button
             type="button"
             onClick={() => setShowPreviousEvals((v) => !v)}
-            className="flex items-center gap-2 text-[12px] text-white/35 hover:text-white/55 transition-colors mb-2"
+            className="flex items-center gap-2 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors mb-2"
           >
             {showPreviousEvals ? (
               <ChevronUp size={13} />

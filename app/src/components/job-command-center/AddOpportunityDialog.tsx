@@ -56,43 +56,43 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
         role="dialog"
         aria-modal="true"
         aria-label="Add opportunity"
-        className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl"
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-white/30 hover:text-white/60 transition-colors"
+          className="absolute right-4 top-4 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <X size={18} />
         </button>
 
-        <h2 className="text-[16px] font-semibold text-white/85 mb-4">Add Application</h2>
+        <h2 className="text-[16px] font-semibold text-[var(--text-strong)] mb-4">Add Application</h2>
 
         <div className="space-y-3">
           <div>
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Role Title *
             </label>
             <input
               value={roleTitle}
               onChange={(e) => setRoleTitle(e.target.value)}
               placeholder="e.g. VP Operations"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
           <div>
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Company *
             </label>
             <input
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="e.g. Acme Corp"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
           <div>
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Source
             </label>
             <select
@@ -109,18 +109,18 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
             </select>
           </div>
           <div>
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Job URL
             </label>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
           <div>
-            <label className="text-[11px] text-white/40 uppercase tracking-wider mb-1 block">
+            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
               Notes
             </label>
             <textarea
@@ -128,7 +128,7 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any notes about this role..."
               rows={2}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-y"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-y"
             />
           </div>
         </div>

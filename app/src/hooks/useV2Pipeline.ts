@@ -13,7 +13,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
-import type { GapCoachingResponse, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage } from '@/types/resume-v2';
+import type { GapCoachingResponse, InlineSuggestion, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage, VerificationDetail } from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
   sessionId: '',
@@ -27,6 +27,8 @@ const INITIAL_DATA: V2PipelineData = {
   narrativeStrategy: null,
   resumeDraft: null,
   assembly: null,
+  inlineSuggestions: [],
+  verificationDetail: null,
   error: null,
   stageMessages: [],
 };
@@ -85,11 +87,44 @@ export function useV2Pipeline(accessToken: string | null) {
         case 'resume_draft':
           return { ...prev, resumeDraft: event.data };
 
-        case 'verification_complete':
-          return prev; // Scores come through assembly_complete
+        case 'verification_complete': {
+          if (!event.data?.truth || !event.data?.ats || !event.data?.tone) return prev;
+          const detail: VerificationDetail = {
+            truth: {
+              truth_score: event.data.truth.truth_score,
+              claims: event.data.truth.claims ?? [],
+              flagged_items: event.data.truth.flagged_items ?? [],
+            },
+            ats: {
+              match_score: event.data.ats.match_score,
+              keywords_found: event.data.ats.keywords_found ?? [],
+              keywords_missing: event.data.ats.keywords_missing ?? [],
+              keyword_suggestions: event.data.ats.keyword_suggestions ?? [],
+              formatting_issues: event.data.ats.formatting_issues ?? [],
+            },
+            tone: {
+              tone_score: event.data.tone.tone_score,
+              findings: event.data.tone.findings ?? [],
+              banned_phrases_found: event.data.tone.banned_phrases_found ?? [],
+            },
+          };
+          return { ...prev, verificationDetail: detail };
+        }
 
         case 'assembly_complete':
           return { ...prev, assembly: event.data };
+
+        case 'inline_suggestions': {
+          // Append new suggestions; do not overwrite already-resolved ones
+          const existingIds = new Set(prev.inlineSuggestions.map((s) => s.id));
+          const incoming = event.data.suggestions
+            .filter((s) => !existingIds.has(s.id))
+            .map((s): InlineSuggestion => ({ ...s, status: s.status ?? 'pending' }));
+          return {
+            ...prev,
+            inlineSuggestions: [...prev.inlineSuggestions, ...incoming],
+          };
+        }
 
         case 'pipeline_complete':
           return { ...prev, stage: 'complete' as V2Stage };

@@ -93,11 +93,11 @@ function ActivityFeed({ messages }: { messages: Array<{ id: string; message: str
     <GlassCard className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <Loader2 size={14} className="text-[#98b3ff] animate-spin" />
-        <span className="text-[12px] font-medium text-white/60">Generating your content calendar...</span>
+        <span className="text-[12px] font-medium text-[var(--text-soft)]">Generating your content calendar...</span>
       </div>
       <div className="space-y-1 max-h-[200px] overflow-y-auto">
         {messages.slice(-10).map((msg) => (
-          <div key={msg.id} className="text-[11px] text-white/40 leading-relaxed">
+          <div key={msg.id} className="text-[13px] text-[var(--text-soft)] leading-relaxed">
             {msg.message}
           </div>
         ))}
@@ -111,8 +111,8 @@ function PostCard({ day, day_of_week, content_type, hook, body, hashtags, postin
   const [copied, setCopied] = useState(false);
   const typeConfig = CONTENT_TYPE_CONFIG[content_type] ?? {
     label: content_type,
-    color: 'text-white/60 bg-white/5',
-    borderColor: 'border-white/[0.06]',
+    color: 'text-[var(--text-soft)] bg-[var(--accent-muted)]',
+    borderColor: 'border-[var(--line-soft)]',
     icon: FileText,
     pillarPct: 0,
   };
@@ -133,16 +133,16 @@ function PostCard({ day, day_of_week, content_type, hook, body, hashtags, postin
     : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/15';
 
   return (
-    <div className={cn('rounded-xl border bg-white/[0.02] p-3 transition-all', typeConfig.borderColor)}>
+    <div className={cn('rounded-xl border bg-[var(--accent-muted)] p-3 transition-all', typeConfig.borderColor)}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium text-white/25 tabular-nums uppercase tracking-wide">
+          <span className="text-[12px] font-medium text-[var(--text-soft)] tabular-nums uppercase tracking-wide">
             Day {day}
           </span>
-          <span className="text-[10px] text-white/20 capitalize">{day_of_week}</span>
+          <span className="text-[12px] text-[var(--text-soft)] capitalize">{day_of_week}</span>
           <span className={cn(
-            'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md border',
+            'flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md border',
             typeConfig.color,
             typeConfig.borderColor,
           )}>
@@ -152,41 +152,41 @@ function PostCard({ day, day_of_week, content_type, hook, body, hashtags, postin
         </div>
         <div className="flex items-center gap-2">
           {posting_time && (
-            <span className="flex items-center gap-1 text-[10px] text-white/25">
+            <span className="flex items-center gap-1 text-[12px] text-[var(--text-soft)]">
               <Clock size={9} />
               {posting_time}
             </span>
           )}
-          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-md border', scoreColor)}>
+          <span className={cn('text-[12px] px-1.5 py-0.5 rounded-md border', scoreColor)}>
             {quality_score}%
           </span>
-          <button type="button" onClick={handleCopy} className="text-white/30 hover:text-white/60 transition-colors p-0.5">
+          <button type="button" onClick={handleCopy} className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors p-0.5">
             {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
           </button>
         </div>
       </div>
 
       {/* Hook — always visible, bold */}
-      <p className="text-[13px] font-medium text-white/80 leading-snug line-clamp-2 mb-2">{hook}</p>
+      <p className="text-[13px] font-medium text-[var(--text-strong)] leading-snug line-clamp-2 mb-2">{hook}</p>
 
       {/* Expand toggle */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-[10px] text-[#afc4ff]/50 hover:text-[#afc4ff] transition-colors"
+        className="flex items-center gap-1 text-[12px] text-[#afc4ff]/50 hover:text-[#afc4ff] transition-colors"
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         {expanded ? 'Collapse' : 'Full post'}
       </button>
 
       {expanded && (
-        <div className="mt-3 space-y-3 border-t border-white/[0.04] pt-3">
-          <p className="text-[12px] text-white/60 leading-relaxed whitespace-pre-line">{body}</p>
+        <div className="mt-3 space-y-3 border-t border-[var(--line-soft)] pt-3">
+          <p className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-line">{body}</p>
           {hashtags.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <Hash size={10} className="text-white/20 flex-shrink-0" />
+              <Hash size={10} className="text-[var(--text-soft)] flex-shrink-0" />
               {hashtags.map((tag) => (
-                <span key={tag} className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md">
+                <span key={tag} className="text-[12px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md">
                   #{tag}
                 </span>
               ))}
@@ -226,8 +226,8 @@ function ContentPillarsBar({ posts }: { posts: StructuredPost[] }) {
     <GlassCard className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <Target size={14} className="text-[#afc4ff]" />
-        <span className="text-[12px] font-semibold text-white/70">Content Pillars</span>
-        <span className="ml-auto text-[10px] text-white/30">{posts.length} posts planned</span>
+        <span className="text-[12px] font-semibold text-[var(--text-muted)]">Content Pillars</span>
+        <span className="ml-auto text-[12px] text-[var(--text-soft)]">{posts.length} posts planned</span>
       </div>
       <div className="space-y-2">
         {pillars.map((pillar) => {
@@ -237,9 +237,9 @@ function ContentPillarsBar({ posts }: { posts: StructuredPost[] }) {
             <div key={pillar.key} className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-36 flex-shrink-0">
                 <PillarIcon size={11} className={cn(pillar.color.split(' ')[0])} />
-                <span className="text-[11px] text-white/50 truncate">{pillar.label}</span>
+                <span className="text-[13px] text-[var(--text-soft)] truncate">{pillar.label}</span>
               </div>
-              <div className="flex-1 h-1.5 overflow-hidden bg-white/[0.06]">
+              <div className="flex-1 h-1.5 overflow-hidden bg-[var(--accent-muted)]">
                 <div
                   className={cn(
                     'h-full transition-all duration-500',
@@ -249,13 +249,13 @@ function ContentPillarsBar({ posts }: { posts: StructuredPost[] }) {
                 />
               </div>
               <div className="flex items-center gap-1.5 w-20 flex-shrink-0 text-right justify-end">
-                <span className={cn('text-[10px] font-medium tabular-nums', pillar.color.split(' ')[0])}>
+                <span className={cn('text-[12px] font-medium tabular-nums', pillar.color.split(' ')[0])}>
                   {pillar.pct}%
                 </span>
                 {pillar.targetPct > 0 && (
-                  <span className="text-[9px] text-white/20">/{pillar.targetPct}%</span>
+                  <span className="text-[12px] text-[var(--text-soft)]">/{pillar.targetPct}%</span>
                 )}
-                <span className="text-[10px] text-white/25 tabular-nums">{pillar.count}p</span>
+                <span className="text-[12px] text-[var(--text-soft)] tabular-nums">{pillar.count}p</span>
               </div>
             </div>
           );
@@ -317,8 +317,8 @@ export function ContentCalendarRoom() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-[20px] font-bold text-white/90">Content Calendar</h2>
-          <p className="text-[13px] text-white/40">
+          <h2 className="text-[20px] font-bold text-[var(--text-strong)]">Content Calendar</h2>
+          <p className="text-[13px] text-[var(--text-soft)]">
             30 days of strategic LinkedIn posts based on your expertise and positioning.
           </p>
           <ContextLoadedBadge
@@ -357,7 +357,7 @@ export function ContentCalendarRoom() {
       {calendar.qualityScore !== null && (
         <div className="flex items-center gap-3">
           <div className={cn(
-            'rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+            'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
             calendar.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
             calendar.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
             'text-[#f0b8b8] bg-[#f0b8b8]/10',
@@ -365,7 +365,7 @@ export function ContentCalendarRoom() {
             Quality: {calendar.qualityScore}%
           </div>
           {calendar.postCount !== null && (
-            <div className="text-[12px] text-white/40 flex items-center gap-1.5">
+            <div className="text-[12px] text-[var(--text-soft)] flex items-center gap-1.5">
               <FileText size={12} />
               {calendar.postCount} posts
             </div>
@@ -380,8 +380,8 @@ export function ContentCalendarRoom() {
       {!isRunning && posts.length === 0 && (
         <GlassCard className="p-8 text-center">
           <Sparkles size={28} className="text-[#98b3ff]/40 mx-auto mb-3" />
-          <h3 className="text-[15px] font-semibold text-white/70 mb-2">Your AI Content Strategist</h3>
-          <p className="text-[12px] text-white/40 max-w-md mx-auto leading-relaxed">
+          <h3 className="text-[15px] font-semibold text-[var(--text-muted)] mb-2">Your AI Content Strategist</h3>
+          <p className="text-[12px] text-[var(--text-soft)] max-w-md mx-auto leading-relaxed">
             Generate a personalized 30-day LinkedIn posting plan based on your resume,
             positioning strategy, and industry expertise. Each post includes a hook,
             body, CTA, and hashtags — ready to copy and post.
@@ -401,8 +401,8 @@ export function ContentCalendarRoom() {
               type="button"
               onClick={() => setViewMode('week')}
               className={cn(
-                'rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
-                viewMode === 'week' ? 'text-white/80 bg-white/[0.08]' : 'text-white/30 hover:text-white/50',
+                'rounded-md px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors',
+                viewMode === 'week' ? 'text-[var(--text-strong)] bg-[var(--surface-1)]' : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
               )}
             >
               By Week
@@ -411,8 +411,8 @@ export function ContentCalendarRoom() {
               type="button"
               onClick={() => setViewMode('month')}
               className={cn(
-                'rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
-                viewMode === 'month' ? 'text-white/80 bg-white/[0.08]' : 'text-white/30 hover:text-white/50',
+                'rounded-md px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors',
+                viewMode === 'month' ? 'text-[var(--text-strong)] bg-[var(--surface-1)]' : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
               )}
             >
               All Posts
@@ -423,8 +423,8 @@ export function ContentCalendarRoom() {
             weeks.map((weekPosts, weekIdx) => (
               <GlassCard key={weekIdx} className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[12px] font-semibold text-white/60">Week {weekIdx + 1}</span>
-                  <span className="text-[10px] text-white/30">{weekPosts.length} posts</span>
+                  <span className="text-[12px] font-semibold text-[var(--text-soft)]">Week {weekIdx + 1}</span>
+                  <span className="text-[12px] text-[var(--text-soft)]">{weekPosts.length} posts</span>
                 </div>
                 <div className="space-y-2">
                   {weekPosts.map((post) => (
@@ -446,20 +446,20 @@ export function ContentCalendarRoom() {
       {/* Previous Calendars */}
       {calendar.savedReports.length > 0 && (
         <div className="mt-2">
-          <h3 className="text-[14px] font-semibold text-white/60 mb-3">Previous Calendars</h3>
+          <h3 className="text-[14px] font-semibold text-[var(--text-soft)] mb-3">Previous Calendars</h3>
           <div className="space-y-2">
             {calendar.savedReports.map((report: SavedCalendarReport) => (
               <GlassCard key={report.id} className="p-3 flex items-center justify-between">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[12px] text-white/70 font-medium">
+                  <span className="text-[12px] text-[var(--text-muted)] font-medium">
                     {report.target_role || 'Content Calendar'}
                     {report.target_industry ? ` · ${report.target_industry}` : ''}
                   </span>
-                  <span className="text-[10px] text-white/30">
+                  <span className="text-[12px] text-[var(--text-soft)]">
                     {report.post_count} posts · Quality {report.quality_score}% · {new Date(report.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
-                <FileText size={14} className="text-white/20" />
+                <FileText size={14} className="text-[var(--text-soft)]" />
               </GlassCard>
             ))}
           </div>

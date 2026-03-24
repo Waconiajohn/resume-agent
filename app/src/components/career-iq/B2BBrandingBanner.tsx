@@ -40,16 +40,16 @@ export function B2BBrandingBanner({ branding }: B2BBrandingBannerProps) {
           </div>
         )}
         <div className="min-w-0">
-          <span className="text-[13px] font-medium text-white/70 block truncate">
+          <span className="text-[13px] font-medium text-[var(--text-muted)] block truncate">
             {branding.org_name}
           </span>
-          <span className="text-[11px] text-white/30 block">Career Transition Support</span>
+          <span className="text-[13px] text-[var(--text-soft)] block">Career Transition Support</span>
         </div>
       </div>
 
       {/* Custom welcome message */}
       {branding.custom_welcome_message && (
-        <p className="text-[13px] text-white/50 leading-relaxed mb-3">
+        <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-3">
           {branding.custom_welcome_message}
         </p>
       )}
@@ -57,7 +57,7 @@ export function B2BBrandingBanner({ branding }: B2BBrandingBannerProps) {
       {/* Custom resources list */}
       {branding.custom_resources.length > 0 && (
         <div className="space-y-2">
-          <span className="text-[11px] text-white/30 uppercase tracking-wider">
+          <span className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider">
             Company Resources
           </span>
           {branding.custom_resources.map((resource, i) => (
@@ -66,21 +66,21 @@ export function B2BBrandingBanner({ branding }: B2BBrandingBannerProps) {
               href={resource.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all group"
+              className="flex items-center gap-2 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-2.5 hover:bg-[var(--surface-1)] hover:border-[var(--line-strong)] transition-all group"
             >
               <div className="min-w-0 flex-1">
-                <span className="text-[12px] font-medium text-white/60 group-hover:text-white/80 transition-colors block">
+                <span className="text-[12px] font-medium text-[var(--text-soft)] group-hover:text-[var(--text-strong)] transition-colors block">
                   {resource.title}
                 </span>
                 {resource.description && (
-                  <span className="text-[11px] text-white/30 block mt-0.5 line-clamp-1">
+                  <span className="text-[13px] text-[var(--text-soft)] block mt-0.5 line-clamp-1">
                     {resource.description}
                   </span>
                 )}
               </div>
               <ExternalLink
                 size={12}
-                className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors"
+                className="text-[var(--text-soft)] group-hover:text-[var(--text-soft)] flex-shrink-0 transition-colors"
               />
             </a>
           ))}

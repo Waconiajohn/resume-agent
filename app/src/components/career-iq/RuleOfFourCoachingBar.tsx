@@ -26,10 +26,10 @@ export function RuleOfFourCoachingBar({ groups: rawGroups, onFixGap }: RuleOfFou
       <div className="space-y-2">
         {incomplete.slice(0, 5).map((group) => (
           <div key={group.application.id} className="flex items-center gap-3 text-[12px]">
-            <span className="text-white/60 font-medium min-w-[120px] truncate">
+            <span className="text-[var(--text-soft)] font-medium min-w-[120px] truncate">
               {group.application.company_name}
             </span>
-            <span className="text-white/25">needs</span>
+            <span className="text-[var(--text-soft)]">needs</span>
             <div className="flex gap-1.5 flex-wrap">
               {group.missingRoles.map((role) => (
                 <button
@@ -37,7 +37,7 @@ export function RuleOfFourCoachingBar({ groups: rawGroups, onFixGap }: RuleOfFou
                   type="button"
                   onClick={() => onFixGap(group.application.id, role)}
                   className={cn(
-                    'text-[10px] text-[#98b3ff]/70 bg-[#98b3ff]/[0.06] px-2 py-0.5 rounded-full',
+                    'text-[12px] text-[#98b3ff]/70 bg-[#98b3ff]/[0.06] px-2 py-0.5 rounded-full',
                     'hover:bg-[#98b3ff]/[0.12] transition-colors flex items-center gap-1',
                   )}
                 >

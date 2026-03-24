@@ -37,8 +37,8 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-md bg-indigo-600/20" />
           <div className="flex-1">
-            <div className="h-4 w-40 bg-white/[0.06] rounded mb-2" />
-            <div className="h-3 w-64 bg-white/[0.04] rounded" />
+            <div className="h-4 w-40 bg-[var(--accent-muted)] rounded mb-2" />
+            <div className="h-3 w-64 bg-[var(--surface-1)] rounded" />
           </div>
         </div>
       </GlassCard>
@@ -70,12 +70,12 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
 
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="text-[11px] text-indigo-300/60 font-medium mb-1">
+          <div className="text-[13px] text-indigo-300/60 font-medium mb-1">
             {displayName} recommends:
           </div>
 
           {/* Recommendation text */}
-          <div className="text-[13px] text-white/80 leading-relaxed mb-3">
+          <div className="text-[13px] text-[var(--text-strong)] leading-relaxed mb-3">
             {recommendation.action}
           </div>
 
@@ -93,7 +93,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
             <button
               type="button"
               onClick={() => setRationaleOpen(!rationaleOpen)}
-              className="flex items-center gap-1 text-[11px] text-white/30 hover:text-white/50 transition-colors"
+              className="flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               Why?
               {rationaleOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -102,7 +102,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
 
           {/* Collapsible rationale */}
           {rationaleOpen && (
-            <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px] text-white/40 leading-relaxed">
+            <div className="mt-2 pt-2 border-t border-[var(--line-soft)] text-[13px] text-[var(--text-soft)] leading-relaxed">
               {recommendation.rationale}
             </div>
           )}
@@ -110,7 +110,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
 
         {/* Phase badge */}
         <div className="flex-shrink-0">
-          <span className="rounded-md border border-white/[0.06] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+          <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
             {recommendation.phase_label}
           </span>
         </div>

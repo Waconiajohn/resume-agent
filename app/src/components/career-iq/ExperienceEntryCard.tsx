@@ -32,24 +32,24 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
   const scores = entry.quality_scores;
 
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-white/80 leading-tight truncate">
+          <p className="text-[13px] font-semibold text-[var(--text-strong)] leading-tight truncate">
             {entry.title}
           </p>
-          <p className="text-[12px] text-white/40 mt-0.5">
+          <p className="text-[12px] text-[var(--text-soft)] mt-0.5">
             {entry.company}
             {entry.duration ? (
-              <span className="text-white/25"> · {entry.duration}</span>
+              <span className="text-[var(--text-soft)]"> · {entry.duration}</span>
             ) : null}
           </p>
         </div>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors mt-0.5"
+          className="flex-shrink-0 flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors mt-0.5"
           title="Copy optimized content"
         >
           {copied ? (
@@ -72,7 +72,7 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
           <span
             key={key}
             className={cn(
-              'text-[10px] font-medium px-2 py-0.5 rounded-full',
+              'text-[12px] font-medium px-2 py-0.5 rounded-full',
               scoreColor(scores[key]),
             )}
           >
@@ -83,7 +83,7 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
 
       {/* Optimized content */}
       <div className="rounded-lg border border-[#98b3ff]/10 bg-[#98b3ff]/[0.03] px-3 py-2.5">
-        <pre className="text-[12px] text-white/65 leading-relaxed whitespace-pre-wrap font-sans">
+        <pre className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
           {entry.optimized}
         </pre>
       </div>

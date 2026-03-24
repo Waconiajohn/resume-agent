@@ -138,7 +138,7 @@ export function KeywordScoreDashboard({
       <div className="room-meta-strip mb-5">
         <div className="room-meta-item">
           <span className="eyebrow-label">Keyword and ATS Review</span>
-          <span className="text-sm text-white/60">Track match quality, missing terms, and the fastest fixes.</span>
+          <span className="text-sm text-[var(--text-soft)]">Track match quality, missing terms, and the fastest fixes.</span>
         </div>
       </div>
 
@@ -150,7 +150,7 @@ export function KeywordScoreDashboard({
           <div className="absolute inset-0 flex items-center justify-center">
             {isScoring ? (
               /* Pulsing ellipsis while scoring — ring itself is already pulsing */
-              <span className="text-[10px] text-white/30 animate-pulse">…</span>
+              <span className="text-[12px] text-[var(--text-soft)] animate-pulse">…</span>
             ) : (
               <span
                 className="text-lg font-bold tabular-nums"
@@ -166,17 +166,17 @@ export function KeywordScoreDashboard({
         <div className="flex-1 min-w-0 w-full">
           <div className="mb-1 flex items-center gap-2">
             <Shield className="h-3.5 w-3.5 text-[#afc4ff]" />
-            <span className="text-sm font-semibold uppercase tracking-[0.16em] text-white/74">ATS Match Score</span>
+            <span className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">ATS Match Score</span>
             {isScoring && (
-              <span className="text-[10px] text-white/30 italic">rescoring…</span>
+              <span className="text-[12px] text-[var(--text-soft)] italic">rescoring…</span>
             )}
           </div>
 
           {/* Before → After score context */}
           {hasImproved ? (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/50 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-soft)] mb-3">
               <span>Pipeline: {pipelineAts}%</span>
-              <span className="text-white/25">→</span>
+              <span className="text-[var(--text-soft)]">→</span>
               <span style={{ color: scoreColor(liveScores?.ats_score ?? displayAts) }}>
                 After edits: {liveScores?.ats_score ?? displayAts}%
               </span>
@@ -197,9 +197,9 @@ export function KeywordScoreDashboard({
               </span>
             </div>
           ) : hasBeforeScore ? (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/50 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-soft)] mb-3">
               <span>Your starting point: {beforeAts}%</span>
-              <span className="text-white/25">→</span>
+              <span className="text-[var(--text-soft)]">→</span>
               <span style={{ color: scoreColor(pipelineAts) }}>
                 After optimization: {pipelineAts}%
               </span>
@@ -220,7 +220,7 @@ export function KeywordScoreDashboard({
               </span>
             </div>
           ) : (
-            <div className="text-xs text-white/40 mb-3">Pipeline score: {pipelineAts}%</div>
+            <div className="text-xs text-[var(--text-soft)] mb-3">Pipeline score: {pipelineAts}%</div>
           )}
 
           {/* Truth + Tone mini ring gauges */}
@@ -233,7 +233,7 @@ export function KeywordScoreDashboard({
 
       {/* ── Row 2: Keyword columns (only when we have live data) ──────────────── */}
       {(keywordsFound.length > 0 || keywordsMissing.length > 0) && (
-        <div className="grid grid-cols-2 gap-3 mb-5 pt-4 border-t border-white/[0.06]">
+        <div className="grid grid-cols-2 gap-3 mb-5 pt-4 border-t border-[var(--line-soft)]">
           {/* Found */}
           <div>
             <div className="mb-2 flex items-center gap-1.5">
@@ -246,7 +246,7 @@ export function KeywordScoreDashboard({
               {keywordsFound.map((kw, i) => (
                 <span
                   key={i}
-                  className="rounded-md px-1.5 py-0.5 text-[10px] leading-4"
+                  className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                   style={{
                     color: '#b5dec2',
                     backgroundColor: 'rgba(181,222,194,0.10)',
@@ -276,7 +276,7 @@ export function KeywordScoreDashboard({
                     type="button"
                     onClick={() => onIntegrateKeyword(kw)}
                     disabled={isIntegrating}
-                    className="rounded-md px-1.5 py-0.5 text-[10px] leading-4 transition-colors hover:bg-[rgba(240,184,184,0.20)] disabled:opacity-50 cursor-pointer"
+                    className="rounded-md px-1.5 py-0.5 text-[12px] leading-4 transition-colors hover:bg-[rgba(240,184,184,0.20)] disabled:opacity-50 cursor-pointer"
                     style={{
                       color: '#f0b8b8',
                       backgroundColor: isActive
@@ -291,7 +291,7 @@ export function KeywordScoreDashboard({
                 ) : (
                   <span
                     key={i}
-                    className="rounded-md px-1.5 py-0.5 text-[10px] leading-4"
+                    className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                     style={{
                       color: '#f0b8b8',
                       backgroundColor: 'rgba(240,184,184,0.10)',
@@ -304,7 +304,7 @@ export function KeywordScoreDashboard({
               })}
             </div>
             {onIntegrateKeyword && keywordsMissing.length > 0 && (
-              <div className="mt-1 text-[10px] text-white/25">
+              <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                 Click a missing keyword to integrate it
               </div>
             )}
@@ -314,7 +314,7 @@ export function KeywordScoreDashboard({
 
       {/* ── Row 2b: Top suggestions (shown when no missing keywords) ─────────── */}
       {showTopSuggestions && (
-        <div className="mb-5 pt-4 border-t border-white/[0.06]">
+        <div className="mb-5 pt-4 border-t border-[var(--line-soft)]">
           <div className="mb-2 flex items-center gap-1.5">
             <Zap className="h-3 w-3 text-[#afc4ff]" />
             <span className="eyebrow-label">
@@ -330,7 +330,7 @@ export function KeywordScoreDashboard({
                   type="button"
                   onClick={() => onIntegrateKeyword(kw)}
                   disabled={isIntegrating}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] leading-4 transition-colors hover:bg-[rgba(175,196,255,0.20)] disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] leading-4 transition-colors hover:bg-[rgba(175,196,255,0.20)] disabled:opacity-50 cursor-pointer"
                   style={{
                     color: '#afc4ff',
                     backgroundColor: isActive
@@ -348,7 +348,7 @@ export function KeywordScoreDashboard({
               ) : (
                 <span
                   key={i}
-                  className="rounded-md px-1.5 py-0.5 text-[10px] leading-4"
+                  className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                   style={{
                     color: '#afc4ff',
                     backgroundColor: 'rgba(175,196,255,0.08)',
@@ -365,7 +365,7 @@ export function KeywordScoreDashboard({
 
       {/* ── Row 3: Quick Wins ─────────────────────────────────────────────────── */}
       {quickWins.length > 0 && (
-        <div className="pt-4 border-t border-white/[0.06]">
+        <div className="pt-4 border-t border-[var(--line-soft)]">
           <div className="mb-2 flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-[#f0d99f]" />
             <span className="eyebrow-label">Quick Wins</span>
@@ -376,14 +376,14 @@ export function KeywordScoreDashboard({
               return (
                 <li key={i} className="flex items-start gap-2 text-xs">
                   <ImpactDot impact={w.impact} />
-                  <span className={cn('flex-1 text-white/60', isActionable && 'mr-1')}>
+                  <span className={cn('flex-1 text-[var(--text-soft)]', isActionable && 'mr-1')}>
                     {w.description}
                   </span>
                   {isActionable && (
                     <button
                       type="button"
                       onClick={() => onQuickWinAction!(w.description, w.impact)}
-                      className="shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] leading-4 transition-opacity hover:opacity-80 cursor-pointer"
+                      className="shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] leading-4 transition-opacity hover:opacity-80 cursor-pointer"
                       style={impactButtonStyle[w.impact]}
                       title="Apply this fix to your resume"
                     >

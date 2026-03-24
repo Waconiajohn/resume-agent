@@ -27,31 +27,31 @@ function BioCard({ bio, index }: { bio: BioVariant; index: number }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-semibold text-white/85 truncate">{bio.format_label}</span>
-          <span className="shrink-0 rounded-md border border-white/[0.10] bg-white/[0.04] px-2 py-1 text-[9px] uppercase tracking-[0.12em] text-white/55">
+          <span className="text-xs font-semibold text-[var(--text-strong)] truncate">{bio.format_label}</span>
+          <span className="shrink-0 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
             {bio.length_label}
           </span>
-          <span className="shrink-0 text-[10px] text-white/40 tabular-nums">
+          <span className="shrink-0 text-[12px] text-[var(--text-soft)] tabular-nums">
             {bio.word_count}w
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className={cn('text-[10px] font-semibold tabular-nums', scoreColor)}>
+          <span className={cn('text-[12px] font-semibold tabular-nums', scoreColor)}>
             {bio.quality_score}/100
           </span>
           {expanded
-            ? <ChevronUp className="h-3.5 w-3.5 text-white/40" />
-            : <ChevronDown className="h-3.5 w-3.5 text-white/40" />
+            ? <ChevronUp className="h-3.5 w-3.5 text-[var(--text-soft)]" />
+            : <ChevronDown className="h-3.5 w-3.5 text-[var(--text-soft)]" />
           }
         </div>
       </button>
       {expanded && (
-        <div className="border-t border-white/[0.08] px-4 pb-4 pt-3">
-          <p className="whitespace-pre-wrap text-xs text-white/82 leading-relaxed">{bio.content}</p>
+        <div className="border-t border-[var(--line-soft)] px-4 pb-4 pt-3">
+          <p className="whitespace-pre-wrap text-xs text-[var(--text-muted)] leading-relaxed">{bio.content}</p>
         </div>
       )}
     </GlassCard>
@@ -81,7 +81,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
 
   const overallScoreColor =
     quality_score == null
-      ? 'text-white/50'
+      ? 'text-[var(--text-soft)]'
       : quality_score >= 80
         ? 'text-[#a8d7b8]'
         : quality_score >= 65
@@ -96,14 +96,14 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Executive Bio Review</span>
+            <span className="text-sm font-medium text-[var(--text-strong)]">Executive Bio Review</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/45 tabular-nums">{bios.length} bio{bios.length !== 1 ? 's' : ''}</span>
+            <span className="text-[12px] text-[var(--text-soft)] tabular-nums">{bios.length} bio{bios.length !== 1 ? 's' : ''}</span>
             {quality_score != null && (
               <span className={cn('text-xs font-semibold tabular-nums', overallScoreColor)}>
                 {quality_score}/100
@@ -116,7 +116,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Guidance */}
         <GlassCard className="p-3">
-          <p className="text-xs text-white/65 leading-relaxed">
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
             Review your executive bio collection below. Each bio is tailored to its format and length. Approve to finalize, request revisions, or edit the collection directly.
           </p>
         </GlassCard>
@@ -124,7 +124,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
         {/* Bio cards or direct edit textarea */}
         {mode === 'edit_directly' ? (
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Editing Bio Collection
             </label>
             <textarea
@@ -132,7 +132,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               onChange={(e) => setEditedReport(e.target.value)}
               rows={20}
               placeholder={editPlaceholder}
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2.5 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
               aria-label="Edit bio collection directly"
             />
           </div>
@@ -147,7 +147,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
         {/* Request changes textarea */}
         {mode === 'request_changes' && (
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               What would you like changed?
             </label>
             <textarea
@@ -155,7 +155,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. Make the speaker bio more story-driven, shorten the LinkedIn bio to under 200 words, add a reference to board-level P&L responsibility..."
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
               aria-label="Feedback for bio revision"
               autoFocus
             />
@@ -216,7 +216,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               <button
                 type="button"
                 onClick={() => { setFeedback(''); setMode('review'); }}
-                className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors py-1"
+                className="w-full text-center text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors py-1"
               >
                 Cancel
               </button>
@@ -239,7 +239,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               <button
                 type="button"
                 onClick={() => setMode('review')}
-                className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors py-1"
+                className="w-full text-center text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors py-1"
               >
                 Cancel
               </button>

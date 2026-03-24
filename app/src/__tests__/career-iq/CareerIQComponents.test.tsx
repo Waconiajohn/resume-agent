@@ -227,7 +227,8 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Career Profile')).toBeInTheDocument();
+    // 'Career Profile' appears in both the nav button and the CoachBanner phase label
+    expect(screen.getAllByText('Career Profile').length).toBeGreaterThan(0);
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByText('Job Search')).toBeInTheDocument();
@@ -243,7 +244,9 @@ describe('Sidebar', () => {
     expect(resumeButton).toBeDisabled();
     const homeButton = screen.getByText('Home').closest('button');
     expect(homeButton).not.toBeDisabled();
-    const profileButton = screen.getByText('Career Profile').closest('button');
+    // 'Career Profile' appears in both nav button and CoachBanner phase label;
+    // find the nav button via its description text which is unique to the nav item
+    const profileButton = screen.getByText('Define the story every tool uses').closest('button');
     expect(profileButton).not.toBeDisabled();
   });
 
@@ -271,7 +274,8 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="resume" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton?.className).toContain('bg-white');
+    // Active room uses glass-morphism styling instead of solid bg-white
+    expect(resumeButton?.className).toContain('bg-[rgba(255,255,255,0.045)]');
   });
 
   it('calls onNavigate when a non-gated room is clicked', () => {

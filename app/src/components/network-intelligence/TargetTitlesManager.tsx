@@ -93,10 +93,10 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
   if (loading) {
     return (
       <GlassCard className="p-4">
-        <div className="h-4 w-32 motion-safe:animate-pulse rounded bg-white/[0.06]" />
+        <div className="h-4 w-32 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
         <div className="mt-3 space-y-2">
           {[1, 2].map((i) => (
-            <div key={i} className="h-8 motion-safe:animate-pulse rounded bg-white/[0.04]" />
+            <div key={i} className="h-8 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
           ))}
         </div>
       </GlassCard>
@@ -105,7 +105,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
 
   return (
     <GlassCard className="p-4">
-      <h3 className="mb-3 text-sm font-semibold text-white/80">Target Titles</h3>
+      <h3 className="mb-3 text-sm font-semibold text-[var(--text-muted)]">Target Titles</h3>
 
       <div className="flex gap-2">
         <GlassInput
@@ -128,7 +128,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
       </div>
 
       {titles.length === 0 ? (
-        <p className="mt-3 text-center text-xs text-white/30">
+        <p className="mt-3 text-center text-xs text-[var(--text-soft)]">
           Add target titles to match jobs
         </p>
       ) : (
@@ -136,12 +136,12 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
           {titles.map((t) => (
             <li
               key={t.id}
-              className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-1.5"
+              className="flex items-center justify-between rounded-lg bg-[var(--accent-muted)] px-3 py-1.5"
             >
-              <span className="text-xs text-white/70">{t.title}</span>
+              <span className="text-xs text-[var(--text-muted)]">{t.title}</span>
               <button
                 onClick={() => void handleDelete(t.id)}
-                className="ml-2 text-xs text-white/30 transition-colors hover:text-[#f0b8b8]/70"
+                className="ml-2 text-xs text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]/70"
                 aria-label={`Remove ${t.title}`}
               >
                 x

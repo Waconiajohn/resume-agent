@@ -45,7 +45,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
               placeholder="Job Title"
               className="text-sm font-medium"
             />
-            <span className="text-white/40 text-xs">at</span>
+            <span className="text-[var(--text-soft)] text-xs">at</span>
             <EditableField
               value={role.company}
               onSave={(v) => updateField('company', v)}
@@ -54,7 +54,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
               className="text-sm font-medium"
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap text-xs text-white/50">
+          <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-soft)]">
             <EditableField
               value={role.start_date}
               onSave={(v) => updateField('start_date', v)}
@@ -70,7 +70,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
             />
             {role.location && (
               <>
-                <span className="text-white/30">·</span>
+                <span className="text-[var(--text-soft)]">·</span>
                 <EditableField
                   value={role.location}
                   onSave={(v) => updateField('location', v)}
@@ -87,7 +87,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
             <button
               type="button"
               onClick={onDelete}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-[#f0b8b8]"
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[#f0b8b8]"
               aria-label="Delete role"
               title="Delete role"
             >
@@ -97,7 +97,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70"
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -106,10 +106,10 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
       </div>
 
       {expanded && (
-        <div className="mt-3 space-y-1.5 border-t border-white/[0.06] pt-3">
+        <div className="mt-3 space-y-1.5 border-t border-[var(--line-soft)] pt-3">
           {role.bullets.map((bullet, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="mt-1 text-white/30 text-xs">•</span>
+              <span className="mt-1 text-[var(--text-soft)] text-xs">•</span>
               <div className="flex-1">
                 <EditableField
                   value={bullet.text}
@@ -124,7 +124,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
                 <button
                   type="button"
                   onClick={() => deleteBullet(i)}
-                  className="mt-1 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#f0b8b8]"
+                  className="mt-1 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
                   aria-label="Delete bullet"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -136,7 +136,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
             <button
               type="button"
               onClick={addBullet}
-              className="mt-2 flex items-center gap-1 text-xs text-white/40 transition-colors hover:text-white/70"
+              className="mt-2 flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
             >
               <Plus className="h-3 w-3" />
               Add bullet

@@ -41,13 +41,13 @@ interface StatCardProps {
 
 function StatCard({ label, value, accent, dim }: StatCardProps) {
   return (
-    <div className="flex flex-col items-center rounded-lg bg-white/[0.03] px-4 py-3 text-center">
+    <div className="flex flex-col items-center rounded-lg bg-[var(--accent-muted)] px-4 py-3 text-center">
       <span
-        className={cn('text-2xl font-bold tabular-nums', accent ?? (dim ? 'text-white/40' : 'text-white/90'))}
+        className={cn('text-2xl font-bold tabular-nums', accent ?? (dim ? 'text-[var(--text-soft)]' : 'text-[var(--text-strong)]'))}
       >
         {value}
       </span>
-      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-white/35">
+      <span className="mt-0.5 text-[12px] font-medium uppercase tracking-wider text-[var(--text-soft)]">
         {label}
       </span>
     </div>
@@ -65,13 +65,13 @@ function ProgressBar({ scanned, total }: ProgressBarProps) {
   const pct = total > 0 ? Math.min(Math.round((scanned / total) * 100), 100) : 0;
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs text-white/40">
+      <div className="flex items-center justify-between text-xs text-[var(--text-soft)]">
         <span>Scanning companies</span>
         <span className="tabular-nums">
           {scanned} / {total}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden bg-white/[0.08]">
+      <div className="h-1.5 w-full overflow-hidden bg-[var(--line-soft)]">
         <div
           className="h-full bg-[#afc4ff]/60 transition-all duration-500"
           style={{ width: `${pct}%` }}
@@ -257,9 +257,9 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
     return (
       <GlassCard className="rounded-xl p-6">
         <div className="space-y-4">
-          <div className="h-5 w-40 motion-safe:animate-pulse rounded-lg bg-white/[0.06]" />
-          <div className="h-3 w-72 motion-safe:animate-pulse rounded bg-white/[0.04]" />
-          <div className="mt-4 h-10 w-36 motion-safe:animate-pulse rounded-xl bg-white/[0.06]" />
+          <div className="h-5 w-40 motion-safe:animate-pulse rounded-lg bg-[var(--accent-muted)]" />
+          <div className="h-3 w-72 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
+          <div className="mt-4 h-10 w-36 motion-safe:animate-pulse rounded-xl bg-[var(--accent-muted)]" />
         </div>
       </GlassCard>
     );
@@ -273,15 +273,15 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
       <GlassCard className="rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h3 className="text-base font-semibold text-white/90">Scan for Job Openings</h3>
-            <p className="text-sm text-white/40">
+            <h3 className="text-base font-semibold text-[var(--text-strong)]">Scan for Job Openings</h3>
+            <p className="text-sm text-[var(--text-soft)]">
               Search career pages at{' '}
-              <span className="text-white/60">{eligibleCompanyCount}</span>{' '}
+              <span className="text-[var(--text-muted)]">{eligibleCompanyCount}</span>{' '}
               of your connected companies
               {titles.length > 0 && (
                 <>
                   {' '}matching{' '}
-                  <span className="text-white/60">{titles.length}</span>{' '}
+                  <span className="text-[var(--text-muted)]">{titles.length}</span>{' '}
                   target title{titles.length !== 1 ? 's' : ''}
                 </>
               )}
@@ -328,7 +328,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
             )}
 
             {!scrapeStatus && (
-              <p className="text-center text-xs text-white/30">Starting scan...</p>
+              <p className="text-center text-xs text-[var(--text-soft)]">Starting scan...</p>
             )}
           </div>
         )}
@@ -344,7 +344,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
       {/* Result summary card */}
       {result && !running && (
       <GlassCard className="rounded-xl p-6">
-          <h4 className="mb-4 text-sm font-semibold text-white/80">Scan Complete</h4>
+          <h4 className="mb-4 text-sm font-semibold text-[var(--text-muted)]">Scan Complete</h4>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard label="Companies" value={result.companiesScanned} />
@@ -359,19 +359,19 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
               <span
                 className={cn(
                   'text-2xl font-bold tabular-nums',
-                  result.referralAvailable > 0 ? 'text-[#57CDA4]' : 'text-white/40',
+                  result.referralAvailable > 0 ? 'text-[#57CDA4]' : 'text-[var(--text-soft)]',
                 )}
               >
                 {result.referralAvailable}
               </span>
-              <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-[#57CDA4]/60">
+              <span className="mt-0.5 text-[12px] font-medium uppercase tracking-wider text-[#57CDA4]/60">
                 Referral
               </span>
             </div>
           </div>
 
           {result.matchingJobs > 0 ? (
-            <p className="mt-4 text-center text-sm text-white/50">
+            <p className="mt-4 text-center text-sm text-[var(--text-soft)]">
               Found{' '}
               <span className="font-medium text-[#afc4ff]/80">{result.matchingJobs}</span>{' '}
               matching job{result.matchingJobs !== 1 ? 's' : ''}.
@@ -385,13 +385,13 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
               {' '}View results in the Job Matches tab.
             </p>
           ) : (
-            <p className="mt-4 text-center text-sm text-white/35">
+            <p className="mt-4 text-center text-sm text-[var(--text-soft)]">
               No matching jobs found this time. Try adjusting your target titles or scan again later.
             </p>
           )}
 
           {result.errorCount > 0 && (
-            <p className="mt-2 text-center text-xs text-white/25">
+            <p className="mt-2 text-center text-xs text-[var(--text-soft)]">
               {result.errorCount} compan{result.errorCount !== 1 ? 'ies' : 'y'} could not be reached.
             </p>
           )}
@@ -412,7 +412,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
       {/* Target titles hint */}
       {titles.length === 0 && !running && (
         <GlassCard className="rounded-xl p-4">
-          <p className="text-center text-xs text-white/35">
+          <p className="text-center text-xs text-[var(--text-soft)]">
             Add target titles in the Target Titles section to filter jobs by role.
             Without targets, all executive-level jobs found will be listed.
           </p>

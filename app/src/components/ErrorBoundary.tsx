@@ -27,20 +27,20 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex h-screen flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
-          <h1 className="text-xl font-semibold text-white">Something went wrong</h1>
-          <p className="max-w-md text-sm text-white/70">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Something went wrong</h1>
+          <p className="max-w-md text-sm text-[var(--text-muted)]">
             An unexpected error occurred. Please reload to continue.
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => window.location.reload()}
-              className="rounded-lg border border-white/[0.14] bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]"
+              className="rounded-lg border border-[var(--line-strong)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
             >
               Reload page
             </button>
             <button
               onClick={() => { window.location.href = '/workspace'; }}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.08]"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)]"
             >
               Return to Home
             </button>

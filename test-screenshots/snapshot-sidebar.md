@@ -1,0 +1,244 @@
+- generic [ref=e2]:
+  - generic [ref=e849]:
+    - banner [ref=e850]:
+      - generic [ref=e851]:
+        - generic [ref=e852]:
+          - img [ref=e853]
+          - generic [ref=e855]: Resume Agent
+        - navigation [ref=e856]:
+          - button "Tools" [ref=e857] [cursor=pointer]
+          - button "Job Applier" [ref=e858] [cursor=pointer]
+          - button "CareerIQ" [ref=e859] [cursor=pointer]
+          - button "Dashboard" [ref=e860] [cursor=pointer]
+          - button "Pricing" [ref=e861] [cursor=pointer]
+          - button "Billing" [ref=e862] [cursor=pointer]
+          - button "Affiliate" [ref=e863] [cursor=pointer]
+        - generic [ref=e864]:
+          - generic [ref=e865]: jjschrup@yahoo.com
+          - button "Sign out" [ref=e866] [cursor=pointer]:
+            - img [ref=e867]
+    - generic [ref=e1239]:
+      - complementary [ref=e1240]:
+        - generic [ref=e1242]:
+          - button "Open AI jjschrup@yahoo.com" [ref=e1243] [cursor=pointer]:
+            - generic [ref=e1245]: AI
+            - generic [ref=e1246]:
+              - generic [ref=e1247]: AI jjschrup@yahoo.com
+              - generic [ref=e1248]: Getting Started
+          - button "Collapse sidebar" [expanded] [ref=e1249] [cursor=pointer]:
+            - img [ref=e1250]
+        - navigation [ref=e1252]:
+          - generic [ref=e1253]:
+            - generic [ref=e1254]: Your Foundation
+            - generic [ref=e1255]:
+              - button "Dashboard Your daily briefing" [ref=e1256] [cursor=pointer]:
+                - img [ref=e1257]
+                - generic [ref=e1262]:
+                  - generic [ref=e1264]: Dashboard
+                  - generic [ref=e1265]: Your daily briefing
+              - button "Resume Workshop" [ref=e1266] [cursor=pointer]:
+                - img [ref=e1267]
+                - generic [ref=e1272]: Resume Workshop
+          - generic [ref=e1273]:
+            - generic [ref=e1274]: Documents & Writing
+            - generic [ref=e1275]:
+              - button "Executive Bio" [ref=e1276] [cursor=pointer]:
+                - img [ref=e1277]
+                - generic [ref=e1282]: Executive Bio
+              - button "Case Studies" [ref=e1283] [cursor=pointer]:
+                - img [ref=e1284]
+                - generic [ref=e1288]: Case Studies
+              - button "Thank You Notes" [ref=e1289] [cursor=pointer]:
+                - img [ref=e1290]
+                - generic [ref=e1295]: Thank You Notes
+          - generic [ref=e1296]:
+            - generic [ref=e1297]: LinkedIn & Brand
+            - generic [ref=e1298]:
+              - button "LinkedIn Studio" [ref=e1299] [cursor=pointer]:
+                - img [ref=e1300]
+                - generic [ref=e1306]: LinkedIn Studio
+              - button "Content Calendar" [ref=e1307] [cursor=pointer]:
+                - img [ref=e1308]
+                - generic [ref=e1312]: Content Calendar
+              - button "Personal Brand" [ref=e1313] [cursor=pointer]:
+                - img [ref=e1314]
+                - generic [ref=e1318]: Personal Brand
+          - generic [ref=e1319]:
+            - generic [ref=e1320]: Job Search & Network
+            - generic [ref=e1321]:
+              - button "Job Command Center" [ref=e1322] [cursor=pointer]:
+                - img [ref=e1323]
+                - generic [ref=e1328]: Job Command Center
+              - button "Networking Hub" [ref=e1329] [cursor=pointer]:
+                - img [ref=e1330]
+                - generic [ref=e1337]: Networking Hub
+              - button "Network Intelligence" [ref=e1338] [cursor=pointer]:
+                - img [ref=e1339]
+                - generic [ref=e1346]: Network Intelligence
+          - generic [ref=e1347]:
+            - generic [ref=e1348]: Interview & Offers
+            - generic [ref=e1349]:
+              - button "Interview Lab" [ref=e1350] [cursor=pointer]:
+                - img [ref=e1351]
+                - generic [ref=e1356]: Interview Lab
+              - button "Salary Negotiation" [ref=e1357] [cursor=pointer]:
+                - img [ref=e1358]
+                - generic [ref=e1362]: Salary Negotiation
+              - button "90-Day Plan" [ref=e1363] [cursor=pointer]:
+                - img [ref=e1364]
+                - generic [ref=e1370]: 90-Day Plan
+          - generic [ref=e1372]:
+            - button "Financial Wellness" [ref=e1373] [cursor=pointer]:
+              - img [ref=e1374]
+              - generic [ref=e1378]: Financial Wellness
+            - button "Live Sessions" [ref=e1379] [cursor=pointer]:
+              - img [ref=e1380]
+              - generic [ref=e1385]: Live Sessions
+        - generic [ref=e1387]: CareerIQ Platform
+      - main [ref=e1388]:
+        - generic [ref=e1389]:
+          - generic [ref=e1390]:
+            - img [ref=e1392]
+            - generic [ref=e1395]:
+              - generic [ref=e1396]: Resume in progress — start discovering matching roles
+              - generic [ref=e1397]: AI-surfaced jobs that match your Why-Me story and experience.
+            - button "Job Command Center" [ref=e1398] [cursor=pointer]:
+              - text: Job Command Center
+              - img [ref=e1399]
+            - button [ref=e1401] [cursor=pointer]:
+              - img [ref=e1402]
+          - generic [ref=e1406]:
+            - generic [ref=e1407]:
+              - heading "Good evening, Jjschrup" [level=2] [ref=e1408]
+              - paragraph [ref=e1409]:
+                - img [ref=e1410]
+                - text: Your signals are strong. Keep refining your Why-Me story to sharpen every agent's output.
+              - generic [ref=e1412]:
+                - button "Explore new opportunities" [ref=e1413] [cursor=pointer]:
+                  - text: Explore new opportunities
+                  - img [ref=e1414]
+                - button "Refine story" [ref=e1416] [cursor=pointer]:
+                  - img [ref=e1417]
+                  - text: Refine story
+            - generic [ref=e1421]:
+              - generic [ref=e1422]: Why-Me Strength
+              - generic [ref=e1423]:
+                - generic [ref=e1426]: Clarity
+                - generic [ref=e1429]: Alignment
+                - generic [ref=e1432]: Differentiation
+          - generic [ref=e1433]:
+            - generic [ref=e1434]:
+              - generic [ref=e1435]:
+                - heading "Your Pipeline" [level=3] [ref=e1436]
+                - generic [ref=e1437]:
+                  - generic [ref=e1438]: 0 active
+                  - generic [ref=e1439]: 0 in motion
+              - generic [ref=e1441]:
+                - img [ref=e1632]
+                - paragraph [ref=e1635]: No applications yet
+                - paragraph [ref=e1636]:
+                  - text: Start from the
+                  - button "Job Command Center" [ref=e1637] [cursor=pointer]
+                  - text: to find matching roles.
+            - generic [ref=e1472]:
+              - generic [ref=e1473]:
+                - heading "Agent Activity" [level=3] [ref=e1474]
+                - generic [ref=e1475]: 5 recent
+              - generic [ref=e1476]:
+                - button "Resume Agent Started resume session for Untitled 4h ago" [ref=e1477] [cursor=pointer]:
+                  - img [ref=e1479]
+                  - generic [ref=e1482]:
+                    - generic [ref=e1483]:
+                      - generic [ref=e1484]: Resume Agent
+                      - img [ref=e1485]
+                    - generic [ref=e1488]: Started resume session for Untitled
+                  - generic [ref=e1489]: 4h ago
+                - button "Resume Agent Started resume session for Phillips Connect 1d ago" [ref=e1490] [cursor=pointer]:
+                  - img [ref=e1492]
+                  - generic [ref=e1495]:
+                    - generic [ref=e1496]:
+                      - generic [ref=e1497]: Resume Agent
+                      - img [ref=e1498]
+                    - generic [ref=e1501]: Started resume session for Phillips Connect
+                  - generic [ref=e1502]: 1d ago
+                - button "Resume Agent Started resume session for Untitled 1d ago" [ref=e1503] [cursor=pointer]:
+                  - img [ref=e1505]
+                  - generic [ref=e1508]:
+                    - generic [ref=e1509]:
+                      - generic [ref=e1510]: Resume Agent
+                      - img [ref=e1511]
+                    - generic [ref=e1514]: Started resume session for Untitled
+                  - generic [ref=e1515]: 1d ago
+                - button "Resume Agent Started resume session for Untitled 1d ago" [ref=e1516] [cursor=pointer]:
+                  - img [ref=e1518]
+                  - generic [ref=e1521]:
+                    - generic [ref=e1522]:
+                      - generic [ref=e1523]: Resume Agent
+                      - img [ref=e1524]
+                    - generic [ref=e1527]: Started resume session for Untitled
+                  - generic [ref=e1528]: 1d ago
+                - button "Resume Agent Started resume session for Untitled 1d ago" [ref=e1529] [cursor=pointer]:
+                  - img [ref=e1531]
+                  - generic [ref=e1534]:
+                    - generic [ref=e1535]:
+                      - generic [ref=e1536]: Resume Agent
+                      - img [ref=e1537]
+                    - generic [ref=e1540]: Started resume session for Untitled
+                  - generic [ref=e1541]: 1d ago
+          - generic [ref=e1542]:
+            - generic [ref=e1544]:
+              - generic [ref=e1545]:
+                - heading "Your Signals" [level=3] [ref=e1546]
+                - generic [ref=e1547]: Quality of effort, not raw outcomes
+              - generic [ref=e1548]:
+                - generic [ref=e1549] [cursor=pointer]:
+                  - generic [ref=e1550]:
+                    - img [ref=e1552]
+                    - generic [ref=e1556]:
+                      - generic [ref=e1557]: Strong
+                      - img [ref=e1558]
+                  - generic [ref=e1561]: Positioning Strength
+                  - generic [ref=e1562]: How well your materials tell your Why-Me story
+                  - generic [ref=e1565]: Resume + LinkedIn aligned with your Why-Me narrative
+                - generic [ref=e1566] [cursor=pointer]:
+                  - generic [ref=e1567]:
+                    - img [ref=e1569]
+                    - generic [ref=e1571]:
+                      - generic [ref=e1572]: Building
+                      - img [ref=e1573]
+                  - generic [ref=e1576]: Activity Score
+                  - generic [ref=e1577]: Your consistent engagement across the platform
+                  - generic [ref=e1580]: 50 resume sessions — keep building momentum
+                - generic [ref=e1581] [cursor=pointer]:
+                  - generic [ref=e1582]:
+                    - img [ref=e1584]
+                    - generic [ref=e1587]:
+                      - generic [ref=e1588]: Needs work
+                      - img [ref=e1589]
+                  - generic [ref=e1592]: Market Alignment
+                  - generic [ref=e1593]: How well your targeting matches market opportunity
+                  - generic [ref=e1596]: Add applications to your pipeline to track market alignment
+            - generic [ref=e1598]:
+              - heading "Momentum" [level=3] [ref=e1600]
+              - generic [ref=e1601]:
+                - img [ref=e1603]
+                - generic [ref=e1605]: Start your streak!
+              - generic [ref=e1606]:
+                - generic [ref=e1607]:
+                  - generic [ref=e1608]:
+                    - img [ref=e1609]
+                    - generic [ref=e1611]: This Week
+                  - generic [ref=e1612]: "0"
+                - generic [ref=e1613]:
+                  - generic [ref=e1614]:
+                    - img [ref=e1615]
+                    - generic [ref=e1617]: All Time
+                  - generic [ref=e1618]: "0"
+                - generic [ref=e1619]:
+                  - generic [ref=e1620]:
+                    - img [ref=e1621]
+                    - generic [ref=e1627]: Best Streak
+                  - generic [ref=e1628]: "0"
+      - button "Open AI Coach" [ref=e1629] [cursor=pointer]:
+        - img [ref=e1630]
+  - status

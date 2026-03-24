@@ -11,10 +11,12 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
-import { FF_NETWORKING_CRM } from '../lib/feature-flags.js';
+import { FF_NETWORKING_CRM, FF_NETWORKING_OUTREACH } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
-import { processNewTouchpoint } from '../lib/networking-crm-service.js';
+import { processNewTouchpoint, getContactWithHistory } from '../lib/networking-crm-service.js';
 import logger from '../lib/logger.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 
 export const networkingContacts = new Hono();
 
@@ -635,6 +637,124 @@ networkingContacts.post(
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
         'POST /ni-import: unexpected error',
+      );
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  },
+);
+
+// ─── POST /contacts/:contactId/prepare-outreach ───────────────────────────────
+// Returns a prepared input object the frontend can use to launch the Outreach
+// agent pipeline for an existing CRM contact. Loads contact data, touchpoint
+// history, and the user's shared career context in one round-trip.
+//
+// Both FF_NETWORKING_CRM and FF_NETWORKING_OUTREACH must be active.
+
+const prepareOutreachSchema = z.object({
+  messaging_method: z.enum(['group_message', 'connection_request', 'inmail']).optional(),
+  context_notes: z.string().max(2000).optional(),
+});
+
+networkingContacts.post(
+  '/contacts/:contactId/prepare-outreach',
+  rateLimitMiddleware(20, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const contactId = c.req.param('contactId');
+
+    // Both feature flags must be active
+    if (!FF_NETWORKING_OUTREACH) {
+      return c.json({ error: 'Networking outreach feature is not enabled' }, 403);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = prepareOutreachSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation failed', details: parsed.error.issues }, 400);
+    }
+
+    try {
+      // Load the CRM contact and its history
+      const history = await getContactWithHistory(contactId, user.id);
+      if (!history) {
+        return c.json({ error: 'Contact not found' }, 404);
+      }
+
+      const { contact } = history;
+
+      // Load user's shared career context (same bundle as the outreach pipeline)
+      let sharedContext: Record<string, unknown> | undefined;
+      let platformContext: Record<string, unknown> | undefined;
+      try {
+        const bundle = await loadAgentContextBundle(user.id, {
+          includeCareerProfile: true,
+          includePositioningStrategy: true,
+          includeEvidenceItems: true,
+          includeCareerNarrative: true,
+          includeWhyMeStory: true,
+          includeClientProfile: true,
+          includeEmotionalBaseline: false,
+        });
+        sharedContext = applySharedContextOverride(bundle.sharedContext, {
+          artifactTarget: {
+            artifactType: 'networking_outreach',
+            artifactGoal: 'draft a networking outreach sequence',
+            targetAudience: 'target contact',
+            successCriteria: [
+              'sound personal and credible',
+              'use supported common ground',
+              'avoid overclaiming',
+            ],
+          },
+          workflowState: {
+            room: 'networking',
+            stage: 'context_loaded',
+            activeTask: 'shape outreach from shared positioning and confirmed evidence',
+          },
+        }) as unknown as Record<string, unknown>;
+        if (Object.keys(bundle.platformContext).length > 0) {
+          platformContext = bundle.platformContext as Record<string, unknown>;
+        }
+      } catch (ctxErr) {
+        logger.warn(
+          { error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr), userId: user.id },
+          'POST /contacts/:contactId/prepare-outreach: career context load failed (continuing without it)',
+        );
+      }
+
+      // Assemble the prepared outreach input
+      const preparedInput: Record<string, unknown> = {
+        crm_contact_id: contactId,
+        messaging_method: parsed.data.messaging_method ?? 'group_message',
+        target_input: {
+          target_name: contact.name,
+          target_title: contact.title ?? '',
+          target_company: contact.company ?? '',
+          target_linkedin_url: contact.linkedin_url ?? undefined,
+          context_notes: parsed.data.context_notes ?? contact.notes ?? undefined,
+        },
+      };
+
+      if (sharedContext) preparedInput.shared_context = sharedContext;
+      if (platformContext) preparedInput.platform_context = platformContext;
+
+      return c.json({
+        prepared_input: preparedInput,
+        contact_summary: {
+          id: contact.id,
+          name: contact.name,
+          title: contact.title,
+          company: contact.company,
+          relationship_strength: contact.relationship_strength,
+          last_contact_date: contact.last_contact_date,
+          touchpoint_count: history.touchpoints.length,
+          prior_outreach_count: history.outreachHistory.length,
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { error: err instanceof Error ? err.message : String(err), userId: user.id, contactId },
+        'POST /contacts/:contactId/prepare-outreach: unexpected error',
       );
       return c.json({ error: 'Internal server error' }, 500);
     }

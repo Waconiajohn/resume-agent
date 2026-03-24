@@ -70,22 +70,22 @@ export function JobWorkspaceView({
     <GlassCard className="space-y-5 p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
             Job Workspace
           </div>
-          <h3 className="mt-2 text-lg font-semibold text-white/88">{record.company}</h3>
-          <p className="mt-1 text-sm text-white/48">{record.role}</p>
+          <h3 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">{record.company}</h3>
+          <p className="mt-1 text-sm text-[var(--text-soft)]">{record.role}</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${activeStageBadge.classes}`}>
+          <span className={`inline-flex rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] ${activeStageBadge.classes}`}>
             {activeStageBadge.label}
           </span>
           {onClose ? (
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/72"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
               aria-label="Close workspace"
             >
               <X size={14} />
@@ -94,9 +94,9 @@ export function JobWorkspaceView({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Stage control</div>
-        <p className="mt-2 text-sm leading-relaxed text-white/52">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Stage control</div>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
           Keep this workspace lean until the process advances. Interview and offer assets only light up when the stage earns them.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -108,10 +108,10 @@ export function JobWorkspaceView({
                 type="button"
                 disabled={!application || !onMoveJobStage || active || savingStage === stage}
                 onClick={() => void onMoveJobStage?.(record, stage)}
-                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors ${
                   active
                     ? 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]'
-                    : 'border-white/[0.08] bg-white/[0.03] text-white/52 hover:bg-white/[0.06] hover:text-white/78'
+                    : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]'
                 }`}
               >
                 {savingStage === stage ? <Loader2 size={12} className="animate-spin" /> : null}
@@ -121,7 +121,7 @@ export function JobWorkspaceView({
           })}
         </div>
         {!application ? (
-          <p className="mt-3 text-[11px] text-white/38">
+          <p className="mt-3 text-[13px] text-[var(--text-soft)]">
             This tailored work is not yet linked to a tracked job application, so the stage shown here is read-only.
           </p>
         ) : null}
@@ -129,15 +129,15 @@ export function JobWorkspaceView({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Assets</div>
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Assets</div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+              <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-strong)]">
                   <FileText size={14} className="text-[#98b3ff]" />
                   Resume Builder
                 </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                   {resumeAsset || coverLetterAsset
                     ? 'Your tailored resume and cover letter live together here. Reopen the active session or review the saved draft assets.'
                     : 'Use Resume Builder for the tailored resume first. Add a cover letter there only when this job actually needs one.'}
@@ -169,12 +169,12 @@ export function JobWorkspaceView({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+              <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-strong)]">
                   <Mic size={14} className="text-[#98b3ff]" />
                   Interview Prep
                 </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                   {(interviewPrepAsset || thankYouAsset || ninetyDayPlanAsset || salaryNegotiationAsset)
                     ? 'Prep reports, thank-you notes, 30-60-90 plans, and negotiation strategy stay together here so this job’s follow-up work lives in one place.'
                     : activeStage === 'interviewing'
@@ -213,10 +213,10 @@ export function JobWorkspaceView({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Unlocked next</div>
-            <div className="mt-3 text-sm font-medium text-white/80">{stageActions.nextActionLabel}</div>
-            <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Unlocked next</div>
+            <div className="mt-3 text-sm font-medium text-[var(--text-muted)]">{stageActions.nextActionLabel}</div>
+            <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
               Available now: {stageActions.unlocked.join(' • ')}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -240,8 +240,8 @@ export function JobWorkspaceView({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-white/40">
+        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <div className="flex items-center gap-2 text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
             <Clock3 size={12} />
             Stage history
           </div>
@@ -252,8 +252,8 @@ export function JobWorkspaceView({
                 <div key={`${entry.stage}-${entry.at}-${index}`} className="flex items-start gap-3">
                   <div className="mt-1 h-2 w-2 bg-[#98b3ff]/70" />
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-white/78">{stageLabel(stage)}</div>
-                    <div className="mt-1 text-[12px] text-white/42">
+                    <div className="text-sm font-medium text-[var(--text-muted)]">{stageLabel(stage)}</div>
+                    <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                       {new Date(entry.at).toLocaleString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -268,11 +268,11 @@ export function JobWorkspaceView({
             })}
           </div>
           {application?.next_action ? (
-            <div className="mt-5 rounded-xl border border-white/[0.08] bg-black/10 p-3">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Next action</div>
-              <p className="mt-2 text-sm text-white/74">{application.next_action}</p>
+            <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Next action</div>
+              <p className="mt-2 text-sm text-[var(--text-muted)]">{application.next_action}</p>
               {application.next_action_due ? (
-                <p className="mt-1 text-[12px] text-white/42">
+                <p className="mt-1 text-[12px] text-[var(--text-soft)]">
                   Due {new Date(application.next_action_due).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',

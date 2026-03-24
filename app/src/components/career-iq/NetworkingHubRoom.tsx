@@ -82,7 +82,7 @@ interface OutreachPrefill {
 type OutreachStatus = 'not_started' | 'messaged';
 
 const STATUS_CONFIG: Record<OutreachStatus, { label: string; color: string; borderColor: string }> = {
-  not_started: { label: 'Not Started', color: 'text-white/30 bg-white/[0.04]', borderColor: 'border-white/[0.06]' },
+  not_started: { label: 'Not Started', color: 'text-[var(--text-soft)] bg-[var(--accent-muted)]', borderColor: 'border-[var(--line-soft)]' },
   messaged: { label: 'Contacted', color: 'text-[#afc4ff] bg-[#afc4ff]/10', borderColor: 'border-[#afc4ff]/15' },
 };
 
@@ -120,7 +120,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
 
   return (
     <details className="rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04] overflow-hidden">
-      <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none hover:bg-white/[0.02] transition-colors">
+      <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none hover:bg-[var(--accent-muted)] transition-colors">
         <Bell size={14} className="text-[#f0d99f] flex-shrink-0" />
         <span className="text-[13px] font-medium text-[#f0d99f]">
           {followUps.length} contact{followUps.length !== 1 ? 's' : ''} need follow-up
@@ -135,13 +135,13 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
           return (
             <div key={contact.id} className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <span className="text-[13px] font-medium text-white/70">{contact.name}</span>
+                <span className="text-[13px] font-medium text-[var(--text-muted)]">{contact.name}</span>
                 {contact.company && (
-                  <span className="text-[11px] text-white/35 ml-2">{contact.company}</span>
+                  <span className="text-[13px] text-[var(--text-soft)] ml-2">{contact.company}</span>
                 )}
                 <span
                   className={cn(
-                    'text-[11px] ml-2',
+                    'text-[13px] ml-2',
                     overdue ? 'text-red-400' : 'text-[#f0d99f]',
                   )}
                 >
@@ -154,14 +154,14 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                 <button
                   type="button"
                   onClick={() => onDone(contact.id)}
-                  className="text-[11px] text-[#b5dec2] hover:text-[#b5dec2]/80 transition-colors px-2 py-1 rounded border border-[#b5dec2]/20 hover:bg-[#b5dec2]/5"
+                  className="text-[13px] text-[#b5dec2] hover:text-[#b5dec2]/80 transition-colors px-2 py-1 rounded border border-[#b5dec2]/20 hover:bg-[#b5dec2]/5"
                 >
                   Done
                 </button>
                 <button
                   type="button"
                   onClick={() => onSnooze(contact.id)}
-                  className="text-[11px] text-white/30 hover:text-white/50 transition-colors px-2 py-1 rounded border border-white/[0.06] hover:bg-white/[0.03]"
+                  className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors px-2 py-1 rounded border border-[var(--line-soft)] hover:bg-[var(--accent-muted)]"
                 >
                   Snooze {SNOOZE_DAYS}d
                 </button>
@@ -196,21 +196,21 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
         <Users size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Rule of Four</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Rule of Four</h3>
       </div>
-      <p className="text-[12px] text-white/35 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         For every application, reach out to 4 people at the target company. Networking bypasses the queue.
       </p>
 
       {loading && (
-        <div className="flex items-center gap-2 text-[12px] text-white/30 py-4">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)] py-4">
           <Loader2 size={13} className="animate-spin" />
           Loading applications...
         </div>
       )}
 
       {!loading && groups.length === 0 && (
-        <p className="text-[12px] text-white/25 py-4 text-center">
+        <p className="text-[12px] text-[var(--text-soft)] py-4 text-center">
           No active applications found. Add applications in Job Search to get started.
         </p>
       )}
@@ -221,66 +221,66 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
           return (
             <div
               key={group.application.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden"
+              className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() => setExpandedGroup(isExpanded ? '' : group.application.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-white/70">
+                  <div className="text-[13px] font-medium text-[var(--text-muted)]">
                     {group.application.company_name}
                   </div>
-                  <div className="text-[11px] text-white/35">{group.application.role_title}</div>
+                  <div className="text-[13px] text-[var(--text-soft)]">{group.application.role_title}</div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span
                     className={cn(
-                      'text-[11px] font-medium',
+                      'text-[13px] font-medium',
                       group.progress === 4
                         ? 'text-[#b5dec2]'
                         : group.progress > 0
                         ? 'text-[#f0d99f]'
-                        : 'text-white/30',
+                        : 'text-[var(--text-soft)]',
                     )}
                   >
                     {group.progress}/4
                   </span>
                   {isExpanded ? (
-                    <ChevronUp size={14} className="text-white/25" />
+                    <ChevronUp size={14} className="text-[var(--text-soft)]" />
                   ) : (
-                    <ChevronDown size={14} className="text-white/25" />
+                    <ChevronDown size={14} className="text-[var(--text-soft)]" />
                   )}
                 </div>
               </button>
 
               {isExpanded && (
-                <div className="border-t border-white/[0.06] px-4 py-3 space-y-2.5">
+                <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-2.5">
                   {group.contacts.map((contact) => {
                     const status = STATUS_CONFIG[deriveOutreachStatus(contact)];
                     return (
                       <div key={contact.id} className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                          <UserCircle size={16} className="text-white/30" />
+                        <div className="h-8 w-8 rounded-full bg-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
+                          <UserCircle size={16} className="text-[var(--text-soft)]" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[12px] font-medium text-white/65">
+                            <span className="text-[12px] font-medium text-[var(--text-muted)]">
                               {contact.name}
                             </span>
                           </div>
-                          <div className="text-[11px] text-white/35">{contact.title}</div>
+                          <div className="text-[13px] text-[var(--text-soft)]">{contact.title}</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {contact.contact_role && (
-                            <span className="text-[10px] text-white/20 uppercase tracking-wider">
+                            <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">
                               {CONTACT_ROLE_LABELS[contact.contact_role as ContactRole]}
                             </span>
                           )}
                           <span
                             className={cn(
-                              'text-[10px] font-medium px-1.5 py-0.5 rounded-md border',
+                              'text-[12px] font-medium px-1.5 py-0.5 rounded-md border',
                               status.color,
                               status.borderColor,
                             )}
@@ -294,7 +294,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                               title: contact.title ?? '',
                               company: group.application.company_name,
                             })}
-                            className="flex items-center gap-0.5 text-[10px] text-[#98b3ff]/50 hover:text-[#98b3ff] transition-colors px-1.5 py-0.5 rounded border border-[#98b3ff]/15 hover:bg-[#98b3ff]/[0.06]"
+                            className="flex items-center gap-0.5 text-[12px] text-[#98b3ff]/50 hover:text-[#98b3ff] transition-colors px-1.5 py-0.5 rounded border border-[#98b3ff]/15 hover:bg-[#98b3ff]/[0.06]"
                           >
                             <Sparkles size={9} />
                             Message
@@ -315,7 +315,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                             group.missingRoles[0],
                           )
                         }
-                        className="flex items-center gap-1.5 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+                        className="flex items-center gap-1.5 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
                       >
                         <Plus size={11} />
                         Add {CONTACT_ROLE_LABELS[group.missingRoles[0]]}
@@ -347,12 +347,12 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
         <Clock size={14} className="text-[#afc4ff]" />
-        <span className="text-[12px] font-semibold text-white/70">Follow-Up Cadence</span>
-        <span className="ml-auto text-[10px] text-white/25">Best practice</span>
+        <span className="text-[12px] font-semibold text-[var(--text-muted)]">Follow-Up Cadence</span>
+        <span className="ml-auto text-[12px] text-[var(--text-soft)]">Best practice</span>
       </div>
       <div className="relative">
         {/* Vertical line */}
-        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.06]" />
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[var(--accent-muted)]" />
         <div className="space-y-4">
           {FOLLOWUP_TIMELINE_STEPS.map((step, idx) => {
             const isStop = step.label === 'Stop';
@@ -364,32 +364,32 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
                     ? 'border-[#f0b8b8]/40 bg-[#f0b8b8]/10'
                     : hasReport && idx === 0
                     ? 'border-[#b5dec2]/40 bg-[#b5dec2]/20'
-                    : 'border-white/[0.15] bg-white/[0.04]',
+                    : 'border-[var(--line-strong)] bg-[var(--accent-muted)]',
                 )}>
                   {isStop ? (
                     <Minus size={6} className="text-[#f0b8b8]/60" />
                   ) : (
                     <div className={cn(
                       'w-1.5 h-1.5 rounded-full',
-                      hasReport && idx === 0 ? 'bg-[#b5dec2]' : 'bg-white/20',
+                      hasReport && idx === 0 ? 'bg-[#b5dec2]' : 'bg-[var(--line-strong)]',
                     )} />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={cn(
-                      'text-[11px] font-medium',
-                      isStop ? 'text-[#f0b8b8]/70' : 'text-white/65',
+                      'text-[13px] font-medium',
+                      isStop ? 'text-[#f0b8b8]/70' : 'text-[var(--text-muted)]',
                     )}>
                       {step.label}
                     </span>
                     {step.day > 0 && (
-                      <span className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+                      <span className="text-[12px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
                         Day {step.day}
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-white/30 mt-0.5 leading-tight">{step.description}</p>
+                  <p className="text-[12px] text-[var(--text-soft)] mt-0.5 leading-tight">{step.description}</p>
                 </div>
               </div>
             );
@@ -422,10 +422,10 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
         <MessageSquare size={18} className="text-[#afc4ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Generated Sequence</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Generated Sequence</h3>
         {qualityScore != null && (
           <span className={cn(
-            'ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md border',
+            'ml-auto text-[12px] font-medium px-1.5 py-0.5 rounded-md border',
             qualityScore >= 80
               ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
               : qualityScore >= 60
@@ -439,11 +439,11 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
 
       {!report && (
         <div className="py-6 text-center space-y-2">
-          <Zap size={24} className="text-white/10 mx-auto" />
-          <p className="text-[12px] text-white/30 leading-relaxed">
+          <Zap size={24} className="text-[var(--text-soft)] mx-auto" />
+          <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
             Click <span className="text-[#afc4ff]/60 font-medium">Message</span> next to any Rule of Four contact to generate a personalized outreach sequence.
           </p>
-          <p className="text-[11px] text-white/20 leading-relaxed">
+          <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
             Each sequence includes a connection request, follow-ups, a value offer, and a meeting request — all personalized to the specific contact.
           </p>
         </div>
@@ -453,22 +453,22 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
         <div className="space-y-3 mt-2">
           {messageCount != null && (
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-white/30">{messageCount} messages</span>
-              <span className="text-[10px] text-white/20">·</span>
-              <span className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+              <span className="text-[13px] text-[var(--text-soft)]">{messageCount} messages</span>
+              <span className="text-[12px] text-[var(--text-soft)]">·</span>
+              <span className="text-[12px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
                 Personalized sequence
               </span>
             </div>
           )}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 max-h-[380px] overflow-y-auto">
-            <pre className="text-[12px] text-white/65 leading-relaxed whitespace-pre-wrap font-sans">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 max-h-[380px] overflow-y-auto">
+            <pre className="text-[12px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
               {report}
             </pre>
           </div>
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+            className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             {copied ? (
               <><Check size={11} className="text-[#b5dec2]" /> Copied</>
@@ -514,20 +514,20 @@ function WeeklyActivity({ contacts: rawContacts }: WeeklyActivityProps) {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Weekly Activity</h3>
-        <span className="ml-auto text-[11px] text-white/30">This week</span>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Weekly Activity</h3>
+        <span className="ml-auto text-[13px] text-[var(--text-soft)]">This week</span>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {metrics.map((metric) => (
           <div
             key={metric.label}
-            className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center"
+            className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-center"
           >
-            <div className="text-[22px] font-bold text-white/85 tabular-nums">{metric.value}</div>
-            <div className="text-[11px] text-white/35 mt-0.5">{metric.label}</div>
+            <div className="text-[22px] font-bold text-[var(--text-strong)] tabular-nums">{metric.value}</div>
+            <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{metric.label}</div>
             <div className="flex items-center justify-center gap-1 mt-2">
-              <span className="text-[10px] text-white/20">{metric.period}</span>
+              <span className="text-[12px] text-[var(--text-soft)]">{metric.period}</span>
             </div>
           </div>
         ))}
@@ -549,7 +549,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
   const statusColors: Record<string, string> = {
     active: 'text-[#b5dec2] bg-[#b5dec2]/10',
     cold: 'text-[#f0d99f] bg-[#f0d99f]/10',
-    dormant: 'text-white/30 bg-white/[0.04]',
+    dormant: 'text-[var(--text-soft)] bg-[var(--accent-muted)]',
   };
 
   function recruiterStatus(contact: NetworkingContact): 'active' | 'cold' | 'dormant' {
@@ -565,21 +565,21 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Briefcase size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Recruiter Tracker</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Recruiter Tracker</h3>
         <button
           type="button"
           onClick={onAddRecruiter}
-          className="ml-auto flex items-center gap-1.5 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+          className="ml-auto flex items-center gap-1.5 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
         >
           <Plus size={11} /> Add Recruiter
         </button>
       </div>
-      <p className="text-[12px] text-white/35 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         Executive recruiters working in your space. Keep them warm — they source 30%+ of VP-level placements.
       </p>
 
       {recruiters.length === 0 && (
-        <p className="text-[12px] text-white/25 text-center py-4">
+        <p className="text-[12px] text-[var(--text-soft)] text-center py-4">
           No recruiters added yet.{' '}
           <button
             type="button"
@@ -599,10 +599,10 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
               key={recruiter.id}
               type="button"
               onClick={() => onOpenContact(recruiter)}
-              className="w-full flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left hover:bg-white/[0.04] transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
             >
-              <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                <span className="text-[10px] font-bold text-white/40">
+              <div className="h-8 w-8 rounded-full bg-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
+                <span className="text-[12px] font-bold text-[var(--text-soft)]">
                   {recruiter.name
                     .split(' ')
                     .map((n) => n[0])
@@ -610,15 +610,15 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-white/65">{recruiter.name}</div>
-                <div className="text-[11px] text-white/35">
+                <div className="text-[13px] font-medium text-[var(--text-muted)]">{recruiter.name}</div>
+                <div className="text-[13px] text-[var(--text-soft)]">
                   {recruiter.company ?? 'Unknown firm'}
                   {recruiter.title ? ` · ${recruiter.title}` : ''}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {recruiter.last_contact_date && (
-                  <span className="flex items-center gap-1 text-[10px] text-white/25">
+                  <span className="flex items-center gap-1 text-[12px] text-[var(--text-soft)]">
                     <Clock size={10} />
                     {new Date(recruiter.last_contact_date).toLocaleDateString('en-US', {
                       month: 'short',
@@ -628,7 +628,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
                 )}
                 <span
                   className={cn(
-                    'text-[10px] font-medium px-2 py-0.5 rounded-full capitalize',
+                    'text-[12px] font-medium px-2 py-0.5 rounded-full capitalize',
                     statusColors[status],
                   )}
                 >
@@ -749,18 +749,18 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">AI Outreach Generator</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Outreach Generator</h3>
         {outreach.status !== 'idle' && outreach.status !== 'connecting' && (
           <button
             type="button"
             onClick={handleReset}
-            className="ml-auto flex items-center gap-1 text-[11px] text-white/30 hover:text-white/50 transition-colors"
+            className="ml-auto flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             <RotateCcw size={11} /> New Sequence
           </button>
         )}
       </div>
-      <p className="text-[12px] text-white/35 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         Generate a personalized LinkedIn outreach sequence for any target contact. Powered by your
         resume and positioning.
       </p>
@@ -776,7 +776,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target name *"
               value={targetName}
               onChange={(e) => setTargetName(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-target-title"
@@ -785,7 +785,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target title *"
               value={targetTitle}
               onChange={(e) => setTargetTitle(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-target-company"
@@ -794,7 +794,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target company *"
               value={targetCompany}
               onChange={(e) => setTargetCompany(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -805,7 +805,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="LinkedIn URL (optional)"
               value={targetLinkedIn}
               onChange={(e) => setTargetLinkedIn(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-context-notes"
@@ -814,7 +814,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Context notes (optional — shared events, mutual connections, etc.)"
               value={contextNotes}
               onChange={(e) => setContextNotes(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
           </div>
           <textarea
@@ -824,10 +824,10 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
+            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
           />
           <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Messaging Method</label>
+            <label className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Messaging Method</label>
             <div className="grid grid-cols-3 gap-2">
               {(['group_message', 'connection_request', 'inmail'] as const).map((method) => (
                 <button
@@ -838,15 +838,15 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                     'rounded-lg border px-3 py-2 text-left transition-all',
                     messagingMethod === method
                       ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.06]'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10',
+                      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-soft)]',
                   )}
                 >
-                  <div className="text-[12px] font-medium text-white/60">{MESSAGING_METHOD_CONFIG[method].label}</div>
-                  <div className="text-[10px] text-white/25">{MESSAGING_METHOD_CONFIG[method].maxChars} chars</div>
+                  <div className="text-[12px] font-medium text-[var(--text-soft)]">{MESSAGING_METHOD_CONFIG[method].label}</div>
+                  <div className="text-[12px] text-[var(--text-soft)]">{MESSAGING_METHOD_CONFIG[method].maxChars} chars</div>
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-[#98b3ff]/50 italic">{MESSAGING_METHOD_CONFIG[messagingMethod].coaching}</p>
+            <p className="text-[13px] text-[#98b3ff]/50 italic">{MESSAGING_METHOD_CONFIG[messagingMethod].coaching}</p>
           </div>
           <GlassButton onClick={handleGenerate} disabled={!canGenerate} className="w-full sm:w-auto">
             <Sparkles size={14} />
@@ -858,7 +858,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
       {/* Running state */}
       {(outreach.status === 'connecting' || outreach.status === 'running') && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-[13px] text-white/60">
+          <div className="flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
             <Loader2 size={14} className="animate-spin text-[#98b3ff]" />
             <span>
               {outreach.currentStage === 'writing'
@@ -867,9 +867,9 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             </span>
           </div>
           {outreach.activityMessages.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-1.5">
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 space-y-1.5">
               {outreach.activityMessages.map((msg) => (
-                <div key={msg.id} className="flex items-start gap-2 text-[11px]">
+                <div key={msg.id} className="flex items-start gap-2 text-[13px]">
                   <span className="text-[#98b3ff]/40 font-mono shrink-0">
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
@@ -877,7 +877,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                       second: '2-digit',
                     })}
                   </span>
-                  <span className="text-white/40">{msg.message}</span>
+                  <span className="text-[var(--text-soft)]">{msg.message}</span>
                 </div>
               ))}
             </div>
@@ -900,7 +900,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             {outreach.qualityScore != null && (
               <span
                 className={cn(
-                  'text-[11px] font-medium px-2 py-0.5 rounded-full',
+                  'text-[13px] font-medium px-2 py-0.5 rounded-full',
                   outreach.qualityScore >= 80
                     ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                     : outreach.qualityScore >= 60
@@ -912,12 +912,12 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               </span>
             )}
             {outreach.messageCount != null && (
-              <span className="text-[11px] text-white/30">{outreach.messageCount} messages</span>
+              <span className="text-[13px] text-[var(--text-soft)]">{outreach.messageCount} messages</span>
             )}
             <button
               type="button"
               onClick={handleCopyReport}
-              className="ml-auto flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+              className="ml-auto flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               {copied ? (
                 <>
@@ -930,8 +930,8 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               )}
             </button>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 max-h-[500px] overflow-y-auto">
-            <pre className="text-[12px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+          <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 max-h-[500px] overflow-y-auto">
+            <pre className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
               {outreach.report}
             </pre>
           </div>
@@ -1087,8 +1087,8 @@ export function NetworkingHubRoom() {
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-white/90">Networking Hub</h1>
-          <p className="text-[13px] text-white/40">
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">Networking Hub</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Networking is your sales force. For every application, the Rule of Four gets you past
             the queue and in front of decision-makers.
           </p>
@@ -1103,7 +1103,7 @@ export function NetworkingHubRoom() {
             onClick={handleNIImport}
             disabled={niImporting}
             aria-label="Import from Network Intelligence"
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[12px] text-white/50 hover:text-white/70 hover:bg-white/[0.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {niImporting ? (
               <Loader2 size={13} className="animate-spin" />
@@ -1127,7 +1127,7 @@ export function NetworkingHubRoom() {
           <button
             type="button"
             onClick={() => setNiImportMessage(null)}
-            className="text-[#b5dec2]/40 hover:text-[#b5dec2]/70 transition-colors text-[11px]"
+            className="text-[#b5dec2]/40 hover:text-[#b5dec2]/70 transition-colors text-[13px]"
             aria-label="Dismiss"
           >
             Dismiss

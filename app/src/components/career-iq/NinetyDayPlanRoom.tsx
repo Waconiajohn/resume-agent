@@ -72,23 +72,23 @@ function PhaseProgressTracker({ activePhase }: { activePhase?: number }) {
   return (
     <div className="relative flex items-center justify-between px-2 py-4">
       {/* Connecting line */}
-      <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-px bg-white/[0.06]" />
+      <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-px bg-[var(--accent-muted)]" />
 
       {PHASES.map((phase, i) => (
         <div key={phase.label} className="relative flex flex-col items-center gap-2 z-10">
           <div
             className={cn(
-              'h-8 w-8 rounded-full border-2 flex items-center justify-center text-[11px] font-bold transition-all duration-500',
+              'h-8 w-8 rounded-full border-2 flex items-center justify-center text-[13px] font-bold transition-all duration-500',
               activePhase !== undefined && i <= activePhase
                 ? `${phase.bg} ${phase.border} ${phase.color}`
-                : 'bg-white/[0.03] border-white/[0.08] text-white/30',
+                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)]',
             )}
           >
             {i + 1}
           </div>
           <div className="text-center">
-            <div className={cn('text-[10px] font-semibold', phase.color)}>{phase.days}</div>
-            <div className="text-[9px] text-white/40 mt-0.5">{phase.label}</div>
+            <div className={cn('text-[12px] font-semibold', phase.color)}>{phase.days}</div>
+            <div className="text-[12px] text-[var(--text-soft)] mt-0.5">{phase.label}</div>
           </div>
         </div>
       ))}
@@ -130,8 +130,8 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
         />
       </svg>
       <div className="flex flex-col items-center -mt-[68px] mb-8">
-        <span className="text-[20px] font-bold text-white/90">{score}</span>
-        <span className="text-[9px] text-white/40 uppercase tracking-wider">{label}</span>
+        <span className="text-[20px] font-bold text-[var(--text-strong)]">{score}</span>
+        <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">{label}</span>
       </div>
     </div>
   );
@@ -186,8 +186,8 @@ function ActivityFeed({
           </div>
         </div>
         <div>
-          <h3 className="text-[17px] font-semibold text-white/90">Building your 90-day plan</h3>
-          <p className="text-[13px] text-white/40 mt-0.5">
+          <h3 className="text-[17px] font-semibold text-[var(--text-strong)]">Building your 90-day plan</h3>
+          <p className="text-[13px] text-[var(--text-soft)] mt-0.5">
             {stageLabel} — {displayName}
           </p>
         </div>
@@ -199,8 +199,8 @@ function ActivityFeed({
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 mt-4">
         {activityMessages.length === 0 ? (
           <div className="text-center py-10">
-            <Loader2 size={24} className="text-white/20 mx-auto mb-3 animate-spin" />
-            <p className="text-[13px] text-white/30">Connecting to pipeline...</p>
+            <Loader2 size={24} className="text-[var(--text-soft)] mx-auto mb-3 animate-spin" />
+            <p className="text-[13px] text-[var(--text-soft)]">Connecting to pipeline...</p>
           </div>
         ) : (
           activityMessages.map((msg, i) => {
@@ -208,7 +208,7 @@ function ActivityFeed({
             return (
               <div key={msg.id} className="flex items-start gap-3 py-1.5" style={{ opacity }}>
                 <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50 mt-2 flex-shrink-0" />
-                <span className="text-[13px] text-white/60 leading-relaxed">{msg.message}</span>
+                <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
               </div>
             );
           })
@@ -232,15 +232,15 @@ function PhaseCard({ phase, index }: { phase: (typeof PHASES)[number]; index: nu
     >
       <div className="flex items-center gap-2 mb-2">
         <div
-          className={cn('h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold', phase.bg, phase.border, 'border')}
+          className={cn('h-5 w-5 rounded-full flex items-center justify-center text-[12px] font-bold', phase.bg, phase.border, 'border')}
           style={{ color: phase.accent }}
         >
           {index + 1}
         </div>
         <span className={cn('text-[12px] font-semibold', phase.color)}>{phase.days}</span>
       </div>
-      <div className="text-[13px] font-semibold text-white/85">{phase.label}</div>
-      <div className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{phase.theme}</div>
+      <div className="text-[13px] font-semibold text-[var(--text-strong)]">{phase.label}</div>
+      <div className="text-[13px] text-[var(--text-soft)] mt-0.5 leading-relaxed">{phase.theme}</div>
     </div>
   );
 }
@@ -286,7 +286,7 @@ function ReportView({
         <button
           type="button"
           onClick={onReset}
-          className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <ArrowLeft size={14} />
           Draft another plan
@@ -315,8 +315,8 @@ function ReportView({
             <Map size={20} className="text-[#afc4ff]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[18px] font-semibold text-white/90">30-60-90 Plan</h2>
-            <p className="text-[13px] text-white/50 mt-0.5">
+            <h2 className="text-[18px] font-semibold text-[var(--text-strong)]">30-60-90 Plan</h2>
+            <p className="text-[13px] text-[var(--text-soft)] mt-0.5">
               {targetRole}
               {targetCompany ? ` — ${targetCompany}` : ''}
             </p>
@@ -331,7 +331,7 @@ function ReportView({
 
       {/* Phase timeline */}
       <div className="space-y-2">
-        <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-wider px-1">
+        <h3 className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider px-1">
           Three-Phase Roadmap
         </h3>
         <div className="grid grid-cols-3 gap-3">
@@ -348,7 +348,7 @@ function ReportView({
           <Zap size={14} className="text-[#f0d99f]" />
           <span className="text-[12px] font-semibold text-[#f0d99f]">First-Week Priority</span>
         </div>
-        <p className="text-[12px] text-white/50 leading-relaxed">
+        <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
           Your plan includes specific quick wins designed to demonstrate competence in the first 30 days — without reorganizing the team or pushing premature change. Listen first, earn trust, then lead.
         </p>
       </div>
@@ -361,13 +361,13 @@ function ReportView({
           { icon: Flag, label: 'Measurable Milestones', desc: 'Observable success markers', color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10' },
           { icon: MessageSquare, label: 'Manager Talking Points', desc: 'How to frame the plan upward', color: 'text-[#afc4ff]', bg: 'bg-[#afc4ff]/10' },
         ].map(({ icon: Icon, label, desc, color, bg }) => (
-          <div key={label} className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+          <div key={label} className="flex items-start gap-2.5 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-3">
             <div className={cn('rounded-lg p-1.5 flex-shrink-0', bg)}>
               <Icon size={12} className={color} />
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-white/70">{label}</div>
-              <div className="text-[10px] text-white/35 mt-0.5">{desc}</div>
+              <div className="text-[13px] font-semibold text-[var(--text-muted)]">{label}</div>
+              <div className="text-[12px] text-[var(--text-soft)] mt-0.5">{desc}</div>
             </div>
           </div>
         ))}
@@ -379,24 +379,24 @@ function ReportView({
 
         <div className="flex items-center gap-3 mb-6">
           <ChevronRight size={14} className="text-[#afc4ff]/60" />
-          <span className="text-[12px] font-semibold text-white/40 uppercase tracking-wider">Full Strategic Plan</span>
+          <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Full Strategic Plan</span>
         </div>
 
         <div
           className="prose prose-invert prose-sm max-w-none
-            prose-headings:text-white/85 prose-headings:font-semibold
-            prose-h1:text-[18px] prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+            prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+            prose-h1:text-[18px] prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
             prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3 prose-h2:text-[#afc4ff]/80
-            prose-h3:text-[13px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-            prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
-            prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-            prose-strong:text-white/75
-            prose-em:text-white/50
-            prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-white/45 prose-blockquote:italic
-            prose-hr:border-white/[0.08]
-            prose-table:text-[12px] prose-table:text-white/60
-            prose-th:text-white/50 prose-th:font-semibold prose-th:border-white/[0.08]
-            prose-td:border-white/[0.06]"
+            prose-h3:text-[13px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
+            prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
+            prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+            prose-strong:text-[var(--text-muted)]
+            prose-em:text-[var(--text-soft)]
+            prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
+            prose-hr:border-[var(--line-soft)]
+            prose-table:text-[12px] prose-table:text-[var(--text-soft)]
+            prose-th:text-[var(--text-soft)] prose-th:font-semibold prose-th:border-[var(--line-soft)]
+            prose-td:border-[var(--line-soft)]"
           dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
         />
       </GlassCard>
@@ -405,7 +405,7 @@ function ReportView({
       <div className="rounded-xl border border-[#f0b8b8]/15 bg-[#f0b8b8]/[0.03] px-5 py-4">
         <div className="flex items-start gap-3">
           <ShieldAlert size={14} className="text-[#f0b8b8] mt-0.5 flex-shrink-0" />
-          <p className="text-[12px] text-white/45 leading-relaxed">
+          <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
             <span className="text-[#f0b8b8]/80 font-semibold">Guardrail: </span>
             Avoid reorganizing the team in the first 30 days. This is the single most common mistake new executives make. Build trust and earn the right to drive organizational change first.
           </p>
@@ -431,19 +431,19 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5"
+      className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5"
     >
       {label}
       {required && <span className="text-[#afc4ff]/60 ml-1">*</span>}
       {optional && (
-        <span className="text-white/20 normal-case font-normal ml-1">(optional)</span>
+        <span className="text-[var(--text-soft)] normal-case font-normal ml-1">(optional)</span>
       )}
     </label>
   );
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors';
+  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors';
 
 // --- Main component ---
 
@@ -617,21 +617,21 @@ export function NinetyDayPlanRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
-          <p className="text-[13px] text-white/40 mt-1">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">30-60-90 Plan</h1>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">
             Stakeholder map ready to review
           </p>
         </div>
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle2 size={18} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Research Ready</h3>
+            <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Research Ready</h3>
           </div>
-          <p className="text-[13px] text-white/55 mb-4 leading-relaxed">
+          <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
             We mapped{' '}
-            <span className="text-white/80 font-medium">{stakeholderCount} stakeholder{stakeholderCount !== 1 ? 's' : ''}</span>{' '}
+            <span className="text-[var(--text-strong)] font-medium">{stakeholderCount} stakeholder{stakeholderCount !== 1 ? 's' : ''}</span>{' '}
             and identified{' '}
-            <span className="text-white/80 font-medium">{quickWinCount} quick win{quickWinCount !== 1 ? 's' : ''}</span>{' '}
+            <span className="text-[var(--text-strong)] font-medium">{quickWinCount} quick win{quickWinCount !== 1 ? 's' : ''}</span>{' '}
             for your first 30 days. Review it, then draft the full 30-60-90 plan.
           </p>
           <div className="flex gap-3">
@@ -658,8 +658,8 @@ export function NinetyDayPlanRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
-          <p className="text-[13px] text-white/40 mt-1">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">30-60-90 Plan</h1>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">
             Building your stakeholder map and phased success plan
           </p>
         </div>
@@ -673,7 +673,7 @@ export function NinetyDayPlanRoom({
           <button
             type="button"
             onClick={handleReset}
-            className="text-[12px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             Cancel
           </button>
@@ -709,8 +709,8 @@ export function NinetyDayPlanRoom({
           <Map size={20} className="text-[#afc4ff]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
-          <p className="text-[13px] text-white/40 leading-relaxed mt-1">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">30-60-90 Plan</h1>
+          <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mt-1">
             Draft a role-specific 30-60-90 plan with stakeholder map, quick wins, and phased milestones built around your story, not a generic template.
           </p>
         </div>
@@ -723,7 +723,7 @@ export function NinetyDayPlanRoom({
       {/* Prior result */}
       {priorLoading && (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 text-[12px] text-white/35">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
             Loading saved draft...
           </div>
@@ -732,20 +732,20 @@ export function NinetyDayPlanRoom({
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">
+            <h3 className="text-sm font-medium text-[var(--text-muted)]">
               {initialSessionId ? 'Saved 30-60-90 plan for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"
               onClick={clearPrior}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               Start New Draft
             </button>
           </div>
           <div
-            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            className="prose prose-invert prose-sm max-w-none text-[var(--text-strong)] max-h-96 overflow-y-auto"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
           />
         </GlassCard>
@@ -753,7 +753,7 @@ export function NinetyDayPlanRoom({
 
       {/* Three-phase overview */}
       <div className="space-y-3">
-        <h2 className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">
+        <h2 className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
           Your plan will follow three phases
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -768,7 +768,7 @@ export function NinetyDayPlanRoom({
         className={cn(
           'flex items-center gap-2 text-[12px]',
           loadingResume
-            ? 'text-white/30'
+            ? 'text-[var(--text-soft)]'
             : resumeLoaded
             ? 'text-[#b5dec2]/70'
             : 'text-[#f0d99f]/70',
@@ -797,7 +797,7 @@ export function NinetyDayPlanRoom({
           onChange={(e) => setManualResumeText(e.target.value)}
           placeholder="Paste your resume text here..."
           rows={5}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors resize-none leading-relaxed"
+          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors resize-none leading-relaxed"
         />
       )}
 
@@ -805,8 +805,8 @@ export function NinetyDayPlanRoom({
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <Briefcase size={16} className="text-[#afc4ff]" />
-          <h2 className="text-[15px] font-semibold text-white/80">Role Details</h2>
-          <div className="flex-1 h-px bg-white/[0.06]" />
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Role Details</h2>
+          <div className="flex-1 h-px bg-[var(--accent-muted)]" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -851,9 +851,9 @@ export function NinetyDayPlanRoom({
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <UserCheck size={16} className="text-[#b5dec2]" />
-          <h2 className="text-[15px] font-semibold text-white/80">Reporting Structure</h2>
-          <div className="flex-1 h-px bg-white/[0.06]" />
-          <span className="text-[11px] text-white/25">optional — improves stakeholder map</span>
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Reporting Structure</h2>
+          <div className="flex-1 h-px bg-[var(--accent-muted)]" />
+          <span className="text-[13px] text-[var(--text-soft)]">optional — improves stakeholder map</span>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -883,8 +883,8 @@ export function NinetyDayPlanRoom({
       </div>
 
       {/* What you'll get */}
-      <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] px-5 py-4">
-        <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-3">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-white/[0.03] to-white/[0.01] px-5 py-4">
+        <p className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-3">
           What you will get
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -912,7 +912,7 @@ export function NinetyDayPlanRoom({
           ].map(({ icon: Icon, text, color }) => (
             <div key={text} className="flex items-start gap-2">
               <Icon size={13} className={cn(color, 'mt-0.5 flex-shrink-0')} />
-              <span className="text-[12px] text-white/40 leading-relaxed">{text}</span>
+              <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{text}</span>
             </div>
           ))}
         </div>
@@ -928,7 +928,7 @@ export function NinetyDayPlanRoom({
 
       {/* Submit */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-white/25">
+        <p className="text-[12px] text-[var(--text-soft)]">
           Plan is role-specific — leverages your positioning narrative, not a generic template.
         </p>
         <GlassButton

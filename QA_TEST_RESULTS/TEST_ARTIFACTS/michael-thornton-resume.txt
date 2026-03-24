@@ -1,0 +1,76 @@
+MICHAEL R. THORNTON
+1247 Lakeshore Drive, Minneapolis, MN 55401
+(612) 555-0194 | mthornton@email.com | linkedin.com/in/michaelthornton
+
+SUMMARY
+Experienced project management professional with over 15 years of experience managing projects across various industries. Known for delivering results and leading teams. Seeking a leadership role where I can leverage my skills to drive organizational success.
+
+PROFESSIONAL EXPERIENCE
+
+MEDTRONIC, Minneapolis, MN
+Senior Project Manager, IT Transformation Office                    2019 – Present
+- Responsible for managing a portfolio of IT transformation projects valued at $12M annually
+- Lead a team of 8 project managers and 4 business analysts across multiple workstreams
+- Oversee vendor relationships with Accenture, Deloitte, and Infosys for outsourced development
+- Manage project budgets, timelines, and resource allocation across the portfolio
+- Conduct weekly status meetings with senior leadership and executive sponsors
+- Responsible for risk management and issue resolution across all active projects
+- Implemented SAFe framework across 3 product teams (approximately 45 team members)
+- Handle stakeholder communication including monthly executive steering committee presentations
+- Manage the PMO's project intake and prioritization process
+- Coordinate with enterprise architecture team on technology roadmap alignment
+- Responsible for maintaining project documentation and governance standards
+- Support the annual strategic planning process with project impact assessments
+
+Senior Project Manager, Medical Device R&D                          2015 – 2019
+- Managed cross-functional teams for Class III medical device development programs
+- Responsible for FDA 510(k) submission timelines and regulatory milestone tracking
+- Led design control activities per FDA 21 CFR Part 820 requirements
+- Coordinated with quality assurance, manufacturing, and clinical teams
+- Managed budgets ranging from $2M to $5M per program
+- Conducted risk assessments per ISO 14971 for medical device development
+- Oversaw design verification and validation testing protocols
+- Responsible for supplier qualification and management for critical components
+- Participated in internal and external audits (FDA, ISO 13485, MDSAP)
+- Maintained project schedules using Microsoft Project and Jira
+
+TARGET CORPORATION, Minneapolis, MN
+Project Manager, Enterprise Supply Chain                            2011 – 2015
+- Managed implementation of SAP modules for supply chain optimization
+- Responsible for requirements gathering and business process documentation
+- Led UAT coordination across 6 distribution centers nationwide
+- Managed cross-functional teams of 15-20 team members
+- Handled change management activities for system rollouts
+- Coordinated with third-party system integrators and internal IT teams
+- Responsible for project reporting and executive status updates
+- Supported post-go-live stabilization and hypercare activities
+
+GENERAL MILLS, Minneapolis, MN
+Associate Project Manager, Manufacturing Systems                    2008 – 2011
+- Supported implementation of manufacturing execution systems (MES) across 4 plants
+- Responsible for test script development and UAT coordination
+- Assisted in vendor selection and contract negotiation processes
+- Created project documentation including charters, plans, and status reports
+- Coordinated training logistics for end-user adoption programs
+- Supported project budget tracking and variance reporting
+
+EDUCATION
+
+Bachelor of Science, Business Administration
+University of Minnesota, Carlson School of Management, 2007
+
+Master of Business Administration (MBA)
+University of St. Thomas, Opus College of Business, 2013
+
+CERTIFICATIONS
+- Project Management Professional (PMP), PMI, 2012
+- Certified SAFe 5 Agilist (SA), Scaled Agile, 2020
+- ITIL Foundation, Axelos, 2018
+
+SKILLS
+Microsoft Project, Jira, Confluence, SAP, ServiceNow, Agile, Waterfall, SAFe, Risk Management, Stakeholder Management, Vendor Management, Budget Management, FDA Regulations, ISO 13485, Change Management, Microsoft Office Suite, Power BI, Tableau
+
+VOLUNTEER
+- Board Member, Minneapolis Project Management Institute Chapter, 2018 – Present
+- Mentor, University of Minnesota Carlson School of Management, 2015 – Present
+- Youth Hockey Coach, Edina Athletic Association, 2016 – Present

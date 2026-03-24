@@ -109,15 +109,15 @@ export function RecruiterSimulator() {
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Search size={16} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Recruiter Search Simulator</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Recruiter Search Simulator</h3>
         </div>
-        <p className="text-[13px] text-white/45 mb-4 leading-relaxed">
+        <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
           Enter the search terms a recruiter might use and paste your profile sections to see how you'd rank — and what's holding you back.
         </p>
 
         <div className="flex flex-col gap-3">
           <div>
-            <label className="block text-[11px] font-medium text-white/45 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Recruiter Search Terms <span className="text-red-400">*</span>
             </label>
             <input
@@ -125,12 +125,12 @@ export function RecruiterSimulator() {
               value={searchTerms}
               onChange={(e) => setSearchTerms(e.target.value)}
               placeholder="e.g. VP Operations manufacturing supply chain"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-white/45 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               LinkedIn Headline
             </label>
             <input
@@ -138,12 +138,12 @@ export function RecruiterSimulator() {
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="Your current LinkedIn headline"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-white/45 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               About Section (optional)
             </label>
             <textarea
@@ -151,12 +151,12 @@ export function RecruiterSimulator() {
               onChange={(e) => setAbout(e.target.value)}
               placeholder="Paste your About section for a more detailed analysis..."
               rows={3}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/20 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-white/45 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Skills (optional)
             </label>
             <input
@@ -164,7 +164,7 @@ export function RecruiterSimulator() {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="e.g. Supply Chain, P&L Management, Lean Manufacturing"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
 
@@ -202,18 +202,18 @@ export function RecruiterSimulator() {
               <span className={cn('text-[36px] font-bold tabular-nums', scoreColor)}>
                 {result.visibility_score}
               </span>
-              <span className="text-[9px] text-white/30 uppercase tracking-wider">Visibility</span>
+              <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">Visibility</span>
             </div>
             <div className="flex-1 min-w-0">
               <div
                 className={cn(
-                  'inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full border mb-2',
-                  RANK_COLORS[result.rank_assessment] ?? 'text-white/40 border-white/10 bg-white/[0.03]',
+                  'inline-flex items-center text-[13px] font-semibold px-2.5 py-1 rounded-full border mb-2',
+                  RANK_COLORS[result.rank_assessment] ?? 'text-[var(--text-soft)] border-[var(--line-soft)] bg-[var(--accent-muted)]',
                 )}
               >
                 {RANK_LABELS[result.rank_assessment] ?? result.rank_assessment}
               </div>
-              <p className="text-[12px] text-white/50 leading-relaxed">
+              <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
                 {result.profile_completeness_feedback}
               </p>
             </div>
@@ -221,10 +221,10 @@ export function RecruiterSimulator() {
 
           {result.keyword_matches.length > 0 && (
             <div className="mb-4">
-              <p className="text-[10px] font-medium text-white/35 uppercase tracking-wider mb-2">Keyword Matches</p>
+              <p className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">Keyword Matches</p>
               <div className="flex flex-wrap gap-1.5">
                 {result.keyword_matches.map((kw) => (
-                  <span key={kw} className="text-[10px] text-[#b5dec2] bg-[#b5dec2]/10 px-2 py-0.5 rounded-full">
+                  <span key={kw} className="text-[12px] text-[#b5dec2] bg-[#b5dec2]/10 px-2 py-0.5 rounded-full">
                     {kw}
                   </span>
                 ))}
@@ -234,10 +234,10 @@ export function RecruiterSimulator() {
 
           {result.keyword_gaps.length > 0 && (
             <div className="mb-4">
-              <p className="text-[10px] font-medium text-white/35 uppercase tracking-wider mb-2">Missing Keywords</p>
+              <p className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">Missing Keywords</p>
               <div className="flex flex-wrap gap-1.5">
                 {result.keyword_gaps.map((kw) => (
-                  <span key={kw} className="text-[10px] text-[#f0d99f] bg-[#f0d99f]/10 px-2 py-0.5 rounded-full">
+                  <span key={kw} className="text-[12px] text-[#f0d99f] bg-[#f0d99f]/10 px-2 py-0.5 rounded-full">
                     {kw}
                   </span>
                 ))}
@@ -248,17 +248,17 @@ export function RecruiterSimulator() {
           <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.03] px-4 py-3 mb-4 flex items-start gap-2">
             <Zap size={13} className="text-[#98b3ff] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[11px] font-medium text-[#98b3ff]/80 mb-0.5">Top Recommendation</p>
-              <p className="text-[12px] text-white/55 leading-relaxed">{result.top_recommendation}</p>
+              <p className="text-[13px] font-medium text-[#98b3ff]/80 mb-0.5">Top Recommendation</p>
+              <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{result.top_recommendation}</p>
             </div>
           </div>
 
           <details>
-            <summary className="cursor-pointer text-[12px] text-white/35 hover:text-white/60 transition-colors list-none flex items-center gap-1">
+            <summary className="cursor-pointer text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors list-none flex items-center gap-1">
               <ChevronRight size={12} className="transition-transform" />
               Full explanation
             </summary>
-            <p className="mt-3 text-[12px] text-white/50 leading-relaxed whitespace-pre-line">
+            <p className="mt-3 text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-line">
               {result.full_explanation}
             </p>
           </details>

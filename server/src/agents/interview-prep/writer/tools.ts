@@ -1,11 +1,14 @@
 /**
  * Interview Prep Writer — Tool definitions.
  *
- * 4 tools:
+ * 7 tools:
  * - write_section: Write a single section of the interview prep report
  * - self_review_section: Quality check a written section against Rule 9
  * - build_career_story: Special handler for the Why Me section (Rule 6)
  * - assemble_report: Combine all sections into the final document
+ * - generate_thank_you_notes: Personalized thank-you notes per interviewer
+ * - generate_follow_up_email: Situation-specific follow-up email
+ * - generate_interview_debrief: Structured debrief notes post-interview
  */
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
@@ -14,11 +17,19 @@ import type {
   InterviewPrepSSEEvent,
   InterviewPrepSection,
   WrittenSection,
+  ThankYouNoteOutput,
+  FollowUpEmailOutput,
+  FollowUpSituation,
+  InterviewDebriefOutput,
 } from '../types.js';
 import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { renderWhyMeStorySection } from '../../../contracts/shared-context-prompt.js';
+import {
+  renderWhyMeStorySection,
+  renderCareerNarrativeSection,
+} from '../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 
 type InterviewPrepTool = AgentTool<InterviewPrepState, InterviewPrepSSEEvent>;
 
@@ -79,6 +90,10 @@ function buildContextBlock(state: InterviewPrepState): string {
       parts.push('Growth Areas:');
       for (const g of state.company_research.growth_areas) parts.push(`- ${g}`);
     }
+    if ((state.company_research.strategic_priorities?.length ?? 0) > 0) {
+      parts.push('Strategic Priorities This Year:');
+      for (const p of state.company_research.strategic_priorities!) parts.push(`- ${p}`);
+    }
     if (state.company_research.risks.length > 0) {
       parts.push('Risks:');
       for (const r of state.company_research.risks) parts.push(`- ${r}`);
@@ -89,6 +104,13 @@ function buildContextBlock(state: InterviewPrepState): string {
         parts.push(`- ${c.name}: ${c.differentiation}`);
       }
     }
+    if ((state.company_research.culture_signals?.length ?? 0) > 0) {
+      parts.push('Culture Signals:');
+      for (const s of state.company_research.culture_signals!) parts.push(`- ${s}`);
+    }
+    if (state.company_research.role_impact) {
+      parts.push(`Role Impact on Business: ${state.company_research.role_impact}`);
+    }
   }
 
   if (state.sourced_questions && state.sourced_questions.length > 0) {
@@ -98,7 +120,12 @@ function buildContextBlock(state: InterviewPrepState): string {
     }
   }
 
-  if (state.platform_context?.why_me_story) {
+  if (hasMeaningfulSharedValue(state.shared_context?.careerNarrative)) {
+    parts.push(...renderCareerNarrativeSection({
+      heading: '## Career Narrative Signals',
+      sharedNarrative: state.shared_context?.careerNarrative,
+    }));
+  } else if (state.platform_context?.why_me_story) {
     parts.push(...renderWhyMeStorySection({
       heading: '## Why-Me Story (from CareerIQ)',
       legacyWhyMeStory: state.platform_context.why_me_story,
@@ -110,7 +137,7 @@ function buildContextBlock(state: InterviewPrepState): string {
 
 // Section-specific writing instructions
 const SECTION_INSTRUCTIONS: Record<InterviewPrepSection, string> = {
-  company_research: 'Write Section 1: Company Research. Use the research data provided. Include Overview, Growth Areas, Potential Risks, and Competitors. Be specific — name actual products, services, numbers. No tables.',
+  company_research: 'Write Section 1: Company Research. Use ALL research data provided. Include: Overview (what they do, how they make money), Strategic Priorities for this year (named programs — not generic observations), Growth Areas, Potential Risks to that growth, Competitors, Culture Signals, and how this specific role impacts their revenue or operations. Be specific — name actual products, services, numbers. No tables.',
   elevator_pitch: 'Write Section 2: Elevator Pitch. 60-90 seconds, first person. Open with identity statement, 2-3 proof points with metrics from resume, connect to this specific company, close with genuine enthusiasm for THIS role.',
   requirements_fit: 'Write Section 3: Why I\'m the Perfect Fit. Extract the top 4-6 requirements from the JD analysis. For each: state as header, expand the definition, write 3-5 first-person sentences with specific resume evidence (metrics, project names, team sizes). "I have experience with X" is NEVER acceptable.',
   technical_questions: 'Write Section 4: Technical/Role-Specific Interview Questions. Minimum 8 questions. Use the sourced questions where available. Each answer: 5-8 sentences minimum, first person, references specific resume experiences with metrics. Answers should be speakable aloud.',
@@ -362,13 +389,15 @@ const buildCareerStoryTool: InterviewPrepTool = {
     const resumeData = state.resume_data;
     const jdAnalysis = state.jd_analysis;
     const whyMe = state.platform_context?.why_me_story;
+    const sharedNarrative = state.shared_context?.careerNarrative;
 
     ctx.emit({ type: 'section_progress', section: 'why_me', status: 'writing' });
 
     // Check if we have enough resume detail for a story
     const hasWorkHistory = (resumeData?.work_history?.length ?? 0) >= 2;
     const hasAchievements = (resumeData?.key_achievements?.length ?? 0) >= 3;
-    const hasWhyMe = !!(whyMe?.colleaguesCameForWhat || whyMe?.knownForWhat);
+    const hasSharedNarrative = hasMeaningfulSharedValue(sharedNarrative);
+    const hasWhyMe = hasSharedNarrative || !!(whyMe?.colleaguesCameForWhat || whyMe?.knownForWhat);
     const hasSufficientDetail = hasWorkHistory && (hasAchievements || hasWhyMe);
 
     if (!hasSufficientDetail && input.attempt_story !== true) {
@@ -559,6 +588,448 @@ const assembleReportTool: InterviewPrepTool = {
   },
 };
 
+// ─── Tool: generate_thank_you_notes ─────────────────────────────────
+
+const generateThankYouNotesTool: InterviewPrepTool = {
+  name: 'generate_thank_you_notes',
+  description:
+    'Generate personalized thank-you notes for each interviewer after the interview. ' +
+    'Each note is grounded in what was actually discussed, tailored to the interviewer\'s role and seniority, ' +
+    'and reinforces candidacy without desperation. ' +
+    'Use this after the interview has taken place — call with the names, roles, and discussion points for each interviewer.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {
+      interviewers: {
+        type: 'array',
+        description: 'List of interviewers to write notes for',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Interviewer full name' },
+            title: { type: 'string', description: 'Interviewer job title' },
+            topics_discussed: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Key topics or themes covered in this conversation',
+            },
+            shared_context: {
+              type: 'string',
+              description: 'Any personal rapport, shared interests, or memorable moments from the conversation',
+            },
+          },
+          required: ['name'],
+        },
+      },
+      interview_date: {
+        type: 'string',
+        description: 'Date of the interview (YYYY-MM-DD or natural language)',
+      },
+    },
+    required: ['interviewers'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const interviewers = Array.isArray(input.interviewers)
+      ? (input.interviewers as Array<{
+          name: string;
+          title?: string;
+          topics_discussed?: string[];
+          shared_context?: string;
+        }>)
+      : [];
+
+    if (interviewers.length === 0) {
+      return JSON.stringify({ success: false, error: 'No interviewers provided.' });
+    }
+
+    const company = state.jd_analysis?.company_name ?? 'the company';
+    const role = state.jd_analysis?.role_title ?? 'the role';
+    const candidateName = state.resume_data?.name ?? 'the candidate';
+    const interviewDate = String(input.interview_date ?? 'recent');
+
+    // Build context block for personalization
+    const contextLines: string[] = [];
+    if (state.resume_data) {
+      contextLines.push(`Candidate: ${candidateName}, ${state.resume_data.current_title}`);
+      if (state.resume_data.key_achievements.length > 0) {
+        contextLines.push(`Key Achievements: ${state.resume_data.key_achievements.slice(0, 3).join('; ')}`);
+      }
+    }
+    const knownFor = state.shared_context?.careerNarrative?.leadershipIdentity
+      ?? state.platform_context?.why_me_story?.knownForWhat;
+    if (knownFor) {
+      contextLines.push(`Known for: ${knownFor}`);
+    }
+
+    const interviewerBlock = interviewers.map((iv) => {
+      const lines = [`- ${iv.name} (${iv.title ?? 'unknown title'})`];
+      if (iv.topics_discussed && iv.topics_discussed.length > 0) {
+        lines.push(`  Topics: ${iv.topics_discussed.join(', ')}`);
+      }
+      if (iv.shared_context) {
+        lines.push(`  Shared context: ${iv.shared_context}`);
+      }
+      return lines.join('\n');
+    }).join('\n');
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 6000,
+      system: `You are a world-class executive communication writer. You write authentic, personalized thank-you notes for senior executives (45+) after job interviews.
+
+Your notes build relationships and reinforce candidacy without desperation. Every note is peer-level — written as one executive to another.
+
+Quality standards:
+- Each note references at least one specific topic from the conversation (not generic)
+- Tone matches interviewer seniority (C-suite gets more formal/strategic than peer-level)
+- One brief, natural connection to the candidate's relevant value
+- Forward-looking close that references next steps or continued conversation
+- No cliches ("great opportunity", "perfect fit"), no salary mentions, no excessive flattery
+- 150-250 words, 3-5 short paragraphs
+- Subject line: compelling and specific, not "Thank you for your time"
+
+Return ONLY valid JSON.`,
+      messages: [{
+        role: 'user',
+        content: `Write personalized thank-you notes for each interviewer below.
+
+Company: ${company}
+Role: ${role}
+Interview Date: ${interviewDate}
+${contextLines.length > 0 ? `\nCandidate Context:\n${contextLines.join('\n')}` : ''}
+
+Interviewers:
+${interviewerBlock}
+
+Return JSON:
+{
+  "notes": [
+    {
+      "interviewer": "name",
+      "interviewer_title": "title or empty string if unknown",
+      "note_text": "full email body",
+      "subject_line": "email subject",
+      "key_callbacks": ["specific topic 1", "specific topic 2"],
+      "timing_guidance": "send within X hours because..."
+    }
+  ]
+}`,
+      }],
+    });
+
+    let parsed: { notes?: ThankYouNoteOutput[] };
+    try {
+      parsed = JSON.parse(repairJSON(response.text) ?? response.text) as { notes?: ThankYouNoteOutput[] };
+    } catch {
+      parsed = { notes: [] };
+    }
+
+    const notes: ThankYouNoteOutput[] = Array.isArray(parsed.notes)
+      ? parsed.notes.map((n) => ({
+          interviewer: String(n.interviewer ?? ''),
+          interviewer_title: String(n.interviewer_title ?? ''),
+          note_text: String(n.note_text ?? ''),
+          subject_line: String(n.subject_line ?? ''),
+          key_callbacks: Array.isArray(n.key_callbacks) ? n.key_callbacks.map(String) : [],
+          timing_guidance: String(n.timing_guidance ?? 'Send within 2-4 hours of the interview.'),
+        }))
+      : [];
+
+    if (!state.post_interview_docs) {
+      state.post_interview_docs = {};
+    }
+    state.post_interview_docs.thank_you_notes = notes;
+
+    return JSON.stringify({
+      success: true,
+      note_count: notes.length,
+      interviewers_covered: notes.map((n) => n.interviewer),
+    });
+  },
+};
+
+// ─── Tool: generate_follow_up_email ─────────────────────────────────
+
+const FOLLOW_UP_SITUATION_DESCRIPTIONS: Record<FollowUpSituation, string> = {
+  post_interview: 'Standard follow-up sent 5-7 business days after the interview to check on status',
+  no_response: 'Follow-up when the company has gone silent for 2+ weeks after a promised decision',
+  rejection_graceful: 'Graceful response to a rejection that keeps the door open and builds long-term relationship',
+  keep_warm: 'Check-in note for a role that stalled or a contact worth maintaining for future opportunities',
+  negotiation_counter: 'Acknowledgment + counter-proposal framing for a compensation or offer negotiation',
+};
+
+const generateFollowUpEmailTool: InterviewPrepTool = {
+  name: 'generate_follow_up_email',
+  description:
+    'Generate a follow-up email for post-interview situations: checking on status, handling no-response, ' +
+    'responding gracefully to rejection, keeping a warm contact, or framing a negotiation counter. ' +
+    'Each email is personalized to the company, role, and candidate context.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {
+      situation: {
+        type: 'string',
+        enum: ['post_interview', 'no_response', 'rejection_graceful', 'keep_warm', 'negotiation_counter'],
+        description: 'The post-interview situation this email addresses',
+      },
+      recipient_name: {
+        type: 'string',
+        description: 'Name of the primary recipient (hiring manager, recruiter, or HR contact)',
+      },
+      recipient_title: {
+        type: 'string',
+        description: 'Title of the recipient (helps calibrate tone)',
+      },
+      specific_context: {
+        type: 'string',
+        description: 'Any specific context for this situation — e.g. what offer was made for negotiation, what went well for rejection response, what was the last contact date',
+      },
+    },
+    required: ['situation'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const situation = String(input.situation ?? 'post_interview') as FollowUpSituation;
+    const recipientName = input.recipient_name ? String(input.recipient_name) : undefined;
+    const recipientTitle = input.recipient_title ? String(input.recipient_title) : undefined;
+    const specificContext = input.specific_context ? String(input.specific_context) : undefined;
+
+    const company = state.jd_analysis?.company_name ?? 'the company';
+    const role = state.jd_analysis?.role_title ?? 'the role';
+    const candidateName = state.resume_data?.name ?? 'the candidate';
+    const situationDescription = FOLLOW_UP_SITUATION_DESCRIPTIONS[situation];
+
+    const recipientLine = recipientName
+      ? `Recipient: ${recipientName}${recipientTitle ? `, ${recipientTitle}` : ''}`
+      : 'Recipient: not specified — write to hiring manager';
+
+    const candidateStrengths = state.resume_data?.key_achievements?.slice(0, 2).join('; ') ?? '';
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 3000,
+      system: `You are an executive communication strategist. You write precise, confident follow-up emails for senior executives in job search situations.
+
+These emails are for executives (45+) who are peer-level to the people they are writing to. The tone is always professional, confident, and forward-looking — never desperate, apologetic, or sycophantic.
+
+Return ONLY valid JSON.`,
+      messages: [{
+        role: 'user',
+        content: `Write a follow-up email for this situation.
+
+Situation: ${situation}
+Description: ${situationDescription}
+
+Context:
+Company: ${company}
+Role: ${role}
+Candidate: ${candidateName}
+${recipientLine}
+${candidateStrengths ? `Candidate's key strengths: ${candidateStrengths}` : ''}
+${specificContext ? `\nSpecific context for this email:\n${specificContext}` : ''}
+
+Requirements by situation:
+- post_interview: Friendly check-in on timeline, brief reiteration of fit, forward-looking
+- no_response: Polite persistence without desperation, gives them an easy out, leaves door open
+- rejection_graceful: Genuine appreciation + one authentic sentence on what they learned, explicit invitation to stay in touch
+- keep_warm: Brief, genuine, adds value (article/insight/update), asks nothing
+- negotiation_counter: Acknowledges the offer positively, frames the counter as collaborative problem-solving, specific numbers or terms if provided
+
+Return JSON:
+{
+  "situation": "${situation}",
+  "subject": "email subject line",
+  "body": "full email body",
+  "tone_notes": "why you made these tone choices",
+  "timing_guidance": "when to send this and any send tips"
+}`,
+      }],
+    });
+
+    let parsed: Partial<FollowUpEmailOutput>;
+    try {
+      parsed = JSON.parse(repairJSON(response.text) ?? response.text) as Partial<FollowUpEmailOutput>;
+    } catch {
+      parsed = {};
+    }
+
+    const email: FollowUpEmailOutput = {
+      situation,
+      subject: String(parsed.subject ?? `Re: ${role} at ${company}`),
+      body: String(parsed.body ?? response.text.trim()),
+      tone_notes: String(parsed.tone_notes ?? ''),
+      timing_guidance: String(parsed.timing_guidance ?? ''),
+    };
+
+    if (!state.post_interview_docs) {
+      state.post_interview_docs = {};
+    }
+    state.post_interview_docs.follow_up_email = email;
+
+    return JSON.stringify({
+      success: true,
+      situation,
+      subject: email.subject,
+      word_count: email.body.split(/\s+/).filter(Boolean).length,
+    });
+  },
+};
+
+// ─── Tool: generate_interview_debrief ───────────────────────────────
+
+const generateInterviewDebriefTool: InterviewPrepTool = {
+  name: 'generate_interview_debrief',
+  description:
+    'Generate structured debrief notes immediately after an interview. ' +
+    'Captures what went well, what could be stronger, follow-up actions, and lessons for next time. ' +
+    'Use this to help the candidate process and learn from the interview while it is still fresh.',
+  model_tier: 'mid',
+  input_schema: {
+    type: 'object',
+    properties: {
+      what_went_well: {
+        type: 'string',
+        description: 'What the candidate felt went well — specific moments, answers, or interactions',
+      },
+      what_was_difficult: {
+        type: 'string',
+        description: 'Questions or moments that felt uncertain, weak, or where answers were vague',
+      },
+      questions_asked: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Questions the interviewers asked (as many as the candidate can remember)',
+      },
+      interviewers_met: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Names or roles of who the candidate met with',
+      },
+      company_signals: {
+        type: 'string',
+        description: 'Anything the candidate observed about the company culture, team dynamic, or role reality',
+      },
+      overall_impression: {
+        type: 'string',
+        enum: ['positive', 'neutral', 'negative'],
+        description: 'Candidate\'s overall read on how the interview went',
+      },
+    },
+    required: [],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const company = state.jd_analysis?.company_name ?? 'the company';
+    const role = state.jd_analysis?.role_title ?? 'the role';
+
+    const whatWentWell = input.what_went_well ? String(input.what_went_well) : '';
+    const whatWasDifficult = input.what_was_difficult ? String(input.what_was_difficult) : '';
+    const questionsAsked = Array.isArray(input.questions_asked)
+      ? (input.questions_asked as string[]).map(String)
+      : [];
+    const interviewersMet = Array.isArray(input.interviewers_met)
+      ? (input.interviewers_met as string[]).map(String)
+      : [];
+    const companySignals = input.company_signals ? String(input.company_signals) : '';
+    const overallImpression = (input.overall_impression as 'positive' | 'neutral' | 'negative' | undefined) ?? 'neutral';
+
+    const candidateContext: string[] = [];
+    if (state.resume_data) {
+      candidateContext.push(`Candidate: ${state.resume_data.name}, ${state.resume_data.current_title}`);
+    }
+    if (state.jd_analysis?.requirements && state.jd_analysis.requirements.length > 0) {
+      candidateContext.push(`Top requirements for this role: ${state.jd_analysis.requirements.slice(0, 3).map((r) => r.requirement).join('; ')}`);
+    }
+
+    const response = await llm.chat({
+      model: MODEL_MID,
+      max_tokens: 3000,
+      system: `You are an executive interview coach helping a senior candidate debrief immediately after an interview.
+
+Your job is to:
+1. Synthesize what the candidate shared into structured, actionable insights
+2. Identify specific strengths they demonstrated (not generic praise)
+3. Give honest, constructive feedback on areas to strengthen
+4. Create concrete follow-up actions and lessons for next time
+5. Keep company signals honest — both positive and concerning signals are valuable
+
+Be specific and honest. The candidate is a senior executive — they can handle direct feedback.
+
+Return ONLY valid JSON.`,
+      messages: [{
+        role: 'user',
+        content: `Help debrief this interview.
+
+Company: ${company}
+Role: ${role}
+${candidateContext.length > 0 ? `\n${candidateContext.join('\n')}` : ''}
+${interviewersMet.length > 0 ? `\nInterviewers met: ${interviewersMet.join(', ')}` : ''}
+${questionsAsked.length > 0 ? `\nQuestions asked:\n${questionsAsked.map((q) => `- ${q}`).join('\n')}` : ''}
+${whatWentWell ? `\nWhat went well:\n${whatWentWell}` : ''}
+${whatWasDifficult ? `\nWhat was difficult:\n${whatWasDifficult}` : ''}
+${companySignals ? `\nCompany signals observed:\n${companySignals}` : ''}
+Overall impression: ${overallImpression}
+
+Return JSON:
+{
+  "company": "${company}",
+  "role": "${role}",
+  "strengths_demonstrated": ["specific strength 1", "specific strength 2"],
+  "areas_to_improve": ["specific area 1", "specific area 2"],
+  "follow_up_items": ["concrete action 1", "concrete action 2"],
+  "lessons_for_next": ["lesson 1", "lesson 2"],
+  "overall_impression": "${overallImpression}",
+  "company_signals": ["signal 1", "signal 2"]
+}`,
+      }],
+    });
+
+    let parsed: Partial<InterviewDebriefOutput>;
+    try {
+      parsed = JSON.parse(repairJSON(response.text) ?? response.text) as Partial<InterviewDebriefOutput>;
+    } catch {
+      parsed = {};
+    }
+
+    const debrief: InterviewDebriefOutput = {
+      company: String(parsed.company ?? company),
+      role: String(parsed.role ?? role),
+      strengths_demonstrated: Array.isArray(parsed.strengths_demonstrated)
+        ? parsed.strengths_demonstrated.map(String)
+        : [],
+      areas_to_improve: Array.isArray(parsed.areas_to_improve)
+        ? parsed.areas_to_improve.map(String)
+        : [],
+      follow_up_items: Array.isArray(parsed.follow_up_items)
+        ? parsed.follow_up_items.map(String)
+        : [],
+      lessons_for_next: Array.isArray(parsed.lessons_for_next)
+        ? parsed.lessons_for_next.map(String)
+        : [],
+      overall_impression: overallImpression,
+      company_signals: Array.isArray(parsed.company_signals)
+        ? parsed.company_signals.map(String)
+        : [],
+    };
+
+    if (!state.post_interview_docs) {
+      state.post_interview_docs = {};
+    }
+    state.post_interview_docs.debrief = debrief;
+
+    return JSON.stringify({
+      success: true,
+      strengths_count: debrief.strengths_demonstrated.length,
+      areas_count: debrief.areas_to_improve.length,
+      follow_up_count: debrief.follow_up_items.length,
+      overall_impression: debrief.overall_impression,
+    });
+  },
+};
+
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const writerTools: InterviewPrepTool[] = [
@@ -566,4 +1037,7 @@ export const writerTools: InterviewPrepTool[] = [
   selfReviewSectionTool,
   buildCareerStoryTool,
   assembleReportTool,
+  generateThankYouNotesTool,
+  generateFollowUpEmailTool,
+  generateInterviewDebriefTool,
 ];

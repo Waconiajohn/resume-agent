@@ -1026,7 +1026,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/[0.06]">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-[var(--line-soft)]">
         <GlassButton
           variant="ghost"
           size="sm"
@@ -1038,7 +1038,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         </GlassButton>
 
         {data.jobIntelligence && (
-          <span className="text-xs text-white/40 truncate">
+          <span className="text-xs text-[var(--text-soft)] truncate">
             {data.jobIntelligence.role_title} at {data.jobIntelligence.company_name}
           </span>
         )}
@@ -1047,7 +1047,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         {isComplete && displayAtsScore !== null && (
           <div className="ml-auto flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1">
-              {isScoring && <Loader2 className="h-3 w-3 text-white/30 motion-safe:animate-spin" />}
+              {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
               <span className="text-[#afc4ff]">Match: {displayAtsScore}%</span>
             </div>
             {displayTruthScore !== null && (

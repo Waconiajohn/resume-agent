@@ -37,26 +37,26 @@ function MiniWireframe({ sections }: { sections: string[] }) {
   });
 
   return (
-    <div className="space-y-1 rounded-lg border border-white/[0.12] bg-white/[0.05] p-2">
+    <div className="space-y-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-2">
       {/* Header bar */}
-      <div className="h-3 w-2/3 rounded-sm bg-white/20" />
-      <div className="h-1.5 w-1/3 rounded-sm bg-white/10" />
-      <div className="my-1 h-px bg-white/[0.12]" />
+      <div className="h-3 w-2/3 rounded-sm bg-[var(--surface-1)]" />
+      <div className="h-1.5 w-1/3 rounded-sm bg-[var(--accent-muted)]" />
+      <div className="my-1 h-px bg-[var(--line-soft)]" />
       {/* Section blocks — heaviest early section emphasized */}
       {sections.map((section, i) => {
         const config = sectionLabels[section.toLowerCase()] ?? { short: section, height: 'h-5', weight: 2 };
         const isEmphasis = i === emphasisIndex;
         return (
           <div key={i} className="flex items-center gap-2">
-            <span className="w-3 text-[10px] text-white/30 text-right shrink-0">{i + 1}</span>
+            <span className="w-3 text-[12px] text-[var(--text-soft)] text-right shrink-0">{i + 1}</span>
             <div className={cn(
               'flex-1 rounded-sm',
-              isEmphasis ? 'border border-white/[0.2] bg-white/[0.11]' : 'bg-white/[0.10]',
+              isEmphasis ? 'border border-[var(--line-strong)] bg-[var(--surface-1)]' : 'bg-[var(--accent-muted)]',
               config.height,
             )} />
             <span className={cn(
-              'w-20 text-right text-[10px] shrink-0',
-              isEmphasis ? 'font-medium text-white/84' : 'text-white/50',
+              'w-20 text-right text-[12px] shrink-0',
+              isEmphasis ? 'font-medium text-[var(--text-strong)]' : 'text-[var(--text-soft)]',
             )}>
               {config.short}
             </span>
@@ -84,8 +84,8 @@ function DesignCard({
       className={cn(
         'p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
         isSelected
-          ? 'border-white/[0.2] shadow-[0_0_20px_-10px_rgba(255,255,255,0.35)]'
-          : 'hover:border-white/10',
+          ? 'border-[var(--line-strong)] shadow-[0_0_20px_-10px_rgba(255,255,255,0.35)]'
+          : 'hover:border-[var(--line-soft)]',
       )}
       hover={!isSelected}
       onClick={onClick}
@@ -98,22 +98,22 @@ function DesignCard({
     >
       <div className="flex items-center gap-2 mb-2">
         <Layout className="h-3.5 w-3.5 text-[#afc4ff]" />
-        <span className="text-sm font-medium text-white">{option.name}</span>
+        <span className="text-sm font-medium text-[var(--text-strong)]">{option.name}</span>
         {isSelected && (
-          <span className="ml-auto rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/78">
+          <span className="ml-auto rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
             Selected
           </span>
         )}
       </div>
 
-      <p className="text-xs text-white/70 mb-3">{option.description}</p>
+      <p className="text-xs text-[var(--text-muted)] mb-3">{option.description}</p>
 
       {option.section_order?.length > 0 && (
         <MiniWireframe sections={option.section_order} />
       )}
 
       {option.rationale && (
-        <p className="mt-3 text-xs italic text-white/62">{option.rationale}</p>
+        <p className="mt-3 text-xs italic text-[var(--text-muted)]">{option.rationale}</p>
       )}
     </GlassCard>
   );
@@ -140,8 +140,8 @@ export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
 
   return (
     <div data-panel-root className="flex h-full flex-col">
-      <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Resume Design</span>
+      <div className="border-b border-[var(--line-soft)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--text-strong)]">Resume Design</span>
       </div>
 
       <div

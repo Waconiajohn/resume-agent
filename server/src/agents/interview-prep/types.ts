@@ -66,8 +66,27 @@ export interface CompanyResearchData {
     name: string;
     differentiation: string;
   }>;
+  /**
+   * Specific strategic initiatives the company is executing this year
+   * (from earnings calls, press releases, or investor materials).
+   * More precise than growth_areas — these are named programs or priorities.
+   */
+  strategic_priorities?: string[];
+  /**
+   * Observable culture signals: what the company values, how they work,
+   * what they reward. Sourced from job postings, Glassdoor, LinkedIn, press.
+   */
+  culture_signals?: string[];
+  /**
+   * How this specific role connects to the company's revenue or operations.
+   * E.g. "VP of Sales directly owns 40% of ARR" or "COO accountable for
+   * operational margin improvement that is the primary driver of 2025 guidance."
+   */
+  role_impact?: string;
   /** Raw Perplexity response for transparency */
   raw_research?: string;
+  /** Raw Perplexity response from the role-intelligence query */
+  raw_role_research?: string;
 }
 
 export interface InterviewQuestionSource {
@@ -157,6 +176,73 @@ export interface InterviewPrepState extends BaseState {
 
   /** Feedback from the user review gate (star_stories_review) */
   revision_feedback?: string;
+
+  /** Post-interview documents generated after the interview completes */
+  post_interview_docs?: PostInterviewDocs;
+}
+
+// ─── Post-Interview Documents ────────────────────────────────────────
+
+export type FollowUpSituation =
+  | 'post_interview'
+  | 'no_response'
+  | 'rejection_graceful'
+  | 'keep_warm'
+  | 'negotiation_counter';
+
+export interface ThankYouNoteOutput {
+  /** Interviewer name */
+  interviewer: string;
+  /** Interviewer title/role (optional — not always known) */
+  interviewer_title: string;
+  /** Full note text (first person, email format) */
+  note_text: string;
+  /** Subject line for email */
+  subject_line: string;
+  /** Specific discussion points woven in for personalization */
+  key_callbacks: string[];
+  /** When to send and how */
+  timing_guidance: string;
+}
+
+export interface FollowUpEmailOutput {
+  /** Situation type that triggered this email */
+  situation: FollowUpSituation;
+  /** Email subject line */
+  subject: string;
+  /** Full email body */
+  body: string;
+  /** Notes on tone choices and why */
+  tone_notes: string;
+  /** When and how to send */
+  timing_guidance: string;
+}
+
+export interface InterviewDebriefOutput {
+  /** Company name */
+  company: string;
+  /** Role title */
+  role: string;
+  /** Interview date if provided */
+  interview_date?: string;
+  /** What the candidate demonstrated well, tied to specific moments */
+  strengths_demonstrated: string[];
+  /** Honest areas where answers were weak, vague, or missing proof */
+  areas_to_improve: string[];
+  /** Concrete actions to take before next round or next interview */
+  follow_up_items: string[];
+  /** What to do differently in the next interview */
+  lessons_for_next: string[];
+  /** Candidate's read on how it went */
+  overall_impression: 'positive' | 'neutral' | 'negative';
+  /** Signals gathered about the company or role during the interview */
+  company_signals: string[];
+}
+
+export interface PostInterviewDocs {
+  thank_you_notes?: ThankYouNoteOutput[];
+  follow_up_email?: FollowUpEmailOutput;
+  debrief?: InterviewDebriefOutput;
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────

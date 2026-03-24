@@ -134,7 +134,7 @@ export function ChatDrawer({
           aria-label={`Open coach – ${statusLabel}`}
         >
           <MessageCircle className="h-[1.125rem] w-[1.125rem] text-white/60" />
-          <span className="ml-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-white/70">Need Help</span>
+          <span className="ml-1.5 text-[13px] font-medium uppercase tracking-[0.1em] text-white/70">Need Help</span>
           <span className={cn('absolute right-1 top-1 h-2 w-2', statusDotColor)} />
         </button>
       )}
@@ -161,7 +161,7 @@ export function ChatDrawer({
           {/* Header bar */}
           <div className="flex h-[36px] shrink-0 items-center gap-2 px-4">
             <span className={cn('h-2 w-2 shrink-0', statusDotColor)} />
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/80">Coach</span>
+            <span className="text-[13px] font-medium uppercase tracking-[0.12em] text-white/80">Coach</span>
             <span className="text-xs text-white/50" aria-live="polite">{statusLabel}</span>
             {isProcessing && <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" />}
             <button

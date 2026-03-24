@@ -226,7 +226,7 @@ const scoreFitTool: JobTrackerTool = {
     });
 
     const sharedContext = state.shared_context;
-    const positioningContext = state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)
+    const positioningContext = (hasMeaningfulSharedValue(sharedContext?.positioningStrategy) || state.platform_context?.positioning_strategy)
       ? renderPositioningStrategySection({
           heading: '## Positioning Strategy',
           sharedStrategy: sharedContext?.positioningStrategy,
@@ -651,10 +651,11 @@ function buildApplicationAnalysisPrompt(
     );
   }
 
-  if (state.platform_context?.positioning_strategy) {
+  if (hasMeaningfulSharedValue(state.shared_context?.positioningStrategy) || state.platform_context?.positioning_strategy) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
-      legacyStrategy: state.platform_context.positioning_strategy,
+      sharedStrategy: state.shared_context?.positioningStrategy,
+      legacyStrategy: state.platform_context?.positioning_strategy,
     }));
   }
 

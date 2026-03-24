@@ -93,28 +93,28 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={cn('fixed right-6 z-50 flex h-14 items-center gap-2 rounded-md border border-[#8ea8ff]/25 bg-[#111726]/92 px-4 text-white shadow-[0_24px_50px_rgba(11,15,24,0.38)] transition-all hover:border-[#8ea8ff]/45 hover:bg-[#131b2b]', isMobile ? 'bottom-20' : 'bottom-6')}
+        className={cn('fixed right-6 z-50 flex h-14 items-center gap-2 rounded-md border border-[#8ea8ff]/25 bg-[var(--surface-elevated)] px-4 text-[var(--text-strong)] shadow-[0_24px_50px_rgba(11,15,24,0.38)] transition-all hover:border-[#8ea8ff]/45 hover:bg-[var(--surface-elevated)]', isMobile ? 'bottom-20' : 'bottom-6')}
         aria-label="Open AI Coach"
       >
         <MessageSquare size={22} />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/72">Coach</span>
+        <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Coach</span>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[32rem] w-96 flex-col rounded-xl border border-white/[0.08] bg-[#0a0a1a]/95 shadow-2xl shadow-black/40">
+    <div className="fixed bottom-6 right-6 z-50 flex h-[32rem] w-96 flex-col rounded-xl border border-[var(--line-soft)] bg-[var(--bg-1)]/95 shadow-2xl shadow-black/40">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line-soft)]">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md border border-indigo-400/20 bg-indigo-600/20">
             <span className="text-xs font-semibold text-indigo-300">AI</span>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white/90">{firstName ? `AI ${firstName}` : 'AI Coach'}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-strong)]">{firstName ? `AI ${firstName}` : 'AI Coach'}</h3>
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-emerald-400" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">
+              <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">
                 {mode === 'guided' ? 'Guided' : 'Chat'}
               </span>
             </div>
@@ -124,7 +124,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
           <button
             type="button"
             onClick={handleModeToggle}
-            className="p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-colors text-xs"
+            className="p-1.5 rounded-lg text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors text-xs"
             title={`Switch to ${mode === 'guided' ? 'Chat' : 'Guided'} mode`}
           >
             {mode === 'guided' ? 'Chat' : 'Guided'}
@@ -132,7 +132,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors"
             aria-label="Close coach"
           >
             <X size={16} />
@@ -143,8 +143,8 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && !loading && (
-          <div className="text-center text-white/30 text-sm mt-8">
-            <p className="font-medium text-white/50 mb-1">Hi {firstName || 'there'}!</p>
+          <div className="text-center text-[var(--text-soft)] text-sm mt-8">
+            <p className="font-medium text-[var(--text-soft)] mb-1">Hi {firstName || 'there'}!</p>
             <p>I'm your AI career coach. Ask me anything about your career transition.</p>
           </div>
         )}
@@ -154,7 +154,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
               className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-indigo-600/80 text-white'
-                  : 'bg-white/[0.06] text-white/80 border border-white/[0.06]'
+                  : 'bg-[var(--accent-muted)] text-[var(--text-muted)] border border-[var(--line-soft)]'
               }`}
             >
               {msg.content}
@@ -163,18 +163,18 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white/[0.06] rounded-2xl px-4 py-3 border border-white/[0.06]">
+            <div className="bg-[var(--accent-muted)] rounded-2xl px-4 py-3 border border-[var(--line-soft)]">
               <div className="flex gap-1">
                 <span
-                  className="h-2 w-2 bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-[var(--line-strong)] animate-bounce"
                   style={{ animationDelay: '0ms' }}
                 />
                 <span
-                  className="h-2 w-2 bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-[var(--line-strong)] animate-bounce"
                   style={{ animationDelay: '150ms' }}
                 />
                 <span
-                  className="h-2 w-2 bg-white/20 animate-bounce"
+                  className="h-2 w-2 bg-[var(--line-strong)] animate-bounce"
                   style={{ animationDelay: '300ms' }}
                 />
               </div>
@@ -187,7 +187,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
             <button
               type="button"
               onClick={clearError}
-              className="text-xs text-white/40 hover:text-white/60 underline"
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] underline"
             >
               Dismiss
             </button>
@@ -197,7 +197,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       </div>
 
       {/* Input */}
-      <div className="px-3 pb-3 pt-2 border-t border-white/[0.06]">
+      <div className="px-3 pb-3 pt-2 border-t border-[var(--line-soft)]">
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
@@ -211,7 +211,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
             onKeyDown={handleKeyDown}
             placeholder="Ask your coach..."
             rows={1}
-            className="flex-1 resize-none bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/90 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+            className="flex-1 resize-none bg-[var(--accent-muted)] border border-[var(--line-soft)] rounded-xl px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
             style={{ maxHeight: '120px' }}
           />
           <button

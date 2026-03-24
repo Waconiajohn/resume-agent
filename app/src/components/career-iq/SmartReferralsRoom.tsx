@@ -82,7 +82,7 @@ export function SmartReferralsRoom() {
   const renderTabContent = () => {
     if (!accessToken) {
       return (
-        <div className="flex items-center justify-center p-12 text-white/40 text-sm">
+        <div className="flex items-center justify-center p-12 text-[var(--text-soft)] text-sm">
           Loading...
         </div>
       );
@@ -116,8 +116,8 @@ export function SmartReferralsRoom() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-white/90">Smart Referrals</h2>
-        <p className="text-sm text-white/50 mt-1">
+        <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
+        <p className="text-sm text-[var(--text-soft)] mt-1">
           Import connections, find jobs at their companies, and generate targeted outreach
         </p>
       </div>
@@ -138,14 +138,14 @@ export function SmartReferralsRoom() {
                 className={cn(
                   'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
                   locked
-                    ? 'text-white/25 cursor-not-allowed'
+                    ? 'text-[var(--text-soft)] cursor-not-allowed'
                     : isActive
-                      ? 'bg-white/[0.08] text-white'
-                      : 'text-white/50 hover:bg-white/[0.04] hover:text-white/70',
+                      ? 'bg-[var(--surface-1)] text-[var(--text-strong)]'
+                      : 'text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                 )}
                 title={locked ? 'Upload connections to unlock this tab' : tab.description}
               >
-                <Icon size={16} className={cn(locked ? 'text-white/15' : isActive ? 'text-[#98b3ff]' : 'text-white/40')} />
+                <Icon size={16} className={cn(locked ? 'text-[var(--text-soft)]' : isActive ? 'text-[#98b3ff]' : 'text-[var(--text-soft)]')} />
                 {tab.label}
               </button>
             );

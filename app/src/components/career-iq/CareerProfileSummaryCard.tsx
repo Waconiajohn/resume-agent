@@ -1,10 +1,13 @@
 import { ArrowRight, CheckCircle2, Target } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import type { CareerProfileSummary } from './career-profile-summary';
+import { cn } from '@/lib/utils';
+import type { CareerProfileSummary, CareerProfileSignals } from './career-profile-summary';
+import type { CareerProfileSignalLevel } from '@/types/career-profile';
 
 interface CareerProfileSummaryCardProps {
   summary: CareerProfileSummary;
+  whyMeSignals?: CareerProfileSignals;
   title?: string;
   description?: string;
   usagePoints?: string[];
@@ -15,6 +18,7 @@ interface CareerProfileSummaryCardProps {
 
 export function CareerProfileSummaryCard({
   summary,
+  whyMeSignals,
   title = 'Career Profile driving this tool',
   description,
   usagePoints = [],
@@ -34,16 +38,32 @@ export function CareerProfileSummaryCard({
               <Target size={16} className="text-[#98b3ff]" />
             </div>
             <div>
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                 Career Profile
               </div>
-              <h2 className="mt-1 text-sm font-semibold text-white/88">{title}</h2>
+              <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
             </div>
           </div>
 
-          <p className="mt-3 text-sm leading-relaxed text-white/58">
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
             {description ?? summary.statusLine}
           </p>
+
+          {whyMeSignals && (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-left transition-colors hover:bg-[var(--accent-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/40"
+              aria-label="View Why Me story signals in Career Profile"
+            >
+              <span className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+                Why Me
+              </span>
+              <SignalPip level={whyMeSignals.clarity} label="Clarity" />
+              <SignalPip level={whyMeSignals.alignment} label="Alignment" />
+              <SignalPip level={whyMeSignals.differentiation} label="Differentiation" />
+            </button>
+          )}
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <SnapshotCard label="Readiness" value={`${summary.readinessPercent}%`} detail={summary.readinessLabel} />
@@ -52,13 +72,13 @@ export function CareerProfileSummaryCard({
           </div>
 
           {summary.highlightPoints.length > 0 && (
-            <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
+            <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                 Strongest signals
               </div>
               <div className="mt-3 space-y-2">
                 {visibleHighlights.map((point) => (
-                  <div key={point} className="flex items-start gap-2 text-sm text-white/68">
+                  <div key={point} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                     <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#b5dec2]" />
                     <span>{point}</span>
                   </div>
@@ -69,12 +89,12 @@ export function CareerProfileSummaryCard({
 
           {visibleUsagePoints.length > 0 && (
             <div className="mt-4 rounded-xl border border-[#98b3ff]/14 bg-[#98b3ff]/[0.05] p-4">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
                 Using now
               </div>
               <div className="mt-3 space-y-2">
                 {visibleUsagePoints.map((point) => (
-                  <div key={point} className="flex items-start gap-2 text-sm text-white/72">
+                  <div key={point} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                     <Target size={14} className="mt-0.5 shrink-0 text-[#98b3ff]" />
                     <span>{point}</span>
                   </div>
@@ -112,10 +132,24 @@ function SnapshotCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">{label}</div>
-      <div className="mt-2 text-sm font-semibold leading-relaxed text-white/86">{value}</div>
-      <div className="mt-2 text-xs leading-relaxed text-white/48">{detail}</div>
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">{label}</div>
+      <div className="mt-2 text-sm font-semibold leading-relaxed text-[var(--text-strong)]">{value}</div>
+      <div className="mt-2 text-xs leading-relaxed text-[var(--text-soft)]">{detail}</div>
+    </div>
+  );
+}
+
+function SignalPip({ level, label }: { level: CareerProfileSignalLevel; label: string }) {
+  const colorMap: Record<CareerProfileSignalLevel, string> = {
+    green: 'bg-[#b5dec2]',
+    yellow: 'bg-[#f0d99f]',
+    red: 'bg-[var(--line-strong)]',
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <div className={cn('h-1.5 w-1.5 shrink-0 rounded-full', colorMap[level])} />
+      <span className="text-xs text-[var(--text-soft)]">{label}</span>
     </div>
   );
 }

@@ -22,7 +22,9 @@ import { repairJSON } from '../../../../lib/json-repair.js';
 import {
   renderPositioningStrategySection,
   renderWhyMeStorySection,
+  renderCareerNarrativeSection,
 } from '../../../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../../../contracts/shared-context.js';
 
 type InterviewerTool = AgentTool<MockInterviewState, MockInterviewSSEEvent>;
 
@@ -87,16 +89,22 @@ const generateInterviewQuestionTool: InterviewerTool = {
       parts.push(`Company: ${state.company_name}`, '');
     }
 
-    if (state.platform_context?.positioning_strategy) {
+    if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(state.shared_context?.positioningStrategy)) {
       parts.push(
         ...renderPositioningStrategySection({
           heading: '## Positioning Strategy (from prior CareerIQ session)',
-          legacyStrategy: state.platform_context.positioning_strategy,
+          sharedStrategy: state.shared_context?.positioningStrategy,
+          legacyStrategy: state.platform_context?.positioning_strategy,
         }),
       );
     }
 
-    if (state.platform_context?.why_me_story) {
+    if (hasMeaningfulSharedValue(state.shared_context?.careerNarrative)) {
+      parts.push(...renderCareerNarrativeSection({
+        heading: '## Career Narrative Signals',
+        sharedNarrative: state.shared_context?.careerNarrative,
+      }));
+    } else if (state.platform_context?.why_me_story) {
       parts.push(...renderWhyMeStorySection({
         heading: '## Why-Me Story',
         legacyWhyMeStory: state.platform_context.why_me_story,

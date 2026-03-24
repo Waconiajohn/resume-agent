@@ -1,18 +1,29 @@
 /**
- * LinkedIn Content Writer Product — ProductConfig implementation.
+ * LinkedIn Content Writer Product -- ProductConfig implementation.
  *
  * Agent #21 in the 33-agent platform. 2-agent pipeline:
  * 1. Strategist: Analyzes expertise + generates topic suggestions (topic_selection gate)
+ *    OR plans a 12-16 post series (series_selection gate) when series_mode is true
  * 2. Writer: Drafts post in user's authentic voice (post_review gate)
  *
  * Cross-product context: Loads positioning strategy, evidence items, and
  * career narrative from prior sessions.
+ *
+ * Mode selection: Pass series_mode: true in the initial input to enter series mode.
+ * The Strategist will plan the full series; the Writer will draft the first post
+ * (or the post number specified in current_series_post).
  */
 
 import type { ProductConfig } from '../runtime/product-config.js';
 import { strategistConfig } from './strategist/agent.js';
 import { writerConfig } from './writer/agent.js';
-import type { LinkedInContentState, LinkedInContentSSEEvent, TopicSuggestion, PostQualityScores } from './types.js';
+import type {
+  LinkedInContentState,
+  LinkedInContentSSEEvent,
+  TopicSuggestion,
+  PostQualityScores,
+  ContentSeries,
+} from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -22,6 +33,7 @@ import {
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
+  renderWhyMeStorySection,
 } from '../../contracts/shared-context-prompt.js';
 
 export function createLinkedInContentProductConfig(): ProductConfig<LinkedInContentState, LinkedInContentSSEEvent> {
@@ -34,17 +46,21 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         config: strategistConfig,
         stageMessage: {
           startStage: 'strategy',
-          start: 'Analyzing your expertise areas and generating topic ideas...',
-          complete: 'Topics ready — choose one to write about',
+          start: 'Analyzing your expertise areas and generating content ideas...',
+          complete: 'Content plan ready',
         },
         gates: [
+          // Single-post gate: fires when topics are ready but no topic selected yet
           {
             name: 'topic_selection',
-            condition: (state) => Array.isArray(state.suggested_topics) && state.suggested_topics.length > 0 && !state.selected_topic,
+            condition: (state) =>
+              !state.series_mode &&
+              Array.isArray(state.suggested_topics) &&
+              state.suggested_topics.length > 0 &&
+              !state.selected_topic,
             onResponse: (response, state) => {
-              // User selects a topic — could be a TopicSuggestion id or custom topic text
+              // User selects a topic -- could be a TopicSuggestion id or custom topic text
               if (typeof response === 'string') {
-                // Check if it matches a suggested topic id
                 const matched = state.suggested_topics?.find((t: TopicSuggestion) => t.id === response);
                 state.selected_topic = matched ? matched.topic : response;
               } else if (response && typeof response === 'object') {
@@ -53,10 +69,57 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
               }
             },
           },
+          // Series gate: fires when series plan is ready and not yet approved
+          {
+            name: 'series_selection',
+            condition: (state) =>
+              !!state.series_mode &&
+              !!state.series_plan &&
+              Array.isArray(state.series_plan.posts) &&
+              state.series_plan.posts.length > 0 &&
+              !state.current_series_post,
+            onResponse: (response, state) => {
+              // Response options:
+              // - true / 'approved': series approved as-is, start with post 1
+              // - { approved: true, start_post?: number }: approved, optionally start at a specific post
+              // - { approved: true, edits: ContentSeries }: approved with edits to the series plan
+              if (response === true || response === 'approved') {
+                state.current_series_post = 1;
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (resp.approved === true || resp.approved === 'true') {
+                  // Apply edits to series plan if provided
+                  if (resp.edits && typeof resp.edits === 'object') {
+                    const edits = resp.edits as Partial<ContentSeries>;
+                    if (state.series_plan) {
+                      if (typeof edits.series_title === 'string') {
+                        state.series_plan.series_title = edits.series_title;
+                      }
+                      if (typeof edits.series_theme === 'string') {
+                        state.series_plan.series_theme = edits.series_theme;
+                      }
+                      if (Array.isArray(edits.posts) && edits.posts.length > 0) {
+                        state.series_plan.posts = edits.posts;
+                        state.series_plan.total_posts = edits.posts.length;
+                      }
+                    }
+                  }
+                  // Determine which post to start with
+                  const startPost = typeof resp.start_post === 'number' ? resp.start_post : 1;
+                  state.current_series_post = Math.max(1, Math.min(startPost, state.series_plan?.total_posts ?? 1));
+                }
+              }
+            },
+          },
         ],
         onComplete: (scratchpad, state) => {
+          // Single-post mode: transfer topic suggestions
           if (Array.isArray(scratchpad.suggested_topics) && !state.suggested_topics) {
             state.suggested_topics = scratchpad.suggested_topics as TopicSuggestion[];
+          }
+          // Series mode: transfer series plan
+          if (scratchpad.series_plan && !state.series_plan) {
+            state.series_plan = scratchpad.series_plan as ContentSeries;
           }
         },
       },
@@ -107,15 +170,36 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
       current_stage: 'strategy',
       platform_context: input.platform_context as LinkedInContentState['platform_context'],
       shared_context: input.shared_context as LinkedInContentState['shared_context'],
+      // series_mode: true activates the 12-16 post series workflow
+      series_mode: input.series_mode === true,
+      // current_series_post can be set to resume a series mid-way
+      current_series_post: typeof input.current_series_post === 'number'
+        ? input.current_series_post
+        : undefined,
+      // series_plan can be pre-loaded if resuming a previously planned series
+      series_plan: input.series_plan
+        ? (input.series_plan as ContentSeries)
+        : undefined,
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'strategist') {
         const sharedContext = state.shared_context;
-        const parts = [
-          'Analyze this professional\'s positioning and generate compelling LinkedIn post topic suggestions.',
-          '',
-        ];
+        const isSeries = state.series_mode;
+        const parts: string[] = [];
+
+        if (isSeries) {
+          parts.push(
+            'Plan a 12-16 post thought leadership series for this executive.',
+            'The series must tell a cohesive story: each post stands alone but builds on a shared narrative arc.',
+            '',
+          );
+        } else {
+          parts.push(
+            'Analyze this professional\'s positioning and generate compelling LinkedIn post topic suggestions.',
+            '',
+          );
+        }
 
         if (
           hasMeaningfulSharedValue(sharedContext?.candidateProfile) ||
@@ -144,22 +228,41 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           parts.push(...renderEvidenceInventorySection({
             heading: '## Evidence Items',
             sharedInventory: sharedContext?.evidenceInventory,
-            maxItems: 8,
+            maxItems: isSeries ? 15 : 8,
           }));
         } else if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
           parts.push(...renderEvidenceInventorySection({
             heading: '## Evidence Items',
             legacyEvidence: state.platform_context.evidence_items,
-            maxItems: 8,
+            maxItems: isSeries ? 15 : 8,
+          }));
+        }
+
+        // Why Me story -- especially valuable for series narrative thread
+        const whyMeStory = (sharedContext as Record<string, unknown> | undefined)?.why_me_story
+          ?? (state.platform_context as Record<string, unknown> | undefined)?.why_me_story;
+        if (whyMeStory) {
+          parts.push(...renderWhyMeStorySection({
+            heading: '## Why Me Story',
+            legacyWhyMeStory: whyMeStory,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative',
+            sharedNarrative: sharedContext?.careerNarrative,
           }));
         }
 
         parts.push(
           '## Objective',
-          'Use the available tools to identify what this person should be known for on LinkedIn right now, then suggest topics that are truthful, differentiated, and well-supported by their evidence and Career Profile.',
+          isSeries
+            ? 'Use analyze_expertise to map this person\'s signature strengths and career themes, then plan_series to design a cohesive series, then present_series to show the user the plan for approval.'
+            : 'Use the available tools to identify what this person should be known for on LinkedIn right now, then suggest topics that are truthful, differentiated, and well-supported by their evidence.',
         );
 
-        // Distress resources — first agent only
+        // Distress resources -- first agent only
         const distress = getDistressFromInput(input);
         if (distress) {
           parts.push('', '## Support Resources', distress.message);
@@ -178,14 +281,31 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
 
       if (agentName === 'writer') {
         const sharedContext = state.shared_context;
-        const selectedTopic = state.selected_topic ?? 'professional insight';
+        const isSeries = state.series_mode && state.series_plan;
+        const parts: string[] = [];
 
-        const parts = [
-          `Write a LinkedIn post on this topic: "${selectedTopic}"`,
-          '',
-          'Use the available writing tools to draft an authentic post, self-review it for voice and usefulness, and then present the finished version.',
-          '',
-        ];
+        if (isSeries) {
+          const postNum = state.current_series_post ?? 1;
+          const total = state.series_plan!.total_posts;
+          const seriesPost = state.series_plan!.posts.find((p) => p.post_number === postNum);
+
+          parts.push(
+            `Write Part ${postNum} of ${total} in the "${state.series_plan!.series_title}" series.`,
+            '',
+            `**Post topic:** ${seriesPost?.title ?? 'see series context'}`,
+            '',
+            'Use write_post to draft this post with full series context, self_review_post to check quality, then present_post to show the user.',
+            '',
+          );
+        } else {
+          const selectedTopic = state.selected_topic ?? 'professional insight';
+          parts.push(
+            `Write a LinkedIn post on this topic: "${selectedTopic}"`,
+            '',
+            'Use write_post, self_review_post, then present_post.',
+            '',
+          );
+        }
 
         if (
           hasMeaningfulSharedValue(sharedContext?.candidateProfile) ||
@@ -246,9 +366,19 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         post,
         hashtags,
         quality_scores: qualityScores,
+        // Surface the series plan in the completion event so the UI can render
+        // the full series plan alongside the first completed post
+        series_plan: state.series_plan,
       });
 
-      return { post, hashtags, quality_scores: qualityScores };
+      return {
+        post,
+        hashtags,
+        quality_scores: qualityScores,
+        series_plan: state.series_plan,
+        series_mode: state.series_mode,
+        current_series_post: state.current_series_post,
+      };
     },
 
     persistResult: async (state, result) => {
@@ -256,6 +386,9 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         post: string;
         hashtags: string[];
         quality_scores: PostQualityScores;
+        series_plan?: ContentSeries;
+        series_mode?: boolean;
+        current_series_post?: number;
       };
 
       try {
@@ -264,13 +397,19 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           .insert({
             user_id: state.user_id,
             platform: 'linkedin',
-            post_type: 'thought_leadership',
+            post_type: data.series_mode ? 'thought_leadership_series' : 'thought_leadership',
             topic: state.selected_topic ?? null,
             content: data.post,
             hashtags: data.hashtags,
             status: 'draft',
             quality_scores: data.quality_scores,
             source_session_id: state.session_id,
+            // Persist series metadata when in series mode
+            ...(data.series_mode && {
+              series_title: data.series_plan?.series_title ?? null,
+              series_post_number: data.current_series_post ?? null,
+              series_total_posts: data.series_plan?.total_posts ?? null,
+            }),
           });
       } catch (err) {
         logger.warn(

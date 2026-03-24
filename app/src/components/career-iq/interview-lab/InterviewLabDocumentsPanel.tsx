@@ -32,14 +32,14 @@ export function InterviewLabDocumentsPanel({
         <div className="eyebrow-label">
           Leave-behinds
         </div>
-        <h2 className="mt-2 text-2xl text-white/92">Keep your follow-up docs tied to the same interview story</h2>
+        <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your follow-up docs tied to the same interview story</h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
           Keep your prep story, thank-you note, and 30-60-90 plan aligned. These should feel like the natural next step after the interview, not separate chores.
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="support-callout">
             <div className="eyebrow-label">Leave-behind</div>
-            <h3 className="mt-2 text-xl text-white/90">30-60-90 Day Plan</h3>
+            <h3 className="mt-2 text-xl text-[var(--text-strong)]">30-60-90 Day Plan</h3>
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
               Use this to show how you would step into the role and sequence your first 30, 60, and 90 days.
             </p>
@@ -55,7 +55,7 @@ export function InterviewLabDocumentsPanel({
 
           <div className="support-callout">
             <div className="eyebrow-label">Follow-up</div>
-            <h3 className="mt-2 text-xl text-white/90">Thank You Note</h3>
+            <h3 className="mt-2 text-xl text-[var(--text-strong)]">Thank You Note</h3>
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
               Use this to turn the interview into a focused follow-up while the conversation is still fresh.
             </p>
@@ -83,7 +83,7 @@ export function InterviewLabDocumentsPanel({
         <div className="eyebrow-label mt-4">
           30-60-90 Day Plan
         </div>
-        <h2 className="mt-2 text-2xl text-white/92">Draft the 30-60-90 plan without losing the thread</h2>
+        <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Draft the 30-60-90 plan without losing the thread</h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
           This plan should make the first 30, 60, and 90 days feel concrete. Keep it consistent with the same positioning story you used in prep, practice, and follow-up.
         </p>

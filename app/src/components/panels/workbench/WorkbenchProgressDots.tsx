@@ -28,23 +28,23 @@ export function WorkbenchProgressDots({
   const displayIndex = currentIndex >= 0 ? currentIndex + 1 : approvedCount + 1;
 
   return (
-    <div className="sticky top-0 z-10 border-b border-white/[0.08] bg-black/40 backdrop-blur-sm px-4 py-2.5">
+    <div className="sticky top-0 z-10 border-b border-[var(--line-soft)] bg-black/40 backdrop-blur-sm px-4 py-2.5">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-white/60">
+        <span className="text-xs text-[var(--text-soft)]">
           Section{' '}
-          <span className="text-white/90 font-medium">{displayIndex}</span>
+          <span className="text-[var(--text-strong)] font-medium">{displayIndex}</span>
           {' '}of{' '}
-          <span className="text-white/90 font-medium">{total}</span>
+          <span className="text-[var(--text-strong)] font-medium">{total}</span>
           {': '}
-          <span className="text-white/80">{toTitleCase(currentSection)}</span>
+          <span className="text-[var(--text-muted)]">{toTitleCase(currentSection)}</span>
         </span>
-        <span className="text-xs text-white/40">
+        <span className="text-xs text-[var(--text-soft)]">
           {approvedCount}/{total} approved
         </span>
       </div>
 
       {/* 3px linear progress bar */}
-      <div className="flex h-[3px] w-full overflow-hidden bg-white/10">
+      <div className="flex h-[3px] w-full overflow-hidden bg-[var(--accent-muted)]">
         {sectionOrder.map((section) => {
           const isApproved = sectionsApproved.includes(section);
           const isCurrent = section === currentSection && !isApproved;

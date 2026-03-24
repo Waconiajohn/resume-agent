@@ -62,10 +62,10 @@ export function OpportunityCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all',
+        'rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 transition-all',
         isDragging
-          ? 'shadow-2xl border-white/[0.12] bg-white/[0.05] cursor-grabbing'
-          : 'hover:bg-white/[0.04] hover:border-white/[0.08] cursor-grab',
+          ? 'shadow-2xl border-[var(--line-strong)] bg-[var(--surface-1)] cursor-grabbing'
+          : 'hover:bg-[var(--surface-1)] hover:border-[var(--line-strong)] cursor-grab',
         onClick && !isDragging && 'active:cursor-grabbing',
       )}
       onClick={() => !isDragging && onClick?.(application)}
@@ -74,15 +74,15 @@ export function OpportunityCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium text-white/75 truncate">
+          <div className="text-[13px] font-medium text-[var(--text-muted)] truncate">
             {application.role_title}
           </div>
-          <div className="flex items-center gap-1 mt-0.5 text-[11px] text-white/35">
+          <div className="flex items-center gap-1 mt-0.5 text-[13px] text-[var(--text-soft)]">
             <Building2 size={10} />
             {application.company_name}
           </div>
           {application.next_action && (
-            <div className="mt-1.5 text-[11px] text-[#98b3ff]/50 truncate">
+            <div className="mt-1.5 text-[13px] text-[#98b3ff]/50 truncate">
               {application.next_action}
             </div>
           )}
@@ -94,7 +94,7 @@ export function OpportunityCard({
                 e.stopPropagation();
                 onPrepInterview(application);
               }}
-              className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
+              className="mt-2 flex items-center gap-1 text-[12px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
             >
               <Mic size={10} />
               Prep for Interview
@@ -108,7 +108,7 @@ export function OpportunityCard({
                 e.stopPropagation();
                 onNegotiateSalary(application);
               }}
-              className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
+              className="mt-2 flex items-center gap-1 text-[12px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
             >
               <DollarSign size={10} />
               Negotiate Salary
@@ -128,13 +128,13 @@ export function OpportunityCard({
                 e.stopPropagation();
                 setShowStageMenu((v) => !v);
               }}
-              className="flex items-center gap-0.5 text-white/25 hover:text-white/50 transition-colors"
+              className="flex items-center gap-0.5 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               aria-label="Move to stage"
             >
               <ChevronDown size={13} />
             </button>
             {showStageMenu && (
-              <div className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-white/[0.08] bg-[#0e0e14] shadow-xl py-1 min-w-[130px]">
+              <div className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-[var(--line-soft)] bg-[var(--bg-1)] shadow-xl py-1 min-w-[130px]">
                 {otherStages.map((s) => (
                   <button
                     key={s.key}
@@ -145,7 +145,7 @@ export function OpportunityCard({
                       onMoveStage(application.id, s.key);
                       setShowStageMenu(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-[12px] text-white/55 hover:text-white/80 hover:bg-white/[0.04] transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors flex items-center gap-2"
                   >
                     <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', STAGE_DOT[s.key])} />
                     {s.label}

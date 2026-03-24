@@ -141,8 +141,8 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
             <CheckCircle size={24} className="text-[#b5dec2]" />
           </div>
           <div className="text-center">
-            <div className="text-[14px] font-medium text-white/80">Request Submitted</div>
-            <div className="text-[12px] text-white/40 mt-1">
+            <div className="text-[14px] font-medium text-[var(--text-strong)]">Request Submitted</div>
+            <div className="text-[12px] text-[var(--text-soft)] mt-1">
               A career coach will review your request within 24-48 hours.
             </div>
           </div>
@@ -162,9 +162,9 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
         <HelpCircle size={16} className="text-[#f0d99f]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Ask a Coach</h3>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Ask a Coach</h3>
       </div>
-      <p className="text-[12px] text-white/40 mb-4">
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
         Need personalized guidance? Submit a question and a career coach will respond within
         24-48 hours.
       </p>
@@ -172,13 +172,13 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
       <div className="space-y-3">
         {/* Topic */}
         <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">
+          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wide mb-1.5 block">
             Topic
           </label>
           <select
             value={topic}
             onChange={(e) => setTopic(e.target.value as CoachTopic)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 appearance-none"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 appearance-none"
           >
             <option value="" className="bg-[#1a1a2e]">
               Select a topic...
@@ -193,7 +193,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
 
         {/* Description */}
         <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">
+          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wide mb-1.5 block">
             Your Question
           </label>
           <textarea
@@ -201,13 +201,13 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what you need help with..."
             rows={3}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-none"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-none"
           />
         </div>
 
         {/* Urgency */}
         <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">
+          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wide mb-1.5 block">
             Urgency
           </label>
           <div className="flex gap-2">
@@ -220,7 +220,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
                   'flex-1 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors border',
                   urgency === u
                     ? URGENCY_CONFIG[u].activeClass
-                    : 'bg-white/[0.03] text-white/40 border-white/[0.06] hover:text-white/60',
+                    : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)] hover:text-[var(--text-soft)]',
                 )}
               >
                 {URGENCY_CONFIG[u].label}

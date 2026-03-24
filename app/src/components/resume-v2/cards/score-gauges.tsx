@@ -54,12 +54,12 @@ export function MiniRingGauge({
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[9px] font-bold tabular-nums" style={{ color }}>
+          <span className="text-[12px] font-bold tabular-nums" style={{ color }}>
             {score}
           </span>
         </div>
       </div>
-      <span className="text-[10px] text-white/40 leading-none">{label}</span>
+      <span className="text-[12px] text-[var(--text-soft)] leading-none">{label}</span>
     </div>
   );
 }

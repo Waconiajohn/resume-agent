@@ -19,23 +19,23 @@ export function CandidateIntelligenceCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow-label">Resume strengths</p>
-          <h3 className="mt-2 text-sm font-semibold text-white/90">What your resume already gives us</h3>
+          <h3 className="mt-2 text-sm font-semibold text-[var(--text-strong)]">What your resume already gives us</h3>
         </div>
-        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">{data.contact.name}</span>
+        <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">{data.contact.name}</span>
       </div>
 
       <div className="support-callout px-4 py-3">
-        <p className="text-sm leading-6 text-white/68">
+        <p className="text-sm leading-6 text-[var(--text-muted)]">
           This is the strongest material already on the page. We use it to decide what proof to keep, what to promote, and where the next believable edits should come from.
         </p>
       </div>
 
       {/* Career themes */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Patterns we can lean on</h4>
+        <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Patterns we can lean on</h4>
         <div className="flex flex-wrap gap-1.5">
           {data.career_themes.map((theme, i) => (
-            <span key={i} className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/66">{theme}</span>
+            <span key={i} className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">{theme}</span>
           ))}
         </div>
       </div>
@@ -43,12 +43,12 @@ export function CandidateIntelligenceCard({
       {/* Quantified outcomes */}
       {data.quantified_outcomes.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Proof already on the page</h4>
+          <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Proof already on the page</h4>
           <div className="grid grid-cols-2 gap-2">
             {visibleOutcomes.map((o, i) => (
               <div key={i} className="support-callout px-3 py-2">
                 <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
-                <div className="text-xs text-white/50 line-clamp-2">{o.outcome}</div>
+                <div className="text-xs text-[var(--text-soft)] line-clamp-2">{o.outcome}</div>
               </div>
             ))}
           </div>
@@ -58,30 +58,30 @@ export function CandidateIntelligenceCard({
       {/* Leadership scope + scale */}
       <div className="grid grid-cols-2 gap-4">
         <div className="support-callout px-3 py-3">
-          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Leadership scope</h4>
-          <p className="text-sm text-white/70">{data.leadership_scope}</p>
+          <h4 className="mb-1 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Leadership scope</h4>
+          <p className="text-sm text-[var(--text-muted)]">{data.leadership_scope}</p>
         </div>
         <div className="support-callout px-3 py-3">
-          <h4 className="mb-1 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Operating scale</h4>
-          <p className="text-sm text-white/70">{data.operational_scale}</p>
+          <h4 className="mb-1 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Operating scale</h4>
+          <p className="text-sm text-[var(--text-muted)]">{data.operational_scale}</p>
         </div>
       </div>
 
       {(hiddenOutcomes.length > 0 || data.hidden_accomplishments.length > 0) && (
         isLive ? (
           <details>
-            <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+            <summary className="text-xs font-medium text-[var(--text-soft)] cursor-pointer hover:text-[var(--text-muted)] uppercase tracking-wider select-none">
               More resume detail
             </summary>
             <div className="mt-3 space-y-4">
               {hiddenOutcomes.length > 0 && (
                 <div>
-                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Additional proof already on the page</h4>
+                  <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Additional proof already on the page</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {hiddenOutcomes.map((o, i) => (
                       <div key={i} className="support-callout px-3 py-2">
                         <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
-                        <div className="text-xs text-white/50 line-clamp-2">{o.outcome}</div>
+                        <div className="text-xs text-[var(--text-soft)] line-clamp-2">{o.outcome}</div>
                       </div>
                     ))}
                   </div>
@@ -89,11 +89,11 @@ export function CandidateIntelligenceCard({
               )}
               {data.hidden_accomplishments.length > 0 && (
                 <div>
-                  <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
+                  <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
                   <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
                     <ul className="space-y-1">
                       {data.hidden_accomplishments.map((a, i) => (
-                        <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                        <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
                       ))}
                     </ul>
                   </div>
@@ -104,11 +104,11 @@ export function CandidateIntelligenceCard({
         ) : (
           data.hidden_accomplishments.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
+              <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
               <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
                 <ul className="space-y-1">
                   {data.hidden_accomplishments.map((a, i) => (
-                    <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                    <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
                   ))}
                 </ul>
               </div>

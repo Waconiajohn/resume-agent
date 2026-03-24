@@ -95,6 +95,10 @@ export default function App() {
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const isRespondingRef = useRef(false);
+  const replayTourRef = useRef<(() => void) | undefined>(undefined);
+  const handleTourReplay = useCallback(() => {
+    replayTourRef.current?.();
+  }, []);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
@@ -425,6 +429,12 @@ export default function App() {
     <ToastProvider>
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:border focus:border-[var(--line-strong)] focus:bg-[var(--surface-elevated)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[var(--text-strong)] focus:shadow-[var(--shadow-mid)] focus:outline-none"
+          >
+            Skip to main content
+          </a>
           <div className="h-screen bg-surface">
             <Header
               email={user.email}
@@ -435,6 +445,7 @@ export default function App() {
               isProcessing={currentView === 'coach' ? isProcessing : false}
               sessionComplete={currentView === 'coach' ? (sessionComplete ?? false) : false}
               onNavigate={navigateTo}
+              onReplayTour={currentView === 'workspace' ? handleTourReplay : undefined}
             />
 
             {checkoutStatus === 'success' && (
@@ -455,6 +466,7 @@ export default function App() {
               </div>
             )}
 
+            <main id="main-content">
             <Routes>
               <Route path="/" element={<Navigate to="/workspace" replace />} />
               <Route path="/sales" element={<Navigate to="/workspace" replace />} />
@@ -575,6 +587,7 @@ export default function App() {
                       onLoadSessions={listSessions}
                       onLoadResumes={listResumes}
                       onDeleteSession={handleDeleteSession}
+                      onRegisterTourReplay={(fn) => { replayTourRef.current = fn; }}
                       onGetSessionResume={getSessionResume}
                       onGetSessionCoverLetter={getSessionCoverLetter}
                       onGetDefaultResume={getDefaultResume}
@@ -590,6 +603,7 @@ export default function App() {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<Navigate to="/workspace" replace />} />
             </Routes>
+            </main>
           </div>
         </ErrorBoundary>
       </CareerProfileProvider>

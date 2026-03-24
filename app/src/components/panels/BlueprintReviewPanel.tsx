@@ -52,11 +52,11 @@ function ReorderableWireframe({
   });
 
   return (
-    <div className="space-y-1 rounded-lg border border-white/[0.12] bg-white/[0.05] p-2">
+    <div className="space-y-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-2">
       {/* Header bar representing contact/name block */}
-      <div className="h-3 w-2/3 rounded-sm bg-white/20" />
-      <div className="h-1.5 w-1/3 rounded-sm bg-white/10" />
-      <div className="my-1 h-px bg-white/[0.12]" />
+      <div className="h-3 w-2/3 rounded-sm bg-[var(--line-strong)]" />
+      <div className="h-1.5 w-1/3 rounded-sm bg-[var(--accent-muted)]" />
+      <div className="my-1 h-px bg-[var(--line-soft)]" />
       {/* Section blocks */}
       {sections.map((section, i) => {
         const config = sectionLabels[section.toLowerCase()] ?? {
@@ -67,20 +67,20 @@ function ReorderableWireframe({
         const isEmphasis = i === emphasisIndex;
         return (
           <div key={`section-${section}-${i}`} className="flex items-center gap-1.5">
-            <span className="w-3 shrink-0 text-right text-[8px] text-white/30">{i + 1}</span>
+            <span className="w-3 shrink-0 text-right text-[12px] text-[var(--text-soft)]">{i + 1}</span>
             <div
               className={cn(
                 'flex-1 rounded-sm',
                 isEmphasis
-                  ? 'border border-white/[0.2] bg-white/[0.11]'
-                  : 'bg-white/[0.10]',
+                  ? 'border border-[var(--line-strong)] bg-[var(--surface-1)]'
+                  : 'bg-[var(--accent-muted)]',
                 config.height,
               )}
             />
             <span
               className={cn(
-                'w-20 shrink-0 text-right text-[9px]',
-                isEmphasis ? 'font-medium text-white/84' : 'text-white/50',
+                'w-20 shrink-0 text-right text-[12px]',
+                isEmphasis ? 'font-medium text-[var(--text-strong)]' : 'text-[var(--text-soft)]',
               )}
             >
               {config.short}
@@ -91,7 +91,7 @@ function ReorderableWireframe({
                   type="button"
                   disabled={i === 0}
                   onClick={() => onMove(i, 'up')}
-                  className="p-0.5 text-white/40 hover:text-white/80 disabled:opacity-20 disabled:cursor-default transition-colors"
+                  className="p-0.5 text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-20 disabled:cursor-default transition-colors"
                   aria-label={`Move ${config.short} up`}
                 >
                   <ChevronUp className="h-3 w-3" />
@@ -100,7 +100,7 @@ function ReorderableWireframe({
                   type="button"
                   disabled={i === sections.length - 1}
                   onClick={() => onMove(i, 'down')}
-                  className="p-0.5 text-white/40 hover:text-white/80 disabled:opacity-20 disabled:cursor-default transition-colors"
+                  className="p-0.5 text-[var(--text-soft)] hover:text-[var(--text-muted)] disabled:opacity-20 disabled:cursor-default transition-colors"
                   aria-label={`Move ${config.short} down`}
                 >
                   <ChevronDown className="h-3 w-3" />
@@ -116,8 +116,8 @@ function ReorderableWireframe({
 
 function StatBadge({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-md border border-white/[0.12] bg-white/[0.06] px-3 py-1.5">
-      <span className="text-xs font-medium text-white/80">{label}</span>
+    <div className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5">
+      <span className="text-xs font-medium text-[var(--text-muted)]">{label}</span>
     </div>
   );
 }
@@ -184,10 +184,10 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
   return (
     <div data-panel-root className="flex h-full flex-col">
       {/* Panel header */}
-        <div className="border-b border-white/[0.12] px-4 py-3">
+        <div className="border-b border-[var(--line-soft)] px-4 py-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Your Resume Plan</span>
+            <span className="text-sm font-medium text-[var(--text-strong)]">Your Resume Plan</span>
           </div>
         </div>
 
@@ -208,22 +208,22 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
           <div className="flex items-center gap-2 mb-2">
             {(angleWasEdited || onApprove) && (
               <span className={cn(
-                'rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]',
+                'rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em]',
                 angleWasEdited
                   ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
-                  : 'border-white/[0.08] bg-white/[0.02] text-white/48',
+                  : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
               )}>
                 {angleWasEdited ? 'Edited' : 'Editable'}
               </span>
             )}
             {!angleWasEdited && (
-              <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
+              <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
             )}
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Target
             </span>
           </div>
-          <p className="text-sm font-semibold text-white leading-snug">
+          <p className="text-sm font-semibold text-[var(--text-strong)] leading-snug">
             {target_role}
           </p>
           {positioning_angle && (
@@ -240,21 +240,21 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                       }
                     }}
                     rows={3}
-                    className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+                    className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
                     placeholder="Enter positioning angle..."
                   />
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setEditingAngle(false)}
-                      className="text-[10px] text-[#afc4ff]/80 hover:text-[#afc4ff] transition-colors"
+                      className="text-[12px] text-[#afc4ff]/80 hover:text-[#afc4ff] transition-colors"
                     >
                       Done
                     </button>
                     <button
                       type="button"
                       onClick={() => { setEditedAngle(null); setEditingAngle(false); }}
-                      className="text-[10px] text-white/40 hover:text-white/60 transition-colors"
+                      className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
                     >
                       Reset
                     </button>
@@ -273,12 +273,12 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                   <div className="flex items-start gap-2">
                     <p className={cn(
                       'flex-1 text-xs italic leading-relaxed',
-                      angleWasEdited ? 'text-[#f0d99f]/70' : 'text-white/62',
+                      angleWasEdited ? 'text-[#f0d99f]/70' : 'text-[var(--text-soft)]',
                     )}>
                       &ldquo;{currentAngle}&rdquo;
                     </p>
                     {onApprove && (
-                      <Pencil className="h-3 w-3 shrink-0 mt-0.5 text-white/0 group-hover:text-white/40 transition-colors" />
+                      <Pencil className="h-3 w-3 shrink-0 mt-0.5 text-transparent group-hover:text-[var(--text-soft)] transition-colors" />
                     )}
                   </div>
                 </button>
@@ -293,18 +293,18 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             <div className="flex items-center gap-2 mb-3">
               {(orderWasEdited || onApprove) && (
                 <span className={cn(
-                  'rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]',
+                  'rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em]',
                   orderWasEdited
                     ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
-                    : 'border-white/[0.08] bg-white/[0.02] text-white/48',
+                    : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
                 )}>
                   {orderWasEdited ? 'Edited' : 'Reorderable'}
                 </span>
               )}
               {!orderWasEdited && (
-                <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
+                <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
               )}
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+              <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Section Layout
               </span>
             </div>
@@ -314,7 +314,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               onMove={handleMoveSection}
             />
             {section_plan?.rationale && (
-              <p className="mt-3 text-xs text-white/60 leading-relaxed italic">
+              <p className="mt-3 text-xs text-[var(--text-soft)] leading-relaxed italic">
                 {section_plan.rationale}
               </p>
             )}
@@ -324,24 +324,24 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {/* Evidence Allocation */}
         {(evidence_items && evidence_items.length > 0) ? (
           <details className="group">
-            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+            <summary className="cursor-pointer list-none rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors select-none">
               <span>{evidence_items.length} key achievements mapped to requirements</span>
             </summary>
             <div className="mt-2 space-y-1.5">
               {evidence_items.map((item: BlueprintEvidenceItem, i: number) => (
-                <div key={`ev-${item.achievement.slice(0, 30)}-${i}`} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
-                  <p className="text-xs text-white/85">{item.achievement}</p>
+                <div key={`ev-${item.achievement.slice(0, 30)}-${i}`} className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-2">
+                  <p className="text-xs text-[var(--text-strong)]">{item.achievement}</p>
                   {item.maps_to_requirements.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.maps_to_requirements.map((req: string, j: number) => (
-                        <span key={`ev-req-${i}-${j}`} className="rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[9px] text-white/60">
+                        <span key={`ev-req-${i}-${j}`} className="rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-1.5 py-0.5 text-[12px] text-[var(--text-soft)]">
                           {req}
                         </span>
                       ))}
                     </div>
                   )}
                   {item.placement_rationale && (
-                    <p className="mt-1 text-[10px] italic text-white/50">{item.placement_rationale}</p>
+                    <p className="mt-1 text-[12px] italic text-[var(--text-soft)]">{item.placement_rationale}</p>
                   )}
                 </div>
               ))}
@@ -354,19 +354,19 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {/* Keyword Targets */}
         {(keyword_targets && keyword_targets.length > 0) ? (
           <details className="group">
-            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+            <summary className="cursor-pointer list-none rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors select-none">
               <span>{keyword_targets.length} keywords to weave into your resume</span>
             </summary>
             <div className="mt-2 space-y-1">
               {keyword_targets.map((kw: BlueprintKeywordTarget) => (
-                <div key={`kw-${kw.keyword}`} className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5">
-                  <span className="text-xs text-white/85">{kw.keyword}</span>
+                <div key={`kw-${kw.keyword}`} className="flex items-center justify-between rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5">
+                  <span className="text-xs text-[var(--text-strong)]">{kw.keyword}</span>
                   <div className="flex items-center gap-2">
                     {kw.placements.length > 0 && (
-                      <span className="text-[9px] text-white/40">{kw.placements.slice(0, 2).join(', ')}</span>
+                      <span className="text-[12px] text-[var(--text-soft)]">{kw.placements.slice(0, 2).join(', ')}</span>
                     )}
                     <span className={cn(
-                      'rounded-md border px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em]',
+                      'rounded-md border px-2 py-1 text-[12px] font-medium uppercase tracking-[0.12em]',
                       kw.current_count > 0
                         ? 'border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]'
                         : 'border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]'
@@ -385,15 +385,15 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {/* Experience Roles */}
         {experience_roles && experience_roles.length > 0 && (
           <details className="group">
-            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+            <summary className="cursor-pointer list-none rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] transition-colors select-none">
               <span>{experience_roles.length} roles planned for experience section</span>
             </summary>
             <div className="mt-2 space-y-1">
               {experience_roles.map((role) => (
-                <div key={`role-${role.role_key}`} className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5">
-                  <span className="text-xs text-white/85">{role.company}</span>
+                <div key={`role-${role.role_key}`} className="flex items-center justify-between rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5">
+                  <span className="text-xs text-[var(--text-strong)]">{role.company}</span>
                   {role.bullet_range && (
-                    <span className="text-[10px] text-white/50">{role.bullet_range[0]}–{role.bullet_range[1]} bullets</span>
+                    <span className="text-[12px] text-[var(--text-soft)]">{role.bullet_range[0]}–{role.bullet_range[1]} bullets</span>
                   )}
                 </div>
               ))}
@@ -403,10 +403,10 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
 
         {/* Age Protection Card */}
         {hasAgeFlags ? (
-          <GlassCard className="p-4 border-white/[0.14]">
+          <GlassCard className="p-4 border-[var(--line-strong)]">
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+              <AlertTriangle className="h-3.5 w-3.5 text-[var(--text-soft)]" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Age Protection
               </h3>
             </div>
@@ -414,26 +414,26 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               {age_protection.flags.map((flag, i) => (
                 <div
                   key={`age-flag-${flag.item.slice(0, 30)}-${i}`}
-                  className="space-y-1 rounded-lg border border-white/[0.1] bg-white/[0.03] p-2.5"
+                  className="space-y-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-2.5"
                 >
-                  <p className="text-xs font-medium text-white/85">{flag.item}</p>
+                  <p className="text-xs font-medium text-[var(--text-strong)]">{flag.item}</p>
                   <div className="flex items-start gap-1.5">
-                    <span className="shrink-0 text-[10px] font-semibold text-white/66">Risk:</span>
-                    <span className="text-[10px] text-white/60 leading-relaxed">{flag.risk}</span>
+                    <span className="shrink-0 text-[12px] font-semibold text-[var(--text-muted)]">Risk:</span>
+                    <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{flag.risk}</span>
                   </div>
                   <div className="flex items-start gap-1.5">
-                    <span className="shrink-0 text-[10px] font-semibold text-white/66">Action:</span>
-                    <span className="text-[10px] text-white/60 leading-relaxed">{flag.action}</span>
+                    <span className="shrink-0 text-[12px] font-semibold text-[var(--text-muted)]">Action:</span>
+                    <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{flag.action}</span>
                   </div>
                 </div>
               ))}
             </div>
           </GlassCard>
         ) : (
-          <GlassCard className="p-3 border-white/[0.14]">
+          <GlassCard className="p-3 border-[var(--line-strong)]">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
-              <span className="text-xs font-medium text-white/76">No age signals detected</span>
+              <span className="text-xs font-medium text-[var(--text-muted)]">No age signals detected</span>
             </div>
           </GlassCard>
         )}
@@ -441,7 +441,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {/* Approve Button */}
         <div className="pt-1 pb-2">
           {!onApprove && (
-            <div className="mb-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56">
+            <div className="mb-2 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)]">
               This is a preview of your resume plan. Writing will begin automatically.
             </div>
           )}
@@ -449,7 +449,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             <button
               type="button"
               onClick={handleResetEdits}
-              className="mb-2 flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white/70 transition-colors"
+              className="mb-2 flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
               <RotateCcw className="h-3 w-3" />
               Reset all edits

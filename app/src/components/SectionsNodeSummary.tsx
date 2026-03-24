@@ -29,23 +29,23 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
   return (
     <div className="h-full p-3 md:p-4">
       <GlassCard className="h-full p-6">
-        <div className="mb-2 flex items-center gap-2 text-white/78">
-          <History className="h-4 w-4 text-white/45" />
+        <div className="mb-2 flex items-center gap-2 text-[var(--text-muted)]">
+          <History className="h-4 w-4 text-[var(--text-soft)]" />
           <h3 className="text-sm font-semibold">Sections</h3>
         </div>
-        <p className="max-w-2xl text-sm text-white/56">
+        <p className="max-w-2xl text-sm text-[var(--text-soft)]">
           {isActiveNode
             ? 'The coach is working through section writing/review. Bundle progress is shown below so you can see what is being reviewed versus auto-approved.'
             : 'Bundle review progress from the latest section-review checkpoint.'}
         </p>
-        <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-white/75">
-            <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-white/70">
+        <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-0.5 text-[12px] uppercase tracking-[0.1em] text-[var(--text-soft)]">
               Bundled Review
             </span>
             <span>{bundleSummary.completed_bundles}/{bundleSummary.total_bundles} bundles complete</span>
             {bundleSummary.current_review_bundle_key && (
-              <span className="text-white/55">
+              <span className="text-[var(--text-soft)]">
                 Current: {bundleSummary.bundles.find((b) => b.key === bundleSummary.current_review_bundle_key)?.label ?? bundleSummary.current_review_bundle_key}
               </span>
             )}
@@ -60,23 +60,23 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
                     : bundle.status === 'in_progress'
                       ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
                       : bundle.status === 'auto_approved'
-                        ? 'border-white/[0.08] bg-white/[0.015]'
-                        : 'border-white/[0.06] bg-white/[0.01]'
+                        ? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-white/82">{bundle.label}</span>
-                  <span className="text-[10px] text-white/50">
+                  <span className="text-[13px] font-medium text-[var(--text-strong)]">{bundle.label}</span>
+                  <span className="text-[12px] text-[var(--text-soft)]">
                     {bundle.status === 'auto_approved'
                       ? 'auto'
                       : `${bundle.reviewed_required}/${bundle.review_required}`}
                   </span>
                 </div>
-                <div className="mt-1 text-[10px] text-white/50">
+                <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                   {bundle.total_sections} section{bundle.total_sections === 1 ? '' : 's'}
                   {bundle.review_required > 0 ? ` • ${bundle.review_required} in review set` : ' • auto-approved by mode'}
                 </div>
-                <div className="mt-1 text-[10px] text-white/42">
+                <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                   {bundle.status === 'in_progress'
                     ? 'In progress'
                     : bundle.status === 'complete'

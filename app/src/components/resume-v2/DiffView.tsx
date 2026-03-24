@@ -31,7 +31,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
   return (
     <GlassCard className="p-4 border-[#afc4ff]/20 animate-[card-enter_300ms_ease-out_forwards] opacity-0">
       {/* Section context label */}
-      <div className="mb-1.5 text-xs text-white/40">
+      <div className="mb-1.5 text-xs text-[var(--text-soft)]">
         {actionLabel}: {edit.section}
       </div>
 
@@ -41,12 +41,12 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           <div className="flex items-center gap-1.5 text-xs text-[#afc4ff]/80">
             <Target className="h-3 w-3 shrink-0" />
             <span className="font-medium">Addresses:</span>
-            <span className="text-white/60">{edit.editContext.requirement}</span>
+            <span className="text-[var(--text-soft)]">{edit.editContext.requirement}</span>
           </div>
           {edit.editContext.evidence && edit.editContext.evidence.length > 0 && (
             <div className="flex items-start gap-1.5 text-xs">
               <Briefcase className="h-3 w-3 text-[#b5dec2]/60 shrink-0 mt-0.5" />
-              <span className="text-white/40">Your experience: {edit.editContext.evidence.join('; ')}</span>
+              <span className="text-[var(--text-soft)]">Your experience: {edit.editContext.evidence.join('; ')}</span>
             </div>
           )}
         </div>
@@ -58,7 +58,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           <button
             type="button"
             onClick={onReject}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-white/60 hover:bg-white/[0.08] hover:text-[#f0b8b8] transition-colors"
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[#f0b8b8] transition-colors"
             aria-label="Reject edit"
           >
             <X className="h-3 w-3" />
@@ -78,22 +78,22 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Original */}
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <div className="mb-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider">Original</div>
-          <p className="text-sm text-white/50 leading-relaxed line-through decoration-[#f0b8b8]/30">{edit.originalText}</p>
+        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+          <div className="mb-1.5 text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Original</div>
+          <p className="text-sm text-[var(--text-soft)] leading-relaxed line-through decoration-[#f0b8b8]/30">{edit.originalText}</p>
         </div>
 
         {/* Replacement */}
         <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-medium text-[#b5dec2]/60 uppercase tracking-wider">Replacement</span>
+            <span className="text-[12px] font-medium text-[#b5dec2]/60 uppercase tracking-wider">Replacement</span>
             {editedText !== edit.replacement && (
               <>
-                <span className="text-[10px] text-[#afc4ff]/70">(edited)</span>
+                <span className="text-[12px] text-[#afc4ff]/70">(edited)</span>
                 <button
                   type="button"
                   onClick={() => setEditedText(edit.replacement)}
-                  className="text-[10px] text-white/30 hover:text-white/50 transition-colors"
+                  className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
                 >
                   Reset
                 </button>
@@ -103,7 +103,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           <textarea
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
-            className="w-full resize-y min-h-[4.5rem] bg-transparent text-sm text-white/80 leading-relaxed focus:outline-none"
+            className="w-full resize-y min-h-[4.5rem] bg-transparent text-sm text-[var(--text-strong)] leading-relaxed focus:outline-none"
             rows={Math.max(3, editedText.split('\n').length + 1)}
           />
         </div>

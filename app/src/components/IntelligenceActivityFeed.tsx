@@ -103,16 +103,16 @@ function translateMessage(raw: string): string {
  * Position 0 = most recent (bottom), higher = older.
  */
 function opacityForPosition(position: number, total: number): string {
-  if (position === 0) return 'text-white/85';
-  if (total <= 1) return 'text-white/85';
+  if (position === 0) return 'text-[var(--text-strong)]';
+  if (total <= 1) return 'text-[var(--text-strong)]';
 
-  // Graduated from white/50 (oldest) to white/75 (one before newest)
+  // Graduated from soft (oldest) to muted (one before newest)
   const ratio = position / (total - 1);
   // ratio=0 means newest (already handled above), ratio=1 means oldest
-  if (ratio > 0.8) return 'text-white/50';
-  if (ratio > 0.5) return 'text-white/55';
-  if (ratio > 0.3) return 'text-white/62';
-  return 'text-white/70';
+  if (ratio > 0.8) return 'text-[var(--text-soft)]';
+  if (ratio > 0.5) return 'text-[var(--text-soft)]';
+  if (ratio > 0.3) return 'text-[var(--text-muted)]';
+  return 'text-[var(--text-muted)]';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -137,13 +137,13 @@ export function IntelligenceActivityFeed({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[140px] overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.03]"
+      className="max-h-[140px] overflow-y-auto rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)]"
       role="log"
       aria-live="polite"
       aria-label="Progress updates"
     >
       {total === 0 ? (
-        <div className="px-3 py-2 text-xs text-white/40">
+        <div className="px-3 py-2 text-xs text-[var(--text-soft)]">
           {isProcessing ? 'Initializing...' : 'No activity yet.'}
         </div>
       ) : (
@@ -160,7 +160,7 @@ export function IntelligenceActivityFeed({
                 className={cn(
                   'flex min-w-0 items-baseline gap-2 px-3 py-0.5 text-xs',
                   opacityClass,
-                  msg.isSummary && !isMostRecent && 'border-l-2 border-white/[0.12] pl-2',
+                  msg.isSummary && !isMostRecent && 'border-l-2 border-[var(--line-soft)] pl-2',
                   msg.isSummary && isMostRecent && 'border-l-2 border-[#afc4ff]/40 pl-2',
                 )}
               >
@@ -168,7 +168,7 @@ export function IntelligenceActivityFeed({
                   {translateMessage(msg.message)}
                 </span>
                 {msg.count > 1 && (
-                  <span className="ml-1.5 shrink-0 rounded-full bg-white/[0.08] px-1.5 py-0 text-[10px] text-white/45">
+                  <span className="ml-1.5 shrink-0 rounded-full bg-[var(--accent-muted)] px-1.5 py-0 text-[12px] text-[var(--text-soft)]">
                     x{msg.count}
                   </span>
                 )}

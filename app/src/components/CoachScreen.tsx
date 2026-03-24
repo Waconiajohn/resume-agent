@@ -202,7 +202,7 @@ export function CoachScreen({
           : 'Live connection disconnected while processing.',
         duration: 8000,
         action: onReconnectStream
-          ? <button type="button" onClick={() => reconnectRef.current?.()} className="mt-1 rounded bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/20">Reconnect</button>
+          ? <button type="button" onClick={() => reconnectRef.current?.()} className="mt-1 rounded bg-[var(--accent-muted)] px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)]">Reconnect</button>
           : undefined,
       });
     }
@@ -625,7 +625,7 @@ export function CoachScreen({
               >
                 {/* Positioning profile choice */}
                 {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
-                  <div className="border-b border-white/[0.08] px-4 py-3">
+                  <div className="border-b border-[var(--line-soft)] px-4 py-3">
                     <PositioningProfileChoice
                       updatedAt={positioningProfileFound.updated_at}
                       onChoice={(choice) => {
@@ -678,7 +678,7 @@ export function CoachScreen({
                 <button
                   type="button"
                   onClick={toggleContextPanel}
-                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45"
+                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-[var(--line-soft)] bg-[var(--bg-1)]/90 p-2.5 text-[var(--text-soft)] shadow-lg backdrop-blur-xl transition-all hover:border-[var(--line-strong)] hover:bg-[var(--bg-1)] hover:text-[var(--text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45"
                   aria-label="Open context panel"
                 >
                   <PanelRight className="h-5 w-5" />

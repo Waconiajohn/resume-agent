@@ -17,8 +17,8 @@ export function TopMatchCard({ job, onPromote, onDismiss, onSelect }: TopMatchCa
   return (
     <div
       className={cn(
-        'rounded-xl border border-white/[0.06] bg-white/[0.02] p-3',
-        'hover:bg-white/[0.04] hover:border-white/[0.1] transition-all',
+        'rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3',
+        'hover:bg-[var(--surface-1)] hover:border-[var(--line-strong)] transition-all',
         onSelect ? 'cursor-pointer' : undefined,
       )}
       onClick={onSelect ? () => onSelect(job) : undefined}
@@ -35,10 +35,10 @@ export function TopMatchCard({ job, onPromote, onDismiss, onSelect }: TopMatchCa
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[13px] font-medium text-white/80 truncate">{job.title}</span>
+            <span className="text-[13px] font-medium text-[var(--text-muted)] truncate">{job.title}</span>
             <ScoreBadge score={score} />
           </div>
-          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-white/40 flex-wrap">
+          <div className="flex items-center gap-2 mt-0.5 text-[13px] text-[var(--text-soft)] flex-wrap">
             <span className="flex items-center gap-1">
               <Building2 size={10} />
               {job.company}
@@ -61,14 +61,14 @@ export function TopMatchCard({ job, onPromote, onDismiss, onSelect }: TopMatchCa
         >
           <GlassButton
             onClick={() => onPromote(job)}
-            className="px-2.5 py-1 text-[11px]"
+            className="px-2.5 py-1 text-[13px]"
           >
             Promote
           </GlassButton>
           <button
             type="button"
             onClick={() => onDismiss(job.external_id)}
-            className="px-2 py-1 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[11px] text-white/35 hover:text-white/55 hover:bg-white/[0.04] transition-colors"
+            className="px-2 py-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-1)] transition-colors"
           >
             Dismiss
           </button>

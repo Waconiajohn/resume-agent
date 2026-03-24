@@ -13,7 +13,7 @@ interface DashboardTabsProps {
 
 export function DashboardTabs({ tabs, activeTab, onTabChange }: DashboardTabsProps) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl border border-white/[0.1] bg-white/[0.04] p-1">
+    <div className="flex flex-wrap gap-1 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -21,8 +21,8 @@ export function DashboardTabs({ tabs, activeTab, onTabChange }: DashboardTabsPro
           className={cn(
             'rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
             activeTab === tab.id
-              ? 'bg-white/[0.08] text-white shadow-sm'
-              : 'text-white/55 hover:bg-white/[0.04] hover:text-white/80',
+              ? 'bg-[var(--surface-1)] text-[var(--text-strong)] shadow-sm'
+              : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]',
           )}
         >
           {tab.label}

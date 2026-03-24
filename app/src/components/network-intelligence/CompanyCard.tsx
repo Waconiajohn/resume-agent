@@ -59,46 +59,46 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
   return (
     <GlassCard
       hover
-      className={cn('cursor-pointer p-4 transition-all', expanded && 'ring-1 ring-white/[0.12]')}
+      className={cn('cursor-pointer p-4 transition-all', expanded && 'ring-1 ring-[var(--line-strong)]')}
       onClick={handleToggle}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-medium text-white/90">{displayName}</h3>
+          <h3 className="truncate text-sm font-medium text-[var(--text-strong)]">{displayName}</h3>
           {company.topPositions.length > 0 && (
-            <p className="mt-0.5 truncate text-xs text-white/40">
+            <p className="mt-0.5 truncate text-xs text-[var(--text-soft)]">
               {company.topPositions.slice(0, 2).join(', ')}
             </p>
           )}
         </div>
-        <span className="shrink-0 rounded-md bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">
+        <span className="shrink-0 rounded-md bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
           {company.connectionCount}
         </span>
       </div>
 
       {expanded && (
-        <div className="mt-3 border-t border-white/[0.06] pt-3">
+        <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
           {loading ? (
             <div className="space-y-1.5">
               {[1, 2].map((i) => (
-                <div key={i} className="h-4 motion-safe:animate-pulse rounded bg-white/[0.05]" />
+                <div key={i} className="h-4 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
               ))}
             </div>
           ) : connections.length > 0 ? (
             <ul className="space-y-1.5">
               {connections.map((conn) => (
                 <li key={conn.id} className="flex items-center justify-between text-xs">
-                  <span className="text-white/70">
+                  <span className="text-[var(--text-muted)]">
                     {conn.firstName} {conn.lastName}
                   </span>
                   {conn.position && (
-                    <span className="truncate pl-2 text-white/40">{conn.position}</span>
+                    <span className="truncate pl-2 text-[var(--text-soft)]">{conn.position}</span>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-white/30">No connection details available</p>
+            <p className="text-xs text-[var(--text-soft)]">No connection details available</p>
           )}
         </div>
       )}

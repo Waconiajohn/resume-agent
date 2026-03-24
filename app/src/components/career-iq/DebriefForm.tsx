@@ -39,9 +39,9 @@ function getTodayDateString(): string {
 }
 
 const INPUT_CLASS =
-  'rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
+  'rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
 
-const LABEL_CLASS = 'text-[11px] font-medium text-white/40 uppercase tracking-wider mb-1.5 block';
+const LABEL_CLASS = 'text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5 block';
 
 // --- Performance dimension score (mini bar gauge) ---
 
@@ -80,10 +80,10 @@ function PerformanceScoreSelector({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="text-white/40">{icon}</span>
-          <span className="text-[12px] font-medium text-white/60">{label}</span>
+          <span className="text-[var(--text-soft)]">{icon}</span>
+          <span className="text-[12px] font-medium text-[var(--text-soft)]">{label}</span>
         </div>
-        <span className="text-[11px] font-medium" style={{ color }}>{SCORE_LABELS[value]}</span>
+        <span className="text-[13px] font-medium" style={{ color }}>{SCORE_LABELS[value]}</span>
       </div>
       <div className="flex items-center gap-1">
         {([1, 2, 3, 4, 5] as ScoreLevel[]).map((level) => (
@@ -117,7 +117,7 @@ interface FollowUpItem {
 const PRIORITY_CONFIG: Record<FollowUpPriority, { label: string; bg: string; border: string; text: string }> = {
   urgent: { label: 'Urgent', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
   important: { label: 'Important', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
-  normal: { label: 'Normal', bg: 'bg-white/[0.04]', border: 'border-white/[0.08]', text: 'text-white/40' },
+  normal: { label: 'Normal', bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]' },
 };
 
 function FollowUpChecklist({
@@ -152,7 +152,7 @@ function FollowUpChecklist({
   return (
     <div className="space-y-2">
       {items.length === 0 && (
-        <p className="text-[12px] text-white/25 py-1">No actions yet — add the key next steps below.</p>
+        <p className="text-[12px] text-[var(--text-soft)] py-1">No actions yet — add the key next steps below.</p>
       )}
 
       {items.map((item, i) => {
@@ -160,7 +160,7 @@ function FollowUpChecklist({
         return (
           <div key={i} className={cn(
             'flex items-start gap-2.5 rounded-lg border p-2.5 transition-all',
-            item.done ? 'border-white/[0.04] bg-transparent opacity-50' : `${cfg.bg} ${cfg.border}`,
+            item.done ? 'border-[var(--line-soft)] bg-transparent opacity-50' : `${cfg.bg} ${cfg.border}`,
           )}>
             <button
               type="button"
@@ -169,7 +169,7 @@ function FollowUpChecklist({
                 'flex-shrink-0 mt-0.5 h-4 w-4 rounded border transition-colors',
                 item.done
                   ? 'border-[#b5dec2]/40 bg-[#b5dec2]/15'
-                  : 'border-white/[0.2] bg-transparent hover:border-[#b5dec2]/40',
+                  : 'border-[var(--line-strong)] bg-transparent hover:border-[#b5dec2]/40',
               )}
             >
               {item.done && (
@@ -177,7 +177,7 @@ function FollowUpChecklist({
               )}
             </button>
             <div className="flex-1 min-w-0">
-              <span className={cn('text-[12px]', item.done ? 'text-white/30 line-through' : 'text-white/70')}>
+              <span className={cn('text-[12px]', item.done ? 'text-[var(--text-soft)] line-through' : 'text-[var(--text-muted)]')}>
                 {item.text}
               </span>
             </div>
@@ -188,10 +188,10 @@ function FollowUpChecklist({
                   type="button"
                   onClick={() => setPriority(i, p)}
                   className={cn(
-                    'rounded px-1.5 py-0.5 text-[9px] font-medium border transition-colors',
+                    'rounded px-1.5 py-0.5 text-[12px] font-medium border transition-colors',
                     item.priority === p
                       ? `${PRIORITY_CONFIG[p].bg} ${PRIORITY_CONFIG[p].border} ${PRIORITY_CONFIG[p].text}`
-                      : 'border-transparent text-white/20 hover:text-white/40',
+                      : 'border-transparent text-[var(--text-soft)] hover:text-[var(--text-soft)]',
                   )}
                 >
                   {PRIORITY_CONFIG[p].label}
@@ -200,7 +200,7 @@ function FollowUpChecklist({
               <button
                 type="button"
                 onClick={() => removeItem(i)}
-                className="ml-1 text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
+                className="ml-1 text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -230,7 +230,7 @@ function FollowUpChecklist({
         <button
           type="button"
           onClick={addItem}
-          className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+          className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
         >
           <Plus size={12} />
           Add
@@ -251,7 +251,7 @@ interface SentimentItem {
 
 const SENTIMENT_CONFIG: Record<SentimentSignal, { bg: string; border: string; text: string; dot: string }> = {
   positive: { bg: 'bg-[#b5dec2]/[0.05]', border: 'border-[#b5dec2]/15', text: 'text-[#b5dec2]/80', dot: 'bg-[#b5dec2]' },
-  neutral: { bg: 'bg-white/[0.02]', border: 'border-white/[0.06]', text: 'text-white/50', dot: 'bg-white/30' },
+  neutral: { bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]', dot: 'bg-[var(--line-strong)]' },
   concerning: { bg: 'bg-[#f0b8b8]/[0.04]', border: 'border-[#f0b8b8]/12', text: 'text-[#f0b8b8]/70', dot: 'bg-[#f0b8b8]' },
 };
 
@@ -278,12 +278,12 @@ function SentimentSummary({
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-white/35 leading-relaxed">
+      <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
         How did the interviewer likely perceive you? Add signals you picked up — body language, energy shifts, follow-up questions.
       </p>
 
       {items.length === 0 && (
-        <p className="text-[12px] text-white/25 py-1">No signals recorded yet.</p>
+        <p className="text-[12px] text-[var(--text-soft)] py-1">No signals recorded yet.</p>
       )}
 
       {items.map((item, i) => {
@@ -295,7 +295,7 @@ function SentimentSummary({
             <button
               type="button"
               onClick={() => removeItem(i)}
-              className="flex-shrink-0 text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
+              className="flex-shrink-0 text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
             >
               <X size={12} />
             </button>
@@ -324,7 +324,7 @@ function SentimentSummary({
         <button
           type="button"
           onClick={addItem}
-          className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+          className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
         >
           <Plus size={12} />
           Add
@@ -363,7 +363,7 @@ function ImpressionButton({
         'flex flex-1 flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-[12px] font-medium transition-all',
         isActive
           ? activeClass
-          : 'border-white/[0.08] bg-white/[0.02] text-white/30 hover:border-white/[0.14] hover:text-white/50',
+          : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:text-[var(--text-soft)]',
       )}
     >
       {icon}
@@ -385,29 +385,29 @@ function InterviewerCard({ note, index, onChange, onRemove }: InterviewerCardPro
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="flex flex-1 items-center gap-2 text-left"
         >
-          <span className="text-[12px] font-medium text-white/60">
+          <span className="text-[12px] font-medium text-[var(--text-soft)]">
             {note.name.trim() || `Interviewer ${index + 1}`}
           </span>
           {note.title && (
-            <span className="text-[11px] text-white/30">— {note.title}</span>
+            <span className="text-[13px] text-[var(--text-soft)]">— {note.title}</span>
           )}
           {expanded ? (
-            <ChevronUp size={13} className="ml-auto text-white/25" />
+            <ChevronUp size={13} className="ml-auto text-[var(--text-soft)]" />
           ) : (
-            <ChevronDown size={13} className="ml-auto text-white/25" />
+            <ChevronDown size={13} className="ml-auto text-[var(--text-soft)]" />
           )}
         </button>
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
+          className="text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
           aria-label="Remove interviewer"
         >
           <X size={13} />
@@ -415,7 +415,7 @@ function InterviewerCard({ note, index, onChange, onRemove }: InterviewerCardPro
       </div>
 
       {expanded && (
-        <div className="border-t border-white/[0.06] px-4 py-3 space-y-2.5">
+        <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-2.5">
           <div className="flex gap-2">
             <div className="flex-1">
               <label className={LABEL_CLASS}>Name *</label>
@@ -569,12 +569,6 @@ export function DebriefForm({
     // H7+H13: performance scores and sentiment items have no dedicated DB columns.
     // They are serialized into the text fields below as structured annotations until
     // a schema migration adds performance_scores (JSONB) and sentiment_items (JSONB).
-    // eslint-disable-next-line no-console
-    console.warn(
-      'DebriefForm: performance dimension scores and sentiment items are serialized into text fields. ' +
-      'Add performance_scores and sentiment_items JSONB columns to interview_debriefs to store them natively.',
-    );
-
     try {
       const performanceAnnotation = buildPerformanceAnnotation();
       const sentimentAnnotation = buildSentimentAnnotation();
@@ -622,22 +616,22 @@ export function DebriefForm({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Post-Interview Debrief</h1>
-          <p className="text-[13px] text-white/40">
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">Post-Interview Debrief</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">
             Capture what happened while it's fresh. This feeds your thank you notes and helps refine future prep.
           </p>
         </div>
         {/* Overall performance badge */}
-        <div className="flex-shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-center">
+        <div className="flex-shrink-0 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-2.5 text-center">
           <div className="text-[20px] font-bold" style={{ color: avgColor }}>{avgScore}/5</div>
-          <div className="text-[10px] font-medium mt-0.5" style={{ color: avgColor }}>{avgLabel}</div>
-          <div className="text-[9px] text-white/25 mt-0.5">Overall</div>
+          <div className="text-[12px] font-medium mt-0.5" style={{ color: avgColor }}>{avgLabel}</div>
+          <div className="text-[12px] text-[var(--text-soft)] mt-0.5">Overall</div>
         </div>
       </div>
 
       {/* Interview Details */}
       <GlassCard className="p-5 space-y-4">
-        <h3 className="text-[13px] font-semibold text-white/70">Interview Details</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Interview Details</h3>
         <div className="flex gap-3">
           <div className="flex-1">
             <label className={LABEL_CLASS}>Company *</label>
@@ -689,7 +683,7 @@ export function DebriefForm({
 
       {/* Overall impression */}
       <GlassCard className="p-5 space-y-3">
-        <h3 className="text-[13px] font-semibold text-white/70">Overall Impression</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Overall Impression</h3>
         <div className="flex gap-3">
           <ImpressionButton
             value="positive"
@@ -724,8 +718,8 @@ export function DebriefForm({
       {/* Performance dimensions */}
       <GlassCard className="p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold text-white/70">Performance by Dimension</h3>
-          <span className="text-[11px] text-white/30">Rate how you performed in each area</span>
+          <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Performance by Dimension</h3>
+          <span className="text-[13px] text-[var(--text-soft)]">Rate how you performed in each area</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <PerformanceScoreSelector
@@ -757,12 +751,12 @@ export function DebriefForm({
 
       {/* What went well / poorly */}
       <GlassCard className="p-5 space-y-4">
-        <h3 className="text-[13px] font-semibold text-white/70">Performance Reflection</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Performance Reflection</h3>
 
         <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
           <div className="flex items-center gap-1.5 mb-2">
             <ThumbsUp size={12} className="text-[#b5dec2]/70" />
-            <label className="text-[11px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">What went well</label>
+            <label className="text-[13px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">What went well</label>
           </div>
           <textarea
             placeholder="Moments of strong rapport, questions you nailed, stories that landed..."
@@ -776,7 +770,7 @@ export function DebriefForm({
         <div className="rounded-lg border border-[#f0d99f]/12 bg-[#f0d99f]/[0.02] p-3">
           <div className="flex items-center gap-1.5 mb-2">
             <Minus size={12} className="text-[#f0d99f]/70" />
-            <label className="text-[11px] font-semibold text-[#f0d99f]/70 uppercase tracking-wider">What could have gone better</label>
+            <label className="text-[13px] font-semibold text-[#f0d99f]/70 uppercase tracking-wider">What could have gone better</label>
           </div>
           <textarea
             placeholder="Stumbling points, questions you were unprepared for, missed opportunities..."
@@ -790,7 +784,7 @@ export function DebriefForm({
         <div className="rounded-lg border border-[#f0b8b8]/12 bg-[#f0b8b8]/[0.02] p-3">
           <div className="flex items-center gap-1.5 mb-2">
             <AlertTriangle size={12} className="text-[#f0b8b8]/70" />
-            <label className="text-[11px] font-semibold text-[#f0b8b8]/70 uppercase tracking-wider">Red flags or concerns</label>
+            <label className="text-[13px] font-semibold text-[#f0b8b8]/70 uppercase tracking-wider">Red flags or concerns</label>
           </div>
           <textarea
             placeholder="Anything that might have raised a concern for the interviewer — be honest..."
@@ -804,13 +798,13 @@ export function DebriefForm({
 
       {/* Sentiment analysis */}
       <GlassCard className="p-5 space-y-3">
-        <h3 className="text-[13px] font-semibold text-white/70">How They Likely Perceived You</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">How They Likely Perceived You</h3>
         <SentimentSummary items={sentimentItems} onChange={setSentimentItems} />
       </GlassCard>
 
       {/* Questions asked */}
       <GlassCard className="p-5 space-y-3">
-        <h3 className="text-[13px] font-semibold text-white/70">Questions They Asked</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Questions They Asked</h3>
         <div className="space-y-2">
           {questionsAsked.map((q, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -825,7 +819,7 @@ export function DebriefForm({
                 <button
                   type="button"
                   onClick={() => removeQuestion(i)}
-                  className="text-white/20 hover:text-[#f0b8b8]/60 transition-colors flex-shrink-0"
+                  className="text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors flex-shrink-0"
                   aria-label="Remove question"
                 >
                   <X size={14} />
@@ -837,7 +831,7 @@ export function DebriefForm({
         <button
           type="button"
           onClick={addQuestion}
-          className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
           <Plus size={12} />
           Add Question
@@ -847,11 +841,11 @@ export function DebriefForm({
       {/* Interviewer notes */}
       <GlassCard className="p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold text-white/70">Interviewer Notes</h3>
+          <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Interviewer Notes</h3>
           <button
             type="button"
             onClick={addInterviewer}
-            className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+            className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             <Plus size={12} />
             Add Interviewer
@@ -874,12 +868,12 @@ export function DebriefForm({
       <GlassCard className="p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Flag size={14} className="text-[#afc4ff]/60" />
-          <h3 className="text-[13px] font-semibold text-white/70">Follow-Up Actions</h3>
+          <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Follow-Up Actions</h3>
         </div>
         <FollowUpChecklist items={followUpItems} onChange={setFollowUpItems} />
 
         {/* Free-form fallback */}
-        <div className="pt-1 border-t border-white/[0.04]">
+        <div className="pt-1 border-t border-[var(--line-soft)]">
           <label className={cn(LABEL_CLASS, 'mt-2')}>Additional Notes</label>
           <textarea
             placeholder="Any other follow-ups or context..."
@@ -895,8 +889,8 @@ export function DebriefForm({
       {interviewerNotes.some((n) => n.name.trim().length > 0) && !saved && (
         <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-medium text-white/70">Ready to write thank you notes?</p>
-            <p className="text-[11px] text-white/35 mt-0.5">
+            <p className="text-[13px] font-medium text-[var(--text-muted)]">Ready to write thank you notes?</p>
+            <p className="text-[13px] text-[var(--text-soft)] mt-0.5">
               Save the debrief first, then generate personalized thank you notes for each interviewer.
             </p>
           </div>

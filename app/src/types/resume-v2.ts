@@ -187,10 +187,16 @@ export interface GapCoachingCard {
 
 export type GapCoachingAction = 'approve' | 'context' | 'skip';
 
+export type GapPlacementTarget = 'auto' | 'summary' | 'competencies' | 'accomplishments' | 'experience';
+
 export interface GapCoachingResponse {
   requirement: string;
   action: GapCoachingAction;
   user_context?: string;
+  /** Where the user wants this strategy placed. Defaults to 'auto' (writer decides). */
+  target_section?: GapPlacementTarget;
+  /** For 'experience' placement — which company's bullets should carry this strategy */
+  target_company?: string;
 }
 
 // ─── Pre-Scores (baseline before optimization) ───────────────────
@@ -304,11 +310,38 @@ export interface QuickWin {
   impact: 'high' | 'medium' | 'low';
 }
 
+export interface InlineSuggestion {
+  id: string;
+  requirementText: string;
+  requirementPriority: 'critical' | 'important' | 'supporting';
+  /** Whether this requirement came from the job description or from the benchmark profile */
+  requirementSource: 'jd' | 'benchmark';
+  sectionId: string;
+  originalText: string;
+  suggestedText: string;
+  changeType: 'addition' | 'replacement' | 'deletion';
+  rationale: string;
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface HiringManagerScan {
+  pass: boolean;
+  scan_score: number;
+  header_impact: { score: number; note: string };
+  summary_clarity: { score: number; note: string };
+  above_fold_strength: { score: number; note: string };
+  keyword_visibility: { score: number; note: string };
+  red_flags: string[];
+  quick_wins: string[];
+}
+
 export interface AssemblyResult {
   final_resume: ResumeDraft;
   scores: VerificationScores;
   quick_wins: QuickWin[];
   positioning_assessment?: PositioningAssessment;
+  inline_suggestions?: InlineSuggestion[];
+  hiring_manager_scan?: HiringManagerScan;
 }
 
 // ─── Gap Chat (per-item coaching conversation) ──────────────────────
@@ -589,6 +622,54 @@ export interface V2PersistedDraftState {
   updated_at: string;
 }
 
+// ─── Verification Detail (full agent outputs from truth, ATS, tone) ─
+
+export interface TruthVerificationDetail {
+  truth_score: number;
+  claims: Array<{
+    claim: string;
+    section: string;
+    source_found: boolean;
+    confidence: 'verified' | 'plausible' | 'unverified' | 'fabricated';
+    source_text?: string;
+    note?: string;
+  }>;
+  flagged_items: Array<{
+    claim: string;
+    issue: string;
+    recommendation: string;
+  }>;
+}
+
+export interface ATSOptimizationDetail {
+  match_score: number;
+  keywords_found: string[];
+  keywords_missing: string[];
+  keyword_suggestions: Array<{
+    keyword: string;
+    suggested_placement: string;
+    natural_phrasing: string;
+  }>;
+  formatting_issues: string[];
+}
+
+export interface ExecutiveToneDetail {
+  tone_score: number;
+  findings: Array<{
+    text: string;
+    section: string;
+    issue: string;
+    suggestion: string;
+  }>;
+  banned_phrases_found: string[];
+}
+
+export interface VerificationDetail {
+  truth: TruthVerificationDetail;
+  ats: ATSOptimizationDetail;
+  tone: ExecutiveToneDetail;
+}
+
 // ─── Pipeline State (accumulated in the frontend) ───────────────────
 
 export interface V2PipelineData {
@@ -603,6 +684,9 @@ export interface V2PipelineData {
   narrativeStrategy: NarrativeStrategy | null;
   resumeDraft: ResumeDraft | null;
   assembly: AssemblyResult | null;
+  inlineSuggestions: InlineSuggestion[];
+  /** Full verification agent outputs (truth, ATS, tone) from the pipeline */
+  verificationDetail: VerificationDetail | null;
   error: string | null;
   stageMessages: Array<{ stage: V2Stage; message: string; type: 'start' | 'complete'; duration_ms?: number }>;
 }
@@ -620,8 +704,10 @@ export type V2SSEEvent =
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'narrative_strategy'; data: NarrativeStrategy }
   | { type: 'resume_draft'; data: ResumeDraft }
-  | { type: 'verification_complete' }  // Scores come through assembly_complete
+  | { type: 'verification_complete'; data?: { truth?: TruthVerificationDetail; ats?: ATSOptimizationDetail; tone?: ExecutiveToneDetail } }
   | { type: 'assembly_complete'; data: AssemblyResult }
+  | { type: 'inline_suggestions'; data: { suggestions: InlineSuggestion[] } }
+  | { type: 'hiring_manager_scan'; data: HiringManagerScan }
   | { type: 'pipeline_complete'; session_id: string }
   | { type: 'pipeline_error'; stage: V2Stage; error: string }
   | { type: 'transparency'; message: string; stage: V2Stage };

@@ -3,6 +3,7 @@ import type { FinalResume } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { saveBlobWithFilename } from '@/lib/download';
+import type { TemplateId } from '@/lib/export-templates';
 
 type PdfStyle = 'name' | 'contact' | 'heading' | 'body' | 'bullet' | 'blank';
 
@@ -26,12 +27,32 @@ const MARGIN_TOP = 56;
 const MARGIN_BOTTOM = 44;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
+// Executive template page metrics — 0.8" (57.6pt) margins
+const EXEC_MARGIN_LEFT = 58;
+const EXEC_MARGIN_RIGHT = 58;
+const EXEC_MARGIN_TOP = 60;
+const EXEC_CONTENT_WIDTH = PAGE_WIDTH - EXEC_MARGIN_LEFT - EXEC_MARGIN_RIGHT;
+
+// Navy RGB for executive template accent
+const EXEC_NAVY_R = 30;
+const EXEC_NAVY_G = 58;
+const EXEC_NAVY_B = 95;
+
 const STYLE_MAP: Record<Exclude<PdfStyle, 'blank'>, PdfStyleConfig> = {
   name: { bold: true, size: 18, indent: 0, lineHeight: 24 },
   contact: { bold: false, size: 10, indent: 0, lineHeight: 14 },
   heading: { bold: true, size: 11, indent: 0, lineHeight: 18 },
   body: { bold: false, size: 10, indent: 0, lineHeight: 14 },
   bullet: { bold: false, size: 10, indent: 16, lineHeight: 14 },
+};
+
+const EXEC_STYLE_MAP: Record<Exclude<PdfStyle, 'blank'>, PdfStyleConfig> = {
+  name: { bold: true, size: 20, indent: 0, lineHeight: 26 },
+  contact: { bold: false, size: 10, indent: 0, lineHeight: 14 },
+  // Heading indent accounts for the left accent bar (4pt bar + 6pt gap)
+  heading: { bold: true, size: 11, indent: 10, lineHeight: 20 },
+  body: { bold: false, size: 10, indent: 0, lineHeight: 15 },
+  bullet: { bold: false, size: 10, indent: 16, lineHeight: 15 },
 };
 
 /**
@@ -235,7 +256,8 @@ function renderCertifications(resume: FinalResume): PdfLine[] {
   return lines;
 }
 
-function buildPdfLines(resume: FinalResume): PdfLine[] {
+function buildPdfLines(resume: FinalResume, templateId: TemplateId = 'ats-classic'): PdfLine[] {
+  const isExec = templateId === 'executive';
   const lines: PdfLine[] = [];
 
   const name = resume.contact_info?.name?.trim();
@@ -246,8 +268,12 @@ function buildPdfLines(resume: FinalResume): PdfLine[] {
     resume.contact_info?.location,
   ].filter((part): part is string => Boolean(part?.trim()));
 
-  if (name) lines.push({ text: name.toUpperCase(), style: 'name' });
-  if (contactParts.length > 0) lines.push({ text: contactParts.join('; '), style: 'contact' });
+  // Executive: name in natural case (not all-caps); ATS: all-caps
+  if (name) lines.push({ text: isExec ? name : name.toUpperCase(), style: 'name' });
+  if (contactParts.length > 0) {
+    const separator = isExec ? ' | ' : '; ';
+    lines.push({ text: contactParts.join(separator), style: 'contact' });
+  }
   if (name || contactParts.length > 0) lines.push({ text: '', style: 'blank' });
 
   const hasStructuredContent =
@@ -356,15 +382,22 @@ function buildPdfLines(resume: FinalResume): PdfLine[] {
   return lines.length > 0 ? lines : [{ text: 'Resume content unavailable.', style: 'body' }];
 }
 
-function buildPdfBlob(resume: FinalResume): Blob {
-  const lines = buildPdfLines(resume);
+function buildPdfBlob(resume: FinalResume, templateId: TemplateId = 'ats-classic'): Blob {
+  const lines = buildPdfLines(resume, templateId);
+  const isExec = templateId === 'executive';
+  const styleMap = isExec ? EXEC_STYLE_MAP : STYLE_MAP;
+  const marginLeft = isExec ? EXEC_MARGIN_LEFT : MARGIN_LEFT;
+  const marginRight = isExec ? EXEC_MARGIN_RIGHT : MARGIN_RIGHT;
+  const marginTop = isExec ? EXEC_MARGIN_TOP : MARGIN_TOP;
+  const contentWidth = isExec ? EXEC_CONTENT_WIDTH : CONTENT_WIDTH;
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
     format: 'letter',
   });
 
-  let y = MARGIN_TOP;
+  let y = marginTop;
 
   function applyStyle(style: PdfStyleConfig) {
     doc.setFont('helvetica', style.bold ? 'bold' : 'normal');
@@ -374,24 +407,61 @@ function buildPdfBlob(resume: FinalResume): Blob {
   function ensureRoom(height: number) {
     if (y + height <= PAGE_HEIGHT - MARGIN_BOTTOM) return;
     doc.addPage();
-    y = MARGIN_TOP;
+    y = marginTop;
   }
 
   for (const line of lines) {
     if (line.style === 'blank') {
-      y += 10;
+      y += isExec ? 12 : 10;
       continue;
     }
 
-    const style = STYLE_MAP[line.style];
+    const style = styleMap[line.style];
     applyStyle(style);
 
-    const baseX = MARGIN_LEFT + style.indent;
-    const availableWidth = CONTENT_WIDTH - style.indent;
+    const baseX = marginLeft + style.indent;
+    const availableWidth = contentWidth - style.indent;
     const text = sanitizePdfText(line.text);
     if (!text) continue;
 
     const isBullet = line.style === 'bullet';
+    const isHeading = line.style === 'heading';
+
+    // Executive heading: draw navy left accent bar before text
+    if (isExec && isHeading) {
+      // Extra space before heading
+      y += 6;
+      ensureRoom(style.lineHeight + 4);
+      // Draw the navy accent bar (4pt wide, full line height)
+      doc.setFillColor(EXEC_NAVY_R, EXEC_NAVY_G, EXEC_NAVY_B);
+      doc.rect(marginLeft, y - style.lineHeight + 3, 3, style.lineHeight, 'F');
+      // Reset fill color back to black for text
+      doc.setFillColor(0, 0, 0);
+    }
+
+    if (isExec && line.style === 'name') {
+      // Executive name: navy color, centered
+      doc.setTextColor(EXEC_NAVY_R, EXEC_NAVY_G, EXEC_NAVY_B);
+      const wrapped: string[] = doc.splitTextToSize(text, contentWidth);
+      for (const wrappedLine of wrapped) {
+        ensureRoom(style.lineHeight);
+        doc.text(wrappedLine, PAGE_WIDTH / 2, y, { align: 'center' });
+        y += style.lineHeight;
+      }
+      doc.setTextColor(0, 0, 0);
+      continue;
+    }
+
+    if (isExec && line.style === 'contact') {
+      // Executive contact: centered, pipe-separated already formatted in buildPdfLines
+      const wrapped: string[] = doc.splitTextToSize(text, contentWidth);
+      for (const wrappedLine of wrapped) {
+        ensureRoom(style.lineHeight);
+        doc.text(wrappedLine, PAGE_WIDTH / 2, y, { align: 'center' });
+        y += style.lineHeight;
+      }
+      continue;
+    }
 
     if (isBullet) {
       const prefixWidth = doc.getTextWidth('- ');
@@ -414,7 +484,19 @@ function buildPdfBlob(resume: FinalResume): Blob {
       }
     }
 
-    if (line.style === 'heading') y += 2;
+    if (isHeading) {
+      // Thin rule under section heading
+      if (isExec) {
+        // Subtle grey rule for executive
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.5);
+        doc.line(marginLeft, y + 2, PAGE_WIDTH - marginRight, y + 2);
+        doc.setDrawColor(0, 0, 0);
+        y += 6;
+      } else {
+        y += 2;
+      }
+    }
   }
 
   // Add page numbers
@@ -425,15 +507,18 @@ function buildPdfBlob(resume: FinalResume): Blob {
     doc.setFontSize(9);
     const pageText = `Page ${i} of ${totalPages}`;
     const textWidth = doc.getTextWidth(pageText);
-    doc.text(pageText, PAGE_WIDTH - MARGIN_RIGHT - textWidth, PAGE_HEIGHT - MARGIN_BOTTOM + 14);
+    doc.text(pageText, PAGE_WIDTH - marginRight - textWidth, PAGE_HEIGHT - MARGIN_BOTTOM + 14);
   }
 
   return doc.output('blob');
 }
 
-export function exportPdf(resume: FinalResume): { success: boolean; error?: string } {
+export function exportPdf(
+  resume: FinalResume,
+  templateId: TemplateId = 'ats-classic',
+): { success: boolean; error?: string } {
   try {
-    const blob = buildPdfBlob(resume);
+    const blob = buildPdfBlob(resume, templateId);
     const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'pdf');
     saveBlobWithFilename(blob, filename, 'pdf');
     return { success: true };

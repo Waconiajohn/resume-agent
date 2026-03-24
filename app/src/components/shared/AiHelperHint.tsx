@@ -14,12 +14,12 @@ export function AiHelperHint({ title, body, tip, className }: AiHelperHintProps)
       <div className="flex items-start gap-2">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#afc4ff]/78" />
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/78">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/78">
             {title}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-white/72">{body}</p>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{body}</p>
           {tip ? (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-white/50">{tip}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-soft)]">{tip}</p>
           ) : null}
         </div>
       </div>

@@ -38,7 +38,7 @@ describe('StageBadge — color classes', () => {
   it('applies neutral color class for "saved"', () => {
     render(<StageBadge stage="saved" />);
     const badge = screen.getByText('saved');
-    expect(badge.className).toContain('text-white/50');
+    expect(badge.className).toContain('text-[var(--text-soft)]');
   });
 
   it('applies blue color class for "researching"', () => {

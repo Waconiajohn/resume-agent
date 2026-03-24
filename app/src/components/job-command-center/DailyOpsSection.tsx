@@ -19,7 +19,7 @@ function urgencyClass(dueDateStr: string): string {
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
   if (diffDays < 0) return 'text-red-400/70 border-red-400/20 bg-red-400/[0.04]';
   if (diffDays < 1) return 'text-[#f0d99f]/70 border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]';
-  return 'text-white/50 border-white/[0.06] bg-white/[0.02]';
+  return 'text-[var(--text-soft)] border-[var(--line-soft)] bg-[var(--accent-muted)]';
 }
 
 export function DailyOpsSection({
@@ -35,7 +35,7 @@ export function DailyOpsSection({
     <GlassCard className="p-6 space-y-6">
       <div className="flex items-center gap-2">
         <Clock size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Daily Ops</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Daily Ops</h3>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -50,10 +50,10 @@ export function DailyOpsSection({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Star size={14} className="text-[#98b3ff]" />
-            <span className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">
+            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
               Top Matches
             </span>
-            <span className="ml-auto text-[11px] text-white/30">{topMatches.length} scored</span>
+            <span className="ml-auto text-[13px] text-[var(--text-soft)]">{topMatches.length} scored</span>
           </div>
           <div className="space-y-2">
             {topMatches.map((job) => (
@@ -73,11 +73,11 @@ export function DailyOpsSection({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Star size={14} className="text-[#98b3ff]" />
-            <span className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">
+            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
               Top Matches
             </span>
           </div>
-          <p className="text-[12px] text-white/30 py-2">
+          <p className="text-[12px] text-[var(--text-soft)] py-2">
             No scored matches yet. Run a Radar search to surface opportunities.
           </p>
         </div>
@@ -87,16 +87,16 @@ export function DailyOpsSection({
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Clock size={14} className="text-[#f0d99f]" />
-          <span className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">
+          <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
             Due Actions
           </span>
           {dueActions.length > 0 && (
-            <span className="ml-auto text-[11px] text-white/30">{dueActions.length} due</span>
+            <span className="ml-auto text-[13px] text-[var(--text-soft)]">{dueActions.length} due</span>
           )}
         </div>
 
         {dueActions.length === 0 ? (
-          <p className="text-[12px] text-white/30 py-2">No upcoming actions due.</p>
+          <p className="text-[12px] text-[var(--text-soft)] py-2">No upcoming actions due.</p>
         ) : (
           <div className="space-y-2">
             {dueActions.map((action) => {
@@ -108,16 +108,16 @@ export function DailyOpsSection({
                 ? 'text-red-400/70'
                 : isDueToday
                   ? 'text-[#f0d99f]/70'
-                  : 'text-white/30';
+                  : 'text-[var(--text-soft)]';
 
               return (
                 <div key={action.id} className={cn('support-callout border p-3 transition-colors', cls)}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium text-white/75">
+                      <div className="text-[13px] font-medium text-[var(--text-muted)]">
                         {action.next_action}
                       </div>
-                      <div className="flex items-center gap-1 mt-0.5 text-[11px] text-white/35">
+                      <div className="flex items-center gap-1 mt-0.5 text-[13px] text-[var(--text-soft)]">
                         <Building2 size={10} />
                         {action.company_name}
                         <span>·</span>
@@ -126,7 +126,7 @@ export function DailyOpsSection({
                     </div>
                     <div
                       className={cn(
-                        'text-[11px] font-medium flex-shrink-0 tabular-nums',
+                        'text-[13px] font-medium flex-shrink-0 tabular-nums',
                         dueLabelClass,
                       )}
                     >
@@ -156,7 +156,7 @@ export function DailyOpsSection({
           </div>
           <div className="space-y-1">
             {staleApplications.map((app) => (
-              <div key={app.id} className="flex items-center gap-2 text-[11px] text-white/35">
+              <div key={app.id} className="flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
                 <Building2 size={10} />
                 <span className="truncate">
                   {app.role_title} at {app.company_name}
@@ -187,12 +187,12 @@ function StatMetric({
       : accent === 'amber'
         ? 'text-[#f0d99f]'
         : 'text-[#98b3ff]'
-    : 'text-white/70';
+    : 'text-[var(--text-muted)]';
 
   return (
-    <div className="border-l-2 border-white/[0.08] bg-white/[0.02] px-4 py-3">
+    <div className="border-l-2 border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
       <div className={cn('text-[18px] font-bold tabular-nums', valueClass)}>{value}</div>
-      <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/35">{label}</div>
+      <div className="mt-1 text-[13px] uppercase tracking-[0.14em] text-[var(--text-soft)]">{label}</div>
     </div>
   );
 }

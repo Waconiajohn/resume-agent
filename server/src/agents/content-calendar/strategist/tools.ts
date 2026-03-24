@@ -318,15 +318,23 @@ const mapAudienceInterestsTool: ContentCalendarTool = {
 
     const resumeData = state.resume_data;
     const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
     const targetContext = state.target_context;
     const positioningSection = renderPositioningStrategySection({
       heading: 'POSITIONING STRATEGY',
+      sharedStrategy: sharedContext?.positioningStrategy,
       legacyStrategy: platformContext?.positioning_strategy,
     }).join('\n');
-    const whyMeSection = renderWhyMeStorySection({
-      heading: 'WHY-ME STORY',
-      legacyWhyMeStory: platformContext?.why_me_story,
-    }).join('\n');
+    const narrativeLines = renderCareerNarrativeSection({
+      heading: 'WHY-ME / CAREER NARRATIVE',
+      sharedNarrative: sharedContext?.careerNarrative,
+    });
+    const whyMeSection = (narrativeLines.length > 0
+      ? narrativeLines
+      : renderWhyMeStorySection({
+          heading: 'WHY-ME STORY',
+          legacyWhyMeStory: platformContext?.why_me_story,
+        })).join('\n');
 
     const audiencePrompt = `Map the target audience for a LinkedIn content calendar for this executive.
 

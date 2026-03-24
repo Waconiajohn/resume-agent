@@ -39,18 +39,18 @@ function MomentumSkeleton() {
   return (
     <GlassCard className="p-5 flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 rounded-lg bg-white/[0.06] animate-pulse" />
-        <div className="h-7 w-16 bg-white/[0.06] rounded animate-pulse" />
-        <div className="h-4 w-20 bg-white/[0.04] rounded animate-pulse" />
+        <div className="h-8 w-8 rounded-lg bg-[var(--accent-muted)] animate-pulse" />
+        <div className="h-7 w-16 bg-[var(--accent-muted)] rounded animate-pulse" />
+        <div className="h-4 w-20 bg-[var(--accent-muted)] rounded animate-pulse" />
       </div>
       <div className="flex gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex-1 h-12 bg-white/[0.04] rounded-lg animate-pulse" />
+          <div key={i} className="flex-1 h-12 bg-[var(--accent-muted)] rounded-lg animate-pulse" />
         ))}
       </div>
       <div className="space-y-2">
-        <div className="h-4 w-3/4 bg-white/[0.04] rounded animate-pulse" />
-        <div className="h-4 w-1/2 bg-white/[0.04] rounded animate-pulse" />
+        <div className="h-4 w-3/4 bg-[var(--accent-muted)] rounded animate-pulse" />
+        <div className="h-4 w-1/2 bg-[var(--accent-muted)] rounded animate-pulse" />
       </div>
     </GlassCard>
   );
@@ -60,12 +60,12 @@ function MomentumSkeleton() {
 
 function MiniStat({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Zap }) {
   return (
-    <div className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-center">
+    <div className="flex-1 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-center">
       <div className="flex items-center justify-center gap-1 mb-1">
-        <Icon size={12} className="text-white/30" />
-        <span className="text-[10px] text-white/35 uppercase tracking-wide">{label}</span>
+        <Icon size={12} className="text-[var(--text-soft)]" />
+        <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wide">{label}</span>
       </div>
-      <div className="text-[18px] font-semibold text-white/75">{value}</div>
+      <div className="text-[18px] font-semibold text-[var(--text-muted)]">{value}</div>
     </div>
   );
 }
@@ -85,7 +85,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
     <GlassCard className="p-5 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-[14px] font-semibold text-white/80">Momentum</h3>
+        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Momentum</h3>
       </div>
 
       {/* Streak row */}
@@ -106,7 +106,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
             <span className={cn('text-[28px] font-bold leading-none', streakColor)}>
               {streak}
             </span>
-            <span className="text-[13px] text-white/45">day streak</span>
+            <span className="text-[13px] text-[var(--text-soft)]">day streak</span>
           </div>
         ) : (
           <span className="text-[13px] text-[#f0d99f]">Start your streak!</span>
@@ -123,13 +123,13 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
       {/* Recent wins */}
       {recentWins.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <div className="text-[11px] text-white/30 uppercase tracking-wide mb-0.5">Recent wins</div>
+          <div className="text-[13px] text-[var(--text-soft)] uppercase tracking-wide mb-0.5">Recent wins</div>
           {recentWins.map((win) => (
             <div key={win.id} className="flex items-center gap-2">
               <div className="rounded-full bg-[#b5dec2]/10 p-1 flex-shrink-0">
                 <Check size={11} className="text-[#b5dec2]" />
               </div>
-              <span className="text-[12px] text-white/55 leading-snug">
+              <span className="text-[12px] text-[var(--text-soft)] leading-snug">
                 {humanizeActivityType(win.activity_type)}
               </span>
             </div>

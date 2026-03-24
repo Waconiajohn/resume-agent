@@ -187,7 +187,7 @@ export function ResumeWorkshopRoom({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <div className="eyebrow-label">Job Workspaces</div>
-              <h2 className="mt-2 text-2xl text-white/92">Open saved tailored work only when you need the history view</h2>
+              <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Open saved tailored work only when you need the history view</h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                 This is the archive of saved tailored resumes and linked assets. It should be available, but it should not take over the Resume Builder landing page.
               </p>
@@ -224,7 +224,7 @@ export function ResumeWorkshopRoom({
                 <div className="eyebrow-label">
                   Cover Letter
                 </div>
-                <h2 className="mt-2 text-2xl text-white/92">Write the cover letter in the same workflow</h2>
+                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Write the cover letter in the same workflow</h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                   Start from your resume, target the current role, and keep the letter tied to the same job workspace.
                 </p>
@@ -256,7 +256,7 @@ export function ResumeWorkshopRoom({
                 <div className="eyebrow-label">
                   Master Resume
                 </div>
-                <h2 className="mt-2 text-2xl text-white/92">Keep your long-term resume clean, current, and reusable</h2>
+                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your long-term resume clean, current, and reusable</h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                   Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
                 </p>
@@ -313,20 +313,20 @@ function ResumeToolCard({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-3">
               <div className="eyebrow-label">{eyebrow}</div>
-              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[#afc4ff]/26 bg-[#afc4ff]/[0.12]' : 'border-white/[0.08] bg-white/[0.03]'}`}>
-                <Icon size={18} className={accent === 'primary' ? 'text-[#d8e3ff]' : 'text-white/70'} />
+              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[#afc4ff]/26 bg-[#afc4ff]/[0.12]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
+                <Icon size={18} className={accent === 'primary' ? 'text-[#d8e3ff]' : 'text-[var(--text-muted)]'} />
               </div>
             </div>
           </div>
 
-          <h2 className="mt-5 text-2xl text-white/92">{title}</h2>
-          <p className="mt-3 text-base leading-7 text-white/64">{description}</p>
+          <h2 className="mt-5 text-2xl text-[var(--text-strong)]">{title}</h2>
+          <p className="mt-3 text-base leading-7 text-[var(--text-soft)]">{description}</p>
         </div>
 
         <div className="space-y-4">
           <div className="support-callout px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Context</p>
-            <p className="mt-2 text-sm leading-6 text-white/68">{meta}</p>
+            <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Context</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{meta}</p>
           </div>
           <GlassButton variant={accent === 'primary' ? 'primary' : 'secondary'} onClick={onAction}>
             {actionLabel}

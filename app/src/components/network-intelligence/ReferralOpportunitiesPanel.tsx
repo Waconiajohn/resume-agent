@@ -53,7 +53,7 @@ export function ReferralOpportunitiesPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-sm text-white/40">Loading referral opportunities...</div>
+        <div className="text-sm text-[var(--text-soft)]">Loading referral opportunities...</div>
       </div>
     );
   }
@@ -77,11 +77,11 @@ export function ReferralOpportunitiesPanel() {
     return (
       <GlassCard className="p-8 text-center">
         <div className="text-3xl mb-3" aria-hidden="true">🤝</div>
-        <h3 className="text-base font-semibold text-white/80 mb-2">No Referral Opportunities Yet</h3>
-        <p className="text-sm text-white/45 max-w-md mx-auto leading-relaxed">
+        <h3 className="text-base font-semibold text-[var(--text-muted)] mb-2">No Referral Opportunities Yet</h3>
+        <p className="text-sm text-[var(--text-soft)] max-w-md mx-auto leading-relaxed">
           Referral opportunities appear when you have both job matches and connections at companies with referral bonus programs. To get started:
         </p>
-        <ul className="mt-4 text-xs text-white/40 space-y-1.5 max-w-sm mx-auto text-left">
+        <ul className="mt-4 text-xs text-[var(--text-soft)] space-y-1.5 max-w-sm mx-auto text-left">
           <li>1. Import your LinkedIn connections (Import tab)</li>
           <li>2. Run a job scan on your target companies (Job Scan tab)</li>
           <li>3. Opportunities will appear here automatically</li>
@@ -93,7 +93,7 @@ export function ReferralOpportunitiesPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-white/70">
+        <h3 className="text-sm font-semibold text-[var(--text-soft)]">
           {opportunities.length} Referral {opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}
         </h3>
         <button
@@ -110,21 +110,21 @@ export function ReferralOpportunitiesPanel() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-semibold text-white/90 truncate">{opp.job_title}</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-strong)] truncate">{opp.job_title}</h4>
                 {opp.match_score != null && (
                   <span className={cn(
-                    'flex-shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
+                    'flex-shrink-0 rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                     opp.match_score >= 80
                       ? 'bg-emerald-500/15 text-emerald-400/80 border-emerald-500/20'
                       : opp.match_score >= 60
                         ? 'bg-amber-500/15 text-amber-400/80 border-amber-500/20'
-                        : 'bg-white/[0.06] text-white/50 border-white/[0.1]',
+                        : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)]',
                   )}>
                     {opp.match_score}% match
                   </span>
                 )}
               </div>
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-[var(--text-soft)]">
                 {opp.company_name}{opp.job_location ? ` · ${opp.job_location}` : ''}
               </p>
             </div>
@@ -134,28 +134,28 @@ export function ReferralOpportunitiesPanel() {
                 <div className="text-xs font-medium text-emerald-400/80">
                   {opp.bonus_currency ?? 'USD'} {opp.bonus_amount}
                 </div>
-                <div className="text-[10px] text-white/35">referral bonus</div>
+                <div className="text-[12px] text-[var(--text-soft)]">referral bonus</div>
               </div>
             )}
           </div>
 
           {/* Connections at this company */}
-          <div className="mt-3 pt-3 border-t border-white/[0.06]">
-            <div className="text-[10px] font-medium text-white/40 uppercase tracking-wider mb-1.5">
+          <div className="mt-3 pt-3 border-t border-[var(--line-soft)]">
+            <div className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
               Your Connections ({opp.connection_count})
             </div>
             <div className="flex flex-wrap gap-1.5">
               {opp.connections.slice(0, 5).map((conn, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-medium text-white/60"
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--text-soft)]"
                 >
                   {conn.first_name} {conn.last_name}
-                  {conn.position && <span className="text-white/30">· {conn.position}</span>}
+                  {conn.position && <span className="text-[var(--text-soft)]">· {conn.position}</span>}
                 </span>
               ))}
               {opp.connections.length > 5 && (
-                <span className="inline-flex items-center rounded-md bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                <span className="inline-flex items-center rounded-md bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
                   +{opp.connections.length - 5} more
                 </span>
               )}
@@ -176,7 +176,7 @@ export function ReferralOpportunitiesPanel() {
                 href={opp.job_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 text-xs text-white/50 hover:text-white/70 hover:bg-white/[0.06] transition-all"
+                className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] px-3 py-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-1)] transition-all"
               >
                 View Job
               </a>

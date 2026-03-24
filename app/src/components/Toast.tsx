@@ -141,8 +141,8 @@ function ToastItem({
         // Layout
         'pointer-events-auto flex w-[calc(100vw-2rem)] sm:w-80 items-start gap-3 rounded-xl border px-4 py-3 shadow-lg',
         // Glass morphism
-        'bg-[#0d1117]/95 backdrop-blur-xl',
-        'border-white/[0.1]',
+        'bg-[var(--bg-1)]/95 backdrop-blur-xl',
+        'border-[var(--line-soft)]',
         // Left color accent
         accent.border,
         // Slide-in / slide-out transition
@@ -163,7 +163,7 @@ function ToastItem({
       <button
         type="button"
         onClick={handleDismiss}
-        className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:text-white/70"
+        className="shrink-0 rounded p-0.5 text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
         aria-label="Dismiss notification"
       >
         <X className="h-4 w-4" />

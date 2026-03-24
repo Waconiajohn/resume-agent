@@ -58,13 +58,13 @@ function SignalIndicator({ level }: { level: SignalLevel }) {
   const config: Record<SignalLevel, { color: string; label: string }> = {
     green: { color: 'bg-[#b5dec2]', label: 'Strong' },
     yellow: { color: 'bg-[#f0d99f]', label: 'Getting there' },
-    red: { color: 'bg-white/20', label: 'Not started' },
+    red: { color: 'bg-[var(--line-strong)]', label: 'Not started' },
   };
   const c = config[level];
   return (
     <div className="flex items-center gap-1.5">
       <div className={cn('h-2 w-2 rounded-full transition-colors duration-500', c.color)} />
-      <span className="text-[11px] text-white/40">{c.label}</span>
+      <span className="text-[13px] text-[var(--text-soft)]">{c.label}</span>
     </div>
   );
 }
@@ -83,7 +83,7 @@ function StepIndicator({ currentStep, signals }: { currentStep: number; signals:
                 ? 'bg-[#98b3ff]/20 text-[#98b3ff] ring-1 ring-[#98b3ff]/30'
                 : signals[signalKeys[i]] === 'green'
                   ? 'bg-[#b5dec2]/15 text-[#b5dec2]'
-                  : 'bg-white/[0.06] text-white/40',
+                  : 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
             )}
           >
             {signals[signalKeys[i]] === 'green' ? <Check size={14} /> : i + 1}
@@ -118,11 +118,11 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={16} className="text-[#98b3ff]" />
-              <span className="text-[11px] font-medium text-[#98b3ff] uppercase tracking-widest">
+              <span className="text-[13px] font-medium text-[#98b3ff] uppercase tracking-widest">
                 Career Profile
               </span>
             </div>
-            <p className="text-[13px] text-white/45">
+            <p className="text-[13px] text-[var(--text-soft)]">
               Three questions that sharpen the story every tool uses
             </p>
           </div>
@@ -132,12 +132,12 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
         {/* Current Prompt */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-white/90">
+            <h3 className="text-lg font-semibold text-[var(--text-strong)]">
               {step.question}
             </h3>
             <SignalIndicator level={signals[signalKeys[currentStep]]} />
           </div>
-          <p className="text-[13px] text-white/50 leading-relaxed mb-5">
+          <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-5">
             {step.context}
           </p>
 
@@ -146,23 +146,23 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
             onChange={(e) => onUpdate(step.field, e.target.value)}
             placeholder={step.placeholder}
             className={cn(
-              'w-full min-h-[160px] rounded-xl border bg-white/[0.03] px-4 py-3',
-              'text-[14px] text-white/85 placeholder:text-white/25 leading-relaxed',
+              'w-full min-h-[160px] rounded-xl border bg-[var(--accent-muted)] px-4 py-3',
+              'text-[14px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] leading-relaxed',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 transition-all duration-200 resize-y',
               signals[signalKeys[currentStep]] === 'green'
                 ? 'border-[#b5dec2]/20 focus:ring-[#b5dec2]/30 focus:border-[#b5dec2]/30'
-                : 'border-white/[0.1] focus:ring-[#98b3ff]/30 focus:border-[#98b3ff]/20',
+                : 'border-[var(--line-soft)] focus:ring-[#98b3ff]/30 focus:border-[#98b3ff]/20',
             )}
           />
 
           <div className="flex items-center justify-between mt-2">
-            <span className="text-[11px] text-white/30">
+            <span className="text-[13px] text-[var(--text-soft)]">
               {story[step.field].trim().length > 0
                 ? `${story[step.field].trim().length} characters`
                 : 'Take your time — there are no wrong answers'}
             </span>
             {story[step.field].trim().length > 0 && story[step.field].trim().length < 50 && (
-              <span className="text-[11px] text-[#f0d99f]">
+              <span className="text-[13px] text-[#f0d99f]">
                 A few more sentences will strengthen this
               </span>
             )}
@@ -170,13 +170,13 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between pt-4 border-t border-[var(--line-soft)]">
           <div>
             {canGoBack && (
               <button
                 type="button"
                 onClick={() => setCurrentStep((s) => s - 1)}
-                className="flex items-center gap-1.5 text-[13px] text-white/50 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               >
                 <ChevronLeft size={16} />
                 {STEPS[currentStep - 1].title}
@@ -195,7 +195,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
               <button
                 type="button"
                 onClick={() => setCurrentStep((s) => s + 1)}
-                className="flex items-center gap-1.5 text-[13px] text-white/50 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               >
                 {STEPS[currentStep + 1].title}
                 <ChevronRight size={16} />
@@ -205,7 +205,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
               <button
                 type="button"
                 onClick={onClose}
-                className="text-[12px] text-white/35 hover:text-white/50 transition-colors"
+                className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
               >
                 Skip for now
               </button>
