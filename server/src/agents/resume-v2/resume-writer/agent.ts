@@ -50,7 +50,8 @@ POSITION DECISIONS:
 - Recent + relevant positions (last 10 years, matches target): 5-8 strong bullets each
 - Recent + less relevant: 3-4 bullets, reframe for transferable skills
 - Older but highly relevant (10-15 years): 3-5 focused bullets
-- 15+ years ago: Earlier Career summary (company/title/dates) UNLESS it's deeply relevant
+- 15-20 years ago: 2-3 bullets if relevant, or scope statement only
+- 20+ years ago: "Additional Work Experience" section — title, company, city and state ONLY (no bullets, no dates)
 - NEVER remove a position if it creates an employment gap > 6 months
 
 PAGE LENGTH — Let content quality drive the length. Most executives need 1.5-2 pages.
@@ -496,10 +497,10 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
   ]).slice(0, 12);
 
   const currentYear = new Date().getFullYear();
-  const earlierCareerThresholdYear = currentYear - 15;
+  const earlierCareerThresholdYear = currentYear - 20;
   const allExperience = input.candidate.experience ?? [];
   // Positions 0-7 are always kept in professional_experience (up to 8 recent roles).
-  // Beyond index 7, keep in professional_experience only if end_date is within 15 years.
+  // Beyond index 7, move to "Additional Work Experience" only if end_date is 20+ years ago.
   // If end_date is unparseable, treat as recent to avoid hiding valid experience.
   const earlierCareer = allExperience.slice(8).filter((experience) => {
     const endYearMatch = experience.end_date?.match(/\b(\d{4})\b/);
@@ -508,7 +509,7 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
   }).map((experience) => ({
     company: experience.company,
     title: experience.title,
-    dates: `${experience.start_date}–${experience.end_date}`,
+    dates: '', // 20+ year old positions: title + company only, no dates
   }));
 
   return {

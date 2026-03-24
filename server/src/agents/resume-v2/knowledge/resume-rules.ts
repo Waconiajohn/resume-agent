@@ -74,10 +74,10 @@ Bullet counts are context-driven:
 
 Never pad bullets to meet a target count. Never cut strong evidence to hit an arbitrary limit.`,
 
-  earlier_career: `Company, title, dates only. No bullets.
-Never detail more than 20 years total.
-Condense 15-20 year old roles to one-liners.
-This section exists to show career progression without dating the candidate.`,
+  earlier_career: `Additional Work Experience — for positions 20+ years ago.
+Title, company, city and state only. No bullets. No dates.
+This section shows career foundation without dating the candidate.
+Only include positions that are 20+ years old.`,
 
   technical_skills: `Optional section for candidates with significant technical depth.
 Include only when the role warrants it and the candidate has genuine technical breadth.
