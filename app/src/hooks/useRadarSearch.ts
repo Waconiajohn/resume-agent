@@ -70,6 +70,7 @@ interface EnrichedResult {
     [key: string]: unknown;
   } | null;
   network_contacts: NetworkContact[];
+  referral_bonus?: Record<string, unknown> | null;
 }
 
 interface EnrichedResponse {
@@ -256,18 +257,30 @@ async function enrichJobsWithContacts(
         if (!data.results || data.results.length === 0) return jobs;
 
     const contactMap = new Map<string, NetworkContact[]>();
+    const referralMap = new Map<string, ReferralBonusInfo>();
     for (const result of data.results) {
       const extId = result.job_listings?.external_id;
-      if (extId && result.network_contacts.length > 0) {
-        contactMap.set(extId, result.network_contacts);
+      if (extId) {
+        if (result.network_contacts.length > 0) {
+          contactMap.set(extId, result.network_contacts);
+        }
+        const bonus = sanitizeReferralBonus(result.referral_bonus);
+        if (bonus) {
+          referralMap.set(extId, bonus);
+        }
       }
     }
 
-    if (contactMap.size === 0) return jobs;
+    if (contactMap.size === 0 && referralMap.size === 0) return jobs;
 
     return jobs.map((job) => {
       const contacts = contactMap.get(job.external_id);
-      return contacts ? { ...job, network_contacts: contacts } : job;
+      const bonus = referralMap.get(job.external_id);
+      return {
+        ...job,
+        ...(contacts ? { network_contacts: contacts } : {}),
+        ...(bonus ? { referral_bonus: bonus } : {}),
+      };
     });
   } catch {
     // Non-blocking — return original jobs on any failure

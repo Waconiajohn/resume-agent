@@ -20,9 +20,17 @@
 
 BEGIN;
 
--- Add unique constraint needed for seeder upsert on company_id
-ALTER TABLE referral_bonus_programs
-  ADD CONSTRAINT uq_referral_bonus_programs_company_id UNIQUE (company_id);
+-- Add unique constraint needed for seeder upsert on company_id (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_referral_bonus_programs_company_id'
+  ) THEN
+    ALTER TABLE referral_bonus_programs
+      ADD CONSTRAINT uq_referral_bonus_programs_company_id UNIQUE (company_id);
+  END IF;
+END
+$$;
 
 -- Add columns for rich referral data
 ALTER TABLE referral_bonus_programs
