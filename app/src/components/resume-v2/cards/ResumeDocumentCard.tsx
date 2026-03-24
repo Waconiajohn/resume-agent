@@ -21,7 +21,7 @@ interface ResumeDocumentCardProps {
   onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
   /** Inline suggestions to render directly in the document */
   inlineSuggestions?: InlineSuggestion[];
-  onAcceptSuggestion?: (id: string) => void;
+  onAcceptSuggestion?: (id: string, editedText?: string) => void;
   onRejectSuggestion?: (id: string) => void;
   /** The id of the suggestion currently being focused/reviewed */
   currentSuggestionId?: string | null;
@@ -206,7 +206,7 @@ export function ResumeDocumentCard({
                       suggestionDataIndex={suggestionDataIdx}
                       totalSuggestions={totalSuggestions}
                     />
-                  ) : onBulletClick ? (
+                  ) : onBulletClick && !a.is_new ? (
                     <span
                       role="button"
                       tabIndex={0}
@@ -222,11 +222,9 @@ export function ResumeDocumentCard({
                         }
                       }}
                       className={
-                        a.is_new
-                          ? 'text-green-600 cursor-pointer rounded-md px-2 py-0.5 -mx-2 hover:bg-green-50 transition-colors focus-visible:ring-1 focus-visible:ring-green-400/60 focus-visible:outline-none'
-                          : isActive
-                            ? 'ring-2 ring-blue-300/40 rounded-lg bg-blue-50/40 px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200 text-gray-800'
-                            : 'hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none text-gray-800'
+                        isActive
+                          ? 'ring-2 ring-blue-300/40 rounded-lg bg-blue-50/40 px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200 text-gray-800'
+                          : 'hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none text-gray-800'
                       }
                     >
                       {a.content}
@@ -321,7 +319,7 @@ export function ResumeDocumentCard({
                             suggestionDataIndex={suggestionDataIdx}
                             totalSuggestions={totalSuggestions}
                           />
-                        ) : onBulletClick ? (
+                        ) : onBulletClick && !bullet.is_new ? (
                           <span
                             role="button"
                             tabIndex={0}
@@ -337,11 +335,9 @@ export function ResumeDocumentCard({
                               }
                             }}
                             className={
-                              bullet.is_new
-                                ? 'text-green-600 cursor-pointer rounded-md px-2 py-0.5 -mx-2 hover:bg-green-50 transition-colors focus-visible:ring-1 focus-visible:ring-green-400/60 focus-visible:outline-none'
-                                : isActive
-                                  ? 'ring-2 ring-blue-300/40 rounded-lg bg-blue-50/40 px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200 text-gray-800'
-                                  : 'hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none text-gray-800'
+                              isActive
+                                ? 'ring-2 ring-blue-300/40 rounded-lg bg-blue-50/40 px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200 text-gray-800'
+                                : 'hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none text-gray-800'
                             }
                           >
                             {bullet.text}
@@ -434,7 +430,7 @@ interface BulletWithSuggestionProps {
   isPopoverOpen: boolean;
   onOpenPopover: () => void;
   onClosePopover: () => void;
-  onAcceptSuggestion?: (id: string) => void;
+  onAcceptSuggestion?: (id: string, editedText?: string) => void;
   onRejectSuggestion?: (id: string) => void;
   requirements: string[];
   /** 1-based sequential number for this suggestion across the whole document */
@@ -510,7 +506,9 @@ function BulletWithSuggestion({
         className="inline transition-colors duration-300"
       >
         <NumberBadge />
-        <span className="text-gray-800 transition-colors duration-300">{suggestion.suggestedText}</span>
+        <span className="text-gray-800 transition-colors duration-300">
+          {suggestion.acceptedText ?? suggestion.suggestedText}
+        </span>
       </span>
     );
   }
@@ -566,8 +564,8 @@ function BulletWithSuggestion({
           requirements={requirements}
           suggestionNumber={suggestionNumber}
           totalSuggestions={totalSuggestions}
-          onAccept={() => {
-            onAcceptSuggestion?.(suggestion.id);
+          onAccept={(editedText) => {
+            onAcceptSuggestion?.(suggestion.id, editedText);
             onClosePopover();
           }}
           onReject={() => {
@@ -587,7 +585,7 @@ function BulletWithSuggestion({
 interface SuggestionPopoverProps {
   suggestion: InlineSuggestion;
   requirements: string[];
-  onAccept: () => void;
+  onAccept: (editedText: string) => void;
   onReject: () => void;
   onClose: () => void;
   suggestionNumber?: number;
@@ -697,7 +695,7 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
       <div className="flex items-center gap-2 flex-wrap pt-0.5">
         <button
           type="button"
-          onClick={onAccept}
+          onClick={() => onAccept(editedText)}
           className="rounded-md bg-green-500/15 border border-green-500/30 px-4 py-1.5 text-xs font-medium text-green-700 hover:bg-green-500/25 transition-colors"
         >
           Accept

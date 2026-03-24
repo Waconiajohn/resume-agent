@@ -21,7 +21,7 @@ export interface InlineSuggestionsHook {
   containerRef: RefObject<HTMLDivElement | null>;
   currentSuggestionIndex: number;
   setCurrentSuggestionIndex: (index: number) => void;
-  accept: (id: string) => void;
+  accept: (id: string, editedText?: string) => void;
   reject: (id: string) => void;
   undo: (id: string) => void;
   scrollToNext: () => void;
@@ -79,9 +79,13 @@ export function useInlineSuggestions(): InlineSuggestionsHook {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const accept = useCallback(
-    (id: string) => {
+    (id: string, editedText?: string) => {
       setSuggestions((prev) => {
-        const updated = prev.map((s) => (s.id === id ? { ...s, status: 'accepted' as const } : s));
+        const updated = prev.map((s) =>
+          s.id === id
+            ? { ...s, status: 'accepted' as const, ...(editedText !== undefined ? { acceptedText: editedText } : {}) }
+            : s,
+        );
         const idx = prev.findIndex((s) => s.id === id);
         if (idx >= 0) {
           // Schedule advance after state settles

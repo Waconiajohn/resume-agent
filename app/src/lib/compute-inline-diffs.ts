@@ -21,6 +21,8 @@ export interface InlineSuggestion {
   changeType: 'addition' | 'replacement' | 'deletion';
   rationale: string;
   status: 'pending' | 'accepted' | 'rejected';
+  /** The text that was confirmed when the user accepted (may differ from suggestedText if they edited it). */
+  acceptedText?: string;
 }
 
 export interface DiffSegment {
