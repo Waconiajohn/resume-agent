@@ -148,7 +148,13 @@ RULES:
 - evidence: keep evidence arrays compact — use at most 2 short strings per requirement.
 - source_evidence: keep it short and specific, ideally under 12 words.
 - If you do not have a concrete evidence snippet, leave evidence empty instead of inventing one.
-- positioning must be a resume-ready line or bullet fragment, not a label or instruction. Never output phrases like "related metrics expertise" or "use X to strengthen Y".
+- positioning must be a SPECIFIC, evidence-backed resume bullet — not a generic capability statement.
+  BAD: "Proven ability to ensure regulatory compliance" (generic, could describe anyone)
+  BAD: "Related experience in safety and compliance" (label, not a bullet)
+  BAD: "Strong track record of operational excellence" (meaningless filler)
+  GOOD: "Ensured regulatory compliance across multi-rig operations in the Delaware Basin and Eagle Ford Shale by implementing structured pre-tour safety briefings, hazard identification protocols, and BHP operating system standards"
+  GOOD: "Drove $3M+ cost reduction through insulated drill pipe implementation, reducing BHA failures from 2.0 to 1.6 per lateral"
+  The positioning MUST reference specific details from the candidate's actual resume: company names, locations, team sizes, tools, methodologies, and outcomes. If you cannot write a specific bullet, leave positioning empty rather than writing a generic one.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
