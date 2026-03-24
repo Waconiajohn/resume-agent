@@ -34,8 +34,23 @@ import type {
   GapAnalysisOutput,
   ApprovedStrategy,
   GapPlacementTarget,
+  GapCoachingResponse,
 } from './types.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+
+/**
+ * Pending gap-question resolvers, keyed by session_id.
+ *
+ * When the pipeline emits `gap_questions` and pauses, it registers a resolver
+ * here. The `/respond-gaps` route finds the resolver by session_id, calls it
+ * with the user's responses, and the pipeline continues.
+ *
+ * The Map entry is removed once the resolver is called.
+ */
+export const pendingGapResolvers = new Map<
+  string,
+  (responses: GapCoachingResponse[]) => void
+>();
 
 export type EmitFn = (event: V2PipelineSSEEvent) => void;
 
@@ -170,48 +185,89 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       emit({ type: 'gap_coaching', data: coachingCards });
     }
 
+    // ─── Gap Question Gate ────────────────────────────────────────────
     // Determine the effective approved strategies for downstream agents.
     //
-    // Three cases:
+    // Four cases:
     // 1. "Add Context" re-run — caller passes previously approved strategies via options.approved_strategies.
-    // 2. Gap coaching responses — user approved/skipped/provided context for each strategy.
-    // 3. First run — pending_strategies are implicitly approved by default.
+    // 2. Gap coaching responses supplied at call time (legacy re-run path).
+    // 3. Non-strong gaps present AND no pre-supplied responses → emit gap_questions and PAUSE.
+    // 4. No gaps → implicit approval of all pending strategies.
     let allApproved: ApprovedStrategy[];
 
     if (state.approved_strategies.length > 0) {
       // Case 1: Re-run with pre-approved strategies
       allApproved = state.approved_strategies;
     } else if (options.gap_coaching_responses && options.gap_coaching_responses.length > 0) {
-      // Case 2: User responded to gap coaching
+      // Case 2: Responses supplied at call time — apply them directly
       state.gap_coaching_responses = options.gap_coaching_responses;
-      allApproved = [];
-      for (const response of options.gap_coaching_responses) {
-        const ps = gapAnalysis.pending_strategies.find(s => s.requirement === response.requirement);
-        if (!ps) continue;
+      allApproved = buildApprovedStrategies(options.gap_coaching_responses, gapAnalysis);
+    } else if (gapAnalysis.pending_strategies.length > 0) {
+      // Case 3: Non-strong gaps present — emit questions and pause for user input
+      //
+      // Priority order: critical > must_have > important > nice_to_have / supporting
+      const importanceOrder: Record<string, number> = {
+        must_have: 0,
+        critical: 0,
+        important: 1,
+        nice_to_have: 2,
+        supporting: 2,
+      };
 
-        if (response.action === 'approve') {
-          allApproved.push({
-            ...ps,
-            target_section: response.target_section,
-            target_company: response.target_company,
+      const rankedGaps = gapAnalysis.pending_strategies
+        .map(ps => {
+          const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
+          return { ps, req };
+        })
+        .filter(({ req }) => req && req.classification !== 'strong')
+        .sort((a, b) => {
+          const aOrder = importanceOrder[a.req?.importance ?? 'supporting'] ?? 2;
+          const bOrder = importanceOrder[b.req?.importance ?? 'supporting'] ?? 2;
+          return aOrder - bOrder;
+        })
+        .slice(0, 8);
+
+      if (rankedGaps.length > 0) {
+        emit({
+          type: 'gap_questions',
+          data: {
+            questions: rankedGaps.map(({ ps, req }) => ({
+              id: ps.requirement,
+              requirement: ps.requirement,
+              importance: (req?.importance === 'must_have' ? 'critical' : req?.importance === 'nice_to_have' ? 'supporting' : 'important') as 'critical' | 'important' | 'supporting',
+              classification: (req?.classification ?? 'partial') as 'partial' | 'missing',
+              question: ps.strategy.interview_questions?.[0]?.question ?? `Can you provide evidence for: ${ps.requirement}?`,
+              context: ps.strategy.ai_reasoning ?? `Your background may have relevant experience for "${ps.requirement}".`,
+              currentEvidence: req?.evidence ?? [],
+            })),
+          },
+        });
+
+        // Pause until respond-gaps resolves the promise
+        const userResponses = await new Promise<GapCoachingResponse[]>((resolve) => {
+          pendingGapResolvers.set(options.session_id, (responses) => {
+            pendingGapResolvers.delete(options.session_id);
+            resolve(responses);
           });
-        } else if (response.action === 'context' && response.user_context) {
-          // User provided additional context — enrich the strategy and carry placement
-          allApproved.push({
-            requirement: ps.requirement,
-            strategy: {
-              ...ps.strategy,
-              real_experience: `${ps.strategy.real_experience}. Additional context from candidate: ${response.user_context}`,
-            },
-            target_section: response.target_section,
-            target_company: response.target_company,
-          });
-        }
-        // 'skip' — not included in allApproved
+
+          // If the pipeline is aborted while waiting, clean up and resolve with empty
+          signal?.addEventListener('abort', () => {
+            if (pendingGapResolvers.has(options.session_id)) {
+              pendingGapResolvers.delete(options.session_id);
+              resolve([]);
+            }
+          }, { once: true });
+        });
+
+        state.gap_coaching_responses = userResponses;
+        allApproved = buildApprovedStrategies(userResponses, gapAnalysis);
+      } else {
+        // All pending strategies are already classified as strong
+        allApproved = gapAnalysis.pending_strategies;
       }
     } else {
-      // Case 3: First run — implicit approval (no placement specified)
-      allApproved = gapAnalysis.pending_strategies;
+      // Case 4: No pending strategies
+      allApproved = [];
     }
 
     const narrative = await runNarrativeStrategy({
@@ -343,6 +399,43 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
   } finally {
     stopUsageTracking(options.session_id);
   }
+}
+
+function buildApprovedStrategies(
+  responses: Array<{
+    requirement: string;
+    action: 'approve' | 'context' | 'skip';
+    user_context?: string;
+    target_section?: GapPlacementTarget;
+    target_company?: string;
+  }>,
+  gapAnalysis: GapAnalysisOutput,
+): ApprovedStrategy[] {
+  const approved: ApprovedStrategy[] = [];
+  for (const response of responses) {
+    const ps = gapAnalysis.pending_strategies.find(s => s.requirement === response.requirement);
+    if (!ps) continue;
+
+    if (response.action === 'approve') {
+      approved.push({
+        ...ps,
+        target_section: response.target_section,
+        target_company: response.target_company,
+      });
+    } else if (response.action === 'context' && response.user_context) {
+      approved.push({
+        requirement: ps.requirement,
+        strategy: {
+          ...ps.strategy,
+          real_experience: `${ps.strategy.real_experience}. Additional context from candidate: ${response.user_context}`,
+        },
+        target_section: response.target_section,
+        target_company: response.target_company,
+      });
+    }
+    // 'skip' — excluded from approved list
+  }
+  return approved;
 }
 
 function calculateEstimatedCost(usage: { input_tokens: number; output_tokens: number }): number {

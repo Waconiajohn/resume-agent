@@ -29,6 +29,8 @@ import { ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { SuggestionsBadge } from './SuggestionsBadge';
 import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
+import { GapQuestionFlow, coachingCardsToQuestions, questionResponsesToCoachingResponses } from './GapQuestionFlow';
+import type { GapQuestionResponse } from './GapQuestionFlow';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -627,6 +629,38 @@ export function V2StreamingDisplay({
     requirements: string[];
   } | null>(null);
 
+  // ── Gap question flow ─────────────────────────────────────────────────────
+  // When gapCoachingCards arrive during processing (no resume yet), show the
+  // one-at-a-time question flow. Track whether the user has already submitted.
+  const [gapQuestionsSubmitted, setGapQuestionsSubmitted] = useState(false);
+
+  // Reset the submitted flag when a new pipeline run starts (gapCoachingCards
+  // goes back to null as part of INITIAL_DATA reset in useV2Pipeline).
+  const prevGapCoachingCardsRef = useRef(gapCoachingCards);
+  useEffect(() => {
+    if (prevGapCoachingCardsRef.current !== null && gapCoachingCards === null) {
+      setGapQuestionsSubmitted(false);
+    }
+    prevGapCoachingCardsRef.current = gapCoachingCards;
+  }, [gapCoachingCards]);
+
+  const gapQuestions = useMemo(
+    () => (gapCoachingCards ? coachingCardsToQuestions(gapCoachingCards) : []),
+    [gapCoachingCards],
+  );
+
+  const handleGapQuestionsComplete = useCallback(
+    (questionResponses: GapQuestionResponse[]) => {
+      setGapQuestionsSubmitted(true);
+      const coachingResponses = questionResponsesToCoachingResponses(
+        questionResponses,
+        gapQuestions,
+      );
+      onRespondGapCoaching(coachingResponses);
+    },
+    [gapQuestions, onRespondGapCoaching],
+  );
+
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
 
@@ -1011,8 +1045,17 @@ export function V2StreamingDisplay({
           <OriginalScoresCard preScores={data.preScores} />
         )}
 
-        {/* Staged processing viewer — replaces thin progress bar */}
-        <StagedProcessingViewer stage={data.stage} isComplete={isComplete} />
+        {/* Gap question flow — shown when coaching cards arrive, before resume generation.
+            Replaces the staged processing viewer while questions are pending. */}
+        {gapQuestions.length > 0 && !gapQuestionsSubmitted ? (
+          <GapQuestionFlow
+            questions={gapQuestions}
+            onComplete={handleGapQuestionsComplete}
+          />
+        ) : (
+          /* Staged processing viewer — replaces thin progress bar */
+          <StagedProcessingViewer stage={data.stage} isComplete={isComplete} />
+        )}
       </div>
     </div>
   );

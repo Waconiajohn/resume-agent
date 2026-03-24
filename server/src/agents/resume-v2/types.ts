@@ -609,6 +609,23 @@ export interface V2PipelineState {
   };
 }
 
+// ─── Gap Questions (gate emitted before writing, requires user responses) ──
+
+export interface GapQuestion {
+  /** Unique identifier — equal to the requirement string */
+  id: string;
+  requirement: string;
+  importance: 'critical' | 'important' | 'supporting';
+  /** Only 'partial' or 'missing' gaps are gated */
+  classification: 'partial' | 'missing';
+  /** The targeted question surfaced from gap analysis */
+  question: string;
+  /** AI reasoning explaining why this gap matters and what the question is probing */
+  context: string;
+  /** Evidence already found on the resume for this requirement */
+  currentEvidence: string[];
+}
+
 // ─── SSE Events for v2 Pipeline ──────────────────────────────────────
 
 export type V2PipelineSSEEvent =
@@ -620,6 +637,7 @@ export type V2PipelineSSEEvent =
   | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_analysis'; data: GapAnalysisOutput }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
+  | { type: 'gap_questions'; data: { questions: GapQuestion[] } }
   | { type: 'narrative_strategy'; data: NarrativeStrategyOutput }
   | { type: 'resume_draft'; data: ResumeDraftOutput }
   | { type: 'verification_complete'; data: {

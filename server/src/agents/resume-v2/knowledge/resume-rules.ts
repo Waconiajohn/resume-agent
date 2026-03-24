@@ -1,8 +1,9 @@
 /**
  * Resume Writing Rules Knowledge Base
  *
- * Structured data encoding the executive resume rulebook from the
- * design blueprint. Agents consume these rules in their prompts.
+ * Comprehensive executive resume rulebook — the definitive ruleset for the
+ * resume-v2 pipeline. Every agent that produces or evaluates resume content
+ * consumes these rules via getResumeRulesPrompt().
  *
  * Sources: Perplexity research (owner-endorsed), coaching methodology,
  * executive resume writing best practices for ages 45-60.
@@ -11,13 +12,21 @@
 // ─── Document Format ─────────────────────────────────────────────────
 
 export const DOCUMENT_FORMAT = {
-  // Page length is driven by content quality, not a fixed number. Most executives: 1.5-2 pages.
-  // Never pad to fill space. Never compress quality content to hit an arbitrary limit.
-  // C-suite with 20+ year careers may require 2.5-3 pages when the evidence demands it.
+  /**
+   * Page length is driven by content quality, not a fixed number.
+   * Target 2 pages for most executives. 3 pages is acceptable for C-suite
+   * candidates with 20+ year careers when the evidence genuinely demands it.
+   * Never pad to fill space. Never compress quality content to hit an
+   * arbitrary limit. Every line must earn its place.
+   */
+  page_guidance: 'Target 2 pages for executives. 3 pages acceptable for C-suite with 20+ year careers when evidence demands it. Never pad. Never cut quality content for an arbitrary limit.',
   layout: 'single-column' as const,
   style: 'reverse-chronological' as const,
+  fonts: 'Standard professional fonts only — Calibri, Garamond, Georgia, or Times New Roman. No decorative fonts.',
+  graphics: 'No tables, graphics, text boxes, headers/footers, or columns. ATS systems cannot parse them.',
+  headings: 'Standard section headings: Professional Experience, Education, Core Competencies, etc.',
   primary_export: 'docx' as const,
-  rationale: 'ATS systems parse single-column DOCX most reliably. Page count follows content quality — typically 1.5-2 pages for mid-level executives.',
+  rationale: 'ATS systems parse single-column DOCX most reliably. Page count follows content quality — typically 2 pages for executives, 3 for C-suite.',
 };
 
 // ─── Section Order ───────────────────────────────────────────────────
@@ -28,9 +37,10 @@ export const SECTION_ORDER = [
   'core_competencies',
   'selected_accomplishments',
   'professional_experience',
-  'earlier_career',
   'technical_skills',
+  'earlier_career',
   'education',
+  'certifications',
 ] as const;
 
 export type ResumeSection = typeof SECTION_ORDER[number];
@@ -40,56 +50,79 @@ export type ResumeSection = typeof SECTION_ORDER[number];
 export const SECTION_RULES: Record<ResumeSection, string> = {
   header: `Name, phone, email, LinkedIn URL, branded title line.
 The branded title targets the role you WANT, not the one you have.
-Example: "Enterprise Transformation Leader | Cloud & Digital Strategy | P&L Ownership to $50M"`,
+Example: "Enterprise Transformation Leader | Cloud & Digital Strategy | P&L Ownership to $50M"
+No street address. Phone, email, and LinkedIn only.`,
 
-  executive_summary: `3-5 lines (60-100 words). Structure:
-1. Opening pitch line — who you are + what you bring
-2. Scale indicators — team size, budget, geography, revenue
-3. 1-2 marquee accomplishments — your best quantified hits
-No generic phrases. No "results-oriented leader" garbage.
-Write in first person without using "I". Start with action verbs or descriptive phrases.`,
+  executive_summary: `3-5 sentences (60-100 words). Structure:
+1. Brand statement — who you are, what you own, what makes you different
+2. Name the specific role you are targeting — directly, not generically
+3. 2-3 quantified accomplishments that prove the brand statement
+No generic phrases. The first sentence must establish identity and positioning, not adjectives.
+Write in first person without using "I". Start with action verbs or descriptive phrases.
+Altitude: every sentence should sound like a VP or C-suite candidate wrote it.
 
-  core_competencies: `9-12 hard skills and strategic themes.
-Mirror JD keywords directly. Include digital/AI fluency signal where truthful.
-Format: 3-4 columns of skills, grouped by theme.
-These are the ATS keyword magnets — they should match the JD language closely.`,
+BANNED PHRASES IN SUMMARY (never use):
+- "results-oriented leader" / "results-driven professional"
+- "motivated professional" / "dynamic team player"
+- "proven track record" / "extensive experience"
+- "strong communication skills" / "excellent interpersonal skills"
+- "passionate about" / "dedicated to"
+- "seasoned professional" / "accomplished leader"`,
 
-  selected_accomplishments: `3-6 quantified career highlights.
-Format: Action Verb + What You Did + Measurable Result.
+  core_competencies: `12-18 keywords and strategic themes.
+Use EXACT phrases from the job description — this is the ATS keyword magnet section.
+No soft skills ("leadership," "communication," "teamwork") — only domain skills and strategic capabilities.
+Group by category if applicable: Technical, Leadership, Domain, Functional.
+Include AI/digital fluency signal where truthful.
+Format: 3-4 columns of skills, or grouped thematic lines.`,
+
+  selected_accomplishments: `3-6 career highlights that directly address the top JD requirements.
+Each must be substantial, specific, and quantified — the "proof points" that make the candidate undeniable.
+Format: Strong Action Verb + What You Did (with context) + Measurable Result.
+Every accomplishment must have at least one metric (money, time, volume, or scope).
 Prioritized by relevance to target role, not chronology.
-Every accomplishment must have at least one metric (money, time, volume, or scope).`,
+These are the achievements that stop a hiring manager from moving to the next resume.`,
 
-  professional_experience: `Reverse-chronological. Last 10-15 years in detail.
-Each role: Company, Title, Dates, Location.
-Scope statement above bullets (team size, budget, geography, P&L).
-CAR method (Challenge, Action, Result).
-Quantify across 4 categories: money, time, volume, scope.
-1-2 lines per bullet. Start every bullet with a strong action verb.
+  professional_experience: `Reverse-chronological. Last 10-15 years in full detail.
+Each role: Company | Title | Dates | Location.
+Scope statement above bullets: team size, budget, geography, P&L responsibility.
+Bullet format: Action Verb + Context + Quantified Result (70% of bullets must have metrics).
 
-Bullet counts are context-driven:
-- Most recent/relevant positions: 5-8 bullets
-- Mid-career positions: 3-5 bullets
-- Older positions: 2-3 bullets
-- Earlier career summary: company/title/dates only
+BULLET COUNT — JD-relevance governs, not minimums:
+- Most recent / most relevant positions: write as many bullets as strong evidence supports
+- A useful ceiling is approximately 1-2 bullets per year held in the role
+- Other recent relevant positions: proportional to available strong evidence
+- Older but still relevant (10-15 years): focus only on the strongest accomplishments
+- 15-20 years ago: brief, reframe for transferable skills, scope statement if role was senior
+- Never pad bullets to meet a count target
+- Never cut strong evidence to reduce length
+- 20+ years ago: "Additional Work Experience" section — title, company, city/state only, no bullets, no dates
 
-Never pad bullets to meet a target count. Never cut strong evidence to hit an arbitrary limit.`,
+Strong action verbs: Drove, Championed, Orchestrated, Spearheaded, Transformed, Architected, Scaled, Delivered, Directed, Built, Negotiated, Launched
+BANNED bullet openers: "Responsible for," "Helped," "Assisted," "Supported," "Participated in," "Worked on"`,
 
-  earlier_career: `Additional Work Experience — for positions 20+ years ago.
+  technical_skills: `Optional — include only when the role specifically values technical depth.
+Domain-specific tools, platforms, and technologies grouped by category.
+Example categories: Cloud Platforms, Data & Analytics, ERP/CRM Systems, Programming Languages, Security.
+Do not include basic tools (Word, Excel, PowerPoint) unless the role explicitly requires them.
+Omit this section entirely if the candidate lacks genuine technical breadth relevant to the target role.`,
+
+  earlier_career: `Additional Work Experience — for positions 20+ years old.
 Title, company, city and state only. No bullets. No dates.
-This section shows career foundation without dating the candidate.
-Only include positions that are 20+ years old.`,
+This section shows career foundation without revealing age or dating the candidate.
+Only include positions whose end_date is 20+ years before the current year.
+Never include dates in this section.`,
 
-  technical_skills: `Optional section for candidates with significant technical depth.
-Include only when the role warrants it and the candidate has genuine technical breadth.
-Format: category label followed by specific tools/technologies.
-Example categories: Cloud Platforms, Data & Analytics, ERP/CRM Systems, Programming Languages.
-Do not include basic tools (Word, Excel) unless the role specifically values them.`,
+  education: `Degree and institution.
+No graduation year for degrees earned 20+ years ago (suppresses age signal).
+No high school.
+Relevant coursework and honors only if they directly support the target role.`,
 
-  education: `Degree, institution. No graduation dates for candidates 45+.
-No high school. Certifications listed separately below education.
-ONLY include certifications that are relevant to the job being applied to.
-Omit outdated, expired, or unrelated certifications entirely.
-Professional development and relevant training can be included if they support the target role.`,
+  certifications: `ONLY certifications that are: (1) active/current, (2) relevant to the target role.
+Omit expired certifications entirely.
+Omit certifications unrelated to the target role — even if impressive in other contexts.
+List format: Certification Name — Issuing Body (Year if recent, otherwise omit).
+When in doubt, omit. A sparse, relevant list beats a cluttered, irrelevant one.`,
 };
 
 // ─── Writing Rules ───────────────────────────────────────────────────
@@ -97,62 +130,66 @@ Professional development and relevant training can be included if they support t
 export const WRITING_RULES = `## Resume Writing Rules
 
 VOICE:
-- Never say "responsible for" — start with strong action verbs
-- Speak like a leader: "drove," "championed," "orchestrated," "influenced," "spearheaded"
-- Never use: "helped," "assisted," "supported," "participated in"
-- Authentic voice beats resume-speak — echo the candidate's actual language where possible
+- Strong past-tense action verbs for all prior roles; present tense for current role
+- Speak like a leader: "drove," "championed," "orchestrated," "influenced," "spearheaded," "transformed"
+- Never use: "responsible for," "helped," "assisted," "supported," "participated in," "worked on"
+- Authentic voice beats resume-speak — echo the candidate's actual language when it is strong
+- Preserve specific domain terminology; generic rewrites destroy credibility
 - Write for humans first, ATS second
+
+BANNED BULLET PATTERNS (rewrite any bullet that opens with these):
+- "Responsible for..."
+- "Assisted with..." / "Helped achieve..."
+- "Participated in..." / "Worked on..."
+- "Supported the..." / "Contributed to..."
+- "Member of..." / "Part of the team that..."
+- "Duties included..."
+
+BANNED SUMMARY PHRASES (never appear anywhere in the resume):
+- "results-oriented" / "results-driven"
+- "proven leader" / "proven track record"
+- "motivated professional" / "dynamic team player"
+- "detail-oriented" / "self-starter" / "go-getter"
+- "think outside the box" / "synergy"
+- "fast-paced environment"
+- "excellent communication skills"
+- "references available upon request"
+- "objective statement" (use executive summary instead)
+- "leverage" / "utilize" (use "use" or "apply")
 
 IMPACT:
 - Every bullet shows impact, not just activity
-- Prefer metrics across 4 categories: money ($), time (%), volume (#), scope (geography/teams)
+- 70% or more of all bullets must have at least one metric
+- Metric types for executives: money ($), time reduction (%), volume (#), scope (teams/geography/revenue)
 - "Led $2.4M cost reduction" beats "Reduced costs significantly"
-- If no exact metric, infer conservatively from scope (back off 10-20% from the math)
+- If no exact metric exists, infer conservatively from scope (back off 10-20% from the math)
+  Example: team of 40 × $85K avg = $3.4M → write "$3M+ payroll budget"
 
 STRUCTURE:
-- CAR method: Challenge → Action → Result
+- Action + Context + Result (not just Action + Activity)
 - 1-2 lines per bullet, max
-- Front-load the most impressive metric in each bullet
-- Use consistent tense: past tense for previous roles, present tense for current role
+- Front-load the most impressive metric or outcome in each bullet
+
+PROVENANCE RULE:
+- Every claim must trace to source data in the original resume or explicit user-provided context
+- Never fabricate metrics the candidate cannot defend in an interview
+- Creative positioning and strategic framing are encouraged — fabrication is prohibited
+- Mark all AI-enhanced content with is_new: true
 
 KEYWORDS:
-- Mirror JD language naturally — don't keyword-stuff
+- Mirror exact JD language naturally — do not keyword-stuff
 - Place critical keywords in summary, competencies, AND experience bullets
-- Use both the acronym and spelled-out version where space allows (e.g., "Customer Relationship Management (CRM)")`;
-
-// ─── Banned Phrases ──────────────────────────────────────────────────
-
-export const BANNED_PHRASES = [
-  'results-oriented leader',
-  'results-driven professional',
-  'motivated professional',
-  'dynamic team player',
-  'proven track record',
-  'responsible for',
-  'helped',
-  'assisted',
-  'supported',
-  'participated in',
-  'team player',
-  'go-getter',
-  'think outside the box',
-  'synergy',
-  'leverage',
-  'utilize',
-  'fast-paced environment',
-  'detail-oriented',
-  'self-starter',
-  'references available upon request',
-  'objective statement',
-];
+- Spell out acronyms on first use: "Customer Relationship Management (CRM)"
+- Aim for 15-25 keywords from the JD distributed across the document
+- Primary keywords should appear in at least 2 distinct sections`;
 
 // ─── Age-Proofing Rules (Critical for 45-60) ────────────────────────
 //
 // AGE_AWARENESS_RULES from shared-knowledge.ts is the platform-wide canonical
 // version used by cover-letter, executive-bio, and other agents.
-// AGE_PROOFING_RULES here is the resume-specific superset that includes the
-// "USE" section (template/formatting guidance). Both are kept in sync on
-// the shared principles; resume-specific additions live here only.
+// AGE_PROOFING_RULES here is the resume-specific superset that adds
+// the "USE" section (template/formatting guidance). Both are kept in sync
+// on the shared principles; resume-specific additions live here only.
 
 import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
 export { AGE_AWARENESS_RULES };
@@ -160,9 +197,48 @@ export { AGE_AWARENESS_RULES };
 export const AGE_PROOFING_RULES = `${AGE_AWARENESS_RULES}
 
 USE:
-- Modern, clean template design
-- Contemporary email address (not AOL, Hotmail)
-- Current formatting conventions`;
+- Modern, clean single-column template design
+- Contemporary email address (not AOL, Hotmail — signals dated digital habits)
+- Current formatting conventions (no objective statement, no tables/graphics)
+- Include modern terminology relevant to the role: AI, cloud, data-driven, digital transformation`;
+
+// ─── ATS Rules ───────────────────────────────────────────────────────
+
+export const ATS_RULES = `## ATS Optimization Rules
+
+KEYWORD STRATEGY:
+- Mirror exact phrases from the job description — ATS matches strings, not concepts
+- Target 15-25 keywords total, distributed naturally across the document
+- Primary keywords (the role's core requirements) must appear in at least 2 distinct sections
+- Use both spelled-out and abbreviated versions where space allows: "Customer Relationship Management (CRM)"
+- Do not stuff keywords — place them where they read naturally
+
+FORMATTING FOR PARSABILITY:
+- Single-column layout only — multi-column confuses most ATS parsers
+- Standard section headings — do not rename "Professional Experience" to "Where I've Worked"
+- No tables, text boxes, headers/footers, or graphics — ATS cannot parse them
+- Standard fonts only (Calibri, Garamond, Georgia, Times New Roman)
+- DOCX is the primary export format — PDF can corrupt parsing on some systems
+
+CRITICAL ATS TRAPS TO AVOID:
+- Do not embed keywords in images or graphics (invisible to ATS)
+- Do not use abbreviations without the spelled-out version appearing at least once
+- Dates must be consistently formatted: MM/YYYY or Month YYYY throughout`;
+
+// ─── Banned Phrases (used by executive-tone agent) ──────────────────
+
+export const BANNED_PHRASES = [
+  'results-oriented', 'results-driven', 'proven leader', 'proven track record',
+  'motivated professional', 'dynamic team player', 'detail-oriented',
+  'self-starter', 'go-getter', 'think outside the box', 'synergy',
+  'fast-paced environment', 'excellent communication skills',
+  'strong interpersonal skills', 'team player', 'passionate about',
+  'dedicated to', 'seasoned professional', 'accomplished leader',
+  'extensive experience', 'references available upon request',
+  'responsible for', 'helped', 'assisted', 'supported',
+  'participated in', 'worked on', 'duties included',
+  'leverage', 'utilize', 'value-add',
+];
 
 // ─── Guardrails ──────────────────────────────────────────────────────
 
@@ -176,26 +252,99 @@ export const GUARDRAILS = `## Resume Guardrails — Non-Negotiable
 5. Prefer reframing real experience over inventing new experience
 6. Creative positioning is encouraged — fabrication is prohibited
 7. If a gap truly cannot be addressed, acknowledge it honestly rather than stretching
-8. Metrics must be verified or user-confirmed before final draft`;
+8. Metrics must be verified or inferable before inclusion in final draft`;
+
+// ─── Quality Gates ───────────────────────────────────────────────────
+
+export const QUALITY_GATES = [
+  {
+    id: 'scope_test',
+    name: 'Scope Test',
+    description: 'Does the executive summary and each role\'s scope statement communicate the scale of responsibility (team size, budget, geography, P&L)?',
+    pass_criterion: 'Every role that held meaningful scope has a scope statement. Summary anchors with a scale indicator.',
+  },
+  {
+    id: 'metric_test',
+    name: 'Metric Test (70%+)',
+    description: '70% or more of all experience bullets have at least one quantified metric (money, time, volume, or scope).',
+    pass_criterion: 'Count bullets with metrics. Count total bullets. Ratio must be ≥ 0.70.',
+  },
+  {
+    id: 'relevance_test',
+    name: 'Relevance Test',
+    description: 'Every bullet, accomplishment, and competency on the resume is either directly relevant to the target role or demonstrates a transferable capability that has been explicitly framed as relevant.',
+    pass_criterion: 'No bullet survives that cannot answer: "Why does this matter for THIS role?"',
+  },
+  {
+    id: 'altitude_test',
+    name: 'Altitude Test',
+    description: 'The language, scope, and framing are consistent with the seniority level being targeted. An executive candidate should not sound like a mid-level contributor.',
+    pass_criterion: 'Every bullet shows agency, scale, and strategic impact — not just task completion.',
+  },
+  {
+    id: 'cliche_test',
+    name: 'Cliche Test',
+    description: 'The resume contains none of the banned phrases from the BANNED BULLET PATTERNS and BANNED SUMMARY PHRASES lists.',
+    pass_criterion: 'Zero instances of: "responsible for," "proven leader," "results-oriented," "team player," and all other banned phrases.',
+  },
+  {
+    id: 'length_test',
+    name: 'Length Test',
+    description: 'The resume is the right length for the candidate\'s career depth. Typically 2 pages for executives; 3 pages only for C-suite with 20+ year careers.',
+    pass_criterion: 'No padding. No truncation of strong evidence. Every line earns its place.',
+  },
+  {
+    id: 'recency_test',
+    name: 'Recency Test',
+    description: 'The most recent 10 years receive proportionally more detail than older roles. The most impressive and relevant accomplishments from recent years are prominently featured.',
+    pass_criterion: 'Most recent 1-2 roles have the most bullets. Older roles taper proportionally.',
+  },
+  {
+    id: 'ats_test',
+    name: 'ATS Test',
+    description: 'The resume uses exact keyword phrases from the job description. Primary keywords appear in at least 2 sections. 15-25 keywords are distributed naturally throughout.',
+    pass_criterion: 'Top 10 JD keywords each appear at least once. Top 5 appear in 2+ sections.',
+  },
+  {
+    id: 'so_what_test',
+    name: 'So-What Test',
+    description: 'Every bullet answers the question: "So what? Why does this matter for this role?" Activity bullets (what you did) have been upgraded to impact bullets (what changed because of you).',
+    pass_criterion: 'Zero pure-activity bullets. Every bullet has a result, outcome, or demonstrated impact.',
+  },
+  {
+    id: 'age_proof_test',
+    name: 'Age-Proof Test',
+    description: 'The resume does not reveal the candidate\'s age through graduation dates (if 20+ years ago), outdated technology references, objective statements, or tenure phrasing.',
+    pass_criterion: 'No graduation years for degrees 20+ years old. No "30 years of experience." No obsolete tech. No objective statement.',
+  },
+] as const;
+
+export type QualityGateId = typeof QUALITY_GATES[number]['id'];
 
 // ─── Combined Prompt Block ───────────────────────────────────────────
 
 /**
- * Full resume rules block ready to inject into agent prompts.
- * Includes all rules, banned phrases, age-proofing, and guardrails.
+ * Full resume rules block ready to inject into agent system prompts.
+ * Includes all format rules, section rules, writing rules, ATS rules,
+ * age-proofing rules, guardrails, and the 10 quality gates.
  */
 export function getResumeRulesPrompt(): string {
   const sectionRulesBlock = SECTION_ORDER
     .map(s => `### ${s.replace(/_/g, ' ').toUpperCase()}\n${SECTION_RULES[s]}`)
     .join('\n\n');
 
+  const qualityGatesBlock = QUALITY_GATES
+    .map((gate, i) => `${i + 1}. **${gate.name}** — ${gate.description}\n   Pass: ${gate.pass_criterion}`)
+    .join('\n\n');
+
   return `# Executive Resume Writing Rulebook
 
 ## Document Format
-- Page length follows content quality — most executives: 1.5-2 pages. Never pad. Never cut strong evidence for an arbitrary limit.
-- ${DOCUMENT_FORMAT.layout} layout
-- ${DOCUMENT_FORMAT.style}
+- ${DOCUMENT_FORMAT.page_guidance}
+- Layout: ${DOCUMENT_FORMAT.layout} — ${DOCUMENT_FORMAT.graphics}
+- Fonts: ${DOCUMENT_FORMAT.fonts}
 - Primary export: ${DOCUMENT_FORMAT.primary_export}
+- Headings: ${DOCUMENT_FORMAT.headings}
 
 ## Section Order
 ${SECTION_ORDER.map((s, i) => `${i + 1}. ${s.replace(/_/g, ' ')}`).join('\n')}
@@ -206,10 +355,15 @@ ${sectionRulesBlock}
 
 ${WRITING_RULES}
 
-## Banned Phrases — NEVER Use These
-${BANNED_PHRASES.map(p => `- "${p}"`).join('\n')}
+${ATS_RULES}
 
 ${AGE_PROOFING_RULES}
 
-${GUARDRAILS}`;
+${GUARDRAILS}
+
+## 10 Quality Gates — Self-Check Before Output
+
+Before finalizing the resume, verify every gate passes:
+
+${qualityGatesBlock}`;
 }

@@ -16,7 +16,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections, addSSEConnection, removeSSEConnection, type AnySSEEvent } from './sessions.js';
 import logger from '../lib/logger.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
-import { runV2Pipeline } from '../agents/resume-v2/orchestrator.js';
+import { runV2Pipeline, pendingGapResolvers } from '../agents/resume-v2/orchestrator.js';
 import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/types.js';
 import { llm } from '../lib/llm.js';
 import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
@@ -253,7 +253,16 @@ resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddl
 
   logger.info({ session_id: sessionId, response_count: parsed.data.responses.length }, 'Gap coaching responses received');
 
-  return c.json({ status: 'received', responses: parsed.data.responses });
+  const resolver = pendingGapResolvers.get(sessionId);
+  if (!resolver) {
+    // Pipeline is not currently waiting at the gap gate — this can happen if
+    // the pipeline already completed or the session was restarted.
+    logger.warn({ session_id: sessionId }, 'respond-gaps: no pending gap resolver found');
+    return c.json({ status: 'no_gate_pending' }, 409);
+  }
+
+  resolver(parsed.data.responses);
+  return c.json({ status: 'ok', responses: parsed.data.responses });
 });
 
 // ─── PUT /:sessionId/draft-state ───────────────────────────────────
