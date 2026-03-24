@@ -65,7 +65,7 @@ SECTIONS TO INCLUDE (when the candidate has the data):
 - Technical Skills / Technologies (if candidate has domain-specific tools: list them)
 - Area Experience (if candidate has geographic/industry domain: include it)
 - Education (degree, institution — no dates for 45+ candidates)
-- Certifications (only if relevant to target role)
+- Certifications (ONLY include certifications relevant to the target job — omit outdated or unrelated certifications entirely)
 
 EXECUTIVE SUMMARY:
 - OPEN with the narrative positioning, not generic accomplishments

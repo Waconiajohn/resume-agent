@@ -87,7 +87,9 @@ Do not include basic tools (Word, Excel) unless the role specifically values the
 
   education: `Degree, institution. No graduation dates for candidates 45+.
 No high school. Certifications listed separately below education.
-Professional development and relevant training can be included.`,
+ONLY include certifications that are relevant to the job being applied to.
+Omit outdated, expired, or unrelated certifications entirely.
+Professional development and relevant training can be included if they support the target role.`,
 };
 
 // ─── Writing Rules ───────────────────────────────────────────────────
