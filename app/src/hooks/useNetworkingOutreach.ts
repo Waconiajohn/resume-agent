@@ -21,6 +21,16 @@ interface NetworkingOutreachState {
   sequenceReviewData: SequenceReviewData | null;
 }
 
+export interface NetworkingOutreachReferralContext {
+  company: string;
+  bonus_amount: string;
+  bonus_currency?: string;
+  bonus_details?: string;
+  job_title?: string;
+  contact_name?: string;
+  contact_title?: string;
+}
+
 export interface NetworkingOutreachInput {
   resumeText: string;
   messagingMethod?: 'group_message' | 'connection_request' | 'inmail';
@@ -31,6 +41,7 @@ export interface NetworkingOutreachInput {
     target_linkedin_url?: string;
     context_notes?: string;
   };
+  referralContext?: NetworkingOutreachReferralContext;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -295,6 +306,7 @@ export function useNetworkingOutreach() {
             resume_text: input.resumeText,
             messaging_method: input.messagingMethod ?? 'group_message',
             target_input: input.targetInput,
+            ...(input.referralContext ? { referral_context: input.referralContext } : {}),
           }),
         });
 

@@ -135,9 +135,8 @@ function buildContextBlock(state: NetworkingOutreachState): string {
   if (state.referral_context) {
     const rc = state.referral_context;
     parts.push('\n## Referral Context');
-    parts.push(`Company: ${rc.company_name}`);
-    parts.push(`Job Title: ${rc.job_title}`);
-    if (rc.match_score != null) parts.push(`Match Score: ${rc.match_score}%`);
+    parts.push(`Company: ${rc.company}`);
+    if (rc.job_title) parts.push(`Job Title: ${rc.job_title}`);
     if (rc.bonus_amount) parts.push(`Referral Bonus: ${rc.bonus_currency ?? 'USD'} ${rc.bonus_amount}`);
     parts.push('Note: Use this context to craft a referral request that frames mutual benefit.');
   }
@@ -833,7 +832,7 @@ Return ONLY valid JSON.`,
         role: 'user',
         content: `Write a Referral Request message for the outreach sequence.
 
-The target's company (${rc.company_name}) has a referral bonus program${rc.bonus_amount ? ` (${rc.bonus_currency ?? 'USD'} ${rc.bonus_amount})` : ''}. The candidate is a strong match for the ${rc.job_title} role${rc.match_score ? ` (${rc.match_score}% match)` : ''}.
+The target's company (${rc.company}) has a referral bonus program${rc.bonus_amount ? ` (${rc.bonus_currency ?? 'USD'} ${rc.bonus_amount})` : ''}.${rc.job_title ? ` The candidate is interested in the ${rc.job_title} role.` : ''}
 
 HARD REQUIREMENTS:
 - Maximum 500 characters

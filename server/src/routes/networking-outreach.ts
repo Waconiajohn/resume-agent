@@ -30,6 +30,15 @@ const startSchema = z.object({
     target_linkedin_url: z.string().url().max(500).optional(),
     context_notes: z.string().max(2000).optional(),
   }),
+  referral_context: z.object({
+    company: z.string().min(1).max(200),
+    bonus_amount: z.string().min(1).max(100),
+    bonus_currency: z.string().max(10).optional(),
+    bonus_details: z.string().max(500).optional(),
+    job_title: z.string().max(200).optional(),
+    contact_name: z.string().max(200).optional(),
+    contact_title: z.string().max(200).optional(),
+  }).optional(),
 });
 
 export const networkingOutreachRoutes = createProductRoutes<NetworkingOutreachState, NetworkingOutreachSSEEvent>({

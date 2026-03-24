@@ -1,6 +1,7 @@
 import { Building2, MapPin } from 'lucide-react';
 import { GlassButton } from '@/components/GlassButton';
 import { ScoreBadge } from '@/components/job-command-center/ScoreBadge';
+import { ReferralBadge, getBestBonusDisplay } from '@/components/job-command-center/ReferralBadge';
 import { cn } from '@/lib/utils';
 import type { RadarJob } from '@/hooks/useRadarSearch';
 
@@ -43,6 +44,15 @@ export function TopMatchCard({ job, onPromote, onDismiss, onSelect }: TopMatchCa
               <Building2 size={10} />
               {job.company}
             </span>
+            {job.referral_bonus && (() => {
+              const bonusDisplay = getBestBonusDisplay(job.referral_bonus);
+              return bonusDisplay ? (
+                <ReferralBadge
+                  bonusAmount={bonusDisplay}
+                  confidence={job.referral_bonus.confidence}
+                />
+              ) : null;
+            })()}
             {job.location && (
               <>
                 <span>·</span>

@@ -10,6 +10,16 @@ export interface NetworkContact {
   company: string;
 }
 
+export interface ReferralBonusInfo {
+  bonus_amount: string | null;
+  bonus_entry: string | null;
+  bonus_mid: string | null;
+  bonus_senior: string | null;
+  bonus_executive: string | null;
+  program_url: string | null;
+  confidence: string | null;
+}
+
 export interface RadarJob {
   external_id: string;
   title: string;
@@ -26,6 +36,7 @@ export interface RadarJob {
   required_skills: string[] | null;
   match_score?: number | null;
   network_contacts?: NetworkContact[];
+  referral_bonus?: ReferralBonusInfo | null;
 }
 
 export interface RadarSearchFilters {
@@ -148,6 +159,34 @@ function sanitizeNetworkContact(value: unknown): NetworkContact | null {
   };
 }
 
+function sanitizeReferralBonus(value: unknown): ReferralBonusInfo | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+
+  const bonusAmount = safeNullableString(candidate.bonus_amount);
+  const bonusEntry = safeNullableString(candidate.bonus_entry);
+  const bonusMid = safeNullableString(candidate.bonus_mid);
+  const bonusSenior = safeNullableString(candidate.bonus_senior);
+  const bonusExecutive = safeNullableString(candidate.bonus_executive);
+  const programUrl = safeNullableString(candidate.program_url);
+  const confidence = safeNullableString(candidate.confidence);
+
+  // Only return an object if there is at least one bonus value
+  if (!bonusAmount && !bonusEntry && !bonusMid && !bonusSenior && !bonusExecutive) {
+    return null;
+  }
+
+  return {
+    bonus_amount: bonusAmount,
+    bonus_entry: bonusEntry,
+    bonus_mid: bonusMid,
+    bonus_senior: bonusSenior,
+    bonus_executive: bonusExecutive,
+    program_url: programUrl,
+    confidence,
+  };
+}
+
 function sanitizeRadarJob(value: unknown): RadarJob | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Record<string, unknown>;
@@ -165,6 +204,7 @@ function sanitizeRadarJob(value: unknown): RadarJob | null {
         .map((contact) => sanitizeNetworkContact(contact))
         .filter((contact): contact is NetworkContact => contact !== null)
     : undefined;
+  const referralBonus = sanitizeReferralBonus(candidate.referral_bonus);
 
   return {
     external_id: externalId,
@@ -182,6 +222,7 @@ function sanitizeRadarJob(value: unknown): RadarJob | null {
     required_skills: sanitizeStringList(candidate.required_skills),
     match_score: matchScore,
     network_contacts: contacts && contacts.length > 0 ? contacts : undefined,
+    referral_bonus: referralBonus ?? undefined,
   };
 }
 

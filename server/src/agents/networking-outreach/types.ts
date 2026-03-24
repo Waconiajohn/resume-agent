@@ -242,11 +242,13 @@ export interface NetworkingOutreachState extends BaseState {
 
   /** Referral context populated when the target's company has a referral bonus program */
   referral_context?: {
-    company_name: string;
-    bonus_amount: string | null;
-    bonus_currency: string | null;
-    job_title: string;
-    match_score: number | null;
+    company: string;
+    bonus_amount: string;
+    bonus_currency?: string;
+    bonus_details?: string;
+    job_title?: string;
+    contact_name?: string;
+    contact_title?: string;
   };
 }
 

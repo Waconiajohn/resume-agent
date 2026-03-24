@@ -147,6 +147,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       target_input: input.target_input as NetworkingOutreachState['target_input'],
       messaging_method: (input.messaging_method as MessagingMethod | undefined) ?? 'group_message',
       crm_contact_id: typeof input.crm_contact_id === 'string' ? input.crm_contact_id : undefined,
+      referral_context: input.referral_context as NetworkingOutreachState['referral_context'],
       messages: [],
     }),
 
@@ -264,6 +265,25 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           }));
         }
 
+        if (state.referral_context) {
+          const rc = state.referral_context;
+          const bonusDisplay = rc.bonus_currency
+            ? `${rc.bonus_currency} ${rc.bonus_amount}`
+            : rc.bonus_amount;
+          parts.push(
+            '',
+            '## Referral Context',
+            `${rc.company} pays ${bonusDisplay} for employee referrals.`,
+            'This is context that may help you craft a more compelling outreach approach.',
+            'The candidate benefits from getting referred; the employee benefits from the bonus.',
+            'Consider this mutual benefit when planning the outreach sequence, but keep the',
+            'tone professional and value-focused — never transactional.',
+          );
+          if (rc.job_title) {
+            parts.push(`The target role is: ${rc.job_title}`);
+          }
+        }
+
         parts.push(
           '',
           '## Objective',
@@ -314,6 +334,25 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
             `The user reviewed the outreach sequence and requested the following changes: "${state.revision_feedback}"`,
             'Rewrite the affected messages to address this feedback, preserve the best personalization hooks, and then rebuild the final sequence.',
           );
+        }
+
+        if (state.referral_context) {
+          const rc = state.referral_context;
+          const bonusDisplay = rc.bonus_currency
+            ? `${rc.bonus_currency} ${rc.bonus_amount}`
+            : rc.bonus_amount;
+          parts.push(
+            '',
+            '## Referral Context',
+            `${rc.company} pays ${bonusDisplay} for employee referrals.`,
+            'This is context that may help you craft a more compelling outreach approach.',
+            'The candidate benefits from getting referred; the employee benefits from the bonus.',
+            'Consider this mutual benefit when planning the outreach sequence, but keep the',
+            'tone professional and value-focused — never transactional.',
+          );
+          if (rc.job_title) {
+            parts.push(`The target role is: ${rc.job_title}`);
+          }
         }
 
         // Cross-reference recent LinkedIn posts for genuine personalization

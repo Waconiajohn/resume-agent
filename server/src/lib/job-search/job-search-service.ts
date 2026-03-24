@@ -13,6 +13,7 @@ import { JSearchAdapter } from './adapters/jsearch.js';
 import { AdzunaAdapter } from './adapters/adzuna.js';
 import { matchJobsToProfile } from './ai-matcher.js';
 import { crossReferenceWithNetwork } from './ni-crossref.js';
+import { enrichWithReferralBonuses } from './referral-enrichment.js';
 import type { JobResult, SearchFilters } from './types.js';
 
 export type { SearchFilters };
@@ -383,7 +384,7 @@ export async function runEnrichmentPipeline(
     return { ok: true, result: { scan_id: scanId, results: [] } };
   }
 
-  // Cross-reference with NI contacts
+  // Cross-reference with NI contacts and referral bonus programs
   type ResultRow = {
     job_listings: { external_id: string; company: string } | null;
   };
@@ -394,18 +395,30 @@ export async function runEnrichmentPipeline(
       company: r.job_listings!.company,
     }));
 
-  const contactMap = await crossReferenceWithNetwork(userId, jobStubs);
+  const companyNames = [...new Set(jobStubs.map((s) => s.company))];
+
+  const [contactMap, referralMap] = await Promise.all([
+    crossReferenceWithNetwork(userId, jobStubs),
+    enrichWithReferralBonuses(companyNames),
+  ]);
 
   type AnyRow = Record<string, unknown>;
   const enrichedRows = (rows as AnyRow[]).map((row) => {
-    const listing = row.job_listings as { external_id: string } | null;
-    if (!listing) return { ...row, network_contacts: [] };
+    const listing = row.job_listings as { external_id: string; company: string } | null;
+    if (!listing) return { ...row, network_contacts: [], referral_bonus: null };
     const contacts = contactMap.get(listing.external_id) ?? [];
-    return { ...row, network_contacts: contacts };
+    const referralBonus = referralMap.get(listing.company) ?? null;
+    return { ...row, network_contacts: contacts, referral_bonus: referralBonus };
   });
 
   logger.info(
-    { userId, scanId, resultCount: rows.length, matchedJobs: contactMap.size },
+    {
+      userId,
+      scanId,
+      resultCount: rows.length,
+      matchedJobs: contactMap.size,
+      referralMatches: referralMap.size,
+    },
     'enriched: complete',
   );
 
@@ -413,8 +426,8 @@ export async function runEnrichmentPipeline(
 }
 
 /**
- * Enriches scan results already in memory with NI contacts (best-effort).
- * Used by the /scans/latest route when include_contacts=true.
+ * Enriches scan results already in memory with NI contacts and referral bonuses
+ * (best-effort). Used by the /scans/latest route when include_contacts=true.
  */
 export async function enrichRowsWithContacts(
   userId: string,
@@ -430,12 +443,18 @@ export async function enrichRowsWithContacts(
       company: r.job_listings!.company,
     }));
 
-  const contactMap = await crossReferenceWithNetwork(userId, jobStubs);
+  const companyNames = [...new Set(jobStubs.map((s) => s.company))];
+
+  const [contactMap, referralMap] = await Promise.all([
+    crossReferenceWithNetwork(userId, jobStubs),
+    enrichWithReferralBonuses(companyNames),
+  ]);
 
   return rows.map((row) => {
-    const listing = row.job_listings as { external_id: string } | null;
+    const listing = row.job_listings as { external_id: string; company: string } | null;
     if (!listing) return row;
     const contacts = contactMap.get(listing.external_id) ?? [];
-    return { ...row, network_contacts: contacts };
+    const referralBonus = referralMap.get(listing.company) ?? null;
+    return { ...row, network_contacts: contacts, referral_bonus: referralBonus };
   });
 }

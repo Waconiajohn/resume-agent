@@ -81,6 +81,16 @@ export interface ReferralBonusProgramRow {
   company_id: string;
   bonus_amount: string | null;
   bonus_currency: string | null;
+  bonus_entry: string | null;
+  bonus_mid: string | null;
+  bonus_senior: string | null;
+  bonus_executive: string | null;
+  payout_structure: string | null;
+  diversity_multiplier: string | null;
+  special_programs: Record<string, unknown> | null;
+  confidence: 'high' | 'medium' | 'low' | null;
+  data_source: string | null;
+  last_verified_at: string | null;
   program_url: string | null;
   notes: string | null;
   verified_at: string | null;

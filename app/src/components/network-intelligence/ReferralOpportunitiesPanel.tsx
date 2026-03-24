@@ -24,7 +24,25 @@ interface ReferralOpportunity {
   connection_count: number;
 }
 
-export function ReferralOpportunitiesPanel() {
+interface GenerateOutreachPayload {
+  name: string;
+  title: string;
+  company: string;
+  referralContext?: {
+    company: string;
+    bonus_amount: string;
+    bonus_currency?: string;
+    job_title?: string;
+    contact_name?: string;
+    contact_title?: string;
+  };
+}
+
+interface ReferralOpportunitiesPanelProps {
+  onGenerateOutreach?: (payload: GenerateOutreachPayload) => void;
+}
+
+export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOpportunitiesPanelProps) {
   const { session } = useAuth();
   const [opportunities, setOpportunities] = useState<ReferralOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +67,33 @@ export function ReferralOpportunitiesPanel() {
   }, [session?.access_token]);
 
   useEffect(() => { fetchOpportunities(); }, [fetchOpportunities]);
+
+  const handleGenerateOutreach = useCallback((opp: ReferralOpportunity) => {
+    if (!onGenerateOutreach) return;
+
+    // Use the first connection as the target if available
+    const firstConn = opp.connections[0];
+    const contactName = firstConn
+      ? `${firstConn.first_name} ${firstConn.last_name}`.trim()
+      : '';
+    const contactTitle = firstConn?.position ?? '';
+
+    onGenerateOutreach({
+      name: contactName,
+      title: contactTitle,
+      company: opp.company_name,
+      referralContext: opp.bonus_amount
+        ? {
+            company: opp.company_name,
+            bonus_amount: opp.bonus_amount,
+            bonus_currency: opp.bonus_currency ?? undefined,
+            job_title: opp.job_title,
+            contact_name: contactName || undefined,
+            contact_title: contactTitle || undefined,
+          }
+        : undefined,
+    });
+  }, [onGenerateOutreach]);
 
   if (loading) {
     return (
@@ -164,13 +209,15 @@ export function ReferralOpportunitiesPanel() {
 
           {/* Actions */}
           <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => alert('Outreach generation coming soon — will pre-fill referral context for the Outreach tab.')}
-              className="rounded-lg bg-indigo-600/30 border border-indigo-400/20 px-3 py-1.5 text-xs font-medium text-indigo-300/80 hover:bg-indigo-600/40 hover:border-indigo-400/30 transition-all"
-            >
-              Generate Outreach
-            </button>
+            {onGenerateOutreach && (
+              <button
+                type="button"
+                onClick={() => handleGenerateOutreach(opp)}
+                className="rounded-lg bg-indigo-600/30 border border-indigo-400/20 px-3 py-1.5 text-xs font-medium text-indigo-300/80 hover:bg-indigo-600/40 hover:border-indigo-400/30 transition-all"
+              >
+                Generate Outreach
+              </button>
+            )}
             {opp.job_url && (
               <a
                 href={opp.job_url}

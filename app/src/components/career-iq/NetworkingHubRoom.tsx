@@ -71,10 +71,20 @@ const MESSAGING_METHOD_CONFIG: Record<MessagingMethod, {
 
 // --- Outreach prefill type ---
 
+export interface OutreachReferralContext {
+  company: string;
+  bonus_amount: string;
+  bonus_currency?: string;
+  job_title?: string;
+  contact_name?: string;
+  contact_title?: string;
+}
+
 interface OutreachPrefill {
   name: string;
   title: string;
   company: string;
+  referralContext?: OutreachReferralContext;
 }
 
 // --- Status config ---
@@ -720,6 +730,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
         target_linkedin_url: targetLinkedIn.trim() || undefined,
         context_notes: contextNotes.trim() || undefined,
       },
+      referralContext: prefill?.referralContext,
     });
   }, [
     canGenerate,
@@ -943,7 +954,12 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
 
 // --- Main component ---
 
-export function NetworkingHubRoom() {
+interface NetworkingHubRoomProps {
+  /** Pre-fill the outreach generator with this context when the room mounts */
+  initialPrefill?: OutreachPrefill;
+}
+
+export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {}) {
   const ruleOfFour = useRuleOfFour();
   const networkingContacts = useNetworkingContacts();
 
@@ -962,7 +978,7 @@ export function NetworkingHubRoom() {
   const [niImportMessage, setNiImportMessage] = useState<string | null>(null);
 
   // Story 62-1: prefill state for outreach generator + expose messages for GeneratedMessages
-  const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
+  const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(initialPrefill ?? null);
   const [outreachState, setOutreachState] = useState<ReturnType<typeof useNetworkingOutreach> | null>(null);
 
   const handleGenerateMessage = useCallback((prefill: OutreachPrefill) => {

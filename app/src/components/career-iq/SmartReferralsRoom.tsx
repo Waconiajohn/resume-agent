@@ -6,7 +6,7 @@ import { ConnectionsBrowser } from '@/components/network-intelligence/Connection
 import { TargetTitlesManager } from '@/components/network-intelligence/TargetTitlesManager';
 import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPanel';
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
-import { NetworkingHubRoom } from './NetworkingHubRoom';
+import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -34,11 +34,19 @@ const TABS: TabDef[] = [
 // Tabs accessible without connections
 const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'referrals', 'contacts', 'outreach'];
 
+interface OutreachPrefill {
+  name: string;
+  title: string;
+  company: string;
+  referralContext?: OutreachReferralContext;
+}
+
 export function SmartReferralsRoom() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [hasConnections, setHasConnections] = useState(false);
   const [uploadSummary, setUploadSummary] = useState<CsvUploadSummary | null>(null);
+  const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +84,11 @@ export function SmartReferralsRoom() {
     setActiveTab('connections');
   }, []);
 
+  const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
+    setOutreachPrefill(prefill);
+    setActiveTab('outreach');
+  }, []);
+
   const isTabLocked = (tabId: SmartReferralsTab) =>
     !hasConnections && !ALWAYS_UNLOCKED.includes(tabId);
 
@@ -103,14 +116,18 @@ export function SmartReferralsRoom() {
       case 'job-scan':
         return <ScrapeJobsPanel accessToken={accessToken} />;
       case 'referrals':
-        return <ReferralOpportunitiesPanel />;
+        return <ReferralOpportunitiesPanel onGenerateOutreach={handleGenerateOutreach} />;
       case 'contacts':
-      case 'outreach':
         return <NetworkingHubRoom />;
+      case 'outreach':
+        return <NetworkingHubRoom initialPrefill={outreachPrefill ?? undefined} />;
       default:
         return null;
     }
   };
+
+  // Suppress unused variable warning — uploadSummary is retained for future use
+  void uploadSummary;
 
   return (
     <div className="p-6 space-y-6">

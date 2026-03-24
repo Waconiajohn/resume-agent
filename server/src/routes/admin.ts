@@ -5,6 +5,8 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
 import { resetSessionRouteStateForTests } from './sessions.js';
 import { getPipelineMetrics } from '../lib/pipeline-metrics.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
+import { lookupOrCreateCompany } from '../lib/ni/seed-referral-programs.js';
 import logger from '../lib/logger.js';
 
 /**
@@ -356,5 +358,141 @@ admin.get('/sessions', async (c) => {
     offset,
   });
 });
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/referral-programs/import
+// Bulk-import referral bonus program records from a JSON payload.
+// Rate limited: 5 requests per minute (admin use only).
+// Max 500 records per request.
+// ---------------------------------------------------------------------------
+
+const IMPORT_MAX_RECORDS = 500;
+
+const referralImportRecordSchema = z.object({
+  company_name: z.string().min(1),
+  industry: z.string().optional(),
+  domain: z.string().optional(),
+  bonus_amount: z.string().min(1),
+  bonus_entry: z.string().optional(),
+  bonus_mid: z.string().optional(),
+  bonus_senior: z.string().optional(),
+  bonus_executive: z.string().optional(),
+  payout_structure: z.string().optional(),
+  diversity_multiplier: z.string().optional(),
+  confidence: z.enum(['high', 'medium', 'low']).optional(),
+  data_source: z.string().optional(),
+  program_url: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const referralImportSchema = z.object({
+  programs: z.array(referralImportRecordSchema),
+});
+
+admin.post(
+  '/referral-programs/import',
+  rateLimitMiddleware(5, 60_000),
+  async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const parsed = referralImportSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+    }
+
+    const { programs } = parsed.data;
+
+    if (programs.length > IMPORT_MAX_RECORDS) {
+      return c.json(
+        { error: `Too many records. Maximum is ${IMPORT_MAX_RECORDS} per request, got ${programs.length}.` },
+        400,
+      );
+    }
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const record of programs) {
+      try {
+        const companyId = await lookupOrCreateCompany(record.company_name);
+
+        if (!companyId) {
+          errors.push(`Could not resolve company: "${record.company_name}"`);
+          skipped++;
+          continue;
+        }
+
+        // Check if a referral program row already exists to distinguish created vs updated
+        const { data: existingProgram } = await supabaseAdmin
+          .from('referral_bonus_programs')
+          .select('id')
+          .eq('company_id', companyId)
+          .limit(1)
+          .maybeSingle();
+
+        const isNew = !existingProgram;
+
+        const upsertPayload: Record<string, unknown> = {
+          company_id: companyId,
+          bonus_amount: record.bonus_amount,
+          last_verified_at: new Date().toISOString(),
+        };
+
+        if (record.bonus_entry !== undefined) upsertPayload.bonus_entry = record.bonus_entry;
+        if (record.bonus_mid !== undefined) upsertPayload.bonus_mid = record.bonus_mid;
+        if (record.bonus_senior !== undefined) upsertPayload.bonus_senior = record.bonus_senior;
+        if (record.bonus_executive !== undefined) upsertPayload.bonus_executive = record.bonus_executive;
+        if (record.payout_structure !== undefined) upsertPayload.payout_structure = record.payout_structure;
+        if (record.diversity_multiplier !== undefined) upsertPayload.diversity_multiplier = record.diversity_multiplier;
+        if (record.confidence !== undefined) upsertPayload.confidence = record.confidence;
+        if (record.data_source !== undefined) upsertPayload.data_source = record.data_source;
+        if (record.program_url !== undefined) upsertPayload.program_url = record.program_url;
+        if (record.notes !== undefined) upsertPayload.notes = record.notes;
+
+        const { error: upsertError } = await supabaseAdmin
+          .from('referral_bonus_programs')
+          .upsert(upsertPayload, { onConflict: 'company_id' });
+
+        if (upsertError) {
+          logger.error(
+            { error: upsertError.message, company_name: record.company_name },
+            'admin/referral-programs/import: upsert failed',
+          );
+          errors.push(`Upsert failed for "${record.company_name}": ${upsertError.message}`);
+          skipped++;
+          continue;
+        }
+
+        if (isNew) {
+          created++;
+        } else {
+          updated++;
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(
+          { error: message, company_name: record.company_name },
+          'admin/referral-programs/import: unexpected error',
+        );
+        errors.push(`Unexpected error for "${record.company_name}": ${message}`);
+        skipped++;
+      }
+    }
+
+    logger.info(
+      { created, updated, skipped, errors: errors.length },
+      'admin/referral-programs/import: import complete',
+    );
+
+    return c.json({ created, updated, errors, skipped }, 200);
+  },
+);
 
 export { admin };

@@ -14,6 +14,7 @@ import {
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { ReferralBadge, getBestBonusDisplay } from '@/components/job-command-center/ReferralBadge';
 import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
 
 interface RadarSectionProps {
@@ -302,6 +303,18 @@ export function RadarSection({
                           <NetworkBadge count={job.network_contacts!.length} />
                         </>
                       )}
+                      {job.referral_bonus && (() => {
+                        const bonusDisplay = getBestBonusDisplay(job.referral_bonus);
+                        return bonusDisplay ? (
+                          <>
+                            <span className="text-[var(--text-soft)]">·</span>
+                            <ReferralBadge
+                              bonusAmount={bonusDisplay}
+                              confidence={job.referral_bonus.confidence}
+                            />
+                          </>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
