@@ -796,7 +796,7 @@ export function computeInlineSuggestions(
     const acc = draft.selected_accomplishments[i];
     if (!acc.is_new) continue;
 
-    const sectionId = `selected_accomplishments_${i}`;
+    const sectionId = 'selected_accomplishments';
     const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
       acc.content,
       gapAnalysis,
@@ -843,7 +843,7 @@ export function computeInlineSuggestions(
       const closestOriginal = findClosestOriginal(bullet.text, originalExp?.bullets ?? []);
       const changeType: InlineSuggestion['changeType'] = closestOriginal ? 'replacement' : 'addition';
 
-      const sectionId = `experience_${normalizeText(draftedExp.company)}_${bulletIdx}`;
+      const sectionId = 'professional_experience';
       const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
         bullet.text,
         gapAnalysis,
