@@ -7,6 +7,7 @@ const EXPOSED_WORKSPACE_ROOMS: readonly CareerIQRoom[] = [
   'linkedin',
   'jobs',
   'interview',
+  'networking',
 ];
 
 const LEGACY_REDIRECTS: Partial<Record<CareerIQRoom | string, CareerIQRoom>> = {
