@@ -35,7 +35,8 @@ export type ContextType =
   | 'job_discovery_results'
   | 'content_post'
   | 'retirement_readiness'
-  | 'emotional_baseline';
+  | 'emotional_baseline'
+  | 'linkedin_profile';
 
 export interface PlatformContextRow {
   id: string;

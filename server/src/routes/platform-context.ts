@@ -14,7 +14,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
-import { listUserContextByType } from '../lib/platform-context.js';
+import { listUserContextByType, upsertUserContext, getLatestUserContext } from '../lib/platform-context.js';
 import type { ContextType } from '../lib/platform-context.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
 import logger from '../lib/logger.js';
@@ -43,6 +43,8 @@ app.use('/summary', authMiddleware);
 app.use('/summary', rateLimitMiddleware(60, 60_000));
 app.use('/career-profile', authMiddleware);
 app.use('/career-profile', rateLimitMiddleware(30, 60_000));
+app.use('/linkedin-profile', authMiddleware);
+app.use('/linkedin-profile', rateLimitMiddleware(30, 60_000));
 
 app.get('/summary', async (c) => {
   const user = c.get('user') as { id: string };
@@ -85,6 +87,65 @@ app.get('/career-profile', async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ error: message, userId: user.id }, 'career-profile context load failed');
     return c.json({ error: 'Failed to load career profile context' }, 500);
+  }
+});
+
+// ─── GET /linkedin-profile ────────────────────────────────────────────────────
+
+app.get('/linkedin-profile', async (c) => {
+  const user = c.get('user') as { id: string };
+
+  try {
+    const row = await getLatestUserContext(user.id, 'linkedin_profile');
+    if (!row) {
+      return c.json({ linkedin_profile: null });
+    }
+    return c.json({ linkedin_profile: row.content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ error: message, userId: user.id }, 'linkedin-profile context load failed');
+    return c.json({ error: 'Failed to load LinkedIn profile context' }, 500);
+  }
+});
+
+// ─── PUT /linkedin-profile ────────────────────────────────────────────────────
+
+app.put('/linkedin-profile', async (c) => {
+  const user = c.get('user') as { id: string };
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    typeof (body as Record<string, unknown>).headline !== 'string' ||
+    typeof (body as Record<string, unknown>).about !== 'string'
+  ) {
+    return c.json({ error: 'Body must contain headline (string) and about (string)' }, 400);
+  }
+
+  const { headline, about } = body as { headline: string; about: string };
+
+  try {
+    const row = await upsertUserContext(
+      user.id,
+      'linkedin_profile',
+      { headline, about },
+      'your_profile',
+    );
+    if (!row) {
+      return c.json({ error: 'Failed to save LinkedIn profile' }, 500);
+    }
+    return c.json({ linkedin_profile: row.content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ error: message, userId: user.id }, 'linkedin-profile context upsert failed');
+    return c.json({ error: 'Failed to save LinkedIn profile context' }, 500);
   }
 });
 

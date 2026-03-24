@@ -1,5 +1,33 @@
 # Changelog — Resume Agent
 
+## 2026-03-24 — Session 87
+**Sprint:** Platform Overhaul Guardrails | **Story:** Unified "Your Profile" page
+**Summary:** Built the YourProfilePage consolidating master resume, Why Me Story, LinkedIn profile, and evidence library into a single scrollable page. Replaced the Career Profile room routing with the new page.
+
+### Changes Made
+- `app/src/components/career-iq/YourProfilePage.tsx` — New component. Four sections: (A) master resume compact summary with drag-drop empty state, (B) Why Me Story showing WhyMeEngine for new users or WhyMeStoryCard for returning users, (C) LinkedIn headline + about textarea with save via PUT /api/platform-context/linkedin-profile, (D) Evidence Library aggregating items from resume evidence_items, Why Me story answers, and career profile positioning statements with source badges and manual entry.
+- `app/src/hooks/useLinkedInProfile.ts` — New hook. Loads from GET /api/platform-context/linkedin-profile on mount (falls back to localStorage). Debounced auto-save on change. Exposes explicit `save()` function for the Save button. localStorage key: `careeriq_linkedin_profile`.
+- `app/src/hooks/useEvidenceLibrary.ts` — New hook. Aggregates evidence from master resume (via onGetDefaultResume), Why Me story (extracted as 3 items with category labels), and career profile positioning statements. Returns merged `EvidenceItem[]` with `addManualItem` for manual entries.
+- `app/src/components/career-iq/Sidebar.tsx` — Renamed "Career Profile" label to "Your Profile". Updated description to "Your resume, story, and evidence in one place". Room ID `career-profile` unchanged for backward compatibility.
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Routes `career-profile` room to `YourProfilePage` instead of `CareerProfileRoom`. Removed unused `CareerProfileRoom` import. Trimmed unused `useCareerProfile()` destructured values (`profileLoading`, `profileError`, `onboardingStatus`, `questions`, `activityMessages`, `currentStage`, `startAssessment`, `submitResponses`, `resetAssessment`).
+- `server/src/routes/platform-context.ts` — Added GET and PUT `/api/platform-context/linkedin-profile` endpoints. GET returns latest linkedin_profile context or null. PUT validates body shape and upserts via `upsertUserContext`. Both protected by `authMiddleware` and `rateLimitMiddleware(30)`.
+- `server/src/lib/platform-context.ts` — Added `'linkedin_profile'` to the `ContextType` union.
+- `supabase/migrations/20260324000000_add_linkedin_profile_context_type.sql` — Expands `user_platform_context` CHECK constraint to include `'linkedin_profile'`.
+
+### Decisions Made
+- `CareerProfileRoom` is kept in the codebase (not deleted) as it contains the onboarding assessment interview flow which may be resurfaced as a sub-route or triggered from YourProfilePage in a future story.
+- WhyMeStoryCard renders its own GlassCard, so the Section B container wraps it without an additional card shell for the "started" state. The "not started" state uses a GlassCard wrapper with WhyMeEngine inside.
+- Evidence Library is read-only aggregation for MVP — the manual entry slot adds to local component state only (not persisted). Persistence via a dedicated evidence route is a future story.
+- LinkedIn profile auto-saves with a 1-second debounce after typing, plus an explicit Save button. localStorage provides immediate feedback while the server call is in flight.
+
+### Known Issues
+- Manual evidence items added via the Evidence Library are session-only (not persisted). Marked as MVP scope.
+- The `CareerProfileRoom` assessment flow (AI onboarding questions) is no longer the primary entry point but remains accessible if needed.
+
+### Next Steps
+- Consider whether to expose `CareerProfileRoom`'s assessment flow as a "Run Assessment" button within YourProfilePage Section B or D.
+- Persist manual evidence entries to `user_platform_context` with type `evidence_item`.
+
 ## 2026-03-23 — Session 86
 **Sprint:** Platform Overhaul Guardrails | **Story:** Before/After scoring reports for resume workspace
 **Summary:** Piped full verification agent outputs (truth, ATS, tone) to the frontend via SSE and built a unified ScoringReport component replacing the scattered scoring cards.

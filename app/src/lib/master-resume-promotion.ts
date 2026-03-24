@@ -200,6 +200,14 @@ export function buildMasterResumePromotionPayload(args: {
     if (item.category === 'selected_accomplishment') continue;
 
     const targetExperience = ensureExperienceSlot(experience, item, fallbackExperience);
+
+    if (item.category === 'scope_statement') {
+      if (!targetExperience.scope_statement) {
+        targetExperience.scope_statement = item.text;
+      }
+      continue;
+    }
+
     const existing = targetExperience.bullets.some((bullet) => normalizeText(bullet.text) === normalizeText(item.text));
     if (!existing) {
       targetExperience.bullets.push({ text: item.text, source: 'upgraded' });

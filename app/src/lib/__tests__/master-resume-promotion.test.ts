@@ -134,9 +134,9 @@ describe('master-resume-promotion', () => {
     });
 
     expect(result.experience).toHaveLength(1);
+    expect(result.experience[0].scope_statement).toBe('Led a 120-person multi-site operation.');
     expect(result.experience[0].bullets).toEqual([
       { text: 'Stabilized plant output and improved fill rate by 14%.', source: 'upgraded' },
-      { text: 'Led a 120-person multi-site operation.', source: 'upgraded' },
     ]);
     expect(result.evidence_items).toEqual([
       expect.objectContaining({

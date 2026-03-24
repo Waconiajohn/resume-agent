@@ -12,6 +12,7 @@ export interface MasterResumeExperience {
   start_date: string;
   end_date: string;
   location: string;
+  scope_statement?: string;
   bullets: Array<{ text: string; source: string }>;
 }
 

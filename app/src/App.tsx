@@ -319,13 +319,28 @@ export default function App() {
         };
       }
 
-      setIntakeDefaultResumeId(created.resumeId ?? null);
+      const createdResumeId = created.resumeId ?? null;
+
+      if (createdResumeId && selectedPromotionItems.length > 0) {
+        const changes = buildMasterResumePromotionPayload({
+          draft,
+          baseResume: null,
+          selectedItems: selectedPromotionItems,
+          sourceSessionId: options?.sourceSessionId ?? null,
+          companyName: options?.companyName,
+          jobTitle: options?.jobTitle,
+          atsScore: options?.atsScore,
+        });
+        await updateMasterResume(createdResumeId, { evidence_items: changes.evidence_items });
+      }
+
+      setIntakeDefaultResumeId(createdResumeId);
       setIntakeInitialResumeText(rawText);
       await listResumes();
 
       return {
         success: true,
-        resumeId: created.resumeId,
+        resumeId: createdResumeId ?? undefined,
         message: 'Created your default master resume.',
       };
     },

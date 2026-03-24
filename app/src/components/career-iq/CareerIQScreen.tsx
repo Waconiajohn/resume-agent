@@ -4,7 +4,7 @@ import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { OnboardingTour } from '@/components/OnboardingTour';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import { useCareerProfile } from './CareerProfileContext';
-import { CareerProfileRoom } from './CareerProfileRoom';
+import { YourProfilePage } from './YourProfilePage';
 import { RoomSkeleton } from '@/components/shared/RoomSkeleton';
 import { DashboardHome } from './DashboardHome';
 import { MobileBriefing } from './MobileBriefing';
@@ -35,7 +35,7 @@ const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ defau
 
 const ROOM_LABELS: Record<CareerIQRoom, string> = {
   dashboard: 'Workspace Home',
-  'career-profile': 'Career Profile',
+  'career-profile': 'Your Profile',
   resume: 'Resume Builder',
   linkedin: 'LinkedIn',
   jobs: 'Job Search',
@@ -118,15 +118,6 @@ export function CareerIQScreen({
     signals,
     dashboardState,
     summary,
-    profileLoading,
-    profileError,
-    onboardingStatus,
-    questions,
-    activityMessages,
-    currentStage,
-    startAssessment,
-    submitResponses,
-    resetAssessment,
   } = useCareerProfile();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
@@ -348,18 +339,10 @@ export function CareerIQScreen({
 
     if (activeRoom === 'career-profile') {
       return (
-        <CareerProfileRoom
-          profile={profile}
-          summary={summary}
-          profileLoading={profileLoading}
-          profileError={profileError}
-          onboardingStatus={onboardingStatus}
-          questions={questions}
-          activityMessages={activityMessages}
-          currentStage={currentStage}
-          onStartAssessment={() => startAssessment()}
-          onSubmitResponses={submitResponses}
-          onResetAssessment={resetAssessment}
+        <YourProfilePage
+          onGetDefaultResume={onGetDefaultResume}
+          onNavigateResume={() => handleRoomNavigate('resume')}
+          careerProfile={profile}
         />
       );
     }
