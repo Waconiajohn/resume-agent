@@ -52,7 +52,7 @@ function pushLine(lines: string[], label: string, value: string | null) {
   lines.push(`- ${label}: ${value}`);
 }
 
-function pushListLine(lines: string[], label: string, values: string[], maxItems = 5) {
+function pushListLine(lines: string[], label: string, values: string[], maxItems = 20) {
   if (!values.length) return;
   lines.push(`- ${label}: ${values.slice(0, maxItems).join(', ')}`);
 }
@@ -187,7 +187,7 @@ export function renderPositioningStrategySection(args: {
       ...asStringArray(legacy?.supporting_themes),
       ...asStringArray(legacy?.proof_themes),
     ]),
-    6,
+    15,
   );
   pushListLine(
     lines,
@@ -196,7 +196,7 @@ export function renderPositioningStrategySection(args: {
       ...strategy?.narrativePriorities ?? [],
       ...asStringArray(legacy?.narrative_priorities),
     ]),
-    5,
+    15,
   );
   pushListLine(
     lines,
@@ -205,7 +205,7 @@ export function renderPositioningStrategySection(args: {
       ...strategy?.approvedFraming ?? [],
       ...asStringArray(legacy?.approved_framing),
     ]),
-    5,
+    15,
   );
   pushListLine(
     lines,
@@ -235,7 +235,7 @@ export function renderEvidenceInventorySection(args: {
   legacyEvidence?: unknown[] | null;
   maxItems?: number;
 }): string[] {
-  const maxItems = typeof args.maxItems === 'number' ? Math.max(1, args.maxItems) : 8;
+  const maxItems = typeof args.maxItems === 'number' ? Math.max(1, args.maxItems) : 20;
   const lines: string[] = [];
 
   if (args.sharedInventory?.evidenceItems?.length) {
@@ -282,7 +282,7 @@ export function renderCareerNarrativeSection(args: {
       ...narrative?.signatureStrengths ?? [],
       ...asStringArray(legacy?.signature_strengths),
     ]),
-    5,
+    10,
   );
   pushListLine(
     lines,
@@ -291,7 +291,7 @@ export function renderCareerNarrativeSection(args: {
       ...narrative?.careerThemes ?? [],
       ...asStringArray(legacy?.career_themes),
     ]),
-    5,
+    10,
   );
   pushLine(
     lines,
@@ -310,7 +310,7 @@ export function renderCareerNarrativeSection(args: {
       ...narrative?.differentiators ?? [],
       ...asStringArray(legacy?.differentiators),
     ]),
-    5,
+    10,
   );
   pushListLine(
     lines,
@@ -319,7 +319,7 @@ export function renderCareerNarrativeSection(args: {
       ...narrative?.authenticPhrases ?? [],
       ...asStringArray(legacy?.authentic_phrases),
     ]),
-    3,
+    10,
   );
 
   return section(args.heading, lines);
@@ -364,7 +364,7 @@ export function renderIndustryContextSection(args: {
       ...industry?.domainLanguage ?? [],
       ...asStringArray(legacy?.domain_language),
     ]),
-    6,
+    12,
   );
   pushListLine(
     lines,
@@ -411,7 +411,7 @@ export function renderBenchmarkCandidateSection(args: {
       ...asStringArray(legacy?.expected_technical_skills),
       ...asStringArray(legacy?.must_have_signals),
     ]),
-    6,
+    15,
   );
   pushListLine(
     lines,
@@ -438,7 +438,7 @@ export function renderBenchmarkCandidateSection(args: {
       ...benchmark?.benchmarkGapsRelativeToCandidate ?? [],
       ...asStringArray(legacy?.benchmark_gaps_relative_to_candidate),
     ]),
-    4,
+    10,
   );
 
   return section(args.heading, lines);
@@ -465,7 +465,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.requirements ?? [],
       ...asStringArray(legacy?.requirements),
     ]),
-    6,
+    15,
   );
   pushListLine(
     lines,
@@ -474,7 +474,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.mustHaveGaps ?? [],
       ...asStringArray(legacy?.must_have_gaps),
     ]),
-    5,
+    15,
   );
   pushListLine(
     lines,
@@ -483,7 +483,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.preferredGaps ?? [],
       ...asStringArray(legacy?.preferred_gaps),
     ]),
-    5,
+    15,
   );
   pushListLine(
     lines,
@@ -492,7 +492,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.benchmarkGaps ?? [],
       ...asStringArray(legacy?.benchmark_gaps),
     ]),
-    5,
+    10,
   );
   pushListLine(
     lines,
@@ -501,7 +501,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.criticalRisks ?? [],
       ...asStringArray(legacy?.critical_gaps),
     ]),
-    5,
+    10,
   );
   pushListLine(
     lines,
@@ -510,7 +510,7 @@ export function renderGapAnalysisSection(args: {
       ...gap?.nextBestActions ?? [],
       ...asStringArray(legacy?.next_best_actions),
     ]),
-    5,
+    10,
   );
 
   return section(args.heading, lines);

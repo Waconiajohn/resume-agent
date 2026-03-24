@@ -73,7 +73,7 @@ const writeLetterTool: CoverLetterTool = {
           heading: 'KEY EVIDENCE ITEMS',
           sharedInventory: hasSharedEvidence ? sharedContext?.evidenceInventory : undefined,
           legacyEvidence: hasSharedEvidence ? undefined : (platformCtx?.evidence_items ?? undefined),
-          maxItems: 8,
+          maxItems: 15,
         }).join('\n')
       : '';
     const positioningStrategy = positioningStrategyBlock

@@ -261,7 +261,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
             heading: '## Evidence Inventory',
             sharedInventory: sharedContext?.evidenceInventory,
             legacyEvidence: state.platform_context?.evidence_items,
-            maxItems: 6,
+            maxItems: 15,
           }));
         }
 

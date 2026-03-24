@@ -325,11 +325,11 @@ function buildUserMessage(
       const scope = e.inferred_scope
         ? ` (scope: team=${e.inferred_scope.team_size ?? '?'}, budget=${e.inferred_scope.budget ?? '?'}, geo=${e.inferred_scope.geography ?? '?'})`
         : '';
-      return `- ${e.title} at ${e.company} (${e.start_date}–${e.end_date})${scope}\n  ${e.bullets.slice(0, 3).join('\n  ')}`;
+      return `- ${e.title} at ${e.company} (${e.start_date}–${e.end_date})${scope}\n  ${e.bullets.join('\n  ')}`;
     }),
     '',
     'Hidden accomplishments detected:',
-    ...hiddenAccomplishments.slice(0, 5).map(h => `- ${h}`),
+    ...hiddenAccomplishments.slice(0, 15).map(h => `- ${h}`),
     '',
     `Technologies: ${technologies.join(', ')}`,
     `Certifications: ${candidateCertifications.join(', ')}`,

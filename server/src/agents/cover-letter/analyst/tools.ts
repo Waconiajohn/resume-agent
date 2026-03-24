@@ -48,7 +48,7 @@ const matchRequirementsTool: CoverLetterTool = {
       state.jd_analysis = {
         company_name: String(input.company_name ?? 'the company'),
         role_title: 'the position',
-        requirements: jdText.slice(0, 500).split(/[.\n]/).slice(0, 8).map(s => s.trim()).filter(Boolean),
+        requirements: jdText.slice(0, 3000).split(/[.\n]/).slice(0, 20).map(s => s.trim()).filter(Boolean),
         culture_cues: [],
       };
       ctx.scratchpad['jd_analysis'] = state.jd_analysis;

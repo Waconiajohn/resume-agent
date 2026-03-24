@@ -167,7 +167,7 @@ function buildContextBlock(state: NetworkingOutreachState): string {
     heading: '## Evidence Inventory',
     sharedInventory: state.shared_context?.evidenceInventory,
     legacyEvidence: state.platform_context?.evidence_items,
-    maxItems: 6,
+    maxItems: 15,
   }));
 
   return parts.join('\n');

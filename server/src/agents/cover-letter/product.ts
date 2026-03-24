@@ -183,7 +183,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             ...renderEvidenceInventorySection({
               heading: 'Evidence summary',
               sharedInventory: sharedContext?.evidenceInventory,
-              maxItems: 8,
+              maxItems: 15,
             }),
           );
         } else if (
@@ -197,7 +197,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             ...renderEvidenceInventorySection({
               heading: 'Evidence summary',
               legacyEvidence: state.platform_context.evidence_items,
-              maxItems: 8,
+              maxItems: 15,
             }),
           );
         }

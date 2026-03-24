@@ -230,7 +230,7 @@ const analyzeCurrentProfileTool: LinkedInOptimizerTool = {
       heading: 'EVIDENCE INVENTORY',
       sharedInventory: sharedContext?.evidenceInventory,
       legacyEvidence: platformContext?.evidence_items,
-      maxItems: 8,
+      maxItems: 15,
     }).join('\n');
 
     const analysisPrompt = `Analyze this LinkedIn profile against the candidate's resume and provide a detailed assessment.

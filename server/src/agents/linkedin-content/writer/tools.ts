@@ -234,13 +234,13 @@ const writePostTool: LinkedInContentTool = {
       contextParts.push(...renderEvidenceInventorySection({
         heading: '## Evidence Items (use specific metrics and stories from here)',
         sharedInventory: sharedContext?.evidenceInventory,
-        maxItems: 5,
+        maxItems: 15,
       }));
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       contextParts.push(...renderEvidenceInventorySection({
         heading: '## Evidence Items (use specific metrics and stories from here)',
         legacyEvidence: platformContext.evidence_items,
-        maxItems: 5,
+        maxItems: 15,
       }));
     }
 
@@ -457,7 +457,7 @@ const revisePostTool: LinkedInContentTool = {
         ...renderEvidenceInventorySection({
           heading: '## Available Evidence (use if user requests specific examples)',
           sharedInventory: sharedContext?.evidenceInventory,
-          maxItems: 8,
+          maxItems: 15,
         }),
       );
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
@@ -466,7 +466,7 @@ const revisePostTool: LinkedInContentTool = {
         ...renderEvidenceInventorySection({
           heading: '## Available Evidence (use if user requests specific examples)',
           legacyEvidence: platformContext.evidence_items,
-          maxItems: 8,
+          maxItems: 15,
         }),
       );
     }

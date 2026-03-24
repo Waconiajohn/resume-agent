@@ -155,7 +155,7 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
             heading: '## Evidence Items (use to generate targeted questions)',
             sharedInventory: state.shared_context?.evidenceInventory,
             legacyEvidence: state.platform_context?.evidence_items ?? [],
-            maxItems: 5,
+            maxItems: 15,
           }),
         );
       }

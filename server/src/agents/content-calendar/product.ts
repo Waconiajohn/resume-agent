@@ -138,7 +138,7 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
             heading: '## Evidence Inventory',
             sharedInventory: sharedContext?.evidenceInventory,
             legacyEvidence: state.platform_context?.evidence_items,
-            maxItems: 8,
+            maxItems: 15,
           }));
         }
 

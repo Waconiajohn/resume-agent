@@ -61,7 +61,7 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
       heading: '## Evidence Items (use specific metrics and stories)',
       sharedInventory: sharedContext?.evidenceInventory,
       legacyEvidence: platformContext?.evidence_items,
-      maxItems: 6,
+      maxItems: 15,
     }));
   }
 
@@ -369,7 +369,7 @@ ${(
       heading: '## Available Evidence (use if user requests specific examples)',
       sharedInventory: state.shared_context?.evidenceInventory,
       legacyEvidence: state.platform_context?.evidence_items,
-      maxItems: 6,
+      maxItems: 15,
     }).join('\n')
   : ''}
 

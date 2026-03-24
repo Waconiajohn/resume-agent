@@ -418,7 +418,7 @@ ${renderEvidenceInventorySection({
   heading: 'EVIDENCE FROM RESUME PIPELINE',
   sharedInventory: state.shared_context?.evidenceInventory,
   legacyEvidence: state.platform_context?.evidence_items,
-  maxItems: 8,
+  maxItems: 15,
 }).join('\n')}
 
 For each selected achievement, return:

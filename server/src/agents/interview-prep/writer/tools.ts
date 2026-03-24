@@ -654,7 +654,7 @@ const generateThankYouNotesTool: InterviewPrepTool = {
     if (state.resume_data) {
       contextLines.push(`Candidate: ${candidateName}, ${state.resume_data.current_title}`);
       if (state.resume_data.key_achievements.length > 0) {
-        contextLines.push(`Key Achievements: ${state.resume_data.key_achievements.slice(0, 3).join('; ')}`);
+        contextLines.push(`Key Achievements: ${state.resume_data.key_achievements.slice(0, 10).join('; ')}`);
       }
     }
     const knownFor = state.shared_context?.careerNarrative?.leadershipIdentity
@@ -806,7 +806,7 @@ const generateFollowUpEmailTool: InterviewPrepTool = {
       ? `Recipient: ${recipientName}${recipientTitle ? `, ${recipientTitle}` : ''}`
       : 'Recipient: not specified — write to hiring manager';
 
-    const candidateStrengths = state.resume_data?.key_achievements?.slice(0, 2).join('; ') ?? '';
+    const candidateStrengths = state.resume_data?.key_achievements?.slice(0, 8).join('; ') ?? '';
 
     const response = await llm.chat({
       model: MODEL_PRIMARY,

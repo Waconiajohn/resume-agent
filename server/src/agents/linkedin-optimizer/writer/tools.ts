@@ -124,7 +124,7 @@ function buildContextBlock(state: LinkedInOptimizerState): string {
     heading: '## Evidence Inventory',
     sharedInventory: state.shared_context?.evidenceInventory,
     legacyEvidence: state.platform_context?.evidence_items,
-    maxItems: 8,
+    maxItems: 15,
   }));
 
   return parts.join('\n');

@@ -146,7 +146,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
             heading: '## Evidence Inventory',
             sharedInventory: sharedContext?.evidenceInventory,
             legacyEvidence: state.platform_context?.evidence_items,
-            maxItems: 8,
+            maxItems: 15,
           }));
         }
 

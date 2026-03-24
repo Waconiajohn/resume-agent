@@ -284,7 +284,7 @@ const findCommonGroundTool: NetworkingOutreachTool = {
       heading: 'EVIDENCE INVENTORY',
       sharedInventory: sharedContext?.evidenceInventory,
       legacyEvidence: platformContext?.evidence_items,
-      maxItems: 6,
+      maxItems: 15,
     }).join('\n');
 
     const commonGroundPrompt = `Find common ground between this user and their target contact for a networking outreach campaign.

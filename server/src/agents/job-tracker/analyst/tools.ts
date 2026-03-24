@@ -262,7 +262,7 @@ ${state.application_analyses.map((a, i) => {
   const app = state.applications[i];
   return `
 --- Application ${i + 1}: ${a.company} — ${a.role} ---
-JD Summary: ${app?.jd_text?.slice(0, 500) ?? 'No JD available'}
+JD Summary: ${app?.jd_text?.slice(0, 3000) ?? 'No JD available'}
 Initial Fit Score: ${a.fit_score}
 Keyword Match: ${a.keyword_match}
 Seniority: ${a.seniority_alignment}
@@ -647,7 +647,7 @@ function buildApplicationAnalysisPrompt(
       `- Current Title: ${rd.current_title}`,
       `- Summary: ${rd.career_summary}`,
       `- Key Skills: ${rd.key_skills?.join(', ') || 'None listed'}`,
-      `- Key Achievements: ${rd.key_achievements?.slice(0, 5).join(' | ') || 'None listed'}`,
+      `- Key Achievements: ${rd.key_achievements?.slice(0, 10).join(' | ') || 'None listed'}`,
     );
   }
 

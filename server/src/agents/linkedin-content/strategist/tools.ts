@@ -198,13 +198,13 @@ const suggestTopicsTool: LinkedInContentTool = {
       contextParts.push(...renderEvidenceInventorySection({
         heading: '## Available Evidence Items (use as hooks)',
         sharedInventory: sharedContext?.evidenceInventory,
-        maxItems: 8,
+        maxItems: 15,
       }));
     } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
       contextParts.push(...renderEvidenceInventorySection({
         heading: '## Available Evidence Items (use as hooks)',
         legacyEvidence: platformContext.evidence_items,
-        maxItems: 8,
+        maxItems: 15,
       }));
     }
 

@@ -46,7 +46,7 @@ function buildCandidateContext(state: JobTrackerState): string {
     }
     if (rd.key_achievements?.length > 0) {
       parts.push('Key Achievements:');
-      for (const a of rd.key_achievements.slice(0, 5)) {
+      for (const a of rd.key_achievements.slice(0, 10)) {
         parts.push(`- ${a}`);
       }
     }
@@ -97,7 +97,7 @@ function buildApplicationContext(
     if (app.notes) parts.push(`Notes: ${app.notes}`);
     parts.push('');
     parts.push('## Job Description (excerpt)');
-    parts.push(app.jd_text.slice(0, 1500));
+    parts.push(app.jd_text.slice(0, 3000));
   }
 
   if (analysis) {

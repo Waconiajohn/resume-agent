@@ -193,7 +193,7 @@ const identifyThemesTool: ContentCalendarTool = {
       heading: 'EVIDENCE INVENTORY',
       sharedInventory: sharedContext?.evidenceInventory,
       legacyEvidence: platformContext?.evidence_items,
-      maxItems: 6,
+      maxItems: 15,
     }).join('\n');
 
     const themePrompt = `Identify ${themeCount} content themes for a LinkedIn content calendar based on this executive's expertise.
