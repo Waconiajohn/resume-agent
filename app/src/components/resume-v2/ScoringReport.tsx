@@ -202,6 +202,8 @@ function ScoreSummaryHeader({
 
 // ─── Before Report ────────────────────────────────────────────────────────────
 
+const KEYWORD_COLUMN_LIMIT = 8;
+
 function BeforeReport({
   preScores,
   gapAnalysis,
@@ -212,10 +214,16 @@ function BeforeReport({
   const foundCount = preScores.keywords_found.length;
   const missingCount = preScores.keywords_missing.length;
   const totalCount = foundCount + missingCount;
+  const [showAll, setShowAll] = useState(false);
+
   const originalRequirementsAddressed = gapAnalysis
     ? gapAnalysis.requirements.filter((r) => r.classification === 'strong').length
     : null;
   const totalRequirements = gapAnalysis?.requirements.length ?? null;
+
+  const visibleFound = showAll ? preScores.keywords_found : preScores.keywords_found.slice(0, KEYWORD_COLUMN_LIMIT);
+  const visibleMissing = showAll ? preScores.keywords_missing : preScores.keywords_missing.slice(0, KEYWORD_COLUMN_LIMIT);
+  const hasMore = foundCount > KEYWORD_COLUMN_LIMIT || missingCount > KEYWORD_COLUMN_LIMIT;
 
   return (
     <div className="space-y-4">
@@ -227,7 +235,7 @@ function BeforeReport({
         </div>
         <ScoreBar value={preScores.ats_match} color="rgba(175,196,255,0.6)" />
         <p className="text-[11px] text-[var(--text-soft)]">
-          {foundCount} of {totalCount} keywords detected in the original resume
+          {foundCount} of {totalCount} JD keywords detected in the original resume
         </p>
       </div>
 
@@ -244,31 +252,71 @@ function BeforeReport({
         </div>
       )}
 
-      {/* Keywords found */}
-      {preScores.keywords_found.length > 0 && (
+      {/* Two-column keyword table */}
+      {(foundCount > 0 || missingCount > 0) && (
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2">
-            Keywords already in original resume ({foundCount})
+            JD Keywords ({totalCount} total)
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {preScores.keywords_found.map((kw) => (
-              <KeywordChip key={kw} keyword={kw} variant="found" />
-            ))}
-          </div>
-        </div>
-      )}
+          <div className="rounded-lg border border-[var(--line-soft)] overflow-hidden">
+            {/* Column headers */}
+            <div className="grid grid-cols-2 border-b border-[var(--line-soft)] bg-black/10">
+              <div className="px-3 py-2 flex items-center gap-1.5">
+                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                  Found ({foundCount})
+                </span>
+              </div>
+              <div className="px-3 py-2 flex items-center gap-1.5 border-l border-[var(--line-soft)]">
+                <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                  Missing ({missingCount})
+                </span>
+              </div>
+            </div>
 
-      {/* Keywords missing */}
-      {preScores.keywords_missing.length > 0 && (
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2">
-            Keywords missing from original resume ({missingCount})
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {preScores.keywords_missing.map((kw) => (
-              <KeywordChip key={kw} keyword={kw} variant="missing" />
-            ))}
+            {/* Keyword rows */}
+            <div className="grid grid-cols-2">
+              {/* Found column */}
+              <div className="py-1">
+                {visibleFound.length === 0
+                  ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">None detected</p>
+                  : visibleFound.map((kw) => (
+                    <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
+                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                      <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
+                    </div>
+                  ))
+                }
+              </div>
+              {/* Missing column */}
+              <div className="py-1 border-l border-[var(--line-soft)]">
+                {visibleMissing.length === 0
+                  ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">All keywords present</p>
+                  : visibleMissing.map((kw) => (
+                    <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
+                      <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                      <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
           </div>
+
+          {/* Show all toggle */}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => setShowAll((p) => !p)}
+              className="mt-2 flex items-center gap-1 text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
+            >
+              {showAll
+                ? <><ChevronUp className="h-3.5 w-3.5" />Show fewer keywords</>
+                : <><ChevronDown className="h-3.5 w-3.5" />Show all keywords</>
+              }
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -289,6 +337,7 @@ function AfterReport({
   const ats = verificationDetail?.ats ?? null;
   const tone = verificationDetail?.tone ?? null;
   const truth = verificationDetail?.truth ?? null;
+  const [showAllKeywords, setShowAllKeywords] = useState(false);
 
   const afterAts = assembly.scores.ats_match;
   const afterTone = assembly.scores.tone;
@@ -304,9 +353,23 @@ function AfterReport({
   const requirementMap = positioning?.requirement_map ?? [];
   const addressedAfter = requirementMap.filter((r) => r.status === 'strong' || r.status === 'repositioned').length;
 
+  // Identify newly added keywords (in after but not in before)
+  const beforeFoundSet = new Set(preScores.keywords_found);
+  const newlyAdded = keywordsFoundAfter.filter((kw) => !beforeFoundSet.has(kw));
+  const newlyAddedSet = new Set(newlyAdded);
+
+  const totalAfter = keywordsFoundAfter.length + keywordsMissingAfter.length;
+  const hasMoreKeywords = keywordsFoundAfter.length > KEYWORD_COLUMN_LIMIT || keywordsMissingAfter.length > KEYWORD_COLUMN_LIMIT;
+
+  const visibleFoundAfter = showAllKeywords ? keywordsFoundAfter : keywordsFoundAfter.slice(0, KEYWORD_COLUMN_LIMIT);
+  const visibleMissingAfter = showAllKeywords ? keywordsMissingAfter : keywordsMissingAfter.slice(0, KEYWORD_COLUMN_LIMIT);
+
+  // Map missing keywords to their placement suggestions for quick lookup
+  const suggestionMap = new Map(keywordSuggestions.map((s) => [s.keyword, s]));
+
   return (
     <div className="space-y-4">
-      {/* ATS after */}
+      {/* ATS delta headline */}
       <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-[var(--text-muted)]">Optimized ATS Match</p>
@@ -318,7 +381,10 @@ function AfterReport({
         <ScoreBar value={afterAts} color="#b5dec2" />
         <div className="flex items-center gap-1 text-[11px] text-[var(--text-soft)]">
           <ArrowRight className="h-2.5 w-2.5 shrink-0" />
-          <span>Improved from {preScores.ats_match}%</span>
+          <span>
+            {preScores.keywords_found.length} → {keywordsFoundAfter.length} keywords matched
+            {newlyAdded.length > 0 && ` (+${newlyAdded.length} newly added)`}
+          </span>
         </div>
       </div>
 
@@ -340,39 +406,97 @@ function AfterReport({
         </div>
       )}
 
-      {/* Keywords found after */}
-      {keywordsFoundAfter.length > 0 && (
+      {/* Two-column keyword table */}
+      {(keywordsFoundAfter.length > 0 || keywordsMissingAfter.length > 0) && (
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2">
-            Keywords now in resume ({keywordsFoundAfter.length})
+            JD Keywords ({totalAfter} total)
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {keywordsFoundAfter.map((kw) => (
-              <KeywordChip key={kw} keyword={kw} variant="found" />
-            ))}
+          <div className="rounded-lg border border-[var(--line-soft)] overflow-hidden">
+            {/* Column headers */}
+            <div className="grid grid-cols-2 border-b border-[var(--line-soft)] bg-black/10">
+              <div className="px-3 py-2 flex items-center gap-1.5">
+                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                  Found ({keywordsFoundAfter.length})
+                </span>
+              </div>
+              <div className="px-3 py-2 flex items-center gap-1.5 border-l border-[var(--line-soft)]">
+                <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                  Still Missing ({keywordsMissingAfter.length})
+                </span>
+              </div>
+            </div>
+
+            {/* Keyword rows */}
+            <div className="grid grid-cols-2">
+              {/* Found column */}
+              <div className="py-1">
+                {visibleFoundAfter.length === 0
+                  ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">None matched</p>
+                  : visibleFoundAfter.map((kw) => (
+                    <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
+                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                      <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
+                      {newlyAddedSet.has(kw) && (
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                          style={{ color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.14)', border: '1px solid rgba(181,222,194,0.28)' }}
+                        >
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                  ))
+                }
+              </div>
+              {/* Missing column — with placement hint if available */}
+              <div className="py-1 border-l border-[var(--line-soft)]">
+                {visibleMissingAfter.length === 0
+                  ? <p className="px-3 py-2 text-[11px]" style={{ color: '#b5dec2' }}>All keywords matched</p>
+                  : visibleMissingAfter.map((kw) => {
+                    const hint = suggestionMap.get(kw);
+                    return (
+                      <div key={kw} className="px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                          <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
+                        </div>
+                        {hint && (
+                          <p className="text-[10px] text-[var(--text-soft)] leading-3.5 ml-5 mt-0.5 italic">
+                            → {hint.suggested_placement}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            </div>
           </div>
+
+          {/* Show all toggle */}
+          {hasMoreKeywords && (
+            <button
+              type="button"
+              onClick={() => setShowAllKeywords((p) => !p)}
+              className="mt-2 flex items-center gap-1 text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
+            >
+              {showAllKeywords
+                ? <><ChevronUp className="h-3.5 w-3.5" />Show fewer keywords</>
+                : <><ChevronDown className="h-3.5 w-3.5" />Show all keywords</>
+              }
+            </button>
+          )}
         </div>
       )}
 
-      {/* Keywords still missing */}
-      {keywordsMissingAfter.length > 0 && (
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2">
-            Keywords still missing ({keywordsMissingAfter.length})
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {keywordsMissingAfter.map((kw) => (
-              <KeywordChip key={kw} keyword={kw} variant="missing" />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Keyword placement suggestions */}
+      {/* Keyword placement suggestions for still-missing keywords */}
       {keywordSuggestions.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
-            Suggested keyword placements
+            How to add remaining keywords
           </p>
           {keywordSuggestions.map((s) => (
             <div key={s.keyword} className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1">
@@ -386,15 +510,50 @@ function AfterReport({
         </div>
       )}
 
-      {/* Tone */}
+      {/* Truth Score */}
+      <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-[var(--text-muted)]">Truth Score</p>
+          <span className="text-sm font-bold tabular-nums" style={{ color: '#afc4ff' }}>{afterTruth}/100</span>
+        </div>
+        <ScoreBar value={afterTruth} color="#afc4ff" />
+        {truth && truth.claims.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {(['verified', 'plausible', 'unverified', 'fabricated'] as const).map((conf) => {
+              const count = truth.claims.filter((c) => c.confidence === conf).length;
+              if (count === 0) return null;
+              const style: React.CSSProperties = conf === 'verified'
+                ? { color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.10)', border: '1px solid rgba(181,222,194,0.22)' }
+                : conf === 'plausible'
+                ? { color: '#afc4ff', backgroundColor: 'rgba(175,196,255,0.10)', border: '1px solid rgba(175,196,255,0.22)' }
+                : conf === 'unverified'
+                ? { color: '#f0d99f', backgroundColor: 'rgba(240,217,159,0.10)', border: '1px solid rgba(240,217,159,0.22)' }
+                : { color: '#f0b8b8', backgroundColor: 'rgba(240,184,184,0.10)', border: '1px solid rgba(240,184,184,0.22)' };
+              return (
+                <span key={conf} className="rounded-md px-2 py-0.5 text-[10px] font-medium capitalize" style={style}>
+                  {count} {conf}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {flaggedClaims.length === 0 && (
+          <p className="text-[11px]" style={{ color: '#b5dec2' }}>All claims verified</p>
+        )}
+      </div>
+
+      {/* Tone Score */}
       <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-[var(--text-muted)]">Executive Tone Score</p>
-          <span className="text-sm font-bold tabular-nums" style={{ color: '#f0d99f' }}>{afterTone}</span>
+          <span className="text-sm font-bold tabular-nums" style={{ color: '#f0d99f' }}>{afterTone}/100</span>
         </div>
         <ScoreBar value={afterTone} color="#f0d99f" />
         {toneFindings.length === 0 && (
           <p className="text-[11px]" style={{ color: '#b5dec2' }}>No tone issues detected</p>
+        )}
+        {toneFindings.length > 0 && (
+          <p className="text-[11px] text-[var(--text-soft)]">{toneFindings.length} tone finding{toneFindings.length !== 1 ? 's' : ''} below</p>
         )}
       </div>
 
@@ -422,18 +581,6 @@ function AfterReport({
         </div>
       )}
 
-      {/* Truth */}
-      <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-[var(--text-muted)]">Truth Verification Score</p>
-          <span className="text-sm font-bold tabular-nums" style={{ color: '#afc4ff' }}>{afterTruth}</span>
-        </div>
-        <ScoreBar value={afterTruth} color="#afc4ff" />
-        {flaggedClaims.length === 0 && (
-          <p className="text-[11px]" style={{ color: '#b5dec2' }}>All claims verified</p>
-        )}
-      </div>
-
       {flaggedClaims.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
@@ -446,6 +593,43 @@ function AfterReport({
               <p className="text-[11px]" style={{ color: '#b5dec2' }}>{item.recommendation}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Hiring Manager Scan */}
+      {assembly.hiring_manager_scan && (
+        <div className={`rounded-lg border px-4 py-3 space-y-3 ${
+          assembly.hiring_manager_scan.pass
+            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]'
+            : 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]'
+        }`}>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-[var(--text-muted)]">Hiring Manager Scan</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold tabular-nums" style={{ color: assembly.hiring_manager_scan.pass ? '#b5dec2' : '#f0d99f' }}>
+                {assembly.hiring_manager_scan.scan_score}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-wide ${assembly.hiring_manager_scan.pass ? 'text-[#b5dec2]' : 'text-[#f0d99f]'}`}>
+                {assembly.hiring_manager_scan.pass ? 'PASS' : 'NEEDS WORK'}
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-2 grid-cols-2">
+            {[
+              { label: 'Header Impact', score: assembly.hiring_manager_scan.header_impact.score, note: assembly.hiring_manager_scan.header_impact.note },
+              { label: 'Summary Clarity', score: assembly.hiring_manager_scan.summary_clarity.score, note: assembly.hiring_manager_scan.summary_clarity.note },
+              { label: 'Above-Fold Strength', score: assembly.hiring_manager_scan.above_fold_strength.score, note: assembly.hiring_manager_scan.above_fold_strength.note },
+              { label: 'Keyword Visibility', score: assembly.hiring_manager_scan.keyword_visibility.score, note: assembly.hiring_manager_scan.keyword_visibility.note },
+            ].map(({ label, score, note }) => (
+              <div key={label} className="rounded-lg border border-[var(--line-soft)] bg-black/10 px-3 py-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-[var(--text-soft)]">{label}</p>
+                  <span className="text-[11px] font-bold tabular-nums text-[var(--text-muted)]">{score}</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-soft)] leading-4">{note}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

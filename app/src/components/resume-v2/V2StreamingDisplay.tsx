@@ -11,9 +11,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Circle, Check, X } from 'lucide-react';
+import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Circle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion } from '@/types/resume-v2';
-import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
+import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType, GapAnalysis, BenchmarkCandidate, NarrativeStrategy, AssemblyResult, VerificationDetail } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
@@ -105,85 +105,174 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
 }
 
 // ─── OriginalScoresCard ───────────────────────────────────────────────────────
-// Shows the pre-optimization ATS score + keyword breakdown before the AI processes.
+// Shows the pre-optimization ATS score + full two-column keyword breakdown.
 
 interface OriginalScoresCardProps {
   preScores: PreScores;
+  /** When true (resume mode), renders as a collapsible card */
+  collapsible?: boolean;
 }
 
-function OriginalScoresCard({ preScores }: OriginalScoresCardProps) {
+const KEYWORD_INITIAL_LIMIT = 8;
+
+function OriginalScoresCard({ preScores, collapsible = false }: OriginalScoresCardProps) {
   const { ats_match, keywords_found, keywords_missing } = preScores;
-  const topMissing = keywords_missing.slice(0, 5);
-  const extraMissing = keywords_missing.length - topMissing.length;
+  const total = keywords_found.length + keywords_missing.length;
+  const [showAll, setShowAll] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  const visibleFound = showAll ? keywords_found : keywords_found.slice(0, KEYWORD_INITIAL_LIMIT);
+  const visibleMissing = showAll ? keywords_missing : keywords_missing.slice(0, KEYWORD_INITIAL_LIMIT);
+  const hasMore = keywords_found.length > KEYWORD_INITIAL_LIMIT || keywords_missing.length > KEYWORD_INITIAL_LIMIT;
 
   return (
     <div
-      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6 mb-6"
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] mb-6 overflow-hidden"
       role="region"
       aria-label="Original resume analysis"
     >
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-4">
-        Your Starting Point
-      </p>
+      {/* Header — always visible */}
+      <div className="px-6 pt-5 pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
+              Your Starting Point — Original Resume Analysis
+            </p>
 
-      {/* ATS score + bar */}
-      <div className="mb-5">
-        <div className="flex items-baseline gap-2 mb-1.5">
-          <span className="text-2xl font-bold tabular-nums text-neutral-800">{ats_match}%</span>
-          <span className="text-sm text-neutral-500">ATS Keyword Match</span>
-        </div>
-        <div
-          className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden"
-          role="progressbar"
-          aria-valuenow={ats_match}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`ATS match: ${ats_match}%`}
-        >
-          <div
-            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
-            style={{ width: `${ats_match}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Keyword counts row */}
-      <div className="flex items-start gap-6 mb-4">
-        <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-          <Check className="h-4 w-4 shrink-0" />
-          {keywords_found.length} keyword{keywords_found.length !== 1 ? 's' : ''} found
-        </div>
-        <div className="flex items-center gap-1.5 text-sm text-neutral-400 font-medium">
-          <X className="h-4 w-4 shrink-0" />
-          {keywords_missing.length} keyword{keywords_missing.length !== 1 ? 's' : ''} missing
-        </div>
-      </div>
-
-      {/* Top 5 missing keywords */}
-      {topMissing.length > 0 && (
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-2">Top missing keywords</p>
-          <div className="flex flex-wrap gap-1.5">
-            {topMissing.map((kw, i) => (
-              <span
-                key={i}
-                className="rounded-md px-2 py-0.5 text-[12px] font-medium text-neutral-400 bg-neutral-100 border border-neutral-200"
+            {/* ATS score + bar */}
+            <div className="mb-1.5">
+              <div className="flex items-baseline gap-2 mb-1.5">
+                <span className="text-2xl font-bold tabular-nums text-neutral-800">{ats_match}%</span>
+                <span className="text-sm text-neutral-500">ATS Keyword Match</span>
+                <span className="text-[11px] text-neutral-400">({total} JD keywords total)</span>
+              </div>
+              <div
+                className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden"
+                role="progressbar"
+                aria-valuenow={ats_match}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`ATS match: ${ats_match}%`}
               >
-                {kw}
-              </span>
-            ))}
-            {extraMissing > 0 && (
-              <span className="rounded-md px-2 py-0.5 text-[12px] font-medium text-neutral-400 bg-neutral-100 border border-neutral-200">
-                +{extraMissing} more
-              </span>
-            )}
+                <div
+                  className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
+                  style={{ width: `${ats_match}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          {collapsible && (
+            <button
+              type="button"
+              onClick={() => setCollapsed((p) => !p)}
+              className="mt-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expand original analysis' : 'Collapse original analysis'}
+            >
+              {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Keyword summary counts row */}
+        <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+            <Check className="h-4 w-4 shrink-0" />
+            {keywords_found.length} found
+          </div>
+          <span className="text-neutral-300">|</span>
+          <div className="flex items-center gap-1.5 text-sm text-red-400 font-medium">
+            <X className="h-4 w-4 shrink-0" />
+            {keywords_missing.length} missing
           </div>
         </div>
-      )}
+      </div>
 
-      <p className="mt-4 text-[13px] text-neutral-500 leading-relaxed">
-        We are now optimizing your resume to close these gaps...
-      </p>
+      {/* Collapsible body */}
+      {(!collapsible || !collapsed) && (
+        <div className="px-6 pb-5">
+          {/* Two-column keyword table */}
+          {(keywords_found.length > 0 || keywords_missing.length > 0) && (
+            <div>
+              <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                {/* Column headers */}
+                <div className="grid grid-cols-2 border-b border-neutral-200 bg-neutral-50">
+                  <div className="px-3 py-2 flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                      Found ({keywords_found.length})
+                    </span>
+                  </div>
+                  <div className="px-3 py-2 flex items-center gap-1.5 border-l border-neutral-200">
+                    <X className="h-3.5 w-3.5 text-red-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                      Missing ({keywords_missing.length})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Keyword rows */}
+                <div className="grid grid-cols-2">
+                  {/* Found column */}
+                  <div className="py-1">
+                    {visibleFound.length === 0
+                      ? <p className="px-3 py-2 text-[12px] text-neutral-400 italic">None detected</p>
+                      : visibleFound.map((kw, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+                          <Check className="h-3 w-3 shrink-0 text-emerald-500" />
+                          <span className="text-[12px] text-neutral-700">{kw}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                  {/* Missing column */}
+                  <div className="py-1 border-l border-neutral-200">
+                    {visibleMissing.length === 0
+                      ? <p className="px-3 py-2 text-[12px] text-neutral-400 italic">All keywords present</p>
+                      : visibleMissing.map((kw, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+                          <X className="h-3 w-3 shrink-0 text-red-400" />
+                          <span className="text-[12px] text-neutral-700">{kw}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Show all toggle */}
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll((p) => !p)}
+                  className="mt-2 flex items-center gap-1 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                  {showAll ? (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      Show fewer keywords
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                      Show all keywords
+                      {keywords_found.length + keywords_missing.length > KEYWORD_INITIAL_LIMIT * 2
+                        ? ` (${keywords_found.length + keywords_missing.length - KEYWORD_INITIAL_LIMIT * 2} more)`
+                        : ''}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {!collapsible && (
+            <p className="mt-4 text-[13px] text-neutral-500 leading-relaxed">
+              We are now optimizing your resume to close these gaps...
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -253,7 +342,7 @@ interface StagedProcessingViewerProps {
 function StagedProcessingViewer({ stage, isComplete }: StagedProcessingViewerProps) {
   const activeIndex = getActiveStageIndex(stage);
   // Each stage shows for at least MIN_DISPLAY_MS even if the pipeline advances faster.
-  const MIN_DISPLAY_MS = 2500;
+  const MIN_DISPLAY_MS = 1200;
   const [displayedIndex, setDisplayedIndex] = useState(0);
   const lastAdvanceRef = useRef<number>(Date.now());
 
@@ -682,6 +771,25 @@ export function V2StreamingDisplay({
 
           {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
+          {/* Original scores card — shown collapsed once resume is ready */}
+          {isComplete && (preScores ?? data.preScores) && (
+            <OriginalScoresCard
+              preScores={(preScores ?? data.preScores)!}
+              collapsible
+            />
+          )}
+
+          {/* Detailed analysis — gap analysis, benchmark, narrative strategy, verification */}
+          {isComplete && (
+            <PipelineAnalysisSummary
+              gapAnalysis={data.gapAnalysis}
+              benchmarkCandidate={data.benchmarkCandidate}
+              narrativeStrategy={data.narrativeStrategy}
+              assembly={data.assembly}
+              verificationDetail={data.verificationDetail}
+            />
+          )}
+
           {/* Coaching banner — shown above the resume when first complete, dismissable */}
           {isComplete && !bannerDismissed && (
             <CoachingBanner
@@ -892,6 +1000,250 @@ function getStageProgressPercent(stage: V2Stage): number {
     case 'complete': return 100;
     default: return 0;
   }
+}
+
+// ─── PipelineAnalysisSummary ──────────────────────────────────────────────────
+// Displays the detailed pipeline analysis data between the scores and resume.
+// All sections are collapsed by default.
+
+interface PipelineAnalysisSummaryProps {
+  gapAnalysis: GapAnalysis | null;
+  benchmarkCandidate: BenchmarkCandidate | null;
+  narrativeStrategy: NarrativeStrategy | null;
+  assembly: AssemblyResult | null;
+  verificationDetail: VerificationDetail | null;
+}
+
+function AnalysisSection({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.14)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-neutral-50 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="shrink-0 text-neutral-400">{icon}</span>
+        <span className="flex-1 text-sm font-medium text-neutral-700">{title}</span>
+        {open
+          ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+          : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+        }
+      </button>
+      {open && (
+        <div className="border-t border-neutral-100 px-5 py-4 space-y-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PipelineAnalysisSummary({
+  gapAnalysis,
+  benchmarkCandidate,
+  narrativeStrategy,
+  assembly,
+  verificationDetail,
+}: PipelineAnalysisSummaryProps) {
+  const hasAnyData = gapAnalysis || benchmarkCandidate || narrativeStrategy || assembly || verificationDetail;
+  if (!hasAnyData) return null;
+
+  const truth = verificationDetail?.truth ?? null;
+  const tone = verificationDetail?.tone ?? null;
+  const ats = verificationDetail?.ats ?? assembly?.scores ?? null;
+
+  return (
+    <div className="space-y-2 mb-6" role="region" aria-label="Pipeline analysis summary">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3 px-1">
+        Detailed Analysis
+      </p>
+
+      {/* Gap Analysis Summary */}
+      {gapAnalysis && (
+        <AnalysisSection
+          title={`Gap Analysis — ${gapAnalysis.requirements.filter((r) => r.classification === 'strong').length} strong, ${gapAnalysis.requirements.filter((r) => r.classification === 'partial').length} partial, ${gapAnalysis.requirements.filter((r) => r.classification === 'missing').length} missing`}
+          icon={<TrendingUp className="h-4 w-4" />}
+        >
+          {gapAnalysis.strength_summary && (
+            <p className="text-[13px] text-neutral-600 leading-relaxed">{gapAnalysis.strength_summary}</p>
+          )}
+          {/* Counts */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Strong Match', count: gapAnalysis.requirements.filter((r) => r.classification === 'strong').length, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+              { label: 'Partial Match', count: gapAnalysis.requirements.filter((r) => r.classification === 'partial').length, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+              { label: 'Gap', count: gapAnalysis.requirements.filter((r) => r.classification === 'missing').length, color: 'text-red-500', bg: 'bg-red-50 border-red-100' },
+            ].map(({ label, count, color, bg }) => (
+              <div key={label} className={`rounded-lg border px-3 py-2 text-center ${bg}`}>
+                <p className={`text-lg font-bold tabular-nums ${color}`}>{count}</p>
+                <p className="text-[11px] text-neutral-500">{label}</p>
+              </div>
+            ))}
+          </div>
+          {/* Critical gaps */}
+          {gapAnalysis.critical_gaps.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Critical gaps to address</p>
+              <ul className="space-y-1">
+                {gapAnalysis.critical_gaps.map((gap, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                    <X className="h-3 w-3 shrink-0 mt-0.5 text-red-400" />
+                    {gap}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </AnalysisSection>
+      )}
+
+      {/* Benchmark Overview */}
+      {benchmarkCandidate && (
+        <AnalysisSection
+          title="Benchmark Overview — What the ideal candidate looks like"
+          icon={<Target className="h-4 w-4" />}
+        >
+          {benchmarkCandidate.ideal_profile_summary && (
+            <p className="text-[13px] text-neutral-600 leading-relaxed">{benchmarkCandidate.ideal_profile_summary}</p>
+          )}
+          {benchmarkCandidate.differentiators.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Key differentiators expected</p>
+              <ul className="space-y-1">
+                {benchmarkCandidate.differentiators.map((d, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                    <span className="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </AnalysisSection>
+      )}
+
+      {/* Narrative Strategy */}
+      {narrativeStrategy && (
+        <AnalysisSection
+          title="Narrative Strategy — Positioning angle and Why Me story"
+          icon={<Lightbulb className="h-4 w-4" />}
+        >
+          {narrativeStrategy.primary_narrative && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Positioning Angle</p>
+              <p className="text-[13px] font-medium text-blue-600 leading-relaxed">{narrativeStrategy.primary_narrative}</p>
+            </div>
+          )}
+          {narrativeStrategy.why_me_concise && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Why Me</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed italic">"{narrativeStrategy.why_me_concise}"</p>
+            </div>
+          )}
+          {narrativeStrategy.supporting_themes.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Supporting themes</p>
+              <div className="flex flex-wrap gap-1.5">
+                {narrativeStrategy.supporting_themes.map((theme, i) => (
+                  <span
+                    key={i}
+                    className="rounded-md px-2 py-0.5 text-[11px] text-blue-600 bg-blue-50 border border-blue-100"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </AnalysisSection>
+      )}
+
+      {/* Verification Results */}
+      {(truth || tone || ats) && (
+        <AnalysisSection
+          title={`Verification Results — Truth${truth ? ` ${truth.truth_score}/100` : ''}, Tone${tone ? ` ${tone.tone_score}/100` : ''}, ATS${assembly ? ` ${assembly.scores.ats_match}%` : ''}`}
+          icon={<ShieldCheck className="h-4 w-4" />}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {truth && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-center">
+                <p className="text-lg font-bold tabular-nums text-blue-600">{truth.truth_score}</p>
+                <p className="text-[11px] text-neutral-500">Truth Score</p>
+                <p className="text-[10px] text-neutral-400 mt-0.5">
+                  {truth.claims.filter((c) => c.confidence === 'verified').length} verified
+                  {truth.flagged_items.length > 0 ? `, ${truth.flagged_items.length} flagged` : ''}
+                </p>
+              </div>
+            )}
+            {tone && (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-center">
+                <p className="text-lg font-bold tabular-nums text-amber-600">{tone.tone_score}</p>
+                <p className="text-[11px] text-neutral-500">Tone Score</p>
+                <p className="text-[10px] text-neutral-400 mt-0.5">
+                  {tone.findings.length === 0 ? 'No issues' : `${tone.findings.length} finding${tone.findings.length !== 1 ? 's' : ''}`}
+                </p>
+              </div>
+            )}
+            {assembly && (
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-center">
+                <p className="text-lg font-bold tabular-nums text-emerald-600">{assembly.scores.ats_match}%</p>
+                <p className="text-[11px] text-neutral-500">ATS Match</p>
+                <p className="text-[10px] text-neutral-400 mt-0.5">After optimization</p>
+              </div>
+            )}
+          </div>
+          {/* Claim breakdown */}
+          {truth && truth.claims.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Claim breakdown ({truth.claims.length} total)</p>
+              <div className="flex flex-wrap gap-2">
+                {(['verified', 'plausible', 'unverified', 'fabricated'] as const).map((conf) => {
+                  const count = truth.claims.filter((c) => c.confidence === conf).length;
+                  if (count === 0) return null;
+                  const color = conf === 'verified' ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                    : conf === 'plausible' ? 'text-blue-600 bg-blue-50 border-blue-100'
+                    : conf === 'unverified' ? 'text-amber-600 bg-amber-50 border-amber-100'
+                    : 'text-red-500 bg-red-50 border-red-100';
+                  return (
+                    <span key={conf} className={`rounded-md px-2 py-0.5 text-[11px] border capitalize ${color}`}>
+                      {count} {conf}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* Tone findings count by type */}
+          {tone && tone.findings.length > 0 && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Tone findings</p>
+              <ul className="space-y-1">
+                {tone.findings.slice(0, 3).map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                    <span className="shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-400 mt-1" />
+                    <span className="font-medium">{f.section}:</span> {f.issue ?? f.text}
+                  </li>
+                ))}
+                {tone.findings.length > 3 && (
+                  <li className="text-[11px] text-neutral-400">+{tone.findings.length - 3} more findings</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </AnalysisSection>
+      )}
+    </div>
+  );
 }
 
 // ─── CollapsibleWorkspaceRail ─────────────────────────────────────────────────
