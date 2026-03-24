@@ -1,12 +1,12 @@
 /**
- * GapQuestionFlow — A clean, focused one-question-at-a-time gap collection UI.
+ * GapQuestionFlow — AI-assisted positioning confirmation flow.
  *
- * Appears as a separate step during processing, after the scoring report lands
- * and before resume generation begins. Replaces the 47KB UnifiedGapAnalysisCard
- * for the pre-generation question phase.
+ * Each card shows the AI's proposed positioning draft pre-filled in the
+ * textarea. The user confirms, edits, or skips. When no proposed strategy
+ * exists (true hard gap), falls back to the original empty-textarea mode.
  *
- * The component converts GapCoachingCard data (the existing SSE format) into a
- * simplified question flow. One question per screen, progress dots, three actions.
+ * Converts GapCoachingCard data (existing SSE format) into a focused
+ * one-card-at-a-time confirmation flow.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -22,6 +22,11 @@ export interface GapQuestion {
   question: string;
   context: string;
   currentEvidence: string[];
+  // AI-generated positioning data
+  proposedStrategy?: string;
+  aiReasoning?: string;
+  inferredMetric?: string;
+  inferenceRationale?: string;
 }
 
 export interface GapQuestionResponse {
@@ -64,6 +69,10 @@ export function coachingCardsToQuestions(cards: GapCoachingCard[]): GapQuestion[
         question,
         context,
         currentEvidence: card.evidence_found,
+        proposedStrategy: card.proposed_strategy || undefined,
+        aiReasoning: card.ai_reasoning || undefined,
+        inferredMetric: card.inferred_metric,
+        inferenceRationale: card.inference_rationale,
       };
     });
 }
@@ -190,78 +199,276 @@ function ProgressDots({
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── AI-Assisted Card ─────────────────────────────────────────────────────────
+// Rendered when proposedStrategy is present.
 
-export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [responses, setResponses] = useState<GapQuestionResponse[]>([]);
-  const [answer, setAnswer] = useState('');
+interface AIAssistedCardProps {
+  question: GapQuestion;
+  currentIndex: number;
+  totalQuestions: number;
+  responses: GapQuestionResponse[];
+  onUseThis: (text: string) => void;
+  onSkip: () => void;
+  onSkipAll: () => void;
+}
+
+function AIAssistedCard({
+  question,
+  currentIndex,
+  totalQuestions,
+  responses,
+  onUseThis,
+  onSkip,
+  onSkipAll,
+}: AIAssistedCardProps) {
+  const [draftText, setDraftText] = useState(question.proposedStrategy ?? '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const currentQuestion = questions[currentIndex];
-  const totalQuestions = questions.length;
-  const isLastQuestion = currentIndex === totalQuestions - 1;
-
-  // Focus the textarea when the question changes
+  // Reset draft when question changes
   useEffect(() => {
+    setDraftText(question.proposedStrategy ?? '');
     textareaRef.current?.focus();
-  }, [currentIndex]);
+  }, [question.id, question.proposedStrategy]);
 
-  const advance = useCallback(
-    (response: GapQuestionResponse) => {
-      const updatedResponses = [...responses, response];
-      setResponses(updatedResponses);
-      setAnswer('');
-
-      if (isLastQuestion) {
-        onComplete(updatedResponses);
-      } else {
-        setCurrentIndex((prev) => prev + 1);
-      }
-    },
-    [responses, isLastQuestion, onComplete],
-  );
-
-  const handleSubmit = useCallback(() => {
-    if (!currentQuestion) return;
-    const trimmed = answer.trim();
-    advance({
-      questionId: currentQuestion.id,
-      action: trimmed.length > 0 ? 'answered' : 'skipped',
-      answer: trimmed.length > 0 ? trimmed : undefined,
-    });
-  }, [currentQuestion, answer, advance]);
-
-  const handleSkip = useCallback(() => {
-    if (!currentQuestion) return;
-    advance({ questionId: currentQuestion.id, action: 'skipped' });
-  }, [currentQuestion, advance]);
-
-  const handleSkipAll = useCallback(() => {
-    // Build responses for all remaining questions as skipped
-    const remaining = questions.slice(currentIndex);
-    const skippedResponses: GapQuestionResponse[] = remaining.map((q) => ({
-      questionId: q.id,
-      action: 'skipped',
-    }));
-    const allResponses = [...responses, ...skippedResponses];
-    onComplete(allResponses);
-  }, [questions, currentIndex, responses, onComplete]);
+  const isUnmodified = draftText.trim() === (question.proposedStrategy ?? '').trim();
+  const answeredCount = responses.filter((r) => r.action === 'answered').length;
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Ctrl+Enter or Cmd+Enter submits
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleSubmit();
+        onUseThis(draftText.trim());
       }
     },
-    [handleSubmit],
+    [draftText, onUseThis],
   );
 
-  if (!currentQuestion) return null;
+  return (
+    <div
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] overflow-hidden"
+      role="main"
+      aria-label={`Positioning draft ${currentIndex + 1} of ${totalQuestions}`}
+    >
+      {/* Header */}
+      <div className="px-6 pt-5 pb-4 border-b border-neutral-100">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1">
+              We've drafted positioning for your top gaps — confirm or strengthen each one
+            </p>
+          </div>
+          <span className="shrink-0 text-[12px] font-medium text-neutral-400 tabular-nums">
+            {currentIndex + 1} of {totalQuestions}
+          </span>
+        </div>
+      </div>
+
+      {/* Card body */}
+      <div className="px-6 py-5 space-y-4">
+        {/* Requirement label */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Requirement
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[15px] font-semibold text-neutral-800 leading-snug">
+              &ldquo;{question.requirement}&rdquo;
+            </p>
+            <PriorityBadge importance={question.importance} />
+          </div>
+        </div>
+
+        {/* What we found */}
+        {question.currentEvidence.length > 0 && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+              What we found
+            </p>
+            <div className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3">
+              {question.currentEvidence.slice(0, 3).map((ev, i) => (
+                <p key={i} className="text-[13px] text-neutral-600 leading-relaxed italic">
+                  {i > 0 && <span className="block h-1.5" />}
+                  &ldquo;{ev}&rdquo;
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Our suggested positioning */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Our suggested positioning
+          </p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+            <p className="text-[13px] text-emerald-800 leading-relaxed font-medium">
+              {question.proposedStrategy}
+            </p>
+          </div>
+        </div>
+
+        {/* Why */}
+        {question.aiReasoning && (
+          <div className="flex gap-2">
+            <span className="shrink-0 text-[13px] text-amber-500 mt-0.5" aria-hidden="true">
+              &#9888;
+            </span>
+            <p className="text-[12px] text-neutral-500 leading-relaxed italic">
+              <span className="font-semibold not-italic text-neutral-600">Why: </span>
+              {question.aiReasoning}
+            </p>
+          </div>
+        )}
+
+        {/* Inferred metric notice */}
+        {question.inferredMetric && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex gap-2.5 items-start">
+            <span className="shrink-0 text-blue-500 text-[13px] mt-0.5" aria-hidden="true">&#9432;</span>
+            <p className="text-[12px] text-blue-700 leading-relaxed">
+              <span className="font-semibold">We inferred {question.inferredMetric}</span> from
+              your experience
+              {question.inferenceRationale ? ` (${question.inferenceRationale})` : ''}.
+              {' '}Confirm this is accurate, or update the number below.
+            </p>
+          </div>
+        )}
+
+        {/* Edit or confirm textarea */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Edit or confirm
+          </p>
+          <textarea
+            ref={textareaRef}
+            value={draftText}
+            onChange={(e) => setDraftText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={4}
+            className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-[14px] text-neutral-800 leading-relaxed focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors"
+            aria-label={`Positioning text for: ${question.requirement}`}
+          />
+          {question.inferredMetric ? (
+            <p className="mt-1 text-[11px] text-neutral-400">
+              If you have exact numbers (incident rates, hours, certifications), update them above to make this even stronger.
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-neutral-400">
+              If you have specific numbers or details, add them above to make this even stronger.
+            </p>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3 flex-wrap pt-1">
+          {isUnmodified ? (
+            <button
+              type="button"
+              onClick={() => onUseThis(draftText.trim())}
+              disabled={draftText.trim().length === 0}
+              className="rounded-lg bg-emerald-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-emerald-700 active:bg-emerald-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-40"
+            >
+              Use This
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onUseThis(draftText.trim())}
+                disabled={draftText.trim().length === 0}
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 active:bg-blue-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-40"
+              >
+                Edit &amp; Submit
+              </button>
+              <button
+                type="button"
+                onClick={() => onUseThis((question.proposedStrategy ?? '').trim())}
+                className="rounded-lg border border-neutral-200 px-4 py-2.5 text-[14px] font-medium text-neutral-500 hover:bg-neutral-50 hover:border-neutral-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
+              >
+                Use Original
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rounded-lg border border-neutral-200 px-4 py-2.5 text-[14px] font-medium text-neutral-500 hover:bg-neutral-50 hover:border-neutral-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
+          >
+            Skip
+          </button>
+
+          {totalQuestions > 1 && (
+            <button
+              type="button"
+              onClick={onSkipAll}
+              className="ml-auto rounded-lg px-4 py-2.5 text-[13px] font-medium text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-300"
+            >
+              Skip All &rarr;
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Footer — progress */}
+      <div className="px-6 py-4 border-t border-neutral-100 flex items-center justify-between gap-4">
+        <ProgressDots
+          total={totalQuestions}
+          currentIndex={currentIndex}
+          responses={responses}
+        />
+
+        {answeredCount > 0 && (
+          <p className="text-[12px] text-neutral-400 shrink-0">
+            {answeredCount} confirmed
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Fallback Card ────────────────────────────────────────────────────────────
+// Rendered when no proposedStrategy exists (hard gap / truly missing skill).
+
+interface FallbackCardProps {
+  question: GapQuestion;
+  currentIndex: number;
+  totalQuestions: number;
+  responses: GapQuestionResponse[];
+  onSubmit: (text: string | undefined) => void;
+  onSkip: () => void;
+  onSkipAll: () => void;
+}
+
+function FallbackCard({
+  question,
+  currentIndex,
+  totalQuestions,
+  responses,
+  onSubmit,
+  onSkip,
+  onSkipAll,
+}: FallbackCardProps) {
+  const [answer, setAnswer] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setAnswer('');
+    textareaRef.current?.focus();
+  }, [question.id]);
 
   const answeredCount = responses.filter((r) => r.action === 'answered').length;
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        const trimmed = answer.trim();
+        onSubmit(trimmed.length > 0 ? trimmed : undefined);
+      }
+    },
+    [answer, onSubmit],
+  );
 
   return (
     <div
@@ -274,11 +481,11 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-              Before we write your resume, help us close a few gaps.
+              We need your help with this one
             </p>
           </div>
           <span className="shrink-0 text-[12px] font-medium text-neutral-400 tabular-nums">
-            Question {currentIndex + 1}/{totalQuestions}
+            {currentIndex + 1} of {totalQuestions}
           </span>
         </div>
       </div>
@@ -292,27 +499,27 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[15px] font-semibold text-neutral-800 leading-snug">
-              &ldquo;{currentQuestion.requirement}&rdquo;
+              &ldquo;{question.requirement}&rdquo;
             </p>
-            <PriorityBadge importance={currentQuestion.importance} />
+            <PriorityBadge importance={question.importance} />
           </div>
         </div>
 
         {/* Context explanation */}
-        {currentQuestion.context && (
+        {question.context && (
           <p className="text-[14px] text-neutral-500 leading-relaxed mb-4">
-            {currentQuestion.context}
+            {question.context}
           </p>
         )}
 
         {/* Current evidence chips (partial classification only) */}
-        {currentQuestion.classification === 'partial' && currentQuestion.currentEvidence.length > 0 && (
+        {question.classification === 'partial' && question.currentEvidence.length > 0 && (
           <div className="mb-4">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
               Evidence found so far
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {currentQuestion.currentEvidence.slice(0, 4).map((ev, i) => (
+              {question.currentEvidence.slice(0, 4).map((ev, i) => (
                 <span
                   key={i}
                   className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[12px] text-blue-700"
@@ -327,7 +534,7 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
         {/* The question itself */}
         <div className="mb-4">
           <p className="text-[15px] font-medium text-neutral-800 leading-snug mb-3">
-            {currentQuestion.question}
+            {question.question}
           </p>
           <textarea
             ref={textareaRef}
@@ -337,7 +544,7 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
             placeholder="Describe a specific example, project, or outcome..."
             rows={4}
             className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-[14px] text-neutral-800 placeholder-neutral-400 leading-relaxed focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors"
-            aria-label={`Answer for: ${currentQuestion.requirement}`}
+            aria-label={`Answer for: ${question.requirement}`}
           />
           <p className="mt-1 text-[11px] text-neutral-400">
             Press Ctrl+Enter to submit
@@ -348,7 +555,10 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
         <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => {
+              const trimmed = answer.trim();
+              onSubmit(trimmed.length > 0 ? trimmed : undefined);
+            }}
             className="rounded-lg bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 active:bg-blue-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             {answer.trim().length > 0 ? 'Submit Answer' : 'Skip This One'}
@@ -357,7 +567,7 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
           {answer.trim().length > 0 && (
             <button
               type="button"
-              onClick={handleSkip}
+              onClick={onSkip}
               className="rounded-lg border border-neutral-200 px-4 py-2.5 text-[14px] font-medium text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
             >
               Skip This One
@@ -367,7 +577,7 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
           {totalQuestions > 1 && (
             <button
               type="button"
-              onClick={handleSkipAll}
+              onClick={onSkipAll}
               className="ml-auto rounded-lg px-4 py-2.5 text-[13px] font-medium text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-300"
             >
               Skip All &rarr;
@@ -391,5 +601,98 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [responses, setResponses] = useState<GapQuestionResponse[]>([]);
+
+  const currentQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
+  const isLastQuestion = currentIndex === totalQuestions - 1;
+
+  const advance = useCallback(
+    (response: GapQuestionResponse) => {
+      const updatedResponses = [...responses, response];
+      setResponses(updatedResponses);
+
+      if (isLastQuestion) {
+        onComplete(updatedResponses);
+      } else {
+        setCurrentIndex((prev) => prev + 1);
+      }
+    },
+    [responses, isLastQuestion, onComplete],
+  );
+
+  const handleUseThis = useCallback(
+    (text: string) => {
+      if (!currentQuestion) return;
+      advance({
+        questionId: currentQuestion.id,
+        action: 'answered',
+        answer: text,
+      });
+    },
+    [currentQuestion, advance],
+  );
+
+  const handleFallbackSubmit = useCallback(
+    (text: string | undefined) => {
+      if (!currentQuestion) return;
+      advance({
+        questionId: currentQuestion.id,
+        action: text ? 'answered' : 'skipped',
+        answer: text,
+      });
+    },
+    [currentQuestion, advance],
+  );
+
+  const handleSkip = useCallback(() => {
+    if (!currentQuestion) return;
+    advance({ questionId: currentQuestion.id, action: 'skipped' });
+  }, [currentQuestion, advance]);
+
+  const handleSkipAll = useCallback(() => {
+    const remaining = questions.slice(currentIndex);
+    const skippedResponses: GapQuestionResponse[] = remaining.map((q) => ({
+      questionId: q.id,
+      action: 'skipped',
+    }));
+    const allResponses = [...responses, ...skippedResponses];
+    onComplete(allResponses);
+  }, [questions, currentIndex, responses, onComplete]);
+
+  if (!currentQuestion) return null;
+
+  // Route to AI-assisted or fallback card based on whether we have a proposed strategy
+  if (currentQuestion.proposedStrategy) {
+    return (
+      <AIAssistedCard
+        question={currentQuestion}
+        currentIndex={currentIndex}
+        totalQuestions={totalQuestions}
+        responses={responses}
+        onUseThis={handleUseThis}
+        onSkip={handleSkip}
+        onSkipAll={handleSkipAll}
+      />
+    );
+  }
+
+  return (
+    <FallbackCard
+      question={currentQuestion}
+      currentIndex={currentIndex}
+      totalQuestions={totalQuestions}
+      responses={responses}
+      onSubmit={handleFallbackSubmit}
+      onSkip={handleSkip}
+      onSkipAll={handleSkipAll}
+    />
   );
 }
