@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Lock,
   User,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { DashboardState } from './useWhyMeStory';
@@ -61,6 +62,7 @@ const ROOM_GROUPS: RoomGroup[] = [
       { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: true },
       { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: true },
       { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: true },
+      { id: 'networking', label: 'Network Job Search', icon: Users, description: 'Leverage your connections to find jobs', gated: true },
     ],
   },
 ];

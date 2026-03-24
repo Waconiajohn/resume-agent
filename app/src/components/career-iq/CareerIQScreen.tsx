@@ -39,7 +39,7 @@ const ROOM_LABELS: Record<CareerIQRoom, string> = {
   resume: 'Resume Builder',
   linkedin: 'LinkedIn',
   jobs: 'Job Search',
-  networking: 'Networking',
+  networking: 'Network Job Search',
   interview: 'Interview Prep',
   'salary-negotiation': 'Negotiation Prep',
   'executive-bio': 'Executive Bio',
