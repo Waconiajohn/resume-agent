@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
-import { Sparkles, Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useRef, useCallback, useId } from 'react';
+import { FileText, Link, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
-import { GlassTextarea } from '../GlassInput';
+import { GlassInput, GlassTextarea } from '../GlassInput';
 import { cn } from '@/lib/utils';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import { extractJobDescriptionTextFromUpload } from '@/lib/job-description-upload';
@@ -40,36 +40,227 @@ function CharCounter({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeText }: V2IntakeFormProps) {
-  const [resumeText, setResumeText] = useState(initialResumeText ?? '');
-  const [jobDescription, setJobDescription] = useState('');
-  const [resumeFileLoading, setResumeFileLoading] = useState(false);
-  const [resumeFileError, setResumeFileError] = useState<string | null>(null);
+// ---- Resume Drop Zone ----
+
+interface ResumeDropZoneProps {
+  resumeText: string;
+  onResumeTextChange: (text: string) => void;
+  loading: boolean;
+  initialResumeText?: string;
+}
+
+function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResumeText }: ResumeDropZoneProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(() => Boolean(initialResumeText?.trim()));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pasteId = useId();
+
+  const processFile = useCallback(async (file: File) => {
+    setFileError(null);
+    setFileLoading(true);
+    setFileName(null);
+    try {
+      const text = await extractResumeTextFromUpload(file);
+      if (!text) {
+        setFileError('No readable text found in this file.');
+        return;
+      }
+      onResumeTextChange(text);
+      setFileName(file.name);
+      // If a file is successfully loaded, collapse the paste area
+      setPasteOpen(false);
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : 'Failed to read file.');
+    } finally {
+      setFileLoading(false);
+    }
+  }, [onResumeTextChange]);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void processFile(file);
+  }, [processFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void processFile(file);
+    e.target.value = '';
+  }, [processFile]);
+
+  const handleClearFile = useCallback(() => {
+    setFileName(null);
+    onResumeTextChange('');
+    setFileError(null);
+    setPasteOpen(true);
+  }, [onResumeTextChange]);
+
+  const hasContent = resumeText.trim().length >= MIN_CHARS;
+
+  return (
+    <div className="space-y-3">
+      {/* Drop zone */}
+      <div
+        role="button"
+        tabIndex={loading || fileLoading ? -1 : 0}
+        aria-label="Drop zone for resume file. Click to browse."
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onClick={() => !loading && !fileLoading && fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !loading && !fileLoading) {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        className={cn(
+          'relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all duration-200 select-none',
+          isDragging
+            ? 'border-[#afc4ff]/60 bg-[#afc4ff]/10 scale-[1.01]'
+            : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[#afc4ff]/40 hover:bg-[#afc4ff]/[0.04]',
+          (loading || fileLoading) && 'pointer-events-none opacity-60',
+        )}
+      >
+        {fileLoading ? (
+          <>
+            <Loader2 className="h-8 w-8 text-[#afc4ff] motion-safe:animate-spin" />
+            <p className="text-sm text-[var(--text-soft)]">Reading file...</p>
+          </>
+        ) : fileName ? (
+          <>
+            <FileText className="h-8 w-8 text-[#4ade80]" />
+            <div className="flex flex-col items-center gap-1 text-center">
+              <p className="text-sm font-medium text-[#4ade80]">{fileName}</p>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleClearFile(); }}
+                className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded"
+                aria-label="Remove uploaded file"
+              >
+                <X className="h-3 w-3" />
+                Change file
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={cn(
+              'flex h-12 w-12 items-center justify-center rounded-xl border transition-colors duration-200',
+              isDragging ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10' : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
+            )}>
+              <Upload className={cn('h-6 w-6 transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-soft)]')} />
+            </div>
+            <div className="text-center">
+              <p className={cn('text-sm font-medium transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-strong)]')}>
+                {isDragging ? 'Drop your resume here' : 'Drag your resume here'}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--text-soft)]">
+                .docx, .pdf, or .txt — or{' '}
+                <span className="text-[#afc4ff] underline-offset-2 hover:underline">click to browse</span>
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {fileError && (
+        <p className="text-[12px] text-[#f0b8b8]" role="alert">{fileError}</p>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.docx,.pdf"
+        className="hidden"
+        onChange={handleFileChange}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+
+      {/* Paste toggle */}
+      <button
+        type="button"
+        onClick={() => setPasteOpen((o) => !o)}
+        disabled={loading}
+        className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
+        aria-expanded={pasteOpen}
+        aria-controls={pasteId}
+      >
+        <div className="flex-1 border-t border-[var(--line-soft)]" />
+        <span className="shrink-0">
+          {pasteOpen ? 'Hide paste area' : 'Or paste text'}
+        </span>
+        {pasteOpen ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
+        <div className="flex-1 border-t border-[var(--line-soft)]" />
+      </button>
+
+      {pasteOpen && (
+        <div id={pasteId} className="space-y-1.5">
+          <GlassTextarea
+            id="v2-resume"
+            value={resumeText}
+            onChange={(e) => {
+              onResumeTextChange(e.target.value);
+              if (fileName) setFileName(null);
+            }}
+            placeholder="Paste your current resume here — we'll identify your strengths and hidden accomplishments..."
+            rows={8}
+            disabled={loading}
+            aria-required="true"
+            aria-label="Resume text"
+            className="min-h-[160px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
+          />
+          <div className="flex justify-end">
+            <CharCounter value={resumeText} label="Resume" />
+          </div>
+        </div>
+      )}
+
+      {!pasteOpen && hasContent && (
+        <div className="flex justify-end">
+          <CharCounter value={resumeText} label="Resume" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Job Description Section ----
+
+interface JdSectionProps {
+  jobDescription: string;
+  onJobDescriptionChange: (text: string) => void;
+  loading: boolean;
+}
+
+function JdSection({ jobDescription, onJobDescriptionChange, loading }: JdSectionProps) {
+  const [jdUrl, setJdUrl] = useState('');
   const [jdFileLoading, setJdFileLoading] = useState(false);
   const [jdFileError, setJdFileError] = useState<string | null>(null);
-  const resumeFileRef = useRef<HTMLInputElement>(null);
   const jdFileRef = useRef<HTMLInputElement>(null);
-
-  const isValid = resumeText.trim().length >= MIN_CHARS && jobDescription.trim().length >= MIN_CHARS;
-
-  const handleResumeFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setResumeFileError(null);
-    setResumeFileLoading(true);
-    void (async () => {
-      try {
-        const text = await extractResumeTextFromUpload(file);
-        if (!text) { setResumeFileError('No readable text found.'); return; }
-        setResumeText(text);
-      } catch (err) {
-        setResumeFileError(err instanceof Error ? err.message : 'Failed to read file.');
-      } finally {
-        setResumeFileLoading(false);
-        e.target.value = '';
-      }
-    })();
-  }, []);
+  const urlId = useId();
+  const textId = useId();
 
   const handleJdFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,7 +271,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
       try {
         const text = await extractJobDescriptionTextFromUpload(file);
         if (!text) { setJdFileError('No readable text found.'); return; }
-        setJobDescription(text);
+        onJobDescriptionChange(text);
       } catch (err) {
         setJdFileError(err instanceof Error ? err.message : 'Failed to read file.');
       } finally {
@@ -88,7 +279,118 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
         e.target.value = '';
       }
     })();
-  }, []);
+  }, [onJobDescriptionChange]);
+
+  // When a URL is entered, use it as the job description value
+  const handleUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setJdUrl(url);
+    // Store URL directly — future feature will fetch and extract content
+    if (url.trim()) {
+      onJobDescriptionChange(url.trim());
+    } else {
+      // Only clear if the current JD content is a URL (i.e. matches the old url value)
+      onJobDescriptionChange('');
+    }
+  }, [onJobDescriptionChange]);
+
+  // When paste textarea changes, clear the URL field since user is using paste mode
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onJobDescriptionChange(e.target.value);
+    if (jdUrl) setJdUrl('');
+  }, [onJobDescriptionChange, jdUrl]);
+
+  return (
+    <div className="space-y-3">
+      {/* URL input */}
+      <div className="space-y-1.5">
+        <label htmlFor={urlId} className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)]">
+          <Link className="h-3.5 w-3.5 text-[#afc4ff]" />
+          Paste job posting URL
+        </label>
+        <GlassInput
+          id={urlId}
+          type="url"
+          value={jdUrl}
+          onChange={handleUrlChange}
+          placeholder="https://example.com/jobs/..."
+          disabled={loading}
+          aria-label="Job posting URL"
+        />
+        {jdUrl.trim().length > 0 && (
+          <p className="text-[11px] text-[var(--text-soft)]">
+            We'll extract the job details from this URL.
+          </p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 border-t border-[var(--line-soft)]" />
+        <span className="shrink-0 text-[11px] uppercase tracking-wider text-[var(--text-soft)]">
+          or paste the full text
+        </span>
+        <div className="flex-1 border-t border-[var(--line-soft)]" />
+      </div>
+
+      {/* Paste textarea */}
+      <div className="space-y-1.5">
+        <GlassTextarea
+          id={textId}
+          value={jdUrl ? '' : jobDescription}
+          onChange={handleTextChange}
+          placeholder="Paste the job description here — we'll analyze every requirement and position you strategically..."
+          rows={7}
+          disabled={loading || Boolean(jdUrl.trim())}
+          aria-required="true"
+          aria-label="Job description text"
+          className={cn(
+            'min-h-[140px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
+            jdUrl.trim() && 'opacity-40',
+          )}
+        />
+        <div className="flex items-center justify-between">
+          {/* File upload */}
+          <button
+            type="button"
+            onClick={() => jdFileRef.current?.click()}
+            disabled={loading || jdFileLoading}
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
+            aria-label="Upload job description file"
+          >
+            {jdFileLoading
+              ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+              : <Upload className="h-3 w-3" />}
+            {jdFileLoading ? 'Reading file...' : 'Upload file'}
+            <span className="text-[var(--text-soft)]">(.pdf, .txt, .docx)</span>
+          </button>
+          <CharCounter value={jdUrl ? jdUrl : jobDescription} label="Job description" />
+        </div>
+        {jdFileError && (
+          <p className="text-[12px] text-[#f0b8b8]" role="alert">{jdFileError}</p>
+        )}
+      </div>
+
+      <input
+        ref={jdFileRef}
+        type="file"
+        accept=".txt,.docx,.pdf,.html,.htm"
+        className="hidden"
+        onChange={handleJdFile}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
+// ---- Main Form ----
+
+export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeText }: V2IntakeFormProps) {
+  const [resumeText, setResumeText] = useState(initialResumeText ?? '');
+  const [jobDescription, setJobDescription] = useState('');
+
+  const isValid = resumeText.trim().length >= MIN_CHARS && jobDescription.trim().length >= MIN_CHARS;
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -101,20 +403,12 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
 
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-16">
-        {/* Header */}
-        <div className="mb-10 flex flex-col items-center text-center">
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line-strong)] bg-[var(--surface-1)]">
-            <Sparkles className="h-8 w-8 text-[#afc4ff]" />
-          </div>
-          <h1 className="mb-2 text-3xl font-bold text-[var(--text-strong)]">Position Your Resume</h1>
-
-          {/* Value proposition tagline */}
-          <div className="mt-3 mb-1">
-            <p className="text-xl font-semibold text-[var(--text-strong)]">Position yourself as the benchmark</p>
-            <p className="mt-1 max-w-xl text-sm text-[var(--text-soft)]">
-              Paste your resume and target job description. Our AI agents will craft a resume that makes you the standard others are measured against.
-            </p>
-          </div>
+        {/* Header — clean typography, no icon */}
+        <div className="mb-10 text-center">
+          <h1 className="mb-3 text-3xl font-bold text-[var(--text-strong)]">Build Your Tailored Resume</h1>
+          <p className="mx-auto max-w-xl text-sm text-[var(--text-soft)]">
+            Upload your resume and target job — our AI positions you as the benchmark candidate.
+          </p>
         </div>
 
         <GlassCard className="animate-[fade-in_500ms_ease-out_forwards] opacity-0 p-8">
@@ -132,97 +426,26 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
           <form onSubmit={handleSubmit} className="space-y-8" noValidate>
             {/* Resume */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[var(--text-strong)]" htmlFor="v2-resume">
+              <label className="block text-sm font-medium text-[var(--text-strong)]">
                 Your Resume
               </label>
-              <GlassTextarea
-                id="v2-resume"
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your current resume here — we'll identify your strengths and hidden accomplishments..."
-                rows={10}
-                disabled={loading}
-                aria-required="true"
-                className="min-h-[200px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                  {/* File upload zone */}
-                  <button
-                    type="button"
-                    onClick={() => resumeFileRef.current?.click()}
-                    disabled={loading || resumeFileLoading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[var(--line-strong)] px-2 py-1.5 text-xs text-[var(--text-soft)] transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-[var(--text-muted)] disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
-                    aria-label="Upload resume file"
-                  >
-                    {resumeFileLoading
-                      ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-                      : <Upload className="h-3 w-3" />
-                    }
-                    {resumeFileLoading ? 'Reading file...' : 'Upload file'}
-                    <span className="text-[var(--text-soft)]">.txt, .docx, .pdf</span>
-                  </button>
-                  {resumeFileError && (
-                    <p className="text-[12px] text-[#f0b8b8]" role="alert">{resumeFileError}</p>
-                  )}
-                </div>
-                <CharCounter value={resumeText} label="Resume" />
-              </div>
-              <input
-                ref={resumeFileRef}
-                type="file"
-                accept=".txt,.docx,.pdf"
-                className="hidden"
-                onChange={handleResumeFile}
-                tabIndex={-1}
+              <ResumeDropZone
+                resumeText={resumeText}
+                onResumeTextChange={setResumeText}
+                loading={loading}
+                initialResumeText={initialResumeText}
               />
             </div>
 
             {/* Job Description */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[var(--text-strong)]" htmlFor="v2-jd">
+              <label className="block text-sm font-medium text-[var(--text-strong)]">
                 Job Description
               </label>
-              <GlassTextarea
-                id="v2-jd"
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the target job description — we'll analyze every requirement and position you strategically..."
-                rows={8}
-                disabled={loading}
-                aria-required="true"
-                className="min-h-[200px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                  {/* File upload zone */}
-                  <button
-                    type="button"
-                    onClick={() => jdFileRef.current?.click()}
-                    disabled={loading || jdFileLoading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[var(--line-strong)] px-2 py-1.5 text-xs text-[var(--text-soft)] transition-all hover:border-[#afc4ff]/30 hover:bg-[#afc4ff]/[0.02] hover:text-[var(--text-muted)] disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
-                    aria-label="Upload job description file"
-                  >
-                    {jdFileLoading
-                      ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-                      : <Upload className="h-3 w-3" />
-                    }
-                    {jdFileLoading ? 'Reading file...' : 'Upload file'}
-                    <span className="text-[var(--text-soft)]">.txt, .docx, .pdf, .html</span>
-                  </button>
-                  {jdFileError && (
-                    <p className="text-[12px] text-[#f0b8b8]" role="alert">{jdFileError}</p>
-                  )}
-                </div>
-                <CharCounter value={jobDescription} label="Job description" />
-              </div>
-              <input
-                ref={jdFileRef}
-                type="file"
-                accept=".txt,.docx,.pdf,.html,.htm"
-                className="hidden"
-                onChange={handleJdFile}
-                tabIndex={-1}
+              <JdSection
+                jobDescription={jobDescription}
+                onJobDescriptionChange={setJobDescription}
+                loading={loading}
               />
             </div>
 
@@ -241,10 +464,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                     Connecting...
                   </>
                 ) : (
-                  <>
-                    <Sparkles className="h-5 w-5" />
-                    Analyze and craft my resume
-                  </>
+                  'Analyze and craft my resume'
                 )}
               </GlassButton>
             </div>

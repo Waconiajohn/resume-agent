@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, HelpCircle, LogOut, Menu, Moon, Settings2, Sparkles, Sun, X } from 'lucide-react';
-import { GlassButton } from './GlassButton';
+import { ArrowUpRight, ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Moon, Settings2, Sun, X } from 'lucide-react';
 import { PipelineProgressBar } from './PipelineProgressBar';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useTheme } from '@/hooks/useTheme';
@@ -20,12 +19,14 @@ interface HeaderProps {
 
 export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate, onReplayTour }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [a11yOpen, setA11yOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameFirst, setNameFirst] = useState('');
   const [nameLast, setNameLast] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
   const menuPanelRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { theme, toggle: toggleTheme } = useTheme();
 
   const startEditName = () => {
@@ -65,6 +66,28 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [menuOpen]);
 
+  // Close user dropdown on Escape key
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [userMenuOpen]);
+
+  // Close user dropdown on outside click
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [userMenuOpen]);
+
   const handleNavClick = (view: string) => {
     setMenuOpen(false);
     onNavigate?.(view);
@@ -82,16 +105,12 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
           <button
             type="button"
             onClick={() => onNavigate?.('workspace')}
-            className="group flex items-center gap-3 text-left"
-            aria-label="Go to Workspace home"
+            className="flex items-center text-left"
+            aria-label="Go to CareerIQ home"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-low)] transition-all duration-200 group-hover:border-[var(--line-strong)] group-hover:bg-[var(--accent-strong)] group-hover:text-[var(--accent-ink)]">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="eyebrow-label">Workspace OS</div>
-              <span className="block truncate text-[15px] font-semibold text-[var(--text-strong)]">Resume Agent</span>
-            </div>
+            <span className="text-[20px] font-normal tracking-tight text-[var(--text-strong)]">
+              Career<span className="font-bold text-[var(--accent)]">IQ</span>
+            </span>
           </button>
 
           {email && (
@@ -114,7 +133,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
 
         <div className="flex items-center gap-2">
           {email && (
-            <div className="hidden items-center gap-3 lg:flex">
+            <div className="relative hidden lg:flex" ref={userMenuRef}>
               {editingName ? (
                 <div className="flex items-center gap-2">
                   <input
@@ -143,22 +162,56 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                 </div>
               ) : (
                 <button
-                  onClick={startEditName}
-                  className="flex flex-col items-end text-right"
-                  title="Click to edit your name"
+                  type="button"
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  aria-haspopup="true"
+                  aria-expanded={userMenuOpen}
+                  className="flex items-center gap-1.5 rounded-[10px] px-2 py-1.5 transition-colors hover:bg-[var(--surface-2)]"
                 >
-                  <span className="eyebrow-label">Signed in as</span>
-                  <span className="text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:text-[var(--accent)]">
+                  <span className="text-[13px] font-medium text-[var(--text-strong)]">
                     {displayName || email}
                   </span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-[var(--text-muted)] transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
               )}
-              <GlassButton variant="secondary" size="sm" onClick={() => onNavigate?.('billing')} title="Billing & plan" aria-label="Billing">
-                Billing
-              </GlassButton>
-              <GlassButton variant="ghost" size="sm" onClick={onSignOut} aria-label="Sign out" title="Sign out">
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-              </GlassButton>
+
+              {userMenuOpen && !editingName && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-[14px] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-mid)]"
+                >
+                  <div className="border-b border-[var(--line-soft)] px-4 py-3">
+                    <div className="eyebrow-label">Signed in as</div>
+                    <div className="mt-0.5 truncate text-[12px] text-[var(--text-soft)]">{email}</div>
+                    {onUpdateProfile && (
+                      <button
+                        onClick={() => { setUserMenuOpen(false); startEditName(); }}
+                        className="mt-1 text-[11px] text-[var(--accent)] transition-colors hover:underline"
+                      >
+                        Edit name
+                      </button>
+                    )}
+                  </div>
+                  <div className="py-1">
+                    <button
+                      role="menuitem"
+                      onClick={() => { setUserMenuOpen(false); onNavigate?.('billing'); }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    >
+                      <CreditCard className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                      Billing &amp; plan
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => { setUserMenuOpen(false); onSignOut(); }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    >
+                      <LogOut className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -239,10 +292,9 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             style={{ transform: 'translateX(0)', transition: 'transform 0.2s ease-out' }}
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--line-soft)] px-5">
-              <div>
-                <div className="eyebrow-label">Workspace OS</div>
-                <span className="text-sm font-semibold text-[var(--text-strong)]">Resume Agent</span>
-              </div>
+              <span className="text-[18px] font-normal tracking-tight text-[var(--text-strong)]">
+                Career<span className="font-bold text-[var(--accent)]">IQ</span>
+              </span>
               <button
                 onClick={() => setMenuOpen(false)}
                 className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
@@ -277,14 +329,23 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               <div className="border-t border-[var(--line-soft)] px-5 py-5">
                 <div className="eyebrow-label">Account</div>
                 <div className="mt-1 truncate text-sm text-[var(--text-strong)]">{email}</div>
-                <div className="mt-4 flex items-center gap-2">
-                  <GlassButton variant="secondary" size="sm" onClick={() => handleNavClick('billing')} aria-label="Billing">
-                    Billing
-                  </GlassButton>
-                  <GlassButton variant="ghost" size="sm" onClick={handleSignOut} aria-label="Sign out">
-                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                <div className="mt-4 flex flex-col gap-1">
+                  <button
+                    onClick={() => handleNavClick('billing')}
+                    aria-label="Billing"
+                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                  >
+                    <CreditCard className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                    Billing &amp; plan
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    aria-label="Sign out"
+                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                  >
+                    <LogOut className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
                     Sign out
-                  </GlassButton>
+                  </button>
                 </div>
               </div>
             )}
