@@ -14,10 +14,13 @@ import type { InlineSuggestion } from '@/lib/compute-inline-diffs';
 export interface InlineSuggestionsHook {
   suggestions: InlineSuggestion[];
   pendingCount: number;
+  reviewedCount: number;
   nextPending: InlineSuggestion | undefined;
   allResolved: boolean;
   processingStatus: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
+  currentSuggestionIndex: number;
+  setCurrentSuggestionIndex: (index: number) => void;
   accept: (id: string) => void;
   reject: (id: string) => void;
   undo: (id: string) => void;
@@ -31,11 +34,13 @@ export interface InlineSuggestionsHook {
 export function useInlineSuggestions(): InlineSuggestionsHook {
   const [suggestions, setSuggestions] = useState<InlineSuggestion[]>([]);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
   const pendingCount = suggestions.filter((s) => s.status === 'pending').length;
+  const reviewedCount = suggestions.filter((s) => s.status !== 'pending').length;
   const nextPending = suggestions.find((s) => s.status === 'pending');
   const allResolved = suggestions.length > 0 && pendingCount === 0;
 
@@ -50,16 +55,56 @@ export function useInlineSuggestions(): InlineSuggestionsHook {
     [],
   );
 
+  // ── Auto-advance to next pending suggestion ───────────────────────────────
+
+  const advanceToNext = useCallback(
+    (afterIndex: number, updatedSuggestions: InlineSuggestion[]) => {
+      const nextPendingIdx = updatedSuggestions.findIndex(
+        (s, i) => i > afterIndex && s.status === 'pending',
+      );
+      if (nextPendingIdx >= 0) {
+        setCurrentSuggestionIndex(nextPendingIdx);
+        // Auto-scroll to the next suggestion after a short delay for visual feedback
+        setTimeout(() => {
+          const el = document.querySelector(
+            `[data-suggestion-index="${nextPendingIdx}"]`,
+          );
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 400);
+      }
+    },
+    [],
+  );
+
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const accept = useCallback(
-    (id: string) => updateStatus(id, 'accepted'),
-    [updateStatus],
+    (id: string) => {
+      setSuggestions((prev) => {
+        const updated = prev.map((s) => (s.id === id ? { ...s, status: 'accepted' as const } : s));
+        const idx = prev.findIndex((s) => s.id === id);
+        if (idx >= 0) {
+          // Schedule advance after state settles
+          setTimeout(() => advanceToNext(idx, updated), 0);
+        }
+        return updated;
+      });
+    },
+    [advanceToNext],
   );
 
   const reject = useCallback(
-    (id: string) => updateStatus(id, 'rejected'),
-    [updateStatus],
+    (id: string) => {
+      setSuggestions((prev) => {
+        const updated = prev.map((s) => (s.id === id ? { ...s, status: 'rejected' as const } : s));
+        const idx = prev.findIndex((s) => s.id === id);
+        if (idx >= 0) {
+          setTimeout(() => advanceToNext(idx, updated), 0);
+        }
+        return updated;
+      });
+    },
+    [advanceToNext],
   );
 
   const undo = useCallback(
@@ -112,10 +157,13 @@ export function useInlineSuggestions(): InlineSuggestionsHook {
   return {
     suggestions,
     pendingCount,
+    reviewedCount,
     nextPending,
     allResolved,
     processingStatus,
     containerRef,
+    currentSuggestionIndex,
+    setCurrentSuggestionIndex,
     accept,
     reject,
     undo,

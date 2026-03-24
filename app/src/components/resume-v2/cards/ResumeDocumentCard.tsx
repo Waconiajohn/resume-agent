@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Lightbulb, Loader2, Wand2, FileText, Target } from 'lucide-react';
+import { Lightbulb, Loader2, Wand2, FileText, Target, Check, X } from 'lucide-react';
 import type { ResumeDraft } from '@/types/resume-v2';
 import type { InlineSuggestion } from '@/lib/compute-inline-diffs';
 import { scrollToAndHighlight } from '../useStrategyThread';
@@ -23,6 +23,10 @@ interface ResumeDocumentCardProps {
   inlineSuggestions?: InlineSuggestion[];
   onAcceptSuggestion?: (id: string) => void;
   onRejectSuggestion?: (id: string) => void;
+  /** The id of the suggestion currently being focused/reviewed */
+  currentSuggestionId?: string | null;
+  /** Map from suggestion id to its sequential 1-based number across the document */
+  suggestionIndexMap?: Map<string, number>;
 }
 
 export function ResumeDocumentCard({
@@ -38,6 +42,8 @@ export function ResumeDocumentCard({
   inlineSuggestions = [],
   onAcceptSuggestion,
   onRejectSuggestion,
+  currentSuggestionId = null,
+  suggestionIndexMap,
 }: ResumeDocumentCardProps) {
   const handleMouseUp = useCallback(() => {
     if (!onTextSelect) return;
@@ -80,6 +86,19 @@ export function ResumeDocumentCard({
     },
     [inlineSuggestions],
   );
+
+  /**
+   * Build a 1-based sequential number map for all suggestions.
+   * Uses the prop when provided; falls back to generating one from inlineSuggestions order.
+   */
+  const resolvedIndexMap = useCallback((): Map<string, number> => {
+    if (suggestionIndexMap) return suggestionIndexMap;
+    const map = new Map<string, number>();
+    inlineSuggestions.forEach((s, i) => map.set(s.id, i + 1));
+    return map;
+  }, [suggestionIndexMap, inlineSuggestions])();
+
+  const totalSuggestions = inlineSuggestions.length;
 
   return (
     <div
@@ -152,6 +171,8 @@ export function ResumeDocumentCard({
               const suggestion = findSuggestion('selected_accomplishments', a.content);
               const popoverKey = `sa-${i}`;
               const isPopoverOpen = openPopoverId === popoverKey;
+              const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
+              const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
 
               return (
                 <li
@@ -170,7 +191,7 @@ export function ResumeDocumentCard({
                     }`}
                     aria-hidden="true"
                   />
-                  {suggestion && suggestion.status !== 'rejected' ? (
+                  {suggestion ? (
                     <BulletWithSuggestion
                       suggestion={suggestion}
                       popoverKey={popoverKey}
@@ -180,6 +201,10 @@ export function ResumeDocumentCard({
                       onAcceptSuggestion={onAcceptSuggestion}
                       onRejectSuggestion={onRejectSuggestion}
                       requirements={accomplishmentRequirements}
+                      suggestionNumber={suggestionNum}
+                      isCurrent={suggestion.id === currentSuggestionId}
+                      suggestionDataIndex={suggestionDataIdx}
+                      totalSuggestions={totalSuggestions}
                     />
                   ) : onBulletClick ? (
                     <span
@@ -261,6 +286,8 @@ export function ResumeDocumentCard({
                     const suggestion = findSuggestion('professional_experience', bullet.text);
                     const popoverKey = `pe-${bulletIndex}`;
                     const isPopoverOpen = openPopoverId === popoverKey;
+                    const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
+                    const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
 
                     return (
                       <li
@@ -279,7 +306,7 @@ export function ResumeDocumentCard({
                           }`}
                           aria-hidden="true"
                         />
-                        {suggestion && suggestion.status !== 'rejected' ? (
+                        {suggestion ? (
                           <BulletWithSuggestion
                             suggestion={suggestion}
                             popoverKey={popoverKey}
@@ -289,6 +316,10 @@ export function ResumeDocumentCard({
                             onAcceptSuggestion={onAcceptSuggestion}
                             onRejectSuggestion={onRejectSuggestion}
                             requirements={bulletRequirements}
+                            suggestionNumber={suggestionNum}
+                            isCurrent={suggestion.id === currentSuggestionId}
+                            suggestionDataIndex={suggestionDataIdx}
+                            totalSuggestions={totalSuggestions}
                           />
                         ) : onBulletClick ? (
                           <span
@@ -406,6 +437,14 @@ interface BulletWithSuggestionProps {
   onAcceptSuggestion?: (id: string) => void;
   onRejectSuggestion?: (id: string) => void;
   requirements: string[];
+  /** 1-based sequential number for this suggestion across the whole document */
+  suggestionNumber?: number;
+  /** True when this is the currently focused/active suggestion */
+  isCurrent?: boolean;
+  /** Index in the suggestions array for data attribute (0-based) */
+  suggestionDataIndex?: number;
+  /** Total suggestion count across document */
+  totalSuggestions?: number;
 }
 
 function BulletWithSuggestion({
@@ -417,17 +456,83 @@ function BulletWithSuggestion({
   onAcceptSuggestion,
   onRejectSuggestion,
   requirements,
+  suggestionNumber,
+  isCurrent = false,
+  suggestionDataIndex,
+  totalSuggestions,
 }: BulletWithSuggestionProps) {
   const isAccepted = suggestion.status === 'accepted';
+  const isRejected = suggestion.status === 'rejected';
   const isReplacement = suggestion.changeType === 'replacement' && Boolean(suggestion.originalText) && Boolean(suggestion.suggestedText);
 
+  // Numbered badge shown before the suggestion text
+  const NumberBadge = () => {
+    if (suggestionNumber === undefined) return null;
+
+    if (isAccepted) {
+      return (
+        <span
+          aria-label={`Suggestion ${suggestionNumber} accepted`}
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white mr-1.5 flex-shrink-0 align-middle"
+        >
+          <Check className="w-3 h-3" strokeWidth={3} />
+        </span>
+      );
+    }
+
+    if (isRejected) {
+      return (
+        <span
+          aria-label={`Suggestion ${suggestionNumber} rejected`}
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-300 text-gray-500 mr-1.5 flex-shrink-0 align-middle"
+        >
+          <X className="w-3 h-3" strokeWidth={3} />
+        </span>
+      );
+    }
+
+    return (
+      <span
+        aria-label={`Suggestion ${suggestionNumber}`}
+        className={`inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[11px] font-bold mr-1.5 flex-shrink-0 align-middle transition-all ${
+          isCurrent ? 'ring-2 ring-blue-400 ring-offset-1 animate-pulse' : ''
+        }`}
+      >
+        {suggestionNumber}
+      </span>
+    );
+  };
+
   if (isAccepted) {
-    // Accepted — render as normal dark text
-    return <span className="text-gray-800">{suggestion.suggestedText}</span>;
+    return (
+      <span
+        data-suggestion-index={suggestionDataIndex}
+        className="inline transition-colors duration-300"
+      >
+        <NumberBadge />
+        <span className="text-gray-800 transition-colors duration-300">{suggestion.suggestedText}</span>
+      </span>
+    );
+  }
+
+  if (isRejected) {
+    return (
+      <span
+        data-suggestion-index={suggestionDataIndex}
+        className="inline"
+      >
+        <NumberBadge />
+        <span className="text-gray-500 line-through">{suggestion.originalText || suggestion.suggestedText}</span>
+      </span>
+    );
   }
 
   return (
-    <>
+    <span
+      data-suggestion-index={suggestionDataIndex}
+      className="inline"
+    >
+      <NumberBadge />
       {/* Clickable suggestion text */}
       <span
         role="button"
@@ -440,7 +545,7 @@ function BulletWithSuggestion({
             onOpenPopover();
           }
         }}
-        aria-label={`Suggestion: ${suggestion.suggestedText}. Click to review.`}
+        aria-label={`Suggestion ${suggestionNumber ?? ''}: ${suggestion.suggestedText}. Click to review.`}
         aria-expanded={isPopoverOpen}
         className="cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-500/60"
       >
@@ -459,6 +564,8 @@ function BulletWithSuggestion({
         <SuggestionPopover
           suggestion={suggestion}
           requirements={requirements}
+          suggestionNumber={suggestionNumber}
+          totalSuggestions={totalSuggestions}
           onAccept={() => {
             onAcceptSuggestion?.(suggestion.id);
             onClosePopover();
@@ -470,7 +577,7 @@ function BulletWithSuggestion({
           onClose={onClosePopover}
         />
       )}
-    </>
+    </span>
   );
 }
 
@@ -483,9 +590,11 @@ interface SuggestionPopoverProps {
   onAccept: () => void;
   onReject: () => void;
   onClose: () => void;
+  suggestionNumber?: number;
+  totalSuggestions?: number;
 }
 
-function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClose }: SuggestionPopoverProps) {
+function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClose, suggestionNumber, totalSuggestions }: SuggestionPopoverProps) {
   const [editedText, setEditedText] = useState(suggestion.suggestedText);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -526,6 +635,15 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
       aria-label="Review suggestion"
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Suggestion position header */}
+      {suggestionNumber !== undefined && totalSuggestions !== undefined && (
+        <div className="flex items-center justify-between mb-1 pb-2 border-b border-gray-100">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            Suggestion {suggestionNumber} of {totalSuggestions}
+          </span>
+        </div>
+      )}
+
       {/* Source badge — prominent at the top */}
       <div className="flex items-center gap-2">
         {isJd ? (

@@ -447,71 +447,112 @@ function StagedProcessingViewer({ stage, isComplete }: StagedProcessingViewerPro
   );
 }
 
-// ─── CoachingBanner ───────────────────────────────────────────────────────────
-// Shows above the resume document to explain inline suggestions and give Accept All / Dismiss.
+// ─── SuggestionProgressStrip ─────────────────────────────────────────────────
+// Sticky strip shown above the resume document to guide the user through review.
 
-interface CoachingBannerProps {
-  suggestions: InlineSuggestion[];
+interface SuggestionProgressStripProps {
+  total: number;
+  reviewed: number;
+  currentIndex: number;
+  /** Per-index status so dot colors reflect actual reviewed state, not just sequential count */
+  statuses: Array<'pending' | 'accepted' | 'rejected'>;
   onAcceptAll: () => void;
-  onDismiss: () => void;
+  allResolved: boolean;
+  onExport: () => void;
 }
 
-function CoachingBanner({ suggestions, onAcceptAll, onDismiss }: CoachingBannerProps) {
-  const total = suggestions.length;
-  const critical = suggestions.filter((s) => s.requirementPriority === 'critical').length;
-  const important = suggestions.filter((s) => s.requirementPriority === 'important').length;
+function SuggestionProgressStrip({
+  total,
+  reviewed,
+  currentIndex,
+  statuses,
+  onAcceptAll,
+  allResolved,
+  onExport,
+}: SuggestionProgressStripProps) {
+  const getLabel = () => {
+    if (total === 0) return null;
+    if (allResolved) return `All ${total} reviewed! Ready to export`;
+    if (reviewed === 0) return `Click suggestion \u2460 to start`;
+    return `${reviewed} of ${total} reviewed`;
+  };
+
+  const label = getLabel();
+  if (!label) return null;
 
   return (
     <div
-      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.18)] px-6 py-5 mb-4"
-      role="region"
-      aria-label="Resume coaching guidance"
+      className={`sticky top-0 z-20 rounded-lg shadow-[0_2px_16px_rgba(0,0,0,0.18)] px-5 py-3 mb-4 transition-colors duration-300 ${
+        allResolved
+          ? 'bg-green-50 border border-green-200'
+          : 'bg-white border border-neutral-200'
+      }`}
+      role="status"
+      aria-live="polite"
+      aria-label="Suggestion review progress"
     >
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">
-        Your Optimized Resume
-      </p>
+      <div className="flex items-center gap-4">
+        {/* Label */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-[13px] font-medium leading-tight ${allResolved ? 'text-green-700' : 'text-neutral-700'}`}>
+            {label}
+          </p>
 
-      <p className="text-[13px] text-neutral-600 leading-relaxed mb-4">
-        Green text shows AI improvements — click any highlighted text to review, edit, or accept
-        the change. Red strikethrough shows what is being replaced. Your original content is
-        preserved until you confirm each change.
-      </p>
-
-      {/* Suggestion counts */}
-      {total > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-neutral-500 mb-4">
-          <span className="font-medium text-neutral-700">{total} suggestion{total !== 1 ? 's' : ''}</span>
-          {critical > 0 && (
-            <>
-              <span className="text-neutral-300">•</span>
-              <span>{critical} critical</span>
-            </>
-          )}
-          {important > 0 && (
-            <>
-              <span className="text-neutral-300">•</span>
-              <span>{important} important</span>
-            </>
+          {/* Dot progress indicators */}
+          {total > 0 && !allResolved && (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              {Array.from({ length: total }, (_, i) => {
+                const status = statuses[i] ?? 'pending';
+                const isReviewed = status !== 'pending';
+                const isCurrent = i === currentIndex && !isReviewed;
+                if (isCurrent) {
+                  return (
+                    <span
+                      key={i}
+                      className="h-2.5 w-2.5 rounded-full bg-blue-400 motion-safe:animate-pulse ring-2 ring-blue-300 ring-offset-1 flex-shrink-0"
+                      aria-label={`Suggestion ${i + 1}: current`}
+                    />
+                  );
+                }
+                if (isReviewed) {
+                  return (
+                    <span
+                      key={i}
+                      className="h-2.5 w-2.5 rounded-full bg-green-500 flex-shrink-0"
+                      aria-label={`Suggestion ${i + 1}: reviewed`}
+                    />
+                  );
+                }
+                return (
+                  <span
+                    key={i}
+                    className="h-2.5 w-2.5 rounded-full border border-neutral-300 flex-shrink-0"
+                    aria-label={`Suggestion ${i + 1}: pending`}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onAcceptAll}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
-        >
-          Accept All
-        </button>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="text-sm text-neutral-400 hover:text-neutral-600 underline underline-offset-2 transition-colors"
-        >
-          Dismiss
-        </button>
+        {/* Action button */}
+        {allResolved ? (
+          <button
+            type="button"
+            onClick={onExport}
+            className="shrink-0 rounded-md bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          >
+            Export Resume
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onAcceptAll}
+            className="shrink-0 rounded-md border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
+          >
+            Accept All
+          </button>
+        )}
       </div>
     </div>
   );
@@ -545,13 +586,25 @@ export function V2StreamingDisplay({
   const {
     suggestions,
     pendingCount,
+    reviewedCount,
     allResolved,
+    currentSuggestionIndex,
     accept: acceptSuggestion,
     reject: rejectSuggestion,
     scrollToNext,
     handleSuggestionEvent,
     containerRef,
   } = useInlineSuggestions();
+
+  // Build a stable 1-based index map from suggestion id → sequential number
+  const suggestionIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    suggestions.forEach((s, i) => map.set(s.id, i + 1));
+    return map;
+  }, [suggestions]);
+
+  // The id of the currently focused suggestion
+  const currentSuggestionId = suggestions[currentSuggestionIndex]?.id ?? null;
 
   // Sync incoming suggestions from SSE into the suggestion hook state
   const prevSuggestionsRef = useRef<InlineSuggestion[]>([]);
@@ -625,9 +678,6 @@ export function V2StreamingDisplay({
 
   const canShowUndoBar = canEdit && (undoCount > 0 || redoCount > 0);
 
-  // Coaching banner state — shown once when resume first appears, dismissed per session
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-
   // Accept all pending suggestions at once
   const handleAcceptAll = useCallback(() => {
     suggestions.forEach((s) => {
@@ -635,7 +685,6 @@ export function V2StreamingDisplay({
         acceptSuggestion(s.id);
       }
     });
-    setBannerDismissed(true);
   }, [suggestions, acceptSuggestion]);
 
   // A1/A2: Clear activeBullet when re-running (stale state from previous run)
@@ -790,12 +839,19 @@ export function V2StreamingDisplay({
             />
           )}
 
-          {/* Coaching banner — shown above the resume when first complete, dismissable */}
-          {isComplete && !bannerDismissed && (
-            <CoachingBanner
-              suggestions={suggestions}
+          {/* Suggestion progress strip — sticky, shown when there are suggestions */}
+          {isComplete && suggestions.length > 0 && (
+            <SuggestionProgressStrip
+              total={suggestions.length}
+              reviewed={reviewedCount}
+              currentIndex={currentSuggestionIndex}
+              statuses={suggestions.map((s) => s.status)}
               onAcceptAll={handleAcceptAll}
-              onDismiss={() => setBannerDismissed(true)}
+              allResolved={allResolved}
+              onExport={() => {
+                const rail = containerRef.current?.querySelector('[data-workspace-rail]');
+                rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             />
           )}
 
@@ -817,6 +873,8 @@ export function V2StreamingDisplay({
                   inlineSuggestions={suggestions}
                   onAcceptSuggestion={acceptSuggestion}
                   onRejectSuggestion={rejectSuggestion}
+                  currentSuggestionId={currentSuggestionId}
+                  suggestionIndexMap={suggestionIndexMap}
                 />
               </div>
             </AnimatedCard>
