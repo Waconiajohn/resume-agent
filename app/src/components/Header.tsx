@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Moon, Settings2, Sun, X } from 'lucide-react';
+import { ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Moon, Settings2, Sun, X } from 'lucide-react';
 import { PipelineProgressBar } from './PipelineProgressBar';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useTheme } from '@/hooks/useTheme';
@@ -113,22 +113,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             </span>
           </button>
 
-          {email && (
-            <nav className="hidden items-center gap-2 xl:flex">
-              <button
-                onClick={() => onNavigate?.('workspace')}
-                className="border-b border-transparent px-1 pb-1 text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
-              >
-                Workspace
-              </button>
-              <button
-                onClick={() => onNavigate?.('/workspace?room=resume')}
-                className="border-b border-transparent px-1 pb-1 text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
-              >
-                Resume Builder
-              </button>
-            </nav>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -304,26 +288,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               </button>
             </div>
 
-            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5">
-              {email && (
-                <button
-                  onClick={() => handleNavClick('workspace')}
-                  className="flex w-full items-center justify-between border-b border-[var(--line-soft)] px-0 py-3 text-left text-[13px] font-medium uppercase tracking-[0.14em] text-[var(--text-strong)]"
-                >
-                  Workspace
-                  <ArrowUpRight className="h-4 w-4 text-[var(--text-soft)]" />
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('/workspace?room=resume')}
-                  className="flex w-full items-center justify-between border-b border-[var(--line-soft)] px-0 py-3 text-left text-[13px] font-medium uppercase tracking-[0.14em] text-[var(--text-muted)]"
-                >
-                  Resume Builder
-                  <ArrowUpRight className="h-4 w-4 text-[var(--text-soft)]" />
-                </button>
-              )}
-            </nav>
+            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5" />
 
             {email && (
               <div className="border-t border-[var(--line-soft)] px-5 py-5">

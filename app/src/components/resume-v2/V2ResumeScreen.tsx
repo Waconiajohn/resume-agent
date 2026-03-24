@@ -1009,6 +1009,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     return (
       <V2IntakeForm
         onSubmit={handleSubmit}
+        onBack={onBack}
         loading={isStarting}
         error={sessionLoadError ?? error}
         initialResumeText={initialResumeText}

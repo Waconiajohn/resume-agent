@@ -416,8 +416,8 @@ export default function App() {
   if (loading) {
     return (
       <ToastProvider>
-        <div className="flex h-screen items-center justify-center bg-surface">
-          <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-[#afc4ff] motion-safe:animate-spin" />
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
         </div>
       </ToastProvider>
     );
@@ -450,7 +450,7 @@ export default function App() {
           >
             Skip to main content
           </a>
-          <div className="h-screen bg-surface">
+          <div className="min-h-screen">
             <Header
               email={user.email}
               displayName={displayName}
@@ -467,7 +467,7 @@ export default function App() {
               <div className="mx-auto max-w-6xl px-4 pt-3">
                 <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-4 py-3 text-sm text-[#b5dec2]">
                   <span>Subscription activated! You now have access to all plan features.</span>
-                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#b5dec2] hover:text-white/90">Dismiss</button>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#b5dec2] hover:text-[#b5dec2]/80">Dismiss</button>
                 </div>
               </div>
             )}
@@ -476,7 +476,7 @@ export default function App() {
               <div className="mx-auto max-w-6xl px-4 pt-3">
                 <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f]">
                   <span>Checkout cancelled. You can try again anytime from billing.</span>
-                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#f0d99f] hover:text-white/90">Dismiss</button>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#f0d99f] hover:text-[#f0d99f]/80">Dismiss</button>
                 </div>
               </div>
             )}
@@ -494,8 +494,8 @@ export default function App() {
                   currentView === 'coach' && !connected && !sessionComplete && !agentError && !hasLiveWorkspaceState ? (
                     <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-[#afc4ff] motion-safe:animate-spin" />
-                        <span className="text-sm text-white/50">Connecting to session...</span>
+                        <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
+                        <span className="text-sm text-[var(--text-soft)]">Connecting to session...</span>
                       </div>
                     </div>
                   ) : (
