@@ -281,6 +281,12 @@ export interface ResumeWriterInput {
   narrative: NarrativeStrategyOutput;
   career_profile?: CareerProfileV2;
   approved_strategies: ApprovedStrategy[];
+  /** Technologies and tools from the candidate's background */
+  technologies?: string[];
+  /** Industries the candidate has deep experience in */
+  industry_depth?: string[];
+  /** Description of the candidate's operational complexity and scale */
+  operational_scale?: string;
 }
 
 export interface ResumeBullet {
@@ -331,6 +337,15 @@ export interface ResumeDraftOutput {
     year?: string;
   }>;
   certifications: string[];
+  /** Grouped technical skill categories (e.g. "Cloud Platforms": ["AWS", "Azure"]) */
+  technical_skills?: Array<{
+    category: string;
+    skills: string[];
+  }>;
+  /** Flat list of technologies and tools for ATS matching */
+  technologies?: string[];
+  /** Industry or functional area summary for the resume */
+  area_experience?: string;
 }
 
 // ─── Agent 7: Truth Verification ─────────────────────────────────────

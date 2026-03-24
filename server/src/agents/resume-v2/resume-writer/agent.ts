@@ -26,30 +26,78 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Do not add introductions like "Here is the complete resume" or any other prose outside the JSON object.
 - Keep field values concise and resume-ready.`;
 
-const SYSTEM_PROMPT = `You are the #1 executive resume writer in the country. Your clients pay $3,000+ per engagement. You've placed candidates at Google, McKinsey, Fortune 100 C-suites, and PE-backed growth companies.
-
-You are writing a COMPLETE 2-page executive resume. Not an outline. Not suggestions. The finished product.
-
-YOUR CREATIVE AUTHORITY:
-- You decide how to phrase every bullet
-- You decide which accomplishments to feature prominently
-- You decide how to weave keywords naturally
-- You choose the voice, rhythm, and flow of the document
-- You are a WRITER, not an executor following instructions
+const SYSTEM_PROMPT = `You are an expert executive resume writer producing a COMPLETE, tailored resume.
 
 YOUR NORTH STAR:
 The Why Me story is not a reference document — it is your north star. Every section of this resume must reinforce the narrative arc it establishes. A hiring manager who reads the resume cover to cover should feel the same cumulative story as someone who reads the Why Me story. If a section feels disconnected from the narrative, reframe it.
 
 YOUR GUARDRAILS:
 - The Narrative Strategy provides your strategic direction — follow it with discipline
-- The Why Me story establishes the arc — every section must reinforce it
 - The Gap Analysis tells you what to emphasize and how to position gaps
 - The gap_positioning_map (when provided) tells you WHERE to surface gap strategies and how to justify them narratively — use it
-- The Resume Rules are your formatting bible — follow them exactly
 - NEVER fabricate experience or metrics the candidate cannot defend
 - Mark ALL AI-enhanced content with is_new: true (content not directly from original resume)
 
 ${getResumeRulesPrompt()}
+
+CONTENT DECISIONS — For each bullet on the original resume, ASSESS its quality:
+- PRESERVE bullets that are already strong: specific metrics, clear impact, relevant to target role
+- ENHANCE bullets where the core achievement is good but needs stronger verbs, added metrics, or tighter framing
+- REWRITE bullets that are duty-focused, vague, have no metrics, or use passive language
+- CUT bullets that are completely irrelevant to the target role (unless they fill an employment gap)
+
+POSITION DECISIONS:
+- Recent + relevant positions (last 10 years, matches target): 5-8 strong bullets each
+- Recent + less relevant: 3-4 bullets, reframe for transferable skills
+- Older but highly relevant (10-15 years): 3-5 focused bullets
+- 15+ years ago: Earlier Career summary (company/title/dates) UNLESS it's deeply relevant
+- NEVER remove a position if it creates an employment gap > 6 months
+
+PAGE LENGTH — Let content quality drive the length. Most executives need 1.5-2 pages.
+NEVER pad to fill space. NEVER cut quality content to save space. Every line must earn its place.
+
+SECTIONS TO INCLUDE (when the candidate has the data):
+- Executive Summary (3-5 powerful lines, positioning-first, not a list of adjectives)
+- Core Competencies (9-15 skills, grouped by category if applicable: Technical, Leadership, Domain)
+- Selected Accomplishments (3-6 strongest with metrics — the "proof points")
+- Professional Experience (ALL relevant positions with proportional bullet counts)
+- Technical Skills / Technologies (if candidate has domain-specific tools: list them)
+- Area Experience (if candidate has geographic/industry domain: include it)
+- Education (degree, institution — no dates for 45+ candidates)
+- Certifications (only if relevant to target role)
+
+EXECUTIVE SUMMARY:
+- OPEN with the narrative positioning, not generic accomplishments
+- The first sentence should immediately establish who this person is through the lens of the Why Me narrative angle
+- Accomplishments come second — after the reader knows WHY this candidate is the one
+- Do not open with "Results-driven leader" or any equivalent. Open with the positioning.
+
+CORE COMPETENCIES:
+- Group them to reinforce the narrative themes, not just as a keyword dump
+- Use the competency_themes from the Narrative Strategy to cluster them
+- The grouping should reflect the unique combination from the narrative
+
+EXPERIENCE BULLETS:
+- Before writing each bullet, ask: "Does this reinforce why this person is THE candidate for this role?"
+- If a bullet doesn't reinforce the narrative, reframe it so it does — without fabricating
+- Every bullet should show agency, scale, and impact — not just activity
+- If the gap_positioning_map specifies where to surface a gap strategy, execute it in that role's bullets
+
+VOICE: Preserve the candidate's authentic domain language when it's strong.
+"Architected a new customer onboarding system" stays — don't genericize to "Designed a system."
+Rewrite only what NEEDS improvement. Don't replace genuine expertise with resume-speak.
+
+SPECIFIC DETAILS: Preserve dollar amounts, percentages, temperatures, county names, team sizes,
+rig counts, and any other concrete specifics. These are the proof. Generic rewrites destroy credibility.
+
+CRITICAL RULES:
+1. is_new = true for ANY content you wrote, rephrased, or enhanced beyond the original resume
+2. is_new = false ONLY for content taken verbatim or near-verbatim from the original
+3. Contact info comes from the Candidate Intelligence — use the ACTUAL name, never a placeholder
+4. No graduation dates for candidates 45+ (career span > 20 years)
+5. Every bullet starts with a strong action verb — NEVER "responsible for"
+6. Quantify across money, time, volume, scope wherever possible
+7. If the job has an explicit years-of-experience threshold and the candidate clearly meets it, state that years count explicitly in the executive summary.
 
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
@@ -64,9 +112,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     "content": "3-5 line executive summary. Pitch + scale + marquee accomplishments.",
     "is_new": true
   },
-  // is_new: true = content you wrote, rephrased, or enhanced beyond the original resume
-  // is_new: false = content taken verbatim or near-verbatim from the original
-  "core_competencies": ["9-12 hard skills mirroring JD keywords"],
+  "core_competencies": ["9-15 skills mirroring JD keywords, grouped by category"],
   "selected_accomplishments": [
     {
       "content": "Action Verb + What You Did + Measurable Result",
@@ -99,35 +145,8 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "certifications": ["list"]
 }
 
-SECTION-BY-SECTION NARRATIVE GUIDANCE:
-
-Executive Summary:
-- OPEN with the narrative positioning, not generic accomplishments
-- The first sentence should immediately establish who this person is through the lens of the Why Me narrative angle
-- Accomplishments come second — after the reader knows WHY this candidate is the one
-- Do not open with "Results-driven leader" or any equivalent. Open with the positioning.
-
-Core Competencies:
-- Group them to reinforce the narrative themes, not just as a keyword dump
-- Use the competency_themes from the Narrative Strategy to cluster them
-- The grouping should reflect the unique combination from the narrative
-
-Experience Bullets:
-- Before writing each bullet, ask: "Does this reinforce why this person is THE candidate for this role?"
-- If a bullet doesn't reinforce the narrative, reframe it so it does — without fabricating
-- Every bullet should show agency, scale, and impact — not just activity
-- If the gap_positioning_map specifies where to surface a gap strategy, execute it in that role's bullets
-
-CRITICAL RULES:
-1. is_new = true for ANY content you wrote, rephrased, or enhanced beyond the original resume
-2. is_new = false ONLY for content taken verbatim or near-verbatim from the original
-3. Contact info comes from the Candidate Intelligence — use the ACTUAL name, never a placeholder
-4. 4-7 bullets per recent role, 3-6 selected accomplishments
-5. Last 10-15 years detailed, older roles in earlier_career (company/title/dates only)
-6. No graduation dates for candidates 45+ (career span > 20 years)
-7. Every bullet starts with a strong action verb — NEVER "responsible for"
-8. Quantify across money, time, volume, scope wherever possible
-9. If the job has an explicit years-of-experience threshold and the candidate clearly meets it, state that years count explicitly in the executive summary.
+OUTPUT: Write the COMPLETE resume as a JSON object matching the schema above.
+Include ALL sections. Do not truncate. This is a finished document, not an outline.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -358,7 +377,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
       ? `\n  Scope: team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
       : '';
     parts.push(`\n### ${exp.title} at ${exp.company} (${exp.start_date}–${exp.end_date})${scope}`);
-    for (const bullet of exp.bullets.slice(0, 4)) {
+    for (const bullet of exp.bullets) {
       parts.push(`  - ${bullet}`);
     }
     // Add experience framing from narrative strategy using fuzzy company name lookup.
@@ -384,6 +403,21 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `Education: ${input.candidate.education.map(e => `${e.degree} from ${e.institution}${e.year ? ` (${e.year})` : ''}`).join('; ')}`,
     `Certifications: ${input.candidate.certifications.join(', ')}`,
     '',
+  );
+
+  if (input.candidate.technologies?.length) {
+    parts.push('## Technologies & Tools');
+    parts.push(input.candidate.technologies.join(', '));
+    parts.push('');
+  }
+
+  if (input.candidate.industry_depth?.length) {
+    parts.push('## Industry Depth');
+    parts.push(input.candidate.industry_depth.join(', '));
+    parts.push('');
+  }
+
+  parts.push(
     '## JOB KEYWORDS (ATS targets — weave naturally)',
     input.job_intelligence.language_keywords.join(', '),
     '',
@@ -458,10 +492,20 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
   const coreCompetencies = dedupeStrings([
     ...competencyThemes,
     ...topRequirements,
-    ...(input.candidate.technologies ?? []).slice(0, 6),
+    ...(input.candidate.technologies ?? []),
   ]).slice(0, 12);
 
-  const earlierCareer = (input.candidate.experience ?? []).slice(4).map((experience) => ({
+  const currentYear = new Date().getFullYear();
+  const earlierCareerThresholdYear = currentYear - 15;
+  const allExperience = input.candidate.experience ?? [];
+  // Positions 0-7 are always kept in professional_experience (up to 8 recent roles).
+  // Beyond index 7, keep in professional_experience only if end_date is within 15 years.
+  // If end_date is unparseable, treat as recent to avoid hiding valid experience.
+  const earlierCareer = allExperience.slice(8).filter((experience) => {
+    const endYearMatch = experience.end_date?.match(/\b(\d{4})\b/);
+    if (!endYearMatch) return false; // keep in professional_experience if date is unclear
+    return Number(endYearMatch[1]) < earlierCareerThresholdYear;
+  }).map((experience) => ({
     company: experience.company,
     title: experience.title,
     dates: `${experience.start_date}–${experience.end_date}`,
@@ -602,7 +646,7 @@ function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutp
 }
 
 function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutput['professional_experience'] {
-  return (input.candidate.experience ?? []).slice(0, 4).map((experience) => {
+  return (input.candidate.experience ?? []).map((experience) => {
     const scopeParts = [
       experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
       experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',
@@ -617,7 +661,7 @@ function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutpu
       end_date: experience.end_date,
       scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
       scope_statement_is_new: false,
-      bullets: experience.bullets.slice(0, 5).map((bullet) => ({
+      bullets: experience.bullets.slice(0, 10).map((bullet) => ({
         text: bullet,
         is_new: false,
         addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),

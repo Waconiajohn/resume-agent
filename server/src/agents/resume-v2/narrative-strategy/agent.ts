@@ -399,7 +399,7 @@ function buildDeterministicNarrativeStrategy(
         hardGaps.size > 0 ? 'Do not let unresolved hard requirements dominate the summary; treat them honestly elsewhere.' : '',
       ]).slice(0, 4),
       experience_framing: Object.fromEntries(
-        input.candidate.experience.slice(0, 5).map((experience) => [
+        input.candidate.experience.map((experience) => [
           experience.company,
           `Frame this chapter as evidence of ${primary_narrative.toLowerCase()} through ${experience.title.toLowerCase()} scope and outcomes.`,
         ]),
@@ -494,7 +494,7 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
     ),
     '',
     'Recent experience:',
-    ...input.candidate.experience.slice(0, 5).map(
+    ...input.candidate.experience.map(
       e => `- ${e.title} at ${e.company} (${e.start_date}–${e.end_date}): ${e.bullets.slice(0, 3).join('; ')}`
     ),
     '',

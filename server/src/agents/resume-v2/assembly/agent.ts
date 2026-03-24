@@ -729,31 +729,9 @@ export function computeInlineSuggestions(
   };
 
   // ── 1. Executive Summary ──────────────────────────────────────────────────
-
-  const originalSummary = extractOriginalSummary(candidateIntel);
-  const draftedSummary = draft.executive_summary.content?.trim() ?? '';
-
-  if (draftedSummary && originalSummary !== draftedSummary) {
-    const sectionId = 'executive_summary';
-    const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
-      draftedSummary,
-      gapAnalysis,
-      importanceToRequirementPriority,
-      'Strengthens executive summary with targeted positioning',
-    );
-
-    suggestions.push({
-      id: makeId(sectionId),
-      sectionId,
-      originalText: originalSummary,
-      suggestedText: draftedSummary,
-      changeType: originalSummary ? 'replacement' : 'addition',
-      requirementText,
-      requirementPriority,
-      requirementSource,
-      rationale,
-    });
-  }
+  // Skipped: Executive summary is rendered as plain text in the frontend,
+  // not through the BulletWithSuggestion system. Generating suggestions for
+  // it causes numbering to start at 2+ for the first visible bullet.
 
   // ── 2. Core Competencies ──────────────────────────────────────────────────
 

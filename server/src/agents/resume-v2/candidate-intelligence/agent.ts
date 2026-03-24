@@ -370,7 +370,7 @@ function extractExperience(lines: string[]): CandidateIntelligenceOutput['experi
       title: 'Career Experience',
       start_date: '',
       end_date: '',
-      bullets: bulletLines.slice(0, 12),
+      bullets: bulletLines.slice(0, 20),
       inferred_scope: {},
     }];
   }

@@ -11,11 +11,13 @@
 // ─── Document Format ─────────────────────────────────────────────────
 
 export const DOCUMENT_FORMAT = {
-  max_pages: 2,
+  // Page length is driven by content quality, not a fixed number. Most executives: 1.5-2 pages.
+  // Never pad to fill space. Never compress quality content to hit an arbitrary limit.
+  // C-suite with 20+ year careers may require 2.5-3 pages when the evidence demands it.
   layout: 'single-column' as const,
   style: 'reverse-chronological' as const,
   primary_export: 'docx' as const,
-  rationale: 'ATS systems parse single-column DOCX most reliably. 2 pages is standard for mid-level executives (3 only for C-suite).',
+  rationale: 'ATS systems parse single-column DOCX most reliably. Page count follows content quality — typically 1.5-2 pages for mid-level executives.',
 };
 
 // ─── Section Order ───────────────────────────────────────────────────
@@ -27,6 +29,7 @@ export const SECTION_ORDER = [
   'selected_accomplishments',
   'professional_experience',
   'earlier_career',
+  'technical_skills',
   'education',
 ] as const;
 
@@ -59,14 +62,28 @@ Every accomplishment must have at least one metric (money, time, volume, or scop
   professional_experience: `Reverse-chronological. Last 10-15 years in detail.
 Each role: Company, Title, Dates, Location.
 Scope statement above bullets (team size, budget, geography, P&L).
-4-7 bullets per recent role. CAR method (Challenge, Action, Result).
+CAR method (Challenge, Action, Result).
 Quantify across 4 categories: money, time, volume, scope.
-1-2 lines per bullet. Start every bullet with a strong action verb.`,
+1-2 lines per bullet. Start every bullet with a strong action verb.
+
+Bullet counts are context-driven:
+- Most recent/relevant positions: 5-8 bullets
+- Mid-career positions: 3-5 bullets
+- Older positions: 2-3 bullets
+- Earlier career summary: company/title/dates only
+
+Never pad bullets to meet a target count. Never cut strong evidence to hit an arbitrary limit.`,
 
   earlier_career: `Company, title, dates only. No bullets.
 Never detail more than 20 years total.
 Condense 15-20 year old roles to one-liners.
 This section exists to show career progression without dating the candidate.`,
+
+  technical_skills: `Optional section for candidates with significant technical depth.
+Include only when the role warrants it and the candidate has genuine technical breadth.
+Format: category label followed by specific tools/technologies.
+Example categories: Cloud Platforms, Data & Analytics, ERP/CRM Systems, Programming Languages.
+Do not include basic tools (Word, Excel) unless the role specifically values them.`,
 
   education: `Degree, institution. No graduation dates for candidates 45+.
 No high school. Certifications listed separately below education.
@@ -173,7 +190,7 @@ export function getResumeRulesPrompt(): string {
   return `# Executive Resume Writing Rulebook
 
 ## Document Format
-- ${DOCUMENT_FORMAT.max_pages} pages maximum
+- Page length follows content quality — most executives: 1.5-2 pages. Never pad. Never cut strong evidence for an arbitrary limit.
 - ${DOCUMENT_FORMAT.layout} layout
 - ${DOCUMENT_FORMAT.style}
 - Primary export: ${DOCUMENT_FORMAT.primary_export}

@@ -242,6 +242,9 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       narrative,
       career_profile: options.career_profile,
       approved_strategies: allApproved,
+      technologies: candidateIntel.technologies,
+      industry_depth: candidateIntel.industry_depth,
+      operational_scale: candidateIntel.operational_scale,
     }, signal);
 
     state.resume_draft = draft;
