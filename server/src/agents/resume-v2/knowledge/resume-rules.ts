@@ -73,7 +73,10 @@ BANNED PHRASES IN SUMMARY (never use):
 Use EXACT phrases from the job description — this is the ATS keyword magnet section.
 No soft skills ("leadership," "communication," "teamwork") — only domain skills and strategic capabilities.
 Group by category if applicable: Technical, Leadership, Domain, Functional.
-Include AI/digital fluency signal where truthful.
+Include AI/digital fluency signal where truthful. For executives, AI readiness means leadership
+of technology adoption, data-driven operations, process automation, and digital transformation —
+not hands-on AI/ML technical skills. Frame at the executive level: "AI-Enabled Process
+Optimization" not "Machine Learning."
 Format: 3-4 columns of skills, or grouped thematic lines.`,
 
   selected_accomplishments: `3-6 career highlights that directly address the top JD requirements.
@@ -181,7 +184,15 @@ KEYWORDS:
 - Place critical keywords in summary, competencies, AND experience bullets
 - Spell out acronyms on first use: "Customer Relationship Management (CRM)"
 - Aim for 15-25 keywords from the JD distributed across the document
-- Primary keywords should appear in at least 2 distinct sections`;
+- Primary keywords should appear in at least 2 distinct sections
+
+AI READINESS (executive resumes):
+- When the candidate has led automation, data-driven decision making, technology adoption,
+  or digital transformation, reframe those accomplishments to signal AI readiness
+- Executive-level AI language: "AI-ready infrastructure," "automation-enabled operations,"
+  "data-driven decision frameworks" — not technical jargon
+- AI readiness is woven into existing sections, not a standalone section
+- Only include AI signals that trace to real experience on the resume`;
 
 // ─── Age-Proofing Rules (Critical for 45-60) ────────────────────────
 //

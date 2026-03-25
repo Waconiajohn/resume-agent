@@ -87,6 +87,17 @@ export interface CandidateIntelligenceOutput {
   certifications: string[];
   hidden_accomplishments: string[];
   raw_text: string;
+  /** AI readiness signals detected from resume — leadership precursors, not technical AI skills */
+  ai_readiness?: {
+    strength: 'strong' | 'moderate' | 'minimal' | 'none';
+    signals: Array<{
+      family: string;
+      evidence: string;
+      source_role?: string;
+      executive_framing: string;
+    }>;
+    summary: string;
+  };
 }
 
 // ─── Agent 3: Benchmark Candidate ────────────────────────────────────

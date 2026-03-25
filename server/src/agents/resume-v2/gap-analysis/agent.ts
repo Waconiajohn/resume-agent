@@ -21,6 +21,7 @@ import {
   getRequirementCoachingPolicySnapshot,
   looksLikeTargetedRequirementQuestion,
 } from '../../../contracts/requirement-coaching-policy.js';
+import { AI_READINESS_REQUIREMENT_TEXT } from '../../../contracts/ai-readiness-policy.js';
 import type {
   GapAnalysisInput,
   GapAnalysisOutput,
@@ -902,7 +903,7 @@ function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequireme
   const expectedIndustryKnowledge = input.benchmark.expected_industry_knowledge ?? [];
   const differentiators = input.benchmark.differentiators ?? [];
 
-  return [
+  const seeds: CanonicalRequirementSeed[] = [
     ...coreCompetencies.map((competency) => ({
       requirement: competency.competency,
       source: 'job_description' as const,
@@ -960,6 +961,19 @@ function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequireme
       source_evidence: differentiator,
     })),
   ];
+
+  // Inject synthetic AI readiness requirement when candidate has precursors
+  if (input.candidate.ai_readiness?.strength && input.candidate.ai_readiness.strength !== 'none') {
+    seeds.push({
+      requirement: AI_READINESS_REQUIREMENT_TEXT,
+      source: 'benchmark' as const,
+      category: 'benchmark_differentiator' as const,
+      importance: 'nice_to_have' as const,
+      source_evidence: 'Executive AI readiness is a modern differentiator — detected from candidate background',
+    });
+  }
+
+  return seeds;
 }
 
 function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
@@ -993,6 +1007,17 @@ function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
       ...input.career_profile.positioning.proof_themes.map((item) => ({ text: item, origin: 'career profile proof theme', supportsDisplayEvidence: false })),
       ...input.career_profile.positioning.differentiators.map((item) => ({ text: item, origin: 'career profile differentiator', supportsDisplayEvidence: false })),
       ...input.career_profile.positioning.adjacent_positioning.map((item) => ({ text: item, origin: 'career profile adjacent positioning', supportsDisplayEvidence: false })),
+    );
+  }
+
+  // Add AI readiness signals to evidence corpus
+  if (input.candidate.ai_readiness?.signals) {
+    entries.push(
+      ...input.candidate.ai_readiness.signals.map((s) => ({
+        text: `${s.executive_framing}: ${s.evidence}`,
+        origin: 'ai_readiness_signal',
+        supportsDisplayEvidence: true,
+      })),
     );
   }
 

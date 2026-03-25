@@ -11,6 +11,7 @@
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { detectAIPrecursors, buildAIPrecursorSummary } from '../../../contracts/ai-readiness-policy.js';
 import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
@@ -75,8 +76,37 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "education": [{"degree": "...", "institution": "...", "year": "if present"}],
   "certifications": ["list of certifications"],
   "hidden_accomplishments": ["things implied but not stated on the resume"],
-  "raw_text": "first 200 chars of the resume for verification"
+  "raw_text": "first 200 chars of the resume for verification",
+  "ai_readiness": {
+    "strength": "strong|moderate|minimal|none",
+    "signals": [
+      {
+        "family": "signal family name (e.g. process_automation, data_driven_decisions, technology_adoption)",
+        "evidence": "excerpt from resume proving this signal",
+        "source_role": "title at company where this evidence appeared",
+        "executive_framing": "executive-level restatement of the signal"
+      }
+    ],
+    "summary": "1-2 sentence summary of AI readiness profile"
+  }
 }
+
+AI READINESS SCAN: Look for precursors demonstrating the candidate could lead AI adoption.
+These are NOT technical AI skills. For executives, look for:
+- Process automation initiatives (even non-AI automation)
+- Data-driven decision making at scale
+- Technology adoption/migration leadership
+- Digital transformation or modernization
+- Change management for technology rollouts
+- Cross-functional tech-business initiatives
+- Vendor/tool evaluation and selection
+- Compliance/governance for technology
+- Knowledge base or analytics infrastructure
+If someone "standardized processes across teams using automation platform," they built AI-ready operations.
+If someone "implemented a knowledge management system," they built AI/RAG-ready infrastructure.
+The verb alone is not the signal — the object matters. "Implemented safety protocols" is NOT a signal.
+"Implemented a CRM platform" IS a signal.
+Strength: strong = 4+ signal families, moderate = 2-3, minimal = 1, none = 0.
 
 RULES:
 - Extract ALL experience entries, not just recent ones
@@ -174,6 +204,32 @@ export async function runCandidateIntelligence(
   parsed.education = salvageEducationFromResume(parsed.education, input.resume_text);
   parsed.raw_text = input.resume_text;
 
+  // Deterministic AI readiness fallback — ensures extraction even when the LLM misses it
+  if (!parsed.ai_readiness || parsed.ai_readiness.strength === 'none') {
+    const allBullets = [
+      ...(parsed.experience ?? []).flatMap((e) => e.bullets),
+      ...(parsed.hidden_accomplishments ?? []),
+    ];
+    const precursorMatches = detectAIPrecursors(
+      input.resume_text,
+      allBullets,
+      parsed.experience,
+    );
+    if (precursorMatches.length > 0) {
+      const summary = buildAIPrecursorSummary(precursorMatches);
+      parsed.ai_readiness = {
+        strength: summary.strength,
+        signals: summary.signals.map((s) => ({
+          family: s.family,
+          evidence: s.evidence,
+          source_role: s.sourceRole,
+          executive_framing: s.executiveFraming,
+        })),
+        summary: summary.summary,
+      };
+    }
+  }
+
   return parsed;
 }
 
@@ -221,6 +277,7 @@ function normalizeCandidateIntelligence(
         return wordCount >= 5 && (hasMetric || hasProperNoun);
       }),
     raw_text: parsed.raw_text ?? resumeText,
+    ai_readiness: coerceAIReadiness(parsed.ai_readiness),
   };
 }
 
@@ -285,6 +342,29 @@ function coerceQuantifiedOutcomes(value: unknown): CandidateIntelligenceOutput['
       : extractMetricValue(outcome);
     return [{ outcome, metric_type, value: valueText }];
   });
+}
+
+function coerceAIReadiness(value: unknown): CandidateIntelligenceOutput['ai_readiness'] {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const validStrengths = ['strong', 'moderate', 'minimal', 'none'] as const;
+  const strength = validStrengths.includes(raw.strength as typeof validStrengths[number])
+    ? (raw.strength as typeof validStrengths[number])
+    : 'none';
+  const signals = Array.isArray(raw.signals)
+    ? (raw.signals as unknown[]).flatMap((s) => {
+        if (!s || typeof s !== 'object') return [];
+        const signal = s as Record<string, unknown>;
+        return [{
+          family: typeof signal.family === 'string' ? signal.family : '',
+          evidence: typeof signal.evidence === 'string' ? signal.evidence : '',
+          source_role: typeof signal.source_role === 'string' ? signal.source_role : undefined,
+          executive_framing: typeof signal.executive_framing === 'string' ? signal.executive_framing : '',
+        }];
+      })
+    : [];
+  const summary = typeof raw.summary === 'string' ? raw.summary : '';
+  return { strength, signals, summary };
 }
 
 function buildDeterministicCandidateIntelligence(

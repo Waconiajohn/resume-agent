@@ -15,7 +15,8 @@ export type RequirementCoachingFamily =
   | 'architecture'
   | 'erp'
   | 'technical'
-  | 'scale';
+  | 'scale'
+  | 'aiReadiness';
 
 export type RequirementCoachingClassification = 'strong' | 'partial' | 'missing';
 
@@ -199,6 +200,15 @@ const REQUIREMENT_FAMILY_POLICIES: readonly RequirementFamilyPolicy[] = [
     rationale: 'Technical requirements become believable when the environment and personal contribution are concrete.',
     lookingFor: 'Specific platform or framework context plus what the candidate personally delivered there.',
     targetedQuestionPatterns: [/\b(platform|framework|technical|aws|azure|gcp|cloud|kubernetes|terraform|environment|erp|sap|oracle|netsuite|workday)\b/i],
+  },
+  {
+    family: 'aiReadiness',
+    matches: (normalized) => /\b(ai|artificial intelligence|automation|digital transformation|data-driven|analytics infrastructure|knowledge management)\b/.test(normalized),
+    clarifyingQuestion: 'Have you led any technology adoption, process automation, or data-driven decision-making initiatives? What was the scope and what changed as a result?',
+    proofActionDetail: 'which technology adoption, automation, or data-driven initiative you led, the scope, and the business outcome.',
+    rationale: 'AI readiness for executives is demonstrated through leadership of technology-driven change, not hands-on technical skills.',
+    lookingFor: 'Technology adoption scope, automation or data initiatives led, and the business result.',
+    targetedQuestionPatterns: [/\b(ai|automation|technology|digital|data-driven|analytics|transformation)\b/i],
   },
   {
     family: 'scale',

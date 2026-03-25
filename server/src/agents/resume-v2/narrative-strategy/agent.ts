@@ -559,6 +559,25 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
     );
   }
 
+  // Add AI readiness profile when signals are moderate or strong
+  const aiReadiness = input.candidate.ai_readiness;
+  if (aiReadiness && (aiReadiness.strength === 'moderate' || aiReadiness.strength === 'strong')) {
+    parts.push(
+      '',
+      '## AI Readiness Profile',
+      `Strength: ${aiReadiness.strength}`,
+      `Summary: ${aiReadiness.summary}`,
+      'Key signals:',
+      ...aiReadiness.signals.map(
+        s => `- [${s.family}] ${s.executive_framing}: ${s.evidence}`
+      ),
+      '',
+      'INSTRUCTION: If AI readiness signals are moderate or strong, weave an "AI-ready leadership"',
+      'thread into section_guidance — a competency keyword, framing for relevant experience entries,',
+      'and an accomplishment note if a major tech initiative exists. Do NOT fabricate AI experience.',
+    );
+  }
+
   parts.push(
     '',
     'Craft a positioning strategy that makes this candidate the benchmark for this role. Apply all 5 narrative layers. Every choice must be supported by the evidence above. Ensure the narrative is specific enough to ONLY apply to this candidate. Return compact JSON only.',
