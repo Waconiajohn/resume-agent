@@ -38,6 +38,15 @@ export interface GapQuestionResponse {
 interface GapQuestionFlowProps {
   questions: GapQuestion[];
   onComplete: (responses: GapQuestionResponse[]) => void;
+  /** Optional: enables AI assist buttons on cards. Returns improved text or null. */
+  onAssist?: (
+    requirement: string,
+    classification: string,
+    action: 'strengthen' | 'add_metrics' | 'rewrite',
+    currentDraft: string,
+    evidence: string[],
+    aiReasoning?: string,
+  ) => Promise<string | null>;
 }
 
 // ─── Conversion Helper ────────────────────────────────────────────────────────
@@ -210,6 +219,14 @@ interface AIAssistedCardProps {
   onUseThis: (text: string) => void;
   onSkip: () => void;
   onSkipAll: () => void;
+  onAssist?: (
+    requirement: string,
+    classification: string,
+    action: 'strengthen' | 'add_metrics' | 'rewrite',
+    currentDraft: string,
+    evidence: string[],
+    aiReasoning?: string,
+  ) => Promise<string | null>;
 }
 
 function AIAssistedCard({
@@ -220,13 +237,15 @@ function AIAssistedCard({
   onUseThis,
   onSkip,
   onSkipAll,
+  onAssist,
 }: AIAssistedCardProps) {
   const [draftText, setDraftText] = useState(question.proposedStrategy ?? '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset draft when question changes
+  // Reset draft and assist state when question changes
   useEffect(() => {
     setDraftText(question.proposedStrategy ?? '');
+    setAssistError(false);
     textareaRef.current?.focus();
   }, [question.id, question.proposedStrategy]);
 
@@ -241,6 +260,41 @@ function AIAssistedCard({
       }
     },
     [draftText, onUseThis],
+  );
+
+  // AI assist state
+  const [isAssistLoading, setIsAssistLoading] = useState(false);
+  const [assistAction, setAssistAction] = useState<'strengthen' | 'add_metrics' | 'rewrite' | null>(null);
+  const [assistError, setAssistError] = useState(false);
+
+  const handleAssist = useCallback(
+    async (action: 'strengthen' | 'add_metrics' | 'rewrite') => {
+      if (!onAssist || isAssistLoading) return;
+      setIsAssistLoading(true);
+      setAssistAction(action);
+      setAssistError(false);
+      try {
+        const result = await onAssist(
+          question.requirement,
+          question.classification,
+          action,
+          draftText,
+          question.currentEvidence,
+          question.aiReasoning,
+        );
+        if (result) {
+          setDraftText(result);
+        } else {
+          setAssistError(true);
+        }
+      } catch {
+        setAssistError(true);
+      } finally {
+        setIsAssistLoading(false);
+        setAssistAction(null);
+      }
+    },
+    [onAssist, isAssistLoading, draftText, question],
   );
 
   return (
@@ -306,6 +360,48 @@ function AIAssistedCard({
             </p>
           </div>
         </div>
+
+        {/* AI assist buttons */}
+        {onAssist && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mr-1">
+              AI Assist
+            </span>
+            {(['strengthen', 'add_metrics', 'rewrite'] as const).map((action) => {
+              const labels: Record<string, string> = {
+                strengthen: 'Strengthen',
+                add_metrics: 'Add Metrics',
+                rewrite: 'Rewrite',
+              };
+              const isActive = isAssistLoading && assistAction === action;
+              return (
+                <button
+                  key={action}
+                  type="button"
+                  disabled={isAssistLoading}
+                  onClick={() => handleAssist(action)}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
+                    isActive
+                      ? 'border-blue-300 bg-blue-50 text-blue-700'
+                      : isAssistLoading
+                        ? 'border-neutral-200 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                        : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300'
+                  }`}
+                >
+                  {isActive && (
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+                  )}
+                  {labels[action]}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {assistError && (
+          <p className="text-[12px] text-red-500">
+            AI assist didn&apos;t return a result. Try again or edit manually.
+          </p>
+        )}
 
         {/* Why */}
         {question.aiReasoning && (
@@ -606,7 +702,7 @@ function FallbackCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps) {
+export function GapQuestionFlow({ questions, onComplete, onAssist }: GapQuestionFlowProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<GapQuestionResponse[]>([]);
 
@@ -680,6 +776,7 @@ export function GapQuestionFlow({ questions, onComplete }: GapQuestionFlowProps)
         onUseThis={handleUseThis}
         onSkip={handleSkip}
         onSkipAll={handleSkipAll}
+        onAssist={onAssist}
       />
     );
   }

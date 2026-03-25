@@ -93,6 +93,15 @@ interface V2StreamingDisplayProps {
   onToggleMasterPromotionItem?: (itemId: string) => void;
   onSelectAllMasterPromotionItems?: () => void;
   onClearMasterPromotionItems?: () => void;
+  /** Callback for AI-assist buttons in GapQuestionFlow cards */
+  onGapAssist?: (
+    requirement: string,
+    classification: string,
+    action: 'strengthen' | 'add_metrics' | 'rewrite',
+    currentDraft: string,
+    evidence: string[],
+    aiReasoning?: string,
+  ) => Promise<string | null>;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -583,6 +592,7 @@ export function V2StreamingDisplay({
   onToggleMasterPromotionItem,
   onSelectAllMasterPromotionItems,
   onClearMasterPromotionItems,
+  onGapAssist,
 }: V2StreamingDisplayProps) {
   // ── Inline suggestions ────────────────────────────────────────────────────
   const {
@@ -1051,6 +1061,7 @@ export function V2StreamingDisplay({
           <GapQuestionFlow
             questions={gapQuestions}
             onComplete={handleGapQuestionsComplete}
+            onAssist={onGapAssist}
           />
         ) : (
           /* Staged processing viewer — replaces thin progress bar */

@@ -26,6 +26,7 @@ import type {
   V2PersistedDraftState,
 } from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
+import { API_BASE } from '@/lib/api';
 import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import { useToast } from '@/components/Toast';
@@ -251,6 +252,60 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         : '',
     };
   }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards]);
+
+  // AI assist for gap positioning cards — calls gap-chat with a single-shot prompt
+  const handleGapAssist = useCallback(
+    async (
+      requirement: string,
+      classification: string,
+      action: 'strengthen' | 'add_metrics' | 'rewrite',
+      currentDraft: string,
+      evidence: string[],
+      aiReasoning?: string,
+    ): Promise<string | null> => {
+      if (!accessToken || !data.sessionId) return null;
+
+      const prompts: Record<string, string> = {
+        strengthen: `Strengthen this positioning with more impactful verbs and executive voice. Keep all specifics. Current draft: "${currentDraft}"`,
+        add_metrics: `Add or strengthen quantified metrics in this positioning. Infer conservatively from the evidence. Current draft: "${currentDraft}"`,
+        rewrite: `Completely rewrite this positioning to be more specific and impactful. Preserve all facts and numbers from the evidence. Current draft: "${currentDraft}"`,
+      };
+
+      const ctx = buildChatContext(requirement);
+
+      try {
+        const response = await fetch(`${API_BASE}/pipeline/${data.sessionId}/gap-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            requirement,
+            classification,
+            messages: [{ role: 'user', content: prompts[action] }],
+            context: {
+              evidence: ctx.evidence.length > 0 ? ctx.evidence : evidence,
+              current_strategy: currentDraft,
+              ai_reasoning: aiReasoning ?? ctx.aiReasoning,
+              inferred_metric: ctx.inferredMetric,
+              job_description_excerpt: ctx.jobDescriptionExcerpt,
+              candidate_experience_summary: ctx.candidateExperienceSummary,
+              coaching_policy: ctx.coachingPolicy,
+            },
+          }),
+        });
+
+        if (!response.ok) return null;
+
+        const result = await response.json();
+        return result.suggested_resume_language ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [accessToken, data.sessionId, buildChatContext],
+  );
 
   const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
     if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;
@@ -1114,6 +1169,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onToggleMasterPromotionItem={handleToggleMasterPromotionItem}
         onSelectAllMasterPromotionItems={handleSelectAllMasterPromotionItems}
         onClearMasterPromotionItems={handleClearMasterPromotionItems}
+        onGapAssist={handleGapAssist}
       />
     </div>
   );

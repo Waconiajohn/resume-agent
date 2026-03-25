@@ -155,6 +155,9 @@ RULES:
   GOOD: "Ensured regulatory compliance across multi-rig operations in the Delaware Basin and Eagle Ford Shale by implementing structured pre-tour safety briefings, hazard identification protocols, and BHP operating system standards"
   GOOD: "Drove $3M+ cost reduction through insulated drill pipe implementation, reducing BHA failures from 2.0 to 1.6 per lateral"
   The positioning MUST reference specific details from the candidate's actual resume: company names, locations, team sizes, tools, methodologies, and outcomes. If you cannot write a specific bullet, leave positioning empty rather than writing a generic one.
+- PRESERVATION RULE: The positioning MUST preserve or improve upon the specificity of the evidence. If the candidate's resume says "Reduced BHA failures from 2.0 to 1.6 per lateral", your positioning must keep those exact numbers and details — never flatten them into "Optimized drilling performance". Your job is to REFRAME the evidence for the requirement, not to summarize it into a generic capability statement.
+- ANTI-REPETITION RULE: Each positioning statement must use distinct phrasing. Never start multiple positioning statements with the same verb or pattern (e.g., don't use "Optimized..." for three different requirements).
+- SPECIFICITY TEST: Before writing positioning, check: does this sentence contain at least ONE of [specific metric, company/project name, team size, tool/methodology, geographic scope, timeframe]? If not, rewrite it until it does.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
@@ -1289,6 +1292,32 @@ function looksLikeTargetedInterviewQuestion(question: string, requirement: strin
   return looksLikeTargetedRequirementQuestion(question, requirement);
 }
 
+function isPositioningLessSpecificThanEvidence(positioning: string, realExperience: string): boolean {
+  if (!positioning || !realExperience) return false;
+
+  const countMetrics = (text: string): number =>
+    (text.match(/\d[\d,.]*%?|\$[\d,.]+[KMBkmb]?/g) ?? []).length;
+
+  const countProperNouns = (text: string): number => {
+    const words = text.split(/\s+/);
+    return words.filter((word, index) => {
+      if (index === 0) return false; // skip sentence-start capitalization
+      if (word.length < 2) return false;
+      return /^[A-Z]/.test(word) && !/^(The|And|For|With|That|This|From|Into|Your|Their)$/.test(word);
+    }).length;
+  };
+
+  const positioningMetrics = countMetrics(positioning);
+  const evidenceMetrics = countMetrics(realExperience);
+  const positioningProperNouns = countProperNouns(positioning);
+  const evidenceProperNouns = countProperNouns(realExperience);
+
+  const positioningSpecificity = positioningMetrics + positioningProperNouns;
+  const evidenceSpecificity = evidenceMetrics + evidenceProperNouns;
+
+  return evidenceSpecificity > 0 && positioningSpecificity < evidenceSpecificity;
+}
+
 function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: string): RequirementGap['strategy'] {
   if (!strategy || typeof strategy !== 'object') return undefined;
 
@@ -1316,6 +1345,15 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
 
   if (!normalized.real_experience || !normalized.positioning || !looksLikeResumePositioning(normalized.positioning)) {
     return undefined;
+  }
+
+  // Quality gate: if the model's positioning is less specific than the evidence,
+  // prefer the evidence text (which is already a good bullet from the resume).
+  if (
+    isPositioningLessSpecificThanEvidence(normalized.positioning, normalized.real_experience)
+    && looksLikeResumePositioning(normalized.real_experience)
+  ) {
+    normalized.positioning = normalized.real_experience;
   }
 
   if (typeof strategy.inferred_metric === 'string' && strategy.inferred_metric.trim()) {
