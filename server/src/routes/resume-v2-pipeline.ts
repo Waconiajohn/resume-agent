@@ -828,6 +828,7 @@ RULES:
 - When inferring metrics, back off 10-20% from calculated values.
 - suggested_resume_language should be a single, polished resume bullet — not a paragraph.
 - suggested_resume_language must sound like a real resume line, not a label or category name.
+- If an inferred metric is provided in the context, your suggested_resume_language MUST incorporate it. Never infer a number in one place while writing generic language elsewhere.
 - If the candidate's response reveals they truly don't have this experience, say so honestly and suggest they skip this gap.
 - When you ask a question, tie it to the strongest evidence we already have or the specific company/role in the background summary whenever possible.
 - Do not just restate the requirement. Explain what would make the proof believable for a recruiter.

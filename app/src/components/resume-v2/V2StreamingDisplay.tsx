@@ -101,6 +101,7 @@ interface V2StreamingDisplayProps {
     currentDraft: string,
     evidence: string[],
     aiReasoning?: string,
+    signal?: AbortSignal,
   ) => Promise<string | null>;
 }
 

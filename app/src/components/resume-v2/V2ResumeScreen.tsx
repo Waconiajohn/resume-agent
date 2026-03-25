@@ -262,6 +262,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       currentDraft: string,
       evidence: string[],
       aiReasoning?: string,
+      signal?: AbortSignal,
     ): Promise<string | null> => {
       if (!accessToken || !data.sessionId) return null;
 
@@ -294,13 +295,15 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
               coaching_policy: ctx.coachingPolicy,
             },
           }),
+          signal,
         });
 
         if (!response.ok) return null;
 
         const result = await response.json();
         return result.suggested_resume_language ?? null;
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return null;
         return null;
       }
     },

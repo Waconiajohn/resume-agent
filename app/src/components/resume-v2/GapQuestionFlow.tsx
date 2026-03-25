@@ -46,6 +46,7 @@ interface GapQuestionFlowProps {
     currentDraft: string,
     evidence: string[],
     aiReasoning?: string,
+    signal?: AbortSignal,
   ) => Promise<string | null>;
 }
 
@@ -94,6 +95,7 @@ function normalizeImportance(
     case 'must_have': return 'critical';
     case 'important': return 'important';
     case 'nice_to_have': return 'supporting';
+    default: return 'supporting';
   }
 }
 
@@ -148,7 +150,7 @@ function PriorityBadge({ importance }: { importance: GapQuestion['importance'] }
     critical: { label: 'Critical', className: 'bg-red-50 text-red-700 border-red-200' },
     important: { label: 'Important', className: 'bg-amber-50 text-amber-700 border-amber-200' },
     supporting: { label: 'Supporting', className: 'bg-neutral-100 text-neutral-600 border-neutral-200' },
-  }[importance];
+  }[importance] ?? { label: importance, className: 'bg-neutral-100 text-neutral-600 border-neutral-200' };
 
   return (
     <span
@@ -226,6 +228,7 @@ interface AIAssistedCardProps {
     currentDraft: string,
     evidence: string[],
     aiReasoning?: string,
+    signal?: AbortSignal,
   ) => Promise<string | null>;
 }
 
@@ -266,10 +269,24 @@ function AIAssistedCard({
   const [isAssistLoading, setIsAssistLoading] = useState(false);
   const [assistAction, setAssistAction] = useState<'strengthen' | 'add_metrics' | 'rewrite' | null>(null);
   const [assistError, setAssistError] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort in-flight AI assist when question changes or component unmounts
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, [question.id]);
 
   const handleAssist = useCallback(
     async (action: 'strengthen' | 'add_metrics' | 'rewrite') => {
       if (!onAssist || isAssistLoading) return;
+      // Abort any previous in-flight request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsAssistLoading(true);
       setAssistAction(action);
       setAssistError(false);
@@ -281,17 +298,22 @@ function AIAssistedCard({
           draftText,
           question.currentEvidence,
           question.aiReasoning,
+          controller.signal,
         );
+        if (controller.signal.aborted) return;
         if (result) {
           setDraftText(result);
         } else {
           setAssistError(true);
         }
       } catch {
+        if (controller.signal.aborted) return;
         setAssistError(true);
       } finally {
-        setIsAssistLoading(false);
-        setAssistAction(null);
+        if (!controller.signal.aborted) {
+          setIsAssistLoading(false);
+          setAssistAction(null);
+        }
       }
     },
     [onAssist, isAssistLoading, draftText, question],
@@ -460,7 +482,7 @@ function AIAssistedCard({
             <button
               type="button"
               onClick={() => onUseThis(draftText.trim())}
-              disabled={draftText.trim().length === 0}
+              disabled={draftText.trim().length === 0 || isAssistLoading}
               className="rounded-lg bg-emerald-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-emerald-700 active:bg-emerald-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-40"
             >
               Use This
@@ -470,7 +492,7 @@ function AIAssistedCard({
               <button
                 type="button"
                 onClick={() => onUseThis(draftText.trim())}
-                disabled={draftText.trim().length === 0}
+                disabled={draftText.trim().length === 0 || isAssistLoading}
                 className="rounded-lg bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 active:bg-blue-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-40"
               >
                 Edit &amp; Submit
