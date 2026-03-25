@@ -126,7 +126,10 @@ const searchCareerPagesTool: JobFinderTool = {
     // Retrieve scraped matches from DB to populate search_results
     const jobMatches = await getJobMatchesByUser(state.user_id, { status: 'new', limit: 200 });
     const careerPageJobs: DiscoveredJob[] = jobMatches
-      .filter((m) => (m.metadata as Record<string, unknown>)?.source === 'career_page_scraper')
+      .filter((m) => {
+        const src = (m.metadata as Record<string, unknown>)?.source;
+        return src === 'firecrawl_scrape' || src === 'firecrawl_search' || src === 'career_page_scraper';
+      })
       .map((m) => {
         const companyInfo = companiesToScrape.find((c) => c.id === m.company_id);
         return {

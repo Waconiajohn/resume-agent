@@ -31,7 +31,7 @@ export interface DiscoveredJob {
   /** Salary range if available */
   salary_range?: string;
   /** Source of this job discovery */
-  source: 'career_page' | 'boolean_search' | 'network';
+  source: 'career_page' | 'boolean_search' | 'firecrawl_search' | 'network';
   /** Raw match score from the discovery source (0-100) */
   match_score?: number;
   /** Short snippet of the job description */

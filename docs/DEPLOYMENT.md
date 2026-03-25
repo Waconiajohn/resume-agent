@@ -379,8 +379,8 @@ These features depend on platform context produced by Tier 1 agents (primarily p
 | `FF_NETWORK_INTELLIGENCE` | Network Intelligence — contact discovery and NI scoring | Completed resume pipelines producing `positioning_strategy` in `user_platform_context` |
 | `FF_NETWORKING_OUTREACH` | Networking Outreach — personalized outreach message generation | `FF_NETWORK_INTELLIGENCE` enabled and populated data |
 | `FF_NETWORKING_CRM` | Networking CRM — contact and relationship tracking | None (standalone CRUD), but most useful alongside `FF_NETWORK_INTELLIGENCE` |
-| `FF_JOB_FINDER` | Job Finder — multi-source job search (JSearch + Adzuna) | `JSEARCH_API_KEY` (RapidAPI) and/or `ADZUNA_APP_ID` + `ADZUNA_API_KEY` set in Railway |
-| `FF_JOB_SEARCH` | Job Search API — underlying search adapter routes | Same as `FF_JOB_FINDER`; both flags should be enabled together |
+| `FF_JOB_FINDER` | Job Finder — multi-source job search (Firecrawl) | `FIRECRAWL_API_KEY` configured in Railway |
+| `FF_JOB_SEARCH` | Job Search API — underlying search adapter routes | `FIRECRAWL_API_KEY` configured in Railway |
 | `FF_APPLICATION_PIPELINE` | Application Pipeline — Kanban job tracking CRUD | None (standalone), but pairs with `FF_JOB_FINDER` |
 | `FF_JOB_TRACKER` | Job Application Tracker (Agent #14) | None |
 | `FF_LINKEDIN_OPTIMIZER` | LinkedIn Optimizer | Completed resume pipeline for positioning input |

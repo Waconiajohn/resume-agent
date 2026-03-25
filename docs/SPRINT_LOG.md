@@ -51,7 +51,7 @@
 
 ## Technical debt identified
 - DB migrations not yet applied to Supabase (2 migration files ready)
-- API keys (JSEARCH_API_KEY, ADZUNA_APP_ID, ADZUNA_API_KEY) need configuration
+- API key (FIRECRAWL_API_KEY) needs configuration
 - Manual E2E testing of full flow pending
 - WatchlistManager could benefit from optimistic delete (currently waits for server)
 
