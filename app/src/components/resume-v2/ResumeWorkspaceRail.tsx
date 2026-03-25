@@ -14,7 +14,6 @@ import { GlassCard } from '../GlassCard';
 import { AddContextCard } from './AddContextCard';
 import { ExportBar } from './ExportBar';
 import { WhatChangedCard } from './cards/WhatChangedCard';
-import { ScoringReportCard } from './cards/ScoringReportCard';
 import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
 import { CandidateIntelligenceCard } from './cards/CandidateIntelligenceCard';
@@ -730,6 +729,28 @@ export function ResumeWorkspaceRail({
         onAcknowledgeWarnings={onAcknowledgeFinalReviewWarnings}
       />
 
+      {preScores ? (
+        <ScoringReport
+          preScores={preScores}
+          assembly={assembly}
+          verificationDetail={verificationDetail ?? null}
+          gapAnalysis={gapAnalysis ?? null}
+          benchmarkCandidate={benchmarkCandidate}
+          narrativeStrategy={narrativeStrategy}
+        />
+      ) : isComplete ? (
+        <KeywordScoreDashboard
+          pipelineScores={assembly.scores}
+          liveScores={liveScores}
+          quickWins={assembly.quick_wins}
+          isScoring={isScoring}
+          onIntegrateKeyword={onIntegrateKeyword}
+          preScoreKeywords={preScores}
+        />
+      ) : (
+        <ScoresCard scores={assembly.scores} quickWins={assembly.quick_wins} />
+      )}
+
       <CompactDisclosure
         title="Open readiness, context, reuse, and analysis details"
         description="Use this when you want the deeper export-readiness summary, add context, master resume controls, and the supporting analysis."
@@ -776,28 +797,6 @@ export function ResumeWorkspaceRail({
             benchmarkCandidate={benchmarkCandidate}
             narrativeStrategy={narrativeStrategy}
           />
-        )}
-
-        {preScores ? (
-          <ScoringReport
-            preScores={preScores}
-            assembly={assembly}
-            verificationDetail={verificationDetail ?? null}
-            gapAnalysis={gapAnalysis ?? null}
-            benchmarkCandidate={benchmarkCandidate}
-            narrativeStrategy={narrativeStrategy}
-          />
-        ) : isComplete ? (
-          <KeywordScoreDashboard
-            pipelineScores={assembly.scores}
-            liveScores={liveScores}
-            quickWins={assembly.quick_wins}
-            isScoring={isScoring}
-            onIntegrateKeyword={onIntegrateKeyword}
-            preScoreKeywords={preScores}
-          />
-        ) : (
-          <ScoresCard scores={assembly.scores} quickWins={assembly.quick_wins} />
         )}
 
         {previousResume && onDismissChanges && (

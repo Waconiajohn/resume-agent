@@ -2,7 +2,7 @@
  * V2StreamingDisplay — Output display for the v2 pipeline
  *
  * Two layout modes:
- *   1. Processing mode — OriginalScoresCard + staged processing viewer
+ *   1. Processing mode — OriginalScoresCard + LivePipelineCard (or PostGapTransition after gap submission)
  *   2. Resume mode — coaching banner + full-width centered document with inline editing
  *
  * The left panel (RewriteQueuePanel) and Live AI Review column are intentionally
@@ -11,7 +11,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Circle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
+import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType, GapAnalysis, BenchmarkCandidate, NarrativeStrategy, AssemblyResult, VerificationDetail } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
@@ -288,158 +288,79 @@ function OriginalScoresCard({ preScores, collapsible = false }: OriginalScoresCa
   );
 }
 
-// ─── StagedProcessingViewer ───────────────────────────────────────────────────
-// Replaces ProcessingStatusBar with a readable staged view that maps SSE stages.
+// ─── LivePipelineCard ─────────────────────────────────────────────────────────
+// Shows live data as it arrives from SSE events during pipeline processing.
 
-interface ProcessingStage {
-  key: V2Stage;
-  title: string;
-  description: string;
-}
+function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComplete: boolean }) {
+  const items: Array<{ key: string; label: string; detail?: string }> = [];
 
-const PROCESSING_STAGES: ProcessingStage[] = [
-  {
-    key: 'analysis',
-    title: 'Reading your resume',
-    description: 'Pulling out your strongest facts, scope, and evidence.',
-  },
-  {
-    key: 'strategy',
-    title: 'Analyzing the job description',
-    description: 'Identifying what the hiring manager really needs.',
-  },
-  {
-    key: 'strategy',
-    title: 'Building the benchmark candidate',
-    description: 'Researching what the ideal hire looks like.',
-  },
-  {
-    key: 'writing',
-    title: 'Identifying gaps and strategies',
-    description: 'Finding where your experience maps and where to position creatively.',
-  },
-  {
-    key: 'verification',
-    title: 'Writing your optimized resume',
-    description: 'Crafting each section to position you as the benchmark.',
-  },
-  {
-    key: 'assembly',
-    title: 'Running quality checks',
-    description: 'Verifying claims, checking keywords, polishing tone.',
-  },
-];
-
-// Maps each pipeline stage to the index of the last PROCESSING_STAGES entry that should
-// be considered "active or complete" for that stage.
-function getActiveStageIndex(stage: V2Stage): number {
-  switch (stage) {
-    case 'intake': return 0;
-    case 'analysis': return 0;
-    case 'strategy': return 2;
-    case 'writing': return 3;
-    case 'verification': return 4;
-    case 'assembly': return 5;
-    case 'complete': return 5;
-    default: return 0;
+  if (data.jobIntelligence) {
+    const ji = data.jobIntelligence;
+    const reqCount = ji.core_competencies.length + ji.strategic_responsibilities.length;
+    items.push({
+      key: 'job',
+      label: `Found ${reqCount} requirements from the job description`,
+      detail: `${ji.company_name} — ${ji.role_title}`,
+    });
   }
-}
 
-interface StagedProcessingViewerProps {
-  stage: V2Stage;
-  isComplete: boolean;
-}
+  if (data.candidateIntelligence) {
+    const ci = data.candidateIntelligence;
+    items.push({
+      key: 'candidate',
+      label: `Identified ${ci.career_themes.length} career themes and ${ci.quantified_outcomes.length} quantified outcomes`,
+    });
+  }
 
-function StagedProcessingViewer({ stage, isComplete }: StagedProcessingViewerProps) {
-  const activeIndex = getActiveStageIndex(stage);
-  // Each stage shows for at least MIN_DISPLAY_MS even if the pipeline advances faster.
-  const MIN_DISPLAY_MS = 1200;
-  const [displayedIndex, setDisplayedIndex] = useState(0);
-  const lastAdvanceRef = useRef<number>(Date.now());
+  if (data.benchmarkCandidate) {
+    items.push({
+      key: 'benchmark',
+      label: `Benchmark expects ${data.benchmarkCandidate.differentiators.length} differentiators`,
+    });
+  }
 
-  useEffect(() => {
-    if (activeIndex <= displayedIndex) return;
-    const elapsed = Date.now() - lastAdvanceRef.current;
-    const delay = Math.max(0, MIN_DISPLAY_MS - elapsed);
-    const timer = setTimeout(() => {
-      setDisplayedIndex(activeIndex);
-      lastAdvanceRef.current = Date.now();
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [activeIndex, displayedIndex]);
+  if (data.preScores) {
+    items.push({
+      key: 'prescores',
+      label: `Baseline ATS match: ${data.preScores.ats_match}% — ${data.preScores.keywords_found.length} keywords found, ${data.preScores.keywords_missing.length} missing`,
+    });
+  }
 
-  const progress = isComplete ? 100 : Math.round(((displayedIndex + 1) / PROCESSING_STAGES.length) * 100);
+  if (data.gapAnalysis) {
+    const ga = data.gapAnalysis;
+    const strong = ga.requirements.filter((r) => r.classification === 'strong').length;
+    const partial = ga.requirements.filter((r) => r.classification === 'partial').length;
+    const missing = ga.requirements.filter((r) => r.classification === 'missing').length;
+    items.push({
+      key: 'gap',
+      label: `Mapped requirements: ${strong} strong, ${partial} partial, ${missing} gaps`,
+    });
+  }
+
+  if (data.narrativeStrategy) {
+    items.push({
+      key: 'narrative',
+      label: `Positioning angle: "${data.narrativeStrategy.primary_narrative}"`,
+    });
+  }
+
+  const progress = isComplete ? 100 : getStageProgressPercent(data.stage);
+  const stageLabel = getStageStatusLabel(data.stage, isComplete);
 
   return (
     <div
       className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6"
       role="status"
       aria-live="polite"
-      aria-label={`Processing: ${PROCESSING_STAGES[displayedIndex]?.title ?? 'Working...'}`}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-5">
-        Optimizing Your Resume
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
+        AI Working On Your Resume
       </p>
 
-      {/* Stage list */}
-      <ol className="space-y-4 mb-6" aria-label="Processing stages">
-        {PROCESSING_STAGES.map((s, i) => {
-          const isComplete_ = i < displayedIndex || isComplete;
-          const isActive = i === displayedIndex && !isComplete;
-          const isPending = i > displayedIndex && !isComplete;
-
-          return (
-            <li key={i} className="flex items-start gap-3">
-              {/* Status icon */}
-              <span className="mt-0.5 shrink-0">
-                {isComplete_ ? (
-                  <CheckCircle
-                    className="h-4 w-4 text-emerald-500"
-                    aria-label="Complete"
-                  />
-                ) : isActive ? (
-                  <span
-                    className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-blue-400 motion-safe:animate-pulse"
-                    aria-label="Active"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                  </span>
-                ) : (
-                  <Circle
-                    className="h-4 w-4 text-neutral-300"
-                    aria-label="Pending"
-                  />
-                )}
-              </span>
-
-              {/* Text */}
-              <div>
-                <p
-                  className={`text-sm font-semibold leading-tight ${
-                    isComplete_
-                      ? 'text-emerald-600'
-                      : isActive
-                      ? 'text-neutral-800'
-                      : 'text-neutral-400'
-                  }`}
-                >
-                  {s.title}
-                </p>
-                {(isActive || isComplete_) && (
-                  <p className="text-[13px] text-neutral-500 mt-0.5 leading-relaxed">
-                    {s.description}
-                  </p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* Overall progress bar */}
-      <div className="space-y-1.5">
+      {/* Progress bar */}
+      <div className="mb-4">
         <div
-          className="h-1 w-full rounded-full bg-neutral-100 overflow-hidden"
+          className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden"
           role="progressbar"
           aria-valuenow={progress}
           aria-valuemin={0}
@@ -450,8 +371,83 @@ function StagedProcessingViewer({ stage, isComplete }: StagedProcessingViewerPro
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-[11px] text-neutral-400 text-right">
-          Stage {Math.min(displayedIndex + 1, PROCESSING_STAGES.length)} of {PROCESSING_STAGES.length}
+        <p className="mt-1.5 text-[12px] text-neutral-500">{stageLabel}</p>
+      </div>
+
+      {/* Live data feed */}
+      {items.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
+          <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
+          Analyzing your resume and the job description...
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((item, i) => (
+            <div
+              key={item.key}
+              className="flex items-start gap-2.5 motion-safe:animate-[card-enter_400ms_ease-out_forwards] motion-safe:opacity-0"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-neutral-700">{item.label}</p>
+                {item.detail && (
+                  <p className="text-[12px] text-neutral-400 mt-0.5">{item.detail}</p>
+                )}
+              </div>
+            </div>
+          ))}
+          {!isComplete && (
+            <div className="flex items-center gap-2.5 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin shrink-0" />
+              {stageLabel}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PostGapTransition ────────────────────────────────────────────────────────
+// Shown after gap questions are submitted while waiting for the resume to appear.
+
+function PostGapTransition({ stage, isComplete }: { stage: V2Stage; isComplete: boolean }) {
+  const progress = isComplete ? 100 : getStageProgressPercent(stage);
+
+  return (
+    <div
+      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6 motion-safe:animate-[card-enter_500ms_ease-out_forwards] motion-safe:opacity-0"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-neutral-800">
+            Your positioning choices are locked in
+          </p>
+          <p className="text-[13px] text-neutral-500 mt-0.5">
+            {getStageStatusLabel(stage, isComplete)}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div
+          className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-[12px] text-neutral-400 text-right">
+          {getStageStatusLabel(stage, isComplete)}
         </p>
       </div>
     </div>
@@ -1028,7 +1024,7 @@ export function V2StreamingDisplay({
   }
 
   // ─── Processing layout (pipeline running, no resume yet) ─────────────────
-  // Shows OriginalScoresCard (when preScores available) + StagedProcessingViewer.
+  // Shows OriginalScoresCard (when preScores available) + LivePipelineCard or PostGapTransition.
   return (
     <div
       ref={containerRef}
@@ -1063,9 +1059,10 @@ export function V2StreamingDisplay({
             onComplete={handleGapQuestionsComplete}
             onAssist={onGapAssist}
           />
+        ) : gapQuestionsSubmitted && !hasResume ? (
+          <PostGapTransition stage={data.stage} isComplete={isComplete} />
         ) : (
-          /* Staged processing viewer — replaces thin progress bar */
-          <StagedProcessingViewer stage={data.stage} isComplete={isComplete} />
+          <LivePipelineCard data={data} isComplete={isComplete} />
         )}
       </div>
     </div>

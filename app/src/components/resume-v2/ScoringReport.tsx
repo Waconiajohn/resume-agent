@@ -7,7 +7,7 @@
  *   3. Keyword Analysis — side-by-side found/missing keyword breakdown
  *   4. Full Analysis  — gap analysis, benchmark, strategy, hiring manager scan
  *
- * All sections are collapsed by default.
+ * Before Report defaults to open; other sections are collapsed by default.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -134,19 +134,31 @@ function CollapsibleSection({
 function ScoreSummaryHeader({
   preScores,
   assembly,
+  gapAnalysis,
 }: {
   preScores: PreScores;
   assembly: AssemblyResult;
+  gapAnalysis: GapAnalysis | null;
 }) {
   const afterAts = assembly.scores.ats_match;
   const beforeAts = preScores.ats_match;
   const truth = assembly.scores.truth;
   const tone = assembly.scores.tone;
   const scan = assembly.hiring_manager_scan;
+  const positioning = assembly.positioning_assessment;
+  const jdBreakdown = gapAnalysis?.score_breakdown?.job_description;
+  const benchBreakdown = gapAnalysis?.score_breakdown?.benchmark;
 
   return (
     <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-3">
-      <p className="text-sm font-medium text-[var(--text-strong)]">Resume Score Summary</p>
+      <p className="text-sm font-medium text-[var(--text-strong)]">Resume Score Summary — After Optimization</p>
+
+      {/* Strength summary one-liner */}
+      {gapAnalysis?.strength_summary && (
+        <p className="text-xs leading-5 text-[var(--text-muted)] italic">
+          {gapAnalysis.strength_summary}
+        </p>
+      )}
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {/* ATS */}
@@ -157,7 +169,7 @@ function ScoreSummaryHeader({
             <DeltaBadge before={beforeAts} after={afterAts} />
           </div>
           <ScoreBar value={afterAts} color="#b5dec2" />
-          <p className="text-[10px] text-[var(--text-soft)]">Was {beforeAts}%</p>
+          <p className="text-[10px] text-[var(--text-soft)]">Before: {beforeAts}%</p>
         </div>
 
         {/* Truth */}
@@ -193,9 +205,89 @@ function ScoreSummaryHeader({
               </span>
             </div>
             <ScoreBar value={scan.scan_score} color={scan.pass ? '#b5dec2' : '#f0d99f'} />
+            {/* HM scan sub-scores */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              {[
+                { label: 'Header', score: scan.header_impact.score },
+                { label: 'Summary', score: scan.summary_clarity.score },
+                { label: 'Above Fold', score: scan.above_fold_strength.score },
+                { label: 'Keywords', score: scan.keyword_visibility.score },
+              ].map(({ label, score }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-[9px] text-[var(--text-soft)]">{label}</span>
+                  <span className="text-[10px] font-bold tabular-nums text-[var(--text-muted)]">{score}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Candidate Fit section */}
+      {(jdBreakdown || benchBreakdown || positioning) && (
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-soft)]">Candidate Fit</p>
+          <div className="grid gap-2 grid-cols-1 lg:grid-cols-3">
+            {/* JD Coverage */}
+            {jdBreakdown && (
+              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
+                <p className="text-[10px] text-[var(--text-soft)]">JD Coverage</p>
+                <p className="text-xs font-medium text-[var(--text-strong)]">
+                  {jdBreakdown.addressed} of {jdBreakdown.total} addressed
+                </p>
+                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                  <div className="h-full bg-[#b5dec2]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.strong / jdBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[#f0d99f]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.partial / jdBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[#f0b8b8]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.missing / jdBreakdown.total) * 100 : 0}%` }} />
+                </div>
+                <div className="flex gap-2 text-[9px] text-[var(--text-soft)]">
+                  <span>{jdBreakdown.strong} strong</span>
+                  <span>{jdBreakdown.partial} partial</span>
+                  <span>{jdBreakdown.missing} missing</span>
+                </div>
+              </div>
+            )}
+
+            {/* Benchmark Coverage */}
+            {benchBreakdown && (
+              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
+                <p className="text-[10px] text-[var(--text-soft)]">Benchmark Coverage</p>
+                <p className="text-xs font-medium text-[var(--text-strong)]">
+                  {benchBreakdown.addressed} of {benchBreakdown.total} met
+                </p>
+                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                  <div className="h-full bg-[#b5dec2]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.strong / benchBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[#f0d99f]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.partial / benchBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[#f0b8b8]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.missing / benchBreakdown.total) * 100 : 0}%` }} />
+                </div>
+                <div className="flex gap-2 text-[9px] text-[var(--text-soft)]">
+                  <span>{benchBreakdown.strong} strong</span>
+                  <span>{benchBreakdown.partial} partial</span>
+                  <span>{benchBreakdown.missing} missing</span>
+                </div>
+              </div>
+            )}
+
+            {/* Positioning Assessment */}
+            {positioning && (
+              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
+                <p className="text-[10px] text-[var(--text-soft)]">Positioning</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium text-[var(--text-strong)]">
+                    {positioning.before_score} → {positioning.after_score}
+                  </span>
+                  <DeltaBadge before={positioning.before_score} after={positioning.after_score} />
+                </div>
+                <div className="flex gap-2 text-[9px] text-[var(--text-soft)]">
+                  <span>{positioning.requirement_map.filter((r) => r.status === 'strong').length} strong</span>
+                  <span>{positioning.requirement_map.filter((r) => r.status === 'repositioned').length} repositioned</span>
+                  <span>{positioning.requirement_map.filter((r) => r.status === 'gap').length} gap</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -941,13 +1033,14 @@ export function ScoringReport({
   return (
     <div className="space-y-3">
       {/* Score summary header — always visible */}
-      <ScoreSummaryHeader preScores={preScores} assembly={assembly} />
+      <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
 
       {/* Before Report */}
       <CollapsibleSection
         title="Before Report"
         subtitle="How the original resume scored before AI optimization"
         icon={<BarChart3 className="h-3.5 w-3.5" />}
+        defaultOpen={true}
       >
         <BeforeReport preScores={preScores} gapAnalysis={gapAnalysis} />
       </CollapsibleSection>
