@@ -827,13 +827,7 @@ export function V2StreamingDisplay({
 
           {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
-          {/* Original scores card — shown collapsed once resume is ready */}
-          {isComplete && (preScores ?? data.preScores) && (
-            <OriginalScoresCard
-              preScores={(preScores ?? data.preScores)!}
-              collapsible
-            />
-          )}
+          {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
           {/* Detailed analysis — gap analysis, benchmark, narrative strategy, verification */}
           {isComplete && (
@@ -1013,11 +1007,7 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Original resume analysis — visible as soon as pre-scores arrive,
-            but hidden when gap question flow is active (unified card handles it) */}
-        {data.preScores && !(gapQuestions.length > 0 && !gapQuestionsSubmitted) && (
-          <OriginalScoresCard preScores={data.preScores} />
-        )}
+        {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
         {/* Gap question flow — shown when coaching cards arrive, before resume generation.
             Replaces the staged processing viewer while questions are pending. */}

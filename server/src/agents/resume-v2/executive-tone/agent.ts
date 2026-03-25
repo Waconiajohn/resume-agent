@@ -159,10 +159,10 @@ function formatDraftForTone(input: ExecutiveToneInput): string {
     'PROFESSIONAL EXPERIENCE:',
   ];
 
-  for (const exp of d.professional_experience.slice(0, 4)) {
+  for (const exp of d.professional_experience) {
     parts.push(`\n${exp.title} at ${exp.company}`);
     parts.push(`Scope: ${exp.scope_statement}`);
-    for (const b of exp.bullets.slice(0, 3)) {
+    for (const b of exp.bullets) {
       parts.push(`- ${b.text}`);
     }
   }

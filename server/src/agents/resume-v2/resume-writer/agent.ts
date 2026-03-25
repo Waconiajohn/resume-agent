@@ -1,7 +1,7 @@
 /**
  * Agent 6: Resume Writer
  *
- * Single powerful prompt that produces a COMPLETE 2-page resume.
+ * Single powerful prompt that produces a COMPLETE resume (typically 2-3 pages).
  * Not a tool-calling loop. Not section-by-section. One pass, full document.
  *
  * The agent has creative authority within the strategic guardrails set by
@@ -64,6 +64,7 @@ Bullet count is governed by JD-relevance and available evidence — not by minim
 - 15-20 years ago: brief; scope statement if the role was senior
 - 20+ years ago: move to "Additional Work Experience" — title, company, city/state ONLY. No bullets. No dates.
 - NEVER remove a position that would create an employment gap greater than 6 months
+- NEVER drop ANY position from the candidate's experience. Every single position must appear either in professional_experience (with bullets) or in earlier_career (title/company only for 20+ year old roles). Count the input positions and verify your output has the same total count.
 - Do not produce fewer bullets than the original resume had for a role. If the original has 4 bullets, write at least 4 — enhanced, not reduced. You are here to improve, not shrink.
 
 ## EXECUTIVE SUMMARY
@@ -172,6 +173,9 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
 
 OUTPUT: Write the COMPLETE resume as a JSON object matching the schema above.
 Include ALL sections that have data. Do not truncate. This is a finished document, not an outline.
+CRITICAL — EVERY position from the candidate's experience MUST appear in the output.
+Recent positions go in professional_experience with full bullets. Positions 20+ years old go in earlier_career (title/company only).
+NEVER omit a position to save space. A 2-page target is a guideline, not a hard limit — include all roles even if that means 3 pages.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -189,7 +193,7 @@ export async function runResumeWriter(
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
-      max_tokens: 8192,
+      max_tokens: 16384,
       signal,
     });
 
@@ -216,7 +220,7 @@ export async function runResumeWriter(
         system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
         messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
         response_format: { type: 'json_object' },
-        max_tokens: 8192,
+        max_tokens: 16384,
         signal,
       });
 
@@ -256,6 +260,10 @@ export async function runResumeWriter(
   }
 
   parsed.education = preserveCandidateEducationDetail(parsed.education, input.candidate.education ?? []);
+
+  // Guardrail: ensure ALL candidate positions appear in the output.
+  // If the LLM dropped positions, backfill them to prevent truncation.
+  parsed = ensureAllPositionsPresent(parsed, input);
 
   return parsed;
 }
@@ -394,7 +402,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `LinkedIn: ${input.candidate.contact.linkedin ?? 'not provided'}`,
     `Location: ${input.candidate.contact.location ?? 'not provided'}`,
     '',
-    '## CANDIDATE EXPERIENCE (source material)',
+    `## CANDIDATE EXPERIENCE (source material — ${input.candidate.experience.length} positions total, ALL must appear in output)`,
   );
 
   for (const exp of input.candidate.experience) {
@@ -500,6 +508,8 @@ function buildUserMessage(input: ResumeWriterInput): string {
   }
 
   parts.push(
+    '',
+    `POSITION COUNT CHECK: The candidate has ${input.candidate.experience.length} positions. Your output must include ALL ${input.candidate.experience.length} — split between professional_experience (with bullets) and earlier_career (title/company only for 20+ year old roles). Do NOT drop any positions.`,
     '',
     'Now write the complete resume. Every section reinforces the Why Me narrative. Every bullet answers: "Does this prove why I am THE candidate?" Mark is_new correctly.',
     'Return JSON only. Do not write any introduction, explanation, or markdown fences.',
@@ -633,6 +643,86 @@ function dedupeEducationEntries(
   }
 
   return deduped;
+}
+
+/**
+ * Guardrail: ensure every candidate position appears in the resume output.
+ * If the LLM dropped positions (common with tight max_tokens), backfill them
+ * into professional_experience or earlier_career as appropriate.
+ */
+function ensureAllPositionsPresent(
+  draft: ResumeDraftOutput,
+  input: ResumeWriterInput,
+): ResumeDraftOutput {
+  const candidatePositions = input.candidate.experience ?? [];
+  if (candidatePositions.length === 0) return draft;
+
+  const outputCompanies = new Set<string>();
+  for (const exp of draft.professional_experience ?? []) {
+    outputCompanies.add(normalizeCompanyKey(exp.company, exp.title));
+  }
+  for (const ec of draft.earlier_career ?? []) {
+    outputCompanies.add(normalizeCompanyKey(ec.company, ec.title));
+  }
+
+  const currentYear = new Date().getFullYear();
+  const earlierCareerThresholdYear = currentYear - 20;
+  const missingPositions = candidatePositions.filter(
+    (pos) => !outputCompanies.has(normalizeCompanyKey(pos.company, pos.title)),
+  );
+
+  if (missingPositions.length === 0) return draft;
+
+  logger.warn(
+    { missing_count: missingPositions.length, missing: missingPositions.map(p => `${p.title} at ${p.company}`) },
+    'Resume Writer: LLM dropped positions — backfilling to prevent truncation',
+  );
+
+  const additionalProfessional: ResumeDraftOutput['professional_experience'] = [];
+  const additionalEarlierCareer: NonNullable<ResumeDraftOutput['earlier_career']> = [];
+
+  for (const pos of missingPositions) {
+    const endYearMatch = pos.end_date?.match(/\b(\d{4})\b/);
+    const endYear = endYearMatch ? Number(endYearMatch[1]) : currentYear;
+    const isOld = endYear < earlierCareerThresholdYear;
+
+    if (isOld) {
+      additionalEarlierCareer.push({
+        company: pos.company,
+        title: pos.title,
+        dates: '',
+      });
+    } else {
+      additionalProfessional.push({
+        company: pos.company,
+        title: pos.title,
+        start_date: pos.start_date,
+        end_date: pos.end_date,
+        scope_statement: pos.inferred_scope
+          ? [
+              pos.inferred_scope.team_size ? `Team: ${pos.inferred_scope.team_size}` : '',
+              pos.inferred_scope.budget ? `Budget: ${pos.inferred_scope.budget}` : '',
+              pos.inferred_scope.geography ? `Geography: ${pos.inferred_scope.geography}` : '',
+            ].filter(Boolean).join(' | ') || `${pos.title} role`
+          : `${pos.title} role`,
+        bullets: pos.bullets.map((bullet) => ({
+          text: bullet,
+          is_new: false,
+          addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
+        })),
+      });
+    }
+  }
+
+  return {
+    ...draft,
+    professional_experience: [...(draft.professional_experience ?? []), ...additionalProfessional],
+    earlier_career: [...(draft.earlier_career ?? []), ...additionalEarlierCareer],
+  };
+}
+
+function normalizeCompanyKey(company: string, title: string): string {
+  return `${company.toLowerCase().trim()}::${title.toLowerCase().trim()}`;
 }
 
 function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {

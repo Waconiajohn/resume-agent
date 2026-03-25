@@ -93,6 +93,39 @@ function KeywordChip({ keyword, variant }: { keyword: string; variant: 'found' |
   );
 }
 
+// ─── Humanize helpers ────────────────────────────────────────────────────────
+
+function humanizeIssueType(issue: string): string {
+  const labels: Record<string, string> = {
+    'banned_phrase': 'Banned Phrase Detected',
+    'generic_filler': 'Generic Filler Language',
+    'passive_voice': 'Passive Voice',
+    'junior_language': 'Junior-Level Language',
+    'ai_generated': 'AI-Generated Sounding',
+    'weak_verb': 'Weak Action Verb',
+    'cliche': 'Resume Cliche',
+  };
+  return labels[issue] ?? issue.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function humanizeSectionName(section: string): string {
+  const labels: Record<string, string> = {
+    'summary': 'Executive Summary',
+    'executive_summary': 'Executive Summary',
+    'experience': 'Professional Experience',
+    'professional_experience': 'Professional Experience',
+    'education': 'Education',
+    'skills': 'Skills & Competencies',
+    'certifications': 'Certifications',
+    'accomplishments': 'Key Accomplishments',
+    'selected_accomplishments': 'Key Accomplishments',
+    'projects': 'Projects',
+    'headline': 'Resume Headline',
+    'contact': 'Contact Information',
+  };
+  return labels[section.toLowerCase()] ?? section.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 // ─── Section wrapper (collapsible) ────────────────────────────────────────────
 
 function CollapsibleSection({
@@ -667,7 +700,7 @@ function AfterReport({
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#f0d99f' }} />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-[var(--text-muted)]">{f.section}</p>
+                  <p className="text-[11px] font-medium text-[var(--text-muted)]">{humanizeSectionName(f.section)}: {humanizeIssueType(f.issue)}</p>
                   <p className="text-xs text-[var(--text-soft)] leading-4 line-clamp-2">"{f.text}"</p>
                 </div>
               </div>

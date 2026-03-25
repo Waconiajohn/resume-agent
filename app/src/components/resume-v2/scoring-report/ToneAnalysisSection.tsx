@@ -8,6 +8,39 @@
 import { AlertTriangle, Mic, XCircle } from 'lucide-react';
 import type { ExecutiveToneDetail } from '@/types/resume-v2';
 
+// ─── Humanize helpers ────────────────────────────────────────────────────────
+
+function humanizeIssueType(issue: string): string {
+  const labels: Record<string, string> = {
+    'banned_phrase': 'Banned Phrase Detected',
+    'generic_filler': 'Generic Filler Language',
+    'passive_voice': 'Passive Voice',
+    'junior_language': 'Junior-Level Language',
+    'ai_generated': 'AI-Generated Sounding',
+    'weak_verb': 'Weak Action Verb',
+    'cliche': 'Resume Cliche',
+  };
+  return labels[issue] ?? issue.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function humanizeSectionName(section: string): string {
+  const labels: Record<string, string> = {
+    'summary': 'Executive Summary',
+    'executive_summary': 'Executive Summary',
+    'experience': 'Professional Experience',
+    'professional_experience': 'Professional Experience',
+    'education': 'Education',
+    'skills': 'Skills & Competencies',
+    'certifications': 'Certifications',
+    'accomplishments': 'Key Accomplishments',
+    'selected_accomplishments': 'Key Accomplishments',
+    'projects': 'Projects',
+    'headline': 'Resume Headline',
+    'contact': 'Contact Information',
+  };
+  return labels[section.toLowerCase()] ?? section.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 // ─── Main section component ─────────────────────────────────────────────────
 
 export interface ToneAnalysisSectionProps {
@@ -101,9 +134,9 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
                     border: '1px solid rgba(240,217,159,0.22)',
                   }}
                 >
-                  {f.issue}
+                  {humanizeIssueType(f.issue)}
                 </span>
-                <span className="text-[10px] text-[var(--text-soft)]">{f.section}</span>
+                <span className="text-[10px] text-[var(--text-soft)]">{humanizeSectionName(f.section)}</span>
               </div>
 
               {/* Offending text */}

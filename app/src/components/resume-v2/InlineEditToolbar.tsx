@@ -94,7 +94,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-[var(--line-strong)] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
+      className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-gray-200 bg-white/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
       style={{
         top: flipped ? position.bottom + 8 : position.top,
         left: getSafeLeft(),
@@ -104,7 +104,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
       aria-label="AI editing actions"
     >
       {isEditing ? (
-        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-soft)]">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500">
           <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
           Editing...
         </div>
@@ -118,13 +118,13 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
             onKeyDown={(e) => { if (e.key === 'Enter') handleCustomSubmit(); }}
             placeholder="What should I do?"
             maxLength={500}
-            className="w-48 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none focus:border-[#afc4ff]/40"
+            className="w-48 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-300"
           />
           <button
             type="button"
             onClick={handleCustomSubmit}
             disabled={!customText.trim()}
-            className="rounded-lg bg-[#afc4ff]/20 px-2 py-1 text-xs font-medium text-[#afc4ff] hover:bg-[#afc4ff]/30 disabled:opacity-40"
+            className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-40"
           >
             Go
           </button>
@@ -136,7 +136,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
               key={action}
               type="button"
               onClick={() => handleAction(action)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
               title={label}
             >
               <Icon className="h-3 w-3" />

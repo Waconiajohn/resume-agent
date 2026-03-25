@@ -784,7 +784,7 @@ function InlineEditPanel({
   );
 
   return (
-    <div className="support-callout mt-2 border border-[#afc4ff]/20 bg-[#0f141e]/90 p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
+    <div className="support-callout mt-2 border border-gray-200 bg-gray-50 rounded-lg p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
       <AiHelperHint
         title="AI Rewrite Help"
         body="Pick a rewrite angle to generate a stronger version of this bullet. You can apply the AI draft directly or edit it here first."
@@ -793,8 +793,8 @@ function InlineEditPanel({
 
       {/* Requirement tags */}
       {requirements.length > 0 && (
-        <p className="text-[13px] leading-5 text-[var(--text-soft)]">
-          This bullet currently supports: <span className="text-[#afc4ff]/75">{requirements.join(', ')}</span>
+        <p className="text-[13px] leading-5 text-gray-600">
+          This bullet currently supports: <span className="text-blue-600">{requirements.join(', ')}</span>
         </p>
       )}
 
@@ -806,7 +806,7 @@ function InlineEditPanel({
             type="button"
             onClick={(e) => { e.stopPropagation(); onRequestEdit(bulletText, section, action); }}
             disabled={isEditing}
-            className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-strong)] disabled:opacity-40 transition-colors"
+            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-gray-600 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 transition-colors"
           >
             {action === 'strengthen' ? 'Improve Wording' : action === 'add_metrics' ? 'Add Proof' : 'Rewrite'}
           </button>
@@ -815,7 +815,7 @@ function InlineEditPanel({
 
       {/* Loading state */}
       {isEditing && (
-        <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
           <Loader2 className="h-3 w-3 animate-spin" />
           Generating a reviewable draft...
         </div>
@@ -823,9 +823,9 @@ function InlineEditPanel({
 
       {/* Pending edit suggestion — only show if it matches this bullet's text */}
       {matchesPendingEdit && pendingEdit && (
-        <div className="support-callout border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-3 space-y-2">
-          <p className="text-[12px] font-medium uppercase tracking-wider text-[#b5dec2]/60">Suggested</p>
-          <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
+        <div className="support-callout border border-emerald-200 bg-emerald-50 rounded-lg p-3 space-y-2">
+          <p className="text-[12px] font-medium uppercase tracking-wider text-emerald-600">Suggested</p>
+          <p className="text-[13px] leading-relaxed text-gray-600">
             Review the draft below. You can make small edits before you apply it.
           </p>
           <textarea
@@ -833,7 +833,7 @@ function InlineEditPanel({
             onChange={(event) => setDraftValue(event.target.value)}
             rows={4}
             aria-label="Edit suggested rewrite before applying"
-            className="w-full resize-y rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-sm leading-relaxed text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)] focus:bg-[var(--surface-2)]"
+            className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-800 outline-none transition-colors focus:border-blue-300 focus:bg-white"
           />
           <div className="flex items-center gap-2">
             <button
@@ -842,7 +842,7 @@ function InlineEditPanel({
                 e.stopPropagation();
                 onAcceptEdit?.(draftValue.trim() || pendingEdit.replacement);
               }}
-              className="rounded-md bg-[#b5dec2]/20 border border-[#b5dec2]/30 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-[#b5dec2] hover:bg-[#b5dec2]/30 transition-colors"
+              className="rounded-md bg-emerald-100 border border-emerald-300 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-emerald-700 hover:bg-emerald-200 transition-colors"
             >
               Accept
             </button>
@@ -853,7 +853,7 @@ function InlineEditPanel({
                   e.stopPropagation();
                   setDraftValue(pendingEdit.replacement);
                 }}
-                className="rounded-md border border-[var(--line-soft)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
+                className="rounded-md border border-gray-200 px-3 py-1 text-xs uppercase tracking-[0.08em] text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 Reset
               </button>
@@ -861,7 +861,7 @@ function InlineEditPanel({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRejectEdit?.(); }}
-              className="rounded-md border border-[var(--line-soft)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
+              className="rounded-md border border-gray-200 px-3 py-1 text-xs uppercase tracking-[0.08em] text-gray-500 hover:bg-gray-100 transition-colors"
             >
               Cancel
             </button>

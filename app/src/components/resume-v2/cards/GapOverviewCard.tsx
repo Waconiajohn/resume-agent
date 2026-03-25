@@ -390,8 +390,8 @@ export function GapOverviewCard({
               ))}
             </ul>
             <p className="text-[12px] text-red-600 italic">
-              These are hard requirements (degree, certification, license) that
-              cannot be positioned around.
+              These are formal credentials not found in your resume. They may
+              require additional certification or documentation.
             </p>
           </div>
         )}

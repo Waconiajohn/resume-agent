@@ -106,7 +106,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     }
   },
   "strength_summary": "2-3 sentences on the candidate's strongest positioning angles",
-  "critical_gaps": ["gaps that truly cannot be addressed — be honest"],
+  "critical_gaps": ["ONLY formal credentials missing: degrees, certifications, licenses, work authorization, or explicit years-of-experience minimums"],
   "pending_strategies": [
     {
       "requirement": "the requirement being addressed",
@@ -140,7 +140,13 @@ RULES:
 - For MISSING matches: provide a creative strategy only if concrete adjacent experience exists. If truly missing, put it in critical_gaps.
 - If you cannot name concrete adjacent proof, omit strategy entirely instead of using placeholder coaching language.
 - For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence. If the item is simply absent, leave strategy blank and do not add it to pending_strategies.
-- HARD REQUIREMENT RULE: If the requirement is a degree, certification, license, years-of-experience threshold, or other explicit screen-out credential and the candidate does not clearly have it, classify it as missing and include it in critical_gaps. Do NOT use adjacent experience as if it fully solves the missing credential.
+- HARD REQUIREMENT RULE: critical_gaps is STRICTLY reserved for formal credentials the candidate is missing. The ONLY items that belong in critical_gaps are:
+  1. Academic degrees (BS, MS, PhD, MBA, etc.) explicitly required by the JD
+  2. Professional certifications (PMP, CPA, PE, CFA, OSHA, IADC, Well Control, etc.) explicitly required
+  3. Professional licenses (PE license, medical license, law license, bar admission, etc.)
+  4. Work authorization (only if the resume shows no evidence of working in that country)
+  5. Explicit years-of-experience thresholds stated as minimum requirements (e.g., "minimum 10 years required")
+  NEVER put skills, soft skills, achievements, performance metrics, behavioral competencies, or operational experience into critical_gaps. These are ALL positionable through adjacent experience. If a requirement is about communication, leadership, safety, process improvement, revenue impact, or any similar skill/competency, it MUST stay out of critical_gaps even if the candidate has no direct evidence — those are coaching opportunities, not credential gaps.
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
 - Do not invent availability, travel, relocation, field-presence, on-call, or similar logistics requirements unless they are explicitly stated in the job description requirement itself.
 - QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
@@ -163,8 +169,8 @@ RULES:
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
-- critical_gaps must contain only unresolved requirement strings, not explanations, evidence snippets, or serialized JSON.
-- Be honest about critical_gaps — don't stretch beyond what's defensible.
+- critical_gaps must contain only unresolved formal credential requirement strings (degrees, certifications, licenses, work authorization, years-of-experience minimums), not skills, competencies, explanations, evidence snippets, or serialized JSON.
+- Be honest about critical_gaps — but NEVER include skills, soft skills, or operational competencies. Those belong in pending_strategies as coaching opportunities.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -1581,7 +1587,20 @@ function findDirectSkillEvidence(
 function isHardRequirement(requirement: string, sourceEvidence?: string): boolean {
   const combined = `${requirement} ${sourceEvidence ?? ''}`.toLowerCase();
   if (isPreferredOnlyQualification(combined)) return false;
-  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|requirement|foreign equivalent|years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?)\b/.test(combined);
+
+  // Only formal credentials count as hard requirements:
+  // 1. Academic degrees
+  const hasDegree = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(combined);
+  // 2. Professional certifications
+  const hasCertification = /\b(certification|certified|certificate)\b/.test(combined);
+  // 3. Professional licenses
+  const hasLicense = /\b(license|licensed|licensure)\b/.test(combined);
+  // 4. Explicit years-of-experience thresholds
+  const hasYearsThreshold = /\b(years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?\s+(of\s+)?experience)\b/.test(combined);
+
+  // Must match one of the above credential categories — generic "required" or "requirement"
+  // alone does NOT make something a hard requirement (many skills are listed as "required").
+  return hasDegree || hasCertification || hasLicense || hasYearsThreshold;
 }
 
 function isPreferredOnlyQualification(text: string): boolean {
