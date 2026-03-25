@@ -9,9 +9,9 @@
  * - emit_transparency: Live progress updates
  */
 
+import FirecrawlApp from '@mendable/firecrawl-js';
 import type { JobFinderTool, DiscoveredJob } from '../types.js';
 import { scrapeCareerPages } from '../../../lib/ni/career-scraper.js';
-import { generateBooleanSearch } from '../../../lib/ni/boolean-search.js';
 import { getJobMatchesByUser } from '../../../lib/ni/job-matches-store.js';
 import { getCompanySummary } from '../../../lib/ni/connections-store.js';
 import { supabaseAdmin } from '../../../lib/supabase.js';
@@ -172,15 +172,15 @@ const searchCareerPagesTool: JobFinderTool = {
 const generateSearchQueriesTool: JobFinderTool = {
   name: 'generate_search_queries',
   description:
-    'Generate boolean search strings for LinkedIn, Indeed, and Google from the candidate\'s resume. ' +
-    'Stores search URLs in scratchpad as search_queries. Call with the resume_text to extract skills and titles.',
+    'Search the web for job openings matching the candidate\'s target titles and location via Firecrawl. ' +
+    'Stores discovered jobs in scratchpad as firecrawl_search_results.',
   model_tier: 'light',
   input_schema: {
     type: 'object',
     properties: {
       resume_text: {
         type: 'string',
-        description: 'Full text of the candidate\'s resume. Used to extract skills, titles, and industries.',
+        description: 'Full text of the candidate\'s resume. Used to extract target titles if none are set.',
       },
     },
     required: ['resume_text'],
@@ -191,15 +191,20 @@ const generateSearchQueriesTool: JobFinderTool = {
       return JSON.stringify({ success: false, error: 'resume_text too short to extract search terms' });
     }
 
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    if (!apiKey) {
+      return JSON.stringify({ success: false, error: 'FIRECRAWL_API_KEY not configured' });
+    }
+
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: 'Generating boolean search strings from resume...',
+      message: 'Searching the web for matching job openings via Firecrawl...',
     });
 
     const state = ctx.getState();
 
-    // Load target titles from shared context first, then legacy context if available
+    // Collect target titles from shared context
     const sharedTargetRole = state.shared_context?.targetRole;
     const positioningStrategy = state.platform_context?.positioning_strategy;
     const targetTitles: string[] = [];
@@ -226,30 +231,56 @@ const generateSearchQueriesTool: JobFinderTool = {
       pushTargetTitle(ps.target_role);
     }
 
-    const { id, result } = await generateBooleanSearch(resumeText, targetTitles);
+    // If no target titles from context, fall back to a generic search
+    if (targetTitles.length === 0) {
+      targetTitles.push('executive');
+    }
 
-    ctx.scratchpad.search_queries = {
-      id,
-      linkedin: result.linkedin,
-      indeed: result.indeed,
-      google: result.google,
-      extracted_terms: result.extractedTerms,
-    };
+    const location = (sharedTargetRole as Record<string, unknown> | undefined)?.location;
+    const locationStr = typeof location === 'string' ? location : '';
+
+    const fc = new FirecrawlApp({ apiKey });
+    const allJobs: DiscoveredJob[] = [];
+    const seen = new Set<string>();
+
+    for (const title of targetTitles.slice(0, 5)) {
+      const query = locationStr ? `${title} jobs ${locationStr}` : `${title} jobs`;
+      try {
+        const result = await fc.search(query, { limit: 10 });
+        const webResults = (result.web ?? []) as Array<{ url?: string; title?: string; description?: string }>;
+
+        for (const item of webResults) {
+          if (!item.title || !item.url) continue;
+          const key = item.title.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          allJobs.push({
+            title: item.title,
+            company: 'Unknown',
+            url: item.url,
+            source: 'firecrawl_search' as DiscoveredJob['source'],
+            description_snippet: item.description ?? undefined,
+          });
+        }
+      } catch {
+        // Individual query failure — continue with remaining titles
+      }
+    }
+
+    ctx.scratchpad.firecrawl_search_results = allJobs;
 
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: `Search queries generated — ${result.extractedTerms.titles.length} target titles, ${result.extractedTerms.skills.length} skills extracted`,
+      message: `Firecrawl web search complete — ${allJobs.length} job pages found for ${targetTitles.length} target titles`,
     });
 
     return JSON.stringify({
       success: true,
-      query_id: id,
-      linkedin_query: result.linkedin.slice(0, 200),
-      indeed_query: result.indeed.slice(0, 200),
-      google_query: result.google.slice(0, 200),
-      extracted_titles: result.extractedTerms.titles.slice(0, 5),
-      extracted_skills: result.extractedTerms.skills.slice(0, 5),
+      jobs_found: allJobs.length,
+      target_titles_searched: targetTitles.slice(0, 5),
+      location: locationStr || 'any',
     });
   },
 };
@@ -360,9 +391,10 @@ const deduplicateResultsTool: JobFinderTool = {
   async execute(_input, ctx) {
     const careerPageResults = (ctx.scratchpad.career_page_results as DiscoveredJob[] | undefined) ?? [];
     const networkResults = (ctx.scratchpad.network_results as DiscoveredJob[] | undefined) ?? [];
+    const firecrawlSearchResults = (ctx.scratchpad.firecrawl_search_results as DiscoveredJob[] | undefined) ?? [];
 
     // Combine all sources
-    const allJobs = [...careerPageResults, ...networkResults];
+    const allJobs = [...careerPageResults, ...networkResults, ...firecrawlSearchResults];
 
     // Deduplicate by title+company (case-insensitive)
     const seen = new Set<string>();
@@ -395,6 +427,7 @@ const deduplicateResultsTool: JobFinderTool = {
       by_source: {
         career_page: careerPageResults.length,
         network: networkResults.length,
+        firecrawl_search: firecrawlSearchResults.length,
       },
     });
   },

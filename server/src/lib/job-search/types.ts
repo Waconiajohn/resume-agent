@@ -14,7 +14,7 @@ export interface SearchFilters {
 }
 
 export interface JobResult {
-  /** Source-prefixed unique ID, e.g. "jsearch_abc123" or "adzuna_456" */
+  /** Source-prefixed unique ID, e.g. "firecrawl_1234567890_0" */
   external_id: string;
   title: string;
   company: string;

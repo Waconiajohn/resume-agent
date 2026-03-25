@@ -55,20 +55,13 @@ vi.mock('../lib/job-search/index.js', () => ({
   searchAllSources: vi.fn().mockResolvedValue({
     jobs: [],
     executionTimeMs: 42,
-    sources_queried: ['jsearch'],
+    sources_queried: ['firecrawl'],
   }),
 }));
 
-vi.mock('../lib/job-search/adapters/jsearch.js', () => ({
-  JSearchAdapter: class {
-    name = 'jsearch';
-    search = vi.fn().mockResolvedValue([]);
-  },
-}));
-
-vi.mock('../lib/job-search/adapters/adzuna.js', () => ({
-  AdzunaAdapter: class {
-    name = 'adzuna';
+vi.mock('../lib/job-search/adapters/firecrawl.js', () => ({
+  FirecrawlAdapter: class {
+    name = 'firecrawl';
     search = vi.fn().mockResolvedValue([]);
   },
 }));
@@ -120,7 +113,7 @@ function makeListing(externalId: string, company = 'Acme Corp') {
   return {
     id: `lst-${externalId}`,
     external_id: externalId,
-    source: 'jsearch',
+    source: 'firecrawl',
     title: 'CTO',
     company,
     location: 'NYC',

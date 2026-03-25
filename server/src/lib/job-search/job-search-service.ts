@@ -55,7 +55,7 @@ type JobStub = { external_id: string; company: string };
 
 /**
  * Executes the full search pipeline:
- * 1. Fan-out to JSearch + Adzuna adapters in parallel
+ * 1. Fan-out to Firecrawl adapter
  * 2. Persist scan record
  * 3. Upsert job listings
  * 4. Insert job_search_results join records

@@ -17,7 +17,7 @@ const mockSearchAllSources = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
     jobs: [],
     executionTimeMs: 42,
-    sources_queried: ['jsearch', 'adzuna'],
+    sources_queried: ['firecrawl'],
   }),
 );
 
@@ -60,17 +60,9 @@ vi.mock('../lib/job-search/index.js', () => ({
   searchAllSources: mockSearchAllSources,
 }));
 
-// Use class syntax so `new JSearchAdapter()` and `new AdzunaAdapter()` work correctly
-vi.mock('../lib/job-search/adapters/jsearch.js', () => ({
-  JSearchAdapter: class {
-    name = 'jsearch';
-    search = vi.fn().mockResolvedValue([]);
-  },
-}));
-
-vi.mock('../lib/job-search/adapters/adzuna.js', () => ({
-  AdzunaAdapter: class {
-    name = 'adzuna';
+vi.mock('../lib/job-search/adapters/firecrawl.js', () => ({
+  FirecrawlAdapter: class {
+    name = 'firecrawl';
     search = vi.fn().mockResolvedValue([]);
   },
 }));
@@ -119,7 +111,7 @@ function buildListChain(result: unknown) {
 
 function makeJob(id: string) {
   return {
-    external_id: `jsearch_${id}`,
+    external_id: `firecrawl_${id}`,
     title: 'CTO',
     company: 'Acme',
     location: 'NYC',
@@ -128,7 +120,7 @@ function makeJob(id: string) {
     description: null,
     posted_date: new Date().toISOString(),
     apply_url: null,
-    source: 'jsearch',
+    source: 'firecrawl',
     remote_type: null,
     employment_type: null,
     required_skills: null,
@@ -152,7 +144,7 @@ describe('POST /api/job-search', () => {
     mockSearchAllSources.mockResolvedValue({
       jobs: [],
       executionTimeMs: 42,
-      sources_queried: ['jsearch', 'adzuna'],
+      sources_queried: ['firecrawl'],
     });
   });
 
@@ -228,7 +220,7 @@ describe('POST /api/job-search', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { jobs: unknown[]; sources_queried: string[] };
     expect(body.jobs).toHaveLength(0);
-    expect(body.sources_queried).toEqual(['jsearch', 'adzuna']);
+    expect(body.sources_queried).toEqual(['firecrawl']);
   });
 
   it('returns 500 when listing upsert fails', async () => {
@@ -236,7 +228,7 @@ describe('POST /api/job-search', () => {
     mockSearchAllSources.mockResolvedValueOnce({
       jobs: [job],
       executionTimeMs: 20,
-      sources_queried: ['jsearch'],
+      sources_queried: ['firecrawl'],
     });
 
     // scan insert succeeds
@@ -264,7 +256,7 @@ describe('POST /api/job-search', () => {
     mockSearchAllSources.mockResolvedValueOnce({
       jobs: [job],
       executionTimeMs: 30,
-      sources_queried: ['jsearch', 'adzuna'],
+      sources_queried: ['firecrawl'],
     });
 
     // scan insert succeeds
@@ -275,7 +267,7 @@ describe('POST /api/job-search', () => {
     // listing upsert succeeds — returns listing rows for id mapping
     mockFrom.mockReturnValueOnce(
       buildListChain({
-        data: [{ id: 'lst-1', external_id: 'jsearch_j2', source: 'jsearch' }],
+        data: [{ id: 'lst-1', external_id: 'firecrawl_j2', source: 'firecrawl' }],
         error: null,
       }),
     );
@@ -295,7 +287,7 @@ describe('POST /api/job-search', () => {
     const body = (await res.json()) as { jobs: unknown[]; executionTimeMs: number; sources_queried: string[] };
     expect(body.jobs).toHaveLength(1);
     expect(body.executionTimeMs).toBe(30);
-    expect(body.sources_queried).toEqual(['jsearch', 'adzuna']);
+    expect(body.sources_queried).toEqual(['firecrawl']);
   });
 
   it('accepts request without explicit filters (uses defaults)', async () => {

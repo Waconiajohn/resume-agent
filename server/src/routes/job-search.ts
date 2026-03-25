@@ -1,7 +1,7 @@
 /**
  * Job Search Routes — /api/job-search/*
  *
- * Fans out to JSearch (RapidAPI) and Adzuna adapters in parallel, deduplicates
+ * Fans out to Firecrawl adapter, deduplicates
  * results, persists a scan record plus individual job listings to the DB, and
  * returns the aggregated result set.
  *

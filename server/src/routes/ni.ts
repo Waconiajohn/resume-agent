@@ -88,7 +88,7 @@ const booleanSearchSchema = z.object({
 const scrapeStartSchema = z.object({
   company_ids: z.array(z.string().uuid()).min(1).max(50),
   target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
-  /** When true (default), fall back to JSearch then Adzuna if regex scraping finds no results. */
+  /** When true (default), fall back to Firecrawl search if career page scraping finds no results. */
   use_api_fallback: z.boolean().optional().default(true),
 });
 

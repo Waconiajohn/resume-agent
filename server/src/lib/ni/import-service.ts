@@ -116,7 +116,7 @@ export async function runCsvImportPipeline(
  * Updates the scrape log entry on completion or failure.
  *
  * When useApiFallback=true (default), companies that return zero regex results
- * will be retried via JSearch and then Adzuna API adapters.
+ * will be retried via Firecrawl search.
  *
  * This is designed to be called as a background task. The caller (route handler)
  * should fire-and-forget: `void runCareerScrape(userId, logId, companyIds, targetTitles)`.

@@ -1,15 +1,16 @@
 /**
  * Career Page Scraper — Network Intelligence
  *
- * Powered entirely by Firecrawl (single API key, single dependency).
+ * Powered entirely by Firecrawl SDK (single API key, single dependency).
  *
  * Two-tier fallback per company:
- *   1. Firecrawl /scrape on career page URLs → parse markdown for job links
- *   2. Firecrawl /search with job discovery queries
+ *   1. Firecrawl scrape on career page URLs → parse markdown for job links
+ *   2. Firecrawl search with job discovery queries
  *
  * Matches against target titles and stores results via insertJobMatch().
  */
 
+import FirecrawlApp from '@mendable/firecrawl-js';
 import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import logger from '../logger.js';
@@ -19,8 +20,6 @@ import type { CompanyInfo, ScrapeResult, ScrapeSource } from './types.js';
 
 const REQUEST_DELAY_MS = 2_000;
 const MAX_COMPANIES = 50;
-const FIRECRAWL_TIMEOUT_MS = 30_000;
-const FIRECRAWL_API_URL = 'https://api.firecrawl.dev/v1';
 
 /** Block private/loopback/link-local domains to prevent SSRF. */
 function isPrivateDomain(domain: string): boolean {
@@ -45,29 +44,12 @@ const CAREER_PATHS = ['/careers', '/jobs', '/careers/jobs', '/about/careers', '/
 /** Role keywords used to identify job titles in scraped content. */
 const JOB_KEYWORDS = /\b(director|manager|engineer|analyst|specialist|coordinator|lead|head|chief|officer|president|vp|vice president|associate|consultant|advisor|executive|developer|architect|designer)\b/i;
 
-// ─── Firecrawl API helpers ──────────────────────────────────────────────────
+// ─── Firecrawl SDK singleton ─────────────────────────────────────────────────
 
-function firecrawlHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
-  };
-}
-
-interface FirecrawlScrapeResponse {
-  success?: boolean;
-  data?: { markdown?: string };
-}
-
-interface FirecrawlSearchResult {
-  url?: string;
-  title?: string;
-  description?: string;
-}
-
-interface FirecrawlSearchResponse {
-  success?: boolean;
-  data?: FirecrawlSearchResult[];
+function getFirecrawl(): FirecrawlApp | null {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+  return new FirecrawlApp({ apiKey });
 }
 
 // ─── Markdown parsing ─────────────────────────────────────────────────────────
@@ -199,28 +181,13 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
 // ─── Firecrawl scrape (tier 1) ──────────────────────────────────────────────
 
 /**
- * Scrape a single URL via Firecrawl and return the markdown content.
+ * Scrape a single URL via Firecrawl SDK and return the markdown content.
  * Returns null when the API key is missing, the request fails, or the page has no content.
  */
-async function scrapeUrlViaFirecrawl(url: string): Promise<string | null> {
-  if (!process.env.FIRECRAWL_API_KEY) return null;
-
+async function scrapeUrlViaFirecrawl(fc: FirecrawlApp, url: string): Promise<string | null> {
   try {
-    const response = await fetch(`${FIRECRAWL_API_URL}/scrape`, {
-      method: 'POST',
-      headers: firecrawlHeaders(),
-      body: JSON.stringify({ url, formats: ['markdown'] }),
-      signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      logger.debug({ url, status: response.status }, 'career-scraper: Firecrawl scrape non-OK');
-      return null;
-    }
-
-    const data = (await response.json()) as FirecrawlScrapeResponse;
-    if (!data.success || !data.data?.markdown) return null;
-    return data.data.markdown;
+    const doc = await fc.scrape(url, { formats: ['markdown'] });
+    return doc.markdown ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.debug({ url, error: message }, 'career-scraper: Firecrawl scrape error');
@@ -235,14 +202,10 @@ async function scrapeUrlViaFirecrawl(url: string): Promise<string | null> {
  * Builds queries like "VP Operations jobs Acme Corp" and maps results to ParsedJob[].
  */
 async function searchJobsViaFirecrawl(
+  fc: FirecrawlApp,
   companyName: string,
   targetTitles: string[],
 ): Promise<ParsedJob[]> {
-  if (!process.env.FIRECRAWL_API_KEY) {
-    logger.warn({ companyName }, 'career-scraper: FIRECRAWL_API_KEY not set — skipping search fallback');
-    return [];
-  }
-
   try {
     const queries =
       targetTitles.length > 0
@@ -253,27 +216,18 @@ async function searchJobsViaFirecrawl(
     const seen = new Set<string>();
 
     for (const query of queries.slice(0, 3)) {
-      const response = await fetch(`${FIRECRAWL_API_URL}/search`, {
-        method: 'POST',
-        headers: firecrawlHeaders(),
-        body: JSON.stringify({ query, limit: 10 }),
-        signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
-      });
+      const result = await fc.search(query, { limit: 10 });
+      const webResults = (result.web ?? []) as Array<{ url?: string; title?: string }>;
 
-      if (!response.ok) continue;
-
-      const data = (await response.json()) as FirecrawlSearchResponse;
-      if (!data.success || !data.data) continue;
-
-      for (const result of data.data) {
-        if (!result.title || !result.url) continue;
-        const key = result.title.toLowerCase();
+      for (const item of webResults) {
+        if (!item.title || !item.url) continue;
+        const key = item.title.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
 
         allJobs.push({
-          title: result.title,
-          url: result.url,
+          title: item.title,
+          url: item.url,
           location: '',
         });
       }
@@ -299,7 +253,20 @@ export async function searchJobsByCompany(
   targetTitles: string[],
   _userId: string,
 ): Promise<ScrapeResult> {
-  const jobs = await searchJobsViaFirecrawl(companyName, targetTitles);
+  const fc = getFirecrawl();
+  if (!fc) {
+    logger.warn({ companyName }, 'career-scraper: FIRECRAWL_API_KEY not set');
+    return {
+      companiesScanned: 1,
+      jobsFound: 0,
+      matchingJobs: 0,
+      referralAvailable: 0,
+      errors: [],
+      sourceBreakdown: { firecrawl_scrape: 0, firecrawl_search: 0 },
+    };
+  }
+
+  const jobs = await searchJobsViaFirecrawl(fc, companyName, targetTitles);
 
   if (jobs.length === 0) {
     return {
@@ -335,6 +302,7 @@ interface CompanyScrapeResult {
 }
 
 async function scrapeCompany(
+  fc: FirecrawlApp,
   company: CompanyInfo,
   targetTitles: string[],
   userId: string,
@@ -357,7 +325,7 @@ async function scrapeCompany(
   // Tier 1: Firecrawl scrape of career pages
   for (const path of CAREER_PATHS) {
     const url = `${baseUrl}${path}`;
-    const markdown = await scrapeUrlViaFirecrawl(url);
+    const markdown = await scrapeUrlViaFirecrawl(fc, url);
     if (markdown) {
       const jobs = parseJobsFromMarkdown(markdown, url);
       if (jobs.length > 0) {
@@ -373,7 +341,7 @@ async function scrapeCompany(
 
   // Tier 2: Firecrawl search fallback
   if (allJobs.length === 0 && useSearchFallback) {
-    const searchResults = await searchJobsViaFirecrawl(company.name, targetTitles);
+    const searchResults = await searchJobsViaFirecrawl(fc, company.name, targetTitles);
     if (searchResults.length > 0) {
       allJobs = searchResults;
       source = 'firecrawl_search';
@@ -433,6 +401,19 @@ export async function scrapeCareerPages(
   userId: string,
   useApiFallback = true,
 ): Promise<ScrapeResult> {
+  const fc = getFirecrawl();
+  if (!fc) {
+    logger.warn('career-scraper: FIRECRAWL_API_KEY not set — aborting scrape');
+    return {
+      companiesScanned: 0,
+      jobsFound: 0,
+      matchingJobs: 0,
+      referralAvailable: 0,
+      errors: [{ company: '(all)', error: 'FIRECRAWL_API_KEY not configured' }],
+      sourceBreakdown: { firecrawl_scrape: 0, firecrawl_search: 0 },
+    };
+  }
+
   const limited = companies.slice(0, MAX_COMPANIES);
   const errors: { company: string; error: string }[] = [];
 
@@ -458,7 +439,7 @@ export async function scrapeCareerPages(
     );
 
     try {
-      const result = await scrapeCompany(company, targetTitles, userId, useApiFallback);
+      const result = await scrapeCompany(fc, company, targetTitles, userId, useApiFallback);
       companiesScanned++;
       jobsFound += result.jobsFound;
       matchingJobs += result.matchingJobs;

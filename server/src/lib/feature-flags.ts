@@ -18,7 +18,7 @@
 //   FF_NETWORKING_CRM         Networking CRM
 //   FF_JOB_TRACKER            Job Application Tracker
 //   FF_JOB_FINDER             Job Finder
-//   FF_JOB_SEARCH             Job Search API (JSearch + Adzuna adapters)
+//   FF_JOB_SEARCH             Job Search API (Firecrawl adapter)
 //   FF_APPLICATION_PIPELINE   Application Pipeline CRUD
 //   FF_SALARY_NEGOTIATION     Salary Negotiation
 //   FF_EXECUTIVE_BIO          Executive Bio

@@ -46,7 +46,7 @@ import type { JobResult } from '../lib/job-search/types.js';
 
 function makeJob(id: string, overrides: Partial<JobResult> = {}): JobResult {
   return {
-    external_id: `jsearch_${id}`,
+    external_id: `firecrawl_${id}`,
     title: 'VP of Engineering',
     company: 'Acme Corp',
     location: 'San Francisco, CA',
@@ -55,7 +55,7 @@ function makeJob(id: string, overrides: Partial<JobResult> = {}): JobResult {
     description: 'Lead engineering teams at scale.',
     posted_date: new Date().toISOString(),
     apply_url: null,
-    source: 'jsearch',
+    source: 'firecrawl',
     remote_type: null,
     employment_type: null,
     required_skills: null,
@@ -139,7 +139,7 @@ describe('matchJobsToProfile — happy path', () => {
     const results = await matchJobsToProfile('user-1', [job]);
 
     expect(results).toHaveLength(1);
-    expect(results[0].external_id).toBe('jsearch_j1');
+    expect(results[0].external_id).toBe('firecrawl_j1');
     expect(results[0].match_score).toBe(85);
     expect(results[0].matching_skills).toEqual(['TypeScript', 'System Design']);
     expect(typeof results[0].recommendation).toBe('string');
