@@ -212,7 +212,14 @@ function normalizeCandidateIntelligence(
     experience: normalizedExperience,
     education: normalizedEducation,
     certifications: coerceStringArray(parsed.certifications),
-    hidden_accomplishments: coerceStringArray(parsed.hidden_accomplishments),
+    hidden_accomplishments: coerceStringArray(parsed.hidden_accomplishments)
+      .filter(item => {
+        // Reject accomplishments that are just generic capability labels
+        const hasMetric = /\d/.test(item);
+        const hasProperNoun = item.split(/\s+/).some((w, i) => i > 0 && /^[A-Z]/.test(w) && w.length > 2);
+        const wordCount = item.split(/\s+/).length;
+        return wordCount >= 5 && (hasMetric || hasProperNoun);
+      }),
     raw_text: parsed.raw_text ?? resumeText,
   };
 }
