@@ -743,22 +743,22 @@ export function computeInlineSuggestions(
 
   for (let i = 0; i < draft.selected_accomplishments.length; i++) {
     const acc = draft.selected_accomplishments[i];
-    if (!acc.is_new) continue;
 
     const sectionId = 'selected_accomplishments';
+    const changeType: InlineSuggestion['changeType'] = acc.is_new ? 'addition' : 'replacement';
     const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
       acc.content,
       gapAnalysis,
       importanceToRequirementPriority,
-      'Adds a quantified accomplishment to demonstrate impact',
+      acc.is_new ? 'Adds a quantified accomplishment to demonstrate impact' : 'Refined for clarity and impact',
     );
 
     suggestions.push({
       id: makeId(sectionId),
       sectionId,
-      originalText: '',
+      originalText: changeType === 'addition' ? '' : acc.content,
       suggestedText: acc.content,
-      changeType: 'addition',
+      changeType,
       requirementText,
       requirementPriority,
       requirementSource,
@@ -776,28 +776,19 @@ export function computeInlineSuggestions(
         normalizeText(e.title) === normalizeText(draftedExp.title),
     );
 
-    const originalBulletSet = new Set(
-      (originalExp?.bullets ?? []).map(b => normalizeText(b)),
-    );
-
     for (let bulletIdx = 0; bulletIdx < draftedExp.bullets.length; bulletIdx++) {
       const bullet = draftedExp.bullets[bulletIdx];
 
-      // Skip bullets that are direct copies of the original
-      if (!bullet.is_new && originalBulletSet.has(normalizeText(bullet.text))) {
-        continue;
-      }
-
       // Find the closest original bullet for replacement detection
       const closestOriginal = findClosestOriginal(bullet.text, originalExp?.bullets ?? []);
-      const changeType: InlineSuggestion['changeType'] = closestOriginal ? 'replacement' : 'addition';
+      const changeType: InlineSuggestion['changeType'] = bullet.is_new ? 'addition' : 'replacement';
 
       const sectionId = 'professional_experience';
       const { requirementText, requirementPriority, requirementSource, rationale } = matchRequirement(
         bullet.text,
         gapAnalysis,
         importanceToRequirementPriority,
-        'Improves clarity and impact',
+        bullet.is_new ? 'Adds new content to strengthen positioning' : 'Refined for clarity and impact',
       );
 
       suggestions.push({

@@ -1013,8 +1013,9 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Original resume analysis — visible as soon as pre-scores arrive */}
-        {data.preScores && (
+        {/* Original resume analysis — visible as soon as pre-scores arrive,
+            but hidden when gap question flow is active (unified card handles it) */}
+        {data.preScores && !(gapQuestions.length > 0 && !gapQuestionsSubmitted) && (
           <OriginalScoresCard preScores={data.preScores} />
         )}
 
@@ -1024,6 +1025,7 @@ export function V2StreamingDisplay({
           <GapQuestionFlow
             questions={gapQuestions}
             gapAnalysis={data.gapAnalysis}
+            preScores={data.preScores}
             onComplete={handleGapQuestionsComplete}
             onAssist={onGapAssist}
           />

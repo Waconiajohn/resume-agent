@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { GapAnalysis, GapCoachingCard, GapCoachingResponse } from '@/types/resume-v2';
+import type { GapAnalysis, GapCoachingCard, GapCoachingResponse, PreScores } from '@/types/resume-v2';
 import { GapOverviewCard } from './cards/GapOverviewCard';
 
 // ─── Public Types ─────────────────────────────────────────────────────────────
@@ -40,6 +40,8 @@ interface GapQuestionFlowProps {
   questions: GapQuestion[];
   /** When provided, an overview card is shown before the first question (index -1). */
   gapAnalysis?: GapAnalysis | null;
+  /** Pre-optimization ATS scores — merged into the overview card. */
+  preScores?: PreScores | null;
   onComplete: (responses: GapQuestionResponse[]) => void;
   /** Optional: enables AI assist buttons on cards. Returns improved text or null. */
   onAssist?: (
@@ -783,13 +785,20 @@ function FallbackCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function GapQuestionFlow({ questions, gapAnalysis, onComplete, onAssist }: GapQuestionFlowProps) {
+export function GapQuestionFlow({ questions, gapAnalysis, preScores, onComplete, onAssist }: GapQuestionFlowProps) {
   const [currentIndex, setCurrentIndex] = useState(gapAnalysis ? -1 : 0);
   const [responses, setResponses] = useState<GapQuestionResponse[]>([]);
+  const [overviewCollapsed, setOverviewCollapsed] = useState(false);
 
+  const isReviewing = currentIndex >= 0;
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
+
+  // Auto-collapse overview when the first question starts
+  useEffect(() => {
+    if (isReviewing) setOverviewCollapsed(true);
+  }, [isReviewing]);
 
   const advance = useCallback(
     (response: GapQuestionResponse) => {
@@ -844,44 +853,51 @@ export function GapQuestionFlow({ questions, gapAnalysis, onComplete, onAssist }
     onComplete(allResponses);
   }, [questions, currentIndex, responses, onComplete]);
 
-  // Overview card — shown at index -1 when gapAnalysis is provided
-  if (currentIndex === -1 && gapAnalysis) {
-    return (
-      <GapOverviewCard
-        gapAnalysis={gapAnalysis}
-        questionCount={questions.length}
-        onBeginReview={() => setCurrentIndex(0)}
-      />
-    );
-  }
-
-  if (!currentQuestion) return null;
-
-  // Route to AI-assisted or fallback card based on whether we have a proposed strategy
-  if (currentQuestion.proposedStrategy) {
-    return (
-      <AIAssistedCard
-        question={currentQuestion}
-        currentIndex={currentIndex}
-        totalQuestions={totalQuestions}
-        responses={responses}
-        onUseThis={handleUseThis}
-        onSkip={handleSkip}
-        onSkipAll={handleSkipAll}
-        onAssist={onAssist}
-      />
-    );
+  // Build question card (null when still on overview at index -1)
+  let questionCard: React.ReactNode = null;
+  if (isReviewing && currentQuestion) {
+    if (currentQuestion.proposedStrategy) {
+      questionCard = (
+        <AIAssistedCard
+          question={currentQuestion}
+          currentIndex={currentIndex}
+          totalQuestions={totalQuestions}
+          responses={responses}
+          onUseThis={handleUseThis}
+          onSkip={handleSkip}
+          onSkipAll={handleSkipAll}
+          onAssist={onAssist}
+        />
+      );
+    } else {
+      questionCard = (
+        <FallbackCard
+          question={currentQuestion}
+          currentIndex={currentIndex}
+          totalQuestions={totalQuestions}
+          responses={responses}
+          onSubmit={handleFallbackSubmit}
+          onSkip={handleSkip}
+          onSkipAll={handleSkipAll}
+        />
+      );
+    }
   }
 
   return (
-    <FallbackCard
-      question={currentQuestion}
-      currentIndex={currentIndex}
-      totalQuestions={totalQuestions}
-      responses={responses}
-      onSubmit={handleFallbackSubmit}
-      onSkip={handleSkip}
-      onSkipAll={handleSkipAll}
-    />
+    <div className="space-y-4">
+      {gapAnalysis && (
+        <GapOverviewCard
+          gapAnalysis={gapAnalysis}
+          preScores={preScores}
+          questionCount={questions.length}
+          onBeginReview={() => setCurrentIndex(0)}
+          collapsed={overviewCollapsed}
+          onToggleCollapse={() => setOverviewCollapsed((prev) => !prev)}
+          isReviewing={isReviewing}
+        />
+      )}
+      {questionCard}
+    </div>
   );
 }
