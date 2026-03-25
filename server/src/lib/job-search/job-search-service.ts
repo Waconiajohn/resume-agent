@@ -9,8 +9,7 @@
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
 import { searchAllSources } from './index.js';
-import { JSearchAdapter } from './adapters/jsearch.js';
-import { AdzunaAdapter } from './adapters/adzuna.js';
+import { FirecrawlAdapter } from './adapters/firecrawl.js';
 import { matchJobsToProfile } from './ai-matcher.js';
 import { crossReferenceWithNetwork } from './ni-crossref.js';
 import { enrichWithReferralBonuses } from './referral-enrichment.js';
@@ -69,7 +68,7 @@ export async function runSearchPipeline(
   location: string,
   filters: SearchFilters,
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
-  const adapters = [new JSearchAdapter(), new AdzunaAdapter()];
+  const adapters = [new FirecrawlAdapter()];
 
   logger.info(
     { userId, query, location, filters },

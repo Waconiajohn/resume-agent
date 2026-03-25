@@ -1,39 +1,40 @@
 /**
  * Career Page Scraper — Network Intelligence
  *
- * Fetches company career pages using native fetch (no Playwright).
- * Tries common career URL patterns, parses HTML for job listings,
- * matches against target titles, and stores results via insertJobMatch().
+ * Powered entirely by Firecrawl (single API key, single dependency).
+ *
+ * Two-tier fallback per company:
+ *   1. Firecrawl /scrape on career page URLs → parse markdown for job links
+ *   2. Firecrawl /search with job discovery queries
+ *
+ * Matches against target titles and stores results via insertJobMatch().
  */
 
 import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import logger from '../logger.js';
-import { JSearchAdapter } from '../job-search/adapters/jsearch.js';
-import { AdzunaAdapter } from '../job-search/adapters/adzuna.js';
 import type { CompanyInfo, ScrapeResult, ScrapeSource } from './types.js';
-import type { JobResult, SearchFilters } from '../job-search/types.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const REQUEST_DELAY_MS = 2_000;
 const MAX_COMPANIES = 50;
-const FETCH_TIMEOUT_MS = 10_000;
+const FIRECRAWL_TIMEOUT_MS = 30_000;
+const FIRECRAWL_API_URL = 'https://api.firecrawl.dev/v1';
 
 /** Block private/loopback/link-local domains to prevent SSRF. */
 function isPrivateDomain(domain: string): boolean {
   const lower = domain.toLowerCase();
   if (lower === 'localhost' || lower.endsWith('.local') || lower.endsWith('.internal')) return true;
-  // Block raw IPs in private ranges
   const ipMatch = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(lower);
   if (ipMatch) {
     const [, a, b] = ipMatch.map(Number);
-    if (a === 10) return true;                         // 10.0.0.0/8
-    if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
-    if (a === 192 && b === 168) return true;            // 192.168.0.0/16
-    if (a === 127) return true;                         // 127.0.0.0/8
-    if (a === 169 && b === 254) return true;            // 169.254.0.0/16
-    if (a === 0) return true;                           // 0.0.0.0/8
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
   }
   return false;
 }
@@ -41,10 +42,35 @@ function isPrivateDomain(domain: string): boolean {
 /** Career page path patterns to try for each company domain. */
 const CAREER_PATHS = ['/careers', '/jobs', '/careers/jobs', '/about/careers', '/en/careers'];
 
-/** Common job board query patterns to append for filtered searches. */
-const SEARCH_SUFFIXES = ['', '/search', '?type=professional', '?category=executive'];
+/** Role keywords used to identify job titles in scraped content. */
+const JOB_KEYWORDS = /\b(director|manager|engineer|analyst|specialist|coordinator|lead|head|chief|officer|president|vp|vice president|associate|consultant|advisor|executive|developer|architect|designer)\b/i;
 
-// ─── HTML parsing ─────────────────────────────────────────────────────────────
+// ─── Firecrawl API helpers ──────────────────────────────────────────────────
+
+function firecrawlHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+  };
+}
+
+interface FirecrawlScrapeResponse {
+  success?: boolean;
+  data?: { markdown?: string };
+}
+
+interface FirecrawlSearchResult {
+  url?: string;
+  title?: string;
+  description?: string;
+}
+
+interface FirecrawlSearchResponse {
+  success?: boolean;
+  data?: FirecrawlSearchResult[];
+}
+
+// ─── Markdown parsing ─────────────────────────────────────────────────────────
 
 interface ParsedJob {
   title: string;
@@ -53,54 +79,41 @@ interface ParsedJob {
 }
 
 /**
- * Simple regex-based HTML parser for job listings.
- * Looks for <a> tags that contain job-related text patterns.
- * This is intentionally lightweight — we're doing keyword matching, not full DOM parsing.
+ * Parse job listings from Firecrawl markdown output.
+ * Looks for [text](url) link patterns that contain job-title keywords.
  */
-function parseJobsFromHtml(html: string, baseUrl: string): ParsedJob[] {
+function parseJobsFromMarkdown(markdown: string, baseUrl: string): ParsedJob[] {
   const jobs: ParsedJob[] = [];
   const seen = new Set<string>();
 
-  // Match <a href="...">text</a> patterns — cover multi-line content
-  const linkPattern = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
 
   let match: RegExpExecArray | null;
-  while ((match = linkPattern.exec(html)) !== null) {
-    const href = match[1];
-    const innerText = match[2]
-      .replace(/<[^>]+>/g, ' ')  // strip inner tags
-      .replace(/\s+/g, ' ')
-      .trim();
+  while ((match = linkPattern.exec(markdown)) !== null) {
+    const text = match[1].replace(/\s+/g, ' ').trim();
+    const href = match[2];
 
-    if (!innerText || innerText.length < 4 || innerText.length > 200) continue;
+    if (!text || text.length < 4 || text.length > 200) continue;
+    if (/^(home|about|contact|blog|news|press|privacy|terms|login|sign)/i.test(text)) continue;
+    if (!JOB_KEYWORDS.test(text)) continue;
 
-    // Skip navigation links and non-job content
-    if (/^(home|about|contact|blog|news|press|privacy|terms|login|sign)/i.test(innerText)) continue;
-
-    // Must look like a job title: contains a role keyword
-    const JOB_KEYWORDS = /\b(director|manager|engineer|analyst|specialist|coordinator|lead|head|chief|officer|president|vp|vice president|associate|consultant|advisor|executive)\b/i;
-    if (!JOB_KEYWORDS.test(innerText)) continue;
-
-    // Resolve relative URLs
     let resolvedUrl = href;
     if (href.startsWith('/')) {
       try {
-        const base = new URL(baseUrl);
-        resolvedUrl = `${base.origin}${href}`;
+        resolvedUrl = `${new URL(baseUrl).origin}${href}`;
       } catch {
         resolvedUrl = href;
       }
     } else if (!href.startsWith('http')) {
-      continue; // Skip anchors and javascript: links
+      continue;
     }
 
-    const key = innerText.toLowerCase();
+    const key = text.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
 
-    jobs.push({ title: innerText, url: resolvedUrl, location: '' });
-
-    if (jobs.length >= 100) break; // Cap per page
+    jobs.push({ title: text, url: resolvedUrl, location: '' });
+    if (jobs.length >= 100) break;
   }
 
   return jobs;
@@ -108,39 +121,27 @@ function parseJobsFromHtml(html: string, baseUrl: string): ParsedJob[] {
 
 // ─── Title matching ───────────────────────────────────────────────────────────
 
-/**
- * Compute a simple keyword overlap score between a job title and target titles.
- * Returns 0-100.
- */
 function computeMatchScore(jobTitle: string, targetTitles: string[]): number {
-  if (targetTitles.length === 0) return 50; // default if no targets
-
+  if (targetTitles.length === 0) return 50;
   const jobWords = new Set(jobTitle.toLowerCase().split(/\W+/).filter((w) => w.length > 2));
-
   let bestScore = 0;
   for (const target of targetTitles) {
     const targetWords = target.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
     if (targetWords.length === 0) continue;
-
     const overlap = targetWords.filter((w) => jobWords.has(w)).length;
     const score = Math.round((overlap / targetWords.length) * 100);
     if (score > bestScore) bestScore = score;
   }
-
   return bestScore;
 }
 
 function titleMatchesTargets(jobTitle: string, targetTitles: string[]): boolean {
-  if (targetTitles.length === 0) return true; // no filter — take everything
+  if (targetTitles.length === 0) return true;
   return computeMatchScore(jobTitle, targetTitles) >= 40;
 }
 
 // ─── Referral bonus detection ─────────────────────────────────────────────────
 
-/**
- * Regex patterns that signal a referral bonus mention in job description text.
- * Listed in decreasing specificity — the first match wins for amount extraction.
- */
 const REFERRAL_MENTION_PATTERNS: RegExp[] = [
   /referral\s+bonus/i,
   /referral\s+program/i,
@@ -149,48 +150,32 @@ const REFERRAL_MENTION_PATTERNS: RegExp[] = [
   /referral\s+reward/i,
 ];
 
-/**
- * Patterns used to extract a dollar amount from text near a referral mention.
- * Tries to capture "$X,XXX", "$XK", "$X.XK" style values.
- */
 const AMOUNT_EXTRACTION_PATTERNS: RegExp[] = [
-  /\$\s*(\d{1,3}(?:,\d{3})+)/,      // $X,XXX or $XX,XXX
-  /\$\s*(\d+(?:\.\d+)?)\s*[kK]/,    // $5K, $10k, $7.5k
-  /\$\s*(\d{3,})/,                   // $5000 bare digits
+  /\$\s*(\d{1,3}(?:,\d{3})+)/,
+  /\$\s*(\d+(?:\.\d+)?)\s*[kK]/,
+  /\$\s*(\d{3,})/,
 ];
 
-/**
- * Detect whether a job description text mentions a referral bonus program
- * and attempt to extract the dollar amount if present.
- *
- * @param text - Raw job description or posting text
- * @returns `{ detected: true, amount?: string }` or `{ detected: false }`
- */
 export function detectReferralBonusInText(
   text: string,
 ): { detected: boolean; amount?: string } {
   if (!text) return { detected: false };
-
-  const hasMention = REFERRAL_MENTION_PATTERNS.some((pattern) => pattern.test(text));
+  const hasMention = REFERRAL_MENTION_PATTERNS.some((p) => p.test(text));
   if (!hasMention) return { detected: false };
 
-  // Attempt to extract a dollar amount from the surrounding text
   for (const amountPattern of AMOUNT_EXTRACTION_PATTERNS) {
     const match = amountPattern.exec(text);
     if (match) {
       const rawValue = match[1];
-      // Normalize "K" shorthand amounts to full dollar values
       if (/[kK]/.test(match[0])) {
         const numeric = parseFloat(rawValue);
         if (!isNaN(numeric)) {
-          const dollars = Math.round(numeric * 1_000);
-          return { detected: true, amount: `$${dollars.toLocaleString('en-US')}` };
+          return { detected: true, amount: `$${Math.round(numeric * 1_000).toLocaleString('en-US')}` };
         }
       }
       return { detected: true, amount: `$${rawValue}` };
     }
   }
-
   return { detected: true };
 }
 
@@ -204,7 +189,6 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
       .eq('company_id', companyId)
       .limit(1)
       .single();
-
     if (error) return false;
     return !!data;
   } catch {
@@ -212,129 +196,110 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
   }
 }
 
-// ─── API-based company search helpers ────────────────────────────────────────
-
-const API_SEARCH_FILTERS: SearchFilters = {
-  datePosted: '30d',
-};
+// ─── Firecrawl scrape (tier 1) ──────────────────────────────────────────────
 
 /**
- * Map a JobResult array from a search adapter into the ParsedJob format used
- * by the rest of the scraper pipeline.
+ * Scrape a single URL via Firecrawl and return the markdown content.
+ * Returns null when the API key is missing, the request fails, or the page has no content.
  */
-function jobResultsToParsedJobs(results: JobResult[]): ParsedJob[] {
-  const seen = new Set<string>();
-  const jobs: ParsedJob[] = [];
+async function scrapeUrlViaFirecrawl(url: string): Promise<string | null> {
+  if (!process.env.FIRECRAWL_API_KEY) return null;
 
-  for (const r of results) {
-    const key = `${r.title.toLowerCase()}|${r.location?.toLowerCase() ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    jobs.push({
-      title: r.title,
-      url: r.apply_url ?? '',
-      location: r.location ?? '',
+  try {
+    const response = await fetch(`${FIRECRAWL_API_URL}/scrape`, {
+      method: 'POST',
+      headers: firecrawlHeaders(),
+      body: JSON.stringify({ url, formats: ['markdown'] }),
+      signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
     });
-  }
 
-  return jobs;
+    if (!response.ok) {
+      logger.debug({ url, status: response.status }, 'career-scraper: Firecrawl scrape non-OK');
+      return null;
+    }
+
+    const data = (await response.json()) as FirecrawlScrapeResponse;
+    if (!data.success || !data.data?.markdown) return null;
+    return data.data.markdown;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug({ url, error: message }, 'career-scraper: Firecrawl scrape error');
+    return null;
+  }
 }
 
+// ─── Firecrawl search (tier 2) ──────────────────────────────────────────────
+
 /**
- * Search JSearch API for jobs at a specific company by name.
- * Returns empty array when JSEARCH_API_KEY is missing or on any error.
+ * Search for jobs at a specific company via Firecrawl web search.
+ * Builds queries like "VP Operations jobs Acme Corp" and maps results to ParsedJob[].
  */
-async function searchJobsByCompanyViaJSearch(
+async function searchJobsViaFirecrawl(
   companyName: string,
   targetTitles: string[],
 ): Promise<ParsedJob[]> {
-  if (!process.env.JSEARCH_API_KEY) {
-    logger.warn({ companyName }, 'career-scraper: JSEARCH_API_KEY not set — skipping JSearch fallback');
+  if (!process.env.FIRECRAWL_API_KEY) {
+    logger.warn({ companyName }, 'career-scraper: FIRECRAWL_API_KEY not set — skipping search fallback');
     return [];
   }
 
   try {
-    const adapter = new JSearchAdapter();
+    const queries =
+      targetTitles.length > 0
+        ? targetTitles.map((t) => `${t} jobs ${companyName}`)
+        : [`jobs at ${companyName}`];
 
-    const queries = targetTitles.length > 0
-      ? targetTitles.map((t) => `"${t}" at "${companyName}"`)
-      : [`jobs at "${companyName}"`];
+    const allJobs: ParsedJob[] = [];
+    const seen = new Set<string>();
 
-    const allResults: JobResult[] = [];
-    for (const query of queries.slice(0, 3)) { // cap at 3 queries per company
-      const results = await adapter.search(query, '', API_SEARCH_FILTERS);
-      // Only keep results that actually match the target company
-      const filtered = results.filter((r) =>
-        r.company.toLowerCase().includes(companyName.toLowerCase()) ||
-        companyName.toLowerCase().includes(r.company.toLowerCase()),
-      );
-      allResults.push(...filtered);
+    for (const query of queries.slice(0, 3)) {
+      const response = await fetch(`${FIRECRAWL_API_URL}/search`, {
+        method: 'POST',
+        headers: firecrawlHeaders(),
+        body: JSON.stringify({ query, limit: 10 }),
+        signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
+      });
+
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as FirecrawlSearchResponse;
+      if (!data.success || !data.data) continue;
+
+      for (const result of data.data) {
+        if (!result.title || !result.url) continue;
+        const key = result.title.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        allJobs.push({
+          title: result.title,
+          url: result.url,
+          location: '',
+        });
+      }
     }
 
-    return jobResultsToParsedJobs(allResults);
+    return allJobs;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.warn({ companyName, error: message }, 'career-scraper: JSearch company search failed');
+    logger.warn({ companyName, error: message }, 'career-scraper: Firecrawl search failed');
     return [];
   }
 }
 
-/**
- * Search Adzuna API for jobs at a specific company by name.
- * Returns empty array when ADZUNA credentials are missing or on any error.
- */
-async function searchJobsByCompanyViaAdzuna(
-  companyName: string,
-  targetTitles: string[],
-): Promise<ParsedJob[]> {
-  if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_API_KEY) {
-    logger.warn({ companyName }, 'career-scraper: Adzuna credentials not set — skipping Adzuna fallback');
-    return [];
-  }
-
-  try {
-    const adapter = new AdzunaAdapter();
-
-    const queries = targetTitles.length > 0
-      ? targetTitles.map((t) => `${t} ${companyName}`)
-      : [companyName];
-
-    const allResults: JobResult[] = [];
-    for (const query of queries.slice(0, 3)) { // cap at 3 queries per company
-      const results = await adapter.search(query, '', API_SEARCH_FILTERS);
-      // Only keep results that actually match the target company
-      const filtered = results.filter((r) =>
-        r.company.toLowerCase().includes(companyName.toLowerCase()) ||
-        companyName.toLowerCase().includes(r.company.toLowerCase()),
-      );
-      allResults.push(...filtered);
-    }
-
-    return jobResultsToParsedJobs(allResults);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.warn({ companyName, error: message }, 'career-scraper: Adzuna company search failed');
-    return [];
-  }
-}
+// ─── Public API: searchJobsByCompany ─────────────────────────────────────────
 
 /**
- * Public API: search for jobs at a specific company using JSearch then Adzuna as fallback.
- * This is the three-tier fallback chain exposed for direct use by other callers.
+ * Search for jobs at a specific company via Firecrawl web search.
+ * Returns summary counts only — callers that need per-job DB storage
+ * should use scrapeCareerPages() which passes a real company_id.
  */
 export async function searchJobsByCompany(
   companyName: string,
   targetTitles: string[],
   _userId: string,
 ): Promise<ScrapeResult> {
-  let jobs = await searchJobsByCompanyViaJSearch(companyName, targetTitles);
-  let source: ScrapeSource = 'jsearch_api';
-
-  if (jobs.length === 0) {
-    jobs = await searchJobsByCompanyViaAdzuna(companyName, targetTitles);
-    source = 'adzuna_api';
-  }
+  const jobs = await searchJobsViaFirecrawl(companyName, targetTitles);
 
   if (jobs.length === 0) {
     return {
@@ -343,25 +308,19 @@ export async function searchJobsByCompany(
       matchingJobs: 0,
       referralAvailable: 0,
       errors: [],
-      sourceBreakdown: { career_page: 0, jsearch_api: 0, adzuna_api: 0 },
+      sourceBreakdown: { firecrawl_scrape: 0, firecrawl_search: 0 },
     };
   }
 
-  // This function returns summary counts only. Callers that need per-job DB
-  // storage should use scrapeCareerPages(), which passes a real company_id.
-  const matchingJobs = jobs.filter((j) => titleMatchesTargets(j.title, targetTitles));
+  const matching = jobs.filter((j) => titleMatchesTargets(j.title, targetTitles));
 
   return {
     companiesScanned: 1,
     jobsFound: jobs.length,
-    matchingJobs: matchingJobs.length,
+    matchingJobs: matching.length,
     referralAvailable: 0,
     errors: [],
-    sourceBreakdown: {
-      career_page: 0,
-      jsearch_api: source === 'jsearch_api' ? matchingJobs.length : 0,
-      adzuna_api: source === 'adzuna_api' ? matchingJobs.length : 0,
-    },
+    sourceBreakdown: { firecrawl_scrape: 0, firecrawl_search: matching.length },
   };
 }
 
@@ -379,85 +338,48 @@ async function scrapeCompany(
   company: CompanyInfo,
   targetTitles: string[],
   userId: string,
-  useApiFallback: boolean,
+  useSearchFallback: boolean,
 ): Promise<CompanyScrapeResult> {
   if (!company.domain) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'career_page', error: 'No domain' };
+    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'firecrawl_scrape', error: 'No domain' };
   }
 
   if (isPrivateDomain(company.domain)) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'career_page', error: 'Blocked private domain' };
+    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'firecrawl_scrape', error: 'Blocked private domain' };
   }
 
   const baseUrl = `https://${company.domain}`;
   const referral = await hasReferralProgram(company.id);
 
   let allJobs: ParsedJob[] = [];
-  let source: ScrapeSource = 'career_page';
+  let source: ScrapeSource = 'firecrawl_scrape';
 
-  // Tier 1: regex scrape of career pages
-  outer: for (const path of CAREER_PATHS) {
-    for (const suffix of SEARCH_SUFFIXES) {
-      const url = `${baseUrl}${path}${suffix}`;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-        let response: Response;
-        try {
-          response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; ResumeAgentBot/1.0)',
-              'Accept': 'text/html,application/xhtml+xml',
-            },
-            redirect: 'follow',
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        if (!response.ok) continue;
-
-        const contentType = response.headers.get('content-type') ?? '';
-        if (!contentType.includes('text/html')) continue;
-
-        const html = await response.text();
-        const jobs = parseJobsFromHtml(html, url);
-
-        if (jobs.length > 0) {
-          allJobs = jobs;
-          break outer;
-        }
-      } catch {
-        // Network error or timeout — try next path
-        continue;
+  // Tier 1: Firecrawl scrape of career pages
+  for (const path of CAREER_PATHS) {
+    const url = `${baseUrl}${path}`;
+    const markdown = await scrapeUrlViaFirecrawl(url);
+    if (markdown) {
+      const jobs = parseJobsFromMarkdown(markdown, url);
+      if (jobs.length > 0) {
+        allJobs = jobs;
+        logger.info(
+          { companyId: company.id, companyName: company.name, path, jobCount: jobs.length },
+          'career-scraper: Firecrawl scrape found jobs',
+        );
+        break;
       }
     }
   }
 
-  // Tier 2: JSearch API fallback when regex scraping found nothing
-  if (allJobs.length === 0 && useApiFallback) {
-    const jsearchResults = await searchJobsByCompanyViaJSearch(company.name, targetTitles);
-    if (jsearchResults.length > 0) {
-      allJobs = jsearchResults;
-      source = 'jsearch_api';
+  // Tier 2: Firecrawl search fallback
+  if (allJobs.length === 0 && useSearchFallback) {
+    const searchResults = await searchJobsViaFirecrawl(company.name, targetTitles);
+    if (searchResults.length > 0) {
+      allJobs = searchResults;
+      source = 'firecrawl_search';
       logger.info(
         { companyId: company.id, companyName: company.name, jobCount: allJobs.length },
-        'career-scraper: JSearch fallback found jobs',
-      );
-    }
-  }
-
-  // Tier 3: Adzuna API fallback when JSearch also found nothing
-  if (allJobs.length === 0 && useApiFallback) {
-    const adzunaResults = await searchJobsByCompanyViaAdzuna(company.name, targetTitles);
-    if (adzunaResults.length > 0) {
-      allJobs = adzunaResults;
-      source = 'adzuna_api';
-      logger.info(
-        { companyId: company.id, companyName: company.name, jobCount: allJobs.length },
-        'career-scraper: Adzuna fallback found jobs',
+        'career-scraper: Firecrawl search fallback found jobs',
       );
     }
   }
@@ -470,7 +392,7 @@ async function scrapeCompany(
   const matchingJobs = allJobs.filter((j) => titleMatchesTargets(j.title, targetTitles));
   let storedCount = 0;
 
-  for (const job of matchingJobs.slice(0, 20)) { // cap at 20 per company
+  for (const job of matchingJobs.slice(0, 20)) {
     const score = computeMatchScore(job.title, targetTitles);
     const inserted = await insertJobMatch(userId, {
       company_id: company.id,
@@ -499,8 +421,8 @@ async function scrapeCompany(
  * Scrape career pages for the given companies, match against target titles,
  * and store results via insertJobMatch().
  *
- * Three-tier fallback per company: regex scrape → JSearch API → Adzuna API.
- * API fallback is enabled by default and skipped when useApiFallback=false.
+ * Two-tier fallback per company: Firecrawl scrape → Firecrawl search.
+ * Search fallback is enabled by default and skipped when useApiFallback=false.
  *
  * Rate-limited to 2-second delay between companies.
  * Max 50 companies per scrape run.
@@ -519,9 +441,8 @@ export async function scrapeCareerPages(
   let matchingJobs = 0;
   let referralAvailable = 0;
   const sourceBreakdown: Record<ScrapeSource, number> = {
-    career_page: 0,
-    jsearch_api: 0,
-    adzuna_api: 0,
+    firecrawl_scrape: 0,
+    firecrawl_search: 0,
   };
 
   for (let i = 0; i < limited.length; i++) {

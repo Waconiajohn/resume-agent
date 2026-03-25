@@ -207,7 +207,7 @@ export interface CompanyInfo {
   domain: string | null;
 }
 
-export type ScrapeSource = 'career_page' | 'jsearch_api' | 'adzuna_api';
+export type ScrapeSource = 'firecrawl_scrape' | 'firecrawl_search';
 
 export interface ScrapeResult {
   companiesScanned: number;

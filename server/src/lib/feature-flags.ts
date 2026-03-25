@@ -210,11 +210,11 @@ export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', true);
 export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', true);
 
 /**
- * FF_JOB_SEARCH — Enable the Job Search API routes (JSearch + Adzuna adapters).
+ * FF_JOB_SEARCH — Enable the Job Search API routes (Firecrawl adapter).
  *
  * Default: true (consumer-ready).
  * Set FF_JOB_SEARCH=false in server/.env to deactivate.
- * Requires: JSEARCH_API_KEY (RapidAPI) and/or ADZUNA_APP_ID + ADZUNA_API_KEY.
+ * Requires: FIRECRAWL_API_KEY.
  */
 export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', true);
 
