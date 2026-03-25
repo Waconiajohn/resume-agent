@@ -737,6 +737,8 @@ export function ResumeWorkspaceRail({
           gapAnalysis={gapAnalysis ?? null}
           benchmarkCandidate={benchmarkCandidate}
           narrativeStrategy={narrativeStrategy}
+          jobIntelligence={jobIntelligence}
+          candidateIntelligence={candidateIntelligence}
         />
       ) : isComplete ? (
         <KeywordScoreDashboard

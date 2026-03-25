@@ -26,9 +26,11 @@ import {
 import type {
   ATSOptimizationDetail,
   AssemblyResult,
+  CandidateIntelligence,
   ExecutiveToneDetail,
   GapAnalysis,
   HiringManagerScan,
+  JobIntelligence,
   NarrativeStrategy,
   BenchmarkCandidate,
   PositioningAssessment,
@@ -36,6 +38,12 @@ import type {
   TruthVerificationDetail,
   VerificationDetail,
 } from '@/types/resume-v2';
+import {
+  RequirementsCoverageSection,
+  TruthVerificationSection,
+  ToneAnalysisSection,
+  HiringManagerScanSection,
+} from './scoring-report';
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -294,7 +302,7 @@ function ScoreSummaryHeader({
 
 // ─── Before Report ────────────────────────────────────────────────────────────
 
-const KEYWORD_COLUMN_LIMIT = 8;
+const KEYWORD_COLUMN_LIMIT = 50;
 
 function BeforeReport({
   preScores,
@@ -1016,6 +1024,8 @@ export interface ScoringReportProps {
   gapAnalysis: GapAnalysis | null;
   benchmarkCandidate: BenchmarkCandidate | null;
   narrativeStrategy: NarrativeStrategy | null;
+  jobIntelligence?: JobIntelligence | null;
+  candidateIntelligence?: CandidateIntelligence | null;
 }
 
 export function ScoringReport({
@@ -1027,6 +1037,8 @@ export function ScoringReport({
   narrativeStrategy,
 }: ScoringReportProps) {
   const ats = verificationDetail?.ats ?? null;
+  const truth = verificationDetail?.truth ?? null;
+  const tone = verificationDetail?.tone ?? null;
   const hiringManagerScan = assembly.hiring_manager_scan ?? null;
   const positioningAssessment = assembly.positioning_assessment ?? null;
 
@@ -1058,6 +1070,17 @@ export function ScoringReport({
         />
       </CollapsibleSection>
 
+      {/* Requirements Coverage — full breakdown by classification */}
+      {gapAnalysis && (
+        <CollapsibleSection
+          title="Requirements Coverage"
+          subtitle={`${gapAnalysis.requirements.length} requirements — ${gapAnalysis.requirements.filter(r => r.classification === 'strong').length} strong, ${gapAnalysis.requirements.filter(r => r.classification === 'partial').length} partial, ${gapAnalysis.requirements.filter(r => r.classification === 'missing').length} gaps`}
+          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+        >
+          <RequirementsCoverageSection gapAnalysis={gapAnalysis} />
+        </CollapsibleSection>
+      )}
+
       {/* Keyword Analysis */}
       <CollapsibleSection
         title="Keyword Analysis"
@@ -1068,6 +1091,39 @@ export function ScoringReport({
       >
         <KeywordAnalysis ats={ats} preScores={preScores} />
       </CollapsibleSection>
+
+      {/* Truth Verification — full claim-by-claim breakdown */}
+      {truth && (
+        <CollapsibleSection
+          title="Truth Verification"
+          subtitle={`Score: ${truth.truth_score} — ${truth.claims.length} claims analyzed${truth.flagged_items.length > 0 ? `, ${truth.flagged_items.length} flagged` : ''}`}
+          icon={<Shield className="h-3.5 w-3.5" />}
+        >
+          <TruthVerificationSection truth={truth} />
+        </CollapsibleSection>
+      )}
+
+      {/* Tone Analysis — full findings breakdown */}
+      {tone && (
+        <CollapsibleSection
+          title="Tone Analysis"
+          subtitle={`Score: ${tone.tone_score} — ${tone.findings.length} finding${tone.findings.length !== 1 ? 's' : ''}${tone.banned_phrases_found.length > 0 ? `, ${tone.banned_phrases_found.length} banned phrase${tone.banned_phrases_found.length !== 1 ? 's' : ''}` : ''}`}
+          icon={<AlertTriangle className="h-3.5 w-3.5" />}
+        >
+          <ToneAnalysisSection tone={tone} />
+        </CollapsibleSection>
+      )}
+
+      {/* Hiring Manager Scan — full sub-score breakdown */}
+      {hiringManagerScan && (
+        <CollapsibleSection
+          title="Hiring Manager Scan"
+          subtitle={`Score: ${hiringManagerScan.scan_score} — ${hiringManagerScan.pass ? 'PASS' : 'NEEDS WORK'}${hiringManagerScan.red_flags.length > 0 ? ` — ${hiringManagerScan.red_flags.length} red flag${hiringManagerScan.red_flags.length !== 1 ? 's' : ''}` : ''}`}
+          icon={<User className="h-3.5 w-3.5" />}
+        >
+          <HiringManagerScanSection scan={hiringManagerScan} />
+        </CollapsibleSection>
+      )}
 
       {/* Full Analysis */}
       {(gapAnalysis || benchmarkCandidate || narrativeStrategy || positioningAssessment || hiringManagerScan) && (

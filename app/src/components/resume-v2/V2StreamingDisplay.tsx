@@ -2,7 +2,7 @@
  * V2StreamingDisplay — Output display for the v2 pipeline
  *
  * Two layout modes:
- *   1. Processing mode — OriginalScoresCard + LivePipelineCard (or PostGapTransition after gap submission)
+ *   1. Processing mode — OriginalScoresCard + LivePipelineCard (or PostGapDebriefCard after gap submission)
  *   2. Resume mode — coaching banner + full-width centered document with inline editing
  *
  * The left panel (RewriteQueuePanel) and Live AI Review column are intentionally
@@ -31,6 +31,7 @@ import { SuggestionsBadge } from './SuggestionsBadge';
 import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
 import { GapQuestionFlow, coachingCardsToQuestions, questionResponsesToCoachingResponses } from './GapQuestionFlow';
 import type { GapQuestionResponse } from './GapQuestionFlow';
+import { PostGapDebriefCard } from './cards/PostGapDebriefCard';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -410,51 +411,6 @@ function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComple
   );
 }
 
-// ─── PostGapTransition ────────────────────────────────────────────────────────
-// Shown after gap questions are submitted while waiting for the resume to appear.
-
-function PostGapTransition({ stage, isComplete }: { stage: V2Stage; isComplete: boolean }) {
-  const progress = isComplete ? 100 : getStageProgressPercent(stage);
-
-  return (
-    <div
-      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6 motion-safe:animate-[card-enter_500ms_ease-out_forwards] motion-safe:opacity-0"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-neutral-800">
-            Your positioning choices are locked in
-          </p>
-          <p className="text-[13px] text-neutral-500 mt-0.5">
-            {getStageStatusLabel(stage, isComplete)}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <div
-          className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden"
-          role="progressbar"
-          aria-valuenow={progress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="text-[12px] text-neutral-400 text-right">
-          {getStageStatusLabel(stage, isComplete)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── SuggestionProgressStrip ─────────────────────────────────────────────────
 // Sticky strip shown above the resume document to guide the user through review.
 
@@ -640,6 +596,7 @@ export function V2StreamingDisplay({
   // When gapCoachingCards arrive during processing (no resume yet), show the
   // one-at-a-time question flow. Track whether the user has already submitted.
   const [gapQuestionsSubmitted, setGapQuestionsSubmitted] = useState(false);
+  const [gapResponses, setGapResponses] = useState<GapQuestionResponse[]>([]);
 
   // Reset the submitted flag when a new pipeline run starts (gapCoachingCards
   // goes back to null as part of INITIAL_DATA reset in useV2Pipeline).
@@ -647,6 +604,7 @@ export function V2StreamingDisplay({
   useEffect(() => {
     if (prevGapCoachingCardsRef.current !== null && gapCoachingCards === null) {
       setGapQuestionsSubmitted(false);
+      setGapResponses([]);
     }
     prevGapCoachingCardsRef.current = gapCoachingCards;
   }, [gapCoachingCards]);
@@ -665,6 +623,7 @@ export function V2StreamingDisplay({
 
   const handleGapQuestionsComplete = useCallback(
     (questionResponses: GapQuestionResponse[]) => {
+      setGapResponses(questionResponses);
       setGapQuestionsSubmitted(true);
       const coachingResponses = questionResponsesToCoachingResponses(
         questionResponses,
@@ -1032,7 +991,7 @@ export function V2StreamingDisplay({
   }
 
   // ─── Processing layout (pipeline running, no resume yet) ─────────────────
-  // Shows OriginalScoresCard (when preScores available) + LivePipelineCard or PostGapTransition.
+  // Shows OriginalScoresCard (when preScores available) + LivePipelineCard or PostGapDebriefCard.
   return (
     <div
       ref={containerRef}
@@ -1064,11 +1023,16 @@ export function V2StreamingDisplay({
         {gapQuestions.length > 0 && !gapQuestionsSubmitted ? (
           <GapQuestionFlow
             questions={gapQuestions}
+            gapAnalysis={data.gapAnalysis}
             onComplete={handleGapQuestionsComplete}
             onAssist={onGapAssist}
           />
         ) : gapQuestionsSubmitted && !hasResume ? (
-          <PostGapTransition stage={data.stage} isComplete={isComplete} />
+          <PostGapDebriefCard
+            responses={gapResponses}
+            stage={data.stage}
+            isComplete={isComplete}
+          />
         ) : (
           <LivePipelineCard data={data} isComplete={isComplete} />
         )}

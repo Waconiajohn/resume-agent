@@ -20,7 +20,7 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Do not wrap the JSON in markdown fences.
 - Do not add commentary, introductions, or notes outside the JSON object.
 - If there are no findings, return an empty findings array instead of prose.
-- Keep the output compact: return at most 5 findings.`;
+- Keep the output compact: return at most 12 findings.`;
 
 const SYSTEM_PROMPT = `You are an executive communications director who has edited 1,000+ C-suite resumes. You can spot junior language, AI-generated phrasing, and generic filler from a mile away.
 
@@ -58,7 +58,7 @@ RULES:
 - Do not flag strong executive verbs such as "led," "directed," "delivered," "implemented," "managed," "oversaw," or "drove" as junior language.
 - If a line is acceptable but not perfect, leave it alone. Only return clear, high-confidence issues.
 - Focus on the most visible tone issues first: headline, summary, selected accomplishments, and the first bullets under each role.
-- Return only the highest-value tone issues. Maximum 5 findings.
+- Return only the highest-value tone issues. Maximum 12 findings.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -76,7 +76,7 @@ Return JSON only.
 - Quote only exact problematic text that appears verbatim in the draft.
 - If a phrase is not present, do not mention it.
 - Do not flag already-strong executive verbs like led, directed, delivered, implemented, managed, oversaw, or drove.
-- Return at most 5 findings, keep each suggestion concise, and focus on the most visible issues first.`;
+- Return at most 12 findings, keep each suggestion concise, and focus on the most visible issues first.`;
 
   try {
     const response = await llm.chat({
@@ -206,7 +206,7 @@ function normalizeExecutiveToneOutput(
   if (!parsed) return null;
 
   const findings = Array.isArray(parsed.findings)
-    ? dedupeToneFindings(parsed.findings.filter((finding) => isValidExecutiveToneFinding(finding, resumeText))).slice(0, 5)
+    ? dedupeToneFindings(parsed.findings.filter((finding) => isValidExecutiveToneFinding(finding, resumeText))).slice(0, 12)
     : [];
   const bannedPhrasesFound = Array.isArray(parsed.banned_phrases_found)
     ? dedupeStrings(parsed.banned_phrases_found.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean))
@@ -303,7 +303,7 @@ function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): Exe
     experience.bullets.forEach((bullet) => inspect(bullet.text, `${experience.company} bullet`));
   });
 
-  const deduped = dedupeToneFindings(findings).slice(0, 5);
+  const deduped = dedupeToneFindings(findings).slice(0, 12);
   const toneScore = Math.max(40, 96 - (deduped.length * 4));
 
   return {

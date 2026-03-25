@@ -205,7 +205,7 @@ function buildDeterministicATSFallback(input: ATSOptimizationInput): ATSOptimiza
     match_score: matchScore,
     keywords_found: keywordsFound,
     keywords_missing: keywordsMissing,
-    keyword_suggestions: keywordsMissing.slice(0, 5).map((keyword) => ({
+    keyword_suggestions: keywordsMissing.slice(0, 15).map((keyword) => ({
       keyword,
       suggested_placement: chooseKeywordPlacement(keyword),
       natural_phrasing: buildNaturalKeywordSuggestion(keyword),

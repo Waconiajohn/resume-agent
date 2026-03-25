@@ -161,7 +161,7 @@ function buildCoreCompetencies(
 ): JobIntelligenceOutput['core_competencies'] {
   const candidates = lines
     .filter((line) => /must|required|requirement|experience|knowledge|ability|degree|certification|license|proficiency|expertise/i.test(line))
-    .slice(0, 8)
+    .slice(0, 20)
     .map((line) => ({
       competency: normalizeRequirementText(line),
       importance: inferImportance(line),
@@ -211,7 +211,7 @@ function buildStrategicResponsibilities(
     .filter(Boolean);
 
   if (responsibilityLines.length > 0) {
-    return dedupeStrings(responsibilityLines).slice(0, 6);
+    return dedupeStrings(responsibilityLines).slice(0, 12);
   }
 
   return coreCompetencies.slice(0, 3).map((item) => `Demonstrate ${item.competency.toLowerCase()} in this role`);
@@ -228,7 +228,7 @@ function buildBusinessProblems(
     .filter(Boolean);
 
   if (problemLines.length > 0) {
-    return dedupeStrings(problemLines).slice(0, 5);
+    return dedupeStrings(problemLines).slice(0, 10);
   }
 
   return dedupeStrings([
@@ -277,7 +277,7 @@ function buildLanguageKeywords(
   return dedupeStrings([
     ...coreCompetencies.map((item) => item.competency),
     ...quotedPhrases.filter((phrase) => phrase.split(/\s+/).length <= 4),
-  ]).slice(0, 12);
+  ]).slice(0, 30);
 }
 
 function extractRoleTitle(lines: string[]): string {

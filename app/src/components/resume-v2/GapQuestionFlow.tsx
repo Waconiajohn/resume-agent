@@ -10,7 +10,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { GapCoachingCard, GapCoachingResponse } from '@/types/resume-v2';
+import type { GapAnalysis, GapCoachingCard, GapCoachingResponse } from '@/types/resume-v2';
+import { GapOverviewCard } from './cards/GapOverviewCard';
 
 // ─── Public Types ─────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ export interface GapQuestionResponse {
 
 interface GapQuestionFlowProps {
   questions: GapQuestion[];
+  /** When provided, an overview card is shown before the first question (index -1). */
+  gapAnalysis?: GapAnalysis | null;
   onComplete: (responses: GapQuestionResponse[]) => void;
   /** Optional: enables AI assist buttons on cards. Returns improved text or null. */
   onAssist?: (
@@ -160,6 +163,16 @@ function PriorityBadge({ importance }: { importance: GapQuestion['importance'] }
     </span>
   );
 }
+
+// ─── Importance Explanations ──────────────────────────────────────────────────
+
+const IMPORTANCE_EXPLANATIONS: Record<string, string> = {
+  critical: 'This is a must-have requirement. Missing it may disqualify your application.',
+  must_have: 'This is a must-have requirement. Missing it may disqualify your application.',
+  important: 'This requirement is important to the hiring manager. Addressing it significantly strengthens your candidacy.',
+  nice_to_have: 'This is a nice-to-have. Addressing it gives you an edge over other candidates.',
+  supporting: 'This is a supporting requirement. Addressing it gives you an edge over other candidates.',
+};
 
 // ─── Progress Dots ────────────────────────────────────────────────────────────
 
@@ -352,6 +365,11 @@ function AIAssistedCard({
             </p>
             <PriorityBadge importance={question.importance} />
           </div>
+          {IMPORTANCE_EXPLANATIONS[question.importance] && (
+            <p className="text-[12px] text-neutral-500 mt-1 leading-relaxed">
+              {IMPORTANCE_EXPLANATIONS[question.importance]}
+            </p>
+          )}
         </div>
 
         {/* What we found */}
@@ -371,6 +389,18 @@ function AIAssistedCard({
           </div>
         )}
 
+        {/* Why this was flagged */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Why this was flagged
+          </p>
+          <p className="text-[13px] text-neutral-600 leading-relaxed">
+            {question.classification === 'partial'
+              ? 'We found related experience in your resume, but it doesn\'t fully demonstrate this requirement. Our AI identified adjacent skills that can strengthen your positioning.'
+              : 'This requirement doesn\'t appear directly in your resume. However, we found transferable experience in your background that can be positioned to address it.'}
+          </p>
+        </div>
+
         {/* Our suggested positioning */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
@@ -381,6 +411,9 @@ function AIAssistedCard({
               {question.proposedStrategy}
             </p>
           </div>
+          <p className="text-[11px] text-neutral-400 leading-relaxed mt-2">
+            When you confirm, this positioning will be woven naturally into your resume bullets — it won&apos;t appear as a separate section or footnote.
+          </p>
         </div>
 
         {/* AI assist buttons */}
@@ -525,6 +558,10 @@ function AIAssistedCard({
             </button>
           )}
         </div>
+
+        <p className="text-[11px] text-neutral-400 mt-3 pt-3 border-t border-neutral-100">
+          All choices apply to this resume only. Your master resume is never modified.
+        </p>
       </div>
 
       {/* Footer — progress */}
@@ -621,6 +658,11 @@ function FallbackCard({
             </p>
             <PriorityBadge importance={question.importance} />
           </div>
+          {IMPORTANCE_EXPLANATIONS[question.importance] && (
+            <p className="text-[12px] text-neutral-500 mt-1 leading-relaxed">
+              {IMPORTANCE_EXPLANATIONS[question.importance]}
+            </p>
+          )}
         </div>
 
         {/* Context explanation */}
@@ -649,6 +691,16 @@ function FallbackCard({
           </div>
         )}
 
+        {/* Why this was flagged */}
+        <div className="mb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1.5">
+            Why this was flagged
+          </p>
+          <p className="text-[13px] text-neutral-600 leading-relaxed">
+            We could not find adjacent experience to auto-draft positioning for this requirement. Your direct input will help us create effective positioning.
+          </p>
+        </div>
+
         {/* The question itself */}
         <div className="mb-4">
           <p className="text-[15px] font-medium text-neutral-800 leading-snug mb-3">
@@ -666,6 +718,9 @@ function FallbackCard({
           />
           <p className="mt-1 text-[11px] text-neutral-400">
             Press Ctrl+Enter to submit
+          </p>
+          <p className="text-[11px] text-neutral-400 leading-relaxed mt-2">
+            When you confirm, this positioning will be woven naturally into your resume bullets — it won&apos;t appear as a separate section or footnote.
           </p>
         </div>
 
@@ -702,6 +757,10 @@ function FallbackCard({
             </button>
           )}
         </div>
+
+        <p className="text-[11px] text-neutral-400 mt-3 pt-3 border-t border-neutral-100">
+          All choices apply to this resume only. Your master resume is never modified.
+        </p>
       </div>
 
       {/* Footer — progress */}
@@ -724,8 +783,8 @@ function FallbackCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function GapQuestionFlow({ questions, onComplete, onAssist }: GapQuestionFlowProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function GapQuestionFlow({ questions, gapAnalysis, onComplete, onAssist }: GapQuestionFlowProps) {
+  const [currentIndex, setCurrentIndex] = useState(gapAnalysis ? -1 : 0);
   const [responses, setResponses] = useState<GapQuestionResponse[]>([]);
 
   const currentQuestion = questions[currentIndex];
@@ -784,6 +843,17 @@ export function GapQuestionFlow({ questions, onComplete, onAssist }: GapQuestion
     const allResponses = [...responses, ...skippedResponses];
     onComplete(allResponses);
   }, [questions, currentIndex, responses, onComplete]);
+
+  // Overview card — shown at index -1 when gapAnalysis is provided
+  if (currentIndex === -1 && gapAnalysis) {
+    return (
+      <GapOverviewCard
+        gapAnalysis={gapAnalysis}
+        questionCount={questions.length}
+        onBeginReview={() => setCurrentIndex(0)}
+      />
+    );
+  }
 
   if (!currentQuestion) return null;
 

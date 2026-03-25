@@ -123,7 +123,7 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
   const bannedPhrasesFound = Array.isArray(input.executive_tone.banned_phrases_found) ? input.executive_tone.banned_phrases_found : [];
 
   // Flagged truth items are highest priority
-  for (const item of flaggedItems.slice(0, 2)) {
+  for (const item of flaggedItems.slice(0, 5)) {
     wins.push({
       description: `Fix: ${item.issue} — ${item.recommendation}`,
       impact: 'high',
@@ -131,7 +131,7 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
   }
 
   // Missing must-have keywords
-  const missingKeywordPreview = missingKeywords.slice(0, 3);
+  const missingKeywordPreview = missingKeywords;
   if (missingKeywordPreview.length > 0) {
     wins.push({
       description: `Add missing keywords: ${missingKeywordPreview.join(', ')}`,
@@ -147,7 +147,7 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
     });
   }
 
-  const quickWins = wins.slice(0, 3);
+  const quickWins = wins.slice(0, 8);
 
   if (quickWins.length === 0) {
     quickWins.push({ description: 'Resume is well-optimized — no critical improvements needed', impact: 'low' });
@@ -334,7 +334,7 @@ function scoreHeaderImpact(
   const jdSignals = [
     jd.role_title,
     ...jd.core_competencies.filter(c => c.importance === 'must_have').map(c => c.competency),
-    ...jd.language_keywords.slice(0, 5),
+    ...jd.language_keywords,
   ].map(s => s.toLowerCase());
 
   const titleMatches = jdSignals.filter(signal =>
@@ -568,7 +568,7 @@ function scoreKeywordVisibility(
     ...jd.core_competencies
       .filter(c => c.importance === 'must_have')
       .map(c => c.competency.toLowerCase()),
-    ...jd.language_keywords.slice(0, 10).map(k => k.toLowerCase()),
+    ...jd.language_keywords.map(k => k.toLowerCase()),
   ];
 
   const bulletText = topBullets.map(b => b.text.toLowerCase()).join(' ');

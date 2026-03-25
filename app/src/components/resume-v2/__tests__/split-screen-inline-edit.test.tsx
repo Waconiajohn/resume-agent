@@ -54,6 +54,17 @@ vi.mock('lucide-react', () => {
     BarChart3: Icon,
     Eye: Icon,
     HelpCircle: Icon,
+    Info: Icon,
+    RefreshCw: Icon,
+    XCircle: Icon,
+    Zap: Icon,
+    AlertTriangle: Icon,
+    AlertOctagon: Icon,
+    Mic: Icon,
+    MessageCircle: Icon,
+    SkipForward: Icon,
+    ShieldAlert: Icon,
+    Wand2: Icon,
   };
 });
 
