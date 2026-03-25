@@ -121,7 +121,7 @@ function HomeGuideCard({
           <button
             type="button"
             onClick={primaryAction.onClick}
-            className="rounded-md border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
+            className="rounded-md border border-[#4a6bbf] bg-[#4a6bbf] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#3b5aa8]"
           >
             {primaryAction.label}
           </button>
