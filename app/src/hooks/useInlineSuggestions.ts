@@ -69,7 +69,7 @@ export function useInlineSuggestions(): InlineSuggestionsHook {
           const el = document.querySelector(
             `[data-suggestion-index="${nextPendingIdx}"]`,
           );
-          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 400);
       }
     },
@@ -130,7 +130,7 @@ export function useInlineSuggestions(): InlineSuggestionsHook {
     );
     if (!el) return;
 
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [nextPending]);
 
   // ── SSE integration ───────────────────────────────────────────────────────

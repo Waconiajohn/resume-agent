@@ -651,9 +651,16 @@ export function V2StreamingDisplay({
     prevGapCoachingCardsRef.current = gapCoachingCards;
   }, [gapCoachingCards]);
 
-  const gapQuestions = useMemo(
-    () => (gapCoachingCards ? coachingCardsToQuestions(gapCoachingCards) : []),
+  // On re-runs, all coaching cards arrive with previously_approved=true.
+  // Skip showing the gap question flow in that case to avoid a visual flash.
+  const allPreviouslyApproved = useMemo(
+    () => gapCoachingCards != null && gapCoachingCards.length > 0 && gapCoachingCards.every(c => c.previously_approved),
     [gapCoachingCards],
+  );
+
+  const gapQuestions = useMemo(
+    () => (gapCoachingCards && !allPreviouslyApproved ? coachingCardsToQuestions(gapCoachingCards) : []),
+    [gapCoachingCards, allPreviouslyApproved],
   );
 
   const handleGapQuestionsComplete = useCallback(

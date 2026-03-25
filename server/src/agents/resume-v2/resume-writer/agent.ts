@@ -511,14 +511,13 @@ function buildUserMessage(input: ResumeWriterInput): string {
 function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOutput {
   const topRequirements = input.gap_analysis.requirements
     .filter((requirement) => requirement.source === 'job_description')
-    .slice(0, 8)
     .map((requirement) => requirement.requirement);
   const competencyThemes = input.narrative.section_guidance?.competency_themes ?? [];
   const coreCompetencies = dedupeStrings([
     ...competencyThemes,
     ...topRequirements,
     ...(input.candidate.technologies ?? []),
-  ]).slice(0, 12);
+  ]).slice(0, 20);
 
   const currentYear = new Date().getFullYear();
   const earlierCareerThresholdYear = currentYear - 20;
@@ -653,14 +652,13 @@ function buildExecutiveSummary(input: ResumeWriterInput): string {
 }
 
 function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutput['selected_accomplishments'] {
-  const quantified = (input.candidate.quantified_outcomes ?? []).slice(0, 3).map((item) => ({
+  const quantified = (input.candidate.quantified_outcomes ?? []).map((item) => ({
     content: `${item.outcome}: ${item.value}`,
     is_new: false,
     addresses_requirements: matchRequirementLinks(item.outcome, input.gap_analysis.requirements),
   }));
 
   const hidden = (input.candidate.hidden_accomplishments ?? [])
-    .slice(0, Math.max(0, 5 - quantified.length))
     .map((item) => ({
       content: item,
       is_new: false,
@@ -686,7 +684,7 @@ function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutpu
       end_date: experience.end_date,
       scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
       scope_statement_is_new: false,
-      bullets: experience.bullets.slice(0, 10).map((bullet) => ({
+      bullets: experience.bullets.map((bullet) => ({
         text: bullet,
         is_new: false,
         addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),

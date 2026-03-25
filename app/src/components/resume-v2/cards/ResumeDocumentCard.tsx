@@ -493,8 +493,18 @@ function BulletWithSuggestion({
 
     return (
       <span
-        aria-label={`Suggestion ${suggestionNumber}`}
-        className={`inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[11px] font-bold mr-1.5 flex-shrink-0 align-middle transition-all ${
+        role="button"
+        tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); onOpenPopover(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenPopover();
+          }
+        }}
+        aria-label={`Suggestion ${suggestionNumber}. Click to review.`}
+        className={`inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[11px] font-bold mr-1.5 flex-shrink-0 align-middle cursor-pointer transition-all ${
           isCurrent ? 'ring-2 ring-blue-400 ring-offset-1 animate-pulse' : ''
         }`}
       >
@@ -702,7 +712,7 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
         <button
           type="button"
           onClick={() => onAccept(editedText)}
-          className="rounded-md bg-green-500/15 border border-green-500/30 px-4 py-1.5 text-xs font-medium text-green-700 hover:bg-green-500/25 transition-colors"
+          className="rounded-md bg-green-500 border border-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-600 transition-colors"
         >
           Accept
         </button>
@@ -718,7 +728,8 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
             type="button"
             onClick={() => {
               onRequestEdit(suggestion.suggestedText, suggestion.sectionId, 'rewrite');
-              onClose();
+              // Do NOT close the popover — closing triggers scroll-to-next which jumps the user away.
+              // The InlineEditPanel will appear near this bullet and the user stays in context.
             }}
             className="flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-strong)] transition-colors"
           >
