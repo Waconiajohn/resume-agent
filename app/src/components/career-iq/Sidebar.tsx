@@ -97,8 +97,8 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
           isGated
             ? 'cursor-not-allowed border-transparent text-[var(--text-soft)]'
             : isActive
-              ? 'border-[rgba(238,243,248,0.55)] bg-[rgba(255,255,255,0.045)] text-[var(--text-strong)]'
-              : 'border-transparent text-[var(--text-muted)] hover:border-[rgba(238,243,248,0.22)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--text-strong)]',
+              ? 'border-[var(--rail-tab-active-border)] bg-[var(--rail-tab-active-bg)] text-[var(--text-strong)]'
+              : 'border-transparent text-[var(--text-muted)] hover:border-[var(--line-soft)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-strong)]',
         )}
         title={
           isGated
@@ -139,7 +139,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(16,22,29,0.98),rgba(11,16,22,0.98))] transition-all duration-200',
+        'flex h-full flex-col border-r border-[var(--line-soft)] bg-[image:var(--sidebar-bg)] transition-all duration-200',
         collapsed ? 'w-[68px]' : 'w-[260px]',
       )}
     >
@@ -203,7 +203,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
         <button
           type="button"
           onClick={onOpenCoach}
-          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] text-[var(--text-strong)] transition-colors hover:border-[rgba(238,243,248,0.32)] hover:bg-[rgba(255,255,255,0.08)]"
+          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)] text-[var(--text-strong)] transition-colors hover:border-[var(--sidebar-coach-hover-border)] hover:bg-[var(--sidebar-coach-hover-bg)]"
           aria-label={`Open ${displayName}`}
           title={displayName}
         >
@@ -231,7 +231,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
           className="flex min-w-0 items-center gap-3 text-left transition-opacity hover:opacity-80"
           aria-label={`Open ${displayName}`}
         >
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)]">
             <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--text-strong)]">AI</span>
           </div>
           <div className="min-w-0">

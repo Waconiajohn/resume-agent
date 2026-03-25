@@ -79,6 +79,11 @@
     /* GlassCard pseudo-elements */
     --glass-card-ring: rgba(255, 255, 255, 0.03);
     --glass-card-bottom: rgba(255, 255, 255, 0.015);
+    /* Sidebar */
+    --sidebar-bg: linear-gradient(180deg, rgba(16, 22, 29, 0.98), rgba(11, 16, 22, 0.98));
+    --sidebar-coach-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    --sidebar-coach-hover-border: rgba(238, 243, 248, 0.32);
+    --sidebar-coach-hover-bg: rgba(255, 255, 255, 0.08);
   }
 
   /* ── Light theme ── */
@@ -147,6 +152,11 @@
     /* GlassCard pseudo-elements */
     --glass-card-ring: rgba(0, 0, 0, 0.04);
     --glass-card-bottom: rgba(0, 0, 0, 0.02);
+    /* Sidebar */
+    --sidebar-bg: linear-gradient(180deg, rgba(240, 242, 245, 0.98), rgba(232, 235, 240, 0.98));
+    --sidebar-coach-bg: linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.01));
+    --sidebar-coach-hover-border: rgba(51, 65, 85, 0.2);
+    --sidebar-coach-hover-bg: rgba(0, 0, 0, 0.04);
   }
 
   html,
