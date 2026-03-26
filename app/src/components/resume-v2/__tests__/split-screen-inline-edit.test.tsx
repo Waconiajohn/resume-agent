@@ -1035,6 +1035,41 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
   });
 
+  it('drops a line from the navigator once that line has changed in the working resume', () => {
+    const baselineResume = makeResumeDraftWithAttention();
+    const editedResume = makeResumeDraftWithAttention();
+    editedResume.selected_accomplishments[0] = {
+      ...editedResume.selected_accomplishments[0],
+      content: 'Reduced deploy time by 60% using weekly release KPIs and deployment scorecards',
+    };
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: editedResume,
+          data: makePipelineDataWithResume({
+            resumeDraft: baselineResume,
+            assembly: {
+              final_resume: baselineResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    const strip = screen.getByTestId('attention-review-strip');
+    expect(within(strip).getByText('1 of 1')).toBeInTheDocument();
+    expect(within(strip).getByText('Shipped 3 major product lines')).toBeInTheDocument();
+    expect(screen.getByText(/weekly release KPIs and deployment scorecards/i)).toBeInTheDocument();
+    expect(within(strip).queryByText(/release KPIs and deployment scorecards/i)).not.toBeInTheDocument();
+  });
+
   it('shows the correct status text for each pipeline stage', () => {
     const stageLabels: Array<{ stage: string; label: string }> = [
       { stage: 'strategy', label: 'Building your positioning strategy...' },

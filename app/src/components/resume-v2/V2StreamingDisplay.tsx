@@ -165,12 +165,17 @@ function getAttentionStatusMeta(
   };
 }
 
-function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
+function buildAttentionReviewItems(
+  resume: ResumeDraft,
+  baselineResume?: ResumeDraft | null,
+): AttentionReviewItem[] {
   const items: AttentionReviewItem[] = [];
   let order = 0;
 
   resume.selected_accomplishments.forEach((bullet, index) => {
     if (bullet.confidence === 'strong') return;
+    const baselineText = baselineResume?.selected_accomplishments[index]?.content;
+    if (baselineText && baselineText !== bullet.content) return;
     const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
     items.push({
       id: `selected_accomplishments-${index}`,
@@ -192,6 +197,8 @@ function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
     bullets.forEach((bullet, bulletOffset) => {
       if (bullet.confidence === 'strong') return;
       const index = experienceIndex * 100 + bulletOffset;
+      const baselineText = baselineResume?.professional_experience[experienceIndex]?.bullets[bulletOffset]?.text;
+      if (baselineText && baselineText !== bullet.text) return;
       const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
       items.push({
         id: `professional_experience-${index}`,
@@ -697,9 +704,10 @@ export function V2StreamingDisplay({
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
+  const baselineResume = data.assembly?.final_resume ?? data.resumeDraft ?? null;
   const attentionItems = useMemo(() => (
-    displayResume ? buildAttentionReviewItems(displayResume) : []
-  ), [displayResume]);
+    displayResume ? buildAttentionReviewItems(displayResume, baselineResume) : []
+  ), [baselineResume, displayResume]);
   const [attentionIndex, setAttentionIndex] = useState(0);
 
   const handleTextSelect = useCallback((text: string, section: string, rect: DOMRect) => {
