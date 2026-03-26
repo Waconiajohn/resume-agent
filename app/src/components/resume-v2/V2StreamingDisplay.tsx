@@ -111,6 +111,7 @@ interface AttentionReviewItem {
   index: number;
   selector: string;
   text: string;
+  locationLabel: string;
   statusLabel: string;
   statusClassName: string;
   priority: number;
@@ -177,6 +178,7 @@ function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
       index,
       selector: `[data-bullet-id="selected_accomplishments-${index}"]`,
       text: bullet.content,
+      locationLabel: 'Selected Accomplishments',
       statusLabel: status.label,
       statusClassName: status.className,
       priority: status.priority,
@@ -197,6 +199,7 @@ function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
         index,
         selector: `[data-bullet-id="professional_experience-${index}"]`,
         text: bullet.text,
+        locationLabel: `${experience.title} · ${experience.company}`,
         statusLabel: status.label,
         statusClassName: status.className,
         priority: status.priority,
@@ -249,6 +252,9 @@ function AttentionReviewStrip({
           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${current.statusClassName}`}>
             {current.statusLabel}
           </span>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+            {current.locationLabel}
+          </p>
           <p data-testid="attention-review-current-text" className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">
             {current.text}
           </p>

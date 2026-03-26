@@ -929,6 +929,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
     expect(within(strip).getByText('Needs Proof')).toBeInTheDocument();
+    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });
 
@@ -959,7 +960,9 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
 
+    const strip = screen.getByTestId('attention-review-strip');
     expect(screen.getByText('2 of 2')).toBeInTheDocument();
+    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
     expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
