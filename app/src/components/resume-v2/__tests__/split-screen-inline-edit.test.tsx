@@ -935,8 +935,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     const resumeBullet = screen.getByText('Reduced deploy time by 60%');
     const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
     expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
-    expect(screen.getByText(/Before vs\. now, with the fastest read on what still needs attention\./i)).toBeInTheDocument();
-    expect(screen.getByText('Final review')).toBeInTheDocument();
+    expect(screen.getByText(/The fast read: how far the resume moved, what improved most, and what still needs work\./i)).toBeInTheDocument();
+    expect(screen.getByText('Before vs Now')).toBeInTheDocument();
+    expect(screen.getByText('Biggest gains')).toBeInTheDocument();
+    expect(screen.getByText('Still to close')).toBeInTheDocument();
     expect(screen.getByText('Not run')).toBeInTheDocument();
     expect(fullScoringReportButton).toBeInTheDocument();
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
@@ -979,7 +981,8 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
     expect(screen.getByText(/1 code-red line still needs proof, and 1 more still need attention/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Next best action: Start with the strengthen line in Selected Accomplishments\./i)).toHaveLength(2);
+    expect(screen.getByText('Next best action')).toBeInTheDocument();
+    expect(screen.getByText('Start with the strengthen line in Selected Accomplishments.')).toBeInTheDocument();
     expect(within(strip).getByText(/Next best action: Start with the strengthen line in Selected Accomplishments\./i)).toBeInTheDocument();
     expect(within(strip).getByText('Strengthen')).toBeInTheDocument();
     expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();

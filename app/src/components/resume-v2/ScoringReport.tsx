@@ -14,7 +14,6 @@ import { useState, type ReactNode } from 'react';
 import {
   ChevronDown,
   ChevronUp,
-  ArrowRight,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -362,11 +361,15 @@ function CompactScoreSummaryHeader({
   const beforeAts = preScores.ats_match;
   const truth = assembly.scores.truth;
   const tone = assembly.scores.tone;
+  const hiringManagerScan = assembly.hiring_manager_scan;
   const delta = afterAts - beforeAts;
   const jdBreakdown = gapAnalysis?.score_breakdown?.job_description;
   const outstandingRequirements = jdBreakdown
     ? jdBreakdown.partial + jdBreakdown.missing
     : null;
+  const coveredRequirements = jdBreakdown?.addressed ?? null;
+  const totalRequirements = jdBreakdown?.total ?? null;
+  const redFlags = hiringManagerScan?.red_flags.length ?? 0;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
@@ -375,64 +378,142 @@ function CompactScoreSummaryHeader({
       ? `Your resume now clearly covers the job requirements we measured${reviewStatusLabel ? `, and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`
       : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`);
 
+  const topGains = [
+    `${Math.abs(delta)}-point ATS improvement from your original resume`,
+    coveredRequirements !== null && totalRequirements !== null
+      ? `${coveredRequirements} of ${totalRequirements} measured role requirements now read as addressed`
+      : null,
+    hiringManagerScan
+      ? `Recruiter scan is ${hiringManagerScan.pass ? 'passing' : 'flagged for review'} at ${hiringManagerScan.scan_score}`
+      : null,
+  ].filter((item): item is string => Boolean(item));
+
+  const topRisks = [
+    outstandingRequirements && outstandingRequirements > 0
+      ? `${outstandingRequirements} role requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof`
+      : null,
+    reviewStatusLabel && reviewStatusLabel !== 'Ready'
+      ? `Final review is currently ${reviewStatusLabel.toLowerCase()}`
+      : null,
+    redFlags > 0
+      ? `${redFlags} recruiter red flag${redFlags === 1 ? '' : 's'} still showing`
+      : null,
+  ].filter((item): item is string => Boolean(item));
+
   return (
-    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-[var(--text-strong)]">Score Snapshot</p>
           <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
-            Before vs. now, with the fastest read on what still needs attention.
+            The fast read: how far the resume moved, what improved most, and what still needs work.
           </p>
         </div>
-        <div className="room-meta-strip text-[13px]">
-          <div className="room-meta-item">
-            Before
-            <strong>{beforeAts}%</strong>
+        {reviewStatusLabel && (
+          <div className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+            Final review: <span className="text-[var(--text-strong)]">{reviewStatusLabel}</span>
           </div>
-          <div className="room-meta-item">
-            Now
-            <strong>{afterAts}%</strong>
-          </div>
-          {reviewStatusLabel && (
-            <div className="room-meta-item">
-              Final review
-              <strong>{reviewStatusLabel}</strong>
+        )}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Before vs Now</p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
+              <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--text-muted)]">{beforeAts}%</p>
             </div>
+            <span aria-hidden="true" className="pb-1 text-lg text-[var(--text-soft)]">-&gt;</span>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
+              <div className="mt-1 flex items-center gap-2">
+                <p className="text-3xl font-semibold tabular-nums" style={{ color: '#b5dec2' }}>{afterAts}%</p>
+                <DeltaBadge before={beforeAts} after={afterAts} />
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+        </div>
+
+        <div className="grid gap-2 grid-cols-2">
+          <CompactMetric
+            label="Truth"
+            value={String(truth)}
+            accent="soft"
+            detail="Claim confidence"
+          />
+          <CompactMetric
+            label="Tone"
+            value={String(tone)}
+            accent="warn"
+            detail="Executive voice"
+          />
+          {coveredRequirements !== null && totalRequirements !== null ? (
+            <CompactMetric
+              label="Requirements"
+              value={`${coveredRequirements}/${totalRequirements}`}
+              accent="good"
+              detail="Read as covered"
+            />
+          ) : (
+            <CompactMetric
+              label="Before"
+              value={`${beforeAts}%`}
+              detail="Original ATS"
+            />
           )}
+          <CompactMetric
+            label="Next move"
+            value={attentionNextAction ? 'Resume' : 'Review'}
+            accent={attentionNextAction ? 'warn' : 'good'}
+            detail={attentionNextAction ? 'Work the next line' : 'Rerun final review'}
+          />
         </div>
       </div>
 
-      <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-        <CompactMetric
-          label="Before"
-          value={`${beforeAts}%`}
-        />
-        <CompactMetric
-          label="Now"
-          value={`${afterAts}%`}
-          accent="good"
-          detail={delta === 0 ? undefined : `${delta > 0 ? '+' : ''}${delta}`}
-        />
-        <CompactMetric
-          label="Truth"
-          value={String(truth)}
-          accent="soft"
-        />
-        <CompactMetric
-          label="Tone"
-          value={String(tone)}
-          accent="warn"
-        />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#b5dec2' }}>
+            Biggest gains
+          </p>
+          <ul className="mt-3 space-y-2">
+            {topGains.map((gain) => (
+              <li key={gain} className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
+                <span>{gain}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
+            Still to close
+          </p>
+          <ul className="mt-3 space-y-2">
+            {topRisks.length > 0 ? topRisks.map((risk) => (
+              <li key={risk} className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+                <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#f0d99f' }} />
+                <span>{risk}</span>
+              </li>
+            )) : (
+              <li className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
+                <span>No major issues are blocking the draft right now.</span>
+              </li>
+            )}
+          </ul>
+        </div>
       </div>
 
       <div className="support-callout px-4 py-3">
-        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
-        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
-        {attentionNextAction && (
-          <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-            Next best action: {attentionNextAction}
-          </p>
-        )}
+        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Next best action</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+          {attentionNextAction
+            ? attentionNextAction
+            : 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.'}
+        </p>
       </div>
     </div>
   );
@@ -618,7 +699,7 @@ function AfterReport({
         </div>
         <ScoreBar value={afterAts} color="#b5dec2" />
         <div className="flex items-center gap-1 text-[11px] text-[var(--text-soft)]">
-          <ArrowRight className="h-2.5 w-2.5 shrink-0" />
+          <span aria-hidden="true" className="text-[10px]">-&gt;</span>
           <span>
             {preScores.keywords_found.length} → {keywordsFoundAfter.length} keywords matched
             {newlyAdded.length > 0 && ` (+${newlyAdded.length} newly added)`}
