@@ -112,6 +112,9 @@ interface AttentionReviewItem {
   selector: string;
   text: string;
   statusLabel: string;
+  statusClassName: string;
+  priority: number;
+  order: number;
   requirements: string[];
 }
 
@@ -126,28 +129,58 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
   );
 }
 
-function getAttentionStatusLabel(
+function getAttentionStatusMeta(
   confidence: BulletConfidence,
   requirementSource?: RequirementSource,
-): string {
-  if (confidence === 'partial') return 'Strengthen';
-  if (confidence === 'needs_validation' && requirementSource === 'benchmark') return 'Validate Fit';
-  if (confidence === 'needs_validation') return 'Needs Proof';
-  return 'Review';
+): { label: string; className: string; priority: number } {
+  if (confidence === 'needs_validation' && requirementSource !== 'benchmark') {
+    return {
+      label: 'Needs Proof',
+      className: 'border-red-200 bg-red-50 text-red-700',
+      priority: 0,
+    };
+  }
+
+  if (confidence === 'needs_validation') {
+    return {
+      label: 'Validate Fit',
+      className: 'border-orange-200 bg-orange-50 text-orange-700',
+      priority: 1,
+    };
+  }
+
+  if (confidence === 'partial') {
+    return {
+      label: 'Strengthen',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+      priority: 2,
+    };
+  }
+
+  return {
+    label: 'Review',
+    className: 'border-[var(--line-soft)] bg-[var(--surface-0)] text-[var(--text-soft)]',
+    priority: 3,
+  };
 }
 
 function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
   const items: AttentionReviewItem[] = [];
+  let order = 0;
 
   resume.selected_accomplishments.forEach((bullet, index) => {
     if (bullet.confidence === 'strong') return;
+    const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
     items.push({
       id: `selected_accomplishments-${index}`,
       section: 'selected_accomplishments',
       index,
       selector: `[data-bullet-id="selected_accomplishments-${index}"]`,
       text: bullet.content,
-      statusLabel: getAttentionStatusLabel(bullet.confidence, bullet.requirement_source),
+      statusLabel: status.label,
+      statusClassName: status.className,
+      priority: status.priority,
+      order: order++,
       requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
     });
   });
@@ -157,19 +190,23 @@ function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
     bullets.forEach((bullet, bulletOffset) => {
       if (bullet.confidence === 'strong') return;
       const index = experienceIndex * 100 + bulletOffset;
+      const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
       items.push({
         id: `professional_experience-${index}`,
         section: 'professional_experience',
         index,
         selector: `[data-bullet-id="professional_experience-${index}"]`,
         text: bullet.text,
-        statusLabel: getAttentionStatusLabel(bullet.confidence, bullet.requirement_source),
+        statusLabel: status.label,
+        statusClassName: status.className,
+        priority: status.priority,
+        order: order++,
         requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
       });
     });
   });
 
-  return items;
+  return items.sort((a, b) => a.priority - b.priority || a.order - b.order);
 }
 
 function AttentionReviewStrip({
@@ -209,7 +246,7 @@ function AttentionReviewStrip({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${current.statusClassName}`}>
             {current.statusLabel}
           </span>
           <p data-testid="attention-review-current-text" className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">

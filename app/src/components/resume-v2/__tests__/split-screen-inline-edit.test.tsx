@@ -5,7 +5,7 @@
  *   2. V2StreamingDisplay split-screen toggle behavior
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act, within } from '@testing-library/react';
 
 import { ResumeDocumentCard } from '../cards/ResumeDocumentCard';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
@@ -924,9 +924,11 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByTestId('attention-review-strip')).toBeInTheDocument();
+    const strip = screen.getByTestId('attention-review-strip');
+    expect(strip).toBeInTheDocument();
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    expect(within(strip).getByText('Needs Proof')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });
 
@@ -953,12 +955,12 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
 
     expect(screen.getByText('2 of 2')).toBeInTheDocument();
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
 
