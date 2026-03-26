@@ -46,7 +46,7 @@ function makeResumeDraft(label = 'A'): ResumeDraft {
     },
     core_competencies: ['Team Leadership', 'SaaS', 'Cloud'],
     selected_accomplishments: [
-      { content: `Reduced deploy time by 60% ${label}`, is_new: false, addresses_requirements: [] },
+      { content: `Reduced deploy time by 60% ${label}`, is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
     ],
     professional_experience: [
       {
@@ -56,8 +56,8 @@ function makeResumeDraft(label = 'A'): ResumeDraft {
         end_date: 'Present',
         scope_statement: 'Led org of 45',
         bullets: [
-          { text: `Shipped 3 major product lines ${label}`, is_new: false, addresses_requirements: [] },
-          { text: `Reduced infra cost 30% ${label}`, is_new: false, addresses_requirements: [] },
+          { text: `Shipped 3 major product lines ${label}`, is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
+          { text: `Reduced infra cost 30% ${label}`, is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
         ],
       },
     ],
@@ -121,7 +121,7 @@ describe('WhatChangedCard — summary counts', () => {
           ...base.professional_experience[0],
           bullets: [
             ...base.professional_experience[0].bullets,
-            { text: 'Brand new achievement added in rerun', is_new: true, addresses_requirements: [] },
+            { text: 'Brand new achievement added in rerun', is_new: true, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],
@@ -146,7 +146,7 @@ describe('WhatChangedCard — summary counts', () => {
           ...makeResumeDraft('curr').professional_experience[0],
           bullets: [
             // Only one of the two original bullets survives
-            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [] },
+            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],
@@ -231,7 +231,7 @@ describe('WhatChangedCard — bullet colours', () => {
           end_date: 'Present',
           scope_statement: 'Led org of 45',
           bullets: [
-            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [] },
+            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],
@@ -246,8 +246,8 @@ describe('WhatChangedCard — bullet colours', () => {
           end_date: 'Present',
           scope_statement: 'Led org of 45',
           bullets: [
-            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [] },
-            { text: 'Freshly added achievement here', is_new: true, addresses_requirements: [] },
+            { text: 'Shipped 3 major product lines prev', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
+            { text: 'Freshly added achievement here', is_new: true, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],
@@ -279,8 +279,8 @@ describe('WhatChangedCard — bullet colours', () => {
           end_date: 'Present',
           scope_statement: 'Led org of 45',
           bullets: [
-            { text: 'This bullet will be removed in rerun', is_new: false, addresses_requirements: [] },
-            { text: 'Stable bullet that survives', is_new: false, addresses_requirements: [] },
+            { text: 'This bullet will be removed in rerun', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
+            { text: 'Stable bullet that survives', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],
@@ -295,7 +295,7 @@ describe('WhatChangedCard — bullet colours', () => {
           end_date: 'Present',
           scope_statement: 'Led org of 45',
           bullets: [
-            { text: 'Stable bullet that survives', is_new: false, addresses_requirements: [] },
+            { text: 'Stable bullet that survives', is_new: false, addresses_requirements: [], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
           ],
         },
       ],

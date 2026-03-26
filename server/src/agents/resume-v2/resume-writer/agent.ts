@@ -14,7 +14,16 @@ import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
-import type { ResumeWriterInput, ResumeDraftOutput } from '../types.js';
+import type {
+  ResumeWriterInput,
+  ResumeDraftOutput,
+  ResumeBullet,
+  RequirementGap,
+  RequirementSource,
+  CandidateExperience,
+  BulletSource,
+  BulletConfidence,
+} from '../types.js';
 
 const loggedFuzzyExperienceFramingMatches = new Set<string>();
 
@@ -227,7 +236,7 @@ export async function runResumeWriter(
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
-      max_tokens: 16384,
+      max_tokens: 32768,
       signal,
     });
 
@@ -254,7 +263,7 @@ export async function runResumeWriter(
         system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
         messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
         response_format: { type: 'json_object' },
-        max_tokens: 16384,
+        max_tokens: 32768,
         signal,
       });
 
@@ -298,6 +307,56 @@ export async function runResumeWriter(
   // Guardrail: ensure ALL candidate positions appear in the output.
   // If the LLM dropped positions, backfill them to prevent truncation.
   parsed = ensureAllPositionsPresent(parsed, input);
+
+  // Guardrail: backfill bullets when the LLM wrote fewer than the original resume had.
+  // The prompt says "Do not produce fewer bullets than the original" but LLMs don't always follow.
+  parsed = ensureMinimumBulletCounts(parsed, input);
+
+  // Guardrail: ensure EVERY bullet has confidence metadata for frontend color coding.
+  // The LLM frequently omits optional fields — this guarantees them.
+  // Pass input so we can look up requirement_source from gap_analysis.
+  parsed = ensureBulletMetadata(parsed, input);
+
+  // FINAL PASS: deterministic requirement matching — overwrites LLM metadata
+  parsed = deterministicRequirementMatch(
+    parsed,
+    input.candidate.experience ?? [],
+    input.gap_analysis.requirements,
+  );
+
+  // Log color distribution summary
+  const colorCounts = { green: 0, amber: 0, red: 0, orange: 0 };
+  for (const a of parsed.selected_accomplishments ?? []) {
+    if (a.source === 'original' && a.confidence === 'strong') colorCounts.green++;
+    else if (a.source === 'enhanced' && a.confidence === 'partial') colorCounts.amber++;
+    else if (a.source === 'drafted' && a.requirement_source === 'benchmark') colorCounts.orange++;
+    else if (a.source === 'drafted') colorCounts.red++;
+  }
+  for (const exp of parsed.professional_experience ?? []) {
+    for (const b of exp.bullets ?? []) {
+      if (b.source === 'original' && b.confidence === 'strong') colorCounts.green++;
+      else if (b.source === 'enhanced' && b.confidence === 'partial') colorCounts.amber++;
+      else if (b.source === 'drafted' && b.requirement_source === 'benchmark') colorCounts.orange++;
+      else if (b.source === 'drafted') colorCounts.red++;
+    }
+  }
+  logger.info({ colorCounts }, 'Resume Writer: deterministic color distribution');
+
+  // Temp debug: write to file so we can inspect
+  try {
+    const fs = await import('node:fs');
+    const debugData = {
+      colorCounts,
+      totalBullets: (parsed.selected_accomplishments?.length ?? 0) + (parsed.professional_experience ?? []).reduce((s, e) => s + (e.bullets?.length ?? 0), 0),
+      positions: (parsed.professional_experience ?? []).map(e => ({
+        company: e.company,
+        bulletCount: (e.bullets ?? []).length,
+        bullets: (e.bullets ?? []).slice(0, 2).map(b => ({ text: b.text.slice(0, 60), source: b.source, confidence: b.confidence, req_source: b.requirement_source, reqs: b.addresses_requirements?.slice(0, 2) })),
+      })),
+      reqSourceMap: input.gap_analysis?.requirements?.slice(0, 5).map(r => ({ req: r.requirement, source: r.source })),
+    };
+    fs.writeFileSync('/tmp/resume-color-debug.json', JSON.stringify(debugData, null, 2));
+  } catch {}
 
   return parsed;
 }
@@ -680,7 +739,412 @@ function dedupeEducationEntries(
 }
 
 /**
+ * Guardrail: if the LLM produced fewer bullets for a position than the original resume had,
+ * backfill missing original bullets to prevent content loss.
+ * Matches positions by normalized company name.
+ */
+function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriterInput): ResumeDraftOutput {
+  if (!Array.isArray(draft.professional_experience) || !input.candidate?.experience) return draft;
+
+  for (const draftExp of draft.professional_experience) {
+    // Find the matching original experience entry
+    const originalExp = input.candidate.experience.find((orig) => {
+      const draftKey = `${draftExp.company} ${draftExp.title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const origKey = `${orig.company} ${orig.title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return draftKey === origKey || draftKey.includes(origKey) || origKey.includes(draftKey);
+    });
+
+    if (!originalExp) continue;
+
+    const draftBulletCount = (draftExp.bullets ?? []).length;
+    const originalBulletCount = originalExp.bullets.length;
+
+    // If the LLM wrote fewer bullets than the original, backfill original bullets
+    if (draftBulletCount < originalBulletCount) {
+      const existingTexts = new Set((draftExp.bullets ?? []).map(b => b.text.toLowerCase().slice(0, 50)));
+      const missing = originalExp.bullets.filter(
+        (origBullet) => !existingTexts.has(origBullet.toLowerCase().slice(0, 50)),
+      );
+
+      for (const bulletText of missing) {
+        if ((draftExp.bullets ?? []).length >= originalBulletCount) break;
+        draftExp.bullets = draftExp.bullets ?? [];
+        draftExp.bullets.push({
+          text: bulletText,
+          is_new: false,
+          addresses_requirements: [],
+          source: 'original',
+          confidence: 'strong',
+          evidence_found: bulletText,
+          requirement_source: 'job_description',
+        });
+      }
+
+      if (missing.length > 0) {
+        logger.warn(
+          { company: draftExp.company, draftCount: draftBulletCount, originalCount: originalBulletCount, backfilled: missing.length },
+          'Backfilled bullets — LLM wrote fewer than original',
+        );
+      }
+    }
+  }
+
+  return draft;
+}
+
+// ─── Deterministic Requirement Matching ──────────────────────────────────
+// These functions assign bullet color states (green/amber/red/orange) WITHOUT
+// relying on LLM cooperation. They overwrite whatever metadata the LLM produced.
+
+/**
+ * Tokenize text into lowercase alphanumeric tokens of 4+ characters.
+ */
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-zA-Z0-9]+/)
+    .filter((t) => t.length >= 4);
+}
+
+interface IndexedRequirement {
+  requirement: string;
+  source: RequirementSource;
+  keywords: string[];
+}
+
+interface BulletRequirementMatch {
+  matchedRequirements: string[];
+  hasBenchmarkSource: boolean;
+}
+
+/**
+ * Build an index of the candidate's original bullet texts for fast lookup.
+ * - exactLookup: all original bullet texts, lowercased and trimmed
+ * - byCompany: map from normalized company key to that company's original bullet texts
+ */
+function buildOriginalBulletIndex(experience: Array<{ company: string; bullets: string[] }>): {
+  exactLookup: Set<string>;
+  byCompany: Map<string, string[]>;
+} {
+  const exactLookup = new Set<string>();
+  const byCompany = new Map<string, string[]>();
+  for (const exp of experience) {
+    const key = exp.company.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const bullets: string[] = [];
+    for (const bullet of exp.bullets) {
+      exactLookup.add(bullet.toLowerCase().trim());
+      bullets.push(bullet);
+    }
+    byCompany.set(key, [...(byCompany.get(key) ?? []), ...bullets]);
+  }
+  return { exactLookup, byCompany };
+}
+
+/**
+ * Build an indexed array of requirements with keywords extracted for matching.
+ * Keywords: split on non-alphanumeric, keep tokens >= 4 chars, lowercased.
+ */
+function buildRequirementIndex(requirements: RequirementGap[]): IndexedRequirement[] {
+  return requirements.map((req) => ({
+    requirement: req.requirement,
+    source: req.source,
+    keywords: req.requirement
+      .split(/[^a-zA-Z0-9]+/)
+      .filter((t) => t.length >= 4)
+      .map((t) => t.toLowerCase()),
+  }));
+}
+
+/**
+ * Match a bullet's text against the requirement index.
+ * A requirement matches if:
+ *   - any keyword >= 6 chars appears as a substring in the lowercased bullet, OR
+ *   - >= 2 keywords of any qualifying length (4+) appear as substrings
+ * Returns the top 3 matched requirement texts + whether any matched from 'benchmark'.
+ */
+function matchBulletToRequirements(
+  bulletText: string,
+  reqIndex: IndexedRequirement[],
+): BulletRequirementMatch {
+  const lowerBullet = bulletText.toLowerCase();
+  const matched: Array<{ requirement: string; source: RequirementSource; hitCount: number }> = [];
+
+  for (const req of reqIndex) {
+    let hitCount = 0;
+    let hasLongHit = false;
+
+    for (const kw of req.keywords) {
+      if (lowerBullet.includes(kw)) {
+        hitCount++;
+        if (kw.length >= 6) hasLongHit = true;
+      }
+    }
+
+    if (hasLongHit || hitCount >= 2) {
+      matched.push({ requirement: req.requirement, source: req.source, hitCount });
+    }
+  }
+
+  // Sort by hit count descending, take top 3
+  matched.sort((a, b) => b.hitCount - a.hitCount);
+  const top = matched.slice(0, 3);
+
+  return {
+    matchedRequirements: top.map((m) => m.requirement),
+    hasBenchmarkSource: top.some((m) => m.source === 'benchmark'),
+  };
+}
+
+/**
+ * Classify how closely a bullet matches the candidate's original resume text.
+ * Uses per-bullet, company-aware matching with bidirectional overlap.
+ * - 'identical': lowercased trimmed text is an exact match in any original bullet
+ * - 'similar': >= 35% bidirectional token overlap with any bullet from the same company
+ * - 'novel': otherwise
+ */
+function classifyBulletOriginality(
+  bulletText: string,
+  companyOriginals: string[],
+  allExactLookup: Set<string>,
+): 'identical' | 'similar' | 'novel' {
+  const normalized = bulletText.toLowerCase().trim();
+  if (allExactLookup.has(normalized)) return 'identical';
+
+  const newTokens = tokenize(bulletText);
+  if (newTokens.length === 0) return 'novel';
+
+  let bestOverlap = 0;
+  for (const orig of companyOriginals) {
+    const origTokens = tokenize(orig);
+    if (origTokens.length === 0) continue;
+    const origSet = new Set(origTokens);
+    const shared = newTokens.filter(t => origSet.has(t)).length;
+    // Bidirectional: max of (shared/new, shared/orig) so short bullets aren't penalized
+    const overlap = Math.max(shared / newTokens.length, shared / origTokens.length);
+    bestOverlap = Math.max(bestOverlap, overlap);
+  }
+
+  return bestOverlap >= 0.35 ? 'similar' : 'novel';
+}
+
+/**
+ * Deterministic requirement matching — the authoritative pass that assigns
+ * all 4 color states (green/amber/red/orange) to resume bullets WITHOUT
+ * relying on LLM cooperation. Overwrites whatever metadata the LLM produced.
+ *
+ * Color mapping (consumed by frontend):
+ *   green  = source:'original',  confidence:'strong'
+ *   amber  = source:'enhanced',  confidence:'partial'
+ *   red    = source:'drafted',   confidence:'needs_validation', req_source:'job_description'
+ *   orange = source:'drafted',   confidence:'needs_validation', req_source:'benchmark'
+ *
+ * Classification matrix:
+ *   identical + any match     → original / strong
+ *   similar   + JD match      → enhanced / partial / job_description
+ *   similar   + bench match   → enhanced / partial / benchmark
+ *   similar   + no match      → original / strong / job_description
+ *   novel     + JD match      → drafted  / needs_validation / job_description
+ *   novel     + bench match   → drafted  / needs_validation / benchmark
+ *   novel     + no match      → drafted  / needs_validation / job_description
+ */
+function deterministicRequirementMatch(
+  draft: ResumeDraftOutput,
+  candidateExperience: CandidateExperience[],
+  requirements: RequirementGap[],
+): ResumeDraftOutput {
+  const { exactLookup, byCompany } = buildOriginalBulletIndex(candidateExperience);
+  const reqIndex = buildRequirementIndex(requirements);
+
+  // Collect ALL originals from every company (used for selected_accomplishments)
+  const allOriginals: string[] = [];
+  for (const bullets of byCompany.values()) {
+    allOriginals.push(...bullets);
+  }
+
+  const classify = (
+    text: string,
+    companyOriginals: string[],
+  ): {
+    addresses_requirements: string[];
+    requirement_source: RequirementSource;
+    source: BulletSource;
+    confidence: BulletConfidence;
+  } => {
+    const match = matchBulletToRequirements(text, reqIndex);
+    const originality = classifyBulletOriginality(text, companyOriginals, exactLookup);
+    const hasMatch = match.matchedRequirements.length > 0;
+
+    let source: BulletSource;
+    let confidence: BulletConfidence;
+    let requirementSource: RequirementSource;
+
+    switch (originality) {
+      case 'identical':
+        source = 'original';
+        confidence = 'strong';
+        requirementSource = hasMatch
+          ? (match.hasBenchmarkSource ? 'benchmark' : 'job_description')
+          : 'job_description';
+        break;
+
+      case 'similar':
+        if (hasMatch) {
+          source = 'enhanced';
+          confidence = 'partial';
+          requirementSource = match.hasBenchmarkSource ? 'benchmark' : 'job_description';
+        } else {
+          source = 'original';
+          confidence = 'strong';
+          requirementSource = 'job_description';
+        }
+        break;
+
+      case 'novel':
+      default:
+        source = 'drafted';
+        confidence = 'needs_validation';
+        requirementSource = match.hasBenchmarkSource ? 'benchmark' : 'job_description';
+        break;
+    }
+
+    return {
+      addresses_requirements: match.matchedRequirements,
+      requirement_source: requirementSource,
+      source,
+      confidence,
+    };
+  };
+
+  // Process selected_accomplishments — compare against ALL companies' originals
+  if (Array.isArray(draft.selected_accomplishments)) {
+    draft.selected_accomplishments = draft.selected_accomplishments.map((a) => {
+      const result = classify(a.content, allOriginals);
+      return {
+        ...a,
+        addresses_requirements: result.addresses_requirements,
+        requirement_source: result.requirement_source,
+        source: result.source,
+        confidence: result.confidence,
+      };
+    });
+  }
+
+  // Process professional_experience bullets — compare against that company's originals
+  if (Array.isArray(draft.professional_experience)) {
+    draft.professional_experience = draft.professional_experience.map((exp) => {
+      const companyKey = (exp.company ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const companyOriginals = byCompany.get(companyKey) ?? allOriginals;
+      return {
+        ...exp,
+        bullets: Array.isArray(exp.bullets)
+          ? exp.bullets.map((bullet) => {
+              const result = classify(bullet.text, companyOriginals);
+              return {
+                ...bullet,
+                addresses_requirements: result.addresses_requirements,
+                requirement_source: result.requirement_source,
+                source: result.source,
+                confidence: result.confidence,
+              };
+            })
+          : [],
+      };
+    });
+  }
+
+  return draft;
+}
+
+/**
  * Guardrail: ensure every candidate position appears in the resume output.
+ * Guarantees every bullet in the resume has metadata for frontend color coding.
+ * The LLM is instructed to include these fields but frequently omits them.
+ * This function fills any gaps deterministically so the frontend always has data.
+ */
+function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInput): ResumeDraftOutput {
+  // Build a lookup from requirement text → source ('job_description' | 'benchmark')
+  // so we can infer requirement_source when the LLM omits it.
+  const reqSourceMap = new Map<string, 'job_description' | 'benchmark'>();
+  if (input?.gap_analysis?.requirements) {
+    for (const req of input.gap_analysis.requirements) {
+      reqSourceMap.set(req.requirement.toLowerCase(), req.source ?? 'job_description');
+    }
+  }
+
+  const inferReqSource = (addressesRequirements: string[]): 'job_description' | 'benchmark' => {
+    for (const req of addressesRequirements) {
+      const source = reqSourceMap.get(req.toLowerCase());
+      if (source) return source;
+    }
+    return 'job_description';
+  };
+
+  const inferSource = (isNew: boolean, evidenceFound: string | undefined, addressesReqs: string[], existingSource?: string): BulletSource => {
+    if (existingSource) return existingSource as BulletSource;
+    // is_new=true is a clear signal from the LLM
+    if (isNew) return 'drafted';
+    // Has evidence (non-empty string) AND addresses requirements → enhanced from original
+    const hasRealEvidence = typeof evidenceFound === 'string' && evidenceFound.length > 0;
+    // If bullet addresses requirements AND has substantive evidence → it was enhanced
+    if (addressesReqs.length > 0 && hasRealEvidence) return 'enhanced';
+    // If bullet addresses requirements but no real evidence → it was drafted to fill gaps
+    if (addressesReqs.length > 0 && !hasRealEvidence) return 'drafted';
+    // Default: from the original resume
+    return 'original';
+  };
+
+  const inferConfidence = (source: BulletSource, evidenceFound?: string, existingConfidence?: string): BulletConfidence => {
+    if (existingConfidence) return existingConfidence as BulletConfidence;
+    if (source === 'original') return 'strong';
+    if (source === 'enhanced') return 'partial';
+    // drafted — needs user validation
+    return 'needs_validation';
+  };
+
+  const fillBullet = (bullet: ResumeBullet): ResumeBullet => {
+    const reqs = bullet.addresses_requirements ?? [];
+    const source = inferSource(bullet.is_new, bullet.evidence_found, reqs, bullet.source);
+    const confidence = inferConfidence(source, bullet.evidence_found, bullet.confidence);
+    return {
+      ...bullet,
+      source,
+      confidence,
+      evidence_found: bullet.evidence_found ?? '',
+      requirement_source: bullet.requirement_source ?? inferReqSource(reqs),
+      addresses_requirements: reqs,
+    };
+  };
+
+  if (Array.isArray(draft.selected_accomplishments)) {
+    draft.selected_accomplishments = draft.selected_accomplishments.map((a) => {
+      const reqs = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
+      const source = inferSource(a.is_new, a.evidence_found, reqs, a.source);
+      const confidence = inferConfidence(source, a.evidence_found, a.confidence);
+      return {
+        ...a,
+        source,
+        confidence,
+        evidence_found: a.evidence_found ?? '',
+        requirement_source: a.requirement_source ?? inferReqSource(reqs),
+        addresses_requirements: reqs,
+      };
+    });
+  }
+
+  if (Array.isArray(draft.professional_experience)) {
+    draft.professional_experience = draft.professional_experience.map((exp) => ({
+      ...exp,
+      scope_statement_source: exp.scope_statement_source ?? (exp.scope_statement_is_new ? 'enhanced' : 'original'),
+      scope_statement_confidence: exp.scope_statement_confidence ?? (exp.scope_statement_is_new ? 'partial' : 'strong'),
+      scope_statement_evidence_found: exp.scope_statement_evidence_found ?? '',
+      bullets: Array.isArray(exp.bullets) ? exp.bullets.map(fillBullet) : [],
+    }));
+  }
+
+  return draft;
+}
+
+/**
  * If the LLM dropped positions (common with tight max_tokens), backfill them
  * into professional_experience or earlier_career as appropriate.
  */

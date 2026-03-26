@@ -163,6 +163,18 @@ export interface GapAnalysis {
   }>;
 }
 
+// ─── Gap Questions (gate emitted before writing, requires user responses) ──
+
+export interface GapQuestion {
+  id: string;
+  requirement: string;
+  importance: 'critical' | 'important' | 'supporting';
+  classification: 'partial' | 'missing';
+  question: string;
+  context: string;
+  currentEvidence: string[];
+}
+
 // ─── Gap Coaching (AI coaching conversation) ─────────────────────
 
 export interface GapCoachingCard {
@@ -259,12 +271,12 @@ export interface ResumeBullet {
   text: string;
   is_new: boolean;
   addresses_requirements: string[];
-  /** Confidence level based on evidence found in the original resume */
-  confidence?: BulletConfidence;
+  /** Confidence level — guaranteed by server ensureBulletMetadata() */
+  confidence: BulletConfidence;
   /** The original resume text that supports this bullet */
-  evidence_found?: string;
+  evidence_found: string;
   /** Whether this requirement came from the JD or from the benchmark profile */
-  requirement_source?: RequirementSource;
+  requirement_source: RequirementSource;
 }
 
 export interface ResumeExperience {
@@ -296,12 +308,12 @@ export interface ResumeDraft {
     content: string;
     is_new: boolean;
     addresses_requirements: string[];
-    /** Confidence level based on evidence found in the original resume */
-    confidence?: BulletConfidence;
+    /** Confidence level — guaranteed by server ensureBulletMetadata() */
+    confidence: BulletConfidence;
     /** The original resume text that supports this bullet */
-    evidence_found?: string;
+    evidence_found: string;
     /** Whether this requirement came from the JD or from the benchmark profile */
-    requirement_source?: RequirementSource;
+    requirement_source: RequirementSource;
   }>;
   professional_experience: ResumeExperience[];
   earlier_career?: Array<{
@@ -694,11 +706,13 @@ export interface V2PipelineData {
   benchmarkCandidate: BenchmarkCandidate | null;
   gapAnalysis: GapAnalysis | null;
   gapCoachingCards: GapCoachingCard[] | null;
+  gapQuestions: GapQuestion[] | null;
   preScores: PreScores | null;
   narrativeStrategy: NarrativeStrategy | null;
   resumeDraft: ResumeDraft | null;
   assembly: AssemblyResult | null;
   inlineSuggestions: InlineSuggestion[];
+  hiringManagerScan: HiringManagerScan | null;
   /** Full verification agent outputs (truth, ATS, tone) from the pipeline */
   verificationDetail: VerificationDetail | null;
   error: string | null;
@@ -716,6 +730,7 @@ export type V2SSEEvent =
   | { type: 'gap_analysis'; data: GapAnalysis }
   | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
+  | { type: 'gap_questions'; data: { questions: GapQuestion[] } }
   | { type: 'narrative_strategy'; data: NarrativeStrategy }
   | { type: 'resume_draft'; data: ResumeDraft }
   | { type: 'verification_complete'; data?: { truth?: TruthVerificationDetail; ats?: ATSOptimizationDetail; tone?: ExecutiveToneDetail } }

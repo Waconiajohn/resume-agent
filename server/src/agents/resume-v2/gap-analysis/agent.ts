@@ -144,8 +144,7 @@ RULES:
   1. Academic degrees (BS, MS, PhD, MBA, etc.) explicitly required by the JD
   2. Professional certifications (PMP, CPA, PE, CFA, OSHA, IADC, Well Control, etc.) explicitly required
   3. Professional licenses (PE license, medical license, law license, bar admission, etc.)
-  4. Work authorization (only if the resume shows no evidence of working in that country)
-  5. Explicit years-of-experience thresholds stated as minimum requirements (e.g., "minimum 10 years required")
+  4. Explicit years-of-experience thresholds stated as minimum requirements (e.g., "minimum 10 years required")
   NEVER put skills, soft skills, achievements, performance metrics, behavioral competencies, or operational experience into critical_gaps. These are ALL positionable through adjacent experience. If a requirement is about communication, leadership, safety, process improvement, revenue impact, or any similar skill/competency, it MUST stay out of critical_gaps even if the candidate has no direct evidence — those are coaching opportunities, not credential gaps.
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
 - Do not invent availability, travel, relocation, field-presence, on-call, or similar logistics requirements unless they are explicitly stated in the job description requirement itself.

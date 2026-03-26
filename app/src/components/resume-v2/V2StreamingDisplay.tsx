@@ -4,10 +4,6 @@
  * Two layout modes:
  *   1. Processing mode — OriginalScoresCard + LivePipelineCard (or PostGapDebriefCard after gap submission)
  *   2. Resume mode — coaching banner + full-width centered document with inline editing
- *
- * The left panel (RewriteQueuePanel) and Live AI Review column are intentionally
- * not rendered. The SuggestionsBadge overlay (built separately) provides coaching
- * access without a persistent side panel.
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
@@ -26,6 +22,8 @@ import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import type { GapChatContext } from '@/types/resume-v2';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { ResumeWorkspaceRail } from './ResumeWorkspaceRail';
+import { ScoringReport } from './ScoringReport';
+import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { SuggestionsBadge } from './SuggestionsBadge';
 import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
@@ -719,6 +717,13 @@ export function V2StreamingDisplay({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeBullet, onRejectEdit]);
 
+  // Scroll to top when scoring report data arrives so it's visible
+  useEffect(() => {
+    if (data.assembly && containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [data.assembly]);
+
   // Show the full-width resume document once a draft exists.
   // Don't show it while re-running — the old assembly data persists and would be stale.
   const canShowResumeDocument = hasResume && !isRerunning;
@@ -762,278 +767,251 @@ export function V2StreamingDisplay({
     resolvedFinalReviewConcernIds,
   ]);
 
-  // ─── Full-width layout (resume exists) ───────────────────────────────────
-  // Left panel (RewriteQueuePanel) and Live AI Review column are intentionally
-  // not rendered here. They are preserved but not displayed in this layout.
-  // The SuggestionsBadge overlay (built separately) provides the entry point
-  // into inline coaching without a persistent side panel.
-  if (canShowResumeDocument) {
-    return (
-      <div ref={containerRef} className="flex-1 overflow-y-auto relative">
-        {/* Undo/redo bar */}
-        {canShowUndoBar && (
-          <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-[var(--line-soft)]">
-            <button
-              type="button"
-              onClick={onUndo}
-              disabled={undoCount === 0}
-              className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
-              title="Undo"
-            >
-              <Undo2 className="h-3 w-3" />
-              <span>Undo</span>
-              {undoCount > 0 && (
-                <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
-                  {undoCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onRedo}
-              disabled={redoCount === 0}
-              className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
-              title="Redo"
-            >
-              <Redo2 className="h-3 w-3" />
-              <span>Redo</span>
-              {redoCount > 0 && (
-                <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
-                  {redoCount}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
+  // ─── Unified layout — single ScoringReport above the branch split ────────
+  return (
+    <div ref={containerRef} className="flex-1 overflow-y-auto relative">
+      {/* Gap Overview — "Your Resume vs. This Role" — persists across all phases */}
+      {data.gapAnalysis && data.preScores && (
+        <div className="mx-auto max-w-[900px] px-6 pt-8">
+          <GapOverviewCard
+            gapAnalysis={data.gapAnalysis}
+            preScores={data.preScores}
+            questionCount={0}
+            onBeginReview={() => {}}
+          />
+        </div>
+      )}
 
-        {/* Full-width centered resume document */}
-        <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
-          {/* Error banners */}
+      {/* Scoring report — single instance, persists across layout transitions */}
+      {data.preScores && data.assembly && (
+        <div className="mx-auto max-w-[900px] px-6 pt-4">
+          <ScoringReport
+            preScores={data.preScores}
+            assembly={data.assembly}
+            verificationDetail={data.verificationDetail ?? null}
+            gapAnalysis={data.gapAnalysis ?? null}
+          />
+        </div>
+      )}
+
+      {canShowResumeDocument ? (
+        <>
+          {/* Undo/redo bar */}
+          {canShowUndoBar && (
+            <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-[var(--line-soft)]">
+              <button
+                type="button"
+                onClick={onUndo}
+                disabled={undoCount === 0}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
+                title="Undo"
+              >
+                <Undo2 className="h-3 w-3" />
+                <span>Undo</span>
+                {undoCount > 0 && (
+                  <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
+                    {undoCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onRedo}
+                disabled={redoCount === 0}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
+                title="Redo"
+              >
+                <Redo2 className="h-3 w-3" />
+                <span>Redo</span>
+                {redoCount > 0 && (
+                  <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
+                    {redoCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Full-width centered resume document */}
+          <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
+            {/* Error banners */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+            {editError && (
+              <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {editError}
+              </div>
+            )}
+
+            {/* Processing banner — shown while pipeline finalises after resume first appears */}
+            {!isComplete && isConnected && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
+                <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+                <span>{getStageMessage(data.stage)}</span>
+              </div>
+            )}
+
+            {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+
+            {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
+
+            {/* Detailed analysis — gap analysis, benchmark, narrative strategy, verification */}
+            {isComplete && (
+              <PipelineAnalysisSummary
+                gapAnalysis={data.gapAnalysis}
+                benchmarkCandidate={data.benchmarkCandidate}
+                narrativeStrategy={data.narrativeStrategy}
+                assembly={data.assembly}
+                verificationDetail={data.verificationDetail}
+              />
+            )}
+
+            {/* Suggestion progress strip — sticky, shown when there are suggestions */}
+            {isComplete && suggestions.length > 0 && (
+              <SuggestionProgressStrip
+                total={suggestions.length}
+                reviewed={reviewedCount}
+                currentIndex={currentSuggestionIndex}
+                statuses={suggestions.map((s) => s.status)}
+                onAcceptAll={handleAcceptAll}
+                allResolved={allResolved}
+                onExport={() => {
+                  const rail = containerRef.current?.querySelector('[data-workspace-rail]');
+                  rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+              />
+            )}
+
+            {/* Resume document with inline editing */}
+            {displayResume && (
+              <AnimatedCard index={0}>
+                {/* Paper-on-desk document card */}
+                <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                  <ResumeDocumentCard
+                    resume={displayResume}
+                    onTextSelect={canEdit ? handleTextSelect : undefined}
+                    activeBullet={activeBullet}
+                    onBulletClick={canEdit ? handleBulletClick : undefined}
+                    pendingEdit={pendingEdit}
+                    isEditing={isEditing}
+                    onAcceptEdit={handleAcceptEdit}
+                    onRejectEdit={onRejectEdit}
+                    onRequestEdit={canEdit ? onRequestEdit : undefined}
+                    inlineSuggestions={suggestions}
+                    onAcceptSuggestion={acceptSuggestion}
+                    onRejectSuggestion={rejectSuggestion}
+                    currentSuggestionId={currentSuggestionId}
+                    suggestionIndexMap={suggestionIndexMap}
+                  />
+                </div>
+              </AnimatedCard>
+            )}
+
+            {/* Pending edit diff view (for text-selection edits, not inline bullet edits) */}
+            {pendingEdit && !activeBullet && (
+              <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+                <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
+              </div>
+            )}
+
+            {/* Below resume: workspace rail — collapsed by default */}
+            {isComplete && data.assembly && displayResume && (
+              <CollapsibleWorkspaceRail>
+              <ResumeWorkspaceRail
+                displayResume={displayResume}
+                assembly={data.assembly}
+                companyName={data.jobIntelligence?.company_name}
+                jobTitle={data.jobIntelligence?.role_title}
+                atsScore={data.assembly.scores.ats_match}
+                hiringManagerResult={hiringManagerResult ?? null}
+                resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                isFinalReviewStale={isFinalReviewStale}
+                isHiringManagerLoading={isHiringManagerLoading}
+                hiringManagerError={hiringManagerError}
+                onRequestHiringManagerReview={onRequestHiringManagerReview}
+                onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
+                finalReviewChat={finalReviewChat}
+                buildFinalReviewChatContext={buildFinalReviewChatContext}
+                isEditing={isEditing}
+                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
+                onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
+              />
+              </CollapsibleWorkspaceRail>
+            )}
+          </div>
+
+          {/* Floating toolbar (text selection) */}
+          {canEdit && (
+            <InlineEditToolbar
+              position={toolbarPos}
+              isEditing={isEditing}
+              onAction={handleToolbarAction}
+              onDismiss={dismissToolbar}
+            />
+          )}
+
+          {/* SuggestionsBadge — fixed bottom-right overlay showing suggestion count */}
+          <SuggestionsBadge
+            pendingCount={pendingCount}
+            isProcessing={!isComplete && data.inlineSuggestions.length === 0}
+            processingStatus={null}
+            allResolved={allResolved}
+            onScrollToNext={scrollToNext}
+            onExport={() => {
+              // Export is handled by ResumeWorkspaceRail — scroll to it
+              const rail = containerRef.current?.querySelector('[data-workspace-rail]');
+              rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+        </>
+      ) : (
+        /* Processing layout (pipeline running, no resume yet) */
+        <div className="mx-auto max-w-[720px] px-6 py-8">
+          {/* Connection lost notice */}
+          {!isComplete && !isConnected && data.stage !== 'intake' && (
+            <div className="flex items-center gap-2 text-xs text-[#f0d99f]/70 mb-4" role="status">
+              <AlertCircle className="h-3 w-3" />
+              Connection lost — waiting to reconnect...
+            </div>
+          )}
+
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
+            <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90 mb-4" role="alert">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
-          {editError && (
-            <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {editError}
-            </div>
-          )}
-
-          {/* Processing banner — shown while pipeline finalises after resume first appears */}
-          {!isComplete && isConnected && (
-            <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
-              <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-              <span>{getStageMessage(data.stage)}</span>
-            </div>
-          )}
-
-          {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
           {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
-          {/* Detailed analysis — gap analysis, benchmark, narrative strategy, verification */}
-          {isComplete && (
-            <PipelineAnalysisSummary
+          {/* Gap question flow — shown when coaching cards arrive, before resume generation.
+              Replaces the staged processing viewer while questions are pending. */}
+          {gapQuestions.length > 0 && !gapQuestionsSubmitted && !pipelinePastGaps ? (
+            <GapQuestionFlow
+              questions={gapQuestions}
               gapAnalysis={data.gapAnalysis}
-              benchmarkCandidate={data.benchmarkCandidate}
-              narrativeStrategy={data.narrativeStrategy}
-              assembly={data.assembly}
-              verificationDetail={data.verificationDetail}
+              preScores={data.preScores}
+              onComplete={handleGapQuestionsComplete}
+              onAssist={onGapAssist}
             />
-          )}
-
-          {/* Suggestion progress strip — sticky, shown when there are suggestions */}
-          {isComplete && suggestions.length > 0 && (
-            <SuggestionProgressStrip
-              total={suggestions.length}
-              reviewed={reviewedCount}
-              currentIndex={currentSuggestionIndex}
-              statuses={suggestions.map((s) => s.status)}
-              onAcceptAll={handleAcceptAll}
-              allResolved={allResolved}
-              onExport={() => {
-                const rail = containerRef.current?.querySelector('[data-workspace-rail]');
-                rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            />
-          )}
-
-          {/* Resume document with inline editing */}
-          {displayResume && (
-            <AnimatedCard index={0}>
-              {/* Paper-on-desk document card */}
-              <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
-                <ResumeDocumentCard
-                  resume={displayResume}
-                  onTextSelect={canEdit ? handleTextSelect : undefined}
-                  activeBullet={activeBullet}
-                  onBulletClick={canEdit ? handleBulletClick : undefined}
-                  pendingEdit={pendingEdit}
-                  isEditing={isEditing}
-                  onAcceptEdit={handleAcceptEdit}
-                  onRejectEdit={onRejectEdit}
-                  onRequestEdit={canEdit ? onRequestEdit : undefined}
-                  inlineSuggestions={suggestions}
-                  onAcceptSuggestion={acceptSuggestion}
-                  onRejectSuggestion={rejectSuggestion}
-                  currentSuggestionId={currentSuggestionId}
-                  suggestionIndexMap={suggestionIndexMap}
-                />
-              </div>
-            </AnimatedCard>
-          )}
-
-          {/* Pending edit diff view (for text-selection edits, not inline bullet edits) */}
-          {pendingEdit && !activeBullet && (
-            <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
-              <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
-            </div>
-          )}
-
-          {/* Below resume: workspace rail — collapsed by default */}
-          {isComplete && data.assembly && displayResume && (
-            <CollapsibleWorkspaceRail>
-            <ResumeWorkspaceRail
-              displayResume={displayResume}
-              pendingEdit={pendingEdit}
-              assembly={data.assembly}
-              companyName={data.jobIntelligence?.company_name}
-              jobTitle={data.jobIntelligence?.role_title}
-              atsScore={data.assembly.scores.ats_match}
-              hiringManagerResult={hiringManagerResult ?? null}
-              resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-              isFinalReviewStale={isFinalReviewStale}
-              isHiringManagerLoading={isHiringManagerLoading}
-              hiringManagerError={hiringManagerError}
-              onRequestHiringManagerReview={onRequestHiringManagerReview}
-              onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
-              finalReviewChat={finalReviewChat}
-              buildFinalReviewChatContext={buildFinalReviewChatContext}
-              isEditing={isEditing}
-              queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-              nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-              jobBreakdown={{
-                addressed: jobBreakdown.addressed,
-                total: jobBreakdown.total,
-                partial: jobBreakdown.partial,
-                missing: jobBreakdown.missing,
-                coverageScore: jobBreakdown.coverage_score,
-              }}
-              benchmarkBreakdown={{
-                addressed: benchmarkBreakdown.addressed,
-                total: benchmarkBreakdown.total,
-                partial: benchmarkBreakdown.partial,
-                missing: benchmarkBreakdown.missing,
-                coverageScore: benchmarkBreakdown.coverage_score,
-              }}
-              postReviewPolish={postReviewPolish}
-              finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
-              onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
-              onAddContext={onAddContext}
-              isRerunning={isRerunning}
-              masterSaveMode={masterSaveMode}
-              onChangeMasterSaveMode={onChangeMasterSaveMode}
-              onSaveCurrentToMaster={onSaveCurrentToMaster}
-              isSavingToMaster={isSavingToMaster}
-              masterSaveStatus={masterSaveStatus}
-              promotableMasterItems={promotableMasterItems}
-              selectedMasterPromotionIds={selectedMasterPromotionIds}
-              onToggleMasterPromotionItem={onToggleMasterPromotionItem}
-              onSelectAllMasterPromotionItems={onSelectAllMasterPromotionItems}
-              onClearMasterPromotionItems={onClearMasterPromotionItems}
-              jobIntelligence={data.jobIntelligence}
-              candidateIntelligence={data.candidateIntelligence}
-              benchmarkCandidate={data.benchmarkCandidate}
-              narrativeStrategy={data.narrativeStrategy}
+          ) : gapQuestionsSubmitted && !hasResume ? (
+            <PostGapDebriefCard
+              responses={gapResponses}
+              stage={data.stage}
               isComplete={isComplete}
-              liveScores={liveScores}
-              isScoring={isScoring}
-              onIntegrateKeyword={onIntegrateKeyword}
-              preScores={preScores}
-              previousResume={previousResume}
-              onDismissChanges={onDismissChanges}
-              verificationDetail={data.verificationDetail}
-              gapAnalysis={data.gapAnalysis}
             />
-            </CollapsibleWorkspaceRail>
+          ) : (
+            <LivePipelineCard data={data} isComplete={isComplete} />
           )}
         </div>
-
-        {/* Floating toolbar (text selection) */}
-        {canEdit && (
-          <InlineEditToolbar
-            position={toolbarPos}
-            isEditing={isEditing}
-            onAction={handleToolbarAction}
-            onDismiss={dismissToolbar}
-          />
-        )}
-
-        {/* SuggestionsBadge — fixed bottom-right overlay showing suggestion count */}
-        <SuggestionsBadge
-          pendingCount={pendingCount}
-          isProcessing={!isComplete && data.inlineSuggestions.length === 0}
-          processingStatus={null}
-          allResolved={allResolved}
-          onScrollToNext={scrollToNext}
-          onExport={() => {
-            // Export is handled by ResumeWorkspaceRail — scroll to it
-            const rail = containerRef.current?.querySelector('[data-workspace-rail]');
-            rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }}
-        />
-      </div>
-    );
-  }
-
-  // ─── Processing layout (pipeline running, no resume yet) ─────────────────
-  // Shows OriginalScoresCard (when preScores available) + LivePipelineCard or PostGapDebriefCard.
-  return (
-    <div
-      ref={containerRef}
-      className="flex-1 overflow-y-auto relative"
-    >
-      <div className="mx-auto max-w-[720px] px-6 py-8">
-        {/* Connection lost notice */}
-        {!isComplete && !isConnected && data.stage !== 'intake' && (
-          <div className="flex items-center gap-2 text-xs text-[#f0d99f]/70 mb-4" role="status">
-            <AlertCircle className="h-3 w-3" />
-            Connection lost — waiting to reconnect...
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90 mb-4" role="alert">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
-
-        {/* Gap question flow — shown when coaching cards arrive, before resume generation.
-            Replaces the staged processing viewer while questions are pending. */}
-        {gapQuestions.length > 0 && !gapQuestionsSubmitted && !pipelinePastGaps ? (
-          <GapQuestionFlow
-            questions={gapQuestions}
-            gapAnalysis={data.gapAnalysis}
-            preScores={data.preScores}
-            onComplete={handleGapQuestionsComplete}
-            onAssist={onGapAssist}
-          />
-        ) : gapQuestionsSubmitted && !hasResume ? (
-          <PostGapDebriefCard
-            responses={gapResponses}
-            stage={data.stage}
-            isComplete={isComplete}
-          />
-        ) : (
-          <LivePipelineCard data={data} isComplete={isComplete} />
-        )}
-      </div>
+      )}
     </div>
   );
 }

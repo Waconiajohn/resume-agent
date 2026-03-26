@@ -277,7 +277,7 @@ const RESUME_DRAFT_OUTPUT: ResumeDraftOutput = {
   },
   core_competencies: ['Cloud Architecture', 'Platform Engineering', 'Team Leadership'],
   selected_accomplishments: [
-    { content: 'Scaled platform to 500K DAU with 99.99% SLA', is_new: false, addresses_requirements: ['Cloud Architecture'] },
+    { content: 'Scaled platform to 500K DAU with 99.99% SLA', is_new: false, addresses_requirements: ['Cloud Architecture'], source: 'original' as const, confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
   ],
   professional_experience: [
     {
@@ -286,8 +286,11 @@ const RESUME_DRAFT_OUTPUT: ResumeDraftOutput = {
       start_date: 'Jan 2020',
       end_date: 'Present',
       scope_statement: 'Led 40-person engineering org, $3M+ payroll accountability',
+      scope_statement_source: 'original' as const,
+      scope_statement_confidence: 'strong' as const,
+      scope_statement_evidence_found: '',
       bullets: [
-        { text: 'Architected cloud platform serving 500K DAU at 99.99% uptime', is_new: false, addresses_requirements: ['Cloud Architecture'] },
+        { text: 'Architected cloud platform serving 500K DAU at 99.99% uptime', is_new: false, addresses_requirements: ['Cloud Architecture'], source: 'original' as const, confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
       ],
     },
   ],

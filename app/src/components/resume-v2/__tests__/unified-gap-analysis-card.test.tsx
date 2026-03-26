@@ -23,6 +23,9 @@ function makeResume(): ResumeDraft {
         content: 'Led operations across 18 sites and improved margin by 12%.',
         is_new: false,
         addresses_requirements: ['Multi-site leadership'],
+        confidence: 'strong' as const,
+        evidence_found: '',
+        requirement_source: 'job_description' as const,
       },
     ],
     professional_experience: [
@@ -37,6 +40,9 @@ function makeResume(): ResumeDraft {
             text: 'Managed a 120-person org across manufacturing and field operations.',
             is_new: false,
             addresses_requirements: ['Team leadership at scale'],
+            confidence: 'strong' as const,
+            evidence_found: '',
+            requirement_source: 'job_description' as const,
           },
         ],
       },
@@ -259,6 +265,9 @@ describe('UnifiedGapAnalysisCard inventory', () => {
       text: 'Reduced operational times by 12 hours using improved equipment selection and operations techniques.',
       is_new: false,
       addresses_requirements: ['Ability to work on-call outside standard working hours and travel up to 20% of the time'],
+      confidence: 'strong' as const,
+      evidence_found: '',
+      requirement_source: 'job_description' as const,
     };
 
     const gapAnalysis = makeGapAnalysis();

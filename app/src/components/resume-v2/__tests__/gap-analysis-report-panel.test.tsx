@@ -151,8 +151,8 @@ function makeResume(): ResumeDraft {
         end_date: 'Present',
         scope_statement: 'Led org of 120',
         bullets: [
-          { text: 'Led cross-functional team of 120+ engineers across 4 product lines', is_new: false, addresses_requirements: ['Team Leadership'] },
-          { text: 'Managed 200-node on-prem server fleet', is_new: false, addresses_requirements: ['Cloud Infrastructure'] },
+          { text: 'Led cross-functional team of 120+ engineers across 4 product lines', is_new: false, addresses_requirements: ['Team Leadership'], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
+          { text: 'Managed 200-node on-prem server fleet', is_new: false, addresses_requirements: ['Cloud Infrastructure'], confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
         ],
       },
     ],

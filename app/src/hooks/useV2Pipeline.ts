@@ -23,11 +23,13 @@ const INITIAL_DATA: V2PipelineData = {
   benchmarkCandidate: null,
   gapAnalysis: null,
   gapCoachingCards: null,
+  gapQuestions: null,
   preScores: null,
   narrativeStrategy: null,
   resumeDraft: null,
   assembly: null,
   inlineSuggestions: [],
+  hiringManagerScan: null,
   verificationDetail: null,
   error: null,
   stageMessages: [],
@@ -81,6 +83,9 @@ export function useV2Pipeline(accessToken: string | null) {
         case 'gap_coaching':
           return { ...prev, gapCoachingCards: event.data };
 
+        case 'gap_questions':
+          return { ...prev, gapQuestions: event.data.questions };
+
         case 'narrative_strategy':
           return { ...prev, narrativeStrategy: event.data };
 
@@ -126,6 +131,9 @@ export function useV2Pipeline(accessToken: string | null) {
           };
         }
 
+        case 'hiring_manager_scan':
+          return { ...prev, hiringManagerScan: event.data };
+
         case 'pipeline_complete':
           return { ...prev, stage: 'complete' as V2Stage };
 
@@ -133,6 +141,7 @@ export function useV2Pipeline(accessToken: string | null) {
           return { ...prev, error: event.error };
 
         default:
+          console.warn('Unhandled SSE event type:', (event as { type: string }).type);
           return prev;
       }
     });
@@ -199,8 +208,14 @@ export function useV2Pipeline(accessToken: string | null) {
     // making duplicate submissions impossible through the normal UX flow.
     if (isStarting) return;
 
-    // Reset state
-    setData(INITIAL_DATA);
+    // Reset state but preserve scoring data so the ScoringReport stays visible during reruns
+    setData((prev) => ({
+      ...INITIAL_DATA,
+      preScores: prev.preScores,
+      assembly: prev.assembly,
+      verificationDetail: prev.verificationDetail,
+      gapAnalysis: prev.gapAnalysis,
+    }));
     setIsComplete(false);
     setIsStarting(true);
     abortRef.current?.abort();

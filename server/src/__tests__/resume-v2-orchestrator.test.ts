@@ -221,7 +221,7 @@ const RESUME_DRAFT = {
   executive_summary: { content: 'Seasoned VP of Engineering...', is_new: true },
   core_competencies: ['Team Leadership', 'System Design', 'Kubernetes'],
   selected_accomplishments: [
-    { content: 'Reduced deployment time by 60%', is_new: false, addresses_requirements: ['distributed systems'] },
+    { content: 'Reduced deployment time by 60%', is_new: false, addresses_requirements: ['distributed systems'], source: 'original' as const, confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
   ],
   professional_experience: [
     {
@@ -230,8 +230,11 @@ const RESUME_DRAFT = {
       start_date: 'Jan 2019',
       end_date: 'Dec 2023',
       scope_statement: 'Led 20-engineer org',
+      scope_statement_source: 'original' as const,
+      scope_statement_confidence: 'strong' as const,
+      scope_statement_evidence_found: '',
       bullets: [
-        { text: 'Built HA architecture serving 10M users', is_new: false, addresses_requirements: ['distributed systems'] },
+        { text: 'Built HA architecture serving 10M users', is_new: false, addresses_requirements: ['distributed systems'], source: 'original' as const, confidence: 'strong' as const, evidence_found: '', requirement_source: 'job_description' as const },
       ],
     },
   ],

@@ -26,16 +26,8 @@ import {
 import type {
   ATSOptimizationDetail,
   AssemblyResult,
-  CandidateIntelligence,
-  ExecutiveToneDetail,
   GapAnalysis,
-  HiringManagerScan,
-  JobIntelligence,
-  NarrativeStrategy,
-  BenchmarkCandidate,
-  PositioningAssessment,
   PreScores,
-  TruthVerificationDetail,
   VerificationDetail,
 } from '@/types/resume-v2';
 import {
@@ -93,38 +85,7 @@ function KeywordChip({ keyword, variant }: { keyword: string; variant: 'found' |
   );
 }
 
-// ─── Humanize helpers ────────────────────────────────────────────────────────
-
-function humanizeIssueType(issue: string): string {
-  const labels: Record<string, string> = {
-    'banned_phrase': 'Banned Phrase Detected',
-    'generic_filler': 'Generic Filler Language',
-    'passive_voice': 'Passive Voice',
-    'junior_language': 'Junior-Level Language',
-    'ai_generated': 'AI-Generated Sounding',
-    'weak_verb': 'Weak Action Verb',
-    'cliche': 'Resume Cliche',
-  };
-  return labels[issue] ?? issue.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function humanizeSectionName(section: string): string {
-  const labels: Record<string, string> = {
-    'summary': 'Executive Summary',
-    'executive_summary': 'Executive Summary',
-    'experience': 'Professional Experience',
-    'professional_experience': 'Professional Experience',
-    'education': 'Education',
-    'skills': 'Skills & Competencies',
-    'certifications': 'Certifications',
-    'accomplishments': 'Key Accomplishments',
-    'selected_accomplishments': 'Key Accomplishments',
-    'projects': 'Projects',
-    'headline': 'Resume Headline',
-    'contact': 'Contact Information',
-  };
-  return labels[section.toLowerCase()] ?? section.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
+import { humanizeIssueType, humanizeSectionName } from './utils/humanize';
 
 // ─── Section wrapper (collapsible) ────────────────────────────────────────────
 
@@ -731,42 +692,6 @@ function AfterReport({
         </div>
       )}
 
-      {/* Hiring Manager Scan */}
-      {assembly.hiring_manager_scan && (
-        <div className={`rounded-lg border px-4 py-3 space-y-3 ${
-          assembly.hiring_manager_scan.pass
-            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]'
-            : 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]'
-        }`}>
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-[var(--text-muted)]">Hiring Manager Scan</p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tabular-nums" style={{ color: assembly.hiring_manager_scan.pass ? '#b5dec2' : '#f0d99f' }}>
-                {assembly.hiring_manager_scan.scan_score}
-              </span>
-              <span className={`text-[10px] font-bold uppercase tracking-wide ${assembly.hiring_manager_scan.pass ? 'text-[#b5dec2]' : 'text-[#f0d99f]'}`}>
-                {assembly.hiring_manager_scan.pass ? 'PASS' : 'NEEDS WORK'}
-              </span>
-            </div>
-          </div>
-          <div className="grid gap-2 grid-cols-2">
-            {[
-              { label: 'Header Impact', score: assembly.hiring_manager_scan.header_impact.score, note: assembly.hiring_manager_scan.header_impact.note },
-              { label: 'Summary Clarity', score: assembly.hiring_manager_scan.summary_clarity.score, note: assembly.hiring_manager_scan.summary_clarity.note },
-              { label: 'Above-Fold Strength', score: assembly.hiring_manager_scan.above_fold_strength.score, note: assembly.hiring_manager_scan.above_fold_strength.note },
-              { label: 'Keyword Visibility', score: assembly.hiring_manager_scan.keyword_visibility.score, note: assembly.hiring_manager_scan.keyword_visibility.note },
-            ].map(({ label, score, note }) => (
-              <div key={label} className="rounded-lg border border-[var(--line-soft)] bg-black/10 px-3 py-2 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-[var(--text-soft)]">{label}</p>
-                  <span className="text-[11px] font-bold tabular-nums text-[var(--text-muted)]">{score}</span>
-                </div>
-                <p className="text-[10px] text-[var(--text-soft)] leading-4">{note}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -867,188 +792,6 @@ function KeywordAnalysis({
   );
 }
 
-// ─── Full Analysis ────────────────────────────────────────────────────────────
-
-function FullAnalysis({
-  gapAnalysis,
-  benchmarkCandidate,
-  narrativeStrategy,
-  positioningAssessment,
-  hiringManagerScan,
-}: {
-  gapAnalysis: GapAnalysis | null;
-  benchmarkCandidate: BenchmarkCandidate | null;
-  narrativeStrategy: NarrativeStrategy | null;
-  positioningAssessment: PositioningAssessment | null;
-  hiringManagerScan: HiringManagerScan | null;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Gap Analysis */}
-      {gapAnalysis && (
-        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-3">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-[0.14em]">Gap Analysis</p>
-          <p className="text-xs text-[var(--text-soft)] leading-5">{gapAnalysis.strength_summary}</p>
-          <div className="grid gap-2 grid-cols-3">
-            {[
-              { label: 'Strong', count: gapAnalysis.requirements.filter(r => r.classification === 'strong').length, color: '#b5dec2' },
-              { label: 'Partial', count: gapAnalysis.requirements.filter(r => r.classification === 'partial').length, color: '#f0d99f' },
-              { label: 'Missing', count: gapAnalysis.requirements.filter(r => r.classification === 'missing').length, color: '#f0b8b8' },
-            ].map(({ label, count, color }) => (
-              <div key={label} className="text-center rounded-lg border border-[var(--line-soft)] bg-black/10 px-2 py-2">
-                <p className="text-lg font-bold tabular-nums" style={{ color }}>{count}</p>
-                <p className="text-[10px] text-[var(--text-soft)]">{label}</p>
-              </div>
-            ))}
-          </div>
-          {gapAnalysis.critical_gaps.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-1.5">Critical gaps</p>
-              <ul className="space-y-1">
-                {gapAnalysis.critical_gaps.map((gap, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                    <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-[#f0b8b8]" />
-                    {gap}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Benchmark */}
-      {benchmarkCandidate && (
-        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-[0.14em]">Benchmark Candidate</p>
-          <p className="text-xs text-[var(--text-soft)] leading-5">{benchmarkCandidate.ideal_profile_summary}</p>
-          {benchmarkCandidate.differentiators.length > 0 && (
-            <div>
-              <p className="text-[11px] text-[var(--text-soft)] uppercase tracking-[0.14em] mb-1">Key differentiators expected</p>
-              <ul className="space-y-0.5">
-                {benchmarkCandidate.differentiators.slice(0, 4).map((d, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                    <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-[#afc4ff]" />
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Narrative Strategy */}
-      {narrativeStrategy && (
-        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-[0.14em]">Narrative Strategy</p>
-          <p className="text-xs font-medium" style={{ color: '#afc4ff' }}>{narrativeStrategy.primary_narrative}</p>
-          {narrativeStrategy.why_me_concise && (
-            <p className="text-xs text-[var(--text-soft)] leading-5 italic">"{narrativeStrategy.why_me_concise}"</p>
-          )}
-          {narrativeStrategy.supporting_themes.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {narrativeStrategy.supporting_themes.slice(0, 5).map((theme, i) => (
-                <span
-                  key={i}
-                  className="rounded-md px-2 py-0.5 text-[11px]"
-                  style={{ color: '#afc4ff', backgroundColor: 'rgba(175,196,255,0.08)', border: '1px solid rgba(175,196,255,0.18)' }}
-                >
-                  {theme}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Positioning Assessment */}
-      {positioningAssessment && positioningAssessment.requirement_map.length > 0 && (
-        <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-3">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-[0.14em]">Positioning Map</p>
-          <p className="text-xs text-[var(--text-soft)] leading-5">{positioningAssessment.summary}</p>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {positioningAssessment.requirement_map.map((entry, i) => {
-              const statusColor = entry.status === 'strong' ? '#b5dec2' : entry.status === 'repositioned' ? '#f0d99f' : '#f0b8b8';
-              return (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <span
-                    className="shrink-0 mt-0.5 rounded-sm px-1.5 py-0.5 text-[10px] font-medium capitalize"
-                    style={{ color: statusColor, backgroundColor: `${statusColor}14`, border: `1px solid ${statusColor}30` }}
-                  >
-                    {entry.status}
-                  </span>
-                  <span className="text-[var(--text-soft)] leading-4 min-w-0">{entry.requirement}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Hiring Manager Scan */}
-      {hiringManagerScan && (
-        <div className={`rounded-lg border px-4 py-3 space-y-3 ${
-          hiringManagerScan.pass
-            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]'
-            : 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]'
-        }`}>
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-[0.14em]">Hiring Manager Scan</p>
-            <span className={`text-[11px] font-semibold uppercase tracking-wide ${hiringManagerScan.pass ? 'text-[#b5dec2]' : 'text-[#f0d99f]'}`}>
-              {hiringManagerScan.pass ? 'PASS' : 'NEEDS WORK'}
-            </span>
-          </div>
-
-          <div className="grid gap-2 grid-cols-2">
-            {[
-              { label: 'Header Impact', score: hiringManagerScan.header_impact.score, note: hiringManagerScan.header_impact.note },
-              { label: 'Summary Clarity', score: hiringManagerScan.summary_clarity.score, note: hiringManagerScan.summary_clarity.note },
-              { label: 'Above-Fold Strength', score: hiringManagerScan.above_fold_strength.score, note: hiringManagerScan.above_fold_strength.note },
-              { label: 'Keyword Visibility', score: hiringManagerScan.keyword_visibility.score, note: hiringManagerScan.keyword_visibility.note },
-            ].map(({ label, score, note }) => (
-              <div key={label} className="rounded-lg border border-[var(--line-soft)] bg-black/10 px-3 py-2 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-[var(--text-soft)]">{label}</p>
-                  <span className="text-[11px] font-bold tabular-nums text-[var(--text-muted)]">{score}</span>
-                </div>
-                <p className="text-[10px] text-[var(--text-soft)] leading-4">{note}</p>
-              </div>
-            ))}
-          </div>
-
-          {hiringManagerScan.red_flags.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-1.5">Red flags</p>
-              <ul className="space-y-1">
-                {hiringManagerScan.red_flags.map((flag, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                    <XCircle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#f0b8b8' }} />
-                    {flag}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {hiringManagerScan.quick_wins.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-1.5">Quick wins</p>
-              <ul className="space-y-1">
-                {hiringManagerScan.quick_wins.map((win, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                    <CheckCircle2 className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#b5dec2' }} />
-                    {win}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── ScoringReport (public API) ───────────────────────────────────────────────
 
@@ -1057,10 +800,6 @@ export interface ScoringReportProps {
   assembly: AssemblyResult;
   verificationDetail: VerificationDetail | null;
   gapAnalysis: GapAnalysis | null;
-  benchmarkCandidate: BenchmarkCandidate | null;
-  narrativeStrategy: NarrativeStrategy | null;
-  jobIntelligence?: JobIntelligence | null;
-  candidateIntelligence?: CandidateIntelligence | null;
 }
 
 export function ScoringReport({
@@ -1068,14 +807,11 @@ export function ScoringReport({
   assembly,
   verificationDetail,
   gapAnalysis,
-  benchmarkCandidate,
-  narrativeStrategy,
 }: ScoringReportProps) {
   const ats = verificationDetail?.ats ?? null;
   const truth = verificationDetail?.truth ?? null;
   const tone = verificationDetail?.tone ?? null;
   const hiringManagerScan = assembly.hiring_manager_scan ?? null;
-  const positioningAssessment = assembly.positioning_assessment ?? null;
 
   return (
     <div className="space-y-3">
@@ -1167,22 +903,6 @@ export function ScoringReport({
         </CollapsibleSection>
       )}
 
-      {/* Full Analysis */}
-      {(gapAnalysis || benchmarkCandidate || narrativeStrategy || positioningAssessment || hiringManagerScan) && (
-        <CollapsibleSection
-          title="Full Analysis"
-          subtitle="Gap analysis, benchmark, strategy, and hiring manager scan"
-          icon={<User className="h-3.5 w-3.5" />}
-        >
-          <FullAnalysis
-            gapAnalysis={gapAnalysis}
-            benchmarkCandidate={benchmarkCandidate}
-            narrativeStrategy={narrativeStrategy}
-            positioningAssessment={positioningAssessment}
-            hiringManagerScan={hiringManagerScan}
-          />
-        </CollapsibleSection>
-      )}
     </div>
   );
 }

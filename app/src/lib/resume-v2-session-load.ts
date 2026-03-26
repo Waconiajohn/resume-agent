@@ -7,11 +7,13 @@ export type LoadableV2PipelineSnapshot = {
   benchmarkCandidate?: V2PipelineData['benchmarkCandidate'];
   gapAnalysis?: V2PipelineData['gapAnalysis'];
   gapCoachingCards?: V2PipelineData['gapCoachingCards'];
+  gapQuestions?: V2PipelineData['gapQuestions'];
   preScores?: V2PipelineData['preScores'];
   narrativeStrategy?: V2PipelineData['narrativeStrategy'];
   resumeDraft?: V2PipelineData['resumeDraft'];
   assembly?: V2PipelineData['assembly'];
   inlineSuggestions?: V2PipelineData['inlineSuggestions'];
+  hiringManagerScan?: V2PipelineData['hiringManagerScan'];
   error?: string | null;
   stageMessages?: V2PipelineData['stageMessages'];
 };
@@ -55,11 +57,13 @@ export function hydrateV2SessionLoad(
       benchmarkCandidate: pd.benchmarkCandidate ?? null,
       gapAnalysis: pd.gapAnalysis ?? null,
       gapCoachingCards: pd.gapCoachingCards ?? null,
+      gapQuestions: pd.gapQuestions ?? null,
       preScores: pd.preScores ?? null,
       narrativeStrategy: pd.narrativeStrategy ?? null,
       resumeDraft: pd.resumeDraft ?? null,
       assembly: pd.assembly ?? null,
       inlineSuggestions: pd.inlineSuggestions ?? [],
+      hiringManagerScan: pd.hiringManagerScan ?? null,
       verificationDetail: null,
       error: pd.error ?? body.error_message ?? null,
       stageMessages: pd.stageMessages ?? [],

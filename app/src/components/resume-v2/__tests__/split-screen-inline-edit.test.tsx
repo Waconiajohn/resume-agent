@@ -105,12 +105,6 @@ vi.mock('../cards/KeywordScoreDashboard', () => ({
 vi.mock('../cards/WhatChangedCard', () => ({
   WhatChangedCard: () => <div data-testid="what-changed-card" />,
 }));
-vi.mock('../cards/PreScoreReportCard', () => ({
-  PreScoreReportCard: () => <div data-testid="pre-score-report-card" />,
-}));
-vi.mock('../cards/ScoringReportCard', () => ({
-  ScoringReportCard: () => <div data-testid="scoring-report-card" />,
-}));
 vi.mock('../cards/HiringManagerReviewCard', () => ({
   HiringManagerReviewCard: () => <div data-testid="hiring-manager-review-card" />,
 }));
@@ -127,6 +121,10 @@ vi.mock('../AddContextCard', () => ({
 }));
 vi.mock('../ExportBar', () => ({
   ExportBar: () => <div data-testid="export-bar" />,
+}));
+
+vi.mock('../cards/BulletEditPopover', () => ({
+  BulletEditPopover: () => <div data-testid="bullet-edit-popover" />,
 }));
 
 // jsdom does not implement scrollIntoView or scrollTo — stub them globally
@@ -160,11 +158,17 @@ function makeResumeDraft(): ResumeDraft {
         content: 'Reduced deploy time by 60%',
         is_new: false,
         addresses_requirements: ['CI/CD experience'],
+        confidence: 'strong' as const,
+        evidence_found: '',
+        requirement_source: 'job_description' as const,
       },
       {
         content: 'Grew team from 5 to 45 engineers',
         is_new: false,
         addresses_requirements: [],
+        confidence: 'strong' as const,
+        evidence_found: '',
+        requirement_source: 'job_description' as const,
       },
     ],
     professional_experience: [
@@ -179,11 +183,17 @@ function makeResumeDraft(): ResumeDraft {
             text: 'Shipped 3 major product lines',
             is_new: false,
             addresses_requirements: ['Product delivery'],
+            confidence: 'strong' as const,
+            evidence_found: '',
+            requirement_source: 'job_description' as const,
           },
           {
             text: 'Cut infrastructure cost 30%',
             is_new: false,
             addresses_requirements: [],
+            confidence: 'strong' as const,
+            evidence_found: '',
+            requirement_source: 'job_description' as const,
           },
         ],
       },
@@ -244,11 +254,13 @@ function makePipelineDataWithResume(overrides: Partial<V2PipelineData> = {}): V2
     benchmarkCandidate: null,
     gapAnalysis: makeGapAnalysis(),
     gapCoachingCards: null,
+    gapQuestions: null,
     preScores: null,
     narrativeStrategy: null,
     resumeDraft: makeResumeDraft(),
     assembly: null,
     inlineSuggestions: [],
+    hiringManagerScan: null,
     verificationDetail: null,
     error: null,
     stageMessages: [],
@@ -310,61 +322,51 @@ describe('ResumeDocumentCard — bullet accessibility', () => {
     }
   });
 
-  it('does NOT render span[role=button] when onBulletClick is absent', () => {
+  it('renders span[role=button] even when onBulletClick is absent (popover system always active)', () => {
     const resume = makeResumeDraft();
     render(<ResumeDocumentCard resume={resume} />);
 
     const bulletButtons = screen
       .queryAllByRole('button')
       .filter((el) => el.tagName === 'SPAN');
-    expect(bulletButtons.length).toBe(0);
+    // Bullets always render as role=button for the popover system
+    expect(bulletButtons.length).toBeGreaterThan(0);
+    for (const btn of bulletButtons) {
+      expect(btn).toHaveAttribute('tabindex', '0');
+    }
   });
 });
 
 describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
-  it('calls onBulletClick with correct args when a selected_accomplishments bullet is clicked', () => {
+  it('opens BulletEditPopover when a selected_accomplishments bullet is clicked', () => {
     const resume = makeResumeDraft();
-    const onBulletClick = vi.fn();
 
     render(
       <ResumeDocumentCard
         resume={resume}
-        onBulletClick={onBulletClick}
+        onBulletClick={vi.fn()}
       />,
     );
 
+    // Clicking a bullet now opens the popover instead of calling onBulletClick
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
 
-    expect(onBulletClick).toHaveBeenCalledOnce();
-    expect(onBulletClick).toHaveBeenCalledWith(
-      'Reduced deploy time by 60%',
-      'selected_accomplishments',
-      0,
-      ['CI/CD experience'],
-    );
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
 
-  it('calls onBulletClick with correct args when a professional_experience bullet is clicked', () => {
+  it('opens BulletEditPopover when a professional_experience bullet is clicked', () => {
     const resume = makeResumeDraft();
-    const onBulletClick = vi.fn();
 
     render(
       <ResumeDocumentCard
         resume={resume}
-        onBulletClick={onBulletClick}
+        onBulletClick={vi.fn()}
       />,
     );
 
-    // bulletIndex for exp[0] bullet[0] = 0 * 100 + 0 = 0
     fireEvent.click(screen.getByText('Shipped 3 major product lines'));
 
-    expect(onBulletClick).toHaveBeenCalledOnce();
-    expect(onBulletClick).toHaveBeenCalledWith(
-      'Shipped 3 major product lines',
-      'professional_experience',
-      0,
-      ['Product delivery'],
-    );
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
 
   it('renders InlineEditPanel when activeBullet matches a selected_accomplishments bullet', () => {
@@ -409,67 +411,54 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
 });
 
 describe('ResumeDocumentCard — keyboard accessibility', () => {
-  it('fires onBulletClick when Enter is pressed on a bullet', () => {
+  it('opens BulletEditPopover when Enter is pressed on a bullet', () => {
     const resume = makeResumeDraft();
-    const onBulletClick = vi.fn();
 
     render(
       <ResumeDocumentCard
         resume={resume}
-        onBulletClick={onBulletClick}
+        onBulletClick={vi.fn()}
       />,
     );
 
     const bulletSpan = screen.getByText('Reduced deploy time by 60%');
     fireEvent.keyDown(bulletSpan, { key: 'Enter' });
 
-    expect(onBulletClick).toHaveBeenCalledOnce();
-    expect(onBulletClick).toHaveBeenCalledWith(
-      'Reduced deploy time by 60%',
-      'selected_accomplishments',
-      0,
-      ['CI/CD experience'],
-    );
+    // Enter toggles the popover open
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
 
-  it('fires onBulletClick when Space is pressed on a bullet', () => {
+  it('opens BulletEditPopover when Space is pressed on a bullet', () => {
     const resume = makeResumeDraft();
-    const onBulletClick = vi.fn();
 
     render(
       <ResumeDocumentCard
         resume={resume}
-        onBulletClick={onBulletClick}
+        onBulletClick={vi.fn()}
       />,
     );
 
     const bulletSpan = screen.getByText('Grew team from 5 to 45 engineers');
     fireEvent.keyDown(bulletSpan, { key: ' ' });
 
-    expect(onBulletClick).toHaveBeenCalledOnce();
-    expect(onBulletClick).toHaveBeenCalledWith(
-      'Grew team from 5 to 45 engineers',
-      'selected_accomplishments',
-      1,
-      [],
-    );
+    // Space toggles the popover open
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
 
-  it('does NOT fire onBulletClick for other keys', () => {
+  it('does NOT open popover for other keys', () => {
     const resume = makeResumeDraft();
-    const onBulletClick = vi.fn();
 
     render(
       <ResumeDocumentCard
         resume={resume}
-        onBulletClick={onBulletClick}
+        onBulletClick={vi.fn()}
       />,
     );
 
     const bulletSpan = screen.getByText('Reduced deploy time by 60%');
     fireEvent.keyDown(bulletSpan, { key: 'Tab' });
 
-    expect(onBulletClick).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('bullet-edit-popover')).not.toBeInTheDocument();
   });
 });
 
@@ -809,21 +798,19 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     render(<V2StreamingDisplay {...props} />);
 
-    // StagedProcessingViewer renders stage titles (without trailing '...')
-    expect(screen.getByText('Reading your resume')).toBeInTheDocument();
+    // ProcessingStatusBar renders a status role element with stage status label
+    expect(screen.getByText('AI Working On Your Resume')).toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {
-    // StagedProcessingViewer renders all stage titles in a list regardless of stage.
-    // Verify that for each stage the processing viewer is present (no resume document shown).
-    const stages: Array<{ stage: string }> = [
-      { stage: 'strategy' },
-      { stage: 'writing' },
-      { stage: 'verification' },
-      { stage: 'assembly' },
+    const stageLabels: Array<{ stage: string; label: string }> = [
+      { stage: 'strategy', label: 'Building your positioning strategy...' },
+      { stage: 'writing', label: 'Drafting your resume...' },
+      { stage: 'verification', label: 'Running quality checks...' },
+      { stage: 'assembly', label: 'Preparing your suggestions...' },
     ];
 
-    for (const { stage } of stages) {
+    for (const { stage, label } of stageLabels) {
       cleanup();
       const props = makeDisplayProps({
         isComplete: false,
@@ -835,8 +822,9 @@ describe('V2StreamingDisplay — layout modes', () => {
         }),
       });
       render(<V2StreamingDisplay {...props} />);
-      // StagedProcessingViewer always renders 'Optimizing Your Resume' as its header
-      expect(screen.getByText('Optimizing Your Resume')).toBeInTheDocument();
+      // ProcessingStatusBar renders the stage-specific status label (may appear more than once in feed)
+      const matches = screen.getAllByText(label);
+      expect(matches.length).toBeGreaterThan(0);
     }
   });
 
@@ -880,84 +868,52 @@ describe('V2StreamingDisplay — layout modes', () => {
 // V2StreamingDisplay — activeBullet state management
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('V2StreamingDisplay — activeBullet cleared on rerun', () => {
-  it('clears activeBullet when isRerunning changes to true', () => {
-    // Start with isRerunning=false so split-screen renders and a bullet can be clicked
+describe('V2StreamingDisplay — popover cleared on rerun', () => {
+  it('hides bullet popover when isRerunning changes to true', () => {
+    // Start with isRerunning=false so resume renders and a bullet can be clicked
     const { rerender } = render(
       <V2StreamingDisplay
         {...makeDisplayProps({ isComplete: true, isRerunning: false })}
       />,
     );
 
-    // Click a bullet to set activeBullet (pipeline is complete → onBulletClick is wired)
+    // Click a bullet to open popover (bullets now use popover system, not onBulletClick)
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
 
-    // InlineEditPanel should now be visible (action buttons rendered)
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
+    // BulletEditPopover should now be visible
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
 
-    // Simulate re-run starting: isRerunning becomes true
-    // This also switches to streaming layout (split-screen hides), which itself
-    // removes InlineEditPanel from the DOM — verify it's gone.
+    // Simulate re-run starting: isRerunning becomes true, resume document hides
     rerender(
       <V2StreamingDisplay
         {...makeDisplayProps({ isComplete: false, isRerunning: true })}
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'Strengthen' })).not.toBeInTheDocument();
+    // Resume is hidden during rerun, so the popover is gone
+    expect(screen.queryByTestId('bullet-edit-popover')).not.toBeInTheDocument();
   });
 });
 
-describe('V2StreamingDisplay — handleAcceptEdit clears activeBullet', () => {
-  it('removes InlineEditPanel after the accept handler is invoked', () => {
-    const pendingEdit: PendingEdit = {
-      section: 'selected_accomplishments',
-      originalText: 'Reduced deploy time by 60%',
-      replacement: 'Cut release cycle from 2 weeks to 3 days',
-      action: 'strengthen',
-    };
-
+describe('V2StreamingDisplay — bullet popover toggle', () => {
+  it('closes BulletEditPopover when the same bullet is clicked again', () => {
     render(
       <V2StreamingDisplay
-        {...makeDisplayProps({ pendingEdit, isComplete: true })}
+        {...makeDisplayProps({ isComplete: true })}
       />,
     );
 
-    // Click bullet to open InlineEditPanel
+    // Click bullet to open popover
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
 
-    // Accept the edit — this calls handleAcceptEdit which sets activeBullet to null
-    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
-
-    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Strengthen' })).not.toBeInTheDocument();
+    // Click same bullet again to close popover (toggle behavior)
+    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
+    expect(screen.queryByTestId('bullet-edit-popover')).not.toBeInTheDocument();
   });
 });
 
 describe('V2StreamingDisplay — Escape key behavior', () => {
-  it('clears activeBullet and calls onRejectEdit when Escape is pressed', () => {
-    const onRejectEdit = vi.fn();
-
-    render(
-      <V2StreamingDisplay
-        {...makeDisplayProps({ isComplete: true, onRejectEdit })}
-      />,
-    );
-
-    // Open inline edit panel by clicking a bullet
-    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
-
-    // Press Escape at the window level
-    act(() => {
-      fireEvent.keyDown(window, { key: 'Escape' });
-    });
-
-    expect(onRejectEdit).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('button', { name: 'Strengthen' })).not.toBeInTheDocument();
-  });
-
   it('does NOT call onRejectEdit for Escape when no activeBullet is set', () => {
     const onRejectEdit = vi.fn();
 
@@ -1014,12 +970,12 @@ describe('V2StreamingDisplay — DiffView only shows when pendingEdit exists and
     expect(screen.queryByTestId('diff-view')).not.toBeInTheDocument();
   });
 
-  it('does NOT render DiffView when activeBullet is set (inline panel takes precedence)', () => {
+  it('clicking a bullet opens popover while DiffView remains for executive_summary edit', () => {
     const pendingEdit: PendingEdit = {
-      section: 'selected_accomplishments',
-      originalText: 'Reduced deploy time by 60%',
-      replacement: 'Cut release cycle from 2 weeks to 3 days',
-      action: 'strengthen',
+      section: 'executive_summary',
+      originalText: 'Seasoned engineering leader driving outcomes at scale.',
+      replacement: 'Transformational engineering executive with a record of shipping at scale.',
+      action: 'rewrite',
     };
 
     render(
@@ -1028,12 +984,15 @@ describe('V2StreamingDisplay — DiffView only shows when pendingEdit exists and
       />,
     );
 
-    // Click a bullet — sets activeBullet, which hides the DiffView
+    // DiffView is present because pendingEdit is set and activeBullet is null
+    expect(screen.getByTestId('diff-view')).toBeInTheDocument();
+
+    // Click a bullet — opens popover (but does not set activeBullet in V2StreamingDisplay)
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
 
-    // DiffView renders only when !activeBullet, so it should be gone
-    expect(screen.queryByTestId('diff-view')).not.toBeInTheDocument();
-    // But the inline panel's Accept button is visible instead
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    // BulletEditPopover is now visible
+    expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
+    // DiffView is still visible because activeBullet is not set by popover click
+    expect(screen.getByTestId('diff-view')).toBeInTheDocument();
   });
 });

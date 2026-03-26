@@ -55,6 +55,9 @@ function makeResume(): ResumeDraft {
             text: 'Improved fill rate by 14%.',
             is_new: false,
             addresses_requirements: ['Operational excellence'],
+            confidence: 'strong' as const,
+            evidence_found: '',
+            requirement_source: 'job_description' as const,
           },
         ],
       },
@@ -878,6 +881,9 @@ describe('rewrite-queue', () => {
       text: 'Reduced operational times by 12 hours using improved equipment selection and operations techniques.',
       is_new: false,
       addresses_requirements: ['Ability to work on-call outside standard working hours and travel up to 20% of the time'],
+      confidence: 'strong' as const,
+      evidence_found: '',
+      requirement_source: 'job_description' as const,
     };
 
     const gapAnalysis: GapAnalysis = {
