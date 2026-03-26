@@ -212,24 +212,12 @@ export function ResumeDocumentCard({
                     />
                   ) : (
                     <>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenPopoverId(isPopoverOpen ? null : popoverKey);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setOpenPopoverId(isPopoverOpen ? null : popoverKey);
-                          }
-                        }}
-                        className="hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
-                      >
-                        {a.content}
-                      </span>
+                      <BulletLineContent
+                        text={a.content}
+                        confidence={a.confidence}
+                        requirementSource={a.requirement_source}
+                        onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                      />
                       {isPopoverOpen && (
                         <BulletEditPopover
                           text={a.content}
@@ -336,24 +324,12 @@ export function ResumeDocumentCard({
                           />
                         ) : (
                           <>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenPopoverId(isPopoverOpen ? null : popoverKey);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setOpenPopoverId(isPopoverOpen ? null : popoverKey);
-                                }
-                              }}
-                              className="hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
-                            >
-                              {bullet.text}
-                            </span>
+                            <BulletLineContent
+                              text={bullet.text}
+                              confidence={bullet.confidence}
+                              requirementSource={bullet.requirement_source}
+                              onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                            />
                             {isPopoverOpen && (
                               <BulletEditPopover
                                 text={bullet.text}
@@ -442,6 +418,50 @@ export function ResumeDocumentCard({
         </section>
       )}
     </div>
+  );
+}
+
+interface BulletLineContentProps {
+  text: string;
+  confidence: BulletConfidence;
+  requirementSource?: RequirementSource;
+  onToggle: () => void;
+}
+
+function BulletLineContent({
+  text,
+  confidence,
+  requirementSource,
+  onToggle,
+}: BulletLineContentProps) {
+  const pill = getConfidencePill(confidence, requirementSource);
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle();
+          }
+        }}
+        className="hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+      >
+        {text}
+      </span>
+      {pill ? (
+        <span className={pill.className}>
+          {pill.label}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -989,6 +1009,37 @@ function getConfidenceTextClass(
     default:
       return 'text-gray-800';
   }
+}
+
+function getConfidencePill(
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): { label: string; className: string } | null {
+  if (confidence === 'partial') {
+    return {
+      label: 'Strengthen',
+      className:
+        'inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700',
+    };
+  }
+
+  if (confidence === 'needs_validation' && requirementSource === 'benchmark') {
+    return {
+      label: 'Validate Fit',
+      className:
+        'inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-700',
+    };
+  }
+
+  if (confidence === 'needs_validation') {
+    return {
+      label: 'Needs Proof',
+      className:
+        'inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-700',
+    };
+  }
+
+  return null;
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

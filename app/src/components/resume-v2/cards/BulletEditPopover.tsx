@@ -110,6 +110,7 @@ export function BulletEditPopover({
     requirementSource === 'job_description' ? 'Job Description' : 'Benchmark';
   const RequirementIcon =
     requirementSource === 'job_description' ? Briefcase : BookOpen;
+  const statusTone = getProofStateTone(confidence, requirementSource);
 
   return (
     <div
@@ -155,7 +156,15 @@ export function BulletEditPopover({
       </div>
 
       {/* ── Evidence section ─────────────────────────────────────────────── */}
-      <div className="px-4 pb-2">
+      <div className="px-4 pb-2 space-y-2">
+        <div className={`rounded border px-3 py-2 ${statusTone.className}`}>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+            {statusTone.label}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed">
+            {statusTone.message}
+          </p>
+        </div>
         {hasEvidence ? (
           <div className="rounded bg-gray-50 px-3 py-2 text-xs text-gray-500 italic leading-relaxed border border-gray-100">
             &ldquo;{evidenceFound}&rdquo;
@@ -233,4 +242,39 @@ export function BulletEditPopover({
       )}
     </div>
   );
+}
+
+function getProofStateTone(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): { label: string; message: string; className: string } {
+  if (confidence === 'strong') {
+    return {
+      label: 'Supported',
+      message: 'This line is already supported by your background. Tighten the wording if you want, but the proof is there.',
+      className: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+    };
+  }
+
+  if (confidence === 'partial') {
+    return {
+      label: 'Needs stronger detail',
+      message: 'Related proof exists, but this line needs stronger detail before it feels fully credible.',
+      className: 'border-amber-100 bg-amber-50 text-amber-700',
+    };
+  }
+
+  if (requirementSource === 'benchmark') {
+    return {
+      label: 'High-risk benchmark line',
+      message: 'This helps match the benchmark candidate, but you should confirm or rewrite it before export.',
+      className: 'border-orange-100 bg-orange-50 text-orange-700',
+    };
+  }
+
+  return {
+    label: 'Code red',
+    message: 'We could not support this line from the resume yet. Confirm it, rewrite it, or remove it before export.',
+    className: 'border-red-100 bg-red-50 text-red-700',
+  };
 }

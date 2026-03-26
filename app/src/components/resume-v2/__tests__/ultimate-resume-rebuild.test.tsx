@@ -251,6 +251,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('text-amber-700');
+    expect(screen.getByText('Strengthen')).toBeInTheDocument();
   });
 
   it('renders red text for needs_validation confidence bullets from JD', () => {
@@ -263,6 +264,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('text-red-700');
+    expect(screen.getByText('Needs Proof')).toBeInTheDocument();
   });
 
   it('renders orange text for needs_validation + benchmark source', () => {
@@ -276,6 +278,16 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('text-orange-600');
     expect(bullet!.className).not.toContain('text-red-700');
+    expect(screen.getByText('Validate Fit')).toBeInTheDocument();
+  });
+
+  it('keeps strong bullets visually quiet without an extra pill', () => {
+    const resume = makeResumeDraftWithConfidence({ confidence: 'strong' });
+    render(<ResumeDocumentCard resume={resume} />);
+
+    expect(screen.queryByText('Strengthen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Needs Proof')).not.toBeInTheDocument();
+    expect(screen.queryByText('Validate Fit')).not.toBeInTheDocument();
   });
 
   it('renders explicit confidence text colors on all bullets (no silent gray fallback)', () => {
@@ -408,6 +420,50 @@ describe('BulletEditPopover — evidence display', () => {
     );
 
     expect(screen.getByText('No supporting evidence found in original resume')).toBeInTheDocument();
+  });
+
+  it('shows a code-red proof state for unsupported JD lines', () => {
+    render(
+      <BulletEditPopover
+        {...makePopoverProps({
+          evidenceFound: '',
+          confidence: 'needs_validation',
+          requirementSource: 'job_description',
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Code red')).toBeInTheDocument();
+    expect(screen.getByText(/we could not support this line from the resume yet/i)).toBeInTheDocument();
+  });
+
+  it('shows a benchmark-specific warning for high-risk benchmark lines', () => {
+    render(
+      <BulletEditPopover
+        {...makePopoverProps({
+          evidenceFound: '',
+          confidence: 'needs_validation',
+          requirementSource: 'benchmark',
+        })}
+      />,
+    );
+
+    expect(screen.getByText('High-risk benchmark line')).toBeInTheDocument();
+    expect(screen.getByText(/confirm or rewrite it before export/i)).toBeInTheDocument();
+  });
+
+  it('shows a strengthening message when partial proof exists', () => {
+    render(
+      <BulletEditPopover
+        {...makePopoverProps({
+          confidence: 'partial',
+          evidenceFound: 'Led a related modernization effort',
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Needs stronger detail')).toBeInTheDocument();
+    expect(screen.getByText(/related proof exists, but this line needs stronger detail/i)).toBeInTheDocument();
   });
 });
 
