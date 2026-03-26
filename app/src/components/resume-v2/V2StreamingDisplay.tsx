@@ -222,12 +222,14 @@ function buildAttentionReviewItems(
 function AttentionReviewStrip({
   items,
   currentIndex,
+  nextActionCue,
   onOpenCurrent,
   onNext,
   onPrevious,
 }: {
   items: AttentionReviewItem[];
   currentIndex: number;
+  nextActionCue?: string;
   onOpenCurrent: () => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -248,6 +250,11 @@ function AttentionReviewStrip({
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {items.length} {items.length === 1 ? 'line still needs attention.' : 'lines still need attention.'} Fix these directly on the resume.
           </p>
+          {nextActionCue && (
+            <p className="mt-2 text-xs text-[var(--text-soft)]">
+              Next best action: {nextActionCue}
+            </p>
+          )}
         </div>
         <div className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
           {currentIndex + 1} of {items.length}
@@ -894,6 +901,11 @@ export function V2StreamingDisplay({
 
     return `${strengthenCount} line${strengthenCount === 1 ? '' : 's'} still need stronger detail${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
   }, [attentionItems, compactReviewStatusLabel]);
+  const compactAttentionNextAction = useMemo(() => {
+    const topItem = attentionItems[0];
+    if (!topItem) return undefined;
+    return `Start with the ${topItem.statusLabel.toLowerCase()} line in ${topItem.locationLabel}.`;
+  }, [attentionItems]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -922,6 +934,7 @@ export function V2StreamingDisplay({
             compact={canShowResumeDocument}
             compactReviewStatusLabel={canShowResumeDocument ? compactReviewStatusLabel : undefined}
             compactAttentionSummary={canShowResumeDocument ? compactAttentionSummary : undefined}
+            compactAttentionNextAction={canShowResumeDocument ? compactAttentionNextAction : undefined}
             renderDetails={!canShowResumeDocument}
           />
         </div>
@@ -995,6 +1008,7 @@ export function V2StreamingDisplay({
               <AttentionReviewStrip
                 items={attentionItems}
                 currentIndex={attentionIndex}
+                nextActionCue={compactAttentionNextAction}
                 onOpenCurrent={() => openAttentionItem(attentionIndex)}
                 onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
                 onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}

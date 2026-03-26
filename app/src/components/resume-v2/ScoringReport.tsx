@@ -349,12 +349,14 @@ function CompactScoreSummaryHeader({
   gapAnalysis,
   reviewStatusLabel,
   attentionSummary,
+  attentionNextAction,
 }: {
   preScores: PreScores;
   assembly: AssemblyResult;
   gapAnalysis: GapAnalysis | null;
   reviewStatusLabel?: string;
   attentionSummary?: string;
+  attentionNextAction?: string;
 }) {
   const afterAts = assembly.scores.ats_match;
   const beforeAts = preScores.ats_match;
@@ -426,6 +428,11 @@ function CompactScoreSummaryHeader({
       <div className="support-callout px-4 py-3">
         <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
         <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+        {attentionNextAction && (
+          <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+            Next best action: {attentionNextAction}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -938,6 +945,7 @@ export interface ScoringReportProps {
   compact?: boolean;
   compactReviewStatusLabel?: string;
   compactAttentionSummary?: string;
+  compactAttentionNextAction?: string;
   renderSummary?: boolean;
   renderDetails?: boolean;
 }
@@ -1083,6 +1091,7 @@ export function ScoringReport({
   compact = false,
   compactReviewStatusLabel,
   compactAttentionSummary,
+  compactAttentionNextAction,
   renderSummary = true,
   renderDetails = true,
 }: ScoringReportProps) {
@@ -1096,6 +1105,7 @@ export function ScoringReport({
             gapAnalysis={gapAnalysis}
             reviewStatusLabel={compactReviewStatusLabel}
             attentionSummary={compactAttentionSummary}
+            attentionNextAction={compactAttentionNextAction}
           />
         ) : (
           <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
