@@ -14,6 +14,7 @@ import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
+import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
@@ -107,6 +108,7 @@ export default function App() {
   const currentView = getAppView(location.pathname);
   const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
   const normalizedWorkspaceRedirect = getNormalizedWorkspaceRedirect(location.search);
+  const isResumeV2VisualHarnessRoute = import.meta.env.DEV && location.pathname === '/__dev/resume-v2-visual';
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -412,6 +414,14 @@ export default function App() {
     setV2SessionId(null);
     navigate('/sales');
   }, [navigate, setCurrentSession, signOut]);
+
+  if (isResumeV2VisualHarnessRoute) {
+    return (
+      <ToastProvider>
+        <ResumeV2VisualHarness />
+      </ToastProvider>
+    );
+  }
 
   if (loading) {
     return (

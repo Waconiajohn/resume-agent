@@ -1206,14 +1206,18 @@ function ensureAllPositionsPresent(
         scope_statement_source: 'original' as const,
         scope_statement_confidence: 'strong' as const,
         scope_statement_evidence_found: '',
-        bullets: pos.bullets.map((bullet) => ({
-          text: bullet,
-          is_new: false,
-          addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
-          source: 'original' as const,
-          confidence: 'strong' as const,
-          evidence_found: '',
-        })),
+        bullets: pos.bullets.map((bullet) => {
+          const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
+          return {
+            text: bullet,
+            is_new: false,
+            addresses_requirements: addressesRequirements,
+            source: 'original' as const,
+            requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
+            confidence: 'strong' as const,
+            evidence_found: '',
+          };
+        }),
       });
     }
   }
@@ -1245,25 +1249,44 @@ function buildExecutiveSummary(input: ResumeWriterInput): string {
   ].filter(Boolean).join(' ').trim();
 }
 
-function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutput['selected_accomplishments'] {
-  const quantified = (input.candidate.quantified_outcomes ?? []).map((item) => ({
-    content: `${item.outcome}: ${item.value}`,
-    is_new: false,
-    addresses_requirements: matchRequirementLinks(item.outcome, input.gap_analysis.requirements),
-    source: 'original' as const,
-    confidence: 'strong' as const,
-    evidence_found: '',
-  }));
+function inferRequirementSource(
+  matchedRequirements: string[],
+  requirements: ResumeWriterInput['gap_analysis']['requirements'],
+): 'job_description' | 'benchmark' {
+  if (matchedRequirements.length === 0) return 'job_description';
+  const sources = matchedRequirements
+    .map((matchedRequirement) => requirements.find((requirement) => requirement.requirement === matchedRequirement)?.source)
+    .filter((source): source is 'job_description' | 'benchmark' => source === 'job_description' || source === 'benchmark');
+  return sources.includes('job_description') ? 'job_description' : 'benchmark';
+}
 
-  const hidden = (input.candidate.hidden_accomplishments ?? [])
-    .map((item) => ({
-      content: item,
+function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutput['selected_accomplishments'] {
+  const quantified = (input.candidate.quantified_outcomes ?? []).map((item) => {
+    const addressesRequirements = matchRequirementLinks(item.outcome, input.gap_analysis.requirements);
+    return {
+      content: `${item.outcome}: ${item.value}`,
       is_new: false,
-      addresses_requirements: matchRequirementLinks(item, input.gap_analysis.requirements),
+      addresses_requirements: addressesRequirements,
       source: 'original' as const,
+      requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
       confidence: 'strong' as const,
       evidence_found: '',
-    }));
+    };
+  });
+
+  const hidden = (input.candidate.hidden_accomplishments ?? [])
+    .map((item) => {
+      const addressesRequirements = matchRequirementLinks(item, input.gap_analysis.requirements);
+      return {
+        content: item,
+        is_new: false,
+        addresses_requirements: addressesRequirements,
+        source: 'original' as const,
+        requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
+        confidence: 'strong' as const,
+        evidence_found: '',
+      };
+    });
 
   return [...quantified, ...hidden];
 }
@@ -1287,14 +1310,18 @@ function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutpu
       scope_statement_source: 'original' as const,
       scope_statement_confidence: 'strong' as const,
       scope_statement_evidence_found: '',
-      bullets: experience.bullets.map((bullet) => ({
-        text: bullet,
-        is_new: false,
-        addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
-        source: 'original' as const,
-        confidence: 'strong' as const,
-        evidence_found: '',
-      })),
+      bullets: experience.bullets.map((bullet) => {
+        const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
+        return {
+          text: bullet,
+          is_new: false,
+          addresses_requirements: addressesRequirements,
+          source: 'original' as const,
+          requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
+          confidence: 'strong' as const,
+          evidence_found: '',
+        };
+      }),
     };
   });
 }
