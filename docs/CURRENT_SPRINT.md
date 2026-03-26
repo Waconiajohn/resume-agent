@@ -73,6 +73,7 @@ This sprint exists to reassert the intended operating model before more implemen
 7. Review agent prompts and route handlers for places where structured context is missing or underused.
 8. Remove or isolate UI code that currently contains domain reasoning that belongs in shared contracts or agents.
 9. Establish a shared review-and-apply interaction pattern for AI-generated content across active rooms.
+10. Rebuild Resume V2 around the document-first model captured in `docs/RESUME_DOCUMENT_FIRST_ROADMAP.md`, with the resume as the only work surface and analysis as support.
 
 ## Deferred Items
 
@@ -88,6 +89,7 @@ This sprint exists to reassert the intended operating model before more implemen
 - Hardening remains useful, but only as a safety net once shared contracts are in place.
 - Artifact-level QA must become a standard gate for user-visible AI output changes.
 - Resume-v2 coaching payloads may carry shared coaching-policy snapshots during migration so downstream consumers can prefer upstream guidance without breaking legacy fallback behavior.
+- Resume V2 is now explicitly targeting a document-first workflow: show the before score, generate the strongest tailored resume early, do all work on the resume itself, run final review inline, then promote validated discoveries to the master resume.
 
 ## Legacy Migration Note
 

@@ -1,5 +1,13 @@
 # Architecture Decision Records — Resume Agent
 
+## ADR-046: Resume V2 Is A Document-First Rebuild Workflow
+**Date:** 2026-03-26
+**Status:** accepted
+**Context:** Resume V2 drifted into two competing product models. One model emphasized scoring reports, gap analysis, benchmark comparison, and requirement coaching. The other emphasized generating the strongest tailored resume and then refining it. For qualified but under-documented executives age 45+, the report-heavy path created confusion because users had to interpret the analysis before they could work on the document itself.
+**Decision:** Resume V2 will use a document-first workflow. The primary path is: intake, before score, immediate tailored resume generation, sentence-level proof review on the resume, after score, final review, inline final-review fixes on the same resume, export, then master-resume promotion. Gap analysis and benchmark analysis remain read-only support layers only. All actual work happens on the resume canvas.
+**Reasoning:** This user generally is qualified already, but under-documented. The product should therefore reveal the gap quickly, show a better resume immediately, and then focus the user on validating or fixing the risky lines directly on the document. This preserves the value of scoring and benchmark intelligence without turning the product into a second analysis workspace. It also aligns with the shared evidence contract by keeping unsupported or inferred language visible and auditable rather than hidden.
+**Consequences:** Resume V2 needs sentence-level proof-state metadata, inline final-review anchors, and an end-of-flow master-resume promotion model. `GapQuestionFlow` and analysis cards are demoted to support roles. `ScoringReport` remains important, but only as before/after evidence and supporting explanation. The governing implementation roadmap is `docs/RESUME_DOCUMENT_FIRST_ROADMAP.md`.
+
 ## ADR-045: react-joyride for Guided Onboarding Tour
 **Date:** 2026-03-23
 **Status:** accepted
