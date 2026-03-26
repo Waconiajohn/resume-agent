@@ -6,7 +6,11 @@
  */
 
 const HIGHLIGHT_CLASS = 'strategy-thread-highlight';
+const PERSISTENT_HIGHLIGHT_CLASS = 'strategy-thread-highlight-persistent';
 const HIGHLIGHT_DURATION_MS = 1500;
+const PERSISTENT_HIGHLIGHT_DURATION_MS = 6000;
+let lastPersistentlyHighlighted: HTMLElement | null = null;
+let clearPersistentHighlightTimer: number | null = null;
 
 /**
  * Scrolls to an element matching the selector and applies a brief glow animation.
@@ -21,6 +25,35 @@ export function scrollToAndHighlight(selector: string): void {
   setTimeout(() => {
     el.classList.remove(HIGHLIGHT_CLASS);
   }, HIGHLIGHT_DURATION_MS);
+}
+
+/**
+ * Scrolls to an element, applies the normal glow, and keeps a softer
+ * focus treatment on the target for a few seconds so the user can orient
+ * themselves after jumping from a review card back into the resume.
+ */
+export function scrollToAndFocusTarget(selector: string): void {
+  const el = document.querySelector<HTMLElement>(selector);
+  if (!el) return;
+
+  if (lastPersistentlyHighlighted && lastPersistentlyHighlighted !== el) {
+    lastPersistentlyHighlighted.classList.remove(PERSISTENT_HIGHLIGHT_CLASS);
+  }
+  if (clearPersistentHighlightTimer !== null) {
+    window.clearTimeout(clearPersistentHighlightTimer);
+  }
+
+  scrollToAndHighlight(selector);
+  el.classList.add(PERSISTENT_HIGHLIGHT_CLASS);
+  lastPersistentlyHighlighted = el;
+
+  clearPersistentHighlightTimer = window.setTimeout(() => {
+    el.classList.remove(PERSISTENT_HIGHLIGHT_CLASS);
+    if (lastPersistentlyHighlighted === el) {
+      lastPersistentlyHighlighted = null;
+    }
+    clearPersistentHighlightTimer = null;
+  }, PERSISTENT_HIGHLIGHT_DURATION_MS);
 }
 
 /**
