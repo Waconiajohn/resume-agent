@@ -779,9 +779,12 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
     // Left panel (RewriteQueuePanel) is NOT rendered
     expect(screen.queryByText('Requirements to Match')).not.toBeInTheDocument();
+    // Analysis stays available, but secondary.
+    expect(screen.getByRole('button', { name: /Supporting Analysis/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Gap Analysis —/)).not.toBeInTheDocument();
   });
 
-  it('renders the processing status bar when no resume draft exists', () => {
+  it('renders the simplified processing card when no resume draft exists', () => {
     const props = makeDisplayProps({
       isComplete: false,
       editableResume: null,
@@ -798,8 +801,8 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     render(<V2StreamingDisplay {...props} />);
 
-    // ProcessingStatusBar renders a status role element with stage status label
-    expect(screen.getByText('AI Working On Your Resume')).toBeInTheDocument();
+    expect(screen.getByText('Building Your Tailored Resume')).toBeInTheDocument();
+    expect(screen.getByText('We are rebuilding the resume now.')).toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {

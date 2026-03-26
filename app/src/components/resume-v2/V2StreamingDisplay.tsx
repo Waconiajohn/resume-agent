@@ -2,8 +2,8 @@
  * V2StreamingDisplay — Output display for the v2 pipeline
  *
  * Two layout modes:
- *   1. Processing mode — OriginalScoresCard + LivePipelineCard (or PostGapDebriefCard after gap submission)
- *   2. Resume mode — coaching banner + full-width centered document with inline editing
+ *   1. Processing mode — minimal status card while the tailored resume is being built
+ *   2. Resume mode — full-width centered document with inline editing
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
@@ -27,9 +27,6 @@ import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { SuggestionsBadge } from './SuggestionsBadge';
 import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
-import { GapQuestionFlow, coachingCardsToQuestions, questionResponsesToCoachingResponses } from './GapQuestionFlow';
-import type { GapQuestionResponse } from './GapQuestionFlow';
-import { PostGapDebriefCard } from './cards/PostGapDebriefCard';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -92,7 +89,7 @@ interface V2StreamingDisplayProps {
   onToggleMasterPromotionItem?: (itemId: string) => void;
   onSelectAllMasterPromotionItems?: () => void;
   onClearMasterPromotionItems?: () => void;
-  /** Callback for AI-assist buttons in GapQuestionFlow cards */
+  /** Callback for AI-assist actions tied to resume coaching surfaces */
   onGapAssist?: (
     requirement: string,
     classification: string,
@@ -289,63 +286,14 @@ function OriginalScoresCard({ preScores, collapsible = false }: OriginalScoresCa
 }
 
 // ─── LivePipelineCard ─────────────────────────────────────────────────────────
-// Shows live data as it arrives from SSE events during pipeline processing.
+// Minimal processing state shown before the resume canvas is ready.
 
 function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComplete: boolean }) {
-  const items: Array<{ key: string; label: string; detail?: string }> = [];
-
-  if (data.jobIntelligence) {
-    const ji = data.jobIntelligence;
-    const reqCount = ji.core_competencies.length + ji.strategic_responsibilities.length;
-    items.push({
-      key: 'job',
-      label: `Found ${reqCount} requirements from the job description`,
-      detail: `${ji.company_name} — ${ji.role_title}`,
-    });
-  }
-
-  if (data.candidateIntelligence) {
-    const ci = data.candidateIntelligence;
-    items.push({
-      key: 'candidate',
-      label: `Identified ${ci.career_themes.length} career themes and ${ci.quantified_outcomes.length} quantified outcomes`,
-    });
-  }
-
-  if (data.benchmarkCandidate) {
-    items.push({
-      key: 'benchmark',
-      label: `Benchmark expects ${data.benchmarkCandidate.differentiators.length} differentiators`,
-    });
-  }
-
-  if (data.preScores) {
-    items.push({
-      key: 'prescores',
-      label: `Baseline ATS match: ${data.preScores.ats_match}% — ${data.preScores.keywords_found.length} keywords found, ${data.preScores.keywords_missing.length} missing`,
-    });
-  }
-
-  if (data.gapAnalysis) {
-    const ga = data.gapAnalysis;
-    const strong = ga.requirements.filter((r) => r.classification === 'strong').length;
-    const partial = ga.requirements.filter((r) => r.classification === 'partial').length;
-    const missing = ga.requirements.filter((r) => r.classification === 'missing').length;
-    items.push({
-      key: 'gap',
-      label: `Mapped requirements: ${strong} strong, ${partial} partial, ${missing} gaps`,
-    });
-  }
-
-  if (data.narrativeStrategy) {
-    items.push({
-      key: 'narrative',
-      label: `Positioning angle: "${data.narrativeStrategy.primary_narrative}"`,
-    });
-  }
-
   const progress = isComplete ? 100 : getStageProgressPercent(data.stage);
   const stageLabel = getStageStatusLabel(data.stage, isComplete);
+  const companyAndRole = data.jobIntelligence
+    ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}`
+    : null;
 
   return (
     <div
@@ -354,11 +302,22 @@ function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComple
       aria-live="polite"
     >
       <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
-        AI Working On Your Resume
+        Building Your Tailored Resume
       </p>
 
-      {/* Progress bar */}
-      <div className="mb-4">
+      <div className="space-y-3">
+        <div>
+          <p className="text-[18px] font-semibold text-neutral-800">
+            We are rebuilding the resume now.
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
+            The full work happens on the resume itself. We will bring that draft in as soon as it is ready.
+          </p>
+          {companyAndRole && (
+            <p className="mt-2 text-[12px] text-neutral-400">{companyAndRole}</p>
+          )}
+        </div>
+
         <div
           className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden"
           role="progressbar"
@@ -371,40 +330,11 @@ function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComple
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="mt-1.5 text-[12px] text-neutral-500">{stageLabel}</p>
-      </div>
-
-      {/* Live data feed */}
-      {items.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-neutral-500">
           <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
-          Analyzing your resume and the job description...
+          {stageLabel}
         </div>
-      ) : (
-        <div className="space-y-2.5">
-          {items.map((item, i) => (
-            <div
-              key={item.key}
-              className="flex items-start gap-2.5 motion-safe:animate-[card-enter_400ms_ease-out_forwards] motion-safe:opacity-0"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-neutral-700">{item.label}</p>
-                {item.detail && (
-                  <p className="text-[12px] text-neutral-400 mt-0.5">{item.detail}</p>
-                )}
-              </div>
-            </div>
-          ))}
-          {!isComplete && (
-            <div className="flex items-center gap-2.5 text-sm text-neutral-500">
-              <Loader2 className="h-4 w-4 motion-safe:animate-spin shrink-0" />
-              {stageLabel}
-            </div>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -589,53 +519,6 @@ export function V2StreamingDisplay({
     index: number;
     requirements: string[];
   } | null>(null);
-
-  // ── Gap question flow ─────────────────────────────────────────────────────
-  // When gapCoachingCards arrive during processing (no resume yet), show the
-  // one-at-a-time question flow. Track whether the user has already submitted.
-  const [gapQuestionsSubmitted, setGapQuestionsSubmitted] = useState(false);
-  const [gapResponses, setGapResponses] = useState<GapQuestionResponse[]>([]);
-
-  // Reset the submitted flag when a new pipeline run starts (gapCoachingCards
-  // goes back to null as part of INITIAL_DATA reset in useV2Pipeline).
-  const prevGapCoachingCardsRef = useRef(gapCoachingCards);
-  useEffect(() => {
-    if (prevGapCoachingCardsRef.current !== null && gapCoachingCards === null) {
-      setGapQuestionsSubmitted(false);
-      setGapResponses([]);
-    }
-    prevGapCoachingCardsRef.current = gapCoachingCards;
-  }, [gapCoachingCards]);
-
-  // On re-runs, all coaching cards arrive with previously_approved=true.
-  // Skip showing the gap question flow in that case to avoid a visual flash.
-  const allPreviouslyApproved = useMemo(
-    () => gapCoachingCards != null && gapCoachingCards.length > 0 && gapCoachingCards.every(c => c.previously_approved),
-    [gapCoachingCards],
-  );
-
-  // When the orchestrator auto-approves all strategies, the pipeline moves past
-  // the strategy stage without waiting for user gap coaching responses.
-  // Skip the gap question flow if the pipeline has already advanced.
-  const pipelinePastGaps = data.stage != null && ['writing', 'verification', 'assembly', 'complete'].includes(data.stage);
-
-  const gapQuestions = useMemo(
-    () => (gapCoachingCards && !allPreviouslyApproved ? coachingCardsToQuestions(gapCoachingCards) : []),
-    [gapCoachingCards, allPreviouslyApproved],
-  );
-
-  const handleGapQuestionsComplete = useCallback(
-    (questionResponses: GapQuestionResponse[]) => {
-      setGapResponses(questionResponses);
-      setGapQuestionsSubmitted(true);
-      const coachingResponses = questionResponsesToCoachingResponses(
-        questionResponses,
-        gapQuestions,
-      );
-      onRespondGapCoaching(coachingResponses);
-    },
-    [gapQuestions, onRespondGapCoaching],
-  );
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
@@ -991,25 +874,7 @@ export function V2StreamingDisplay({
 
           {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
-          {/* Gap question flow — shown when coaching cards arrive, before resume generation.
-              Replaces the staged processing viewer while questions are pending. */}
-          {gapQuestions.length > 0 && !gapQuestionsSubmitted && !pipelinePastGaps ? (
-            <GapQuestionFlow
-              questions={gapQuestions}
-              gapAnalysis={data.gapAnalysis}
-              preScores={data.preScores}
-              onComplete={handleGapQuestionsComplete}
-              onAssist={onGapAssist}
-            />
-          ) : gapQuestionsSubmitted && !hasResume ? (
-            <PostGapDebriefCard
-              responses={gapResponses}
-              stage={data.stage}
-              isComplete={isComplete}
-            />
-          ) : (
-            <LivePipelineCard data={data} isComplete={isComplete} />
-          )}
+          <LivePipelineCard data={data} isComplete={isComplete} />
         </div>
       )}
     </div>
@@ -1111,6 +976,7 @@ function PipelineAnalysisSummary({
   assembly,
   verificationDetail,
 }: PipelineAnalysisSummaryProps) {
+  const [open, setOpen] = useState(false);
   const [showAllToneFindings, setShowAllToneFindings] = useState(false);
   const hasAnyData = gapAnalysis || benchmarkCandidate || narrativeStrategy || assembly || verificationDetail;
   if (!hasAnyData) return null;
@@ -1118,197 +984,222 @@ function PipelineAnalysisSummary({
   const truth = verificationDetail?.truth ?? null;
   const tone = verificationDetail?.tone ?? null;
   const ats = verificationDetail?.ats ?? assembly?.scores ?? null;
+  const strongCount = gapAnalysis?.requirements.filter((r) => r.classification === 'strong').length ?? 0;
+  const partialCount = gapAnalysis?.requirements.filter((r) => r.classification === 'partial').length ?? 0;
+  const missingCount = gapAnalysis?.requirements.filter((r) => r.classification === 'missing').length ?? 0;
 
   return (
-    <div className="space-y-2 mb-6" role="region" aria-label="Pipeline analysis summary">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3 px-1">
-        Detailed Analysis
-      </p>
-
-      {/* Gap Analysis Summary */}
-      {gapAnalysis && (
-        <AnalysisSection
-          title={`Gap Analysis — ${gapAnalysis.requirements.filter((r) => r.classification === 'strong').length} strong, ${gapAnalysis.requirements.filter((r) => r.classification === 'partial').length} partial, ${gapAnalysis.requirements.filter((r) => r.classification === 'missing').length} missing`}
-          icon={<TrendingUp className="h-4 w-4" />}
+    <div className="mb-6" role="region" aria-label="Pipeline analysis summary">
+      <div className="bg-white rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.14)] overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 transition-colors"
+          aria-expanded={open}
         >
-          {gapAnalysis.strength_summary && (
-            <p className="text-[13px] text-neutral-600 leading-relaxed">{gapAnalysis.strength_summary}</p>
-          )}
-          {/* Counts */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Strong Match', count: gapAnalysis.requirements.filter((r) => r.classification === 'strong').length, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-              { label: 'Partial Match', count: gapAnalysis.requirements.filter((r) => r.classification === 'partial').length, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
-              { label: 'Gap', count: gapAnalysis.requirements.filter((r) => r.classification === 'missing').length, color: 'text-red-500', bg: 'bg-red-50 border-red-100' },
-            ].map(({ label, count, color, bg }) => (
-              <div key={label} className={`rounded-lg border px-3 py-2 text-center ${bg}`}>
-                <p className={`text-lg font-bold tabular-nums ${color}`}>{count}</p>
-                <p className="text-[11px] text-neutral-500">{label}</p>
-              </div>
-            ))}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Supporting Analysis</p>
+            <p className="mt-1 text-sm font-medium text-neutral-700">
+              Open the full analysis if you want to inspect the benchmark, gap map, and verification details.
+            </p>
           </div>
-          {/* Critical gaps */}
-          {gapAnalysis.critical_gaps.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Critical gaps to address</p>
-              <ul className="space-y-1">
-                {gapAnalysis.critical_gaps.map((gap, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
-                    <X className="h-3 w-3 shrink-0 mt-0.5 text-red-400" />
-                    {gap}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </AnalysisSection>
-      )}
+          {open
+            ? <ChevronUp className="h-4 w-4 shrink-0 text-neutral-400" />
+            : <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />}
+        </button>
 
-      {/* Benchmark Overview */}
-      {benchmarkCandidate && (
-        <AnalysisSection
-          title="Benchmark Overview — What the ideal candidate looks like"
-          icon={<Target className="h-4 w-4" />}
-        >
-          {benchmarkCandidate.ideal_profile_summary && (
-            <p className="text-[13px] text-neutral-600 leading-relaxed">{benchmarkCandidate.ideal_profile_summary}</p>
-          )}
-          {benchmarkCandidate.differentiators.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Key differentiators expected</p>
-              <ul className="space-y-1">
-                {benchmarkCandidate.differentiators.map((d, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
-                    <span className="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-400" />
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </AnalysisSection>
-      )}
+        {open && (
+          <div className="border-t border-neutral-100 px-1 py-3 space-y-2">
+            {/* Gap Analysis Summary */}
+            {gapAnalysis && (
+              <AnalysisSection
+                title={`Gap Analysis — ${strongCount} strong, ${partialCount} partial, ${missingCount} missing`}
+                icon={<TrendingUp className="h-4 w-4" />}
+              >
+                {gapAnalysis.strength_summary && (
+                  <p className="text-[13px] text-neutral-600 leading-relaxed">{gapAnalysis.strength_summary}</p>
+                )}
+                {/* Counts */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Strong Match', count: strongCount, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+                    { label: 'Partial Match', count: partialCount, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+                    { label: 'Gap', count: missingCount, color: 'text-red-500', bg: 'bg-red-50 border-red-100' },
+                  ].map(({ label, count, color, bg }) => (
+                    <div key={label} className={`rounded-lg border px-3 py-2 text-center ${bg}`}>
+                      <p className={`text-lg font-bold tabular-nums ${color}`}>{count}</p>
+                      <p className="text-[11px] text-neutral-500">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Critical gaps */}
+                {gapAnalysis.critical_gaps.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Critical gaps to address</p>
+                    <ul className="space-y-1">
+                      {gapAnalysis.critical_gaps.map((gap, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                          <X className="h-3 w-3 shrink-0 mt-0.5 text-red-400" />
+                          {gap}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </AnalysisSection>
+            )}
 
-      {/* Narrative Strategy */}
-      {narrativeStrategy && (
-        <AnalysisSection
-          title="Narrative Strategy — Positioning angle and Why Me story"
-          icon={<Lightbulb className="h-4 w-4" />}
-        >
-          {narrativeStrategy.primary_narrative && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Positioning Angle</p>
-              <p className="text-[13px] font-medium text-blue-600 leading-relaxed">{narrativeStrategy.primary_narrative}</p>
-            </div>
-          )}
-          {narrativeStrategy.why_me_concise && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Why Me</p>
-              <p className="text-[13px] text-neutral-600 leading-relaxed italic">"{narrativeStrategy.why_me_concise}"</p>
-            </div>
-          )}
-          {narrativeStrategy.supporting_themes.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Supporting themes</p>
-              <div className="flex flex-wrap gap-1.5">
-                {narrativeStrategy.supporting_themes.map((theme, i) => (
-                  <span
-                    key={i}
-                    className="rounded-md px-2 py-0.5 text-[11px] text-blue-600 bg-blue-50 border border-blue-100"
-                  >
-                    {theme}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </AnalysisSection>
-      )}
+            {/* Benchmark Overview */}
+            {benchmarkCandidate && (
+              <AnalysisSection
+                title="Benchmark Overview — What the ideal candidate looks like"
+                icon={<Target className="h-4 w-4" />}
+              >
+                {benchmarkCandidate.ideal_profile_summary && (
+                  <p className="text-[13px] text-neutral-600 leading-relaxed">{benchmarkCandidate.ideal_profile_summary}</p>
+                )}
+                {benchmarkCandidate.differentiators.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Key differentiators expected</p>
+                    <ul className="space-y-1">
+                      {benchmarkCandidate.differentiators.map((d, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </AnalysisSection>
+            )}
 
-      {/* Verification Results */}
-      {(truth || tone || ats) && (
-        <AnalysisSection
-          title={`Verification Results — Truth${truth ? ` ${truth.truth_score}/100` : ''}, Tone${tone ? ` ${tone.tone_score}/100` : ''}, ATS${assembly ? ` ${assembly.scores.ats_match}%` : ''}`}
-          icon={<ShieldCheck className="h-4 w-4" />}
-        >
-          <div className="grid grid-cols-3 gap-2">
-            {truth && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-center">
-                <p className="text-lg font-bold tabular-nums text-blue-600">{truth.truth_score}</p>
-                <p className="text-[11px] text-neutral-500">Truth Score</p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">
-                  {truth.claims.filter((c) => c.confidence === 'verified').length} verified
-                  {truth.flagged_items.length > 0 ? `, ${truth.flagged_items.length} flagged` : ''}
-                </p>
-              </div>
+            {/* Narrative Strategy */}
+            {narrativeStrategy && (
+              <AnalysisSection
+                title="Narrative Strategy — Positioning angle and Why Me story"
+                icon={<Lightbulb className="h-4 w-4" />}
+              >
+                {narrativeStrategy.primary_narrative && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Positioning Angle</p>
+                    <p className="text-[13px] font-medium text-blue-600 leading-relaxed">{narrativeStrategy.primary_narrative}</p>
+                  </div>
+                )}
+                {narrativeStrategy.why_me_concise && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1">Why Me</p>
+                    <p className="text-[13px] text-neutral-600 leading-relaxed italic">"{narrativeStrategy.why_me_concise}"</p>
+                  </div>
+                )}
+                {narrativeStrategy.supporting_themes.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Supporting themes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {narrativeStrategy.supporting_themes.map((theme, i) => (
+                        <span
+                          key={i}
+                          className="rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] text-blue-600"
+                        >
+                          {theme}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </AnalysisSection>
             )}
-            {tone && (
-              <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-center">
-                <p className="text-lg font-bold tabular-nums text-amber-600">{tone.tone_score}</p>
-                <p className="text-[11px] text-neutral-500">Tone Score</p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">
-                  {tone.findings.length === 0 ? 'No issues' : `${tone.findings.length} finding${tone.findings.length !== 1 ? 's' : ''}`}
-                </p>
-              </div>
-            )}
-            {assembly && (
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-center">
-                <p className="text-lg font-bold tabular-nums text-emerald-600">{assembly.scores.ats_match}%</p>
-                <p className="text-[11px] text-neutral-500">ATS Match</p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">After optimization</p>
-              </div>
-            )}
-          </div>
-          {/* Claim breakdown */}
-          {truth && truth.claims.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Claim breakdown ({truth.claims.length} total)</p>
-              <div className="flex flex-wrap gap-2">
-                {(['verified', 'plausible', 'unverified', 'fabricated'] as const).map((conf) => {
-                  const count = truth.claims.filter((c) => c.confidence === conf).length;
-                  if (count === 0) return null;
-                  const color = conf === 'verified' ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
-                    : conf === 'plausible' ? 'text-blue-600 bg-blue-50 border-blue-100'
-                    : conf === 'unverified' ? 'text-amber-600 bg-amber-50 border-amber-100'
-                    : 'text-red-500 bg-red-50 border-red-100';
-                  return (
-                    <span key={conf} className={`rounded-md px-2 py-0.5 text-[11px] border capitalize ${color}`}>
-                      {count} {conf}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {/* Tone findings count by type */}
-          {tone && tone.findings.length > 0 && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Tone findings</p>
-              <ul className="space-y-1">
-                {(showAllToneFindings ? tone.findings : tone.findings.slice(0, 3)).map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
-                    <span className="shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-400 mt-1" />
-                    <span className="font-medium">{f.section}:</span> {f.issue ?? f.text}
-                  </li>
-                ))}
-              </ul>
-              {tone.findings.length > 3 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllToneFindings((p) => !p)}
-                  className="mt-1.5 flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer"
-                >
-                  {showAllToneFindings ? (
-                    <><ChevronUp className="h-3 w-3" />Show fewer findings</>
-                  ) : (
-                    <><ChevronDown className="h-3 w-3" />Show all {tone.findings.length} findings</>
+
+            {/* Verification Results */}
+            {(truth || tone || ats) && (
+              <AnalysisSection
+                title={`Verification Results — Truth${truth ? ` ${truth.truth_score}/100` : ''}, Tone${tone ? ` ${tone.tone_score}/100` : ''}, ATS${assembly ? ` ${assembly.scores.ats_match}%` : ''}`}
+                icon={<ShieldCheck className="h-4 w-4" />}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {truth && (
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-center">
+                      <p className="text-lg font-bold tabular-nums text-blue-600">{truth.truth_score}</p>
+                      <p className="text-[11px] text-neutral-500">Truth Score</p>
+                      <p className="mt-0.5 text-[10px] text-neutral-400">
+                        {truth.claims.filter((c) => c.confidence === 'verified').length} verified
+                        {truth.flagged_items.length > 0 ? `, ${truth.flagged_items.length} flagged` : ''}
+                      </p>
+                    </div>
                   )}
-                </button>
-              )}
-            </div>
-          )}
-        </AnalysisSection>
-      )}
+                  {tone && (
+                    <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-center">
+                      <p className="text-lg font-bold tabular-nums text-amber-600">{tone.tone_score}</p>
+                      <p className="text-[11px] text-neutral-500">Tone Score</p>
+                      <p className="mt-0.5 text-[10px] text-neutral-400">
+                        {tone.findings.length === 0 ? 'No issues' : `${tone.findings.length} finding${tone.findings.length !== 1 ? 's' : ''}`}
+                      </p>
+                    </div>
+                  )}
+                  {assembly && (
+                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-center">
+                      <p className="text-lg font-bold tabular-nums text-emerald-600">{assembly.scores.ats_match}%</p>
+                      <p className="text-[11px] text-neutral-500">ATS Match</p>
+                      <p className="mt-0.5 text-[10px] text-neutral-400">After optimization</p>
+                    </div>
+                  )}
+                </div>
+                {truth && truth.claims.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-[11px] uppercase tracking-wider text-neutral-400">Claim breakdown ({truth.claims.length} total)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(['verified', 'plausible', 'unverified', 'fabricated'] as const).map((conf) => {
+                        const count = truth.claims.filter((c) => c.confidence === conf).length;
+                        if (count === 0) return null;
+                        const color = conf === 'verified'
+                          ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                          : conf === 'plausible'
+                            ? 'text-blue-600 bg-blue-50 border-blue-100'
+                            : conf === 'unverified'
+                              ? 'text-amber-600 bg-amber-50 border-amber-100'
+                              : 'text-red-500 bg-red-50 border-red-100';
+                        return (
+                          <span key={conf} className={`rounded-md border px-2 py-0.5 text-[11px] capitalize ${color}`}>
+                            {count} {conf}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {tone && tone.findings.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-[11px] uppercase tracking-wider text-neutral-400">Tone findings</p>
+                    <ul className="space-y-1">
+                      {(showAllToneFindings ? tone.findings : tone.findings.slice(0, 3)).map((f, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                          <span>
+                            <span className="font-medium">{f.section}:</span> {f.issue ?? f.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {tone.findings.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllToneFindings((p) => !p)}
+                        className="mt-1.5 flex cursor-pointer items-center gap-1 text-[11px] text-neutral-400 transition-colors hover:text-neutral-600"
+                      >
+                        {showAllToneFindings ? (
+                          <><ChevronUp className="h-3 w-3" />Show fewer findings</>
+                        ) : (
+                          <><ChevronDown className="h-3 w-3" />Show all {tone.findings.length} findings</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </AnalysisSection>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
