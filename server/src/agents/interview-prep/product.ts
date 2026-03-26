@@ -197,13 +197,13 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
         const parts = [
           'Write the complete interview preparation report using the research data gathered.',
           '',
-          'Follow your workflow exactly:',
+          'Use this default workflow unless the available evidence suggests a better sequence:',
           '1. write_section + self_review_section for: company_research, elevator_pitch, requirements_fit, technical_questions, behavioral_questions, three_two_one',
           '2. build_career_story for the why_me section',
           '3. write_section + self_review_section for: thirty_sixty_ninety, final_tips',
           '4. assemble_report to combine everything',
           '',
-          'Do NOT skip any section. Do NOT skip self-review.',
+          'Cover every required section before assemble_report. Use self-review where it materially improves specificity, evidence quality, and executive altitude.',
         ];
 
         // If the user requested revisions at the review gate, incorporate feedback

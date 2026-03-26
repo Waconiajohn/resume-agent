@@ -579,6 +579,14 @@ function shouldPreferDeterministicRequirement(
   if (!isHardRequirement(seed.requirement, seed.source_evidence)) {
     return false;
   }
+  const modeledEvidence = Array.isArray(modeled.evidence) ? modeled.evidence.filter(Boolean) : [];
+  const modeledHasStrategy = Boolean(modeled.strategy);
+  const modeledLooksIncomplete = !modeled.requirement.trim()
+    || (modeled.classification === 'missing' && modeledEvidence.length === 0 && !modeledHasStrategy);
+
+  if (!modeledLooksIncomplete) {
+    return false;
+  }
 
   return classificationRank(deterministic.classification) > classificationRank(modeled.classification);
 }

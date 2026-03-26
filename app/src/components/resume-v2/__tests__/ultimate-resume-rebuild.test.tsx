@@ -378,7 +378,7 @@ describe('BulletEditPopover — requirement info', () => {
   it('renders requirement info with JD badge', () => {
     render(<BulletEditPopover {...makePopoverProps({ requirementSource: 'job_description' })} />);
 
-    expect(screen.getByText('Job Description')).toBeInTheDocument();
+    expect(screen.getByText('Targets Job Need')).toBeInTheDocument();
     expect(screen.getByText('Team leadership')).toBeInTheDocument();
     expect(screen.getByText('Platform migration')).toBeInTheDocument();
   });
@@ -386,7 +386,7 @@ describe('BulletEditPopover — requirement info', () => {
   it('renders requirement info with Benchmark badge', () => {
     render(<BulletEditPopover {...makePopoverProps({ requirementSource: 'benchmark' })} />);
 
-    expect(screen.getByText('Benchmark')).toBeInTheDocument();
+    expect(screen.getByText('Targets Benchmark Signal')).toBeInTheDocument();
   });
 });
 
@@ -412,7 +412,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('No supporting evidence found in original resume')).toBeInTheDocument();
+    expect(screen.getByText('No original resume support found yet')).toBeInTheDocument();
   });
 
   it('shows red warning when evidence_found is whitespace-only', () => {
@@ -425,7 +425,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('No supporting evidence found in original resume')).toBeInTheDocument();
+    expect(screen.getByText('No original resume support found yet')).toBeInTheDocument();
   });
 
   it('shows a code-red proof state for unsupported JD lines', () => {

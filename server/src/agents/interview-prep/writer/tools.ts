@@ -156,7 +156,7 @@ const writeSectionTool: InterviewPrepTool = {
     'Write a single section of the interview preparation report. ' +
     'Follows the 11 quality rules for interview prep documents. ' +
     'Each section must be written in first person, tailored to the target company, ' +
-    'and meet minimum length requirements. Call this for each of the 9 sections in order.',
+    'and meet minimum length requirements. Call this for each required section, using the sequence that best fits the available evidence.',
   model_tier: 'primary',
   input_schema: {
     type: 'object',

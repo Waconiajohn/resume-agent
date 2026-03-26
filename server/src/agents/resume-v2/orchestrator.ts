@@ -191,7 +191,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     // Four cases:
     // 1. "Add Context" re-run — caller passes previously approved strategies via options.approved_strategies.
     // 2. Gap coaching responses supplied at call time (legacy re-run path).
-    // 3. Non-strong gaps present AND no pre-supplied responses → emit gap_questions and PAUSE.
+    // 3. Non-strong gaps present AND no pre-supplied responses → emit informational coaching questions.
     // 4. No gaps → implicit approval of all pending strategies.
     let allApproved: ApprovedStrategy[];
 
@@ -203,9 +203,10 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       state.gap_coaching_responses = options.gap_coaching_responses;
       allApproved = buildApprovedStrategies(options.gap_coaching_responses, gapAnalysis);
     } else if (gapAnalysis.pending_strategies.length > 0) {
-      // Case 3: Non-strong gaps present — auto-approve ALL strategies and continue immediately.
-      // The user will validate on the resume itself (Ultimate Resume mode).
-      // We still emit gap_questions for the scoring report UI, but do NOT pause the pipeline.
+      // Case 3: Non-strong gaps present — continue immediately.
+      // The user validates these on the resume itself (Ultimate Resume mode).
+      // We still emit gap_questions as informational coaching for the analysis UI,
+      // but they are not a blocking gate.
       const importanceOrder: Record<string, number> = {
         must_have: 0,
         critical: 0,
@@ -239,6 +240,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
               question: ps.strategy.interview_questions?.[0]?.question ?? `Can you provide evidence for: ${ps.requirement}?`,
               context: ps.strategy.ai_reasoning ?? `Your background may have relevant experience for "${ps.requirement}".`,
               currentEvidence: req?.evidence ?? [],
+              informational_only: true,
             })),
           },
         });

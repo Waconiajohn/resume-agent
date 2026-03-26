@@ -35,7 +35,7 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
         </div>
         <p className="max-w-2xl text-sm text-[var(--text-soft)]">
           {isActiveNode
-            ? 'The coach is working through section writing/review. Bundle progress is shown below so you can see what is being reviewed versus auto-approved.'
+            ? 'The coach is working through section writing/review. Bundle progress is shown below so you can see what is being reviewed versus what draft-now mode continued automatically.'
             : 'Bundle review progress from the latest section-review checkpoint.'}
         </p>
         <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2">
@@ -74,7 +74,7 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
                 </div>
                 <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                   {bundle.total_sections} section{bundle.total_sections === 1 ? '' : 's'}
-                  {bundle.review_required > 0 ? ` • ${bundle.review_required} in review set` : ' • auto-approved by mode'}
+                  {bundle.review_required > 0 ? ` • ${bundle.review_required} in review set` : ' • continued automatically in draft-now mode'}
                 </div>
                 <div className="mt-1 text-[12px] text-[var(--text-soft)]">
                   {bundle.status === 'in_progress'
@@ -82,7 +82,7 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
                     : bundle.status === 'complete'
                       ? 'Complete'
                       : bundle.status === 'auto_approved'
-                        ? 'Auto-approved'
+                        ? 'Continued automatically'
                         : 'Pending'}
                 </div>
               </div>

@@ -173,6 +173,7 @@ export interface GapQuestion {
   question: string;
   context: string;
   currentEvidence: string[];
+  informational_only?: boolean;
 }
 
 // ─── Gap Coaching (AI coaching conversation) ─────────────────────
@@ -266,6 +267,22 @@ export interface NarrativeStrategy {
 }
 
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+export type ResumeContentOrigin =
+  | 'original_resume'
+  | 'enhanced_from_resume'
+  | 'drafted_to_close_gap';
+export type ResumeSupportOrigin =
+  | 'original_resume'
+  | 'adjacent_resume_inference'
+  | 'user_confirmed_context'
+  | 'not_found';
+
+export interface ResumePriorityTarget {
+  requirement: string;
+  source: RequirementSource;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  source_evidence?: string;
+}
 
 export interface ResumeBullet {
   text: string;
@@ -277,6 +294,8 @@ export interface ResumeBullet {
   evidence_found: string;
   /** Whether this requirement came from the JD or from the benchmark profile */
   requirement_source: RequirementSource;
+  content_origin?: ResumeContentOrigin;
+  support_origin?: ResumeSupportOrigin;
 }
 
 export interface ResumeExperience {
@@ -314,7 +333,10 @@ export interface ResumeDraft {
     evidence_found: string;
     /** Whether this requirement came from the JD or from the benchmark profile */
     requirement_source: RequirementSource;
+    content_origin?: ResumeContentOrigin;
+    support_origin?: ResumeSupportOrigin;
   }>;
+  selected_accomplishment_targets?: ResumePriorityTarget[];
   professional_experience: ResumeExperience[];
   earlier_career?: Array<{
     company: string;

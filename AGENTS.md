@@ -65,6 +65,18 @@ If the task is clearly local and does not affect shared contracts, still read th
 9. Optimize for user-task clarity over internal pipeline visibility.
 10. Use hardening as a safety net, not as the primary architecture.
 
+## Anti-Drift Sentinel
+
+Review this before every substantial prompt or implementation session.
+
+1. Do not let deterministic post-processing overwrite valid agent decisions about priority, placement, provenance, or meaning.
+2. Do not let fallback validators silently redefine what a resume line is trying to do after the agent already decided it.
+3. Do not let metadata fields such as `requirement_source` stand in for provenance. Requirement targeting, content origin, and support provenance must remain distinct.
+4. Do not present fake gates. If the system auto-approves or treats a step as informational, the UI and event model must say so plainly.
+5. Do not open multiple editing surfaces for the same resume line from a single user action.
+6. Do not rebuild agent priorities later with keyword rematching when an upstream agent already determined the priorities.
+7. If a validator must disagree with agent output for safety, annotate the disagreement explicitly. Do not silently replace the agent's judgment.
+
 ## Shared vs Local Changes
 
 Use this exact meaning everywhere in the repository.

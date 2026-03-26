@@ -23,6 +23,9 @@ import type {
   CandidateExperience,
   BulletSource,
   BulletConfidence,
+  ResumePriorityTarget,
+  ResumeContentOrigin,
+  ResumeSupportOrigin,
 } from '../types.js';
 
 const loggedFuzzyExperienceFramingMatches = new Set<string>();
@@ -227,6 +230,7 @@ export async function runResumeWriter(
   signal?: AbortSignal,
 ): Promise<ResumeDraftOutput> {
   const userMessage = buildUserMessage(input);
+  const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
 
   let parsed: ResumeDraftOutput | null = null;
 
@@ -316,12 +320,19 @@ export async function runResumeWriter(
   // The LLM frequently omits optional fields — this guarantees them.
   // Pass input so we can look up requirement_source from gap_analysis.
   parsed = ensureBulletMetadata(parsed, input);
+  parsed.selected_accomplishment_targets = mergeSelectedAccomplishmentTargets(
+    parsed.selected_accomplishment_targets,
+    selectedAccomplishmentTargets,
+  );
 
-  // FINAL PASS: deterministic requirement matching — overwrites LLM metadata
+  // FINAL PASS: deterministic validation and annotation.
+  // This layer fills blanks and flags risky lines, but it must not silently
+  // redefine valid agent-owned priority or placement decisions.
   parsed = deterministicRequirementMatch(
     parsed,
     input.candidate.experience ?? [],
     input.gap_analysis.requirements,
+    selectedAccomplishmentTargets,
   );
 
   // Log color distribution summary
@@ -354,6 +365,7 @@ export async function runResumeWriter(
         bullets: (e.bullets ?? []).slice(0, 2).map(b => ({ text: b.text.slice(0, 60), source: b.source, confidence: b.confidence, req_source: b.requirement_source, reqs: b.addresses_requirements?.slice(0, 2) })),
       })),
       reqSourceMap: input.gap_analysis?.requirements?.slice(0, 5).map(r => ({ req: r.requirement, source: r.source })),
+      selectedAccomplishmentTargets,
     };
     fs.writeFileSync('/tmp/resume-color-debug.json', JSON.stringify(debugData, null, 2));
   } catch {}
@@ -464,6 +476,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     && typeof input.narrative.section_guidance.experience_framing === 'object'
     ? input.narrative.section_guidance.experience_framing
     : {};
+  const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
 
   const parts: string[] = [
     '## YOUR STRATEGIC DIRECTION',
@@ -474,6 +487,17 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `Accomplishment priorities: ${accomplishmentPriorities.join('; ')}`,
     '',
   ];
+
+  if (selectedAccomplishmentTargets.length > 0) {
+    parts.push(
+      '## SELECTED ACCOMPLISHMENTS — AGENT-OWNED PRIORITY TARGETS',
+      'This section must directly prove these role priorities first. Do not drift into secondary needs unless the top priorities are already covered convincingly.',
+      ...selectedAccomplishmentTargets.map((target, index) => (
+        `${index + 1}. ${target.requirement} (${target.source === 'benchmark' ? 'benchmark signal' : 'job need'}; ${target.importance})${target.source_evidence ? ` — source evidence: ${target.source_evidence}` : ''}`
+      )),
+      '',
+    );
+  }
 
   if (input.career_profile) {
     parts.push(
@@ -612,6 +636,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
 }
 
 function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOutput {
+  const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
   const topRequirements = input.gap_analysis.requirements
     .filter((requirement) => requirement.source === 'job_description')
     .map((requirement) => requirement.requirement);
@@ -651,12 +676,158 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
       is_new: true,
     },
     core_competencies: coreCompetencies,
-    selected_accomplishments: buildSelectedAccomplishments(input),
+    selected_accomplishment_targets: selectedAccomplishmentTargets,
+    selected_accomplishments: buildSelectedAccomplishments(input, selectedAccomplishmentTargets),
     professional_experience: buildProfessionalExperience(input),
     ...(earlierCareer.length > 0 ? { earlier_career: earlierCareer } : {}),
     education: input.candidate.education ?? [],
     certifications: input.candidate.certifications ?? [],
   };
+}
+
+function normalizeRequirementKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function scoreRequirementTextMatch(left: string, right: string): number {
+  const a = normalizeRequirementKey(left);
+  const b = normalizeRequirementKey(right);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.includes(b) || b.includes(a)) return 80;
+
+  const leftTokens = new Set(a.split(/\s+/).filter(Boolean));
+  const rightTokens = new Set(b.split(/\s+/).filter(Boolean));
+  let shared = 0;
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) shared++;
+  }
+  if (shared === 0) return 0;
+  return Math.round((shared / Math.max(leftTokens.size, rightTokens.size)) * 60);
+}
+
+function importanceRank(value: 'must_have' | 'important' | 'nice_to_have'): number {
+  switch (value) {
+    case 'must_have':
+      return 0;
+    case 'important':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+function deriveSelectedAccomplishmentTargets(input: ResumeWriterInput): ResumePriorityTarget[] {
+  const targets: ResumePriorityTarget[] = [];
+  const seen = new Set<string>();
+  const requirementMap = new Map(
+    input.gap_analysis.requirements.map((requirement) => [
+      normalizeRequirementKey(requirement.requirement),
+      requirement,
+    ] as const),
+  );
+
+  const pushTarget = (target: ResumePriorityTarget | null | undefined) => {
+    if (!target) return;
+    const key = normalizeRequirementKey(target.requirement);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    targets.push(target);
+  };
+
+  for (const hint of input.narrative.section_guidance.accomplishment_priorities ?? []) {
+    let bestMatch: RequirementGap | null = null;
+    let bestScore = 0;
+    for (const requirement of input.gap_analysis.requirements) {
+      if (requirement.source !== 'job_description') continue;
+      const score = scoreRequirementTextMatch(hint, requirement.requirement);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = requirement;
+      }
+    }
+
+    if (bestMatch && bestScore >= 40) {
+      pushTarget({
+        requirement: bestMatch.requirement,
+        source: bestMatch.source,
+        importance: bestMatch.importance,
+        source_evidence: bestMatch.source_evidence,
+      });
+      continue;
+    }
+
+    let bestCompetency: ResumePriorityTarget | null = null;
+    let bestCompetencyScore = 0;
+    for (const competency of input.job_intelligence.core_competencies ?? []) {
+      const score = scoreRequirementTextMatch(hint, competency.competency);
+      if (score > bestCompetencyScore) {
+        bestCompetencyScore = score;
+        const matchingRequirement = requirementMap.get(normalizeRequirementKey(competency.competency));
+        bestCompetency = {
+          requirement: matchingRequirement?.requirement ?? competency.competency,
+          source: 'job_description',
+          importance: competency.importance,
+          source_evidence: matchingRequirement?.source_evidence ?? competency.evidence_from_jd,
+        };
+      }
+    }
+    if (bestCompetency && bestCompetencyScore >= 40) {
+      pushTarget(bestCompetency);
+    }
+  }
+
+  const rankedCompetencies = [...(input.job_intelligence.core_competencies ?? [])]
+    .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance));
+  for (const competency of rankedCompetencies) {
+    const matchingRequirement = requirementMap.get(normalizeRequirementKey(competency.competency));
+    pushTarget({
+      requirement: matchingRequirement?.requirement ?? competency.competency,
+      source: 'job_description',
+      importance: competency.importance,
+      source_evidence: matchingRequirement?.source_evidence ?? competency.evidence_from_jd,
+    });
+    if (targets.length >= 3) break;
+  }
+
+  if (targets.length < 3) {
+    const rankedRequirements = input.gap_analysis.requirements
+      .filter((requirement) => requirement.source === 'job_description')
+      .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance));
+    for (const requirement of rankedRequirements) {
+      pushTarget({
+        requirement: requirement.requirement,
+        source: requirement.source,
+        importance: requirement.importance,
+        source_evidence: requirement.source_evidence,
+      });
+      if (targets.length >= 3) break;
+    }
+  }
+
+  return targets.slice(0, 3);
+}
+
+function mergeSelectedAccomplishmentTargets(
+  existing: ResumeDraftOutput['selected_accomplishment_targets'],
+  fallback: ResumePriorityTarget[],
+): ResumePriorityTarget[] {
+  const merged: ResumePriorityTarget[] = [];
+  const seen = new Set<string>();
+  const candidates = [...(existing ?? []), ...fallback];
+  for (const target of candidates) {
+    if (!target) continue;
+    const key = normalizeRequirementKey(target.requirement);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push({
+      requirement: target.requirement,
+      source: target.source,
+      importance: target.importance,
+      source_evidence: target.source_evidence,
+    });
+  }
+  return merged.slice(0, 3);
 }
 
 function preserveCandidateEducationDetail(
@@ -777,6 +948,8 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
           confidence: 'strong',
           evidence_found: bulletText,
           requirement_source: 'job_description',
+          content_origin: 'original_resume',
+          support_origin: 'original_resume',
         });
       }
 
@@ -792,9 +965,9 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
   return draft;
 }
 
-// ─── Deterministic Requirement Matching ──────────────────────────────────
-// These functions assign bullet color states (green/amber/red/orange) WITHOUT
-// relying on LLM cooperation. They overwrite whatever metadata the LLM produced.
+// ─── Deterministic Validation & Annotation ─────────────────────────────────
+// These functions validate and annotate resume metadata when the model leaves
+// fields blank. They must not silently replace valid agent-owned decisions.
 
 /**
  * Tokenize text into lowercase alphanumeric tokens of 4+ characters.
@@ -844,7 +1017,9 @@ function buildOriginalBulletIndex(experience: Array<{ company: string; bullets: 
  * Build an indexed array of requirements with keywords extracted for matching.
  * Keywords: split on non-alphanumeric, keep tokens >= 4 chars, lowercased.
  */
-function buildRequirementIndex(requirements: RequirementGap[]): IndexedRequirement[] {
+function buildRequirementIndex(
+  requirements: Array<{ requirement: string; source: RequirementSource }>,
+): IndexedRequirement[] {
   return requirements.map((req) => ({
     requirement: req.requirement,
     source: req.source,
@@ -928,32 +1103,29 @@ function classifyBulletOriginality(
 }
 
 /**
- * Deterministic requirement matching — the authoritative pass that assigns
- * all 4 color states (green/amber/red/orange) to resume bullets WITHOUT
- * relying on LLM cooperation. Overwrites whatever metadata the LLM produced.
+ * Deterministic validation pass for resume metadata.
  *
- * Color mapping (consumed by frontend):
- *   green  = source:'original',  confidence:'strong'
- *   amber  = source:'enhanced',  confidence:'partial'
- *   red    = source:'drafted',   confidence:'needs_validation', req_source:'job_description'
- *   orange = source:'drafted',   confidence:'needs_validation', req_source:'benchmark'
+ * This layer may:
+ * - fill blank requirement links
+ * - infer support/origin labels when the model omitted them
+ * - attach safer defaults for confidence when metadata is missing
  *
- * Classification matrix:
- *   identical + any match     → original / strong
- *   similar   + JD match      → enhanced / partial / job_description
- *   similar   + bench match   → enhanced / partial / benchmark
- *   similar   + no match      → original / strong / job_description
- *   novel     + JD match      → drafted  / needs_validation / job_description
- *   novel     + bench match   → drafted  / needs_validation / benchmark
- *   novel     + no match      → drafted  / needs_validation / job_description
+ * This layer may not:
+ * - silently replace valid agent-selected requirement targets
+ * - re-rank Selected Accomplishments after the agent chose section priorities
+ * - turn targeting metadata into provenance
  */
 function deterministicRequirementMatch(
   draft: ResumeDraftOutput,
   candidateExperience: CandidateExperience[],
   requirements: RequirementGap[],
+  selectedAccomplishmentTargets: ResumePriorityTarget[],
 ): ResumeDraftOutput {
   const { exactLookup, byCompany } = buildOriginalBulletIndex(candidateExperience);
   const reqIndex = buildRequirementIndex(requirements);
+  const priorityReqIndex = buildRequirementIndex(
+    selectedAccomplishmentTargets.length > 0 ? selectedAccomplishmentTargets : requirements,
+  );
 
   // Collect ALL originals from every company (used for selected_accomplishments)
   const allOriginals: string[] = [];
@@ -964,67 +1136,100 @@ function deterministicRequirementMatch(
   const classify = (
     text: string,
     companyOriginals: string[],
+    indexedRequirements: IndexedRequirement[],
+    existingRequirements: string[],
+    existingRequirementSource: RequirementSource | undefined,
+    existingSource: BulletSource | undefined,
+    existingConfidence: BulletConfidence | undefined,
+    existingContentOrigin: ResumeContentOrigin | undefined,
+    existingSupportOrigin: ResumeSupportOrigin | undefined,
+    evidenceFound: string,
   ): {
     addresses_requirements: string[];
     requirement_source: RequirementSource;
     source: BulletSource;
     confidence: BulletConfidence;
+    content_origin: ResumeContentOrigin;
+    support_origin: ResumeSupportOrigin;
   } => {
-    const match = matchBulletToRequirements(text, reqIndex);
+    const match = matchBulletToRequirements(text, indexedRequirements);
     const originality = classifyBulletOriginality(text, companyOriginals, exactLookup);
-    const hasMatch = match.matchedRequirements.length > 0;
+    const normalizedExistingRequirements = Array.isArray(existingRequirements)
+      ? dedupeStrings(existingRequirements.filter((value) => typeof value === 'string' && value.trim().length > 0))
+      : [];
+    const effectiveRequirements = normalizedExistingRequirements.length > 0
+      ? normalizedExistingRequirements
+      : match.matchedRequirements;
+    const hasMatch = effectiveRequirements.length > 0;
 
     let source: BulletSource;
     let confidence: BulletConfidence;
     let requirementSource: RequirementSource;
 
-    switch (originality) {
-      case 'identical':
-        source = 'original';
-        confidence = 'strong';
-        requirementSource = hasMatch
-          ? (match.hasBenchmarkSource ? 'benchmark' : 'job_description')
-          : 'job_description';
-        break;
-
-      case 'similar':
-        if (hasMatch) {
-          source = 'enhanced';
-          confidence = 'partial';
-          requirementSource = match.hasBenchmarkSource ? 'benchmark' : 'job_description';
-        } else {
+    if (existingSource) {
+      source = existingSource;
+    } else {
+      switch (originality) {
+        case 'identical':
           source = 'original';
-          confidence = 'strong';
-          requirementSource = 'job_description';
-        }
-        break;
-
-      case 'novel':
-      default:
-        source = 'drafted';
-        confidence = 'needs_validation';
-        requirementSource = match.hasBenchmarkSource ? 'benchmark' : 'job_description';
-        break;
+          break;
+        case 'similar':
+          source = hasMatch ? 'enhanced' : 'original';
+          break;
+        case 'novel':
+        default:
+          source = 'drafted';
+          break;
+      }
     }
 
+    if (existingConfidence) {
+      confidence = existingConfidence;
+    } else if (source === 'original') {
+      confidence = 'strong';
+    } else if (source === 'enhanced') {
+      confidence = 'partial';
+    } else {
+      confidence = 'needs_validation';
+    }
+
+    requirementSource = existingRequirementSource
+      ?? (hasMatch ? (match.hasBenchmarkSource ? 'benchmark' : 'job_description') : 'job_description');
+
     return {
-      addresses_requirements: match.matchedRequirements,
+      addresses_requirements: effectiveRequirements,
       requirement_source: requirementSource,
       source,
       confidence,
+      content_origin: existingContentOrigin ?? inferContentOrigin(source),
+      support_origin: inferSupportOrigin(source, evidenceFound, existingSupportOrigin),
     };
   };
 
   // Process selected_accomplishments — compare against ALL companies' originals
+  // and only backfill links against the explicit section priority targets.
   if (Array.isArray(draft.selected_accomplishments)) {
     draft.selected_accomplishments = draft.selected_accomplishments.map((a) => {
-      const result = classify(a.content, allOriginals);
+      const result = classify(
+        a.content,
+        allOriginals,
+        priorityReqIndex,
+        a.addresses_requirements ?? [],
+        a.requirement_source,
+        a.source,
+        a.confidence,
+        a.content_origin,
+        a.support_origin,
+        a.evidence_found ?? '',
+      );
       return {
         ...a,
         addresses_requirements: result.addresses_requirements,
         requirement_source: result.requirement_source,
         source: result.source,
         confidence: result.confidence,
+        content_origin: result.content_origin,
+        support_origin: result.support_origin,
       };
     });
   }
@@ -1038,13 +1243,26 @@ function deterministicRequirementMatch(
         ...exp,
         bullets: Array.isArray(exp.bullets)
           ? exp.bullets.map((bullet) => {
-              const result = classify(bullet.text, companyOriginals);
+              const result = classify(
+                bullet.text,
+                companyOriginals,
+                reqIndex,
+                bullet.addresses_requirements ?? [],
+                bullet.requirement_source,
+                bullet.source,
+                bullet.confidence,
+                bullet.content_origin,
+                bullet.support_origin,
+                bullet.evidence_found ?? '',
+              );
               return {
                 ...bullet,
                 addresses_requirements: result.addresses_requirements,
                 requirement_source: result.requirement_source,
                 source: result.source,
                 confidence: result.confidence,
+                content_origin: result.content_origin,
+                support_origin: result.support_origin,
               };
             })
           : [],
@@ -1112,6 +1330,8 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       evidence_found: bullet.evidence_found ?? '',
       requirement_source: bullet.requirement_source ?? inferReqSource(reqs),
       addresses_requirements: reqs,
+      content_origin: bullet.content_origin ?? inferContentOrigin(source),
+      support_origin: inferSupportOrigin(source, bullet.evidence_found ?? '', bullet.support_origin),
     };
   };
 
@@ -1127,6 +1347,8 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         evidence_found: a.evidence_found ?? '',
         requirement_source: a.requirement_source ?? inferReqSource(reqs),
         addresses_requirements: reqs,
+        content_origin: a.content_origin ?? inferContentOrigin(source),
+        support_origin: inferSupportOrigin(source, a.evidence_found ?? '', a.support_origin),
       };
     });
   }
@@ -1215,7 +1437,9 @@ function ensureAllPositionsPresent(
             source: 'original' as const,
             requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
             confidence: 'strong' as const,
-            evidence_found: '',
+            evidence_found: bullet,
+            content_origin: 'original_resume' as const,
+            support_origin: 'original_resume' as const,
           };
         }),
       });
@@ -1260,23 +1484,74 @@ function inferRequirementSource(
   return sources.includes('job_description') ? 'job_description' : 'benchmark';
 }
 
-function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutput['selected_accomplishments'] {
+function matchPriorityRequirementLinks(
+  text: string,
+  targets: ResumePriorityTarget[],
+  requirements: ResumeWriterInput['gap_analysis']['requirements'],
+): string[] {
+  if (targets.length === 0) {
+    return matchRequirementLinks(text, requirements);
+  }
+
+  return matchRequirementLinks(text, targets.map((target) => ({
+    requirement: target.requirement,
+    source: target.source,
+  }))).slice(0, 3);
+}
+
+function inferContentOrigin(source: BulletSource): ResumeContentOrigin {
+  switch (source) {
+    case 'enhanced':
+      return 'enhanced_from_resume';
+    case 'drafted':
+      return 'drafted_to_close_gap';
+    case 'original':
+    default:
+      return 'original_resume';
+  }
+}
+
+function inferSupportOrigin(
+  source: BulletSource,
+  evidenceFound: string,
+  existing?: ResumeSupportOrigin,
+): ResumeSupportOrigin {
+  if (
+    existing === 'original_resume'
+    || existing === 'adjacent_resume_inference'
+    || existing === 'user_confirmed_context'
+    || existing === 'not_found'
+  ) {
+    return existing;
+  }
+  if (evidenceFound.trim().length > 0) return 'original_resume';
+  if (source === 'enhanced') return 'adjacent_resume_inference';
+  return 'not_found';
+}
+
+function buildSelectedAccomplishments(
+  input: ResumeWriterInput,
+  targets: ResumePriorityTarget[],
+): ResumeDraftOutput['selected_accomplishments'] {
   const quantified = (input.candidate.quantified_outcomes ?? []).map((item) => {
-    const addressesRequirements = matchRequirementLinks(item.outcome, input.gap_analysis.requirements);
+    const content = `${item.outcome}: ${item.value}`;
+    const addressesRequirements = matchPriorityRequirementLinks(content, targets, input.gap_analysis.requirements);
     return {
-      content: `${item.outcome}: ${item.value}`,
+      content,
       is_new: false,
       addresses_requirements: addressesRequirements,
       source: 'original' as const,
       requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
       confidence: 'strong' as const,
-      evidence_found: '',
+      evidence_found: content,
+      content_origin: 'original_resume' as const,
+      support_origin: 'original_resume' as const,
     };
   });
 
   const hidden = (input.candidate.hidden_accomplishments ?? [])
     .map((item) => {
-      const addressesRequirements = matchRequirementLinks(item, input.gap_analysis.requirements);
+      const addressesRequirements = matchPriorityRequirementLinks(item, targets, input.gap_analysis.requirements);
       return {
         content: item,
         is_new: false,
@@ -1284,11 +1559,26 @@ function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutp
         source: 'original' as const,
         requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
         confidence: 'strong' as const,
-        evidence_found: '',
+        evidence_found: item,
+        content_origin: 'original_resume' as const,
+        support_origin: 'original_resume' as const,
       };
     });
 
-  return [...quantified, ...hidden];
+  const targeted = [...quantified, ...hidden]
+    .filter((item) => targets.length === 0 || item.addresses_requirements.length > 0);
+  const fallback = targeted.length >= 3 ? targeted : [...targeted, ...quantified, ...hidden];
+  const deduped: ResumeDraftOutput['selected_accomplishments'] = [];
+  const seen = new Set<string>();
+  for (const item of fallback) {
+    const key = item.content.toLowerCase().trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+    if (deduped.length >= 6) break;
+  }
+
+  return deduped;
 }
 
 function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutput['professional_experience'] {
@@ -1319,14 +1609,16 @@ function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutpu
           source: 'original' as const,
           requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
           confidence: 'strong' as const,
-          evidence_found: '',
+          evidence_found: bullet,
+          content_origin: 'original_resume' as const,
+          support_origin: 'original_resume' as const,
         };
       }),
     };
   });
 }
 
-function matchRequirementLinks(text: string, requirements: ResumeWriterInput['gap_analysis']['requirements']): string[] {
+function matchRequirementLinks(text: string, requirements: Array<{ requirement: string }>): string[] {
   const normalizedText = text.toLowerCase();
   const matches = requirements
     .filter((requirement) => {

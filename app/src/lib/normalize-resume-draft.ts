@@ -2,12 +2,17 @@ import type {
   AssemblyResult,
   BulletConfidence,
   RequirementSource,
+  ResumeContentOrigin,
   ResumeDraft,
   ResumeExperience,
+  ResumePriorityTarget,
+  ResumeSupportOrigin,
 } from '@/types/resume-v2';
 
 type LooseRequirementSource = RequirementSource | string | null | undefined;
 type LooseBulletConfidence = BulletConfidence | string | null | undefined;
+type LooseContentOrigin = ResumeContentOrigin | string | null | undefined;
+type LooseSupportOrigin = ResumeSupportOrigin | string | null | undefined;
 
 function normalizeRequirementSource(value: LooseRequirementSource): RequirementSource {
   return value === 'benchmark' ? 'benchmark' : 'job_description';
@@ -27,6 +32,31 @@ function inferConfidence(
   if (addressesRequirements.length > 0 && evidenceFound.trim().length === 0) return 'needs_validation';
   if (addressesRequirements.length > 0) return 'partial';
   return 'strong';
+}
+
+function normalizeContentOrigin(value: LooseContentOrigin, confidence: BulletConfidence): ResumeContentOrigin {
+  if (value === 'original_resume' || value === 'enhanced_from_resume' || value === 'drafted_to_close_gap') {
+    return value;
+  }
+
+  if (confidence === 'strong') return 'original_resume';
+  if (confidence === 'partial') return 'enhanced_from_resume';
+  return 'drafted_to_close_gap';
+}
+
+function normalizeSupportOrigin(value: LooseSupportOrigin, evidenceFound: string, confidence: BulletConfidence): ResumeSupportOrigin {
+  if (
+    value === 'original_resume'
+    || value === 'adjacent_resume_inference'
+    || value === 'user_confirmed_context'
+    || value === 'not_found'
+  ) {
+    return value;
+  }
+
+  if (evidenceFound.trim().length > 0) return 'original_resume';
+  if (confidence === 'partial') return 'adjacent_resume_inference';
+  return 'not_found';
 }
 
 function normalizeRequirements(value: unknown): string[] {
@@ -58,9 +88,35 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(bullet?.requirement_source),
         confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+        content_origin: normalizeContentOrigin(
+          bullet?.content_origin,
+          inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+        ),
+        support_origin: normalizeSupportOrigin(
+          bullet?.support_origin,
+          evidenceFound,
+          inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+        ),
       };
     }),
   };
+}
+
+function normalizeSelectedAccomplishmentTargets(value: unknown): ResumePriorityTarget[] {
+  return Array.isArray(value)
+    ? value
+      .filter((item): item is ResumePriorityTarget => Boolean(item) && typeof item === 'object')
+      .map((item) => ({
+        requirement: typeof item.requirement === 'string' ? item.requirement : '',
+        source: normalizeRequirementSource(item.source),
+        importance:
+          item.importance === 'must_have' || item.importance === 'important' || item.importance === 'nice_to_have'
+            ? item.importance
+            : 'important',
+        source_evidence: typeof item.source_evidence === 'string' ? item.source_evidence : undefined,
+      }))
+      .filter((item) => item.requirement.trim().length > 0)
+    : [];
 }
 
 export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): ResumeDraft | null {
@@ -99,8 +155,18 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(item?.requirement_source),
         confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+        content_origin: normalizeContentOrigin(
+          item?.content_origin,
+          inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+        ),
+        support_origin: normalizeSupportOrigin(
+          item?.support_origin,
+          evidenceFound,
+          inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+        ),
       };
     }),
+    selected_accomplishment_targets: normalizeSelectedAccomplishmentTargets(resume.selected_accomplishment_targets),
     professional_experience: professionalExperience.map((entry) => normalizeExperienceEntry(entry)),
     earlier_career: Array.isArray(resume.earlier_career)
       ? resume.earlier_career.filter((entry): entry is NonNullable<ResumeDraft['earlier_career']>[number] => Boolean(entry)).map((entry) => ({

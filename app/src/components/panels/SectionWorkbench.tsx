@@ -422,7 +422,7 @@ export function SectionWorkbench({
                                     >
                                       <span className="truncate">{toTitleCase(bundleSection)}</span>
                                       <span className="text-[12px] text-[var(--text-soft)]">
-                                        {isCurrentSection ? 'reviewing' : isApproved ? 'approved' : (requiresReview ? 'needs review' : 'auto-approved')}
+                                        {isCurrentSection ? 'reviewing' : isApproved ? 'approved' : (requiresReview ? 'needs review' : 'continued automatically')}
                                       </span>
                                     </div>
                                   );
@@ -524,7 +524,7 @@ export function SectionWorkbench({
                         )}
                         {autoApprovedBundleCount > 0 && (
                           <span className="text-[var(--text-soft)]">
-                            {autoApprovedBundleCount} group{autoApprovedBundleCount === 1 ? '' : 's'} auto-approved
+                            {autoApprovedBundleCount} group{autoApprovedBundleCount === 1 ? '' : 's'} continued automatically
                           </span>
                         )}
                       </div>

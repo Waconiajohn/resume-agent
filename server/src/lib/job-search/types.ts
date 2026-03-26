@@ -14,7 +14,7 @@ export interface SearchFilters {
 }
 
 export interface JobResult {
-  /** Source-prefixed unique ID, e.g. "firecrawl_1234567890_0" */
+  /** Stable source-prefixed unique ID for deduping and persistence */
   external_id: string;
   title: string;
   company: string;
@@ -22,7 +22,7 @@ export interface JobResult {
   salary_min: number | null;
   salary_max: number | null;
   description: string | null;
-  posted_date: string;
+  posted_date: string | null;
   apply_url: string | null;
   source: string;
   remote_type: string | null;

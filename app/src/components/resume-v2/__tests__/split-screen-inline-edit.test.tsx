@@ -808,7 +808,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getByText(/This bullet currently supports:/)).toBeInTheDocument();
+    expect(screen.getByText(/This line is aimed at:/)).toBeInTheDocument();
   });
 
   it('does NOT show requirement tags when addresses_requirements is empty', () => {

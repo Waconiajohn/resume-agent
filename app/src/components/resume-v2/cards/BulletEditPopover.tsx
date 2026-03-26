@@ -7,7 +7,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import type { BulletConfidence, RequirementSource } from '@/types/resume-v2';
+import type {
+  BulletConfidence,
+  RequirementSource,
+  ResumeContentOrigin,
+  ResumeSupportOrigin,
+} from '@/types/resume-v2';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +22,8 @@ interface BulletEditPopoverProps {
   evidenceFound: string;
   requirementSource: RequirementSource;
   addressesRequirements: string[];
+  contentOrigin?: ResumeContentOrigin;
+  supportOrigin?: ResumeSupportOrigin;
   onSave: (newText: string) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -42,6 +49,8 @@ export function BulletEditPopover({
   evidenceFound,
   requirementSource,
   addressesRequirements,
+  contentOrigin,
+  supportOrigin,
   onSave,
   onRemove,
   onClose,
@@ -112,11 +121,13 @@ export function BulletEditPopover({
 
   const hasEvidence = safeEvidenceFound.trim().length > 0;
   const requirementLabel =
-    requirementSource === 'job_description' ? 'Job Description' : 'Benchmark';
+    requirementSource === 'job_description' ? 'Targets Job Need' : 'Targets Benchmark Signal';
   const RequirementIcon =
     requirementSource === 'job_description' ? Briefcase : BookOpen;
   const statusTone = getProofStateTone(confidence, requirementSource);
   const nextStepHint = getProofStateNextStep(confidence, requirementSource);
+  const contentOriginLabel = getContentOriginLabel(contentOrigin, confidence);
+  const supportOriginLabel = getSupportOriginLabel(supportOrigin, hasEvidence, confidence);
 
   return (
     <div
@@ -150,6 +161,9 @@ export function BulletEditPopover({
             <RequirementIcon className="h-3 w-3" />
             {requirementLabel}
           </span>
+          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            {contentOriginLabel}
+          </span>
           <button
             type="button"
             onClick={onClose}
@@ -178,9 +192,12 @@ export function BulletEditPopover({
         ) : (
           <div className="flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-600 border border-red-100">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            No supporting evidence found in original resume
+            No original resume support found yet
           </div>
         )}
+        <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400">
+          Support source: {supportOriginLabel}
+        </p>
       </div>
 
       {/* ── Editable textarea ────────────────────────────────────────────── */}
@@ -305,4 +322,24 @@ function getProofStateNextStep(
   }
 
   return 'Best next move: replace this with something you can prove, or confirm the experience and rewrite it safely.';
+}
+
+function getContentOriginLabel(
+  contentOrigin: ResumeContentOrigin | undefined,
+  confidence: BulletConfidence,
+): string {
+  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'From Resume';
+  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Rewritten From Resume';
+  return 'Drafted To Close Gap';
+}
+
+function getSupportOriginLabel(
+  supportOrigin: ResumeSupportOrigin | undefined,
+  hasEvidence: boolean,
+  confidence: BulletConfidence,
+): string {
+  if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
+  if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
+  if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
+  return 'Not found yet';
 }

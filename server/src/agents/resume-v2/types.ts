@@ -302,6 +302,22 @@ export interface ResumeWriterInput {
 
 export type BulletSource = 'original' | 'enhanced' | 'drafted';
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+export type ResumeContentOrigin =
+  | 'original_resume'
+  | 'enhanced_from_resume'
+  | 'drafted_to_close_gap';
+export type ResumeSupportOrigin =
+  | 'original_resume'
+  | 'adjacent_resume_inference'
+  | 'user_confirmed_context'
+  | 'not_found';
+
+export interface ResumePriorityTarget {
+  requirement: string;
+  source: RequirementSource;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  source_evidence?: string;
+}
 
 export interface ResumeBullet {
   text: string;
@@ -317,6 +333,10 @@ export interface ResumeBullet {
   evidence_found: string;
   /** How confident we are in this bullet's accuracy — guaranteed by ensureBulletMetadata() */
   confidence: BulletConfidence;
+  /** Why this bullet exists on the tailored resume */
+  content_origin?: ResumeContentOrigin;
+  /** Where the current support comes from */
+  support_origin?: ResumeSupportOrigin;
 }
 
 export interface ResumeExperienceEntry {
@@ -360,7 +380,13 @@ export interface ResumeDraftOutput {
     evidence_found: string;
     /** How confident we are in this accomplishment's accuracy — guaranteed by ensureBulletMetadata() */
     confidence: BulletConfidence;
+    /** Why this line exists on the tailored resume */
+    content_origin?: ResumeContentOrigin;
+    /** Where the current support comes from */
+    support_origin?: ResumeSupportOrigin;
   }>;
+  /** The top job needs the agent selected for the Selected Accomplishments section */
+  selected_accomplishment_targets?: ResumePriorityTarget[];
   professional_experience: ResumeExperienceEntry[];
   earlier_career?: Array<{
     company: string;
@@ -660,6 +686,8 @@ export interface GapQuestion {
   context: string;
   /** Evidence already found on the resume for this requirement */
   currentEvidence: string[];
+  /** True when the question is informational coaching, not a blocking gate */
+  informational_only?: boolean;
 }
 
 // ─── SSE Events for v2 Pipeline ──────────────────────────────────────

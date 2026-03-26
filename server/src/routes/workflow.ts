@@ -976,7 +976,7 @@ workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000),
     if (emitters) {
       for (const emitter of emitters) {
         try {
-          emitter({ type: 'transparency', stage: 'section_review', message: `Draft-now auto-approved section "${sectionName}" without user review` });
+          emitter({ type: 'transparency', stage: 'section_review', message: `Draft-now mode continued past section "${sectionName}" automatically` });
         } catch { /* closed */ }
       }
     }

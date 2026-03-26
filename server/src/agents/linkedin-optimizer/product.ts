@@ -174,14 +174,14 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         const parts = [
           'Write the complete LinkedIn profile optimization using the analysis data gathered.',
           '',
-          'Follow your workflow exactly:',
+          'Use this default workflow unless the profile evidence suggests a better sequence:',
           '1. write_headline',
           '2. write_about',
           '3. write_experience_entries',
           '4. optimize_keywords',
           '5. assemble_report',
           '',
-          'Do NOT skip any section.',
+          'Cover every required section before assemble_report.',
         ];
 
         // Emotional baseline tone adaptation

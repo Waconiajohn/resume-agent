@@ -24,6 +24,10 @@ Its job is to prevent the codebase from sliding back into:
 8. Do not invent evidence, metrics, scale, credentials, or chronology.
 9. Do not let benchmark guidance masquerade as candidate fact.
 10. Do not add AI controls that are not clearly tied to the current user task.
+11. Do not let deterministic rescue layers overwrite valid agent-owned priority or placement decisions.
+12. Do not let requirement-target metadata masquerade as provenance in the UI or saved state.
+13. Do not emit or render fake review gates when the pipeline auto-continues anyway.
+14. Do not open more than one edit/review surface for the same user action on the same line.
 
 ## Shared vs Local Decision Framework
 
@@ -133,6 +137,9 @@ Treat any of these as a pause signal:
 - “this output is close enough even if provenance is fuzzy”
 - “we can harden it downstream if it goes weird”
 - “the requirement text itself is probably good enough as the draft”
+- “the validator can just remap the agent output after the fact”
+- “the UI label is close enough even if it sounds like provenance”
+- “we can emit the question anyway even though the pipeline will auto-approve”
 
 ## Required Commit Summary Template
 

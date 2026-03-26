@@ -32,5 +32,8 @@ Also explicitly check and state:
 
 - whether the planned work is staying contract-driven rather than turning into a hardcoded wizard
 - whether requirement taxonomy or coaching-policy logic is only classifying families, evidence expectations, fallback policy, and safety rules while still leaving phrasing and reasoning room for the agents
+- whether any deterministic validator or fallback layer is about to overwrite valid agent-owned priority, placement, provenance, or meaning
+- whether requirement-target metadata is being kept separate from provenance metadata
+- whether the task is accidentally creating a fake gate or multiple edit surfaces for one user action
 
 Keep the summary practical and specific to the task at hand.

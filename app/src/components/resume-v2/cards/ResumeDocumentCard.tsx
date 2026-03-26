@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Lightbulb, Loader2, Wand2, FileText, Target, Check, X, AlertTriangle } from 'lucide-react';
-import type { ResumeDraft, BulletConfidence, RequirementSource } from '@/types/resume-v2';
+import type {
+  ResumeDraft,
+  BulletConfidence,
+  RequirementSource,
+  ResumeContentOrigin,
+  ResumeSupportOrigin,
+} from '@/types/resume-v2';
 import type { InlineSuggestion } from '@/lib/compute-inline-diffs';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
-import { AiHelperHint } from '@/components/shared/AiHelperHint';
 import { BulletEditPopover } from './BulletEditPopover';
 
 interface ResumeDocumentCardProps {
@@ -230,6 +235,8 @@ export function ResumeDocumentCard({
                           evidenceFound={a.evidence_found}
                           requirementSource={a.requirement_source}
                           addressesRequirements={accomplishmentRequirements}
+                          contentOrigin={a.content_origin}
+                          supportOrigin={a.support_origin}
                           onSave={(newText) => {
                             onBulletEdit?.('selected_accomplishments', i, newText);
                             setOpenPopoverId(null);
@@ -251,6 +258,11 @@ export function ResumeDocumentCard({
                       requirements={accomplishmentRequirements}
                       pendingEdit={pendingEdit}
                       isEditing={isEditing}
+                      confidence={a.confidence}
+                      requirementSource={a.requirement_source}
+                      evidenceFound={a.evidence_found}
+                      contentOrigin={a.content_origin}
+                      supportOrigin={a.support_origin}
                       onRequestEdit={onRequestEdit}
                       onAcceptEdit={onAcceptEdit}
                       onRejectEdit={onRejectEdit}
@@ -347,6 +359,8 @@ export function ResumeDocumentCard({
                                 evidenceFound={bullet.evidence_found}
                                 requirementSource={bullet.requirement_source}
                                 addressesRequirements={bulletRequirements}
+                                contentOrigin={bullet.content_origin}
+                                supportOrigin={bullet.support_origin}
                                 onSave={(newText) => {
                                   onBulletEdit?.('professional_experience', bulletIndex, newText);
                                   setOpenPopoverId(null);
@@ -368,6 +382,11 @@ export function ResumeDocumentCard({
                             requirements={bulletRequirements}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
+                            confidence={bullet.confidence}
+                            requirementSource={bullet.requirement_source}
+                            evidenceFound={bullet.evidence_found}
+                            contentOrigin={bullet.content_origin}
+                            supportOrigin={bullet.support_origin}
                             onRequestEdit={onRequestEdit}
                             onAcceptEdit={onAcceptEdit}
                             onRejectEdit={onRejectEdit}
@@ -455,10 +474,11 @@ function BulletLineContent({
   const pill = getConfidencePill(confidence, requirementSource);
   const sourceLabel = getConfidenceSourceLabel(confidence, requirementSource);
   const handleActivate = () => {
-    onToggle();
-    if (confidence !== 'strong') {
+    if (confidence !== 'strong' && onBulletClick) {
       onBulletClick?.(text, section, bulletIndex, requirements);
+      return;
     }
+    onToggle();
   };
 
   return (
@@ -831,6 +851,11 @@ interface InlineEditPanelProps {
   requirements: string[];
   pendingEdit: PendingEdit | null;
   isEditing: boolean;
+  confidence: BulletConfidence;
+  requirementSource: RequirementSource;
+  evidenceFound: string;
+  contentOrigin?: ResumeContentOrigin;
+  supportOrigin?: ResumeSupportOrigin;
   onRequestEdit: (text: string, section: string, action: EditAction, instruction?: string) => void;
   onAcceptEdit?: (text: string) => void;
   onRejectEdit?: () => void;
@@ -842,6 +867,11 @@ function InlineEditPanel({
   requirements,
   pendingEdit,
   isEditing,
+  confidence,
+  requirementSource,
+  evidenceFound,
+  contentOrigin,
+  supportOrigin,
   onRequestEdit,
   onAcceptEdit,
   onRejectEdit,
@@ -865,21 +895,57 @@ function InlineEditPanel({
   );
 
   return (
-    <div className="support-callout mt-2 border border-gray-200 bg-gray-50 rounded-lg p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
-      <AiHelperHint
-        title="AI Rewrite Help"
-        body="Pick a rewrite angle to generate a stronger version of this bullet. You can apply the AI draft directly or edit it here first."
-        tip="This should feel collaborative. You should not have to copy and paste the AI text into a blank box just to use it."
-      />
+    <div className="support-callout mt-2 rounded-xl border border-gray-200 bg-white p-3.5 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.35)]">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+          Fix This Line
+        </p>
+        <p className="mt-1 text-sm text-gray-600">
+          Review the risk, confirm what is true, and use AI help only where it makes the line safer or sharper.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={getConfidencePill(confidence, requirementSource)?.className ?? 'inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-700 shadow-sm'}>
+            {getConfidencePill(confidence, requirementSource)?.label ?? 'Supported'}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+            {requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need'}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+            {getContentOriginLabel(contentOrigin, confidence)}
+          </span>
+        </div>
+        <div className={`rounded-lg border px-3 py-2 ${getInlinePanelTone(confidence, requirementSource)}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">
+            {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'High-risk benchmark line' : 'Code Red'}
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed">
+            {getProofStateNextStep(confidence, requirementSource)}
+          </p>
+        </div>
+      </div>
 
-      {/* Requirement tags */}
       {requirements.length > 0 && (
         <p className="text-[13px] leading-5 text-gray-600">
-          This bullet currently supports: <span className="text-blue-600">{requirements.join(', ')}</span>
+          This line is aimed at: <span className="text-blue-600">{requirements.join(', ')}</span>
         </p>
       )}
 
-      {/* Action buttons */}
+      {evidenceFound.trim().length > 0 ? (
+        <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs italic leading-relaxed text-gray-500">
+          &ldquo;{evidenceFound}&rdquo;
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          No original resume support found yet
+        </div>
+      )}
+      <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400">
+        Support source: {getSupportOriginLabel(supportOrigin, evidenceFound.trim().length > 0, confidence)}
+      </p>
+
       <div className="flex flex-wrap gap-2">
         {(['strengthen', 'add_metrics', 'rewrite'] as EditAction[]).map(action => (
           <button
@@ -887,7 +953,7 @@ function InlineEditPanel({
             type="button"
             onClick={(e) => { e.stopPropagation(); onRequestEdit(bulletText, section, action); }}
             disabled={isEditing}
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-gray-600 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 transition-colors"
+            className="rounded-md border border-gray-200 bg-[var(--surface-0)] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-gray-600 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 transition-colors"
           >
             {action === 'strengthen' ? 'Improve Wording' : action === 'add_metrics' ? 'Add Proof' : 'Rewrite'}
           </button>
@@ -1083,7 +1149,59 @@ function getConfidenceSourceLabel(
   requirementSource?: RequirementSource,
 ): string | null {
   if (confidence === 'strong') return null;
-  return requirementSource === 'benchmark' ? 'Benchmark' : 'Job Need';
+  return requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
+}
+
+function getContentOriginLabel(
+  contentOrigin: ResumeContentOrigin | undefined,
+  confidence: BulletConfidence,
+): string {
+  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'From Resume';
+  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Rewritten From Resume';
+  return 'Drafted To Close Gap';
+}
+
+function getSupportOriginLabel(
+  supportOrigin: ResumeSupportOrigin | undefined,
+  hasEvidence: boolean,
+  confidence: BulletConfidence,
+): string {
+  if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
+  if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
+  if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
+  return 'Not found yet';
+}
+
+function getInlinePanelTone(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): string {
+  if (confidence === 'strong') {
+    return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  }
+  if (confidence === 'partial') {
+    return 'border-amber-100 bg-amber-50 text-amber-700';
+  }
+  if (requirementSource === 'benchmark') {
+    return 'border-orange-100 bg-orange-50 text-orange-700';
+  }
+  return 'border-red-100 bg-red-50 text-red-700';
+}
+
+function getProofStateNextStep(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): string {
+  if (confidence === 'strong') {
+    return 'The proof is already there. Tighten the wording only if you want it sharper.';
+  }
+  if (confidence === 'partial') {
+    return 'Add one concrete metric, scope detail, or outcome so this reads as direct proof.';
+  }
+  if (requirementSource === 'benchmark') {
+    return 'Connect this benchmark signal to a real example from your background before you keep it.';
+  }
+  return 'Confirm it, rewrite it safely, or replace it with something you can prove.';
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

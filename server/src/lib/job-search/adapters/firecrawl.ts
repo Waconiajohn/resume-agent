@@ -7,6 +7,7 @@
  */
 
 import FirecrawlApp from '@mendable/firecrawl-js';
+import { createHash } from 'node:crypto';
 import logger from '../../logger.js';
 import type { SearchAdapter, SearchFilters, JobResult } from '../types.js';
 
@@ -31,6 +32,26 @@ function extractCompanyFromResult(title: string, url: string): string {
   return 'Unknown Company';
 }
 
+function normalizeIdentityUrl(rawUrl: string | undefined): string {
+  if (!rawUrl) return '';
+  try {
+    const url = new URL(rawUrl);
+    return `${url.origin}${url.pathname}`.replace(/\/+$/, '').toLowerCase();
+  } catch {
+    return rawUrl.trim().toLowerCase();
+  }
+}
+
+function buildStableExternalId(title: string, company: string, url: string | undefined): string {
+  const identity = [
+    normalizeIdentityUrl(url),
+    title.trim().toLowerCase(),
+    company.trim().toLowerCase(),
+  ].join('|');
+  const digest = createHash('sha1').update(identity).digest('hex').slice(0, 16);
+  return `firecrawl_${digest}`;
+}
+
 export class FirecrawlAdapter implements SearchAdapter {
   readonly name = 'firecrawl';
 
@@ -51,21 +72,24 @@ export class FirecrawlAdapter implements SearchAdapter {
       return webResults
         .filter((r) => r.title && r.url)
         .map(
-          (r, i): JobResult => ({
-            external_id: `firecrawl_${Date.now()}_${i}`,
-            title: r.title ?? 'Unknown Title',
-            company: extractCompanyFromResult(r.title ?? '', r.url ?? ''),
-            location: null,
-            salary_min: null,
-            salary_max: null,
-            description: r.description ?? null,
-            posted_date: new Date().toISOString(),
-            apply_url: r.url ?? null,
-            source: this.name,
-            remote_type: null,
-            employment_type: null,
-            required_skills: null,
-          }),
+          (r): JobResult => {
+            const company = extractCompanyFromResult(r.title ?? '', r.url ?? '');
+            return {
+              external_id: buildStableExternalId(r.title ?? 'Unknown Title', company, r.url),
+              title: r.title ?? 'Unknown Title',
+              company,
+              location: null,
+              salary_min: null,
+              salary_max: null,
+              description: r.description ?? null,
+              posted_date: null,
+              apply_url: r.url ?? null,
+              source: this.name,
+              remote_type: null,
+              employment_type: null,
+              required_skills: null,
+            };
+          },
         );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
