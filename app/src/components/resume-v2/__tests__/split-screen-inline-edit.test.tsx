@@ -805,6 +805,18 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('We are rebuilding the resume now.')).toBeInTheDocument();
   });
 
+  it('shows final review on the main resume canvas when review is available', () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          onRequestHiringManagerReview: vi.fn(),
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('hiring-manager-review-card')).toBeInTheDocument();
+  });
+
   it('shows the correct status text for each pipeline stage', () => {
     const stageLabels: Array<{ stage: string; label: string }> = [
       { stage: 'strategy', label: 'Building your positioning strategy...' },

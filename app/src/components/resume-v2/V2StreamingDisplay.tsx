@@ -21,7 +21,7 @@ import type { GapChatHook } from '@/hooks/useGapChat';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import type { GapChatContext } from '@/types/resume-v2';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
-import { ResumeWorkspaceRail } from './ResumeWorkspaceRail';
+import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { ScoringReport } from './ScoringReport';
 import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
@@ -802,30 +802,39 @@ export function V2StreamingDisplay({
               </div>
             )}
 
-            {/* Below resume: workspace rail — collapsed by default */}
-            {isComplete && data.assembly && displayResume && (
-              <CollapsibleWorkspaceRail>
-              <ResumeWorkspaceRail
-                displayResume={displayResume}
-                assembly={data.assembly}
-                companyName={data.jobIntelligence?.company_name}
-                jobTitle={data.jobIntelligence?.role_title}
-                atsScore={data.assembly.scores.ats_match}
+            {isComplete && displayResume && (
+              <ResumeFinalReviewPanel
                 hiringManagerResult={hiringManagerResult ?? null}
                 resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
                 isFinalReviewStale={isFinalReviewStale}
                 isHiringManagerLoading={isHiringManagerLoading}
                 hiringManagerError={hiringManagerError}
+                companyName={data.jobIntelligence?.company_name}
+                jobTitle={data.jobIntelligence?.role_title}
                 onRequestHiringManagerReview={onRequestHiringManagerReview}
                 onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
                 finalReviewChat={finalReviewChat}
                 buildFinalReviewChatContext={buildFinalReviewChatContext}
                 isEditing={isEditing}
-                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-                finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
-                onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
               />
+            )}
+
+            {/* Below resume: workspace rail — collapsed by default */}
+            {isComplete && data.assembly && displayResume && (
+              <CollapsibleWorkspaceRail>
+                <ResumeWorkspaceRail
+                  displayResume={displayResume}
+                  companyName={data.jobIntelligence?.company_name}
+                  jobTitle={data.jobIntelligence?.role_title}
+                  atsScore={data.assembly.scores.ats_match}
+                  hiringManagerResult={hiringManagerResult ?? null}
+                  resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                  isFinalReviewStale={isFinalReviewStale}
+                  queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                  nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                  finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
+                  onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
+                />
               </CollapsibleWorkspaceRail>
             )}
           </div>

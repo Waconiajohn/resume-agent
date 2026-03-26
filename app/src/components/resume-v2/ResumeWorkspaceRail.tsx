@@ -5,7 +5,6 @@ import {
 import { ExportBar } from './ExportBar';
 import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
 import type {
-  AssemblyResult,
   PostReviewPolishState,
   ResumeDraft,
 } from '@/types/resume-v2';
@@ -15,6 +14,25 @@ import type {
   HiringManagerReviewResult,
 } from '@/hooks/useHiringManagerReview';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
+
+interface ResumeFinalReviewPanelProps {
+  hiringManagerResult?: HiringManagerReviewResult | null;
+  resolvedFinalReviewConcernIds: string[];
+  isFinalReviewStale: boolean;
+  isHiringManagerLoading?: boolean;
+  hiringManagerError?: string | null;
+  companyName?: string;
+  jobTitle?: string;
+  onRequestHiringManagerReview?: () => void;
+  onApplyHiringManagerRecommendation?: (
+    concern: HiringManagerConcern,
+    languageOverride?: string,
+    candidateInputUsed?: boolean,
+  ) => void;
+  finalReviewChat?: FinalReviewChatHook | null;
+  buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
+  isEditing: boolean;
+}
 
 export function GuidedWorkflowCard({
   hasFinalReview,
@@ -112,59 +130,31 @@ export function GuidedWorkflowCard({
   );
 }
 
-export function ResumeWorkspaceRail({
-  displayResume,
-  assembly,
-  companyName,
-  jobTitle,
-  atsScore,
+export function ResumeFinalReviewPanel({
   hiringManagerResult,
   resolvedFinalReviewConcernIds,
   isFinalReviewStale,
   isHiringManagerLoading,
   hiringManagerError,
+  companyName,
+  jobTitle,
   onRequestHiringManagerReview,
   onApplyHiringManagerRecommendation,
   finalReviewChat,
   buildFinalReviewChatContext,
   isEditing,
-  queueSummary,
-  nextQueueItemLabel,
-  finalReviewWarningsAcknowledged,
-  onAcknowledgeFinalReviewWarnings,
-}: {
-  displayResume: ResumeDraft;
-  assembly: AssemblyResult;
-  companyName?: string;
-  jobTitle?: string;
-  atsScore: number;
-  hiringManagerResult?: HiringManagerReviewResult | null;
-  resolvedFinalReviewConcernIds: string[];
-  isFinalReviewStale: boolean;
-  isHiringManagerLoading?: boolean;
-  hiringManagerError?: string | null;
-  onRequestHiringManagerReview?: () => void;
-  onApplyHiringManagerRecommendation?: (
-    concern: HiringManagerConcern,
-    languageOverride?: string,
-    candidateInputUsed?: boolean,
-  ) => void;
-  finalReviewChat?: FinalReviewChatHook | null;
-  buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
-  isEditing: boolean;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
-  nextQueueItemLabel?: string;
-  finalReviewWarningsAcknowledged?: boolean;
-  onAcknowledgeFinalReviewWarnings?: () => void;
-}) {
-  const unresolvedCriticalConcerns = hiringManagerResult
-    ? hiringManagerResult.concerns.filter((concern) => (
-      concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
-    ))
-    : [];
-
+}: ResumeFinalReviewPanelProps) {
   return (
-    <div data-workspace-rail="" className="space-y-4 pt-4 border-t border-[var(--line-soft)]">
+    <div className="space-y-4">
+      <div className="shell-panel px-5 py-4">
+        <p className="eyebrow-label">Final Review</p>
+        <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix final review issues on this resume</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-soft)]">
+          Run the recruiter and hiring manager check here, then send changes back into the resume on this same screen.
+          The review explains what is still weak, and the edit flow applies fixes directly to the working draft.
+        </p>
+      </div>
+
       <div
         className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm ${
           hiringManagerResult && !isFinalReviewStale
@@ -200,7 +190,43 @@ export function ResumeWorkspaceRail({
           buildFinalReviewChatContext={buildFinalReviewChatContext}
         />
       )}
+    </div>
+  );
+}
 
+export function ResumeWorkspaceRail({
+  displayResume,
+  companyName,
+  jobTitle,
+  atsScore,
+  hiringManagerResult,
+  resolvedFinalReviewConcernIds,
+  isFinalReviewStale,
+  queueSummary,
+  nextQueueItemLabel,
+  finalReviewWarningsAcknowledged,
+  onAcknowledgeFinalReviewWarnings,
+}: {
+  displayResume: ResumeDraft;
+  companyName?: string;
+  jobTitle?: string;
+  atsScore: number;
+  hiringManagerResult?: HiringManagerReviewResult | null;
+  resolvedFinalReviewConcernIds: string[];
+  isFinalReviewStale: boolean;
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
+  nextQueueItemLabel?: string;
+  finalReviewWarningsAcknowledged?: boolean;
+  onAcknowledgeFinalReviewWarnings?: () => void;
+}) {
+  const unresolvedCriticalConcerns = hiringManagerResult
+    ? hiringManagerResult.concerns.filter((concern) => (
+      concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
+    ))
+    : [];
+
+  return (
+    <div data-workspace-rail="" className="space-y-4 pt-4 border-t border-[var(--line-soft)]">
       <ExportBar
         resume={displayResume}
         companyName={companyName}
