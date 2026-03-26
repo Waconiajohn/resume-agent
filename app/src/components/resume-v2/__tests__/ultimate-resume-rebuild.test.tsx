@@ -435,6 +435,7 @@ describe('BulletEditPopover — evidence display', () => {
 
     expect(screen.getByText('Code red')).toBeInTheDocument();
     expect(screen.getByText(/we could not support this line from the resume yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/replace this with something you can prove/i)).toBeInTheDocument();
   });
 
   it('shows a benchmark-specific warning for high-risk benchmark lines', () => {
@@ -464,6 +465,7 @@ describe('BulletEditPopover — evidence display', () => {
 
     expect(screen.getByText('Needs stronger detail')).toBeInTheDocument();
     expect(screen.getByText(/related proof exists, but this line needs stronger detail/i)).toBeInTheDocument();
+    expect(screen.getByText(/add one concrete metric, scope detail, or outcome/i)).toBeInTheDocument();
   });
 });
 

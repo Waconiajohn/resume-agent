@@ -111,6 +111,7 @@ export function BulletEditPopover({
   const RequirementIcon =
     requirementSource === 'job_description' ? Briefcase : BookOpen;
   const statusTone = getProofStateTone(confidence, requirementSource);
+  const nextStepHint = getProofStateNextStep(confidence, requirementSource);
 
   return (
     <div
@@ -187,6 +188,9 @@ export function BulletEditPopover({
           className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 leading-relaxed placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
           placeholder="Edit bullet text..."
         />
+        <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+          {nextStepHint}
+        </p>
       </div>
 
       {/* ── Action buttons ───────────────────────────────────────────────── */}
@@ -277,4 +281,23 @@ function getProofStateTone(
     message: 'We could not support this line from the resume yet. Confirm it, rewrite it, or remove it before export.',
     className: 'border-red-100 bg-red-50 text-red-700',
   };
+}
+
+function getProofStateNextStep(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): string {
+  if (confidence === 'strong') {
+    return 'Best next move: tighten the wording only if you want it sharper or more concise.';
+  }
+
+  if (confidence === 'partial') {
+    return 'Best next move: add one concrete metric, scope detail, or outcome so this reads as direct proof.';
+  }
+
+  if (requirementSource === 'benchmark') {
+    return 'Best next move: connect this benchmark signal to a real example from your background before you keep it.';
+  }
+
+  return 'Best next move: replace this with something you can prove, or confirm the experience and rewrite it safely.';
 }
