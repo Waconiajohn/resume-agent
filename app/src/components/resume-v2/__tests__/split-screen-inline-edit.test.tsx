@@ -823,7 +823,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByTestId('hiring-manager-review-card')).toBeInTheDocument();
   });
 
-  it('collapses the gap overview once the working resume is visible', () => {
+  it('removes the gap overview from the live resume canvas', () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -838,9 +838,8 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /Expand overview card/i })).toBeInTheDocument();
-    expect(screen.getByText('Coverage: 75%')).toBeInTheDocument();
     expect(screen.queryByText('Your Resume vs. This Role')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Expand overview card/i })).not.toBeInTheDocument();
   });
 
   it('keeps the score summary visible but collapses the full scoring report in resume mode', () => {
