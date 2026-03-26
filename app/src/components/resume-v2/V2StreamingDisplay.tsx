@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion, BulletConfidence, RequirementSource } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType, GapAnalysis, BenchmarkCandidate, NarrativeStrategy, AssemblyResult, VerificationDetail } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -28,6 +28,7 @@ import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { SuggestionsBadge } from './SuggestionsBadge';
 import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
+import { scrollToAndFocusTarget } from './useStrategyThread';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -104,6 +105,16 @@ interface V2StreamingDisplayProps {
   ) => Promise<string | null>;
 }
 
+interface AttentionReviewItem {
+  id: string;
+  section: string;
+  index: number;
+  selector: string;
+  text: string;
+  statusLabel: string;
+  requirements: string[];
+}
+
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
   return (
     <div
@@ -111,6 +122,124 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {children}
+    </div>
+  );
+}
+
+function getAttentionStatusLabel(
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): string {
+  if (confidence === 'partial') return 'Strengthen';
+  if (confidence === 'needs_validation' && requirementSource === 'benchmark') return 'Validate Fit';
+  if (confidence === 'needs_validation') return 'Needs Proof';
+  return 'Review';
+}
+
+function buildAttentionReviewItems(resume: ResumeDraft): AttentionReviewItem[] {
+  const items: AttentionReviewItem[] = [];
+
+  resume.selected_accomplishments.forEach((bullet, index) => {
+    if (bullet.confidence === 'strong') return;
+    items.push({
+      id: `selected_accomplishments-${index}`,
+      section: 'selected_accomplishments',
+      index,
+      selector: `[data-bullet-id="selected_accomplishments-${index}"]`,
+      text: bullet.content,
+      statusLabel: getAttentionStatusLabel(bullet.confidence, bullet.requirement_source),
+      requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
+    });
+  });
+
+  resume.professional_experience.forEach((experience, experienceIndex) => {
+    const bullets = Array.isArray(experience.bullets) ? experience.bullets : [];
+    bullets.forEach((bullet, bulletOffset) => {
+      if (bullet.confidence === 'strong') return;
+      const index = experienceIndex * 100 + bulletOffset;
+      items.push({
+        id: `professional_experience-${index}`,
+        section: 'professional_experience',
+        index,
+        selector: `[data-bullet-id="professional_experience-${index}"]`,
+        text: bullet.text,
+        statusLabel: getAttentionStatusLabel(bullet.confidence, bullet.requirement_source),
+        requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
+      });
+    });
+  });
+
+  return items;
+}
+
+function AttentionReviewStrip({
+  items,
+  currentIndex,
+  onOpenCurrent,
+  onNext,
+  onPrevious,
+}: {
+  items: AttentionReviewItem[];
+  currentIndex: number;
+  onOpenCurrent: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}) {
+  const current = items[currentIndex];
+  if (!current) return null;
+
+  return (
+    <div
+      data-testid="attention-review-strip"
+      className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)]/90 px-4 py-3"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
+            Review Attention Lines
+          </p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {items.length} {items.length === 1 ? 'line still needs attention.' : 'lines still need attention.'} Fix these directly on the resume.
+          </p>
+        </div>
+        <div className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+          {currentIndex + 1} of {items.length}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+            {current.statusLabel}
+          </span>
+          <p data-testid="attention-review-current-text" className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">
+            {current.text}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onPrevious}
+            className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
+          >
+            Previous Line
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
+          >
+            Next Line
+          </button>
+          <button
+            type="button"
+            onClick={onOpenCurrent}
+            className="rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
+          >
+            Show on Resume
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -525,6 +654,10 @@ export function V2StreamingDisplay({
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
+  const attentionItems = useMemo(() => (
+    displayResume ? buildAttentionReviewItems(displayResume) : []
+  ), [displayResume]);
+  const [attentionIndex, setAttentionIndex] = useState(0);
 
   const handleTextSelect = useCallback((text: string, section: string, rect: DOMRect) => {
     setSelectedText(text);
@@ -564,6 +697,20 @@ export function V2StreamingDisplay({
     });
   }, []);
 
+  const openAttentionItem = useCallback((index: number) => {
+    const item = attentionItems[index];
+    if (!item) return;
+    setAttentionIndex(index);
+    setActiveBullet({
+      section: item.section,
+      index: item.index,
+      requirements: item.requirements,
+    });
+    window.requestAnimationFrame(() => {
+      scrollToAndFocusTarget(item.selector);
+    });
+  }, [attentionItems]);
+
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
     onAcceptEdit(editedText);
@@ -589,6 +736,11 @@ export function V2StreamingDisplay({
       setActiveBullet(null);
     }
   }, [isRerunning]);
+
+  useEffect(() => {
+    if (attentionIndex < attentionItems.length) return;
+    setAttentionIndex(0);
+  }, [attentionIndex, attentionItems.length]);
 
   // B3: Escape key closes inline edit panel
   useEffect(() => {
@@ -766,6 +918,16 @@ export function V2StreamingDisplay({
             )}
 
             {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+
+            {attentionItems.length > 0 && (
+              <AttentionReviewStrip
+                items={attentionItems}
+                currentIndex={attentionIndex}
+                onOpenCurrent={() => openAttentionItem(attentionIndex)}
+                onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
+                onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
+              />
+            )}
 
             {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 

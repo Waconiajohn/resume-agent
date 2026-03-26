@@ -18,6 +18,7 @@ import type { PendingEdit } from '@/hooks/useInlineEdit';
 vi.mock('../useStrategyThread', () => ({
   scrollToBullet: vi.fn(),
   scrollToAndHighlight: vi.fn(),
+  scrollToAndFocusTarget: vi.fn(),
   scrollToCoachingCard: vi.fn(),
   scrollToAuditRow: vi.fn(),
 }));
@@ -202,6 +203,22 @@ function makeResumeDraft(): ResumeDraft {
     education: [{ degree: 'BS Computer Science', institution: 'MIT', year: '2005' }],
     certifications: ['AWS Solutions Architect'],
   };
+}
+
+function makeResumeDraftWithAttention(): ResumeDraft {
+  const resume = makeResumeDraft();
+  resume.selected_accomplishments[0] = {
+    ...resume.selected_accomplishments[0],
+    confidence: 'partial',
+    evidence_found: 'Improved deployment workflow across engineering teams',
+  };
+  resume.professional_experience[0].bullets[0] = {
+    ...resume.professional_experience[0].bullets[0],
+    confidence: 'needs_validation',
+    evidence_found: '',
+    requirement_source: 'job_description',
+  };
+  return resume;
 }
 
 function makeJobIntelligence(): JobIntelligence {
@@ -882,6 +899,70 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(
       resumeBullet.compareDocumentPosition(fullScoringReportButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('shows a compact attention-line navigator when the resume has amber or red bullets', () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          data: makePipelineDataWithResume({
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('attention-review-strip')).toBeInTheDocument();
+    expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
+    expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
+  });
+
+  it('lets the user step through attention lines and open the current one on the resume', () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          data: makePipelineDataWithResume({
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
+
+    expect(screen.getByText('2 of 2')).toBeInTheDocument();
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
+
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {
