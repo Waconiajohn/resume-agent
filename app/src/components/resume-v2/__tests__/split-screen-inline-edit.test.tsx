@@ -387,6 +387,43 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
 
+  it('calls onBulletClick for a non-strong bullet so it can open in-place editing', () => {
+    const resume = makeResumeDraftWithAttention();
+    const onBulletClick = vi.fn();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        onBulletClick={onBulletClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
+
+    expect(onBulletClick).toHaveBeenCalledWith(
+      'Reduced deploy time by 60%',
+      'selected_accomplishments',
+      0,
+      ['CI/CD experience'],
+    );
+  });
+
+  it('does not call onBulletClick for a strong bullet', () => {
+    const resume = makeResumeDraftWithAttention();
+    const onBulletClick = vi.fn();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        onBulletClick={onBulletClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Grew team from 5 to 45 engineers'));
+
+    expect(onBulletClick).not.toHaveBeenCalled();
+  });
+
   it('renders InlineEditPanel when activeBullet matches a selected_accomplishments bullet', () => {
     const resume = makeResumeDraft();
 
@@ -966,6 +1003,34 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
+
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
+  });
+
+  it('opens in-place editing when a needs-attention bullet is clicked directly on the resume', () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          data: makePipelineDataWithResume({
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
 
     expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
   });

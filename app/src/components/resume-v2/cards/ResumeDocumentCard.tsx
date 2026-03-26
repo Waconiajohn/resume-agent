@@ -216,7 +216,11 @@ export function ResumeDocumentCard({
                         text={a.content}
                         confidence={a.confidence}
                         requirementSource={a.requirement_source}
+                        section="selected_accomplishments"
+                        bulletIndex={i}
+                        requirements={accomplishmentRequirements}
                         onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                        onBulletClick={onBulletClick}
                       />
                       {isPopoverOpen && (
                         <BulletEditPopover
@@ -328,7 +332,11 @@ export function ResumeDocumentCard({
                               text={bullet.text}
                               confidence={bullet.confidence}
                               requirementSource={bullet.requirement_source}
+                              section="professional_experience"
+                              bulletIndex={bulletIndex}
+                              requirements={bulletRequirements}
                               onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                              onBulletClick={onBulletClick}
                             />
                             {isPopoverOpen && (
                               <BulletEditPopover
@@ -425,16 +433,30 @@ interface BulletLineContentProps {
   text: string;
   confidence: BulletConfidence;
   requirementSource?: RequirementSource;
+  section: string;
+  bulletIndex: number;
+  requirements: string[];
   onToggle: () => void;
+  onBulletClick?: (bulletText: string, section: string, bulletIndex: number, requirements: string[]) => void;
 }
 
 function BulletLineContent({
   text,
   confidence,
   requirementSource,
+  section,
+  bulletIndex,
+  requirements,
   onToggle,
+  onBulletClick,
 }: BulletLineContentProps) {
   const pill = getConfidencePill(confidence, requirementSource);
+  const handleActivate = () => {
+    onToggle();
+    if (confidence !== 'strong') {
+      onBulletClick?.(text, section, bulletIndex, requirements);
+    }
+  };
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
@@ -443,13 +465,13 @@ function BulletLineContent({
         tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
-          onToggle();
+          handleActivate();
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             e.stopPropagation();
-            onToggle();
+            handleActivate();
           }
         }}
         className="hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
