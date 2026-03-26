@@ -23,7 +23,7 @@ import type { GapChatContext } from '@/types/resume-v2';
 import type { FinalReviewTargetMatch } from './utils/final-review-target';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
-import { ScoringReport } from './ScoringReport';
+import { ScoringReport, ScoringReportDetailsDisclosure } from './ScoringReport';
 import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { SuggestionsBadge } from './SuggestionsBadge';
@@ -698,6 +698,7 @@ export function V2StreamingDisplay({
             gapAnalysis={data.gapAnalysis ?? null}
             compact={canShowResumeDocument}
             compactReviewStatusLabel={canShowResumeDocument ? compactReviewStatusLabel : undefined}
+            renderDetails={!canShowResumeDocument}
           />
         </div>
       )}
@@ -852,6 +853,15 @@ export function V2StreamingDisplay({
                   onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
                 />
               </CollapsibleWorkspaceRail>
+            )}
+
+            {isComplete && data.preScores && data.assembly && (
+              <ScoringReportDetailsDisclosure
+                preScores={data.preScores}
+                assembly={data.assembly}
+                verificationDetail={data.verificationDetail ?? null}
+                gapAnalysis={data.gapAnalysis ?? null}
+              />
             )}
 
             {/* Detailed analysis stays available, but below the working resume and review flow */}

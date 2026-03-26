@@ -870,13 +870,18 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
+    const resumeBullet = screen.getByText('Reduced deploy time by 60%');
+    const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
     expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
     expect(screen.getByText(/Before vs\. now, with the fastest read on what still needs attention\./i)).toBeInTheDocument();
     expect(screen.getByText('Final review')).toBeInTheDocument();
     expect(screen.getByText('Not run')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Full Scoring Report/i })).toBeInTheDocument();
+    expect(fullScoringReportButton).toBeInTheDocument();
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
     expect(screen.queryByText('Candidate Fit')).not.toBeInTheDocument();
+    expect(
+      resumeBullet.compareDocumentPosition(fullScoringReportButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('shows the correct status text for each pipeline stage', () => {

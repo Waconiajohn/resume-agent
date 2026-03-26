@@ -935,22 +935,27 @@ export interface ScoringReportProps {
   gapAnalysis: GapAnalysis | null;
   compact?: boolean;
   compactReviewStatusLabel?: string;
+  renderSummary?: boolean;
+  renderDetails?: boolean;
 }
 
-export function ScoringReport({
+function ScoringReportDetails({
   preScores,
   assembly,
   verificationDetail,
   gapAnalysis,
-  compact = false,
-  compactReviewStatusLabel,
-}: ScoringReportProps) {
+}: {
+  preScores: PreScores;
+  assembly: AssemblyResult;
+  verificationDetail: VerificationDetail | null;
+  gapAnalysis: GapAnalysis | null;
+}) {
   const ats = verificationDetail?.ats ?? null;
   const truth = verificationDetail?.truth ?? null;
   const tone = verificationDetail?.tone ?? null;
   const hiringManagerScan = assembly.hiring_manager_scan ?? null;
 
-  const detailedSections = (
+  return (
     <>
       {/* Before Report */}
       <CollapsibleSection
@@ -1038,31 +1043,78 @@ export function ScoringReport({
       )}
     </>
   );
+}
 
+export function ScoringReportDetailsDisclosure({
+  preScores,
+  assembly,
+  verificationDetail,
+  gapAnalysis,
+}: {
+  preScores: PreScores;
+  assembly: AssemblyResult;
+  verificationDetail: VerificationDetail | null;
+  gapAnalysis: GapAnalysis | null;
+}) {
+  return (
+    <CollapsibleSection
+      title="Full Scoring Report"
+      subtitle="Open the full before/after, keyword, truth, tone, and hiring-manager analysis when you want the details."
+      icon={<BarChart3 className="h-3.5 w-3.5" />}
+    >
+      <ScoringReportDetails
+        preScores={preScores}
+        assembly={assembly}
+        verificationDetail={verificationDetail}
+        gapAnalysis={gapAnalysis}
+      />
+    </CollapsibleSection>
+  );
+}
+
+export function ScoringReport({
+  preScores,
+  assembly,
+  verificationDetail,
+  gapAnalysis,
+  compact = false,
+  compactReviewStatusLabel,
+  renderSummary = true,
+  renderDetails = true,
+}: ScoringReportProps) {
   return (
     <div className="space-y-3">
-      {/* Score summary header — always visible */}
-      {compact ? (
-        <CompactScoreSummaryHeader
-          preScores={preScores}
-          assembly={assembly}
-          gapAnalysis={gapAnalysis}
-          reviewStatusLabel={compactReviewStatusLabel}
-        />
-      ) : (
-        <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
+      {renderSummary && (
+        compact ? (
+          <CompactScoreSummaryHeader
+            preScores={preScores}
+            assembly={assembly}
+            gapAnalysis={gapAnalysis}
+            reviewStatusLabel={compactReviewStatusLabel}
+          />
+        ) : (
+          <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
+        )
       )}
 
-      {compact ? (
-        <CollapsibleSection
-          title="Full Scoring Report"
-          subtitle="Open the full before/after, keyword, truth, tone, and hiring-manager analysis when you want the details."
-          icon={<BarChart3 className="h-3.5 w-3.5" />}
-        >
-          {detailedSections}
-        </CollapsibleSection>
-      ) : (
-        detailedSections
+      {renderDetails && (
+        compact
+          ? (
+            <ScoringReportDetailsDisclosure
+              preScores={preScores}
+              assembly={assembly}
+              verificationDetail={verificationDetail}
+              gapAnalysis={gapAnalysis}
+            />
+          )
+          : (
+            <ScoringReportDetails
+              preScores={preScores}
+              assembly={assembly}
+              verificationDetail={verificationDetail}
+              gapAnalysis={gapAnalysis}
+            />
+          )
       )}
     </div>
   );
