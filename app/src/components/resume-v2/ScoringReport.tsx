@@ -800,6 +800,7 @@ export interface ScoringReportProps {
   assembly: AssemblyResult;
   verificationDetail: VerificationDetail | null;
   gapAnalysis: GapAnalysis | null;
+  compact?: boolean;
 }
 
 export function ScoringReport({
@@ -807,17 +808,15 @@ export function ScoringReport({
   assembly,
   verificationDetail,
   gapAnalysis,
+  compact = false,
 }: ScoringReportProps) {
   const ats = verificationDetail?.ats ?? null;
   const truth = verificationDetail?.truth ?? null;
   const tone = verificationDetail?.tone ?? null;
   const hiringManagerScan = assembly.hiring_manager_scan ?? null;
 
-  return (
-    <div className="space-y-3">
-      {/* Score summary header — always visible */}
-      <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
-
+  const detailedSections = (
+    <>
       {/* Before Report */}
       <CollapsibleSection
         title="Before Report"
@@ -902,7 +901,25 @@ export function ScoringReport({
           <HiringManagerScanSection scan={hiringManagerScan} />
         </CollapsibleSection>
       )}
+    </>
+  );
 
+  return (
+    <div className="space-y-3">
+      {/* Score summary header — always visible */}
+      <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
+
+      {compact ? (
+        <CollapsibleSection
+          title="Full Scoring Report"
+          subtitle="Open the full before/after, keyword, truth, tone, and hiring-manager analysis when you want the details."
+          icon={<BarChart3 className="h-3.5 w-3.5" />}
+        >
+          {detailedSections}
+        </CollapsibleSection>
+      ) : (
+        detailedSections
+      )}
     </div>
   );
 }

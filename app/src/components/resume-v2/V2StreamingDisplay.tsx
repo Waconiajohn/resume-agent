@@ -685,6 +685,7 @@ export function V2StreamingDisplay({
             assembly={data.assembly}
             verificationDetail={data.verificationDetail ?? null}
             gapAnalysis={data.gapAnalysis ?? null}
+            compact={canShowResumeDocument}
           />
         </div>
       )}

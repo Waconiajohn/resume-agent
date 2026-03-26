@@ -130,6 +130,7 @@ vi.mock('../cards/BulletEditPopover', () => ({
 // jsdom does not implement scrollIntoView or scrollTo — stub them globally
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
+  HTMLElement.prototype.scrollTo = vi.fn();
   window.scrollTo = vi.fn() as typeof window.scrollTo;
 });
 
@@ -835,6 +836,37 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByRole('button', { name: /Expand overview card/i })).toBeInTheDocument();
     expect(screen.getByText('Coverage: 75%')).toBeInTheDocument();
     expect(screen.queryByText('Your Resume vs. This Role')).not.toBeInTheDocument();
+  });
+
+  it('keeps the score summary visible but collapses the full scoring report in resume mode', () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          data: makePipelineDataWithResume({
+            preScores: {
+              ats_match: 48,
+              keywords_found: ['Operations'],
+              keywords_missing: ['Performance metrics'],
+            },
+            assembly: {
+              final_resume: makeResumeDraft(),
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+            verificationDetail: null,
+            gapAnalysis: makeGapAnalysis(),
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Resume Score Summary — After Optimization')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Full Scoring Report/i })).toBeInTheDocument();
+    expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {
