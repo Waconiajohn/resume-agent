@@ -39,6 +39,7 @@ export interface HiringManagerReviewCardProps {
   finalReviewChat?: FinalReviewChatHook | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
   resolveConcernTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
+  onPreviewConcernTarget?: (concern: HiringManagerConcern) => void;
 }
 
 const VERDICT_CONFIG = {
@@ -210,6 +211,7 @@ export function HiringManagerReviewCard({
   finalReviewChat,
   buildFinalReviewChatContext,
   resolveConcernTarget,
+  onPreviewConcernTarget,
 }: HiringManagerReviewCardProps) {
   const [expandedConcern, setExpandedConcern] = useState<string | null>(null);
   const [threadConcernId, setThreadConcernId] = useState<string | null>(null);
@@ -545,6 +547,17 @@ export function HiringManagerReviewCard({
                         )}
 
                         <div className="flex flex-wrap gap-2">
+                          {resolvedTarget && onPreviewConcernTarget && (
+                            <button
+                              type="button"
+                              onClick={() => onPreviewConcernTarget(concern)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/10 px-3 py-2 text-[13px] font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/20"
+                            >
+                              <Target className="h-3 w-3" />
+                              Show on Resume
+                            </button>
+                          )}
+
                           {onApplyRecommendation && (
                             <button
                               type="button"

@@ -287,7 +287,10 @@ export function ResumeDocumentCard({
                   </span>
                 </div>
                 {exp.scope_statement && (
-                  <p className="mt-1 text-xs text-gray-500 italic pl-1">
+                  <p
+                    data-scope-id={`professional_experience-${i}-scope`}
+                    className="mt-1 text-xs text-gray-500 italic pl-1"
+                  >
                     {exp.scope_statement}
                   </p>
                 )}

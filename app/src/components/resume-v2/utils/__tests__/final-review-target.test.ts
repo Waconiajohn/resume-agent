@@ -108,6 +108,7 @@ describe('findResumeTargetForFinalReviewConcern', () => {
     expect(findResumeTargetForFinalReviewConcern(resume, concern, positioningAssessment)).toEqual({
       text: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
       section: 'Professional Experience - Acme Manufacturing',
+      selector: '[data-bullet-id="professional_experience-0"]',
     });
   });
 
@@ -122,6 +123,7 @@ describe('findResumeTargetForFinalReviewConcern', () => {
     expect(findResumeTargetForFinalReviewConcern(resume, concern)).toEqual({
       text: 'Operations leader driving scale, margin improvement, and cross-functional execution.',
       section: 'Executive Summary',
+      selector: '[data-section="executive_summary"]',
     });
   });
 
@@ -136,6 +138,7 @@ describe('findResumeTargetForFinalReviewConcern', () => {
     expect(findResumeTargetForFinalReviewConcern(resume, concern)).toEqual({
       text: 'Ran SAP-enabled planning and inventory workflows during a plant network redesign.',
       section: 'Professional Experience - Acme Manufacturing',
+      selector: '[data-bullet-id="professional_experience-1"]',
     });
   });
 });

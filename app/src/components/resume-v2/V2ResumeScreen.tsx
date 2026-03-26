@@ -17,6 +17,7 @@ import { usePostReviewPolish } from '@/hooks/usePostReviewPolish';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
+import { scrollToAndHighlight } from './useStrategyThread';
 import type {
   FinalReviewChatContext,
   ResumeDraft,
@@ -1026,6 +1027,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     );
   }, [currentResume, data.assembly?.positioning_assessment]);
 
+  const previewFinalReviewTarget = useCallback((concern: HiringManagerConcern) => {
+    const matchedTarget = resolveFinalReviewTarget(concern);
+    if (!matchedTarget?.selector) return;
+    scrollToAndHighlight(matchedTarget.selector);
+  }, [resolveFinalReviewTarget]);
+
   // Apply a final review concern as an inline edit
   const handleApplyHiringManagerRecommendation = useCallback((
     concern: HiringManagerConcern,
@@ -1034,6 +1041,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   ) => {
     if (!currentResume) return;
     const matchedTarget = resolveFinalReviewTarget(concern);
+    if (matchedTarget?.selector) {
+      scrollToAndHighlight(matchedTarget.selector);
+    }
     const section = matchedTarget?.section ?? concern.target_section ?? 'Executive Summary';
     const targetText = matchedTarget?.text ?? extractResumeExcerptForSection(currentResume, concern.target_section);
     if (!targetText.trim()) return;
@@ -1151,6 +1161,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         finalReviewChatSnapshot={finalReviewChatSnapshot}
         buildFinalReviewChatContext={isComplete ? buildFinalReviewChatContext : undefined}
         resolveFinalReviewTarget={isComplete ? resolveFinalReviewTarget : undefined}
+        onPreviewFinalReviewTarget={isComplete ? previewFinalReviewTarget : undefined}
         postReviewPolish={postReviewPolish}
         masterSaveMode={masterSaveMode}
         onChangeMasterSaveMode={setMasterSaveMode}

@@ -48,6 +48,8 @@ function makeResult(): HiringManagerReviewResult {
 
 describe('HiringManagerReviewCard', () => {
   it('shows the resolved resume target preview for an expanded concern', () => {
+    const onPreviewConcernTarget = vi.fn();
+
     render(
       <HiringManagerReviewCard
         result={makeResult()}
@@ -60,7 +62,9 @@ describe('HiringManagerReviewCard', () => {
         resolveConcernTarget={() => ({
           section: 'Professional Experience - Acme Manufacturing',
           text: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+          selector: '[data-bullet-id="professional_experience-0"]',
         })}
+        onPreviewConcernTarget={onPreviewConcernTarget}
       />,
     );
 
@@ -69,6 +73,9 @@ describe('HiringManagerReviewCard', () => {
     expect(screen.getByText('Will revise on the resume')).toBeInTheDocument();
     expect(screen.getByText('Professional Experience - Acme Manufacturing')).toBeInTheDocument();
     expect(screen.getByText(/Built and tracked plant performance metrics across safety, throughput, and labor efficiency/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Show on Resume/i }));
+    expect(onPreviewConcernTarget).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: /Show on Resume/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Review Edit on Resume/i })).toBeInTheDocument();
   });
 });

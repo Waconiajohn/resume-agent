@@ -77,6 +77,7 @@ interface V2StreamingDisplayProps {
   finalReviewChatSnapshot?: CoachingThreadSnapshot | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
   resolveFinalReviewTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
+  onPreviewFinalReviewTarget?: (concern: HiringManagerConcern) => void;
   postReviewPolish?: PostReviewPolishState;
   masterSaveMode?: 'session_only' | 'master_resume';
   onChangeMasterSaveMode?: (mode: 'session_only' | 'master_resume') => void;
@@ -464,7 +465,7 @@ export function V2StreamingDisplay({
   isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
   gapChat, gapChatSnapshot, buildChatContext,
-  finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, resolveFinalReviewTarget, postReviewPolish,
+  finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, resolveFinalReviewTarget, onPreviewFinalReviewTarget, postReviewPolish,
   masterSaveMode = 'session_only',
   onChangeMasterSaveMode,
   onSaveCurrentToMaster,
@@ -818,6 +819,7 @@ export function V2StreamingDisplay({
                 finalReviewChat={finalReviewChat}
                 buildFinalReviewChatContext={buildFinalReviewChatContext}
                 resolveConcernTarget={resolveFinalReviewTarget}
+                onPreviewConcernTarget={onPreviewFinalReviewTarget}
                 isEditing={isEditing}
               />
             )}

@@ -33,6 +33,7 @@ interface ResumeFinalReviewPanelProps {
   finalReviewChat?: FinalReviewChatHook | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
   resolveConcernTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
+  onPreviewConcernTarget?: (concern: HiringManagerConcern) => void;
   isEditing: boolean;
 }
 
@@ -145,6 +146,7 @@ export function ResumeFinalReviewPanel({
   finalReviewChat,
   buildFinalReviewChatContext,
   resolveConcernTarget,
+  onPreviewConcernTarget,
   isEditing,
 }: ResumeFinalReviewPanelProps) {
   return (
@@ -192,6 +194,7 @@ export function ResumeFinalReviewPanel({
           finalReviewChat={finalReviewChat}
           buildFinalReviewChatContext={buildFinalReviewChatContext}
           resolveConcernTarget={resolveConcernTarget}
+          onPreviewConcernTarget={onPreviewConcernTarget}
         />
       )}
     </div>
