@@ -264,7 +264,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('text-red-700');
-    expect(screen.getByText('Needs Proof')).toBeInTheDocument();
+    expect(screen.getByText('Code Red')).toBeInTheDocument();
   });
 
   it('renders orange text for needs_validation + benchmark source', () => {
@@ -286,7 +286,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     render(<ResumeDocumentCard resume={resume} />);
 
     expect(screen.queryByText('Strengthen')).not.toBeInTheDocument();
-    expect(screen.queryByText('Needs Proof')).not.toBeInTheDocument();
+    expect(screen.queryByText('Code Red')).not.toBeInTheDocument();
     expect(screen.queryByText('Validate Fit')).not.toBeInTheDocument();
   });
 

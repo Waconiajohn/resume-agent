@@ -970,10 +970,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(strip).toBeInTheDocument();
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
-    expect(screen.getByText(/1 line still need proof, and 1 more still need attention/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Next best action: Start with the needs proof line in VP Engineering · Acme Corp\./i)).toHaveLength(2);
-    expect(within(strip).getByText(/Next best action: Start with the needs proof line in VP Engineering · Acme Corp\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Needs Proof')).toBeInTheDocument();
+    expect(screen.getByText(/1 code-red line still needs proof, and 1 more still need attention/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Next best action: Start with the code-red line in VP Engineering · Acme Corp\./i)).toHaveLength(2);
+    expect(within(strip).getByText(/Next best action: Start with the code-red line in VP Engineering · Acme Corp\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('Code Red')).toBeInTheDocument();
     expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });

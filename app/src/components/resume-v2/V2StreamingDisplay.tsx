@@ -136,7 +136,7 @@ function getAttentionStatusMeta(
 ): { label: string; className: string; priority: number } {
   if (confidence === 'needs_validation' && requirementSource !== 'benchmark') {
     return {
-      label: 'Needs Proof',
+      label: 'Code Red',
       className: 'border-red-200 bg-red-50 text-red-700',
       priority: 0,
     };
@@ -886,24 +886,27 @@ export function V2StreamingDisplay({
       return `Your resume is ready for final review${compactReviewStatusLabel ? `, and final review is ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
     }
 
-    const proofCount = attentionItems.filter((item) => item.statusLabel === 'Needs Proof').length;
+    const proofCount = attentionItems.filter((item) => item.statusLabel === 'Code Red').length;
     const validateCount = attentionItems.filter((item) => item.statusLabel === 'Validate Fit').length;
     const strengthenCount = attentionItems.filter((item) => item.statusLabel === 'Strengthen').length;
 
     if (proofCount > 0) {
       const remainder = validateCount + strengthenCount;
-      return `${proofCount} line${proofCount === 1 ? '' : 's'} still need proof${remainder > 0 ? `, and ${remainder} more still need attention` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+      return `${proofCount} code-red line${proofCount === 1 ? '' : 's'} still ${proofCount === 1 ? 'needs' : 'need'} proof${remainder > 0 ? `, and ${remainder} more still need attention` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
     }
 
     if (validateCount > 0) {
-      return `${validateCount} line${validateCount === 1 ? '' : 's'} still need fit validation${strengthenCount > 0 ? `, and ${strengthenCount} more still need stronger detail` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+      return `${validateCount} line${validateCount === 1 ? '' : 's'} still ${validateCount === 1 ? 'needs' : 'need'} fit validation${strengthenCount > 0 ? `, and ${strengthenCount} more still need stronger detail` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
     }
 
-    return `${strengthenCount} line${strengthenCount === 1 ? '' : 's'} still need stronger detail${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+    return `${strengthenCount} line${strengthenCount === 1 ? '' : 's'} still ${strengthenCount === 1 ? 'needs' : 'need'} stronger detail${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
   }, [attentionItems, compactReviewStatusLabel]);
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
+    if (topItem.statusLabel === 'Code Red') {
+      return `Start with the code-red line in ${topItem.locationLabel}.`;
+    }
     return `Start with the ${topItem.statusLabel.toLowerCase()} line in ${topItem.locationLabel}.`;
   }, [attentionItems]);
 

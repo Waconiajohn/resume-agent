@@ -1055,7 +1055,7 @@ function getConfidencePill(
 
   if (confidence === 'needs_validation') {
     return {
-      label: 'Needs Proof',
+      label: 'Code Red',
       className:
         'inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-700',
     };
