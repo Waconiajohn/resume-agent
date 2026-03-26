@@ -777,12 +777,17 @@ describe('V2StreamingDisplay — layout modes', () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
 
     // Resume document is rendered — bullets are visible
-    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
+    const resumeBullet = screen.getByText('Reduced deploy time by 60%');
+    expect(resumeBullet).toBeInTheDocument();
     // Left panel (RewriteQueuePanel) is NOT rendered
     expect(screen.queryByText('Requirements to Match')).not.toBeInTheDocument();
     // Analysis stays available, but secondary.
-    expect(screen.getByRole('button', { name: /Supporting Analysis/i })).toBeInTheDocument();
+    const supportingAnalysis = screen.getByRole('button', { name: /Supporting Analysis/i });
+    expect(supportingAnalysis).toBeInTheDocument();
     expect(screen.queryByText(/Gap Analysis —/)).not.toBeInTheDocument();
+    expect(
+      resumeBullet.compareDocumentPosition(supportingAnalysis) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('renders the simplified processing card when no resume draft exists', () => {

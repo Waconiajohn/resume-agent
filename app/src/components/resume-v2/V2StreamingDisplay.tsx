@@ -756,17 +756,6 @@ export function V2StreamingDisplay({
 
             {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
-            {/* Detailed analysis — gap analysis, benchmark, narrative strategy, verification */}
-            {isComplete && (
-              <PipelineAnalysisSummary
-                gapAnalysis={data.gapAnalysis}
-                benchmarkCandidate={data.benchmarkCandidate}
-                narrativeStrategy={data.narrativeStrategy}
-                assembly={data.assembly}
-                verificationDetail={data.verificationDetail}
-              />
-            )}
-
             {/* Suggestion progress strip — sticky, shown when there are suggestions */}
             {isComplete && suggestions.length > 0 && (
               <SuggestionProgressStrip
@@ -851,6 +840,17 @@ export function V2StreamingDisplay({
                   onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
                 />
               </CollapsibleWorkspaceRail>
+            )}
+
+            {/* Detailed analysis stays available, but below the working resume and review flow */}
+            {isComplete && (
+              <PipelineAnalysisSummary
+                gapAnalysis={data.gapAnalysis}
+                benchmarkCandidate={data.benchmarkCandidate}
+                narrativeStrategy={data.narrativeStrategy}
+                assembly={data.assembly}
+                verificationDetail={data.verificationDetail}
+              />
             )}
           </div>
 
