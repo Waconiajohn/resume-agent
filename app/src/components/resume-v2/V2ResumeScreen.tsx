@@ -26,6 +26,7 @@ import type {
   V2PersistedDraftState,
 } from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
+import { findResumeTargetForFinalReviewConcern } from './utils/final-review-target';
 import { API_BASE } from '@/lib/api';
 import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
@@ -1023,31 +1024,14 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     candidateInputUsed = false,
   ) => {
     if (!currentResume) return;
-    const section = concern.target_section ?? 'Executive Summary';
-    const sectionLower = section.toLowerCase();
-    let targetText = '';
-
-    if (sectionLower.includes('executive summary') || sectionLower.includes('summary')) {
-      targetText = currentResume.executive_summary?.content ?? '';
-    } else if (sectionLower.includes('accomplishment')) {
-      targetText = currentResume.selected_accomplishments[0]?.content ?? '';
-    } else if (sectionLower.includes('competenc')) {
-      targetText = currentResume.core_competencies.join(', ');
-    } else {
-      // Try matching by company name in professional experience
-      for (const exp of currentResume.professional_experience) {
-        if (sectionLower.includes(exp.company.toLowerCase())) {
-          targetText = exp.bullets[0]?.text ?? '';
-          break;
-        }
-      }
-    }
-
-    // Ultimate fallback: first experience bullet
-    if (!targetText && currentResume.professional_experience.length > 0) {
-      targetText = currentResume.professional_experience[0].bullets[0]?.text ?? '';
-    }
-    if (!targetText) return;
+    const matchedTarget = findResumeTargetForFinalReviewConcern(
+      currentResume,
+      concern,
+      data.assembly?.positioning_assessment,
+    );
+    const section = matchedTarget?.section ?? concern.target_section ?? 'Executive Summary';
+    const targetText = matchedTarget?.text ?? extractResumeExcerptForSection(currentResume, concern.target_section);
+    if (!targetText.trim()) return;
     const suggestedLanguage = languageOverride ?? concern.suggested_resume_edit;
     const instruction = suggestedLanguage
       ? `${concern.fix_strategy}\n\nUse this sample direction if it remains strictly truthful:\n${suggestedLanguage}`
@@ -1061,7 +1045,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       finalReviewConcernId: concern.id,
       finalReviewConcernSeverity: concern.severity,
     });
-  }, [currentResume, requestEdit]);
+  }, [currentResume, data.assembly?.positioning_assessment, requestEdit]);
 
   if (!isPipelineActive) {
     return (
