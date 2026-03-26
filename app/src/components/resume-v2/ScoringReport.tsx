@@ -296,6 +296,139 @@ function ScoreSummaryHeader({
   );
 }
 
+function CompactMetric({
+  label,
+  value,
+  accent = 'default',
+  detail,
+}: {
+  label: string;
+  value: string;
+  accent?: 'default' | 'good' | 'warn' | 'soft';
+  detail?: string;
+}) {
+  const accentStyles: Record<string, React.CSSProperties> = {
+    default: {
+      color: 'var(--text-strong)',
+      border: '1px solid rgba(255,255,255,0.10)',
+      backgroundColor: 'rgba(255,255,255,0.04)',
+    },
+    good: {
+      color: '#b5dec2',
+      border: '1px solid rgba(181,222,194,0.18)',
+      backgroundColor: 'rgba(181,222,194,0.08)',
+    },
+    warn: {
+      color: '#f0d99f',
+      border: '1px solid rgba(240,217,159,0.18)',
+      backgroundColor: 'rgba(240,217,159,0.08)',
+    },
+    soft: {
+      color: '#afc4ff',
+      border: '1px solid rgba(175,196,255,0.18)',
+      backgroundColor: 'rgba(175,196,255,0.08)',
+    },
+  };
+
+  return (
+    <div className="rounded-lg px-3 py-2" style={accentStyles[accent]}>
+      <p className="text-[10px] uppercase tracking-[0.16em] opacity-70">{label}</p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-sm font-semibold tabular-nums">{value}</span>
+        {detail && (
+          <span className="text-[11px] opacity-70">{detail}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompactScoreSummaryHeader({
+  preScores,
+  assembly,
+  gapAnalysis,
+  reviewStatusLabel,
+}: {
+  preScores: PreScores;
+  assembly: AssemblyResult;
+  gapAnalysis: GapAnalysis | null;
+  reviewStatusLabel?: string;
+}) {
+  const afterAts = assembly.scores.ats_match;
+  const beforeAts = preScores.ats_match;
+  const truth = assembly.scores.truth;
+  const tone = assembly.scores.tone;
+  const delta = afterAts - beforeAts;
+  const jdBreakdown = gapAnalysis?.score_breakdown?.job_description;
+  const outstandingRequirements = jdBreakdown
+    ? jdBreakdown.partial + jdBreakdown.missing
+    : null;
+
+  const summaryLine = outstandingRequirements === null
+    ? gapAnalysis?.strength_summary
+      ?? `Your resume is ${delta >= 0 ? `${delta} points` : 'slightly'} stronger than the original draft.`
+    : outstandingRequirements === 0
+      ? `Your resume now clearly covers the job requirements we measured${reviewStatusLabel ? `, and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`
+      : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`;
+
+  return (
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-[var(--text-strong)]">Score Snapshot</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
+            Before vs. now, with the fastest read on what still needs attention.
+          </p>
+        </div>
+        <div className="room-meta-strip text-[13px]">
+          <div className="room-meta-item">
+            Before
+            <strong>{beforeAts}%</strong>
+          </div>
+          <div className="room-meta-item">
+            Now
+            <strong>{afterAts}%</strong>
+          </div>
+          {reviewStatusLabel && (
+            <div className="room-meta-item">
+              Final review
+              <strong>{reviewStatusLabel}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+        <CompactMetric
+          label="Before"
+          value={`${beforeAts}%`}
+        />
+        <CompactMetric
+          label="Now"
+          value={`${afterAts}%`}
+          accent="good"
+          detail={delta === 0 ? undefined : `${delta > 0 ? '+' : ''}${delta}`}
+        />
+        <CompactMetric
+          label="Truth"
+          value={String(truth)}
+          accent="soft"
+        />
+        <CompactMetric
+          label="Tone"
+          value={String(tone)}
+          accent="warn"
+        />
+      </div>
+
+      <div className="support-callout px-4 py-3">
+        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Before Report ────────────────────────────────────────────────────────────
 
 const KEYWORD_COLUMN_LIMIT = 50;
@@ -801,6 +934,7 @@ export interface ScoringReportProps {
   verificationDetail: VerificationDetail | null;
   gapAnalysis: GapAnalysis | null;
   compact?: boolean;
+  compactReviewStatusLabel?: string;
 }
 
 export function ScoringReport({
@@ -809,6 +943,7 @@ export function ScoringReport({
   verificationDetail,
   gapAnalysis,
   compact = false,
+  compactReviewStatusLabel,
 }: ScoringReportProps) {
   const ats = verificationDetail?.ats ?? null;
   const truth = verificationDetail?.truth ?? null;
@@ -907,7 +1042,16 @@ export function ScoringReport({
   return (
     <div className="space-y-3">
       {/* Score summary header — always visible */}
-      <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
+      {compact ? (
+        <CompactScoreSummaryHeader
+          preScores={preScores}
+          assembly={assembly}
+          gapAnalysis={gapAnalysis}
+          reviewStatusLabel={compactReviewStatusLabel}
+        />
+      ) : (
+        <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />
+      )}
 
       {compact ? (
         <CollapsibleSection

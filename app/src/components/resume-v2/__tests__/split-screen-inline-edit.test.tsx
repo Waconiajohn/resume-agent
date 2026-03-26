@@ -827,6 +827,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
+          onRequestHiringManagerReview: vi.fn(),
           data: makePipelineDataWithResume({
             preScores: {
               ats_match: 48,
@@ -846,6 +847,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
+          onRequestHiringManagerReview: vi.fn(),
           data: makePipelineDataWithResume({
             preScores: {
               ats_match: 48,
@@ -868,9 +870,13 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByText('Resume Score Summary — After Optimization')).toBeInTheDocument();
+    expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
+    expect(screen.getByText(/Before vs\. now, with the fastest read on what still needs attention\./i)).toBeInTheDocument();
+    expect(screen.getByText('Final review')).toBeInTheDocument();
+    expect(screen.getByText('Not run')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Full Scoring Report/i })).toBeInTheDocument();
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
+    expect(screen.queryByText('Candidate Fit')).not.toBeInTheDocument();
   });
 
   it('shows the correct status text for each pipeline stage', () => {

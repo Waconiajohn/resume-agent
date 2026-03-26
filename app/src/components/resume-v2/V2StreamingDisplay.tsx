@@ -652,6 +652,25 @@ export function V2StreamingDisplay({
     hiringManagerResult,
     resolvedFinalReviewConcernIds,
   ]);
+  const unresolvedCriticalConcerns = useMemo(() => (
+    hiringManagerResult?.concerns.filter((concern) => (
+      concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
+    )).length ?? 0
+  ), [hiringManagerResult, resolvedFinalReviewConcernIds]);
+  const compactReviewStatusLabel = useMemo(() => {
+    if (!onRequestHiringManagerReview) return undefined;
+    if (!hiringManagerResult) return 'Not run';
+    if (isFinalReviewStale) return 'Needs rerun';
+    if (unresolvedCriticalConcerns > 0) {
+      return `${unresolvedCriticalConcerns} critical left`;
+    }
+    return 'Ready';
+  }, [
+    hiringManagerResult,
+    isFinalReviewStale,
+    onRequestHiringManagerReview,
+    unresolvedCriticalConcerns,
+  ]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -678,6 +697,7 @@ export function V2StreamingDisplay({
             verificationDetail={data.verificationDetail ?? null}
             gapAnalysis={data.gapAnalysis ?? null}
             compact={canShowResumeDocument}
+            compactReviewStatusLabel={canShowResumeDocument ? compactReviewStatusLabel : undefined}
           />
         </div>
       )}
