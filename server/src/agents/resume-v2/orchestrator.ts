@@ -203,9 +203,9 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       state.gap_coaching_responses = options.gap_coaching_responses;
       allApproved = buildApprovedStrategies(options.gap_coaching_responses, gapAnalysis);
     } else if (gapAnalysis.pending_strategies.length > 0) {
-      // Case 3: Non-strong gaps present — emit questions and pause for user input
-      //
-      // Priority order: critical > must_have > important > nice_to_have / supporting
+      // Case 3: Non-strong gaps present — auto-approve ALL strategies and continue immediately.
+      // The user will validate on the resume itself (Ultimate Resume mode).
+      // We still emit gap_questions for the scoring report UI, but do NOT pause the pipeline.
       const importanceOrder: Record<string, number> = {
         must_have: 0,
         critical: 0,
@@ -242,29 +242,13 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
             })),
           },
         });
-
-        // Pause until respond-gaps resolves the promise
-        const userResponses = await new Promise<GapCoachingResponse[]>((resolve) => {
-          pendingGapResolvers.set(options.session_id, (responses) => {
-            pendingGapResolvers.delete(options.session_id);
-            resolve(responses);
-          });
-
-          // If the pipeline is aborted while waiting, clean up and resolve with empty
-          signal?.addEventListener('abort', () => {
-            if (pendingGapResolvers.has(options.session_id)) {
-              pendingGapResolvers.delete(options.session_id);
-              resolve([]);
-            }
-          }, { once: true });
-        });
-
-        state.gap_coaching_responses = userResponses;
-        allApproved = buildApprovedStrategies(userResponses, gapAnalysis);
-      } else {
-        // All pending strategies are already classified as strong
-        allApproved = gapAnalysis.pending_strategies;
       }
+
+      // Auto-approve all pending strategies — no user gate
+      allApproved = gapAnalysis.pending_strategies.map(ps => ({
+        requirement: ps.requirement,
+        strategy: ps.strategy,
+      }));
     } else {
       // Case 4: No pending strategies
       allApproved = [];

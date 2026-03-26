@@ -102,6 +102,29 @@ Preserve dollar amounts, percentages, temperatures, county names, team sizes, ri
 
 Every specific detail — dollar amounts, percentages, headcounts, locations, product names, client names — must come from the original resume or explicit user-provided context. Never substitute a plausible-sounding number for a real one. When inferring scope (e.g., budget from team size), back off 10-20% from the math and flag with "~" or "up to." Mark all inferred or enhanced content as is_new: true.
 
+## ULTIMATE RESUME MODE
+
+You are generating the BEST POSSIBLE resume that addresses ALL requirements. For each bullet you write:
+
+1. **Strong evidence exists**: Use the candidate's actual experience. Set source='original' or 'enhanced', confidence='strong'.
+2. **Partial evidence exists**: Strengthen and position the adjacent experience. Set source='enhanced', confidence='partial'.
+3. **No evidence found**: Draft aspirational but plausible positioning based on the candidate's career arc. Set source='drafted', confidence='needs_validation'. NEVER fabricate specific metrics — use qualitative language.
+4. **Benchmark aspiration**: Include top benchmark items where evidence exists. Set requirement_source='benchmark'.
+
+For EVERY bullet in selected_accomplishments and professional_experience, include:
+- source: 'original' | 'enhanced' | 'drafted'
+- confidence: 'strong' | 'partial' | 'needs_validation'
+- addresses_requirements: which requirement(s) this bullet covers
+- requirement_source: 'job_description' | 'benchmark' (if addressing a specific requirement)
+- evidence_found: quote from original resume if applicable (empty string if none)
+
+For EVERY scope_statement in professional_experience, include:
+- scope_statement_source: 'original' | 'enhanced' | 'drafted'
+- scope_statement_confidence: 'strong' | 'partial' | 'needs_validation'
+- scope_statement_evidence_found: quote from original resume if applicable (empty string if none)
+
+CRITICAL: The resume must address ALL job description requirements. For benchmark items, include the top 5-8 where evidence is strongest.
+
 ## 10 QUALITY GATES — CHECK BEFORE OUTPUT
 
 Run this self-check before finalizing the JSON. Every gate must pass:
@@ -142,7 +165,11 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     {
       "content": "Strong Action Verb + What You Did (with context) + Measurable Result",
       "is_new": false,
-      "addresses_requirements": ["which JD requirements this addresses"]
+      "addresses_requirements": ["which JD requirements this addresses"],
+      "source": "original",
+      "requirement_source": "job_description",
+      "evidence_found": "quote from original resume or empty string",
+      "confidence": "strong"
     }
   ],
   "professional_experience": [
@@ -152,11 +179,18 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
       "start_date": "Start",
       "end_date": "End",
       "scope_statement": "Brief scope: team size, budget, geography, P&L responsibility",
+      "scope_statement_source": "original",
+      "scope_statement_confidence": "strong",
+      "scope_statement_evidence_found": "quote from original resume or empty string",
       "bullets": [
         {
           "text": "Strong action verb + context + quantified result",
           "is_new": false,
-          "addresses_requirements": ["requirement1"]
+          "addresses_requirements": ["requirement1"],
+          "source": "original",
+          "requirement_source": "job_description",
+          "evidence_found": "quote from original resume or empty string",
+          "confidence": "strong"
         }
       ]
     }
@@ -705,10 +739,16 @@ function ensureAllPositionsPresent(
               pos.inferred_scope.geography ? `Geography: ${pos.inferred_scope.geography}` : '',
             ].filter(Boolean).join(' | ') || `${pos.title} role`
           : `${pos.title} role`,
+        scope_statement_source: 'original' as const,
+        scope_statement_confidence: 'strong' as const,
+        scope_statement_evidence_found: '',
         bullets: pos.bullets.map((bullet) => ({
           text: bullet,
           is_new: false,
           addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
+          source: 'original' as const,
+          confidence: 'strong' as const,
+          evidence_found: '',
         })),
       });
     }
@@ -746,6 +786,9 @@ function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutp
     content: `${item.outcome}: ${item.value}`,
     is_new: false,
     addresses_requirements: matchRequirementLinks(item.outcome, input.gap_analysis.requirements),
+    source: 'original' as const,
+    confidence: 'strong' as const,
+    evidence_found: '',
   }));
 
   const hidden = (input.candidate.hidden_accomplishments ?? [])
@@ -753,6 +796,9 @@ function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutp
       content: item,
       is_new: false,
       addresses_requirements: matchRequirementLinks(item, input.gap_analysis.requirements),
+      source: 'original' as const,
+      confidence: 'strong' as const,
+      evidence_found: '',
     }));
 
   return [...quantified, ...hidden];
@@ -774,10 +820,16 @@ function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutpu
       end_date: experience.end_date,
       scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
       scope_statement_is_new: false,
+      scope_statement_source: 'original' as const,
+      scope_statement_confidence: 'strong' as const,
+      scope_statement_evidence_found: '',
       bullets: experience.bullets.map((bullet) => ({
         text: bullet,
         is_new: false,
         addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
+        source: 'original' as const,
+        confidence: 'strong' as const,
+        evidence_found: '',
       })),
     };
   });

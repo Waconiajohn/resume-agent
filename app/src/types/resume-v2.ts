@@ -253,10 +253,18 @@ export interface NarrativeStrategy {
   interview_talking_points?: string[];
 }
 
+export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+
 export interface ResumeBullet {
   text: string;
   is_new: boolean;
   addresses_requirements: string[];
+  /** Confidence level based on evidence found in the original resume */
+  confidence?: BulletConfidence;
+  /** The original resume text that supports this bullet */
+  evidence_found?: string;
+  /** Whether this requirement came from the JD or from the benchmark profile */
+  requirement_source?: RequirementSource;
 }
 
 export interface ResumeExperience {
@@ -288,6 +296,12 @@ export interface ResumeDraft {
     content: string;
     is_new: boolean;
     addresses_requirements: string[];
+    /** Confidence level based on evidence found in the original resume */
+    confidence?: BulletConfidence;
+    /** The original resume text that supports this bullet */
+    evidence_found?: string;
+    /** Whether this requirement came from the JD or from the benchmark profile */
+    requirement_source?: RequirementSource;
   }>;
   professional_experience: ResumeExperience[];
   earlier_career?: Array<{

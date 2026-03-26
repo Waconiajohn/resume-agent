@@ -300,12 +300,23 @@ export interface ResumeWriterInput {
   operational_scale?: string;
 }
 
+export type BulletSource = 'original' | 'enhanced' | 'drafted';
+export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+
 export interface ResumeBullet {
   text: string;
   /** Whether this bullet contains AI-enhanced content not from the original resume */
   is_new: boolean;
   /** Which requirement(s) this bullet addresses */
   addresses_requirements: string[];
+  /** Where this bullet came from: original resume, enhanced from original, or drafted from scratch */
+  source?: BulletSource;
+  /** Whether the requirement addressed came from the job description or benchmark */
+  requirement_source?: 'job_description' | 'benchmark';
+  /** What evidence was found in the original resume (quote or empty string if none) */
+  evidence_found?: string;
+  /** How confident we are in this bullet's accuracy */
+  confidence?: BulletConfidence;
 }
 
 export interface ResumeExperienceEntry {
@@ -315,6 +326,12 @@ export interface ResumeExperienceEntry {
   end_date: string;
   scope_statement: string;
   scope_statement_is_new?: boolean;
+  /** Where this scope statement came from: original resume, enhanced from original, or drafted from scratch */
+  scope_statement_source?: BulletSource;
+  /** How confident we are in this scope statement's accuracy */
+  scope_statement_confidence?: BulletConfidence;
+  /** What evidence was found in the original resume for the scope statement */
+  scope_statement_evidence_found?: string;
   bullets: ResumeBullet[];
 }
 
@@ -335,6 +352,14 @@ export interface ResumeDraftOutput {
     content: string;
     is_new: boolean;
     addresses_requirements: string[];
+    /** Where this accomplishment came from: original resume, enhanced from original, or drafted from scratch */
+    source?: BulletSource;
+    /** Whether the requirement addressed came from the job description or benchmark */
+    requirement_source?: 'job_description' | 'benchmark';
+    /** What evidence was found in the original resume (quote or empty string if none) */
+    evidence_found?: string;
+    /** How confident we are in this accomplishment's accuracy */
+    confidence?: BulletConfidence;
   }>;
   professional_experience: ResumeExperienceEntry[];
   earlier_career?: Array<{

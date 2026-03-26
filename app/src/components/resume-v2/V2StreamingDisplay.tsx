@@ -616,6 +616,11 @@ export function V2StreamingDisplay({
     [gapCoachingCards],
   );
 
+  // When the orchestrator auto-approves all strategies, the pipeline moves past
+  // the strategy stage without waiting for user gap coaching responses.
+  // Skip the gap question flow if the pipeline has already advanced.
+  const pipelinePastGaps = data.stage != null && ['writing', 'verification', 'assembly', 'complete'].includes(data.stage);
+
   const gapQuestions = useMemo(
     () => (gapCoachingCards && !allPreviouslyApproved ? coachingCardsToQuestions(gapCoachingCards) : []),
     [gapCoachingCards, allPreviouslyApproved],
@@ -1011,7 +1016,7 @@ export function V2StreamingDisplay({
 
         {/* Gap question flow — shown when coaching cards arrive, before resume generation.
             Replaces the staged processing viewer while questions are pending. */}
-        {gapQuestions.length > 0 && !gapQuestionsSubmitted ? (
+        {gapQuestions.length > 0 && !gapQuestionsSubmitted && !pipelinePastGaps ? (
           <GapQuestionFlow
             questions={gapQuestions}
             gapAnalysis={data.gapAnalysis}
@@ -1128,6 +1133,7 @@ function PipelineAnalysisSummary({
   assembly,
   verificationDetail,
 }: PipelineAnalysisSummaryProps) {
+  const [showAllToneFindings, setShowAllToneFindings] = useState(false);
   const hasAnyData = gapAnalysis || benchmarkCandidate || narrativeStrategy || assembly || verificationDetail;
   if (!hasAnyData) return null;
 
@@ -1301,16 +1307,26 @@ function PipelineAnalysisSummary({
             <div>
               <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-1.5">Tone findings</p>
               <ul className="space-y-1">
-                {tone.findings.slice(0, 3).map((f, i) => (
+                {(showAllToneFindings ? tone.findings : tone.findings.slice(0, 3)).map((f, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12px] text-neutral-600">
                     <span className="shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full bg-amber-400 mt-1" />
                     <span className="font-medium">{f.section}:</span> {f.issue ?? f.text}
                   </li>
                 ))}
-                {tone.findings.length > 3 && (
-                  <li className="text-[11px] text-neutral-400">+{tone.findings.length - 3} more findings</li>
-                )}
               </ul>
+              {tone.findings.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllToneFindings((p) => !p)}
+                  className="mt-1.5 flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer"
+                >
+                  {showAllToneFindings ? (
+                    <><ChevronUp className="h-3 w-3" />Show fewer findings</>
+                  ) : (
+                    <><ChevronDown className="h-3 w-3" />Show all {tone.findings.length} findings</>
+                  )}
+                </button>
+              )}
             </div>
           )}
         </AnalysisSection>

@@ -208,7 +208,8 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
           <div className="grid gap-2 grid-cols-2">
             {jd && (
               <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 space-y-1">
-                <p className="text-[10px] text-[var(--text-soft)]">JD Coverage</p>
+                <p className="text-[10px] font-medium text-[var(--text-soft)]">JD Requirements</p>
+                <p className="text-[9px] text-[var(--text-soft)] -mt-0.5">What the employer asked for</p>
                 <p className="text-xs font-bold tabular-nums" style={{ color: '#afc4ff' }}>
                   {jd.coverage_score}
                 </p>
@@ -218,8 +219,9 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
               </div>
             )}
             {bench && (
-              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 space-y-1">
-                <p className="text-[10px] text-[var(--text-soft)]">Benchmark Coverage</p>
+              <div className="rounded-lg border border-[var(--line-soft)] border-dashed bg-[var(--surface-1)] px-3 py-2 space-y-1">
+                <p className="text-[10px] font-medium text-[var(--text-soft)]">Ideal Candidate</p>
+                <p className="text-[9px] text-[var(--text-soft)] -mt-0.5">Aspirational, not required</p>
                 <p className="text-xs font-bold tabular-nums" style={{ color: '#c4b5fd' }}>
                   {bench.coverage_score}
                 </p>

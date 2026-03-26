@@ -160,6 +160,9 @@ export function GapOverviewCard({
                 ATS Keyword Match
               </span>
             </div>
+            <p className="text-[12px] text-neutral-500 mt-1">
+              How many key phrases from the job description an automated screening system (ATS) would find in your resume.
+            </p>
 
             {/* ATS progress bar */}
             <div
@@ -247,6 +250,9 @@ export function GapOverviewCard({
               coverage score
             </span>
           </div>
+          <p className="text-[12px] text-neutral-500 mt-1">
+            How well your resume addresses this role&apos;s requirements &mdash; combining both job description and ideal candidate benchmarks.
+          </p>
 
           {/* Stacked horizontal bar */}
           {totalReqs > 0 && (
@@ -287,6 +293,9 @@ export function GapOverviewCard({
               {missing} Missing
             </span>
           </div>
+          <p className="text-[11px] text-neutral-400 italic leading-relaxed">
+            Strong and Partial matches include evidence from your resume. Missing items may still be addressable &mdash; the AI will help position you.
+          </p>
         </div>
 
         {/* ── 3. Score Breakdown (expandable boxes) ────────────────────── */}
@@ -299,8 +308,11 @@ export function GapOverviewCard({
               role="button"
               aria-expanded={showJdRequirements}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-                Job Description
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-0.5">
+                Job Description Requirements
+              </p>
+              <p className="text-[10px] text-neutral-400 mb-1.5">
+                What the employer asked for
               </p>
               <p className="text-[15px] font-semibold text-neutral-800">
                 {breakdown.job_description.strong +
@@ -327,17 +339,20 @@ export function GapOverviewCard({
               )}
             </div>
 
-            {/* Benchmark box */}
+            {/* Benchmark box — softer treatment to signal aspirational */}
             <div
-              className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 cursor-pointer hover:border-neutral-300 transition-colors"
+              className="rounded-lg border border-neutral-150 border-dashed bg-neutral-50/70 px-4 py-3 cursor-pointer hover:border-neutral-300 transition-colors"
               onClick={() => setShowBenchmarkRequirements((p) => !p)}
               role="button"
               aria-expanded={showBenchmarkRequirements}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-                Benchmark
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-0.5">
+                Ideal Candidate Profile
               </p>
-              <p className="text-[15px] font-semibold text-neutral-800">
+              <p className="text-[10px] text-neutral-400 mb-1.5">
+                Aspirational qualities to stand out &mdash; not required
+              </p>
+              <p className="text-[15px] font-semibold text-neutral-700">
                 {breakdown.benchmark.strong + breakdown.benchmark.partial}/
                 {breakdown.benchmark.total}{' '}
                 <span className="text-[12px] font-normal text-neutral-500">
@@ -402,9 +417,10 @@ export function GapOverviewCard({
             What Happens Next
           </p>
           <p className="text-[13px] text-blue-700 leading-relaxed">
-            We found {totalReqs} requirements for this role. Your resume
-            strongly covers {strong}, partially covers {partial}, and is missing{' '}
-            {missing}.
+            We analyzed {jdRequirements.length} requirement{jdRequirements.length !== 1 ? 's' : ''} from the job description
+            and {benchmarkRequirements.length} aspirational qualit{benchmarkRequirements.length !== 1 ? 'ies' : 'y'} from
+            the ideal candidate profile. Your resume strongly covers {strong}, partially covers {partial},
+            and is missing {missing}.
           </p>
           <p className="text-[13px] text-blue-700 leading-relaxed">
             We&apos;re showing you the top {questionCount} gaps where we found

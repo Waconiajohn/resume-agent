@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Lightbulb, Loader2, Wand2, FileText, Target, Check, X } from 'lucide-react';
-import type { ResumeDraft } from '@/types/resume-v2';
+import { Lightbulb, Loader2, Wand2, FileText, Target, Check, X, AlertTriangle } from 'lucide-react';
+import type { ResumeDraft, BulletConfidence, RequirementSource } from '@/types/resume-v2';
 import type { InlineSuggestion } from '@/lib/compute-inline-diffs';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 import { AiHelperHint } from '@/components/shared/AiHelperHint';
+
+/** Metadata for a bullet that has confidence/validation info */
+interface BulletValidationMeta {
+  confidence: BulletConfidence;
+  evidence_found?: string;
+  requirement_source?: RequirementSource;
+  addresses_requirements: string[];
+}
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -74,6 +82,48 @@ export function ResumeDocumentCard({
   // Track which suggestion popover is open (by suggestion id or bullet key)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
 
+  // ── Validation state for color-coded bullets ──────────────────────────────
+  const [validatedIds, setValidatedIds] = useState<Set<string>>(new Set());
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [editedTexts, setEditedTexts] = useState<Record<string, string>>({});
+
+  /** Collect all bullets that have confidence metadata for validation progress tracking */
+  const validatableItems = useCallback(() => {
+    const items: Array<{ id: string; confidence: BulletConfidence }> = [];
+    selectedAccomplishments.forEach((a, i) => {
+      if (a.confidence && (a.confidence === 'partial' || a.confidence === 'needs_validation')) {
+        items.push({ id: `sa-val-${i}`, confidence: a.confidence });
+      }
+    });
+    professionalExperience.forEach((exp, i) => {
+      (Array.isArray(exp.bullets) ? exp.bullets : []).forEach((bullet, j) => {
+        if (bullet.confidence && (bullet.confidence === 'partial' || bullet.confidence === 'needs_validation')) {
+          items.push({ id: `pe-val-${i * 100 + j}`, confidence: bullet.confidence });
+        }
+      });
+    });
+    return items;
+  }, [selectedAccomplishments, professionalExperience]);
+
+  const allValidatable = validatableItems();
+  const totalNeedingReview = allValidatable.length;
+  const reviewedValidationCount = allValidatable.filter(
+    (item) => validatedIds.has(item.id) || removedIds.has(item.id),
+  ).length;
+
+  const handleValidate = useCallback((bulletId: string, editedText?: string) => {
+    setValidatedIds((prev) => new Set(prev).add(bulletId));
+    setRemovedIds((prev) => { const next = new Set(prev); next.delete(bulletId); return next; });
+    if (editedText !== undefined) {
+      setEditedTexts((prev) => ({ ...prev, [bulletId]: editedText }));
+    }
+  }, []);
+
+  const handleRemove = useCallback((bulletId: string) => {
+    setRemovedIds((prev) => new Set(prev).add(bulletId));
+    setValidatedIds((prev) => { const next = new Set(prev); next.delete(bulletId); return next; });
+  }, []);
+
   /**
    * Find a pending inline suggestion that matches a given bullet text in a section.
    * sectionId on the suggestion is the section name from the resume draft.
@@ -105,6 +155,31 @@ export function ResumeDocumentCard({
       className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8"
       onMouseUp={handleMouseUp}
     >
+      {/* Validation progress bar — shown when bullets have confidence metadata */}
+      {totalNeedingReview > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-gray-700">
+              {reviewedValidationCount === totalNeedingReview
+                ? `All ${totalNeedingReview} items reviewed`
+                : `You've reviewed ${reviewedValidationCount} of ${totalNeedingReview} items that need your input`}
+            </p>
+            <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-out"
+                style={{ width: `${totalNeedingReview > 0 ? (reviewedValidationCount / totalNeedingReview) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+          {reviewedValidationCount === totalNeedingReview && totalNeedingReview > 0 && (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+              <Check className="h-3 w-3" />
+              All reviewed
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div data-section="header" className="text-center border-b border-gray-200 pb-5">
         <h2 className="text-2xl font-bold tracking-wide text-gray-900">{resume.header.name}</h2>
@@ -173,21 +248,29 @@ export function ResumeDocumentCard({
               const isPopoverOpen = openPopoverId === popoverKey;
               const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
               const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
+              const hasConfidence = a.confidence !== undefined;
+              const validationId = `sa-val-${i}`;
+              const isRemoved = removedIds.has(validationId);
+              const isValidated = validatedIds.has(validationId);
 
               return (
                 <li
                   key={i}
                   data-bullet-id={`selected_accomplishments-${i}`}
                   data-suggestion-id={suggestion?.id}
-                  className="text-sm leading-relaxed pl-4 relative"
+                  className={`text-sm leading-relaxed pl-4 relative ${
+                    hasConfidence && !suggestion ? getConfidenceBorderClass(a.confidence!, a.requirement_source) : ''
+                  } ${isRemoved ? 'opacity-40 line-through' : ''}`}
                   {...(hasStrategy
                     ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
                     : {})}
                 >
-                  {/* Bullet dot — blue for strategy, neutral default */}
+                  {/* Bullet dot — confidence-coded when metadata present, else blue for strategy, neutral default */}
                   <span
                     className={`absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full ${
-                      hasStrategy ? 'bg-blue-400/60' : 'bg-gray-400'
+                      hasConfidence && !suggestion
+                        ? getConfidenceDotClass(a.confidence!, a.requirement_source)
+                        : hasStrategy ? 'bg-blue-400/60' : 'bg-gray-400'
                     }`}
                     aria-hidden="true"
                   />
@@ -205,6 +288,25 @@ export function ResumeDocumentCard({
                       isCurrent={suggestion.id === currentSuggestionId}
                       suggestionDataIndex={suggestionDataIdx}
                       totalSuggestions={totalSuggestions}
+                      onRequestEdit={onRequestEdit}
+                    />
+                  ) : hasConfidence && !isRemoved ? (
+                    <ValidatableBullet
+                      text={a.content}
+                      bulletId={validationId}
+                      popoverKey={`${popoverKey}-val`}
+                      isPopoverOpen={openPopoverId === `${popoverKey}-val`}
+                      onOpenPopover={() => setOpenPopoverId(openPopoverId === `${popoverKey}-val` ? null : `${popoverKey}-val`)}
+                      onClosePopover={() => setOpenPopoverId(null)}
+                      meta={{
+                        confidence: a.confidence!,
+                        evidence_found: a.evidence_found,
+                        requirement_source: a.requirement_source,
+                        addresses_requirements: accomplishmentRequirements,
+                      }}
+                      isValidated={isValidated}
+                      onValidate={handleValidate}
+                      onRemove={handleRemove}
                       onRequestEdit={onRequestEdit}
                     />
                   ) : onBulletClick && !a.is_new ? (
@@ -233,7 +335,7 @@ export function ResumeDocumentCard({
                   ) : (
                     <span className={a.is_new ? 'text-green-600' : 'text-gray-800'}>{a.content}</span>
                   )}
-                  {hasStrategy && !suggestion && (
+                  {hasStrategy && !suggestion && !hasConfidence && (
                     <StrategyTooltip requirements={accomplishmentRequirements} />
                   )}
                   {isActive && onRequestEdit && (
@@ -287,21 +389,29 @@ export function ResumeDocumentCard({
                     const isPopoverOpen = openPopoverId === popoverKey;
                     const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
                     const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
+                    const hasConfidence = bullet.confidence !== undefined;
+                    const validationId = `pe-val-${bulletIndex}`;
+                    const isRemoved = removedIds.has(validationId);
+                    const isValidated = validatedIds.has(validationId);
 
                     return (
                       <li
                         key={j}
                         data-bullet-id={`professional_experience-${bulletIndex}`}
                         data-suggestion-id={suggestion?.id}
-                        className="text-sm leading-relaxed pl-4 relative"
+                        className={`text-sm leading-relaxed pl-4 relative ${
+                          hasConfidence && !suggestion ? getConfidenceBorderClass(bullet.confidence!, bullet.requirement_source) : ''
+                        } ${isRemoved ? 'opacity-40 line-through' : ''}`}
                         {...(hasStrategy
                           ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
                           : {})}
                       >
-                        {/* Bullet dot — blue (repositioned), neutral */}
+                        {/* Bullet dot — confidence-coded when metadata present, else blue (repositioned), neutral */}
                         <span
                           className={`absolute left-0 top-[0.5em] h-1 w-1 rounded-full ${
-                            hasStrategy ? 'bg-blue-400/60' : 'bg-gray-400'
+                            hasConfidence && !suggestion
+                              ? getConfidenceDotClass(bullet.confidence!, bullet.requirement_source)
+                              : hasStrategy ? 'bg-blue-400/60' : 'bg-gray-400'
                           }`}
                           aria-hidden="true"
                         />
@@ -319,6 +429,25 @@ export function ResumeDocumentCard({
                             isCurrent={suggestion.id === currentSuggestionId}
                             suggestionDataIndex={suggestionDataIdx}
                             totalSuggestions={totalSuggestions}
+                            onRequestEdit={onRequestEdit}
+                          />
+                        ) : hasConfidence && !isRemoved ? (
+                          <ValidatableBullet
+                            text={bullet.text}
+                            bulletId={validationId}
+                            popoverKey={`${popoverKey}-val`}
+                            isPopoverOpen={openPopoverId === `${popoverKey}-val`}
+                            onOpenPopover={() => setOpenPopoverId(openPopoverId === `${popoverKey}-val` ? null : `${popoverKey}-val`)}
+                            onClosePopover={() => setOpenPopoverId(null)}
+                            meta={{
+                              confidence: bullet.confidence!,
+                              evidence_found: bullet.evidence_found,
+                              requirement_source: bullet.requirement_source,
+                              addresses_requirements: bulletRequirements,
+                            }}
+                            isValidated={isValidated}
+                            onValidate={handleValidate}
+                            onRemove={handleRemove}
                             onRequestEdit={onRequestEdit}
                           />
                         ) : onBulletClick && !bullet.is_new ? (
@@ -347,7 +476,7 @@ export function ResumeDocumentCard({
                         ) : (
                           <span className={bullet.is_new ? 'text-green-600' : 'text-gray-800'}>{bullet.text}</span>
                         )}
-                        {hasStrategy && !suggestion && (
+                        {hasStrategy && !suggestion && !hasConfidence && (
                           <StrategyTooltip requirements={bulletRequirements} />
                         )}
                         {isActive && onRequestEdit && (
@@ -941,6 +1070,260 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
             </span>
           </span>
         </span>
+      )}
+    </span>
+  );
+}
+
+// ─── Confidence styling helpers ──────────────────────────────────────────────
+
+function getConfidenceBorderClass(
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): string {
+  switch (confidence) {
+    case 'strong':
+      return 'border-l-2 border-l-emerald-400';
+    case 'partial':
+      return 'border-l-2 border-l-amber-400 bg-amber-50/50';
+    case 'needs_validation':
+      return requirementSource === 'benchmark'
+        ? 'border-l-2 border-l-amber-400 bg-amber-50/30'
+        : 'border-l-2 border-l-red-400 bg-red-50/50';
+    default:
+      return '';
+  }
+}
+
+function getConfidenceDotClass(
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): string {
+  switch (confidence) {
+    case 'strong':
+      return 'bg-emerald-500';
+    case 'partial':
+      return 'bg-amber-400';
+    case 'needs_validation':
+      return requirementSource === 'benchmark' ? 'bg-amber-400' : 'bg-red-400';
+    default:
+      return 'bg-gray-400';
+  }
+}
+
+// ─── ValidatableBullet ──────────────────────────────────────────────────────
+// Renders a bullet with confidence color-coding and a click-to-validate popover.
+
+interface ValidatableBulletProps {
+  text: string;
+  bulletId: string;
+  popoverKey: string;
+  isPopoverOpen: boolean;
+  onOpenPopover: () => void;
+  onClosePopover: () => void;
+  meta: BulletValidationMeta;
+  isValidated: boolean;
+  onValidate: (bulletId: string, editedText?: string) => void;
+  onRemove: (bulletId: string) => void;
+  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
+}
+
+function ValidatableBullet({
+  text,
+  bulletId,
+  popoverKey,
+  isPopoverOpen,
+  onOpenPopover,
+  onClosePopover,
+  meta,
+  isValidated,
+  onValidate,
+  onRemove,
+  onRequestEdit,
+}: ValidatableBulletProps) {
+  const [editedText, setEditedText] = useState(text);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isPopoverOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClosePopover();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPopoverOpen, onClosePopover]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isPopoverOpen) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClosePopover();
+      }
+    };
+    const timerId = window.setTimeout(() => {
+      window.addEventListener('mousedown', handleMouseDown);
+    }, 50);
+    return () => {
+      window.clearTimeout(timerId);
+      window.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [isPopoverOpen, onClosePopover]);
+
+  // Validated state — show with a green checkmark
+  if (isValidated) {
+    return (
+      <span className="inline">
+        <span
+          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white mr-1 flex-shrink-0 align-middle"
+          aria-label="Validated"
+        >
+          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+        </span>
+        <span className="text-gray-800">{text}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline">
+      {/* Clickable text */}
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); onOpenPopover(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenPopover();
+          }
+        }}
+        aria-label="Click to review this bullet"
+        aria-expanded={isPopoverOpen}
+        className={`cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400/60 ${
+          meta.confidence === 'strong'
+            ? 'text-gray-800'
+            : meta.confidence === 'partial'
+              ? 'text-gray-800 decoration-amber-400 underline decoration-dashed decoration-1 underline-offset-2'
+              : 'text-gray-800 decoration-red-400 underline decoration-dashed decoration-1 underline-offset-2'
+        }`}
+      >
+        {text}
+      </span>
+
+      {/* Benchmark tag */}
+      {meta.requirement_source === 'benchmark' && meta.confidence === 'needs_validation' && (
+        <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 align-middle">
+          Benchmark
+        </span>
+      )}
+
+      {/* Validation popover */}
+      {isPopoverOpen && (
+        <div
+          ref={popoverRef}
+          className="mt-2 rounded-lg bg-white border border-gray-200 shadow-lg p-4 space-y-3 max-w-md z-20 relative"
+          role="dialog"
+          aria-label="Validate bullet"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* What requirement this addresses */}
+          {meta.addresses_requirements.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Addresses Requirement</p>
+              <p className="text-sm font-medium text-gray-800 mt-1">{meta.addresses_requirements[0]}</p>
+              {meta.requirement_source && (
+                <span className={`mt-1 inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  meta.requirement_source === 'job_description'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {meta.requirement_source === 'job_description' ? 'Job Description' : 'Benchmark -- Aspirational'}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Evidence found */}
+          {meta.evidence_found && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">What We Found in Your Resume</p>
+              <p className="text-sm text-gray-600 italic bg-gray-50 rounded px-3 py-2 mt-1">&ldquo;{meta.evidence_found}&rdquo;</p>
+            </div>
+          )}
+          {!meta.evidence_found && meta.confidence === 'needs_validation' && (
+            <div className="bg-red-50 border border-red-200 rounded px-3 py-2">
+              <p className="text-sm text-red-700 flex items-start gap-1.5">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                We could not find supporting evidence in your resume. Can you confirm you can support this in an interview?
+              </p>
+            </div>
+          )}
+
+          {/* Edit box */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Edit Before Accepting</p>
+            <textarea
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 transition-colors"
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onValidate(bulletId, editedText !== text ? editedText : undefined);
+                onClosePopover();
+              }}
+              className="rounded bg-emerald-500 text-white px-4 py-1.5 text-xs font-medium hover:bg-emerald-600 transition-colors"
+            >
+              I Can Support This
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onRemove(bulletId);
+                onClosePopover();
+              }}
+              className="rounded border border-red-200 text-red-600 px-4 py-1.5 text-xs hover:bg-red-50 transition-colors"
+            >
+              Remove This
+            </button>
+          </div>
+
+          {/* AI assist */}
+          {onRequestEdit && (
+            <div className="flex gap-2 pt-1 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => onRequestEdit(text, 'bullet', 'strengthen')}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                AI: Strengthen
+              </button>
+              <button
+                type="button"
+                onClick={() => onRequestEdit(text, 'bullet', 'add_metrics')}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                AI: Add Metrics
+              </button>
+              <button
+                type="button"
+                onClick={() => onRequestEdit(text, 'bullet', 'rewrite')}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                AI: Rewrite
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </span>
   );

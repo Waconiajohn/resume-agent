@@ -272,7 +272,8 @@ function ScoreSummaryHeader({
             {/* JD Coverage */}
             {jdBreakdown && (
               <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
-                <p className="text-[10px] text-[var(--text-soft)]">JD Coverage</p>
+                <p className="text-[10px] font-medium text-[var(--text-soft)]">JD Requirements</p>
+                <p className="text-[9px] text-[var(--text-soft)]">What the employer asked for</p>
                 <p className="text-xs font-medium text-[var(--text-strong)]">
                   {jdBreakdown.addressed} of {jdBreakdown.total} addressed
                 </p>
@@ -291,8 +292,9 @@ function ScoreSummaryHeader({
 
             {/* Benchmark Coverage */}
             {benchBreakdown && (
-              <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
-                <p className="text-[10px] text-[var(--text-soft)]">Benchmark Coverage</p>
+              <div className="rounded-lg border border-[var(--line-soft)] border-dashed bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
+                <p className="text-[10px] font-medium text-[var(--text-soft)]">Ideal Candidate</p>
+                <p className="text-[9px] text-[var(--text-soft)]">Aspirational, not required</p>
                 <p className="text-xs font-medium text-[var(--text-strong)]">
                   {benchBreakdown.addressed} of {benchBreakdown.total} met
                 </p>
@@ -1104,15 +1106,22 @@ export function ScoringReport({
       </CollapsibleSection>
 
       {/* Requirements Coverage — full breakdown by classification */}
-      {gapAnalysis && (
-        <CollapsibleSection
-          title="Requirements Coverage"
-          subtitle={`${gapAnalysis.requirements.length} requirements — ${gapAnalysis.requirements.filter(r => r.classification === 'strong').length} strong, ${gapAnalysis.requirements.filter(r => r.classification === 'partial').length} partial, ${gapAnalysis.requirements.filter(r => r.classification === 'missing').length} gaps`}
-          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-        >
-          <RequirementsCoverageSection gapAnalysis={gapAnalysis} />
-        </CollapsibleSection>
-      )}
+      {gapAnalysis && (() => {
+        const jdCount = gapAnalysis.requirements.filter(r => r.source === 'job_description').length;
+        const benchCount = gapAnalysis.requirements.filter(r => r.source === 'benchmark').length;
+        const strongCount = gapAnalysis.requirements.filter(r => r.classification === 'strong').length;
+        const partialCount = gapAnalysis.requirements.filter(r => r.classification === 'partial').length;
+        const missingCount = gapAnalysis.requirements.filter(r => r.classification === 'missing').length;
+        return (
+          <CollapsibleSection
+            title="Requirements Coverage"
+            subtitle={`${jdCount} from job description, ${benchCount} from ideal candidate profile — ${strongCount} strong, ${partialCount} partial, ${missingCount} gaps`}
+            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+          >
+            <RequirementsCoverageSection gapAnalysis={gapAnalysis} />
+          </CollapsibleSection>
+        );
+      })()}
 
       {/* Keyword Analysis */}
       <CollapsibleSection
