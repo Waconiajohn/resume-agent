@@ -14,6 +14,7 @@ import type {
   HiringManagerReviewResult,
 } from '@/hooks/useHiringManagerReview';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
+import type { FinalReviewTargetMatch } from './utils/final-review-target';
 
 interface ResumeFinalReviewPanelProps {
   hiringManagerResult?: HiringManagerReviewResult | null;
@@ -31,6 +32,7 @@ interface ResumeFinalReviewPanelProps {
   ) => void;
   finalReviewChat?: FinalReviewChatHook | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
+  resolveConcernTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
   isEditing: boolean;
 }
 
@@ -142,6 +144,7 @@ export function ResumeFinalReviewPanel({
   onApplyHiringManagerRecommendation,
   finalReviewChat,
   buildFinalReviewChatContext,
+  resolveConcernTarget,
   isEditing,
 }: ResumeFinalReviewPanelProps) {
   return (
@@ -188,6 +191,7 @@ export function ResumeFinalReviewPanel({
           isEditing={isEditing}
           finalReviewChat={finalReviewChat}
           buildFinalReviewChatContext={buildFinalReviewChatContext}
+          resolveConcernTarget={resolveConcernTarget}
         />
       )}
     </div>

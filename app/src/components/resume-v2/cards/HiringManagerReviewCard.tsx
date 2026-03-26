@@ -20,6 +20,7 @@ import type {
 } from '@/hooks/useHiringManagerReview';
 import type { FinalReviewChatContext } from '@/types/resume-v2';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
+import type { FinalReviewTargetMatch } from '../utils/final-review-target';
 
 export interface HiringManagerReviewCardProps {
   result: HiringManagerReviewResult | null;
@@ -37,6 +38,7 @@ export interface HiringManagerReviewCardProps {
   resolvedConcernIds?: string[];
   finalReviewChat?: FinalReviewChatHook | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
+  resolveConcernTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
 }
 
 const VERDICT_CONFIG = {
@@ -190,6 +192,11 @@ function TextList({
   );
 }
 
+function truncatePreview(text: string, maxLength = 180): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trimEnd()}...`;
+}
+
 export function HiringManagerReviewCard({
   result,
   isLoading,
@@ -202,6 +209,7 @@ export function HiringManagerReviewCard({
   resolvedConcernIds = [],
   finalReviewChat,
   buildFinalReviewChatContext,
+  resolveConcernTarget,
 }: HiringManagerReviewCardProps) {
   const [expandedConcern, setExpandedConcern] = useState<string | null>(null);
   const [threadConcernId, setThreadConcernId] = useState<string | null>(null);
@@ -424,6 +432,7 @@ export function HiringManagerReviewCard({
                 const isThreadOpen = threadConcernId === concern.id;
                 const chatState = finalReviewChat?.getItemState(concern.id);
                 const chatContext = buildFinalReviewChatContext?.(concern) ?? null;
+                const resolvedTarget = resolveConcernTarget?.(concern) ?? null;
 
                 return (
                   <div
@@ -490,6 +499,20 @@ export function HiringManagerReviewCard({
                           </div>
                         )}
 
+                        {resolvedTarget && (
+                          <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
+                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
+                              Will revise on the resume
+                            </p>
+                            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                              {resolvedTarget.section}
+                            </p>
+                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+                              &ldquo;{truncatePreview(resolvedTarget.text)}&rdquo;
+                            </p>
+                          </div>
+                        )}
+
                         <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
                           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
                             Fix Strategy
@@ -535,7 +558,9 @@ export function HiringManagerReviewCard({
                               }}
                             >
                               <Wrench className="h-3 w-3" />
-                              {concern.requires_candidate_input ? 'Review Suggested Fix' : 'Review Edit'}
+                              {concern.requires_candidate_input
+                                ? 'Review Suggested Fix on Resume'
+                                : 'Review Edit on Resume'}
                             </button>
                           )}
 

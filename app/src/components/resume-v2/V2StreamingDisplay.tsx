@@ -20,6 +20,7 @@ import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/us
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import type { GapChatContext } from '@/types/resume-v2';
+import type { FinalReviewTargetMatch } from './utils/final-review-target';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { ScoringReport } from './ScoringReport';
@@ -75,6 +76,7 @@ interface V2StreamingDisplayProps {
   finalReviewChat?: FinalReviewChatHook | null;
   finalReviewChatSnapshot?: CoachingThreadSnapshot | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
+  resolveFinalReviewTarget?: (concern: HiringManagerConcern) => FinalReviewTargetMatch | null;
   postReviewPolish?: PostReviewPolishState;
   masterSaveMode?: 'session_only' | 'master_resume';
   onChangeMasterSaveMode?: (mode: 'session_only' | 'master_resume') => void;
@@ -462,7 +464,7 @@ export function V2StreamingDisplay({
   isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
   gapChat, gapChatSnapshot, buildChatContext,
-  finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, postReviewPolish,
+  finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, resolveFinalReviewTarget, postReviewPolish,
   masterSaveMode = 'session_only',
   onChangeMasterSaveMode,
   onSaveCurrentToMaster,
@@ -815,6 +817,7 @@ export function V2StreamingDisplay({
                 onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
                 finalReviewChat={finalReviewChat}
                 buildFinalReviewChatContext={buildFinalReviewChatContext}
+                resolveConcernTarget={resolveFinalReviewTarget}
                 isEditing={isEditing}
               />
             )}

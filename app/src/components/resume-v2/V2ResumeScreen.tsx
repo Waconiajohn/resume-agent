@@ -1017,6 +1017,15 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     resetPostReviewPolish,
   ]);
 
+  const resolveFinalReviewTarget = useCallback((concern: HiringManagerConcern) => {
+    if (!currentResume) return null;
+    return findResumeTargetForFinalReviewConcern(
+      currentResume,
+      concern,
+      data.assembly?.positioning_assessment,
+    );
+  }, [currentResume, data.assembly?.positioning_assessment]);
+
   // Apply a final review concern as an inline edit
   const handleApplyHiringManagerRecommendation = useCallback((
     concern: HiringManagerConcern,
@@ -1024,11 +1033,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     candidateInputUsed = false,
   ) => {
     if (!currentResume) return;
-    const matchedTarget = findResumeTargetForFinalReviewConcern(
-      currentResume,
-      concern,
-      data.assembly?.positioning_assessment,
-    );
+    const matchedTarget = resolveFinalReviewTarget(concern);
     const section = matchedTarget?.section ?? concern.target_section ?? 'Executive Summary';
     const targetText = matchedTarget?.text ?? extractResumeExcerptForSection(currentResume, concern.target_section);
     if (!targetText.trim()) return;
@@ -1045,7 +1050,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       finalReviewConcernId: concern.id,
       finalReviewConcernSeverity: concern.severity,
     });
-  }, [currentResume, data.assembly?.positioning_assessment, requestEdit]);
+  }, [currentResume, requestEdit, resolveFinalReviewTarget]);
 
   if (!isPipelineActive) {
     return (
@@ -1145,6 +1150,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         finalReviewChat={isComplete ? finalReviewChat : null}
         finalReviewChatSnapshot={finalReviewChatSnapshot}
         buildFinalReviewChatContext={isComplete ? buildFinalReviewChatContext : undefined}
+        resolveFinalReviewTarget={isComplete ? resolveFinalReviewTarget : undefined}
         postReviewPolish={postReviewPolish}
         masterSaveMode={masterSaveMode}
         onChangeMasterSaveMode={setMasterSaveMode}
