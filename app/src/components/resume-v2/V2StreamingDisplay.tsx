@@ -874,6 +874,26 @@ export function V2StreamingDisplay({
     onRequestHiringManagerReview,
     unresolvedCriticalConcerns,
   ]);
+  const compactAttentionSummary = useMemo(() => {
+    if (attentionItems.length === 0) {
+      return `Your resume is ready for final review${compactReviewStatusLabel ? `, and final review is ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+    }
+
+    const proofCount = attentionItems.filter((item) => item.statusLabel === 'Needs Proof').length;
+    const validateCount = attentionItems.filter((item) => item.statusLabel === 'Validate Fit').length;
+    const strengthenCount = attentionItems.filter((item) => item.statusLabel === 'Strengthen').length;
+
+    if (proofCount > 0) {
+      const remainder = validateCount + strengthenCount;
+      return `${proofCount} line${proofCount === 1 ? '' : 's'} still need proof${remainder > 0 ? `, and ${remainder} more still need attention` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+    }
+
+    if (validateCount > 0) {
+      return `${validateCount} line${validateCount === 1 ? '' : 's'} still need fit validation${strengthenCount > 0 ? `, and ${strengthenCount} more still need stronger detail` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+    }
+
+    return `${strengthenCount} line${strengthenCount === 1 ? '' : 's'} still need stronger detail${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+  }, [attentionItems, compactReviewStatusLabel]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -901,6 +921,7 @@ export function V2StreamingDisplay({
             gapAnalysis={data.gapAnalysis ?? null}
             compact={canShowResumeDocument}
             compactReviewStatusLabel={canShowResumeDocument ? compactReviewStatusLabel : undefined}
+            compactAttentionSummary={canShowResumeDocument ? compactAttentionSummary : undefined}
             renderDetails={!canShowResumeDocument}
           />
         </div>

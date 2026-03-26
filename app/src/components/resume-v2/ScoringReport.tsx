@@ -348,11 +348,13 @@ function CompactScoreSummaryHeader({
   assembly,
   gapAnalysis,
   reviewStatusLabel,
+  attentionSummary,
 }: {
   preScores: PreScores;
   assembly: AssemblyResult;
   gapAnalysis: GapAnalysis | null;
   reviewStatusLabel?: string;
+  attentionSummary?: string;
 }) {
   const afterAts = assembly.scores.ats_match;
   const beforeAts = preScores.ats_match;
@@ -364,12 +366,12 @@ function CompactScoreSummaryHeader({
     ? jdBreakdown.partial + jdBreakdown.missing
     : null;
 
-  const summaryLine = outstandingRequirements === null
+  const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
       ?? `Your resume is ${delta >= 0 ? `${delta} points` : 'slightly'} stronger than the original draft.`
     : outstandingRequirements === 0
       ? `Your resume now clearly covers the job requirements we measured${reviewStatusLabel ? `, and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`
-      : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`;
+      : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`);
 
   return (
     <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-3">
@@ -935,6 +937,7 @@ export interface ScoringReportProps {
   gapAnalysis: GapAnalysis | null;
   compact?: boolean;
   compactReviewStatusLabel?: string;
+  compactAttentionSummary?: string;
   renderSummary?: boolean;
   renderDetails?: boolean;
 }
@@ -1079,6 +1082,7 @@ export function ScoringReport({
   gapAnalysis,
   compact = false,
   compactReviewStatusLabel,
+  compactAttentionSummary,
   renderSummary = true,
   renderDetails = true,
 }: ScoringReportProps) {
@@ -1091,6 +1095,7 @@ export function ScoringReport({
             assembly={assembly}
             gapAnalysis={gapAnalysis}
             reviewStatusLabel={compactReviewStatusLabel}
+            attentionSummary={compactAttentionSummary}
           />
         ) : (
           <ScoreSummaryHeader preScores={preScores} assembly={assembly} gapAnalysis={gapAnalysis} />

@@ -946,6 +946,11 @@ describe('V2StreamingDisplay — layout modes', () => {
         {...makeDisplayProps({
           editableResume: attentionResume,
           data: makePipelineDataWithResume({
+            preScores: {
+              ats_match: 48,
+              keywords_found: ['Operations'],
+              keywords_missing: ['Performance metrics'],
+            },
             resumeDraft: attentionResume,
             assembly: {
               final_resume: attentionResume,
@@ -965,6 +970,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(strip).toBeInTheDocument();
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    expect(screen.getByText(/1 line still need proof, and 1 more still need attention/i)).toBeInTheDocument();
     expect(within(strip).getByText('Needs Proof')).toBeInTheDocument();
     expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
