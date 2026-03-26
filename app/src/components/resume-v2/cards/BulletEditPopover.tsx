@@ -47,14 +47,19 @@ export function BulletEditPopover({
   onClose,
   onRequestAiEdit,
 }: BulletEditPopoverProps) {
-  const [editedText, setEditedText] = useState(text);
+  const safeText = typeof text === 'string' ? text : '';
+  const safeEvidenceFound = typeof evidenceFound === 'string' ? evidenceFound : '';
+  const safeAddressesRequirements = Array.isArray(addressesRequirements)
+    ? addressesRequirements.filter((req): req is string => typeof req === 'string' && req.trim().length > 0)
+    : [];
+  const [editedText, setEditedText] = useState(safeText);
   const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Sync textarea when the upstream text prop changes
   useEffect(() => {
-    setEditedText(text);
-  }, [text]);
+    setEditedText(safeText);
+  }, [safeText]);
 
   // Auto-resize textarea to fit content
   useEffect(() => {
@@ -105,7 +110,7 @@ export function BulletEditPopover({
     [editedText, onRequestAiEdit],
   );
 
-  const hasEvidence = evidenceFound.trim().length > 0;
+  const hasEvidence = safeEvidenceFound.trim().length > 0;
   const requirementLabel =
     requirementSource === 'job_description' ? 'Job Description' : 'Benchmark';
   const RequirementIcon =
@@ -128,7 +133,7 @@ export function BulletEditPopover({
             Addresses:
           </p>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            {addressesRequirements.map((req) => (
+            {safeAddressesRequirements.map((req) => (
               <span
                 key={req}
                 className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 leading-snug"
@@ -168,7 +173,7 @@ export function BulletEditPopover({
         </div>
         {hasEvidence ? (
           <div className="rounded bg-gray-50 px-3 py-2 text-xs text-gray-500 italic leading-relaxed border border-gray-100">
-            &ldquo;{evidenceFound}&rdquo;
+            &ldquo;{safeEvidenceFound}&rdquo;
           </div>
         ) : (
           <div className="flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-600 border border-red-100">

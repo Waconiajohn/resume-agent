@@ -43,6 +43,8 @@ interface V2StreamingDisplayProps {
   editError: string | null;
   undoCount: number;
   redoCount: number;
+  onBulletEdit?: (section: string, index: number, newText: string) => void;
+  onBulletRemove?: (section: string, index: number) => void;
   onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: import('@/hooks/useInlineEdit').EditContext) => void;
   onAcceptEdit: (editedText: string) => void;
   onRejectEdit: () => void;
@@ -216,7 +218,7 @@ function buildAttentionReviewItems(
     });
   });
 
-  return items.sort((a, b) => a.priority - b.priority || a.order - b.order);
+  return items.sort((a, b) => a.order - b.order);
 }
 
 function AttentionReviewStrip({
@@ -642,6 +644,7 @@ function SuggestionProgressStrip({
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
+  onBulletEdit, onBulletRemove,
   onRequestEdit, onAcceptEdit, onRejectEdit, onUndo, onRedo,
   onAddContext, isRerunning,
   liveScores, isScoring,
@@ -1046,6 +1049,8 @@ export function V2StreamingDisplay({
                     onTextSelect={canEdit ? handleTextSelect : undefined}
                     activeBullet={activeBullet}
                     onBulletClick={canEdit ? handleBulletClick : undefined}
+                    onBulletEdit={canEdit ? onBulletEdit : undefined}
+                    onBulletRemove={canEdit ? onBulletRemove : undefined}
                     pendingEdit={pendingEdit}
                     isEditing={isEditing}
                     onAcceptEdit={handleAcceptEdit}

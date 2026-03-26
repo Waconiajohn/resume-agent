@@ -1,4 +1,5 @@
 import type { V2PersistedDraftState, V2PipelineData, V2Stage } from '@/types/resume-v2';
+import { normalizeAssemblyResult, normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 
 export type LoadableV2PipelineSnapshot = {
   stage?: V2Stage;
@@ -60,8 +61,8 @@ export function hydrateV2SessionLoad(
       gapQuestions: pd.gapQuestions ?? null,
       preScores: pd.preScores ?? null,
       narrativeStrategy: pd.narrativeStrategy ?? null,
-      resumeDraft: pd.resumeDraft ?? null,
-      assembly: pd.assembly ?? null,
+      resumeDraft: normalizeResumeDraft(pd.resumeDraft ?? null),
+      assembly: normalizeAssemblyResult(pd.assembly ?? null),
       inlineSuggestions: pd.inlineSuggestions ?? [],
       hiringManagerScan: pd.hiringManagerScan ?? null,
       verificationDetail: null,
@@ -71,6 +72,11 @@ export function hydrateV2SessionLoad(
     isComplete: status === 'complete',
     shouldReconnect: status === 'running',
     inputs: body.inputs ?? { resume_text: '', job_description: '' },
-    draftState: body.draft_state ?? null,
+    draftState: body.draft_state
+      ? {
+          ...body.draft_state,
+          editable_resume: normalizeResumeDraft(body.draft_state.editable_resume),
+        }
+      : null,
   };
 }

@@ -34,6 +34,7 @@ import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import { useToast } from '@/components/Toast';
 import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 import { trackProductEvent } from '@/lib/product-telemetry';
+import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -133,7 +134,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [editableResume, setEditableResume] = useState<ResumeDraft | null>(null);
 
   // The resume to use: user-edited version takes precedence over pipeline output
-  const currentResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null;
+  const currentResume = useMemo(
+    () => normalizeResumeDraft(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null),
+    [editableResume, data.assembly?.final_resume, data.resumeDraft],
+  );
 
   // Store inputs for inline edit context and re-runs
   const [resumeText, setResumeText] = useState('');
@@ -356,7 +360,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         const resolvedDraftState = result.draftState ?? readLocalDraftState(initialSessionId);
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
-        setEditableResume(resolvedDraftState?.editable_resume ?? null);
+        setEditableResume(normalizeResumeDraft(resolvedDraftState?.editable_resume ?? null));
         setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
         hydrateGapChatSnapshot(resolvedDraftState?.gap_chat_state ?? null);
         hydrateHiringManagerReview(resolvedDraftState?.final_review_state?.result ?? null);
@@ -418,6 +422,100 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     addToast,
     hiringManagerResult,
   ]);
+
+  const handleDirectBulletEdit = useCallback((section: string, index: number, newText: string) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+
+      if (section === 'selected_accomplishments') {
+        if (!base.selected_accomplishments[index]) return base;
+        return {
+          ...base,
+          selected_accomplishments: base.selected_accomplishments.map((item, itemIndex) => (
+            itemIndex === index
+              ? { ...item, content: newText }
+              : item
+          )),
+        };
+      }
+
+      if (section === 'professional_experience') {
+        const experienceIndex = Math.floor(index / 100);
+        const bulletIndex = index % 100;
+        const experience = base.professional_experience[experienceIndex];
+        if (!experience?.bullets?.[bulletIndex]) return base;
+
+        return {
+          ...base,
+          professional_experience: base.professional_experience.map((entry, entryIndex) => (
+            entryIndex === experienceIndex
+              ? {
+                  ...entry,
+                  bullets: entry.bullets.map((bullet, currentBulletIndex) => (
+                    currentBulletIndex === bulletIndex
+                      ? { ...bullet, text: newText }
+                      : bullet
+                  )),
+                }
+              : entry
+          )),
+        };
+      }
+
+      return base;
+    });
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [currentResume, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  const handleDirectBulletRemove = useCallback((section: string, index: number) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+
+      if (section === 'selected_accomplishments') {
+        if (!base.selected_accomplishments[index]) return base;
+        return {
+          ...base,
+          selected_accomplishments: base.selected_accomplishments.filter((_, itemIndex) => itemIndex !== index),
+        };
+      }
+
+      if (section === 'professional_experience') {
+        const experienceIndex = Math.floor(index / 100);
+        const bulletIndex = index % 100;
+        const experience = base.professional_experience[experienceIndex];
+        if (!experience?.bullets?.[bulletIndex]) return base;
+
+        return {
+          ...base,
+          professional_experience: base.professional_experience.map((entry, entryIndex) => (
+            entryIndex === experienceIndex
+              ? {
+                  ...entry,
+                  bullets: entry.bullets.filter((_, currentBulletIndex) => currentBulletIndex !== bulletIndex),
+                }
+              : entry
+          )),
+        };
+      }
+
+      return base;
+    });
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [currentResume, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
 
   // Trigger the post-review polish pass only after an accepted Final Review fix.
   useEffect(() => {
@@ -690,7 +788,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       || hasPostReviewPolish
       || promotableMasterItems.length > 0
       ? {
-          editable_resume: editableResume,
+          editable_resume: normalizeResumeDraft(editableResume),
           master_save_mode: masterSaveMode,
           gap_chat_state: hasGapChatState ? gapChatSnapshot : null,
           final_review_state: hasFinalReviewState
@@ -1133,6 +1231,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onRequestEdit={requestEdit}
         onAcceptEdit={acceptEdit}
         onRejectEdit={rejectEdit}
+        onBulletEdit={handleDirectBulletEdit}
+        onBulletRemove={handleDirectBulletRemove}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onAddContext={handleAddContext}

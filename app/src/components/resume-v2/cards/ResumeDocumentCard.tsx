@@ -171,7 +171,7 @@ export function ResumeDocumentCard({
       {selectedAccomplishments.length > 0 && (
         <section data-section="selected_accomplishments">
           <SectionHeading>Selected Accomplishments</SectionHeading>
-          <ul className="space-y-2">
+          <ol className="space-y-2 list-decimal pl-5 marker:text-gray-400">
             {selectedAccomplishments.map((a, i) => {
               const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
@@ -187,8 +187,8 @@ export function ResumeDocumentCard({
                   key={i}
                   data-bullet-id={`selected_accomplishments-${i}`}
                   data-suggestion-id={suggestion?.id}
-                  className={`text-sm leading-relaxed ${
-                    getConfidenceTextClass(a.confidence, a.requirement_source)
+                  className={`rounded-r-md text-sm leading-relaxed text-gray-800 ${
+                    getConfidenceLineClass(a.confidence, a.requirement_source)
                   }`}
                   {...(hasStrategy
                     ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
@@ -258,7 +258,7 @@ export function ResumeDocumentCard({
                 </li>
               );
             })}
-          </ul>
+          </ol>
         </section>
       )}
 
@@ -286,7 +286,7 @@ export function ResumeDocumentCard({
                     {exp.scope_statement}
                   </p>
                 )}
-                <ul className="mt-2 space-y-1.5">
+                <ol className="mt-2 space-y-2 list-decimal pl-5 marker:text-gray-400">
                   {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
                     const bulletRequirements = Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [];
                     const hasStrategy = bulletRequirements.length > 0;
@@ -303,8 +303,8 @@ export function ResumeDocumentCard({
                         key={j}
                         data-bullet-id={`professional_experience-${bulletIndex}`}
                         data-suggestion-id={suggestion?.id}
-                        className={`text-sm leading-relaxed ${
-                          getConfidenceTextClass(bullet.confidence, bullet.requirement_source)
+                        className={`rounded-r-md text-sm leading-relaxed text-gray-800 ${
+                          getConfidenceLineClass(bullet.confidence, bullet.requirement_source)
                         }`}
                         {...(hasStrategy
                           ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
@@ -374,7 +374,7 @@ export function ResumeDocumentCard({
                       </li>
                     );
                   })}
-                </ul>
+                </ol>
               </div>
             ))}
           </div>
@@ -1015,21 +1015,21 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
 
 // ─── Confidence styling helpers ──────────────────────────────────────────────
 
-function getConfidenceTextClass(
+function getConfidenceLineClass(
   confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): string {
   switch (confidence) {
     case 'strong':
-      return 'text-emerald-700';
+      return '';
     case 'partial':
-      return 'text-amber-700';
+      return 'border-l-4 border-amber-300 bg-amber-50/70 pl-3 pr-2 py-1';
     case 'needs_validation':
       return requirementSource === 'benchmark'
-        ? 'text-orange-600'
-        : 'text-red-700';
+        ? 'border-l-4 border-orange-300 bg-orange-50/70 pl-3 pr-2 py-1'
+        : 'border-l-4 border-red-300 bg-red-50/70 pl-3 pr-2 py-1';
     default:
-      return 'text-gray-800';
+      return '';
   }
 }
 

@@ -13,6 +13,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
+import { normalizeAssemblyResult, normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 import type { GapCoachingResponse, InlineSuggestion, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage, VerificationDetail } from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
@@ -90,7 +91,7 @@ export function useV2Pipeline(accessToken: string | null) {
           return { ...prev, narrativeStrategy: event.data };
 
         case 'resume_draft':
-          return { ...prev, resumeDraft: event.data };
+          return { ...prev, resumeDraft: normalizeResumeDraft(event.data) };
 
         case 'verification_complete': {
           if (!event.data?.truth || !event.data?.ats || !event.data?.tone) return prev;
@@ -117,7 +118,7 @@ export function useV2Pipeline(accessToken: string | null) {
         }
 
         case 'assembly_complete':
-          return { ...prev, assembly: event.data };
+          return { ...prev, assembly: normalizeAssemblyResult(event.data) };
 
         case 'inline_suggestions': {
           // Append new suggestions; do not overwrite already-resolved ones

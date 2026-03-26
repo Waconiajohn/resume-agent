@@ -235,26 +235,27 @@ function makeResumeDraftWithConfidence(overrides: {
 }
 
 describe('ResumeDocumentCard — confidence color coding', () => {
-  it('renders green text for strong confidence bullets', () => {
+  it('keeps strong confidence bullets visually quiet', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'strong' });
     render(<ResumeDocumentCard resume={resume} />);
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('text-emerald-700');
+    expect(bullet!.className).not.toContain('border-l-4');
   });
 
-  it('renders amber text for partial confidence bullets', () => {
+  it('renders highlighted amber treatment for partial confidence bullets', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'partial' });
     render(<ResumeDocumentCard resume={resume} />);
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('text-amber-700');
+    expect(bullet!.className).toContain('border-amber-300');
+    expect(bullet!.className).toContain('bg-amber-50/70');
     expect(screen.getByText('Strengthen')).toBeInTheDocument();
   });
 
-  it('renders red text for needs_validation confidence bullets from JD', () => {
+  it('renders highlighted red treatment for needs_validation confidence bullets from JD', () => {
     const resume = makeResumeDraftWithConfidence({
       confidence: 'needs_validation',
       requirement_source: 'job_description',
@@ -263,11 +264,12 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('text-red-700');
+    expect(bullet!.className).toContain('border-red-300');
+    expect(bullet!.className).toContain('bg-red-50/70');
     expect(screen.getByText('Code Red')).toBeInTheDocument();
   });
 
-  it('renders orange text for needs_validation + benchmark source', () => {
+  it('renders highlighted orange treatment for needs_validation + benchmark source', () => {
     const resume = makeResumeDraftWithConfidence({
       confidence: 'needs_validation',
       requirement_source: 'benchmark',
@@ -276,8 +278,9 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('text-orange-600');
-    expect(bullet!.className).not.toContain('text-red-700');
+    expect(bullet!.className).toContain('border-orange-300');
+    expect(bullet!.className).toContain('bg-orange-50/70');
+    expect(bullet!.className).not.toContain('border-red-300');
     expect(screen.getByText('Validate Fit')).toBeInTheDocument();
   });
 
@@ -290,7 +293,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(screen.queryByText('Validate Fit')).not.toBeInTheDocument();
   });
 
-  it('renders explicit confidence text colors on all bullets (no silent gray fallback)', () => {
+  it('renders explicit line-level proof treatment on reviewable bullets', () => {
     const resume: ResumeDraft = {
       header: {
         name: 'Jane Doe',
@@ -337,13 +340,16 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bulletB = screen.getByText('Bullet B — partial').closest('li');
     const bulletC = screen.getByText('Bullet C — needs validation').closest('li');
 
-    expect(bulletA!.className).toContain('text-emerald-700');
-    expect(bulletB!.className).toContain('text-amber-700');
-    expect(bulletC!.className).toContain('text-red-700');
+    expect(bulletA!.className).not.toContain('border-l-4');
+    expect(bulletB!.className).toContain('border-amber-300');
+    expect(bulletC!.className).toContain('border-red-300');
+  });
 
-    expect(bulletA!.className).not.toContain('text-gray-800');
-    expect(bulletB!.className).not.toContain('text-gray-800');
-    expect(bulletC!.className).not.toContain('text-gray-800');
+  it('renders numbered accomplishment lines', () => {
+    const resume = makeResumeDraftWithConfidence({ confidence: 'partial' });
+    const { container } = render(<ResumeDocumentCard resume={resume} />);
+
+    expect(container.querySelector('ol')).toHaveClass('list-decimal');
   });
 });
 

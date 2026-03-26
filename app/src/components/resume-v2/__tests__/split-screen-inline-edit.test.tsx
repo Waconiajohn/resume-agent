@@ -367,7 +367,11 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     );
 
     // Clicking a bullet now opens the popover instead of calling onBulletClick
-    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
+    const resumeLine = screen.getAllByText('Reduced deploy time by 60%')
+      .find((element) => element.getAttribute('role') === 'button');
+
+    expect(resumeLine).toBeTruthy();
+    fireEvent.click(resumeLine!);
 
     expect(screen.getByTestId('bullet-edit-popover')).toBeInTheDocument();
   });
@@ -398,7 +402,11 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
+    const resumeLine = screen.getAllByText('Reduced deploy time by 60%')
+      .find((element) => element.getAttribute('role') === 'button');
+
+    expect(resumeLine).toBeTruthy();
+    fireEvent.click(resumeLine!);
 
     expect(onBulletClick).toHaveBeenCalledWith(
       'Reduced deploy time by 60%',
@@ -971,10 +979,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
     expect(screen.getByText(/1 code-red line still needs proof, and 1 more still need attention/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Next best action: Start with the code-red line in VP Engineering · Acme Corp\./i)).toHaveLength(2);
-    expect(within(strip).getByText(/Next best action: Start with the code-red line in VP Engineering · Acme Corp\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Code Red')).toBeInTheDocument();
-    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
+    expect(screen.getAllByText(/Next best action: Start with the strengthen line in Selected Accomplishments\./i)).toHaveLength(2);
+    expect(within(strip).getByText(/Next best action: Start with the strengthen line in Selected Accomplishments\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('Strengthen')).toBeInTheDocument();
+    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });
 
@@ -1001,14 +1009,14 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
 
     const strip = screen.getByTestId('attention-review-strip');
     expect(screen.getByText('2 of 2')).toBeInTheDocument();
-    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
+    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
 
@@ -1038,7 +1046,11 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
+    const resumeLine = screen.getAllByText('Reduced deploy time by 60%')
+      .find((element) => element.getAttribute('role') === 'button');
+
+    expect(resumeLine).toBeTruthy();
+    fireEvent.click(resumeLine!);
 
     expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
   });
