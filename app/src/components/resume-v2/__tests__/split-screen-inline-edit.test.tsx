@@ -817,6 +817,26 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByTestId('hiring-manager-review-card')).toBeInTheDocument();
   });
 
+  it('collapses the gap overview once the working resume is visible', () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          data: makePipelineDataWithResume({
+            preScores: {
+              ats_match: 48,
+              keywords_found: ['Operations'],
+              keywords_missing: ['Performance metrics'],
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /Expand overview card/i })).toBeInTheDocument();
+    expect(screen.getByText('Coverage: 75%')).toBeInTheDocument();
+    expect(screen.queryByText('Your Resume vs. This Role')).not.toBeInTheDocument();
+  });
+
   it('shows the correct status text for each pipeline stage', () => {
     const stageLabels: Array<{ stage: string; label: string }> = [
       { stage: 'strategy', label: 'Building your positioning strategy...' },

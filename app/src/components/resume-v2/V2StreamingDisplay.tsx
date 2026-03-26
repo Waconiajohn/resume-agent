@@ -522,6 +522,7 @@ export function V2StreamingDisplay({
     index: number;
     requirements: string[];
   } | null>(null);
+  const [gapOverviewCollapsed, setGapOverviewCollapsed] = useState(false);
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
@@ -614,6 +615,10 @@ export function V2StreamingDisplay({
   // Don't show it while re-running — the old assembly data persists and would be stale.
   const canShowResumeDocument = hasResume && !isRerunning;
 
+  useEffect(() => {
+    setGapOverviewCollapsed(canShowResumeDocument);
+  }, [canShowResumeDocument]);
+
   const jobBreakdown = data.gapAnalysis?.score_breakdown?.job_description ?? {
     addressed: 0,
     total: 0,
@@ -664,6 +669,10 @@ export function V2StreamingDisplay({
             preScores={data.preScores}
             questionCount={0}
             onBeginReview={() => {}}
+            collapsed={canShowResumeDocument ? gapOverviewCollapsed : false}
+            onToggleCollapse={canShowResumeDocument
+              ? () => setGapOverviewCollapsed((prev) => !prev)
+              : undefined}
           />
         </div>
       )}
