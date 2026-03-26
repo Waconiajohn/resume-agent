@@ -171,7 +171,7 @@ export function ResumeDocumentCard({
       {selectedAccomplishments.length > 0 && (
         <section data-section="selected_accomplishments">
           <SectionHeading>Selected Accomplishments</SectionHeading>
-          <ol className="space-y-2 list-decimal pl-5 marker:text-gray-400">
+          <ol className="resume-proof-list space-y-2 list-decimal pl-6">
             {selectedAccomplishments.map((a, i) => {
               const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
@@ -187,7 +187,8 @@ export function ResumeDocumentCard({
                   key={i}
                   data-bullet-id={`selected_accomplishments-${i}`}
                   data-suggestion-id={suggestion?.id}
-                  className={`rounded-r-md text-sm leading-relaxed text-gray-800 ${
+                  data-confidence={a.confidence}
+                  className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                     getConfidenceLineClass(a.confidence, a.requirement_source)
                   }`}
                   {...(hasStrategy
@@ -286,7 +287,7 @@ export function ResumeDocumentCard({
                     {exp.scope_statement}
                   </p>
                 )}
-                <ol className="mt-2 space-y-2 list-decimal pl-5 marker:text-gray-400">
+                <ol className="resume-proof-list mt-2 space-y-2 list-decimal pl-6">
                   {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
                     const bulletRequirements = Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [];
                     const hasStrategy = bulletRequirements.length > 0;
@@ -303,7 +304,8 @@ export function ResumeDocumentCard({
                         key={j}
                         data-bullet-id={`professional_experience-${bulletIndex}`}
                         data-suggestion-id={suggestion?.id}
-                        className={`rounded-r-md text-sm leading-relaxed text-gray-800 ${
+                        data-confidence={bullet.confidence}
+                        className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                           getConfidenceLineClass(bullet.confidence, bullet.requirement_source)
                         }`}
                         {...(hasStrategy
@@ -451,6 +453,7 @@ function BulletLineContent({
   onBulletClick,
 }: BulletLineContentProps) {
   const pill = getConfidencePill(confidence, requirementSource);
+  const sourceLabel = getConfidenceSourceLabel(confidence, requirementSource);
   const handleActivate = () => {
     onToggle();
     if (confidence !== 'strong') {
@@ -459,7 +462,19 @@ function BulletLineContent({
   };
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-2">
+    <span className="block">
+      {pill ? (
+        <span className="resume-proof-pill-row mb-2 flex flex-wrap items-center gap-2">
+          <span className={pill.className}>
+            {pill.label}
+          </span>
+          {sourceLabel ? (
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              {sourceLabel}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
       <span
         role="button"
         tabIndex={0}
@@ -474,15 +489,14 @@ function BulletLineContent({
             handleActivate();
           }
         }}
-        className="hover:bg-gray-50 cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+        className={`resume-bullet-interactive block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none ${
+          confidence === 'strong'
+            ? 'resume-bullet-interactive--strong font-normal text-gray-800 hover:bg-gray-50/90'
+            : 'resume-bullet-interactive--flagged font-medium text-gray-900 hover:bg-white/80'
+        }`}
       >
         {text}
       </span>
-      {pill ? (
-        <span className={pill.className}>
-          {pill.label}
-        </span>
-      ) : null}
     </span>
   );
 }
@@ -1021,13 +1035,13 @@ function getConfidenceLineClass(
 ): string {
   switch (confidence) {
     case 'strong':
-      return '';
+      return 'resume-proof-line--strong';
     case 'partial':
-      return 'border-l-4 border-amber-300 bg-amber-50/70 pl-3 pr-2 py-1';
+      return 'resume-proof-line--partial border-l-4 border-amber-300 border border-amber-200/80 bg-amber-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(217,119,6,0.55)]';
     case 'needs_validation':
       return requirementSource === 'benchmark'
-        ? 'border-l-4 border-orange-300 bg-orange-50/70 pl-3 pr-2 py-1'
-        : 'border-l-4 border-red-300 bg-red-50/70 pl-3 pr-2 py-1';
+        ? 'resume-proof-line--benchmark border-l-4 border-orange-300 border border-orange-200/80 bg-orange-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(234,88,12,0.45)]'
+        : 'resume-proof-line--code-red border-l-4 border-red-300 border border-red-200/80 bg-red-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(220,38,38,0.45)]';
     default:
       return '';
   }
@@ -1041,7 +1055,7 @@ function getConfidencePill(
     return {
       label: 'Strengthen',
       className:
-        'inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700',
+        'inline-flex items-center rounded-full border border-amber-200 bg-amber-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-800 shadow-sm',
     };
   }
 
@@ -1049,7 +1063,7 @@ function getConfidencePill(
     return {
       label: 'Validate Fit',
       className:
-        'inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-700',
+        'inline-flex items-center rounded-full border border-orange-200 bg-orange-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-800 shadow-sm',
     };
   }
 
@@ -1057,11 +1071,19 @@ function getConfidencePill(
     return {
       label: 'Code Red',
       className:
-        'inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-700',
+        'inline-flex items-center rounded-full border border-red-200 bg-red-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-800 shadow-sm',
     };
   }
 
   return null;
+}
+
+function getConfidenceSourceLabel(
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): string | null {
+  if (confidence === 'strong') return null;
+  return requirementSource === 'benchmark' ? 'Benchmark' : 'Job Need';
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

@@ -306,38 +306,15 @@ function CompactMetric({
   accent?: 'default' | 'good' | 'warn' | 'soft';
   detail?: string;
 }) {
-  const accentStyles: Record<string, React.CSSProperties> = {
-    default: {
-      color: 'var(--text-strong)',
-      border: '1px solid rgba(255,255,255,0.10)',
-      backgroundColor: 'rgba(255,255,255,0.04)',
-    },
-    good: {
-      color: '#b5dec2',
-      border: '1px solid rgba(181,222,194,0.18)',
-      backgroundColor: 'rgba(181,222,194,0.08)',
-    },
-    warn: {
-      color: '#f0d99f',
-      border: '1px solid rgba(240,217,159,0.18)',
-      backgroundColor: 'rgba(240,217,159,0.08)',
-    },
-    soft: {
-      color: '#afc4ff',
-      border: '1px solid rgba(175,196,255,0.18)',
-      backgroundColor: 'rgba(175,196,255,0.08)',
-    },
-  };
-
   return (
-    <div className="rounded-lg px-3 py-2" style={accentStyles[accent]}>
-      <p className="text-[10px] uppercase tracking-[0.16em] opacity-70">{label}</p>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-sm font-semibold tabular-nums">{value}</span>
-        {detail && (
-          <span className="text-[11px] opacity-70">{detail}</span>
-        )}
+    <div className="score-snapshot-metric px-3 py-3" data-accent={accent}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</p>
+      <div className="mt-2 flex items-end gap-2">
+        <span className="score-snapshot-metric__value text-lg font-semibold tabular-nums">{value}</span>
       </div>
+      {detail && (
+        <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-muted)]">{detail}</p>
+      )}
     </div>
   );
 }
@@ -401,24 +378,27 @@ function CompactScoreSummaryHeader({
   ].filter((item): item is string => Boolean(item));
 
   return (
-    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-4 space-y-4">
+    <div className="score-snapshot-shell px-4 py-4 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-[var(--text-strong)]">Score Snapshot</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
-            The fast read: how far the resume moved, what improved most, and what still needs work.
+          <p className="score-snapshot-kicker">Score Snapshot</p>
+          <p className="mt-2 text-lg font-semibold leading-7 text-[var(--text-strong)]">
+            How the tailored resume is performing on paper right now.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
+            Before versus now, the biggest gains, and the few items still worth tightening before export.
           </p>
         </div>
         {reviewStatusLabel && (
-          <div className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+          <div className="score-snapshot-status px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
             Final review: <span className="text-[var(--text-strong)]">{reviewStatusLabel}</span>
           </div>
         )}
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Before vs Now</p>
+        <div className="score-snapshot-hero px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">Resume Match Score</p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
@@ -428,12 +408,35 @@ function CompactScoreSummaryHeader({
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-3xl font-semibold tabular-nums" style={{ color: '#b5dec2' }}>{afterAts}%</p>
+                <p className="text-4xl font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterAts}%</p>
                 <DeltaBadge before={beforeAts} after={afterAts} />
               </div>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              <span>Original to tailored resume</span>
+              <span>{beforeAts}% to {afterAts}%</span>
+            </div>
+            <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-[rgba(175,196,255,0.38)]"
+                style={{ width: `${beforeAts}%` }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: `${afterAts}%`,
+                  background: 'linear-gradient(90deg, rgba(181,222,194,0.78), rgba(210,236,219,0.95))',
+                  boxShadow: '0 0 18px rgba(181,222,194,0.25)',
+                }}
+              />
+            </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+          </div>
         </div>
 
         <div className="grid gap-2 grid-cols-2">
@@ -458,22 +461,22 @@ function CompactScoreSummaryHeader({
             />
           ) : (
             <CompactMetric
-              label="Before"
-              value={`${beforeAts}%`}
-              detail="Original ATS"
+              label="Requirements"
+              value="N/A"
+              detail="Waiting on mapping"
             />
           )}
           <CompactMetric
-            label="Next move"
-            value={attentionNextAction ? 'Resume' : 'Review'}
-            accent={attentionNextAction ? 'warn' : 'good'}
-            detail={attentionNextAction ? 'Work the next line' : 'Rerun final review'}
+            label={hiringManagerScan ? 'Recruiter Scan' : 'Final Review'}
+            value={hiringManagerScan ? String(hiringManagerScan.scan_score) : (reviewStatusLabel ?? 'Not run')}
+            accent={hiringManagerScan ? (hiringManagerScan.pass ? 'good' : 'warn') : (attentionNextAction ? 'warn' : 'soft')}
+            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Passing skim' : 'Needs review') : 'Current status'}
           />
         </div>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+        <div className="score-snapshot-band score-snapshot-band--good px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#b5dec2' }}>
             Biggest gains
           </p>
@@ -487,7 +490,7 @@ function CompactScoreSummaryHeader({
           </ul>
         </div>
 
-        <div className="rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3">
+        <div className="score-snapshot-band score-snapshot-band--warn px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
             Still to close
           </p>
@@ -509,7 +512,7 @@ function CompactScoreSummaryHeader({
 
       <div className="support-callout px-4 py-3">
         <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Next best action</p>
-        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+        <p className="mt-2 text-sm font-medium leading-6 text-[var(--text-muted)]">
           {attentionNextAction
             ? attentionNextAction
             : 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.'}

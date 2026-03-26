@@ -251,7 +251,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('border-amber-300');
-    expect(bullet!.className).toContain('bg-amber-50/70');
+    expect(bullet!.className).toContain('bg-amber-50/85');
     expect(screen.getByText('Strengthen')).toBeInTheDocument();
   });
 
@@ -265,7 +265,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('border-red-300');
-    expect(bullet!.className).toContain('bg-red-50/70');
+    expect(bullet!.className).toContain('bg-red-50/85');
     expect(screen.getByText('Code Red')).toBeInTheDocument();
   });
 
@@ -279,7 +279,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('border-orange-300');
-    expect(bullet!.className).toContain('bg-orange-50/70');
+    expect(bullet!.className).toContain('bg-orange-50/85');
     expect(bullet!.className).not.toContain('border-red-300');
     expect(screen.getByText('Validate Fit')).toBeInTheDocument();
   });
