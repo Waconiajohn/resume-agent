@@ -199,6 +199,20 @@ export interface ReferralOpportunity {
   connection_count: number;
 }
 
+export interface BonusCompanySearchResult {
+  company_id: string;
+  company_name: string;
+  domain: string | null;
+  headquarters: string | null;
+  industry: string | null;
+  bonus_display: string | null;
+  bonus_currency: string | null;
+  bonus_amount_min: number | null;
+  bonus_amount_max: number | null;
+  confidence: 'high' | 'medium' | 'low' | null;
+  program_url: string | null;
+}
+
 // ─── Career Page Scraper ──────────────────────────────────────────────────────
 
 export interface CompanyInfo {

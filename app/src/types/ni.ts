@@ -37,6 +37,20 @@ export interface TargetTitle {
   createdAt: string;
 }
 
+export interface BonusCompanySearchItem {
+  companyId: string;
+  companyName: string;
+  domain: string | null;
+  headquarters: string | null;
+  industry: string | null;
+  bonusDisplay: string | null;
+  bonusCurrency: string | null;
+  bonusAmountMin: number | null;
+  bonusAmountMax: number | null;
+  confidence: 'high' | 'medium' | 'low' | null;
+  programUrl: string | null;
+}
+
 export type JobMatchStatus = 'new' | 'applied' | 'referred' | 'interviewing' | 'rejected' | 'archived';
 
 export interface JobMatch {

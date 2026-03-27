@@ -30,6 +30,7 @@ const mockDeleteTargetTitle = vi.hoisted(() => vi.fn());
 const mockInsertJobMatch = vi.hoisted(() => vi.fn());
 const mockGetJobMatchesByUser = vi.hoisted(() => vi.fn());
 const mockUpdateJobMatchStatus = vi.hoisted(() => vi.fn());
+const mockGetBonusSearchCompanies = vi.hoisted(() => vi.fn());
 
 // Feature flag — default ON so most tests exercise real route logic.
 // Individual tests can override with mockReturnValue inside the test body.
@@ -76,6 +77,10 @@ vi.mock('../lib/ni/job-matches-store.js', () => ({
   insertJobMatch: mockInsertJobMatch,
   getJobMatchesByUser: mockGetJobMatchesByUser,
   updateJobMatchStatus: mockUpdateJobMatchStatus,
+}));
+
+vi.mock('../lib/ni/bonus-company-search.js', () => ({
+  getBonusSearchCompanies: mockGetBonusSearchCompanies,
 }));
 
 // Company normalizer — no-op in route tests (tested separately).
@@ -910,6 +915,43 @@ describe('GET /api/ni/matches', () => {
     });
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/ni/bonus-companies', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFF.FF_NETWORK_INTELLIGENCE = true;
+  });
+
+  it('returns bonus-search companies using the requested threshold', async () => {
+    mockGetBonusSearchCompanies.mockResolvedValue([
+      {
+        company_id: 'company-1',
+        company_name: 'Acme Corp',
+        domain: 'acme.com',
+        headquarters: 'Chicago, IL',
+        industry: 'Manufacturing',
+        bonus_display: '$5,000-$15,000',
+        bonus_currency: 'USD',
+        bonus_amount_min: 5000,
+        bonus_amount_max: 15000,
+        confidence: 'high',
+        program_url: 'https://example.com/acme',
+      },
+    ]);
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/bonus-companies?min_bonus=1000&limit=25', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockGetBonusSearchCompanies).toHaveBeenCalledWith({ minBonus: 1000, limit: 25 });
+    const body = await res.json() as Record<string, unknown>;
+    expect(Array.isArray(body.companies)).toBe(true);
+    expect(body.min_bonus).toBe(1000);
   });
 });
 

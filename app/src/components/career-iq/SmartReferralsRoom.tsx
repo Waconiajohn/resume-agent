@@ -6,14 +6,15 @@ import { ConnectionsBrowser } from '@/components/network-intelligence/Connection
 import { TargetTitlesManager } from '@/components/network-intelligence/TargetTitlesManager';
 import { JobMatchesList } from '@/components/network-intelligence/JobMatchesList';
 import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPanel';
+import { BonusSearchPanel } from '@/components/network-intelligence/BonusSearchPanel';
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake, Briefcase } from 'lucide-react';
+import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake, Briefcase, Coins } from 'lucide-react';
 
-type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'referrals' | 'contacts' | 'outreach';
+type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts' | 'outreach';
 
 interface TabDef {
   id: SmartReferralsTab;
@@ -28,13 +29,14 @@ const TABS: TabDef[] = [
   { id: 'targets', label: 'Target Titles', icon: Target, description: 'Manage target job titles' },
   { id: 'job-matches', label: 'Job Matches', icon: Briefcase, description: 'Jobs at companies where you have first-level connections' },
   { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
+  { id: 'bonus-search', label: 'Bonus Search', icon: Coins, description: 'Search high-referral-bonus companies even without a connection' },
   { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
   { id: 'contacts', label: 'Contacts', icon: UserCircle, description: 'CRM & Rule of Four' },
   { id: 'outreach', label: 'Outreach', icon: Send, description: 'AI outreach sequences' },
 ];
 
 // Tabs accessible without connections
-const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'referrals', 'contacts', 'outreach'];
+const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'bonus-search', 'referrals', 'contacts', 'outreach'];
 
 interface OutreachPrefill {
   name: string;
@@ -122,6 +124,8 @@ export function SmartReferralsRoom() {
         return <JobMatchesList accessToken={accessToken} />;
       case 'job-scan':
         return <ScrapeJobsPanel accessToken={accessToken} />;
+      case 'bonus-search':
+        return <BonusSearchPanel accessToken={accessToken} />;
       case 'referrals':
         return <ReferralOpportunitiesPanel onGenerateOutreach={handleGenerateOutreach} />;
       case 'contacts':
@@ -142,7 +146,7 @@ export function SmartReferralsRoom() {
       <div>
         <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
         <p className="text-sm text-[var(--text-soft)] mt-1">
-          Import connections, find jobs at their companies, flag referral bonuses when they exist, and generate targeted outreach
+          Import connections, find jobs at their companies, scan high-bonus companies separately, and generate targeted outreach
         </p>
       </div>
 

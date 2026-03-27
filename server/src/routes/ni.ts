@@ -30,6 +30,7 @@ import {
 import { generateBooleanSearch, getBooleanSearch } from '../lib/ni/boolean-search.js';
 import { runCsvImportPipeline, runCareerScrape } from '../lib/ni/import-service.js';
 import { crossReferenceReferralOpportunities } from '../lib/ni/referral-cross-ref.js';
+import { getBonusSearchCompanies } from '../lib/ni/bonus-company-search.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CsvUploadResponse } from '../lib/ni/types.js';
@@ -315,6 +316,22 @@ ni.get('/referral-opportunities', rateLimitMiddleware(30, 60_000), async (c) => 
       'referral-opportunities: query failed',
     );
     return c.json({ error: 'Failed to fetch referral opportunities' }, 500);
+  }
+});
+
+ni.get('/bonus-companies', rateLimitMiddleware(30, 60_000), async (c) => {
+  const minBonus = Math.max(parseInt(c.req.query('min_bonus') ?? '1000', 10) || 1000, 0);
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10) || 50, 200);
+
+  try {
+    const companies = await getBonusSearchCompanies({ minBonus, limit });
+    return c.json({ companies, min_bonus: minBonus });
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      'bonus-companies: query failed',
+    );
+    return c.json({ error: 'Failed to fetch bonus companies' }, 500);
   }
 });
 

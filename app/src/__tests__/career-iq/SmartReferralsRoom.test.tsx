@@ -32,6 +32,10 @@ vi.mock('@/components/network-intelligence/ScrapeJobsPanel', () => ({
   ScrapeJobsPanel: () => <div data-testid="scrape-jobs-panel">Scrape jobs</div>,
 }));
 
+vi.mock('@/components/network-intelligence/BonusSearchPanel', () => ({
+  BonusSearchPanel: () => <div data-testid="bonus-search-panel">Bonus search</div>,
+}));
+
 vi.mock('@/components/network-intelligence/ReferralOpportunitiesPanel', () => ({
   ReferralOpportunitiesPanel: () => <div data-testid="referral-opportunities-panel">Referral opportunities</div>,
 }));
@@ -78,6 +82,7 @@ describe('SmartReferralsRoom', () => {
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Job Matches' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Job Scan' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Bonus Search' })).toBeEnabled();
   });
 
   it('switches to the connections view automatically when imported connections already exist', async () => {
