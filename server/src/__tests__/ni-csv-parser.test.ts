@@ -236,6 +236,18 @@ describe('parseCsv', () => {
     expect(result.connections[0].companyRaw).toBe('TechFirm');
   });
 
+  it('accepts conservative LinkedIn-style header variants', () => {
+    const aliasedHeader = 'First_Name,Last_Name,Email,Current Company,Job Title,Connected Date';
+    const csv = `${aliasedHeader}\nJamie,Rivera,j@r.com,Northstar Holdings,VP Operations,10 Oct 2023`;
+    const result = parseCsv(csv);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.validRows).toBe(1);
+    expect(result.connections[0].firstName).toBe('Jamie');
+    expect(result.connections[0].companyRaw).toBe('Northstar Holdings');
+    expect(result.connections[0].position).toBe('VP Operations');
+  });
+
   // ── 13. Empty company field (should skip row) ─────────────────────────────────
   it('skips every row where the company column is empty', () => {
     const rows = [

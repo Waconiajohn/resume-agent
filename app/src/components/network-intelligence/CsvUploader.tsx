@@ -7,6 +7,7 @@ import type { CsvUploadSummary } from '@/types/ni';
 
 export interface CsvUploaderProps {
   accessToken: string | null;
+  authLoading?: boolean;
   onUploadComplete: (summary: CsvUploadSummary) => void;
 }
 
@@ -14,11 +15,14 @@ type UploadState = 'idle' | 'dragging' | 'uploading' | 'complete' | 'error';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps) {
+export function CsvUploader({ accessToken, authLoading = false, onUploadComplete }: CsvUploaderProps) {
   const [state, setState] = useState<UploadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
+
+  const isInteractive = !authLoading && !!accessToken && state !== 'uploading';
 
   const processFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -80,19 +84,39 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current = 0;
     setState('idle');
+    if (!isInteractive) return;
     const file = e.dataTransfer.files[0];
     if (file) void processFile(file);
-  }, [processFile]);
+  }, [isInteractive, processFile]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isInteractive) return;
+    dragDepthRef.current += 1;
+    setState('dragging');
+  }, [isInteractive]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (!isInteractive) return;
+    e.dataTransfer.dropEffect = 'copy';
     setState('dragging');
-  }, []);
+  }, [isInteractive]);
 
-  const handleDragLeave = useCallback(() => {
-    setState('idle');
-  }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isInteractive) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setState('idle');
+    }
+  }, [isInteractive]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,12 +137,16 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
         state === 'dragging' && 'border-[#afc4ff]/50 bg-[#afc4ff]/[0.05]',
         state === 'error' && 'border-[#f0b8b8]/30',
         state === 'complete' && 'border-[#b5dec2]/30',
+        !isInteractive && 'cursor-default opacity-80',
         state !== 'dragging' && state !== 'error' && state !== 'complete' && 'border-[var(--line-soft)]',
       )}
+      aria-disabled={!isInteractive}
+      aria-label="Upload LinkedIn connections CSV"
       onDrop={handleDrop}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      onClick={() => state !== 'uploading' && fileInputRef.current?.click()}
+      onClick={() => isInteractive && fileInputRef.current?.click()}
     >
       <input
         ref={fileInputRef}
@@ -128,7 +156,29 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
         onChange={handleFileSelect}
       />
 
-      {state === 'idle' && (
+      {authLoading && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-muted)]">
+            Preparing secure upload...
+          </p>
+          <p className="text-xs text-[var(--text-soft)]">
+            We&apos;re connecting your session before import.
+          </p>
+        </div>
+      )}
+
+      {!authLoading && !accessToken && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--text-muted)]">
+            Sign in required
+          </p>
+          <p className="text-xs text-[var(--text-soft)]">
+            Please refresh your session before importing LinkedIn connections.
+          </p>
+        </div>
+      )}
+
+      {!authLoading && accessToken && state === 'idle' && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-[var(--text-muted)]">
             Drop your LinkedIn Connections CSV here

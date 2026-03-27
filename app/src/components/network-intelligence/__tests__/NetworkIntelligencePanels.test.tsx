@@ -19,6 +19,7 @@ describe('network intelligence panels', () => {
     cleanup();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('shows the empty job matches state when no matches are returned', async () => {
@@ -115,5 +116,112 @@ describe('network intelligence panels', () => {
       screen.getByText(/Import LinkedIn connections first/i),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeDisabled();
+  });
+
+  it('explains normalization is still running when connections exist but no companies are scan-ready yet', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: null,
+                companyId: null,
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+      );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    expect(await screen.findByText('Scan for Job Openings')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Connections imported/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/still normalizing before we can scan career pages/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeDisabled();
+  });
+
+  it('auto-refreshes the scan panel when company normalization finishes', async () => {
+    const setIntervalSpy = vi
+      .spyOn(globalThis, 'setInterval')
+      .mockImplementation(((handler: TimerHandler, _timeout?: number, ...args: unknown[]) => {
+        queueMicrotask(() => {
+          if (typeof handler === 'function') {
+            handler(...args);
+          }
+        });
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      }) as unknown as typeof setInterval);
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {});
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: null,
+                companyId: null,
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: 'Acme Corp',
+                companyId: 'company-1',
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+    );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    expect(await screen.findByText('Scan for Job Openings')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledTimes(4);
+      expect(screen.queryByText(/still normalizing before we can scan career pages/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeEnabled();
+    });
+
+    setIntervalSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
   });
 });

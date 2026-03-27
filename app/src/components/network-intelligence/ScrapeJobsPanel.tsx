@@ -99,52 +99,71 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
   const [error, setError] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(true);
 
   // ─── Load companies + titles ───────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!accessToken) return;
-
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const [companiesRes, titlesRes] = await Promise.all([
-          fetch(`${API_BASE}/ni/connections/companies`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }),
-          fetch(`${API_BASE}/ni/target-titles`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }),
-        ]);
-
-        if (!cancelled) {
-          if (companiesRes.ok) {
-            const data = await companiesRes.json();
-            setCompanies(data.companies ?? []);
-          }
-          if (titlesRes.ok) {
-            const data = await titlesRes.json();
-            setTitles(
-              (data.titles ?? []).map((t: Record<string, unknown>) => ({
-                id: t.id as string,
-                title: t.title as string,
-                priority: t.priority as number,
-                createdAt: t.created_at as string,
-              })),
-            );
-          }
-        }
-      } catch {
-        // Silently fail — empty state shown below
-      } finally {
-        if (!cancelled) setLoadingData(false);
-      }
+  const loadPanelData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!accessToken) {
+      if (!options?.silent && mountedRef.current) setLoadingData(false);
+      return;
     }
 
-    void load();
-    return () => { cancelled = true; };
+    if (!options?.silent && mountedRef.current) {
+      setLoadingData(true);
+    }
+
+    try {
+      const [companiesRes, titlesRes] = await Promise.all([
+        fetch(`${API_BASE}/ni/connections/companies`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        fetch(`${API_BASE}/ni/target-titles`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      ]);
+
+      if (!mountedRef.current) return;
+
+      if (companiesRes.ok) {
+        const data = await companiesRes.json();
+        if (mountedRef.current) {
+          setCompanies(data.companies ?? []);
+        }
+      }
+
+      if (titlesRes.ok) {
+        const data = await titlesRes.json();
+        if (mountedRef.current) {
+          setTitles(
+            (data.titles ?? []).map((t: Record<string, unknown>) => ({
+              id: t.id as string,
+              title: t.title as string,
+              priority: t.priority as number,
+              createdAt: t.created_at as string,
+            })),
+          );
+        }
+      }
+    } catch {
+      // Silently fail — empty state shown below
+    } finally {
+      if (!options?.silent && mountedRef.current) {
+        setLoadingData(false);
+      }
+    }
   }, [accessToken]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadPanelData();
+  }, [loadPanelData]);
 
   // ─── Poll for scrape status ────────────────────────────────────────────────
 
@@ -190,6 +209,24 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
   // Clean up polling on unmount
   useEffect(() => () => stopPolling(), [stopPolling]);
+
+  // ─── Derived state ─────────────────────────────────────────────────────────
+
+  const eligibleCompanyCount = companies.filter((c) => c.companyId !== null).length;
+  const currentScanned = scrapeStatus?.output_summary.companies_scanned ?? 0;
+  const normalizationPending = companies.length > 0 && eligibleCompanyCount === 0;
+
+  useEffect(() => {
+    if (!accessToken || running || !normalizationPending) return;
+
+    const normalizationPoll = setInterval(() => {
+      void loadPanelData({ silent: true });
+    }, 5_000);
+
+    return () => {
+      clearInterval(normalizationPoll);
+    };
+  }, [accessToken, loadPanelData, normalizationPending, running]);
 
   // ─── Start scrape ──────────────────────────────────────────────────────────
 
@@ -246,11 +283,6 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
     }
   }, [accessToken, companies, titles, pollStatus]);
 
-  // ─── Derived state ─────────────────────────────────────────────────────────
-
-  const eligibleCompanyCount = companies.filter((c) => c.companyId !== null).length;
-  const currentScanned = scrapeStatus?.output_summary.companies_scanned ?? 0;
-
   // ─── Loading skeleton ──────────────────────────────────────────────────────
 
   if (loadingData) {
@@ -290,7 +322,9 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
             {eligibleCompanyCount === 0 && !running && (
               <p className="mt-2 text-xs text-[#f0d99f]/70">
-                Import LinkedIn connections first — companies need to be normalized before scanning.
+                {normalizationPending
+                  ? 'Connections imported — company matching is still normalizing before we can scan career pages. This updates automatically.'
+                  : 'Import LinkedIn connections first — companies need to be normalized before scanning.'}
               </p>
             )}
           </div>

@@ -9,7 +9,7 @@ import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/Re
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake } from 'lucide-react';
 
 type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-scan' | 'referrals' | 'contacts' | 'outreach';
@@ -42,21 +42,12 @@ interface OutreachPrefill {
 }
 
 export function SmartReferralsRoom() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const { session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [hasConnections, setHasConnections] = useState(false);
   const [uploadSummary, setUploadSummary] = useState<CsvUploadSummary | null>(null);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadToken() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!cancelled) setAccessToken(session?.access_token ?? null);
-    }
-    void loadToken();
-    return () => { cancelled = true; };
-  }, []);
+  const accessToken = session?.access_token ?? null;
 
   useEffect(() => {
     if (!accessToken) return;
@@ -93,11 +84,22 @@ export function SmartReferralsRoom() {
     !hasConnections && !ALWAYS_UNLOCKED.includes(tabId);
 
   const renderTabContent = () => {
-    if (!accessToken) {
+    if (authLoading) {
       return (
         <div className="flex items-center justify-center p-12 text-[var(--text-soft)] text-sm">
           Loading...
         </div>
+      );
+    }
+
+    if (!accessToken) {
+      return (
+        <GlassCard className="p-6 text-center">
+          <p className="text-sm text-[var(--text-muted)]">You need an active session to import connections.</p>
+          <p className="mt-2 text-xs text-[var(--text-soft)]">
+            Refresh the page or sign back in, then try the CSV import again.
+          </p>
+        </GlassCard>
       );
     }
 
@@ -106,6 +108,7 @@ export function SmartReferralsRoom() {
         return (
           <CsvUploader
             accessToken={accessToken}
+            authLoading={authLoading}
             onUploadComplete={handleUploadComplete}
           />
         );

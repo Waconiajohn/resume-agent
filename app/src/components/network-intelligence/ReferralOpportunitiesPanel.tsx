@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { API_BASE } from '@/lib/api';
 
 interface ReferralConnection {
   first_name: string;
@@ -53,7 +54,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/ni/referral-opportunities?limit=50', {
+      const res = await fetch(`${API_BASE}/ni/referral-opportunities?limit=50`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);

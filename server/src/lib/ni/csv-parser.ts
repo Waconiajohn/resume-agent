@@ -12,7 +12,14 @@ import type { ParsedConnection, CsvParseResult, CsvParseError } from './types.js
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LINKEDIN_HEADERS = ['first name', 'last name', 'email address', 'company', 'position', 'connected on'];
+const HEADER_ALIASES: Record<string, string[]> = {
+  'first name': ['first name', 'firstname', 'first_name'],
+  'last name': ['last name', 'lastname', 'last_name'],
+  'email address': ['email address', 'email', 'email_address'],
+  'company': ['company', 'company name', 'current company', 'company_name'],
+  'position': ['position', 'title', 'job title', 'job_title'],
+  'connected on': ['connected on', 'connected_on', 'connected date', 'connection date'],
+};
 
 const MONTH_MAP: Record<string, number> = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
@@ -107,11 +114,11 @@ function stripCompanySuffix(name: string): string {
  * Returns a map of expected header → actual column index, or null if required headers missing.
  */
 function matchHeaders(headerFields: string[]): Map<string, number> | null {
-  const lowerFields = headerFields.map((f) => f.toLowerCase().trim());
+  const lowerFields = headerFields.map((f) => f.toLowerCase().trim().replace(/\s+/g, ' '));
   const indexMap = new Map<string, number>();
 
-  for (const expected of LINKEDIN_HEADERS) {
-    const idx = lowerFields.indexOf(expected);
+  for (const [expected, aliases] of Object.entries(HEADER_ALIASES)) {
+    const idx = lowerFields.findIndex((field) => aliases.includes(field));
     if (idx !== -1) {
       indexMap.set(expected, idx);
     }
