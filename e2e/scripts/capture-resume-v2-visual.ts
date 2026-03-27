@@ -12,6 +12,13 @@ const scenarios = [
     screenshot: 'resume-v2-visual-attention.png',
   },
   {
+    slug: 'action-state',
+    path: '/__dev/resume-v2-visual?scenario=action-state',
+    screenshot: 'resume-v2-visual-action-state.png',
+    detailSelector: '[data-bullet-id="selected_accomplishments-1"]',
+    detailScreenshot: 'resume-v2-visual-action-state-detail.png',
+  },
+  {
     slug: 'final-review',
     path: '/__dev/resume-v2-visual?scenario=final-review',
     screenshot: 'resume-v2-visual-final-review.png',
@@ -44,6 +51,12 @@ async function main() {
       const screenshotPath = resolve(outputDir, scenario.screenshot);
       await page.screenshot({ path: screenshotPath, fullPage: true });
       console.log(`${scenario.slug}: ${screenshotPath}`);
+
+      if ('detailSelector' in scenario && scenario.detailSelector && scenario.detailScreenshot) {
+        const detailPath = resolve(outputDir, scenario.detailScreenshot);
+        await page.locator(scenario.detailSelector).screenshot({ path: detailPath });
+        console.log(`${scenario.slug}-detail: ${detailPath}`);
+      }
     }
   } finally {
     await browser.close();

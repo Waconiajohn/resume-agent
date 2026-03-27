@@ -65,7 +65,7 @@ describe('ResumeDocumentCard', () => {
 
     fireEvent.click(screen.getByText('Built a transformation roadmap across the org'));
 
-    expect(screen.getByText('No original resume support found yet')).toBeInTheDocument();
-    expect(screen.getByText('I Can Support This')).toBeInTheDocument();
+    expect(screen.getByText(/No original resume support found yet/i)).toBeInTheDocument();
+    expect(screen.getByText('Confirm & Keep')).toBeInTheDocument();
   });
 });

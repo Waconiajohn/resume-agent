@@ -33,12 +33,12 @@ interface BulletEditPopoverProps {
   ) => void;
 }
 
-// ─── Confidence colors (light theme — renders on the resume document) ────────
+// ─── Confidence accents ──────────────────────────────────────────────────────
 
 const CONFIDENCE_BORDER: Record<BulletConfidence, string> = {
-  strong: 'border-l-emerald-500',
-  partial: 'border-l-amber-400',
-  needs_validation: 'border-l-red-400',
+  strong: 'border-l-slate-400',
+  partial: 'border-l-slate-500',
+  needs_validation: 'border-l-[#8f2d2d]',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -133,22 +133,19 @@ export function BulletEditPopover({
     <div
       ref={popoverRef}
       className={`
-        w-[420px] rounded-lg border border-gray-200 bg-white shadow-lg
+        w-[420px] rounded-xl border border-slate-300 bg-white shadow-[0_26px_70px_-36px_rgba(15,23,42,0.45)]
         border-l-4 ${CONFIDENCE_BORDER[confidence]}
       `}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-500 leading-tight">
-            Addresses:
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 leading-tight">
+            Addresses
           </p>
-          <div className="mt-1 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-2">
             {safeAddressesRequirements.map((req) => (
-              <span
-                key={req}
-                className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 leading-snug"
-              >
+              <span key={req} className="text-sm leading-snug text-slate-700">
                 {req}
               </span>
             ))}
@@ -157,11 +154,11 @@ export function BulletEditPopover({
 
         {/* Source badge + close */}
         <div className="flex shrink-0 items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             <RequirementIcon className="h-3 w-3" />
             {requirementLabel}
           </span>
-          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             {contentOriginLabel}
           </span>
           <button
@@ -177,25 +174,25 @@ export function BulletEditPopover({
 
       {/* ── Evidence section ─────────────────────────────────────────────── */}
       <div className="px-4 pb-2 space-y-2">
-        <div className={`rounded border px-3 py-2 ${statusTone.className}`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+        <div className={`rounded-xl border px-3 py-2.5 ${statusTone.className}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
             {statusTone.label}
           </p>
-          <p className="mt-1 text-xs leading-relaxed">
+          <p className="mt-1 text-[13px] leading-6">
             {statusTone.message}
           </p>
         </div>
         {hasEvidence ? (
-          <div className="rounded bg-gray-50 px-3 py-2 text-xs text-gray-500 italic leading-relaxed border border-gray-100">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 italic leading-6">
             &ldquo;{safeEvidenceFound}&rdquo;
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-600 border border-red-100">
+          <div className="flex items-center gap-1.5 rounded-xl border border-[#d8c4c4] bg-white px-3 py-2.5 text-sm font-medium text-[#8f2d2d]">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            No original resume support found yet
+            No original resume support found yet.
           </div>
         )}
-        <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
           Support source: {supportOriginLabel}
         </p>
       </div>
@@ -207,10 +204,10 @@ export function BulletEditPopover({
           value={editedText}
           onChange={(e) => setEditedText(e.target.value)}
           rows={3}
-          className="w-full resize-none rounded border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 leading-relaxed placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors"
+          className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 leading-6 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors"
           placeholder="Edit bullet text..."
         />
-        <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+        <p className="mt-2 text-sm text-slate-600 leading-6">
           {nextStepHint}
         </p>
       </div>
@@ -221,47 +218,45 @@ export function BulletEditPopover({
           type="button"
           onClick={handleSave}
           disabled={editedText.trim().length === 0}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          I Can Support This
+          Confirm & Keep
         </button>
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[#8f2d2d] hover:bg-slate-50 transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Remove
+          Remove Line
         </button>
       </div>
 
       {/* ── AI assist row ────────────────────────────────────────────────── */}
       {onRequestAiEdit && (
-        <div className="flex items-center gap-3 border-t border-gray-100 px-4 py-2.5">
+        <div className="flex items-start gap-3 border-t border-slate-200 px-4 py-3">
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => handleAiAction('strengthen')}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Strengthen
+              Strengthen wording
             </button>
-            <span className="text-gray-300">|</span>
             <button
               type="button"
               onClick={() => handleAiAction('add_metrics')}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Add Metrics
+              Add proof
             </button>
-            <span className="text-gray-300">|</span>
             <button
               type="button"
               onClick={() => handleAiAction('rewrite')}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Rewrite
+              Rewrite safely
             </button>
           </div>
         </div>
@@ -278,7 +273,7 @@ function getProofStateTone(
     return {
       label: 'Supported',
       message: 'This line is already supported by your background. Tighten the wording if you want, but the proof is there.',
-      className: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+      className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
 
@@ -286,7 +281,7 @@ function getProofStateTone(
     return {
       label: 'Needs stronger detail',
       message: 'Related proof exists, but this line needs stronger detail before it feels fully credible.',
-      className: 'border-amber-100 bg-amber-50 text-amber-700',
+      className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
 
@@ -294,14 +289,14 @@ function getProofStateTone(
     return {
       label: 'High-risk benchmark line',
       message: 'This helps match the benchmark candidate, but you should confirm or rewrite it before export.',
-      className: 'border-orange-100 bg-orange-50 text-orange-700',
+      className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
 
   return {
-    label: 'Code red',
+    label: 'Code Red',
     message: 'We could not support this line from the resume yet. Confirm it, rewrite it, or remove it before export.',
-    className: 'border-red-100 bg-red-50 text-red-700',
+    className: 'border-[#d8c4c4] bg-white text-[#8f2d2d]',
   };
 }
 

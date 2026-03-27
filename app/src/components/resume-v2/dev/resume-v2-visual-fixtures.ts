@@ -8,7 +8,7 @@ import type {
   VerificationDetail,
 } from '@/types/resume-v2';
 
-export type ResumeV2VisualScenarioId = 'attention' | 'final-review' | 'ready';
+export type ResumeV2VisualScenarioId = 'attention' | 'action-state' | 'final-review' | 'ready';
 
 export interface ResumeV2VisualScenario {
   id: ResumeV2VisualScenarioId;
@@ -18,6 +18,11 @@ export interface ResumeV2VisualScenario {
   editableResume: ResumeDraft;
   hiringManagerResult?: FinalReviewResult | null;
   isFinalReviewStale?: boolean;
+  initialActiveBullet?: {
+    section: string;
+    index: number;
+    requirements: string[];
+  } | null;
 }
 
 function cloneResumeDraft(resume: ResumeDraft): ResumeDraft {
@@ -394,6 +399,24 @@ function makeFinalReviewResult(): FinalReviewResult {
 export function getResumeV2VisualScenario(
   id: ResumeV2VisualScenarioId,
 ): ResumeV2VisualScenario {
+  if (id === 'action-state') {
+    const resume = cloneResumeDraft(makeResumeDraft());
+    return {
+      id,
+      label: 'Action State',
+      description: 'Shows the clicked-line repair surface for a code-red selected accomplishment.',
+      data: makePipelineData(resume),
+      editableResume: resume,
+      hiringManagerResult: null,
+      isFinalReviewStale: true,
+      initialActiveBullet: {
+        section: 'selected_accomplishments',
+        index: 1,
+        requirements: ['ERP leadership'],
+      },
+    };
+  }
+
   if (id === 'final-review') {
     const resume = cloneResumeDraft(makeResumeDraft());
     return {
@@ -434,6 +457,7 @@ export function getResumeV2VisualScenario(
 
 export const RESUME_V2_VISUAL_SCENARIOS: ResumeV2VisualScenarioId[] = [
   'attention',
+  'action-state',
   'final-review',
   'ready',
 ];

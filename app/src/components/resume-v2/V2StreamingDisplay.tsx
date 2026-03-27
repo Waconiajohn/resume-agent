@@ -14,7 +14,6 @@ import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionIte
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import type { LiveScores } from '@/hooks/useLiveScoring';
-import { InlineEditToolbar } from './InlineEditToolbar';
 import { DiffView } from './DiffView';
 import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import type { GapChatHook } from '@/hooks/useGapChat';
@@ -105,6 +104,12 @@ interface V2StreamingDisplayProps {
     aiReasoning?: string,
     signal?: AbortSignal,
   ) => Promise<string | null>;
+  /** Dev-only seed used by the visual harness to open a specific resume line */
+  initialActiveBullet?: {
+    section: string;
+    index: number;
+    requirements: string[];
+  } | null;
 }
 
 interface AttentionReviewItem {
@@ -139,7 +144,7 @@ function getAttentionStatusMeta(
   if (confidence === 'needs_validation' && requirementSource !== 'benchmark') {
     return {
       label: 'Code Red',
-      className: 'border-red-200 bg-red-50 text-red-700',
+      className: 'resume-attention-status resume-attention-status--code-red',
       priority: 0,
     };
   }
@@ -147,7 +152,7 @@ function getAttentionStatusMeta(
   if (confidence === 'needs_validation') {
     return {
       label: 'Validate Fit',
-      className: 'border-orange-200 bg-orange-50 text-orange-700',
+      className: 'resume-attention-status resume-attention-status--benchmark',
       priority: 1,
     };
   }
@@ -155,14 +160,14 @@ function getAttentionStatusMeta(
   if (confidence === 'partial') {
     return {
       label: 'Strengthen',
-      className: 'border-amber-200 bg-amber-50 text-amber-700',
+      className: 'resume-attention-status resume-attention-status--partial',
       priority: 2,
     };
   }
 
   return {
     label: 'Review',
-    className: 'border-[var(--line-soft)] bg-[var(--surface-0)] text-[var(--text-soft)]',
+    className: 'resume-attention-status resume-attention-status--neutral',
     priority: 3,
   };
 }
@@ -258,14 +263,14 @@ function AttentionReviewStrip({
             </p>
           )}
         </div>
-        <div className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
           {currentIndex + 1} of {items.length}
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${current.statusClassName}`}>
+          <span className={current.statusClassName}>
             {current.statusLabel}
           </span>
           <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
@@ -666,6 +671,7 @@ export function V2StreamingDisplay({
   onSelectAllMasterPromotionItems,
   onClearMasterPromotionItems,
   onGapAssist,
+  initialActiveBullet = null,
 }: V2StreamingDisplayProps) {
   // ── Inline suggestions ────────────────────────────────────────────────────
   const {
@@ -700,17 +706,16 @@ export function V2StreamingDisplay({
     handleSuggestionEvent({ suggestions: incoming });
   }, [data.inlineSuggestions, handleSuggestionEvent]);
 
-  // Toolbar position state (for text-selection inline editing)
-  const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number; bottom: number } | null>(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [selectedSection, setSelectedSection] = useState('');
-
   // Active bullet for inline editing
   const [activeBullet, setActiveBullet] = useState<{
     section: string;
     index: number;
     requirements: string[];
-  } | null>(null);
+  } | null>(initialActiveBullet);
+
+  useEffect(() => {
+    setActiveBullet(initialActiveBullet ?? null);
+  }, [initialActiveBullet]);
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
@@ -719,36 +724,6 @@ export function V2StreamingDisplay({
     displayResume ? buildAttentionReviewItems(displayResume, baselineResume) : []
   ), [baselineResume, displayResume]);
   const [attentionIndex, setAttentionIndex] = useState(0);
-
-  const handleTextSelect = useCallback((text: string, section: string, rect: DOMRect) => {
-    setSelectedText(text);
-    setSelectedSection(section);
-    setToolbarPos({ top: rect.top, left: rect.left + rect.width / 2, bottom: rect.bottom });
-  }, []);
-
-  const dismissToolbar = useCallback(() => {
-    setToolbarPos(null);
-    setSelectedText('');
-    setSelectedSection('');
-    window.getSelection()?.removeAllRanges();
-  }, []);
-
-  const handleToolbarAction = useCallback((action: EditAction, customInstruction?: string) => {
-    dismissToolbar();
-    onRequestEdit(selectedText, selectedSection, action, customInstruction);
-  }, [selectedText, selectedSection, onRequestEdit, dismissToolbar]);
-
-  useEffect(() => {
-    if (!toolbarPos) return;
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('[role="toolbar"]')) return;
-      if (target.closest('[data-section]')) return;
-      dismissToolbar();
-    };
-    window.addEventListener('mousedown', handleMouseDown);
-    return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [toolbarPos, dismissToolbar]);
 
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((bulletText: string, section: string, bulletIndex: number, requirements: string[]) => {
@@ -1046,7 +1021,6 @@ export function V2StreamingDisplay({
                 <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
                   <ResumeDocumentCard
                     resume={displayResume}
-                    onTextSelect={canEdit ? handleTextSelect : undefined}
                     activeBullet={activeBullet}
                     onBulletClick={canEdit ? handleBulletClick : undefined}
                     onBulletEdit={canEdit ? onBulletEdit : undefined}
@@ -1131,16 +1105,6 @@ export function V2StreamingDisplay({
               />
             )}
           </div>
-
-          {/* Floating toolbar (text selection) */}
-          {canEdit && (
-            <InlineEditToolbar
-              position={toolbarPos}
-              isEditing={isEditing}
-              onAction={handleToolbarAction}
-              onDismiss={dismissToolbar}
-            />
-          )}
 
           {/* SuggestionsBadge — fixed bottom-right overlay showing suggestion count */}
           <SuggestionsBadge

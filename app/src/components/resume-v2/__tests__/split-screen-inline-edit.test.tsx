@@ -447,9 +447,12 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     );
 
     // Action buttons from InlineEditPanel should appear
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Proof' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rewrite' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Strengthen wording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add proof' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Shorten' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rewrite safely' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Not my voice' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Working draft for this resume line')).toBeInTheDocument();
   });
 
   it('does NOT render InlineEditPanel when activeBullet does not match', () => {
@@ -469,7 +472,7 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     // Index 1 has no requirements and different content; InlineEditPanel renders for it,
     // but the action buttons should still appear (panel is for index 1, not absent).
     // Verify index 0's panel is NOT rendered — meaning only one set of action buttons exists.
-    expect(screen.getAllByRole('button', { name: 'Improve Wording' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Strengthen wording' })).toHaveLength(1);
   });
 });
 
@@ -526,7 +529,7 @@ describe('ResumeDocumentCard — keyboard accessibility', () => {
 });
 
 describe('InlineEditPanel — action buttons', () => {
-  it('calls onRequestEdit with "strengthen" when Improve Wording is clicked', () => {
+  it('calls onRequestEdit with "strengthen" when Strengthen wording is clicked', () => {
     const resume = makeResumeDraft();
     const onRequestEdit = vi.fn();
 
@@ -541,17 +544,18 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Improve Wording' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Strengthen wording' }));
 
     expect(onRequestEdit).toHaveBeenCalledOnce();
     expect(onRequestEdit).toHaveBeenCalledWith(
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'strengthen',
+      expect.stringContaining('Rewrite the current working draft from scratch.'),
     );
   });
 
-  it('calls onRequestEdit with "add_metrics" when Add Proof is clicked', () => {
+  it('calls onRequestEdit with "add_metrics" when Add proof is clicked', () => {
     const resume = makeResumeDraft();
     const onRequestEdit = vi.fn();
 
@@ -566,17 +570,18 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add Proof' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add proof' }));
 
     expect(onRequestEdit).toHaveBeenCalledOnce();
     expect(onRequestEdit).toHaveBeenCalledWith(
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'add_metrics',
+      expect.stringContaining('Current working draft:'),
     );
   });
 
-  it('calls onRequestEdit with "rewrite" when Rewrite is clicked', () => {
+  it('calls onRequestEdit with "shorten" when Shorten is clicked', () => {
     const resume = makeResumeDraft();
     const onRequestEdit = vi.fn();
 
@@ -591,13 +596,68 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Shorten' }));
+
+    expect(onRequestEdit).toHaveBeenCalledOnce();
+    expect(onRequestEdit).toHaveBeenCalledWith(
+      'Reduced deploy time by 60%',
+      'selected_accomplishments',
+      'shorten',
+      expect.stringContaining('Current working draft:'),
+    );
+  });
+
+  it('calls onRequestEdit with "rewrite" when Rewrite safely is clicked', () => {
+    const resume = makeResumeDraft();
+    const onRequestEdit = vi.fn();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onBulletClick={vi.fn()}
+        onRequestEdit={onRequestEdit}
+        isEditing={false}
+        pendingEdit={null}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rewrite safely' }));
 
     expect(onRequestEdit).toHaveBeenCalledOnce();
     expect(onRequestEdit).toHaveBeenCalledWith(
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'rewrite',
+      expect.stringContaining('Current working draft:'),
+    );
+  });
+
+  it('passes the current working draft back into AI actions instead of appending blindly', () => {
+    const resume = makeResumeDraft();
+    const onRequestEdit = vi.fn();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onBulletClick={vi.fn()}
+        onRequestEdit={onRequestEdit}
+        isEditing={false}
+        pendingEdit={null}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Working draft for this resume line'), {
+      target: { value: 'Built weekly KPI reviews across 3 sites.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Strengthen wording' }));
+
+    expect(onRequestEdit).toHaveBeenCalledWith(
+      'Reduced deploy time by 60%',
+      'selected_accomplishments',
+      'strengthen',
+      expect.stringContaining('Built weekly KPI reviews across 3 sites.'),
     );
   });
 
@@ -615,9 +675,11 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add Proof' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Rewrite' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Strengthen wording' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add proof' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Shorten' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Rewrite safely' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Not my voice' })).toBeDisabled();
   });
 });
 
@@ -647,8 +709,8 @@ describe('InlineEditPanel — pending edit suggestion', () => {
         'Cut release cycle from 2 weeks to 3 days, improving deployment frequency by 4x',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apply to Resume' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discard AI Draft' })).toBeInTheDocument();
   });
 
   it('does NOT show the suggestion when pendingEdit section differs', () => {
@@ -672,7 +734,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     );
 
     expect(screen.queryByDisplayValue('Some improvement text')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discard AI Draft' })).not.toBeInTheDocument();
   });
 
   it('does NOT show the suggestion when pendingEdit originalText differs', () => {
@@ -700,7 +762,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('calls onAcceptEdit with the replacement text when Accept is clicked', () => {
+  it('calls onAcceptEdit with the replacement text when Apply to Resume is clicked for an AI draft', () => {
     const resume = makeResumeDraft();
     const onAcceptEdit = vi.fn();
     const pendingEdit: PendingEdit = {
@@ -723,7 +785,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to Resume' }));
 
     expect(onAcceptEdit).toHaveBeenCalledOnce();
     expect(onAcceptEdit).toHaveBeenCalledWith('Cut release cycle from 2 weeks to 3 days');
@@ -752,17 +814,17 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText('Edit suggested rewrite before applying'), {
+    fireEvent.change(screen.getByLabelText('Working draft for this resume line'), {
       target: { value: 'Cut release cycle from 2 weeks to 3 days across 3 teams' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to Resume' }));
 
     expect(onAcceptEdit).toHaveBeenCalledWith(
       'Cut release cycle from 2 weeks to 3 days across 3 teams',
     );
   });
 
-  it('calls onRejectEdit when Cancel is clicked', () => {
+  it('calls onRejectEdit when Discard AI Draft is clicked', () => {
     const resume = makeResumeDraft();
     const onRejectEdit = vi.fn();
     const pendingEdit: PendingEdit = {
@@ -785,7 +847,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard AI Draft' }));
 
     expect(onRejectEdit).toHaveBeenCalledOnce();
   });
@@ -808,10 +870,10 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getByText(/This line is aimed at:/)).toBeInTheDocument();
+    expect(screen.getByText(/This line is trying to cover/i)).toBeInTheDocument();
   });
 
-  it('does NOT show requirement tags when addresses_requirements is empty', () => {
+  it('falls back to the targeting label when addresses_requirements is empty', () => {
     const resume = makeResumeDraft();
 
     render(
@@ -826,7 +888,8 @@ describe('InlineEditPanel — requirement tags', () => {
     );
 
     // index 1 has addresses_requirements: []
-    expect(screen.queryByText(/This bullet currently supports:/)).not.toBeInTheDocument();
+    expect(screen.getByText(/This line is trying to cover/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Targets Job Need').length).toBeGreaterThan(0);
   });
 });
 
@@ -1023,7 +1086,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
 
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Strengthen wording' })).toBeInTheDocument();
   });
 
   it('opens in-place editing when a needs-attention bullet is clicked directly on the resume', () => {
@@ -1055,7 +1118,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(resumeLine).toBeTruthy();
     fireEvent.click(resumeLine!);
 
-    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Strengthen wording' })).toBeInTheDocument();
   });
 
   it('drops a line from the navigator once that line has changed in the working resume', () => {

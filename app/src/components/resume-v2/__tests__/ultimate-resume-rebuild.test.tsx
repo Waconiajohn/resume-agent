@@ -250,8 +250,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('border-amber-300');
-    expect(bullet!.className).toContain('bg-amber-50/85');
+    expect(bullet!.className).toContain('resume-proof-line--partial');
     expect(screen.getByText('Strengthen')).toBeInTheDocument();
   });
 
@@ -264,8 +263,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('border-red-300');
-    expect(bullet!.className).toContain('bg-red-50/85');
+    expect(bullet!.className).toContain('resume-proof-line--code-red');
     expect(screen.getByText('Code Red')).toBeInTheDocument();
   });
 
@@ -278,9 +276,8 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('border-orange-300');
-    expect(bullet!.className).toContain('bg-orange-50/85');
-    expect(bullet!.className).not.toContain('border-red-300');
+    expect(bullet!.className).toContain('resume-proof-line--benchmark');
+    expect(bullet!.className).not.toContain('resume-proof-line--code-red');
     expect(screen.getByText('Validate Fit')).toBeInTheDocument();
   });
 
@@ -341,8 +338,8 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bulletC = screen.getByText('Bullet C — needs validation').closest('li');
 
     expect(bulletA!.className).not.toContain('border-l-4');
-    expect(bulletB!.className).toContain('border-amber-300');
-    expect(bulletC!.className).toContain('border-red-300');
+    expect(bulletB!.className).toContain('resume-proof-line--partial');
+    expect(bulletC!.className).toContain('resume-proof-line--code-red');
   });
 
   it('renders numbered accomplishment lines', () => {
@@ -412,7 +409,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('No original resume support found yet')).toBeInTheDocument();
+    expect(screen.getByText(/No original resume support found yet/i)).toBeInTheDocument();
   });
 
   it('shows red warning when evidence_found is whitespace-only', () => {
@@ -425,7 +422,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('No original resume support found yet')).toBeInTheDocument();
+    expect(screen.getByText(/No original resume support found yet/i)).toBeInTheDocument();
   });
 
   it('shows a code-red proof state for unsupported JD lines', () => {
@@ -439,7 +436,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('Code red')).toBeInTheDocument();
+    expect(screen.getByText('Code Red')).toBeInTheDocument();
     expect(screen.getByText(/we could not support this line from the resume yet/i)).toBeInTheDocument();
     expect(screen.getByText(/replace this with something you can prove/i)).toBeInTheDocument();
   });
@@ -500,7 +497,7 @@ describe('BulletEditPopover — textarea', () => {
     fireEvent.change(textarea, { target: { value: 'Updated text with more detail' } });
 
     // Now click save
-    fireEvent.click(screen.getByText('I Can Support This'));
+    fireEvent.click(screen.getByText('Confirm & Keep'));
 
     expect(onSave).toHaveBeenCalledOnce();
     expect(onSave).toHaveBeenCalledWith('Updated text with more detail');
@@ -508,7 +505,7 @@ describe('BulletEditPopover — textarea', () => {
 });
 
 describe('BulletEditPopover — action buttons', () => {
-  it('clicking "I Can Support This" calls onSave with edited text', () => {
+  it('clicking "Confirm & Keep" calls onSave with edited text', () => {
     const onSave = vi.fn();
     render(
       <BulletEditPopover
@@ -516,13 +513,13 @@ describe('BulletEditPopover — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('I Can Support This'));
+    fireEvent.click(screen.getByText('Confirm & Keep'));
 
     expect(onSave).toHaveBeenCalledOnce();
     expect(onSave).toHaveBeenCalledWith('My bullet text');
   });
 
-  it('clicking "Remove" calls onRemove', () => {
+  it('clicking "Remove Line" calls onRemove', () => {
     const onRemove = vi.fn();
     render(
       <BulletEditPopover
@@ -530,7 +527,7 @@ describe('BulletEditPopover — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Remove'));
+    fireEvent.click(screen.getByText('Remove Line'));
 
     expect(onRemove).toHaveBeenCalledOnce();
   });
@@ -552,7 +549,7 @@ describe('BulletEditPopover — action buttons', () => {
 });
 
 describe('BulletEditPopover — AI assist buttons', () => {
-  it('calls onRequestAiEdit with "strengthen" when Strengthen is clicked', () => {
+  it('calls onRequestAiEdit with "strengthen" when Strengthen wording is clicked', () => {
     const onRequestAiEdit = vi.fn();
     render(
       <BulletEditPopover
@@ -560,13 +557,13 @@ describe('BulletEditPopover — AI assist buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Strengthen'));
+    fireEvent.click(screen.getByText('Strengthen wording'));
 
     expect(onRequestAiEdit).toHaveBeenCalledOnce();
     expect(onRequestAiEdit).toHaveBeenCalledWith('My bullet', 'strengthen');
   });
 
-  it('calls onRequestAiEdit with "add_metrics" when Add Metrics is clicked', () => {
+  it('calls onRequestAiEdit with "add_metrics" when Add proof is clicked', () => {
     const onRequestAiEdit = vi.fn();
     render(
       <BulletEditPopover
@@ -574,13 +571,13 @@ describe('BulletEditPopover — AI assist buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Add Metrics'));
+    fireEvent.click(screen.getByText('Add proof'));
 
     expect(onRequestAiEdit).toHaveBeenCalledOnce();
     expect(onRequestAiEdit).toHaveBeenCalledWith('My bullet', 'add_metrics');
   });
 
-  it('calls onRequestAiEdit with "rewrite" when Rewrite is clicked', () => {
+  it('calls onRequestAiEdit with "rewrite" when Rewrite safely is clicked', () => {
     const onRequestAiEdit = vi.fn();
     render(
       <BulletEditPopover
@@ -588,7 +585,7 @@ describe('BulletEditPopover — AI assist buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Rewrite'));
+    fireEvent.click(screen.getByText('Rewrite safely'));
 
     expect(onRequestAiEdit).toHaveBeenCalledOnce();
     expect(onRequestAiEdit).toHaveBeenCalledWith('My bullet', 'rewrite');
@@ -601,9 +598,9 @@ describe('BulletEditPopover — AI assist buttons', () => {
       />,
     );
 
-    expect(screen.queryByText('Strengthen')).not.toBeInTheDocument();
-    expect(screen.queryByText('Add Metrics')).not.toBeInTheDocument();
-    expect(screen.queryByText('Rewrite')).not.toBeInTheDocument();
+    expect(screen.queryByText('Strengthen wording')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add proof')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rewrite safely')).not.toBeInTheDocument();
   });
 
   it('sends trimmed edited text to AI assist', () => {
@@ -614,7 +611,7 @@ describe('BulletEditPopover — AI assist buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Strengthen'));
+    fireEvent.click(screen.getByText('Strengthen wording'));
 
     expect(onRequestAiEdit).toHaveBeenCalledWith('Some text', 'strengthen');
   });

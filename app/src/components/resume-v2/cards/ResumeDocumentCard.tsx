@@ -14,7 +14,6 @@ import { BulletEditPopover } from './BulletEditPopover';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
-  onTextSelect?: (selectedText: string, section: string, rect: DOMRect) => void;
   /** Which bullet is currently selected for inline editing */
   activeBullet?: { section: string; index: number } | null;
   /** Click handler for bullet selection */
@@ -41,7 +40,6 @@ interface ResumeDocumentCardProps {
 
 export function ResumeDocumentCard({
   resume,
-  onTextSelect,
   activeBullet = null,
   onBulletClick,
   onBulletEdit,
@@ -57,25 +55,6 @@ export function ResumeDocumentCard({
   currentSuggestionId = null,
   suggestionIndexMap,
 }: ResumeDocumentCardProps) {
-  const handleMouseUp = useCallback(() => {
-    if (!onTextSelect) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || !selection.rangeCount) return;
-
-    const text = selection.toString().trim();
-    if (text.length < 5) return;
-
-    // Find which section the selection is in
-    const range = selection.getRangeAt(0);
-    const sectionEl = (range.startContainer as HTMLElement).closest?.('[data-section]')
-      ?? (range.startContainer.parentElement)?.closest?.('[data-section]');
-    const section = sectionEl?.getAttribute('data-section') ?? 'unknown';
-
-    const rect = range.getBoundingClientRect();
-    onTextSelect(text, section, rect);
-  }, [onTextSelect]);
-
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
   const professionalExperience = Array.isArray(resume.professional_experience) ? resume.professional_experience : [];
@@ -114,10 +93,7 @@ export function ResumeDocumentCard({
   const totalSuggestions = inlineSuggestions.length;
 
   return (
-    <div
-      className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8"
-      onMouseUp={handleMouseUp}
-    >
+    <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
       {/* Header */}
       <div data-section="header" className="text-center border-b border-gray-200 pb-5">
         <h2 className="text-2xl font-bold tracking-wide text-gray-900">{resume.header.name}</h2>
@@ -255,6 +231,7 @@ export function ResumeDocumentCard({
                     <InlineEditPanel
                       bulletText={a.content}
                       section="selected_accomplishments"
+                      bulletIndex={i}
                       requirements={accomplishmentRequirements}
                       pendingEdit={pendingEdit}
                       isEditing={isEditing}
@@ -264,6 +241,7 @@ export function ResumeDocumentCard({
                       contentOrigin={a.content_origin}
                       supportOrigin={a.support_origin}
                       onRequestEdit={onRequestEdit}
+                      onBulletEdit={onBulletEdit}
                       onAcceptEdit={onAcceptEdit}
                       onRejectEdit={onRejectEdit}
                     />
@@ -379,6 +357,7 @@ export function ResumeDocumentCard({
                           <InlineEditPanel
                             bulletText={bullet.text}
                             section="professional_experience"
+                            bulletIndex={bulletIndex}
                             requirements={bulletRequirements}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
@@ -388,6 +367,7 @@ export function ResumeDocumentCard({
                             contentOrigin={bullet.content_origin}
                             supportOrigin={bullet.support_origin}
                             onRequestEdit={onRequestEdit}
+                            onBulletEdit={onBulletEdit}
                             onAcceptEdit={onAcceptEdit}
                             onRejectEdit={onRejectEdit}
                           />
@@ -471,7 +451,7 @@ function BulletLineContent({
   onToggle,
   onBulletClick,
 }: BulletLineContentProps) {
-  const pill = getConfidencePill(confidence, requirementSource);
+  const statusMeta = getConfidencePill(confidence, requirementSource);
   const sourceLabel = getConfidenceSourceLabel(confidence, requirementSource);
   const handleActivate = () => {
     if (confidence !== 'strong' && onBulletClick) {
@@ -483,15 +463,16 @@ function BulletLineContent({
 
   return (
     <span className="block">
-      {pill ? (
-        <span className="resume-proof-pill-row mb-2 flex flex-wrap items-center gap-2">
-          <span className={pill.className}>
-            {pill.label}
-          </span>
+      {statusMeta ? (
+        <span className="resume-proof-meta-row mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={statusMeta.className}>{statusMeta.label}</span>
           {sourceLabel ? (
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              {sourceLabel}
-            </span>
+            <>
+              <span aria-hidden="true" className="text-gray-300">/</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-gray-500">
+                {sourceLabel}
+              </span>
+            </>
           ) : null}
         </span>
       ) : null}
@@ -512,7 +493,7 @@ function BulletLineContent({
         className={`resume-bullet-interactive block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none ${
           confidence === 'strong'
             ? 'resume-bullet-interactive--strong font-normal text-gray-800 hover:bg-gray-50/90'
-            : 'resume-bullet-interactive--flagged font-medium text-gray-900 hover:bg-white/80'
+            : 'resume-bullet-interactive--flagged font-medium text-gray-900 hover:bg-slate-50/70'
         }`}
       >
         {text}
@@ -848,6 +829,7 @@ function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClo
 interface InlineEditPanelProps {
   bulletText: string;
   section: string;
+  bulletIndex: number;
   requirements: string[];
   pendingEdit: PendingEdit | null;
   isEditing: boolean;
@@ -857,6 +839,7 @@ interface InlineEditPanelProps {
   contentOrigin?: ResumeContentOrigin;
   supportOrigin?: ResumeSupportOrigin;
   onRequestEdit: (text: string, section: string, action: EditAction, instruction?: string) => void;
+  onBulletEdit?: (section: string, index: number, newText: string) => void;
   onAcceptEdit?: (text: string) => void;
   onRejectEdit?: () => void;
 }
@@ -864,6 +847,7 @@ interface InlineEditPanelProps {
 function InlineEditPanel({
   bulletText,
   section,
+  bulletIndex,
   requirements,
   pendingEdit,
   isEditing,
@@ -873,10 +857,15 @@ function InlineEditPanel({
   contentOrigin,
   supportOrigin,
   onRequestEdit,
+  onBulletEdit,
   onAcceptEdit,
   onRejectEdit,
 }: InlineEditPanelProps) {
   const [draftValue, setDraftValue] = useState('');
+  const statusMeta = getConfidencePill(confidence, requirementSource);
+  const requirementLabel = requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
+  const hasEvidence = evidenceFound.trim().length > 0;
+  const requestedCoverage = requirements.length > 0 ? requirements.join(', ') : requirementLabel;
 
   useEffect(() => {
     if (
@@ -887,134 +876,200 @@ function InlineEditPanel({
       setDraftValue(pendingEdit.replacement);
       return;
     }
-    setDraftValue('');
+    setDraftValue(bulletText);
   }, [bulletText, pendingEdit, section]);
 
   const matchesPendingEdit = Boolean(
     pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText,
   );
+  const trimmedDraft = draftValue.trim();
+  const hasManualChanges = trimmedDraft.length > 0 && trimmedDraft !== bulletText.trim();
+  const canApplyDraft = trimmedDraft.length > 0 && (matchesPendingEdit || hasManualChanges);
+  const resetTarget = matchesPendingEdit && pendingEdit ? pendingEdit.replacement : bulletText;
+  const aiInstruction = [
+    'Return one revised resume line only.',
+    'Rewrite the current working draft from scratch. Do not append commentary, helper notes, or repeated stock sentences.',
+    `Current working draft:\n${trimmedDraft || bulletText.trim()}`,
+  ].join('\n\n');
+  const aiActions: Array<{ action: EditAction; label: string }> = [
+    { action: 'strengthen', label: 'Strengthen wording' },
+    { action: 'add_metrics', label: 'Add proof' },
+    { action: 'shorten', label: 'Shorten' },
+    { action: 'rewrite', label: 'Rewrite safely' },
+    { action: 'not_my_voice', label: 'Not my voice' },
+  ];
 
   return (
-    <div className="support-callout mt-2 rounded-xl border border-gray-200 bg-white p-3.5 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.35)]">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
-          Fix This Line
-        </p>
-        <p className="mt-1 text-sm text-gray-600">
-          Review the risk, confirm what is true, and use AI help only where it makes the line safer or sharper.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={getConfidencePill(confidence, requirementSource)?.className ?? 'inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-700 shadow-sm'}>
-            {getConfidencePill(confidence, requirementSource)?.label ?? 'Supported'}
-          </span>
-          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-            {requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need'}
-          </span>
-          <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-            {getContentOriginLabel(contentOrigin, confidence)}
-          </span>
+    <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
+      <div className="resume-inline-panel__surface">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Resolve This Line
+            </p>
+            <p className="mt-1 text-sm leading-6 text-gray-700">
+              Keep it truthful, tighten the proof, and only use AI where it makes the line safer or sharper.
+            </p>
+          </div>
+          {statusMeta ? (
+            <span className={statusMeta.className}>
+              {statusMeta.label}
+            </span>
+          ) : (
+            <span className="resume-proof-meta-label text-slate-700">Supported</span>
+          )}
         </div>
-        <div className={`rounded-lg border px-3 py-2 ${getInlinePanelTone(confidence, requirementSource)}`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">
-            {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'High-risk benchmark line' : 'Code Red'}
-          </p>
-          <p className="mt-1 text-[13px] leading-relaxed">
-            {getProofStateNextStep(confidence, requirementSource)}
-          </p>
-        </div>
-      </div>
 
-      {requirements.length > 0 && (
-        <p className="text-[13px] leading-5 text-gray-600">
-          This line is aimed at: <span className="text-blue-600">{requirements.join(', ')}</span>
-        </p>
-      )}
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Working draft
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  Rewrite the sentence here directly, or use one of the AI actions to replace this box with a safer draft.
+                </p>
+              </div>
+              {matchesPendingEdit && (
+                <span className="resume-proof-meta-label text-slate-600">
+                  AI draft loaded
+                </span>
+              )}
+            </div>
 
-      {evidenceFound.trim().length > 0 ? (
-        <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs italic leading-relaxed text-gray-500">
-          &ldquo;{evidenceFound}&rdquo;
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          No original resume support found yet
-        </div>
-      )}
-      <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400">
-        Support source: {getSupportOriginLabel(supportOrigin, evidenceFound.trim().length > 0, confidence)}
-      </p>
+            <textarea
+              value={draftValue}
+              onChange={(event) => setDraftValue(event.target.value)}
+              rows={3}
+              aria-label="Working draft for this resume line"
+              className="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors focus:border-slate-500 focus:bg-white"
+            />
 
-      <div className="flex flex-wrap gap-2">
-        {(['strengthen', 'add_metrics', 'rewrite'] as EditAction[]).map(action => (
-          <button
-            key={action}
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRequestEdit(bulletText, section, action); }}
-            disabled={isEditing}
-            className="rounded-md border border-gray-200 bg-[var(--surface-0)] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-gray-600 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 transition-colors"
-          >
-            {action === 'strengthen' ? 'Improve Wording' : action === 'add_metrics' ? 'Add Proof' : 'Rewrite'}
-          </button>
-        ))}
-      </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {aiActions.map(({ action, label }) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestEdit(bulletText, section, action, aiInstruction);
+                  }}
+                  disabled={isEditing}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-      {/* Loading state */}
-      {isEditing && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Generating a reviewable draft...
-        </div>
-      )}
-
-      {/* Pending edit suggestion — only show if it matches this bullet's text */}
-      {matchesPendingEdit && pendingEdit && (
-        <div className="support-callout border border-emerald-200 bg-emerald-50 rounded-lg p-3 space-y-2">
-          <p className="text-[12px] font-medium uppercase tracking-wider text-emerald-600">Suggested</p>
-          <p className="text-[13px] leading-relaxed text-gray-600">
-            Review the draft below. You can make small edits before you apply it.
-          </p>
-          <textarea
-            value={draftValue}
-            onChange={(event) => setDraftValue(event.target.value)}
-            rows={4}
-            aria-label="Edit suggested rewrite before applying"
-            className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-800 outline-none transition-colors focus:border-blue-300 focus:bg-white"
-          />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAcceptEdit?.(draftValue.trim() || pendingEdit.replacement);
-              }}
-              className="rounded-md bg-emerald-100 border border-emerald-300 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-emerald-700 hover:bg-emerald-200 transition-colors"
-            >
-              Accept
-            </button>
-            {draftValue !== pendingEdit.replacement && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDraftValue(pendingEdit.replacement);
+                  if (!trimmedDraft) return;
+                  if (matchesPendingEdit) {
+                    onAcceptEdit?.(trimmedDraft);
+                    return;
+                  }
+                  onBulletEdit?.(section, bulletIndex, trimmedDraft);
                 }}
-                className="rounded-md border border-gray-200 px-3 py-1 text-xs uppercase tracking-[0.08em] text-gray-500 hover:bg-gray-100 transition-colors"
+                disabled={!canApplyDraft}
+                className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Reset
+                Apply to Resume
               </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftValue(resetTarget);
+                }}
+                disabled={draftValue === resetTarget}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              >
+                Reset Draft
+              </button>
+              {matchesPendingEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftValue(bulletText);
+                    onRejectEdit?.();
+                  }}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Discard AI Draft
+                </button>
+              )}
+            </div>
+
+            {isEditing && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Generating a reviewable draft...
+              </div>
             )}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onRejectEdit?.(); }}
-              className="rounded-md border border-gray-200 px-3 py-1 text-xs uppercase tracking-[0.08em] text-gray-500 hover:bg-gray-100 transition-colors"
-            >
-              Cancel
-            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Line context
+              </p>
+              <dl className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
+                  <dd className="text-right">{requirementLabel}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
+                  <dd className="text-right">{getContentOriginLabel(contentOrigin, confidence)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
+                  <dd className="text-right">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 border-t border-slate-200 pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  This line is trying to cover
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  {requestedCoverage}
+                </p>
+              </div>
+            </div>
+
+            <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'High-risk benchmark line' : 'Code Red'}
+              </p>
+              <p className="mt-1 text-[13px] leading-6">
+                {getProofStateNextStep(confidence, requirementSource)}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Supporting evidence
+              </p>
+              {hasEvidence ? (
+                <p className="mt-2 text-sm italic leading-6 text-slate-600">
+                  &ldquo;{evidenceFound}&rdquo;
+                </p>
+              ) : (
+                <div className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#8f2d2d]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>No original resume support found yet.</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1103,11 +1158,11 @@ function getConfidenceLineClass(
     case 'strong':
       return 'resume-proof-line--strong';
     case 'partial':
-      return 'resume-proof-line--partial border-l-4 border-amber-300 border border-amber-200/80 bg-amber-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(217,119,6,0.55)]';
+      return 'resume-proof-line--partial';
     case 'needs_validation':
       return requirementSource === 'benchmark'
-        ? 'resume-proof-line--benchmark border-l-4 border-orange-300 border border-orange-200/80 bg-orange-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(234,88,12,0.45)]'
-        : 'resume-proof-line--code-red border-l-4 border-red-300 border border-red-200/80 bg-red-50/85 pl-4 pr-3 py-2 shadow-[0_10px_28px_-22px_rgba(220,38,38,0.45)]';
+        ? 'resume-proof-line--benchmark'
+        : 'resume-proof-line--code-red';
     default:
       return '';
   }
@@ -1121,7 +1176,7 @@ function getConfidencePill(
     return {
       label: 'Strengthen',
       className:
-        'inline-flex items-center rounded-full border border-amber-200 bg-amber-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-800 shadow-sm',
+        'resume-proof-meta-label resume-proof-meta-label--partial',
     };
   }
 
@@ -1129,7 +1184,7 @@ function getConfidencePill(
     return {
       label: 'Validate Fit',
       className:
-        'inline-flex items-center rounded-full border border-orange-200 bg-orange-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-800 shadow-sm',
+        'resume-proof-meta-label resume-proof-meta-label--benchmark',
     };
   }
 
@@ -1137,7 +1192,7 @@ function getConfidencePill(
     return {
       label: 'Code Red',
       className:
-        'inline-flex items-center rounded-full border border-red-200 bg-red-100/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-800 shadow-sm',
+        'resume-proof-meta-label resume-proof-meta-label--code-red',
     };
   }
 
@@ -1177,15 +1232,15 @@ function getInlinePanelTone(
   requirementSource: RequirementSource,
 ): string {
   if (confidence === 'strong') {
-    return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+    return 'resume-inline-panel__status--supported';
   }
   if (confidence === 'partial') {
-    return 'border-amber-100 bg-amber-50 text-amber-700';
+    return 'resume-inline-panel__status--partial';
   }
   if (requirementSource === 'benchmark') {
-    return 'border-orange-100 bg-orange-50 text-orange-700';
+    return 'resume-inline-panel__status--benchmark';
   }
-  return 'border-red-100 bg-red-50 text-red-700';
+  return 'resume-inline-panel__status--code-red';
 }
 
 function getProofStateNextStep(
