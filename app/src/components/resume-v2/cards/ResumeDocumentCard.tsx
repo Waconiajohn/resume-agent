@@ -886,11 +886,7 @@ function InlineEditPanel({
   const hasManualChanges = trimmedDraft.length > 0 && trimmedDraft !== bulletText.trim();
   const canApplyDraft = trimmedDraft.length > 0 && (matchesPendingEdit || hasManualChanges);
   const resetTarget = matchesPendingEdit && pendingEdit ? pendingEdit.replacement : bulletText;
-  const aiInstruction = [
-    'Return one revised resume line only.',
-    'Rewrite the current working draft from scratch. Do not append commentary, helper notes, or repeated stock sentences.',
-    `Current working draft:\n${trimmedDraft || bulletText.trim()}`,
-  ].join('\n\n');
+  const aiInstruction = trimmedDraft || bulletText.trim();
   const aiActions: Array<{ action: EditAction; label: string }> = [
     { action: 'strengthen', label: 'Strengthen wording' },
     { action: 'add_metrics', label: 'Add proof' },

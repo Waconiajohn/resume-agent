@@ -42,6 +42,7 @@ export const editSchema = z.object({
   full_resume_context: z.string().min(1, 'Full resume context is required'),
   job_description: z.string().min(1, 'Job description is required'),
   custom_instruction: z.string().optional(),
+  working_draft: z.string().min(5).max(5000).optional(),
   section_context: z.string().optional(),
   edit_context: editContextSchema,
 });
@@ -431,16 +432,18 @@ You MUST respond with valid JSON in exactly this format:
 
 Do not include any explanation, preamble, or markdown. Only return the JSON object.
 
-IMPORTANT: Never fabricate achievements, metrics, or claims. Every fact in the replacement must be traceable to the original text or surrounding resume context.`;
+IMPORTANT: Never fabricate achievements, metrics, or claims. Every fact in the replacement must be traceable to the original text or surrounding resume context.
+
+If the user message includes CURRENT WORKING DRAFT TO REPLACE, rewrite that draft directly. Do not explain what you changed. Do not echo editing instructions. Do not output helper language like "tightened," "rewritten," "added proof," or "safer version." Return only the finished resume line.`;
 
   const instructions: Record<EditAction, string> = {
-    strengthen: `Rewrite the selected text to be more impactful. Use stronger action verbs, sharper language, and executive-caliber voice. Eliminate weak qualifiers and passive constructions. Preserve all factual claims. CRITICAL: Do NOT fabricate metrics, percentages, dollar amounts, or team sizes. Only sharpen language and strengthen action verbs. If the original text lacks specific numbers, do not add made-up numbers. Preserve all factual claims exactly as stated.`,
-    add_metrics: `Enhance the selected text by adding or strengthening quantified results. Infer plausible numbers ONLY from the surrounding resume context — if explicit figures are absent, use conservative ranges (e.g., "team of 10+" rather than "team of 47") or directional language (e.g., "reduced costs by over 15%"). Every metric must be defensible given the context. Do NOT invent specific dollar amounts, exact percentages, or precise headcounts that aren't supported by the resume.`,
+    strengthen: `Rewrite the selected text to be more impactful. Use stronger action verbs, sharper language, and executive-caliber voice. Eliminate weak qualifiers and passive constructions. Preserve all factual claims. CRITICAL: Do NOT fabricate metrics, percentages, dollar amounts, or team sizes. Only sharpen language and strengthen action verbs. If the original text lacks specific numbers, do not add made-up numbers. Return one finished bullet, not commentary about how you strengthened it.`,
+    add_metrics: `Rewrite the selected text as a finished resume bullet that adds one truthful proof detail, metric, scope marker, cadence, or outcome drawn from the provided resume context or evidence. Every added detail must be defensible from the surrounding context. Do NOT invent specific dollar amounts, exact percentages, or precise headcounts that are not supported. Do NOT explain the edit. Return only the revised bullet with the proof woven into it.`,
     shorten: `Compress the selected text to its most essential form. Cut every word that does not carry meaning. Preserve all key accomplishments, metrics, and impact. The result should be tighter and punchier, not thinner.`,
     add_keywords: `Naturally incorporate relevant keywords from the job description into the selected text. The integration must read fluently — never keyword-stuffed. Prioritize keywords that reflect genuine overlap with the candidate's experience. Do NOT change the meaning or add claims not present in the original text.`,
-    rewrite: `Completely rewrite the selected text from scratch while preserving all underlying information, accomplishments, and meaning. Aim for cleaner structure, stronger language, and greater readability.`,
+    rewrite: `Completely rewrite the selected text from scratch while preserving all underlying information, accomplishments, and meaning. Aim for cleaner structure, stronger language, and greater readability. Return the rewritten bullet itself, not a description of the rewrite.`,
     custom: `Follow this instruction exactly: ${customInstruction ?? '(no instruction provided)'}`,
-    not_my_voice: `Rewrite the selected text to sound more authentic and human. Strip out corporate jargon, buzzwords, and formulaic resume-speak. The revised text should sound like how this specific professional actually talks about their work — direct, specific, and genuine.`,
+    not_my_voice: `Rewrite the selected text to sound more authentic and human. Strip out corporate jargon, buzzwords, and formulaic resume-speak. The revised text should sound like how this specific professional actually talks about their work — direct, specific, and genuine. Return only the revised bullet.`,
   };
 
   return `${base}\n\n${instructions[action]}`;

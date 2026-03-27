@@ -439,7 +439,17 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { action, selected_text, section, full_resume_context, job_description, custom_instruction, section_context, edit_context } = parsed.data;
+  const {
+    action,
+    selected_text,
+    section,
+    full_resume_context,
+    job_description,
+    custom_instruction,
+    working_draft,
+    section_context,
+    edit_context,
+  } = parsed.data;
 
   logger.info({ session_id: sessionId, user_id: userId, action, section }, 'Inline resume edit requested');
 
@@ -456,6 +466,14 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
     selected_text,
   ];
 
+  if (working_draft && working_draft.trim().length > 0) {
+    messageParts.push(
+      '',
+      'CURRENT WORKING DRAFT TO REPLACE:',
+      working_draft.trim(),
+    );
+  }
+
   // Add edit context (requirement, evidence, strategy) when available
   if (edit_context) {
     messageParts.push('');
@@ -468,6 +486,10 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
     if (edit_context.strategy) {
       messageParts.push(`POSITIONING STRATEGY: ${edit_context.strategy}`);
     }
+  }
+
+  if (action === 'custom' && custom_instruction) {
+    messageParts.push('', `CUSTOM EDIT INSTRUCTION: ${custom_instruction}`);
   }
 
   messageParts.push(

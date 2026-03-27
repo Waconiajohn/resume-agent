@@ -33,6 +33,8 @@ const HARNESS_SUFFIX_PATTERNS = [
 ];
 
 function extractWorkingDraft(selectedText: string, customInstruction?: string): string {
+  if (customInstruction?.trim()) return customInstruction.trim();
+
   const currentDraftMatch = customInstruction?.match(/Current working draft:\s*([\s\S]+)/i);
   if (currentDraftMatch?.[1]) return currentDraftMatch[1].trim();
 

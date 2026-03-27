@@ -588,6 +588,32 @@ describe('POST /api/resume-v2/:sessionId/edit', () => {
     expect(body.replacement).toBe('Strengthened bullet without JSON wrapper');
   });
 
+  it('passes the current working draft to the LLM for non-custom edit actions', async () => {
+    mockParseJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      data: {
+        ...VALID_EDIT_BODY,
+        working_draft: 'Built and tracked plant performance metrics across safety and throughput.',
+      },
+    });
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/edit`, 'POST', {
+      ...VALID_EDIT_BODY,
+      working_draft: 'Built and tracked plant performance metrics across safety and throughput.',
+    });
+
+    expect(res.status).toBe(200);
+
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      system: string;
+      messages: Array<{ role: string; content: string }>;
+    };
+
+    expect(llmArgs.system).toContain('If the user message includes CURRENT WORKING DRAFT TO REPLACE');
+    expect(llmArgs.messages[0]?.content).toContain('CURRENT WORKING DRAFT TO REPLACE:');
+    expect(llmArgs.messages[0]?.content).toContain('Built and tracked plant performance metrics across safety and throughput.');
+  });
+
   it('returns 500 when LLM call throws', async () => {
     mockLlmChat.mockRejectedValue(new Error('LLM timeout'));
 

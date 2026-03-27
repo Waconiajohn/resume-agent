@@ -551,7 +551,7 @@ describe('InlineEditPanel — action buttons', () => {
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'strengthen',
-      expect.stringContaining('Rewrite the current working draft from scratch.'),
+      'Reduced deploy time by 60%',
     );
   });
 
@@ -577,7 +577,7 @@ describe('InlineEditPanel — action buttons', () => {
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'add_metrics',
-      expect.stringContaining('Current working draft:'),
+      'Reduced deploy time by 60%',
     );
   });
 
@@ -603,7 +603,7 @@ describe('InlineEditPanel — action buttons', () => {
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'shorten',
-      expect.stringContaining('Current working draft:'),
+      'Reduced deploy time by 60%',
     );
   });
 
@@ -629,7 +629,7 @@ describe('InlineEditPanel — action buttons', () => {
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       'rewrite',
-      expect.stringContaining('Current working draft:'),
+      'Reduced deploy time by 60%',
     );
   });
 
