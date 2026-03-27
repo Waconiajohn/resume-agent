@@ -466,6 +466,61 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.raw_text).toBe(input.resume_text);
     });
 
+    it('preserves structured roles from the source resume outline when the model under-extracts experience', async () => {
+      const resumeText = [
+        'Jane Smith',
+        'Professional Experience',
+        'VP of Operations | Acme Manufacturing | Jan 2021 - Present',
+        '- Led weekly KPI reviews across 3 plants',
+        '- Reduced scrap by 18% in 12 months',
+        'Director of Operations | Beta Distribution | Mar 2017 - Dec 2020',
+        '- Standardized multi-site inventory planning',
+        '- Improved on-time delivery from 82% to 97%',
+      ].join('\n');
+      const underExtractedOutput: CandidateIntelligenceOutput = {
+        ...CANDIDATE_OUTPUT,
+        experience: [
+          {
+            company: 'Acme Manufacturing',
+            title: 'VP of Operations',
+            start_date: 'Jan 2021',
+            end_date: 'Present',
+            bullets: ['Led weekly KPI reviews across 3 plants'],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(underExtractedOutput);
+
+      const result = await runCandidateIntelligence({ resume_text: resumeText });
+
+      expect(result.source_resume_outline?.positions).toHaveLength(2);
+      expect(result.experience).toHaveLength(2);
+      expect(result.experience[0]?.bullets).toContain('Reduced scrap by 18% in 12 months');
+      expect(result.experience[1]?.company).toBe('Beta Distribution');
+    });
+
+    it('does not cap deterministic fallback bullet preservation at 20 lines', async () => {
+      const bulletLines = Array.from({ length: 25 }, (_, index) => `- Bullet ${index + 1}`);
+      const resumeText = [
+        'Jane Smith',
+        'Professional Experience',
+        'VP of Operations | Acme Manufacturing | Jan 2021 - Present',
+        ...bulletLines,
+      ].join('\n');
+
+      mockLlmChat
+        .mockResolvedValueOnce({ text: 'bad1' })
+        .mockResolvedValueOnce({ text: 'bad2' });
+      mockRepairJSON.mockReturnValue(null);
+
+      const result = await runCandidateIntelligence({ resume_text: resumeText });
+
+      expect(result.source_resume_outline?.total_bullets).toBe(25);
+      expect(result.experience[0]?.bullets).toHaveLength(25);
+    });
+
     it('salvages specific degree majors from the source resume when model output is too generic', async () => {
       const detailedEducationInput: CandidateIntelligenceInput = {
         resume_text: [
@@ -684,7 +739,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runGapAnalysis(input);
 
-      expect(result).toEqual(GAP_ANALYSIS_OUTPUT);
+      expect(result).toEqual({
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          GAP_ANALYSIS_OUTPUT.requirements[0],
+          {
+            ...GAP_ANALYSIS_OUTPUT.requirements[1],
+            strategy: {
+              ...GAP_ANALYSIS_OUTPUT.requirements[1].strategy!,
+              positioning: 'Led 40-person team at ~$85K average',
+            },
+          },
+        ],
+      });
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
@@ -698,7 +765,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runGapAnalysis(input);
 
-      expect(result).toEqual(GAP_ANALYSIS_OUTPUT);
+      expect(result).toEqual({
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          GAP_ANALYSIS_OUTPUT.requirements[0],
+          {
+            ...GAP_ANALYSIS_OUTPUT.requirements[1],
+            strategy: {
+              ...GAP_ANALYSIS_OUTPUT.requirements[1].strategy!,
+              positioning: 'Led 40-person team at ~$85K average',
+            },
+          },
+        ],
+      });
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
@@ -1882,6 +1961,51 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.selected_accomplishments.length).toBeGreaterThan(0);
     });
 
+    it('uses the source resume outline to preserve bullets when candidate.experience is truncated', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: ['Built cloud platform from scratch'],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 4,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Built cloud platform from scratch',
+                  'Scaled team from 10 to 40',
+                  'Cut deployment time by 60%',
+                  'Improved uptime to 99.99%',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+
+      expect(result.professional_experience[0]?.bullets).toHaveLength(4);
+      expect(result.professional_experience[0]?.bullets[3]?.text).toContain('99.99%');
+    });
+
     it('deterministic fallback surfaces satisfied years thresholds explicitly in the summary', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
@@ -2592,7 +2716,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
-      expect(llmCall.system).toContain('Maximum 5 findings');
+      expect(llmCall.system).toContain('Maximum 12 findings');
       expect(llmCall.system).toContain('Focus on the most visible tone issues first');
       expect(llmCall.system).toContain('Only flag exact text that appears verbatim in the resume draft');
       expect(llmCall.system).toContain('Never comment on phrases that are absent');
@@ -2602,7 +2726,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(llmCall.messages[0].content).toContain('Quote only exact problematic text that appears verbatim in the draft.');
       expect(llmCall.messages[0].content).toContain('If a phrase is not present, do not mention it.');
       expect(llmCall.messages[0].content).toContain('Do not flag already-strong executive verbs like led, directed, delivered, implemented, managed, oversaw, or drove.');
-      expect(llmCall.messages[0].content).toContain('Return at most 5 findings');
+      expect(llmCall.messages[0].content).toContain('Return at most 12 findings');
     });
 
     it('uses MODEL_MID', async () => {

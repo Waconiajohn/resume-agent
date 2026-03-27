@@ -65,6 +65,21 @@ export interface CandidateExperience {
   };
 }
 
+export interface SourceResumePosition {
+  company: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  bullets: string[];
+  raw_heading?: string;
+}
+
+export interface SourceResumeOutline {
+  positions: SourceResumePosition[];
+  total_bullets: number;
+  parse_mode: 'structured' | 'generic';
+}
+
 export interface CandidateIntelligenceOutput {
   contact: ContactInfo;
   career_themes: string[];
@@ -87,6 +102,7 @@ export interface CandidateIntelligenceOutput {
   certifications: string[];
   hidden_accomplishments: string[];
   raw_text: string;
+  source_resume_outline?: SourceResumeOutline;
   /** AI readiness signals detected from resume — leadership precursors, not technical AI skills */
   ai_readiness?: {
     strength: 'strong' | 'moderate' | 'minimal' | 'none';

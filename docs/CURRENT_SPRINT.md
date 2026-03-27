@@ -128,3 +128,9 @@ The first implementation wave should keep live legacy schemas working while intr
    - `coach_sessions.pending_gate`
    - room-local workflow state enums
 6. Do not widen the migration beyond adapters and selected consumers until canonical contracts are verified by typecheck and real-session QA.
+## Resume-V2 Preservation Layer
+
+- Added a `source_resume_outline` preservation contract to resume-v2 so the original uploaded resume remains an authoritative structural source.
+- Candidate Intelligence now builds and carries that outline forward instead of letting deterministic fallback collapse long resumes into a thinner intermediate shape.
+- Resume Writer now preserves positions and bullet density against the source outline, not only against possibly truncated `candidate.experience`.
+- This is a compatibility-safe first step toward relevance-aware compression; it is intentionally preserving structure before we retune how much older experience should be collapsed.

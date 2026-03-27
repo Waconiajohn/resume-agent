@@ -14,6 +14,7 @@ import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
+import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
 import type {
   ResumeWriterInput,
   ResumeDraftOutput,
@@ -330,7 +331,7 @@ export async function runResumeWriter(
   // redefine valid agent-owned priority or placement decisions.
   parsed = deterministicRequirementMatch(
     parsed,
-    input.candidate.experience ?? [],
+    getAuthoritativeSourceExperience(input.candidate),
     input.gap_analysis.requirements,
     selectedAccomplishmentTargets,
   );
@@ -466,6 +467,7 @@ function logFuzzyExperienceFramingMatch(
 }
 
 function buildUserMessage(input: ResumeWriterInput): string {
+  const sourceExperience = getAuthoritativeSourceExperience(input.candidate);
   const competencyThemes = Array.isArray(input.narrative.section_guidance.competency_themes)
     ? input.narrative.section_guidance.competency_themes
     : [];
@@ -519,10 +521,10 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `LinkedIn: ${input.candidate.contact.linkedin ?? 'not provided'}`,
     `Location: ${input.candidate.contact.location ?? 'not provided'}`,
     '',
-    `## CANDIDATE EXPERIENCE (source material — ${input.candidate.experience.length} positions total, ALL must appear in output)`,
+    `## CANDIDATE EXPERIENCE (source material — ${sourceExperience.length} positions total, ALL must appear in output)`,
   );
 
-  for (const exp of input.candidate.experience) {
+  for (const exp of sourceExperience) {
     const scope = exp.inferred_scope
       ? `\n  Scope: team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
       : '';
@@ -626,7 +628,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
 
   parts.push(
     '',
-    `POSITION COUNT CHECK: The candidate has ${input.candidate.experience.length} positions. Your output must include ALL ${input.candidate.experience.length} — split between professional_experience (with bullets) and earlier_career (title/company only for 20+ year old roles). Do NOT drop any positions.`,
+    `POSITION COUNT CHECK: The candidate has ${sourceExperience.length} positions. Your output must include ALL ${sourceExperience.length} — split between professional_experience (with bullets) and earlier_career (title/company only for 20+ year old roles). Do NOT drop any positions.`,
     '',
     'Now write the complete resume. Every section reinforces the Why Me narrative. Every bullet answers: "Does this prove why I am THE candidate?" Mark is_new correctly.',
     'Return JSON only. Do not write any introduction, explanation, or markdown fences.',
@@ -649,7 +651,7 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
 
   const currentYear = new Date().getFullYear();
   const earlierCareerThresholdYear = currentYear - 20;
-  const allExperience = input.candidate.experience ?? [];
+  const allExperience = getAuthoritativeSourceExperience(input.candidate);
   // Positions 0-7 are always kept in professional_experience (up to 8 recent roles).
   // Beyond index 7, move to "Additional Work Experience" only if end_date is 20+ years ago.
   // If end_date is unparseable, treat as recent to avoid hiding valid experience.
@@ -915,11 +917,12 @@ function dedupeEducationEntries(
  * Matches positions by normalized company name.
  */
 function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriterInput): ResumeDraftOutput {
-  if (!Array.isArray(draft.professional_experience) || !input.candidate?.experience) return draft;
+  const sourceExperience = getAuthoritativeSourceExperience(input.candidate);
+  if (!Array.isArray(draft.professional_experience) || sourceExperience.length === 0) return draft;
 
   for (const draftExp of draft.professional_experience) {
     // Find the matching original experience entry
-    const originalExp = input.candidate.experience.find((orig) => {
+    const originalExp = sourceExperience.find((orig) => {
       const draftKey = `${draftExp.company} ${draftExp.title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
       const origKey = `${orig.company} ${orig.title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
       return draftKey === origKey || draftKey.includes(origKey) || origKey.includes(draftKey);
@@ -1374,7 +1377,7 @@ function ensureAllPositionsPresent(
   draft: ResumeDraftOutput,
   input: ResumeWriterInput,
 ): ResumeDraftOutput {
-  const candidatePositions = input.candidate.experience ?? [];
+  const candidatePositions = getAuthoritativeSourceExperience(input.candidate);
   if (candidatePositions.length === 0) return draft;
 
   const outputCompanies = new Set<string>();
@@ -1582,7 +1585,7 @@ function buildSelectedAccomplishments(
 }
 
 function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutput['professional_experience'] {
-  return (input.candidate.experience ?? []).map((experience) => {
+  return getAuthoritativeSourceExperience(input.candidate).map((experience) => {
     const scopeParts = [
       experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
       experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',

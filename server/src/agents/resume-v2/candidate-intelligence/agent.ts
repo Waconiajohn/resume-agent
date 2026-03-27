@@ -13,6 +13,10 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { detectAIPrecursors, buildAIPrecursorSummary } from '../../../contracts/ai-readiness-policy.js';
 import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
+import {
+  buildSourceResumeOutline,
+  mergeCandidateExperienceWithSourceOutline,
+} from '../source-resume-outline.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Return exactly one JSON object.
@@ -123,6 +127,7 @@ export async function runCandidateIntelligence(
   signal?: AbortSignal,
 ): Promise<CandidateIntelligenceOutput> {
   let parsed: CandidateIntelligenceOutput | null = null;
+  const sourceResumeOutline = buildSourceResumeOutline(input.resume_text);
 
   try {
     const response = await llm.chat({
@@ -136,7 +141,11 @@ export async function runCandidateIntelligence(
       signal,
     });
 
-    parsed = normalizeCandidateIntelligence(repairJSON<CandidateIntelligenceOutput>(response.text), input.resume_text);
+    parsed = normalizeCandidateIntelligence(
+      repairJSON<CandidateIntelligenceOutput>(response.text),
+      input.resume_text,
+      sourceResumeOutline,
+    );
 
     if (!parsed) {
       logger.warn(
@@ -150,7 +159,7 @@ export async function runCandidateIntelligence(
       { error: error instanceof Error ? error.message : String(error) },
       'Candidate Intelligence: first attempt failed, using deterministic fallback',
     );
-    parsed = buildDeterministicCandidateIntelligence(input);
+    parsed = buildDeterministicCandidateIntelligence(input, sourceResumeOutline);
   }
 
   if (!parsed) {
@@ -166,14 +175,18 @@ export async function runCandidateIntelligence(
         signal,
       });
 
-      parsed = normalizeCandidateIntelligence(repairJSON<CandidateIntelligenceOutput>(retry.text), input.resume_text);
+      parsed = normalizeCandidateIntelligence(
+        repairJSON<CandidateIntelligenceOutput>(retry.text),
+        input.resume_text,
+        sourceResumeOutline,
+      );
 
       if (!parsed) {
         logger.error(
           { rawSnippet: retry.text.substring(0, 500) },
           'Candidate Intelligence: retry returned unparseable response, using deterministic fallback',
         );
-        parsed = buildDeterministicCandidateIntelligence(input);
+        parsed = buildDeterministicCandidateIntelligence(input, sourceResumeOutline);
       }
     } catch (error) {
       if (shouldRethrowForAbort(error, signal)) throw error;
@@ -181,13 +194,13 @@ export async function runCandidateIntelligence(
         { error: error instanceof Error ? error.message : String(error) },
         'Candidate Intelligence: retry failed, using deterministic fallback',
       );
-      parsed = buildDeterministicCandidateIntelligence(input);
+      parsed = buildDeterministicCandidateIntelligence(input, sourceResumeOutline);
     }
   }
 
-  parsed = normalizeCandidateIntelligence(parsed, input.resume_text);
+  parsed = normalizeCandidateIntelligence(parsed, input.resume_text, sourceResumeOutline);
   if (!parsed) {
-    parsed = buildDeterministicCandidateIntelligence(input);
+    parsed = buildDeterministicCandidateIntelligence(input, sourceResumeOutline);
   }
 
   // Guardrail: never allow placeholder names
@@ -242,11 +255,15 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
 function normalizeCandidateIntelligence(
   parsed: CandidateIntelligenceOutput | null,
   resumeText: string,
+  sourceResumeOutline = buildSourceResumeOutline(resumeText),
 ): CandidateIntelligenceOutput | null {
   if (!parsed) return null;
 
   const normalizedEducation = coerceEducationArray(parsed.education);
-  const normalizedExperience = coerceExperienceArray(parsed.experience);
+  const normalizedExperience = mergeCandidateExperienceWithSourceOutline(
+    coerceExperienceArray(parsed.experience),
+    sourceResumeOutline,
+  );
 
   return {
     contact: {
@@ -277,6 +294,7 @@ function normalizeCandidateIntelligence(
         return wordCount >= 5 && (hasMetric || hasProperNoun);
       }),
     raw_text: parsed.raw_text ?? resumeText,
+    source_resume_outline: sourceResumeOutline,
     ai_readiness: coerceAIReadiness(parsed.ai_readiness),
   };
 }
@@ -369,6 +387,7 @@ function coerceAIReadiness(value: unknown): CandidateIntelligenceOutput['ai_read
 
 function buildDeterministicCandidateIntelligence(
   input: CandidateIntelligenceInput,
+  sourceResumeOutline = buildSourceResumeOutline(input.resume_text),
 ): CandidateIntelligenceOutput {
   const text = input.resume_text.replace(/\r/g, '');
   const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
@@ -383,7 +402,10 @@ function buildDeterministicCandidateIntelligence(
   const location = inferLocation(lines);
   const technologies = inferTechnologies(lowerText);
   const quantified_outcomes = extractQuantifiedOutcomes(lines);
-  const experience = extractExperience(lines);
+  const experience = mergeCandidateExperienceWithSourceOutline(
+    extractExperience(lines),
+    sourceResumeOutline,
+  );
   const education = extractEducation(lines, text);
   const certifications = extractCertifications(lines);
   const career_themes = inferCareerThemes(lowerText, technologies);
@@ -412,6 +434,7 @@ function buildDeterministicCandidateIntelligence(
     certifications,
     hidden_accomplishments,
     raw_text: input.resume_text,
+    source_resume_outline: sourceResumeOutline,
   };
 }
 
@@ -457,7 +480,7 @@ function extractExperience(lines: string[]): CandidateIntelligenceOutput['experi
       title: 'Career Experience',
       start_date: '',
       end_date: '',
-      bullets: bulletLines.slice(0, 20),
+      bullets: bulletLines,
       inferred_scope: {},
     }];
   }
