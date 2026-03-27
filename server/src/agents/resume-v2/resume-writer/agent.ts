@@ -221,7 +221,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
 OUTPUT: Write the COMPLETE resume as a JSON object matching the schema above.
 Include ALL sections that have data. Do not truncate. This is a finished document, not an outline.
 CRITICAL — EVERY position from the candidate's experience MUST appear in the output.
-Recent positions go in professional_experience with full bullets. Positions 20+ years old go in earlier_career (title/company only).
+Recent positions go in professional_experience with full bullets. Older positions stay in professional_experience when they still prove the target role; move them to earlier_career only when they are both old and low relevance.
 NEVER omit a position to save space. A 2-page target is a guideline, not a hard limit — include all roles even if that means 3 pages.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
@@ -312,6 +312,10 @@ export async function runResumeWriter(
   // Guardrail: ensure ALL candidate positions appear in the output.
   // If the LLM dropped positions, backfill them to prevent truncation.
   parsed = ensureAllPositionsPresent(parsed, input);
+
+  // Guardrail: if the model collapsed an older-but-relevant role into earlier_career,
+  // move it back into detailed professional experience with bullets.
+  parsed = ensureRelevantPositionsRemainDetailed(parsed, input);
 
   // Guardrail: backfill bullets when the LLM wrote fewer than the original resume had.
   // The prompt says "Do not produce fewer bullets than the original" but LLMs don't always follow.
@@ -524,6 +528,8 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `## CANDIDATE EXPERIENCE (source material — ${sourceExperience.length} positions total, ALL must appear in output)`,
   );
 
+  const positionLayoutPlan = derivePositionLayoutPlan(input);
+
   for (const exp of sourceExperience) {
     const scope = exp.inferred_scope
       ? `\n  Scope: team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
@@ -541,6 +547,10 @@ function buildUserMessage(input: ResumeWriterInput): string {
     );
     if (framing) {
       parts.push(`  [FRAMING GUIDANCE: ${framing}]`);
+    }
+    const layoutPlan = positionLayoutPlan.get(normalizeCompanyKey(exp.company, exp.title));
+    if (layoutPlan) {
+      parts.push(`  [DETAIL GUIDANCE: ${layoutPlan.reason}]`);
     }
   }
 
@@ -628,7 +638,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
 
   parts.push(
     '',
-    `POSITION COUNT CHECK: The candidate has ${sourceExperience.length} positions. Your output must include ALL ${sourceExperience.length} — split between professional_experience (with bullets) and earlier_career (title/company only for 20+ year old roles). Do NOT drop any positions.`,
+    `POSITION COUNT CHECK: The candidate has ${sourceExperience.length} positions. Your output must include ALL ${sourceExperience.length}. Use earlier_career only for positions that are both old and low current-role relevance. Keep older but still relevant roles in professional_experience with bullets. Do NOT drop any positions.`,
     '',
     'Now write the complete resume. Every section reinforces the Why Me narrative. Every bullet answers: "Does this prove why I am THE candidate?" Mark is_new correctly.',
     'Return JSON only. Do not write any introduction, explanation, or markdown fences.',
@@ -649,21 +659,8 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
     ...(input.candidate.technologies ?? []),
   ]).slice(0, 20);
 
-  const currentYear = new Date().getFullYear();
-  const earlierCareerThresholdYear = currentYear - 20;
-  const allExperience = getAuthoritativeSourceExperience(input.candidate);
-  // Positions 0-7 are always kept in professional_experience (up to 8 recent roles).
-  // Beyond index 7, move to "Additional Work Experience" only if end_date is 20+ years ago.
-  // If end_date is unparseable, treat as recent to avoid hiding valid experience.
-  const earlierCareer = allExperience.slice(8).filter((experience) => {
-    const endYearMatch = experience.end_date?.match(/\b(\d{4})\b/);
-    if (!endYearMatch) return false; // keep in professional_experience if date is unclear
-    return Number(endYearMatch[1]) < earlierCareerThresholdYear;
-  }).map((experience) => ({
-    company: experience.company,
-    title: experience.title,
-    dates: '', // 20+ year old positions: title + company only, no dates
-  }));
+  const positionLayoutPlan = derivePositionLayoutPlan(input);
+  const earlierCareer = buildEarlierCareer(input, positionLayoutPlan);
 
   return {
     header: {
@@ -680,7 +677,7 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
     core_competencies: coreCompetencies,
     selected_accomplishment_targets: selectedAccomplishmentTargets,
     selected_accomplishments: buildSelectedAccomplishments(input, selectedAccomplishmentTargets),
-    professional_experience: buildProfessionalExperience(input),
+    professional_experience: buildProfessionalExperience(input, positionLayoutPlan),
     ...(earlierCareer.length > 0 ? { earlier_career: earlierCareer } : {}),
     education: input.candidate.education ?? [],
     certifications: input.candidate.certifications ?? [],
@@ -1379,6 +1376,7 @@ function ensureAllPositionsPresent(
 ): ResumeDraftOutput {
   const candidatePositions = getAuthoritativeSourceExperience(input.candidate);
   if (candidatePositions.length === 0) return draft;
+  const positionLayoutPlan = derivePositionLayoutPlan(input);
 
   const outputCompanies = new Set<string>();
   for (const exp of draft.professional_experience ?? []) {
@@ -1388,8 +1386,6 @@ function ensureAllPositionsPresent(
     outputCompanies.add(normalizeCompanyKey(ec.company, ec.title));
   }
 
-  const currentYear = new Date().getFullYear();
-  const earlierCareerThresholdYear = currentYear - 20;
   const missingPositions = candidatePositions.filter(
     (pos) => !outputCompanies.has(normalizeCompanyKey(pos.company, pos.title)),
   );
@@ -1405,47 +1401,16 @@ function ensureAllPositionsPresent(
   const additionalEarlierCareer: NonNullable<ResumeDraftOutput['earlier_career']> = [];
 
   for (const pos of missingPositions) {
-    const endYearMatch = pos.end_date?.match(/\b(\d{4})\b/);
-    const endYear = endYearMatch ? Number(endYearMatch[1]) : currentYear;
-    const isOld = endYear < earlierCareerThresholdYear;
+    const layoutPlan = positionLayoutPlan.get(normalizeCompanyKey(pos.company, pos.title));
 
-    if (isOld) {
+    if (layoutPlan?.renderSection === 'earlier_career') {
       additionalEarlierCareer.push({
         company: pos.company,
         title: pos.title,
         dates: '',
       });
     } else {
-      additionalProfessional.push({
-        company: pos.company,
-        title: pos.title,
-        start_date: pos.start_date,
-        end_date: pos.end_date,
-        scope_statement: pos.inferred_scope
-          ? [
-              pos.inferred_scope.team_size ? `Team: ${pos.inferred_scope.team_size}` : '',
-              pos.inferred_scope.budget ? `Budget: ${pos.inferred_scope.budget}` : '',
-              pos.inferred_scope.geography ? `Geography: ${pos.inferred_scope.geography}` : '',
-            ].filter(Boolean).join(' | ') || `${pos.title} role`
-          : `${pos.title} role`,
-        scope_statement_source: 'original' as const,
-        scope_statement_confidence: 'strong' as const,
-        scope_statement_evidence_found: '',
-        bullets: pos.bullets.map((bullet) => {
-          const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
-          return {
-            text: bullet,
-            is_new: false,
-            addresses_requirements: addressesRequirements,
-            source: 'original' as const,
-            requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
-            confidence: 'strong' as const,
-            evidence_found: bullet,
-            content_origin: 'original_resume' as const,
-            support_origin: 'original_resume' as const,
-          };
-        }),
-      });
+      additionalProfessional.push(buildProfessionalExperienceEntry(pos, input));
     }
   }
 
@@ -1456,8 +1421,243 @@ function ensureAllPositionsPresent(
   };
 }
 
+function ensureRelevantPositionsRemainDetailed(
+  draft: ResumeDraftOutput,
+  input: ResumeWriterInput,
+): ResumeDraftOutput {
+  const candidatePositions = getAuthoritativeSourceExperience(input.candidate);
+  if (candidatePositions.length === 0 || !draft.earlier_career?.length) return draft;
+
+  const positionLayoutPlan = derivePositionLayoutPlan(input);
+  const professionalKeys = new Set(
+    (draft.professional_experience ?? []).map((position) => normalizeCompanyKey(position.company, position.title)),
+  );
+  const retainedEarlierCareer: NonNullable<ResumeDraftOutput['earlier_career']> = [];
+  const recoveredProfessional: ResumeDraftOutput['professional_experience'] = [];
+
+  for (const earlierCareerItem of draft.earlier_career ?? []) {
+    const key = normalizeCompanyKey(earlierCareerItem.company, earlierCareerItem.title);
+    if (positionLayoutPlan.get(key)?.renderSection !== 'professional_experience') {
+      retainedEarlierCareer.push(earlierCareerItem);
+      continue;
+    }
+
+    if (professionalKeys.has(key)) {
+      continue;
+    }
+
+    const sourcePosition = candidatePositions.find((position) => normalizeCompanyKey(position.company, position.title) === key);
+    if (!sourcePosition) {
+      retainedEarlierCareer.push(earlierCareerItem);
+      continue;
+    }
+
+    professionalKeys.add(key);
+    recoveredProfessional.push(buildProfessionalExperienceEntry(sourcePosition, input));
+  }
+
+  if (recoveredProfessional.length === 0) return draft;
+
+  logger.warn(
+    {
+      recovered: recoveredProfessional.map((position) => `${position.title} at ${position.company}`),
+    },
+    'Resume Writer: moved older relevant roles back into professional_experience',
+  );
+
+  return {
+    ...draft,
+    professional_experience: [...(draft.professional_experience ?? []), ...recoveredProfessional],
+    earlier_career: retainedEarlierCareer.length > 0 ? retainedEarlierCareer : undefined,
+  };
+}
+
 function normalizeCompanyKey(company: string, title: string): string {
   return `${company.toLowerCase().trim()}::${title.toLowerCase().trim()}`;
+}
+
+interface PositionLayoutDecision {
+  renderSection: 'professional_experience' | 'earlier_career';
+  relevanceScore: number;
+  matchedPrioritySignals: number;
+  ageYears: number | null;
+  reason: string;
+}
+
+function derivePositionLayoutPlan(
+  input: ResumeWriterInput,
+): Map<string, PositionLayoutDecision> {
+  const positions = getAuthoritativeSourceExperience(input.candidate);
+  const prioritySignals = derivePositionPrioritySignals(input);
+  const currentYear = new Date().getFullYear();
+  const plan = new Map<string, PositionLayoutDecision>();
+
+  positions.forEach((position, index) => {
+    const ageYears = getPositionAgeYears(position, currentYear);
+    const relevance = scorePositionRelevance(position, input, prioritySignals);
+    const isClearlyRecent = ageYears === null || ageYears < 15;
+    const isVeryOld = ageYears !== null && ageYears >= 20;
+    const isLowRelevance = relevance.score < 4
+      && relevance.matchedPrioritySignals === 0
+      && relevance.requirementHits === 0;
+    const renderSection: PositionLayoutDecision['renderSection'] = isClearlyRecent || !isVeryOld || !isLowRelevance
+      ? 'professional_experience'
+      : 'earlier_career';
+
+    let reason: string;
+    if (renderSection === 'professional_experience') {
+      if (isClearlyRecent) {
+        reason = 'Keep in professional experience — recent roles should stay detailed.';
+      } else if (relevance.matchedPrioritySignals > 0) {
+        reason = `Keep in professional experience — older role still proves current priorities (${relevance.matchedPrioritySignals} matched target signals).`;
+      } else {
+        reason = 'Keep in professional experience — preserve detail unless the role is both old and low relevance.';
+      }
+    } else {
+      reason = 'Can move to Additional Work Experience — older role has low current-role relevance and can taper safely.';
+    }
+
+    // Preserve more generous detail for the first several roles when relevance scoring is noisy,
+    // but do not override clearly old, low-signal roles.
+    if (index < 5 && renderSection === 'earlier_career' && !(isVeryOld && isLowRelevance)) {
+      plan.set(normalizeCompanyKey(position.company, position.title), {
+        renderSection: 'professional_experience',
+        relevanceScore: relevance.score,
+        matchedPrioritySignals: relevance.matchedPrioritySignals,
+        ageYears,
+        reason: 'Keep in professional experience — top of resume history should remain detailed by default.',
+      });
+      return;
+    }
+
+    plan.set(normalizeCompanyKey(position.company, position.title), {
+      renderSection,
+      relevanceScore: relevance.score,
+      matchedPrioritySignals: relevance.matchedPrioritySignals,
+      ageYears,
+      reason,
+    });
+  });
+
+  return plan;
+}
+
+function derivePositionPrioritySignals(input: ResumeWriterInput): string[] {
+  const selectedTargets = deriveSelectedAccomplishmentTargets(input);
+  const rankedCompetencies = [...(input.job_intelligence.core_competencies ?? [])]
+    .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance))
+    .slice(0, 5)
+    .map((item) => item.competency);
+  const jdRequirements = input.gap_analysis.requirements
+    .filter((requirement) => requirement.source === 'job_description')
+    .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance))
+    .slice(0, 5)
+    .map((requirement) => requirement.requirement);
+
+  return dedupeStrings([
+    input.job_intelligence.role_title,
+    ...selectedTargets.map((target) => target.requirement),
+    ...rankedCompetencies,
+    ...jdRequirements,
+    ...(input.benchmark.expected_technical_skills ?? []).slice(0, 3),
+    ...(input.benchmark.expected_industry_knowledge ?? []).slice(0, 2),
+  ].filter(Boolean));
+}
+
+function scorePositionRelevance(
+  position: CandidateExperience,
+  input: ResumeWriterInput,
+  prioritySignals: string[],
+): { score: number; matchedPrioritySignals: number; requirementHits: number } {
+  const texts = [
+    position.title,
+    `${position.title} ${position.company}`,
+    ...position.bullets.slice(0, 8),
+  ].filter(Boolean);
+
+  let score = 0;
+  let matchedPrioritySignals = 0;
+
+  for (const signal of prioritySignals) {
+    const bestMatch = texts.reduce((best, text) => Math.max(best, scoreRequirementTextMatch(text, signal)), 0);
+    if (bestMatch >= 80) {
+      score += 3;
+      matchedPrioritySignals += 1;
+    } else if (bestMatch >= 35) {
+      score += 2;
+      matchedPrioritySignals += 1;
+    } else if (bestMatch >= 25) {
+      score += 1;
+    }
+  }
+
+  const requirementHits = dedupeStrings(
+    position.bullets.flatMap((bullet) => matchRequirementLinks(bullet, input.gap_analysis.requirements)),
+  ).length;
+  score += requirementHits * 2;
+
+  if (/%|\$|\b\d/.test(position.bullets.join(' '))) {
+    score += 1;
+  }
+
+  return { score, matchedPrioritySignals, requirementHits };
+}
+
+function getPositionAgeYears(position: CandidateExperience, currentYear: number): number | null {
+  const endYearMatch = position.end_date?.match(/\b(19|20)\d{2}\b/);
+  if (!endYearMatch) return null;
+  return Math.max(0, currentYear - Number(endYearMatch[0]));
+}
+
+function buildProfessionalExperienceEntry(
+  experience: CandidateExperience,
+  input: ResumeWriterInput,
+): ResumeDraftOutput['professional_experience'][number] {
+  const scopeParts = [
+    experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
+    experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',
+    experience.inferred_scope?.geography ? `Geography: ${experience.inferred_scope.geography}` : '',
+    experience.inferred_scope?.revenue_impact ? `Revenue: ${experience.inferred_scope.revenue_impact}` : '',
+  ].filter(Boolean);
+
+  return {
+    company: experience.company,
+    title: experience.title,
+    start_date: experience.start_date,
+    end_date: experience.end_date,
+    scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
+    scope_statement_is_new: false,
+    scope_statement_source: 'original' as const,
+    scope_statement_confidence: 'strong' as const,
+    scope_statement_evidence_found: '',
+    bullets: experience.bullets.map((bullet) => {
+      const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
+      return {
+        text: bullet,
+        is_new: false,
+        addresses_requirements: addressesRequirements,
+        source: 'original' as const,
+        requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
+        confidence: 'strong' as const,
+        evidence_found: bullet,
+        content_origin: 'original_resume' as const,
+        support_origin: 'original_resume' as const,
+      };
+    }),
+  };
+}
+
+function buildEarlierCareer(
+  input: ResumeWriterInput,
+  positionLayoutPlan = derivePositionLayoutPlan(input),
+): NonNullable<ResumeDraftOutput['earlier_career']> {
+  return getAuthoritativeSourceExperience(input.candidate)
+    .filter((experience) => positionLayoutPlan.get(normalizeCompanyKey(experience.company, experience.title))?.renderSection === 'earlier_career')
+    .map((experience) => ({
+      company: experience.company,
+      title: experience.title,
+      dates: '',
+    }));
 }
 
 function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
@@ -1584,41 +1784,13 @@ function buildSelectedAccomplishments(
   return deduped;
 }
 
-function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutput['professional_experience'] {
-  return getAuthoritativeSourceExperience(input.candidate).map((experience) => {
-    const scopeParts = [
-      experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
-      experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',
-      experience.inferred_scope?.geography ? `Geography: ${experience.inferred_scope.geography}` : '',
-      experience.inferred_scope?.revenue_impact ? `Revenue: ${experience.inferred_scope.revenue_impact}` : '',
-    ].filter(Boolean);
-
-    return {
-      company: experience.company,
-      title: experience.title,
-      start_date: experience.start_date,
-      end_date: experience.end_date,
-      scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
-      scope_statement_is_new: false,
-      scope_statement_source: 'original' as const,
-      scope_statement_confidence: 'strong' as const,
-      scope_statement_evidence_found: '',
-      bullets: experience.bullets.map((bullet) => {
-        const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
-        return {
-          text: bullet,
-          is_new: false,
-          addresses_requirements: addressesRequirements,
-          source: 'original' as const,
-          requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
-          confidence: 'strong' as const,
-          evidence_found: bullet,
-          content_origin: 'original_resume' as const,
-          support_origin: 'original_resume' as const,
-        };
-      }),
-    };
-  });
+function buildProfessionalExperience(
+  input: ResumeWriterInput,
+  positionLayoutPlan = derivePositionLayoutPlan(input),
+): ResumeDraftOutput['professional_experience'] {
+  return getAuthoritativeSourceExperience(input.candidate)
+    .filter((experience) => positionLayoutPlan.get(normalizeCompanyKey(experience.company, experience.title))?.renderSection !== 'earlier_career')
+    .map((experience) => buildProfessionalExperienceEntry(experience, input));
 }
 
 function matchRequirementLinks(text: string, requirements: Array<{ requirement: string }>): string[] {

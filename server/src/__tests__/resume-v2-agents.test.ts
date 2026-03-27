@@ -2006,6 +2006,169 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.professional_experience[0]?.bullets[3]?.text).toContain('99.99%');
     });
 
+    it('keeps older highly relevant roles in professional experience instead of collapsing them', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const relevanceAwareInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Current Manufacturing Co.',
+              title: 'SVP Operations',
+              start_date: 'Jan 2018',
+              end_date: 'Present',
+              bullets: ['Scaled multi-site manufacturing operations across 6 plants.'],
+            },
+            {
+              company: 'Legacy ERP Transformation',
+              title: 'Director, ERP Program',
+              start_date: 'Jan 2001',
+              end_date: 'Dec 2004',
+              bullets: ['Led SAP ERP rollout across manufacturing and distribution teams.'],
+            },
+          ],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          role_title: 'SVP Manufacturing Operations',
+          core_competencies: [
+            {
+              competency: 'ERP leadership across manufacturing and distribution operations',
+              importance: 'must_have',
+              evidence_from_jd: 'Lead ERP-enabled manufacturing transformation',
+            },
+          ],
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: 'ERP leadership across manufacturing and distribution operations',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Led SAP ERP rollout across manufacturing and distribution teams.'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(relevanceAwareInput);
+
+      expect(result.professional_experience.some((position) => position.company === 'Legacy ERP Transformation')).toBe(true);
+      expect(result.earlier_career?.some((position) => position.company === 'Legacy ERP Transformation')).not.toBe(true);
+    });
+
+    it('collapses older low-relevance roles into earlier career in deterministic fallback', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const lowRelevanceInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Current Manufacturing Co.',
+              title: 'SVP Operations',
+              start_date: 'Jan 2018',
+              end_date: 'Present',
+              bullets: ['Scaled multi-site manufacturing operations across 6 plants.'],
+            },
+            {
+              company: 'Legacy Retail Store',
+              title: 'Assistant Store Manager',
+              start_date: 'Jan 2000',
+              end_date: 'Dec 2003',
+              bullets: ['Supervised store opening and closing procedures.'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(lowRelevanceInput);
+
+      expect(result.professional_experience.some((position) => position.company === 'Legacy Retail Store')).toBe(false);
+      expect(result.earlier_career?.some((position) => position.company === 'Legacy Retail Store')).toBe(true);
+    });
+
+    it('moves older relevant roles back out of earlier career when the model collapses them too aggressively', async () => {
+      const collapsedOldRoleDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: RESUME_DRAFT_OUTPUT.professional_experience.filter((position) => position.company !== 'Legacy ERP Transformation'),
+        earlier_career: [
+          ...(RESUME_DRAFT_OUTPUT.earlier_career ?? []),
+          {
+            company: 'Legacy ERP Transformation',
+            title: 'Director, ERP Program',
+            dates: '',
+          },
+        ],
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(collapsedOldRoleDraft);
+
+      const relevanceAwareInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: ['Built cloud platform from scratch'],
+            },
+            {
+              company: 'Legacy ERP Transformation',
+              title: 'Director, ERP Program',
+              start_date: 'Jan 2001',
+              end_date: 'Dec 2004',
+              bullets: ['Led SAP ERP rollout across manufacturing and distribution teams.'],
+            },
+          ],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          role_title: 'SVP Manufacturing Operations',
+          core_competencies: [
+            {
+              competency: 'ERP leadership across manufacturing and distribution operations',
+              importance: 'must_have',
+              evidence_from_jd: 'Lead ERP-enabled manufacturing transformation',
+            },
+          ],
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: 'ERP leadership across manufacturing and distribution operations',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Led SAP ERP rollout across manufacturing and distribution teams.'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(relevanceAwareInput);
+
+      expect(result.professional_experience.some((position) => position.company === 'Legacy ERP Transformation')).toBe(true);
+      expect(result.earlier_career?.some((position) => position.company === 'Legacy ERP Transformation') ?? false).toBe(false);
+    });
+
     it('deterministic fallback surfaces satisfied years thresholds explicitly in the summary', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))

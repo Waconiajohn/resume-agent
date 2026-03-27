@@ -99,7 +99,8 @@ BULLET COUNT — JD-relevance governs, not minimums:
 - 15-20 years ago: brief, reframe for transferable skills, scope statement if role was senior
 - Never pad bullets to meet a count target
 - Never cut strong evidence to reduce length
-- 20+ years ago: "Additional Work Experience" section — title, company, city/state only, no bullets, no dates
+- 20+ years ago: move to "Additional Work Experience" ONLY when the role is both old and low current-role relevance
+- If an older role directly supports the top job needs, benchmark differentiators, or the candidate's current positioning, keep it in Professional Experience with bullets
 
 Strong action verbs: Drove, Championed, Orchestrated, Spearheaded, Transformed, Architected, Scaled, Delivered, Directed, Built, Negotiated, Launched
 BANNED bullet openers: "Responsible for," "Helped," "Assisted," "Supported," "Participated in," "Worked on"`,
@@ -110,10 +111,11 @@ Example categories: Cloud Platforms, Data & Analytics, ERP/CRM Systems, Programm
 Do not include basic tools (Word, Excel, PowerPoint) unless the role explicitly requires them.
 Omit this section entirely if the candidate lacks genuine technical breadth relevant to the target role.`,
 
-  earlier_career: `Additional Work Experience — for positions 20+ years old.
+  earlier_career: `Additional Work Experience — for positions that are old AND no longer materially relevant to the target role.
 Title, company, city and state only. No bullets. No dates.
 This section shows career foundation without revealing age or dating the candidate.
-Only include positions whose end_date is 20+ years before the current year.
+Do not move a role here if it still provides proof for the top job needs, benchmark expectations, or a major differentiator.
+Only include positions whose end_date is 20+ years before the current year AND whose relevance is low.
 Never include dates in this section.`,
 
   education: `Degree and institution.

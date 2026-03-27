@@ -134,3 +134,9 @@ The first implementation wave should keep live legacy schemas working while intr
 - Candidate Intelligence now builds and carries that outline forward instead of letting deterministic fallback collapse long resumes into a thinner intermediate shape.
 - Resume Writer now preserves positions and bullet density against the source outline, not only against possibly truncated `candidate.experience`.
 - This is a compatibility-safe first step toward relevance-aware compression; it is intentionally preserving structure before we retune how much older experience should be collapsed.
+
+## Resume-V2 Relevance-Aware Compression
+
+- Older roles are no longer treated as collapse candidates by age alone.
+- Resume Writer now keeps older positions in detailed `professional_experience` when they still prove current job needs, benchmark signals, or major differentiators.
+- `earlier_career` is now reserved for roles that are both old and low current-role relevance, which better fits long executive careers without blindly expanding every resume.
