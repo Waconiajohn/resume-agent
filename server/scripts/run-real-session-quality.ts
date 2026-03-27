@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,6 +68,56 @@ function parseSessionIds(): string[] {
 
 function isTruthyEnv(value: string | undefined): boolean {
   return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase());
+}
+
+function buildMarkdownSummary(args: {
+  generatedAt: string;
+  failOnWarn: boolean;
+  overallStatus: 'pass' | 'fail';
+  sessions: Array<Record<string, unknown>>;
+  gatingFailures: Array<{ label: string; company_name: string; role_title: string; status: string; alerts: QaAlert[] }>;
+}): string {
+  const lines: string[] = [
+    '# Resume Preservation QA',
+    '',
+    `- Generated: ${args.generatedAt}`,
+    `- Overall status: **${args.overallStatus.toUpperCase()}**`,
+    `- Fail on warn: ${args.failOnWarn ? 'yes' : 'no'}`,
+    '',
+    '| Pair | Role | Status | Bullet ratio | Roles below floor | Alerts |',
+    '| --- | --- | --- | ---: | --- | --- |',
+  ];
+
+  for (const session of args.sessions) {
+    const label = String(session.label ?? '');
+    const role = [session.company_name, session.role_title].filter(Boolean).join(' / ');
+    const status = String(session.proof_density_status ?? 'unknown');
+    const ratio = session.professional_bullet_char_ratio == null ? '-' : String(session.professional_bullet_char_ratio);
+    const rolesBelowFloor = Array.isArray(session.roles_below_density_floor) && session.roles_below_density_floor.length > 0
+      ? session.roles_below_density_floor.join(', ')
+      : '-';
+    const alerts = Array.isArray(session.proof_density_alerts) && session.proof_density_alerts.length > 0
+      ? session.proof_density_alerts.map((alert) => {
+          if (alert && typeof alert === 'object' && 'code' in alert) {
+            return String((alert as { code?: string }).code ?? '');
+          }
+          return '';
+        }).filter(Boolean).join(', ')
+      : '-';
+    lines.push(`| ${label} | ${role} | ${status} | ${ratio} | ${rolesBelowFloor} | ${alerts} |`);
+  }
+
+  if (args.gatingFailures.length > 0) {
+    lines.push('', '## Gating Failures', '');
+    for (const failure of args.gatingFailures) {
+      lines.push(`- **${failure.label}** — ${failure.company_name} / ${failure.role_title} (${failure.status})`);
+      for (const alert of failure.alerts) {
+        lines.push(`  - [${alert.severity}] ${alert.code}: ${alert.message}`);
+      }
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
 }
 
 function buildResumeText(draft: ResumeDraftOutput): string {
@@ -156,6 +206,39 @@ function normalizeBulletText(value: string): string {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function tokenizeBulletText(value: string): string[] {
+  return normalizeBulletText(value)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4);
+}
+
+function calculateBulletOverlap(left: string, right: string): number {
+  const leftTokens = tokenizeBulletText(left);
+  const rightTokens = tokenizeBulletText(right);
+  if (leftTokens.length === 0 || rightTokens.length === 0) return 0;
+
+  const rightSet = new Set(rightTokens);
+  const shared = leftTokens.filter((token) => rightSet.has(token)).length;
+  return Math.max(shared / leftTokens.length, shared / rightTokens.length);
+}
+
+function bulletLooksPreserved(sourceBullet: string, candidateBullet: string): boolean {
+  const normalizedSource = normalizeBulletText(sourceBullet);
+  const normalizedCandidate = normalizeBulletText(candidateBullet);
+  if (!normalizedSource || !normalizedCandidate) return false;
+  if (normalizedSource === normalizedCandidate) return true;
+
+  const overlap = calculateBulletOverlap(sourceBullet, candidateBullet);
+  if (overlap >= 0.72) return true;
+
+  const sourceConcreteTokens = Array.from(sourceBullet.matchAll(/\$?\d[\d,.%A-Za-z-]*/g), (match) => match[0].toLowerCase());
+  if (sourceConcreteTokens.length === 0) return overlap >= 0.6;
+
+  const candidateLower = normalizedCandidate;
+  const sharedConcreteTokens = sourceConcreteTokens.filter((token) => candidateLower.includes(token));
+  return overlap >= 0.55 && sharedConcreteTokens.length >= Math.min(1, sourceConcreteTokens.length);
+}
+
 function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResumeOutline>, draft: ResumeDraftOutput) {
   const sourcePositionsByKey = new Map(
     sourceOutline.positions.map((position) => [
@@ -166,6 +249,7 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
 
   const draftBullets = collectDraftProfessionalBullets(draft);
   const sourceBullets = sourceOutline.positions.flatMap((position) => position.bullets);
+  const selectedAccomplishmentBullets = draft.selected_accomplishments.map((item) => item.content);
   const roleSummaries = draft.professional_experience.map((experience) => {
     const sourcePosition = sourcePositionsByKey.get(normalizeRoleKey(experience.company, experience.title));
     const sourcePositionBullets = sourcePosition?.bullets ?? [];
@@ -174,11 +258,23 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
     const sourceAverageChars = averageTextLength(sourcePositionBullets);
     const finalAverageChars = averageTextLength(finalPositionBullets);
 
+    const promotedSourceBullets = sourcePositionBullets.filter((sourceBullet) => {
+      const alreadyCoveredInRole = finalPositionBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+      if (alreadyCoveredInRole) return false;
+      return selectedAccomplishmentBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+    });
+    const documentCoveredSourceBullets = sourcePositionBullets.filter((sourceBullet) => {
+      if (finalPositionBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet))) return true;
+      return selectedAccomplishmentBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+    });
+
     return {
       company: experience.company,
       title: experience.title,
       source_bullets: sourcePositionBullets.length,
       final_bullets: finalPositionBullets.length,
+      promoted_source_bullets: promotedSourceBullets.length,
+      document_covered_source_bullets: documentCoveredSourceBullets.length,
       source_average_bullet_chars: sourceAverageChars,
       final_average_bullet_chars: finalAverageChars,
       bullet_char_ratio: sourceAverageChars > 0 ? Number((finalAverageChars / sourceAverageChars).toFixed(2)) : null,
@@ -188,7 +284,8 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
       original_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'original').length,
       enhanced_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'enhanced').length,
       drafted_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
-      below_bullet_floor: finalPositionBullets.length < sourcePositionBullets.length,
+      below_bullet_floor: documentCoveredSourceBullets.length < sourcePositionBullets.length,
+      below_role_local_floor: finalPositionBullets.length < sourcePositionBullets.length,
       below_density_floor: sourceAverageChars >= 80 && finalAverageChars < (sourceAverageChars * 0.7),
     };
   });
@@ -213,7 +310,11 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
       (sum, experience) => sum + experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
       0,
     ),
+    selected_accomplishment_proof_bullets: draft.selected_accomplishments.filter((item) =>
+      sourceBullets.some((sourceBullet) => bulletLooksPreserved(sourceBullet, item.content))
+    ).length,
     roles_below_bullet_floor: roleSummaries.filter((role) => role.below_bullet_floor).map((role) => `${role.title} @ ${role.company}`),
+    roles_below_role_local_floor: roleSummaries.filter((role) => role.below_role_local_floor).map((role) => `${role.title} @ ${role.company}`),
     roles_below_density_floor: roleSummaries.filter((role) => role.below_density_floor).map((role) => `${role.title} @ ${role.company}`),
     role_summaries: roleSummaries,
   };
@@ -260,7 +361,18 @@ function evaluateProofDensity(proofDensity: ReturnType<typeof summarizeProofDens
     alerts.push({
       severity: 'fail',
       code: 'role_bullet_floor_breached',
-      message: `These roles still have fewer bullets than their preserved source role: ${proofDensity.roles_below_bullet_floor.join(', ')}.`,
+      message: `These roles still have source proof missing from the final document: ${proofDensity.roles_below_bullet_floor.join(', ')}.`,
+    });
+  }
+
+  const roleLocalOnlyLoss = proofDensity.roles_below_role_local_floor.filter(
+    (role) => !proofDensity.roles_below_bullet_floor.includes(role),
+  );
+  if (roleLocalOnlyLoss.length > 0) {
+    alerts.push({
+      severity: 'warn',
+      code: 'role_local_proof_promoted',
+      message: `These roles got thinner locally, but the missing proof appears to have been promoted elsewhere in the resume: ${roleLocalOnlyLoss.join(', ')}.`,
     });
   }
 
@@ -560,16 +672,42 @@ async function runRealSessionQa() {
     }
   }
 
+  const generatedAt = new Date().toISOString();
+  const overallStatus = gatingFailures.length > 0 ? 'fail' : 'pass';
+  const summaryPayload = {
+    generated_at: generatedAt,
+    fail_on_warn: failOnWarn,
+    overall_status: overallStatus,
+    gating_failures: gatingFailures,
+    sessions: summary,
+  };
+
+  writeFileSync(resolve(outDir, 'summary.json'), `${JSON.stringify(summaryPayload, null, 2)}\n`);
   writeFileSync(
-    resolve(outDir, 'summary.json'),
-    `${JSON.stringify({
-      generated_at: new Date().toISOString(),
-      fail_on_warn: failOnWarn,
-      overall_status: gatingFailures.length > 0 ? 'fail' : 'pass',
-      gating_failures: gatingFailures,
+    resolve(outDir, 'summary.md'),
+    buildMarkdownSummary({
+      generatedAt,
+      failOnWarn,
+      overallStatus,
+      gatingFailures,
       sessions: summary,
-    }, null, 2)}\n`,
+    }),
   );
+
+  const githubStepSummary = process.env.GITHUB_STEP_SUMMARY?.trim();
+  if (githubStepSummary) {
+    appendFileSync(
+      githubStepSummary,
+      `\n${buildMarkdownSummary({
+        generatedAt,
+        failOnWarn,
+        overallStatus,
+        gatingFailures,
+        sessions: summary,
+      })}`,
+    );
+  }
+
   console.log(JSON.stringify(summary, null, 2));
 
   if (gatingFailures.length > 0) {

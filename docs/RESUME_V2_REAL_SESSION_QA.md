@@ -36,6 +36,27 @@ If you need to run a specific curated set, pass the session IDs explicitly:
 REAL_QA_SESSION_IDS=id-1,id-2,id-3 npm run qa:real
 ```
 
+Artifacts written:
+
+- [summary.json](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality/summary.json)
+- [summary.md](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality/summary.md)
+
+The script now exposes preservation-gate results directly:
+
+- `overall_status`
+- `gating_failures`
+- per-session `proof_density_status`
+- per-session `proof_density_alerts`
+
+If the preservation gate fails, `qa:real` exits non-zero.
+`warn` sessions are still surfaced in the summary, but they only fail the run when you opt into strict mode with `npm run qa:real:strict`.
+
+For manual GitHub review, use the `Production Gates` workflow dispatch with:
+
+- `real_qa_session_ids`
+
+That job writes the same artifacts and also publishes a human-readable GitHub step summary.
+
 ## What Good Looks Like
 
 - The app explains what the AI is doing in plain English.

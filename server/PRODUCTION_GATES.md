@@ -43,6 +43,7 @@ It runs:
 2. Server verification (`server` typecheck/tests/build) on `pull_request` and `push`.
 3. Migration drift checks on `pull_request` and `push` (for `app/**`, `server/**`, and `supabase/migrations/**` changes).
 4. Optional staging readiness checks on manual dispatch when `ready_check_url` is provided.
+5. Optional real-session resume preservation QA on manual dispatch when `real_qa_session_ids` is provided.
 
 Repository secrets required for migration drift checks:
 
@@ -54,3 +55,32 @@ Recommended branch protection:
 - Require `Production Gates / App Verify`
 - Require `Production Gates / Server Verify`
 - Require `Production Gates / Migration Drift Gate`
+
+## Resume Preservation QA
+
+The real-session resume preservation gate is designed for release readiness and manual investigation, not every pull request.
+
+Use the workflow dispatch inputs in `.github/workflows/production-gates.yml`:
+
+- `real_qa_session_ids`
+  - comma-separated real session IDs to run through `npm run qa:real`
+- `ready_check_url`
+  - optional if you also want the `/ready` probe in the same manual run
+
+Required repository secrets for the real-session QA job:
+
+- `ZAI_API_KEY`
+- `PERPLEXITY_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Outputs:
+
+- GitHub step summary with preservation status, bullet-density ratio, and any gate alerts
+- Uploaded artifact: `resume-preservation-qa`
+- Local artifact shape mirrored under [test-results/real-session-quality](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality)
+
+Default behavior:
+
+- `npm run qa:real` fails only on preservation `fail` sessions
+- `npm run qa:real:strict` also fails on `warn` sessions when you want a tighter release bar

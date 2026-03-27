@@ -2081,6 +2081,89 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
     });
 
+    it('replaces unmatched duplicate draft bullets with missing source proof when counts already match', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Built cloud platform from scratch and secured $4M Series A support for launch.',
+                is_new: true,
+                addresses_requirements: [],
+                source: 'enhanced',
+                confidence: 'partial',
+                requirement_source: 'job_description',
+                evidence_found: 'Built cloud platform from scratch and secured $4M Series A',
+              },
+              {
+                text: 'Built cloud platform from scratch and secured $4M Series A.',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Built cloud platform from scratch and secured $4M Series A',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Built cloud platform from scratch and secured $4M Series A',
+                'Scaled team from 10 to 40 engineers across 3 time zones',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 2,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Built cloud platform from scratch and secured $4M Series A',
+                  'Scaled team from 10 to 40 engineers across 3 time zones',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toHaveLength(2);
+      expect(bullets).toContain('Built cloud platform from scratch and secured $4M Series A support for launch.');
+      expect(bullets).toContain('Scaled team from 10 to 40 engineers across 3 time zones');
+    });
+
     it('restores source proof when a same-count rewrite gets too generic', async () => {
       const rewrittenDraft: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,

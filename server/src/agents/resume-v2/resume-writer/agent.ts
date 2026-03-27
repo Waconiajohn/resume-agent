@@ -1065,6 +1065,39 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         'Replaced low-density bullets with source proof to prevent over-compression',
       );
     }
+
+    const coverageRecovery = findUncoveredSourceBulletsAndUnusedDraftIndexes(originalExp.bullets, draftBullets, input);
+    let coverageRestored = 0;
+
+    for (const [slot, replacementIndex] of coverageRecovery.unusedDraftIndexes.entries()) {
+      const sourceBulletText = coverageRecovery.uncoveredSourceBullets[slot];
+      if (!sourceBulletText) break;
+
+      draftBullets[replacementIndex] = {
+        text: sourceBulletText,
+        is_new: false,
+        addresses_requirements: [],
+        source: 'original',
+        confidence: 'strong',
+        evidence_found: sourceBulletText,
+        requirement_source: 'job_description',
+        content_origin: 'original_resume',
+        support_origin: 'original_resume',
+      };
+      coverageRestored += 1;
+    }
+
+    if (coverageRestored > 0) {
+      logger.warn(
+        {
+          company: draftExp.company,
+          originalCount: originalBulletCount,
+          coverageGaps: coverageRecovery.uncoveredSourceBullets.length,
+          coverageRestored,
+        },
+        'Replaced unmatched draft bullets with missing source proof to preserve full role coverage',
+      );
+    }
   }
 
   return draft;
@@ -1197,6 +1230,49 @@ function findBestDraftBulletMatch(
   }
 
   return { index: bestIndex, score: bestScore };
+}
+
+function findUncoveredSourceBulletsAndUnusedDraftIndexes(
+  sourceBullets: string[],
+  draftBullets: ResumeBullet[],
+  input: ResumeWriterInput,
+): { uncoveredSourceBullets: string[]; unusedDraftIndexes: number[] } {
+  const assignedDraftIndexes = new Set<number>();
+  const coveredSourceIndexes = new Set<number>();
+
+  for (const [sourceIndex, sourceBulletText] of sourceBullets.entries()) {
+    const sourceImportance = scoreSourceBulletImportance(sourceBulletText, input);
+    let bestIndex = -1;
+    let bestScore = 0;
+
+    for (const [draftIndex, draftBullet] of draftBullets.entries()) {
+      if (assignedDraftIndexes.has(draftIndex)) continue;
+      if (
+        !bulletPreservesProofDensity(draftBullet.text, sourceBulletText)
+        || bulletOverCompressesImportantSourceProof(draftBullet.text, sourceBulletText, sourceImportance)
+      ) {
+        continue;
+      }
+
+      const score = calculateTokenOverlap(draftBullet.text, sourceBulletText);
+      if (score > bestScore) {
+        bestIndex = draftIndex;
+        bestScore = score;
+      }
+    }
+
+    if (bestIndex !== -1) {
+      assignedDraftIndexes.add(bestIndex);
+      coveredSourceIndexes.add(sourceIndex);
+    }
+  }
+
+  return {
+    uncoveredSourceBullets: sourceBullets.filter((_, index) => !coveredSourceIndexes.has(index)),
+    unusedDraftIndexes: draftBullets
+      .map((_, index) => index)
+      .filter((index) => !assignedDraftIndexes.has(index)),
+  };
 }
 
 function scoreSourceBulletImportance(bulletText: string, input: ResumeWriterInput): number {
