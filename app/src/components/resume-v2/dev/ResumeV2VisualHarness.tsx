@@ -18,7 +18,15 @@ function cloneResume(resume: ResumeDraft): ResumeDraft {
 function parseScenario(search: string): ResumeV2VisualScenarioId {
   const params = new URLSearchParams(search);
   const value = params.get('scenario');
-  if (value === 'final-review' || value === 'ready' || value === 'attention' || value === 'action-state') return value;
+  if (
+    value === 'final-review'
+    || value === 'ready'
+    || value === 'attention'
+    || value === 'action-state'
+    || value === 'action-partial'
+    || value === 'action-benchmark'
+    || value === 'action-ai-draft'
+  ) return value;
   return 'attention';
 }
 
@@ -90,12 +98,12 @@ export function ResumeV2VisualHarness() {
   const scenarioId = parseScenario(location.search);
   const scenario = useMemo(() => getResumeV2VisualScenario(scenarioId), [scenarioId]);
   const [editableResume, setEditableResume] = useState<ResumeDraft>(() => cloneResume(scenario.editableResume));
-  const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(scenario.initialPendingEdit ?? null);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     setEditableResume(cloneResume(scenario.editableResume));
-    setPendingEdit(null);
+    setPendingEdit(scenario.initialPendingEdit ?? null);
     setIsEditing(false);
   }, [scenario]);
 

@@ -19,6 +19,27 @@ const scenarios = [
     detailScreenshot: 'resume-v2-visual-action-state-detail.png',
   },
   {
+    slug: 'action-partial',
+    path: '/__dev/resume-v2-visual?scenario=action-partial',
+    screenshot: 'resume-v2-visual-action-partial.png',
+    detailSelector: '[data-bullet-id="selected_accomplishments-0"]',
+    detailScreenshot: 'resume-v2-visual-action-partial-detail.png',
+  },
+  {
+    slug: 'action-benchmark',
+    path: '/__dev/resume-v2-visual?scenario=action-benchmark',
+    screenshot: 'resume-v2-visual-action-benchmark.png',
+    detailSelector: '[data-bullet-id="selected_accomplishments-1"]',
+    detailScreenshot: 'resume-v2-visual-action-benchmark-detail.png',
+  },
+  {
+    slug: 'action-ai-draft',
+    path: '/__dev/resume-v2-visual?scenario=action-ai-draft',
+    screenshot: 'resume-v2-visual-action-ai-draft.png',
+    detailSelector: '[data-bullet-id="selected_accomplishments-0"]',
+    detailScreenshot: 'resume-v2-visual-action-ai-draft-detail.png',
+  },
+  {
     slug: 'final-review',
     path: '/__dev/resume-v2-visual?scenario=final-review',
     screenshot: 'resume-v2-visual-final-review.png',

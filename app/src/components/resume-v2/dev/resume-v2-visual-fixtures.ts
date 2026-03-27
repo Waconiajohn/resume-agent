@@ -7,8 +7,16 @@ import type {
   V2PipelineData,
   VerificationDetail,
 } from '@/types/resume-v2';
+import type { PendingEdit } from '@/hooks/useInlineEdit';
 
-export type ResumeV2VisualScenarioId = 'attention' | 'action-state' | 'final-review' | 'ready';
+export type ResumeV2VisualScenarioId =
+  | 'attention'
+  | 'action-state'
+  | 'action-partial'
+  | 'action-benchmark'
+  | 'action-ai-draft'
+  | 'final-review'
+  | 'ready';
 
 export interface ResumeV2VisualScenario {
   id: ResumeV2VisualScenarioId;
@@ -18,11 +26,25 @@ export interface ResumeV2VisualScenario {
   editableResume: ResumeDraft;
   hiringManagerResult?: FinalReviewResult | null;
   isFinalReviewStale?: boolean;
+  initialPendingEdit?: PendingEdit | null;
   initialActiveBullet?: {
     section: string;
     index: number;
     requirements: string[];
   } | null;
+}
+
+function makeBenchmarkActionResumeDraft(): ResumeDraft {
+  const resume = cloneResumeDraft(makeResumeDraft());
+  resume.selected_accomplishments[1] = {
+    ...resume.selected_accomplishments[1],
+    content: 'Turned board-level operating reviews into a tighter cross-site decision cadence.',
+    addresses_requirements: ['Board-ready operating reviews'],
+    confidence: 'needs_validation',
+    evidence_found: 'Presented weekly operating updates to senior leadership across plant and distribution teams.',
+    requirement_source: 'benchmark',
+  };
+  return resume;
 }
 
 function cloneResumeDraft(resume: ResumeDraft): ResumeDraft {
@@ -417,6 +439,69 @@ export function getResumeV2VisualScenario(
     };
   }
 
+  if (id === 'action-partial') {
+    const resume = cloneResumeDraft(makeResumeDraft());
+    return {
+      id,
+      label: 'Action State — Strengthen',
+      description: 'Shows the clicked-line repair surface for a partial-proof line that needs stronger detail.',
+      data: makePipelineData(resume),
+      editableResume: resume,
+      hiringManagerResult: null,
+      isFinalReviewStale: true,
+      initialActiveBullet: {
+        section: 'selected_accomplishments',
+        index: 0,
+        requirements: ['Develop and track performance metrics'],
+      },
+    };
+  }
+
+  if (id === 'action-benchmark') {
+    const resume = makeBenchmarkActionResumeDraft();
+    return {
+      id,
+      label: 'Action State — Validate Fit',
+      description: 'Shows the clicked-line repair surface for a benchmark-risk line that needs confirmation or reframing.',
+      data: makePipelineData(resume),
+      editableResume: resume,
+      hiringManagerResult: null,
+      isFinalReviewStale: true,
+      initialActiveBullet: {
+        section: 'selected_accomplishments',
+        index: 1,
+        requirements: ['Board-ready operating reviews'],
+      },
+    };
+  }
+
+  if (id === 'action-ai-draft') {
+    const resume = cloneResumeDraft(makeResumeDraft());
+    return {
+      id,
+      label: 'Action State — AI Draft Loaded',
+      description: 'Shows the clicked-line repair surface after an AI action has already loaded a draft into the working area.',
+      data: makePipelineData(resume),
+      editableResume: resume,
+      hiringManagerResult: null,
+      isFinalReviewStale: true,
+      initialPendingEdit: {
+        section: 'selected_accomplishments',
+        originalText: resume.selected_accomplishments[0]?.content ?? '',
+        replacement: 'Built and tracked weekly scorecards covering safety, throughput, labor efficiency, and on-time delivery across three plants.',
+        action: 'add_metrics',
+        editContext: {
+          origin: 'manual',
+        },
+      },
+      initialActiveBullet: {
+        section: 'selected_accomplishments',
+        index: 0,
+        requirements: ['Develop and track performance metrics'],
+      },
+    };
+  }
+
   if (id === 'final-review') {
     const resume = cloneResumeDraft(makeResumeDraft());
     return {
@@ -458,6 +543,9 @@ export function getResumeV2VisualScenario(
 export const RESUME_V2_VISUAL_SCENARIOS: ResumeV2VisualScenarioId[] = [
   'attention',
   'action-state',
+  'action-partial',
+  'action-benchmark',
+  'action-ai-draft',
   'final-review',
   'ready',
 ];
