@@ -41,6 +41,10 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..', '..');
 
 const DEFAULT_BATCH_LIMIT = 5;
+const PROOF_DENSITY_WARN_RATIO = 0.9;
+const PROOF_DENSITY_FAIL_RATIO = 0.8;
+const CONCRETE_PROOF_WARN_RATIO = 0.9;
+const CONCRETE_PROOF_FAIL_RATIO = 0.8;
 const EXCLUDED_DEFAULT_QA_KEYWORDS = [
   'conocophillips',
   'drilling',
@@ -180,6 +184,7 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
       original_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'original').length,
       enhanced_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'enhanced').length,
       drafted_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
+      below_bullet_floor: finalPositionBullets.length < sourcePositionBullets.length,
       below_density_floor: sourceAverageChars >= 80 && finalAverageChars < (sourceAverageChars * 0.7),
     };
   });
@@ -204,9 +209,92 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
       (sum, experience) => sum + experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
       0,
     ),
+    roles_below_bullet_floor: roleSummaries.filter((role) => role.below_bullet_floor).map((role) => `${role.title} @ ${role.company}`),
     roles_below_density_floor: roleSummaries.filter((role) => role.below_density_floor).map((role) => `${role.title} @ ${role.company}`),
     role_summaries: roleSummaries,
   };
+}
+
+type QaAlert = {
+  severity: 'warn' | 'fail';
+  code: string;
+  message: string;
+};
+
+function evaluateProofDensity(proofDensity: ReturnType<typeof summarizeProofDensity>): {
+  status: 'pass' | 'warn' | 'fail';
+  alerts: QaAlert[];
+} {
+  const alerts: QaAlert[] = [];
+  const overallRatio = proofDensity.professional_bullet_char_ratio;
+
+  if (typeof overallRatio === 'number') {
+    if (overallRatio < PROOF_DENSITY_FAIL_RATIO) {
+      alerts.push({
+        severity: 'fail',
+        code: 'overall_density_floor_breached',
+        message: `Average professional bullet length fell to ${overallRatio}, below the fail floor of ${PROOF_DENSITY_FAIL_RATIO}.`,
+      });
+    } else if (overallRatio < PROOF_DENSITY_WARN_RATIO) {
+      alerts.push({
+        severity: 'warn',
+        code: 'overall_density_thinning',
+        message: `Average professional bullet length fell to ${overallRatio}, below the warning floor of ${PROOF_DENSITY_WARN_RATIO}.`,
+      });
+    }
+  }
+
+  if (proofDensity.roles_below_density_floor.length > 0) {
+    alerts.push({
+      severity: 'fail',
+      code: 'role_density_floor_breached',
+      message: `These roles dropped below the per-role density floor: ${proofDensity.roles_below_density_floor.join(', ')}.`,
+    });
+  }
+
+  if (proofDensity.roles_below_bullet_floor.length > 0) {
+    alerts.push({
+      severity: 'fail',
+      code: 'role_bullet_floor_breached',
+      message: `These roles still have fewer bullets than their preserved source role: ${proofDensity.roles_below_bullet_floor.join(', ')}.`,
+    });
+  }
+
+  if (proofDensity.source_concrete_proof_bullets > 0) {
+    const concreteRatio = Number(
+      (proofDensity.final_concrete_proof_bullets / proofDensity.source_concrete_proof_bullets).toFixed(2),
+    );
+
+    if (concreteRatio < CONCRETE_PROOF_FAIL_RATIO) {
+      alerts.push({
+        severity: 'fail',
+        code: 'concrete_proof_loss',
+        message: `Concrete proof bullets fell to ${concreteRatio} of source density (${proofDensity.final_concrete_proof_bullets}/${proofDensity.source_concrete_proof_bullets}).`,
+      });
+    } else if (concreteRatio < CONCRETE_PROOF_WARN_RATIO) {
+      alerts.push({
+        severity: 'warn',
+        code: 'concrete_proof_thinning',
+        message: `Concrete proof bullets fell to ${concreteRatio} of source density (${proofDensity.final_concrete_proof_bullets}/${proofDensity.source_concrete_proof_bullets}).`,
+      });
+    }
+  }
+
+  if (proofDensity.drafted_proof_bullets > 0) {
+    alerts.push({
+      severity: 'warn',
+      code: 'drafted_professional_bullets_present',
+      message: `${proofDensity.drafted_proof_bullets} professional-experience bullet(s) still rely on drafted proof.`,
+    });
+  }
+
+  const status = alerts.some((alert) => alert.severity === 'fail')
+    ? 'fail'
+    : alerts.some((alert) => alert.severity === 'warn')
+      ? 'warn'
+      : 'pass';
+
+  return { status, alerts };
 }
 
 function collectJobRequirements(job: JobIntelligenceOutput, gap: GapAnalysisOutput): string[] {
@@ -351,6 +439,7 @@ async function runRealSessionQa() {
     const finalResumeText = buildResumeText(finalDraft);
     const sourceOutline = buildSourceResumeOutline(resumeText);
     const proofDensity = summarizeProofDensity(sourceOutline, finalDraft);
+    const proofDensityQa = evaluateProofDensity(proofDensity);
     const prompts = buildFinalReviewPrompts({
       companyName: pipelineState.job_intelligence.company_name || 'Target Company',
       roleTitle: pipelineState.job_intelligence.role_title || 'Target Role',
@@ -405,6 +494,7 @@ async function runRealSessionQa() {
       final_resume_text_length: finalResumeText.length,
       final_resume_line_count: finalResumeText.split('\n').length,
       proof_density: proofDensity,
+      proof_density_qa: proofDensityQa,
       job_requirement_count: jobRequirements.length,
       benchmark_requirement_count: benchmarkRequirements.length,
       hard_requirement_risks: effectiveHardRisks,
@@ -441,6 +531,8 @@ async function runRealSessionQa() {
       enhanced_proof_bullets: proofDensity.enhanced_proof_bullets,
       drafted_proof_bullets: proofDensity.drafted_proof_bullets,
       roles_below_density_floor: proofDensity.roles_below_density_floor,
+      proof_density_status: proofDensityQa.status,
+      proof_density_alerts: proofDensityQa.alerts,
       recruiter_decision: finalReview.six_second_scan.decision,
       verdict: finalReview.hiring_manager_verdict.rating,
       hard_requirement_risks: effectiveHardRisks.length,
