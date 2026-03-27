@@ -916,125 +916,32 @@ function InlineEditPanel({
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Working draft
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Rewrite the sentence here directly, or use one of the AI actions to replace this box with a safer draft.
-                </p>
-              </div>
-              {matchesPendingEdit && (
-                <span className="resume-proof-meta-label text-slate-600">
-                  AI draft loaded
-                </span>
-              )}
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Line context
+            </p>
+            <dl className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm leading-6 text-slate-700">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
+              <dd className="min-w-0 break-words">{requirementLabel}</dd>
+
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
+              <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
+
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
+              <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
+            </dl>
+            <div className="mt-3 border-t border-slate-200 pt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Coverage goal
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                {requestedCoverage}
+              </p>
             </div>
-
-            <textarea
-              value={draftValue}
-              onChange={(event) => setDraftValue(event.target.value)}
-              rows={3}
-              aria-label="Working draft for this resume line"
-              className="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors focus:border-slate-500 focus:bg-white"
-            />
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {aiActions.map(({ action, label }) => (
-                <button
-                  key={action}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRequestEdit(bulletText, section, action, aiInstruction);
-                  }}
-                  disabled={isEditing}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 transition-colors"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!trimmedDraft) return;
-                  if (matchesPendingEdit) {
-                    onAcceptEdit?.(trimmedDraft);
-                    return;
-                  }
-                  onBulletEdit?.(section, bulletIndex, trimmedDraft);
-                }}
-                disabled={!canApplyDraft}
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Apply to Resume
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDraftValue(resetTarget);
-                }}
-                disabled={draftValue === resetTarget}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
-              >
-                Reset Draft
-              </button>
-              {matchesPendingEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDraftValue(bulletText);
-                    onRejectEdit?.();
-                  }}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Discard AI Draft
-                </button>
-              )}
-            </div>
-
-            {isEditing && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Generating a reviewable draft...
-              </div>
-            )}
           </div>
 
           <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Line context
-              </p>
-              <dl className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm leading-6 text-slate-700">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
-                <dd className="min-w-0 break-words">{requirementLabel}</dd>
-
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
-                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
-
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
-              </dl>
-              <div className="mt-3 border-t border-slate-200 pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Coverage goal
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-700">
-                  {requestedCoverage}
-                </p>
-              </div>
-            </div>
-
             <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
                 {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'High-risk benchmark line' : 'Code Red'}
@@ -1060,6 +967,99 @@ function InlineEditPanel({
               )}
             </div>
           </div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Working draft
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Review the assessment above, then rewrite the sentence here directly or use the AI actions to replace this box with a better draft.
+              </p>
+            </div>
+            {matchesPendingEdit && (
+              <span className="resume-proof-meta-label text-slate-600">
+                AI draft loaded
+              </span>
+            )}
+          </div>
+
+          <textarea
+            value={draftValue}
+            onChange={(event) => setDraftValue(event.target.value)}
+            rows={4}
+            aria-label="Working draft for this resume line"
+            className="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors focus:border-slate-500 focus:bg-white"
+          />
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {aiActions.map(({ action, label }) => (
+              <button
+                key={action}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestEdit(bulletText, section, action, aiInstruction);
+                }}
+                disabled={isEditing}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!trimmedDraft) return;
+                if (matchesPendingEdit) {
+                  onAcceptEdit?.(trimmedDraft);
+                  return;
+                }
+                onBulletEdit?.(section, bulletIndex, trimmedDraft);
+              }}
+              disabled={!canApplyDraft}
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Apply to Resume
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDraftValue(resetTarget);
+              }}
+              disabled={draftValue === resetTarget}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+            >
+              Reset Draft
+            </button>
+            {matchesPendingEdit && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftValue(bulletText);
+                  onRejectEdit?.();
+                }}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Discard AI Draft
+              </button>
+            )}
+          </div>
+
+          {isEditing && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Generating a reviewable draft...
+            </div>
+          )}
         </div>
       </div>
     </div>
