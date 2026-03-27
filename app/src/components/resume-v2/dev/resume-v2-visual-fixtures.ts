@@ -461,8 +461,8 @@ export function getResumeV2VisualScenario(
     const resume = makeBenchmarkActionResumeDraft();
     return {
       id,
-      label: 'Action State — Validate Fit',
-      description: 'Shows the clicked-line repair surface for a benchmark-risk line that needs confirmation or reframing.',
+      label: 'Action State — Confirm Fit',
+      description: 'Shows the clicked-line repair surface for a benchmark-oriented line that needs honest confirmation or reframing.',
       data: makePipelineData(resume),
       editableResume: resume,
       hiringManagerResult: null,

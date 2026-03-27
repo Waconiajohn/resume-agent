@@ -862,6 +862,7 @@ function InlineEditPanel({
   onRejectEdit,
 }: InlineEditPanelProps) {
   const [draftValue, setDraftValue] = useState('');
+  const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const statusMeta = getConfidencePill(confidence, requirementSource);
   const requirementLabel = requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
   const hasEvidence = evidenceFound.trim().length > 0;
@@ -887,13 +888,19 @@ function InlineEditPanel({
   const canApplyDraft = trimmedDraft.length > 0 && (matchesPendingEdit || hasManualChanges);
   const resetTarget = matchesPendingEdit && pendingEdit ? pendingEdit.replacement : bulletText;
   const aiInstruction = trimmedDraft || bulletText.trim();
-  const aiActions: Array<{ action: EditAction; label: string }> = [
-    { action: 'strengthen', label: 'Strengthen wording' },
-    { action: 'add_metrics', label: 'Add proof' },
-    { action: 'shorten', label: 'Shorten' },
-    { action: 'rewrite', label: 'Rewrite safely' },
-    { action: 'not_my_voice', label: 'Not my voice' },
-  ];
+  const aiActions: Array<{ action: EditAction; label: string }> = isBenchmarkValidation
+    ? [
+        { action: 'add_metrics', label: 'Connect to my background' },
+        { action: 'rewrite', label: 'Rewrite to match my background' },
+        { action: 'not_my_voice', label: 'Not my voice' },
+      ]
+    : [
+        { action: 'strengthen', label: 'Strengthen wording' },
+        { action: 'add_metrics', label: 'Add proof' },
+        { action: 'shorten', label: 'Shorten' },
+        { action: 'rewrite', label: 'Rewrite safely' },
+        { action: 'not_my_voice', label: 'Not my voice' },
+      ];
 
   return (
     <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
@@ -929,7 +936,7 @@ function InlineEditPanel({
               <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
 
               <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-              <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
+              <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource)}</dd>
             </dl>
             <div className="mt-3 border-t border-slate-200 pt-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -944,7 +951,7 @@ function InlineEditPanel({
           <div className="space-y-3">
             <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'High-risk benchmark line' : 'Code Red'}
+                {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'Confirm Fit' : 'Code Red'}
               </p>
               <p className="mt-1 text-[13px] leading-6">
                 {getProofStateNextStep(confidence, requirementSource)}
@@ -976,7 +983,9 @@ function InlineEditPanel({
                 Working draft
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Review the assessment above, then rewrite the sentence here directly or use the AI actions to replace this box with a better draft.
+                {isBenchmarkValidation
+                  ? 'Review the assessment above, then confirm this line honestly fits your background. If it does, rewrite it in your own terms. If it does not, replace it with something truer.'
+                  : 'Review the assessment above, then rewrite the sentence here directly or use the AI actions to replace this box with a better draft.'}
               </p>
             </div>
             {matchesPendingEdit && (
@@ -1174,7 +1183,7 @@ function getConfidencePill(
 
   if (confidence === 'needs_validation' && requirementSource === 'benchmark') {
     return {
-      label: 'Validate Fit',
+      label: 'Confirm Fit',
       className:
         'resume-proof-meta-label resume-proof-meta-label--benchmark',
     };
@@ -1212,10 +1221,12 @@ function getSupportOriginLabel(
   supportOrigin: ResumeSupportOrigin | undefined,
   hasEvidence: boolean,
   confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
 ): string {
   if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
   if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
   if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
+  if (requirementSource === 'benchmark' && confidence === 'needs_validation') return 'Not directly confirmed';
   return 'Not found yet';
 }
 
@@ -1246,7 +1257,7 @@ function getProofStateNextStep(
     return 'Add one concrete metric, scope detail, or outcome so this reads as direct proof.';
   }
   if (requirementSource === 'benchmark') {
-    return 'Connect this benchmark signal to a real example from your background before you keep it.';
+    return 'This line may fit the role, but confirm it honestly matches your background before you keep it.';
   }
   return 'Confirm it, rewrite it safely, or replace it with something you can prove.';
 }

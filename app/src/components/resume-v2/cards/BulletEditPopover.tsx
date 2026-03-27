@@ -124,10 +124,11 @@ export function BulletEditPopover({
     requirementSource === 'job_description' ? 'Targets Job Need' : 'Targets Benchmark Signal';
   const RequirementIcon =
     requirementSource === 'job_description' ? Briefcase : BookOpen;
+  const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const statusTone = getProofStateTone(confidence, requirementSource);
   const nextStepHint = getProofStateNextStep(confidence, requirementSource);
   const contentOriginLabel = getContentOriginLabel(contentOrigin, confidence);
-  const supportOriginLabel = getSupportOriginLabel(supportOrigin, hasEvidence, confidence);
+  const supportOriginLabel = getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource);
 
   return (
     <div
@@ -242,21 +243,21 @@ export function BulletEditPopover({
               onClick={() => handleAiAction('strengthen')}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Strengthen wording
+              {isBenchmarkValidation ? 'Connect to my background' : 'Strengthen wording'}
             </button>
             <button
               type="button"
               onClick={() => handleAiAction('add_metrics')}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Add proof
+              {isBenchmarkValidation ? 'Add direct support' : 'Add proof'}
             </button>
             <button
               type="button"
               onClick={() => handleAiAction('rewrite')}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Rewrite safely
+              {isBenchmarkValidation ? 'Rewrite to match my background' : 'Rewrite safely'}
             </button>
           </div>
         </div>
@@ -287,8 +288,8 @@ function getProofStateTone(
 
   if (requirementSource === 'benchmark') {
     return {
-      label: 'High-risk benchmark line',
-      message: 'This helps match the benchmark candidate, but you should confirm or rewrite it before export.',
+      label: 'Confirm Fit',
+      message: 'This line may fit the role, but confirm it honestly matches your background before export.',
       className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
@@ -313,7 +314,7 @@ function getProofStateNextStep(
   }
 
   if (requirementSource === 'benchmark') {
-    return 'Best next move: connect this benchmark signal to a real example from your background before you keep it.';
+    return 'Best next move: keep it only if it truly fits your background. Otherwise rewrite it or replace it with something truer.';
   }
 
   return 'Best next move: replace this with something you can prove, or confirm the experience and rewrite it safely.';
@@ -332,9 +333,11 @@ function getSupportOriginLabel(
   supportOrigin: ResumeSupportOrigin | undefined,
   hasEvidence: boolean,
   confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
 ): string {
   if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
   if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
   if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
+  if (requirementSource === 'benchmark' && confidence === 'needs_validation') return 'Not directly confirmed';
   return 'Not found yet';
 }

@@ -205,6 +205,19 @@ function makeResumeDraft(): ResumeDraft {
   };
 }
 
+function makeBenchmarkResumeDraft(): ResumeDraft {
+  const resume = makeResumeDraft();
+  resume.selected_accomplishments[0] = {
+    ...resume.selected_accomplishments[0],
+    content: 'Built board-ready operating reviews for multi-site manufacturing teams',
+    addresses_requirements: ['Board-ready operating reviews'],
+    confidence: 'needs_validation',
+    requirement_source: 'benchmark',
+    evidence_found: '',
+  };
+  return resume;
+}
+
 function makeResumeDraftWithAttention(): ResumeDraft {
   const resume = makeResumeDraft();
   resume.selected_accomplishments[0] = {
@@ -680,6 +693,28 @@ describe('InlineEditPanel — action buttons', () => {
     expect(screen.getByRole('button', { name: 'Shorten' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Rewrite safely' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Not my voice' })).toBeDisabled();
+  });
+
+  it('uses confirm-fit language and benchmark-specific actions for benchmark validation lines', () => {
+    const resume = makeBenchmarkResumeDraft();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onBulletClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        isEditing={false}
+        pendingEdit={null}
+      />,
+    );
+
+    expect(screen.getAllByText('Confirm Fit').length).toBeGreaterThan(0);
+    expect(screen.getByText(/confirm this line honestly fits your background/i)).toBeInTheDocument();
+    expect(screen.getByText('Not directly confirmed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect to my background' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rewrite to match my background' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Strengthen wording' })).not.toBeInTheDocument();
   });
 });
 

@@ -278,7 +278,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--benchmark');
     expect(bullet!.className).not.toContain('resume-proof-line--code-red');
-    expect(screen.getByText('Validate Fit')).toBeInTheDocument();
+    expect(screen.getByText('Confirm Fit')).toBeInTheDocument();
   });
 
   it('keeps strong bullets visually quiet without an extra pill', () => {
@@ -287,7 +287,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     expect(screen.queryByText('Strengthen')).not.toBeInTheDocument();
     expect(screen.queryByText('Code Red')).not.toBeInTheDocument();
-    expect(screen.queryByText('Validate Fit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Confirm Fit')).not.toBeInTheDocument();
   });
 
   it('renders explicit line-level proof treatment on reviewable bullets', () => {
@@ -452,8 +452,8 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('High-risk benchmark line')).toBeInTheDocument();
-    expect(screen.getByText(/confirm or rewrite it before export/i)).toBeInTheDocument();
+    expect(screen.getByText('Confirm Fit')).toBeInTheDocument();
+    expect(screen.getByText(/confirm it honestly matches your background before export/i)).toBeInTheDocument();
   });
 
   it('shows a strengthening message when partial proof exists', () => {
