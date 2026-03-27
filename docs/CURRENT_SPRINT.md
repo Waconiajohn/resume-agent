@@ -140,3 +140,9 @@ The first implementation wave should keep live legacy schemas working while intr
 - Older roles are no longer treated as collapse candidates by age alone.
 - Resume Writer now keeps older positions in detailed `professional_experience` when they still prove current job needs, benchmark signals, or major differentiators.
 - `earlier_career` is now reserved for roles that are both old and low current-role relevance, which better fits long executive careers without blindly expanding every resume.
+
+## Resume-V2 Proof-Density Guardrail
+
+- Resume Writer now treats bullet preservation as more than a raw count problem.
+- If an AI rewrite keeps the bullet count but drops hard proof like metrics, named systems, site counts, or materially compresses a high-value source bullet, the writer restores the stronger source proof instead of quietly accepting the thinner rewrite.
+- Live executive-session QA now shows the writer preserving full role/bullet structure while staying closer to the original resume's concrete substance, which is the right direction for 2-page executive resumes.

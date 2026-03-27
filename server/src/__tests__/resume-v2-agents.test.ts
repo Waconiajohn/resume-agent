@@ -2081,6 +2081,162 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
     });
 
+    it('restores source proof when a same-count rewrite gets too generic', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+                is_new: true,
+                addresses_requirements: [],
+                source: 'enhanced',
+                confidence: 'partial',
+                requirement_source: 'job_description',
+                evidence_found: 'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toHaveLength(1);
+      expect(bullets[0]).toBe('Built weekly KPI reviews and line-performance meetings across 3 sites.');
+    });
+
+    it('restores high-value source proof when a non-metric rewrite gets overly compressed', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Unified brand strategy across a multi-brand portfolio.',
+                is_new: true,
+                addresses_requirements: ['Multi-brand portfolio management'],
+                source: 'enhanced',
+                confidence: 'partial',
+                requirement_source: 'job_description',
+                evidence_found: 'Led multi-brand portfolio management across pricing, retail, and digital campaign planning, giving category teams one shared growth calendar and launch rhythm.',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        gap_analysis: {
+          ...input.gap_analysis,
+          requirements: [
+            {
+              requirement: 'Multi-brand portfolio management',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: [],
+            },
+          ],
+        },
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Led multi-brand portfolio management across pricing, retail, and digital campaign planning, giving category teams one shared growth calendar and launch rhythm.',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Led multi-brand portfolio management across pricing, retail, and digital campaign planning, giving category teams one shared growth calendar and launch rhythm.',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toHaveLength(1);
+      expect(bullets[0]).toBe('Led multi-brand portfolio management across pricing, retail, and digital campaign planning, giving category teams one shared growth calendar and launch rhythm.');
+    });
+
     it('keeps older highly relevant roles in professional experience instead of collapsing them', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))

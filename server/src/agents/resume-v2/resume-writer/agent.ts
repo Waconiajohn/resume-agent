@@ -30,6 +30,36 @@ import type {
 } from '../types.js';
 
 const loggedFuzzyExperienceFramingMatches = new Set<string>();
+const PROOF_SIGNAL_STOPWORDS = new Set([
+  'about',
+  'across',
+  'after',
+  'along',
+  'among',
+  'around',
+  'before',
+  'below',
+  'built',
+  'could',
+  'during',
+  'drove',
+  'every',
+  'focus',
+  'from',
+  'improved',
+  'including',
+  'into',
+  'launched',
+  'led',
+  'managed',
+  'over',
+  'through',
+  'throughout',
+  'under',
+  'using',
+  'with',
+  'within',
+]);
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Return exactly one JSON object.
@@ -539,6 +569,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
       parts.push(`  - ${bullet}`);
     }
     parts.push(`  [DETAIL FLOOR: If this role stays in professional_experience, preserve at least ${exp.bullets.length} distinct bullet-level proof points.]`);
+    parts.push("  [PROOF FLOOR: Preserve the role's concrete proof - metrics, named systems, site counts, geographies, product context, and other specifics. Improve the wording without genericizing the evidence.]");
     // Add experience framing from narrative strategy using fuzzy company name lookup.
     // The LLM may return slightly different company names (e.g. "Acme Corp" vs "Acme"),
     // so fall back through: exact → case-insensitive → substring-includes.
@@ -930,21 +961,25 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
 
     const draftBulletCount = (draftExp.bullets ?? []).length;
     const originalBulletCount = originalExp.bullets.length;
+    const draftBullets = draftExp.bullets ?? [];
+    const uncoveredSourceBullets = originalExp.bullets
+      .filter((origBullet) => {
+        const sourceImportance = scoreSourceBulletImportance(origBullet, input);
+        return !draftBullets.some((draftBullet) => (
+          bulletPreservesProofDensity(draftBullet.text, origBullet)
+          && !bulletOverCompressesImportantSourceProof(draftBullet.text, origBullet, sourceImportance)
+        ));
+      })
+      .sort((left, right) => {
+        const rightScore = scoreSourceBulletImportance(right, input);
+        const leftScore = scoreSourceBulletImportance(left, input);
+        return rightScore - leftScore;
+      });
 
     // If the LLM wrote fewer bullets than the original, backfill original bullets
     if (draftBulletCount < originalBulletCount) {
-      const missing = originalExp.bullets
-        .filter((origBullet) => {
-          return !(draftExp.bullets ?? []).some((draftBullet) => bulletCoversSourceProof(draftBullet.text, origBullet));
-        })
-        .sort((left, right) => {
-          const rightScore = scoreSourceBulletImportance(right, input);
-          const leftScore = scoreSourceBulletImportance(left, input);
-          return rightScore - leftScore;
-        });
-
       let added = 0;
-      for (const bulletText of missing) {
+      for (const bulletText of uncoveredSourceBullets) {
         if ((draftExp.bullets ?? []).length >= originalBulletCount) break;
         draftExp.bullets = draftExp.bullets ?? [];
         draftExp.bullets.push({
@@ -967,12 +1002,68 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
             company: draftExp.company,
             draftCount: draftBulletCount,
             originalCount: originalBulletCount,
-            uncoveredOriginals: missing.length,
+            uncoveredOriginals: uncoveredSourceBullets.length,
             backfilled: added,
           },
           'Backfilled bullets — LLM wrote fewer than original',
         );
       }
+
+      continue;
+    }
+
+    if (uncoveredSourceBullets.length === 0 || draftBullets.length === 0) {
+      continue;
+    }
+
+    let replaced = 0;
+    const consumedDraftIndexes = new Set<number>();
+
+    for (const sourceBulletText of uncoveredSourceBullets) {
+      const match = findBestDraftBulletMatch(sourceBulletText, draftBullets, consumedDraftIndexes);
+      if (match.index === -1 || match.score < 0.35) continue;
+
+      const matchedDraft = draftBullets[match.index];
+      const sourceImportance = scoreSourceBulletImportance(sourceBulletText, input);
+      if (
+        bulletPreservesProofDensity(matchedDraft.text, sourceBulletText)
+        && !bulletOverCompressesImportantSourceProof(matchedDraft.text, sourceBulletText, sourceImportance)
+      ) {
+        consumedDraftIndexes.add(match.index);
+        continue;
+      }
+
+      if (matchedDraft.source === 'original' && matchedDraft.confidence === 'strong') {
+        consumedDraftIndexes.add(match.index);
+        continue;
+      }
+
+      draftBullets[match.index] = {
+        text: sourceBulletText,
+        is_new: false,
+        addresses_requirements: [],
+        source: 'original',
+        confidence: 'strong',
+        evidence_found: sourceBulletText,
+        requirement_source: 'job_description',
+        content_origin: 'original_resume',
+        support_origin: 'original_resume',
+      };
+      consumedDraftIndexes.add(match.index);
+      replaced += 1;
+    }
+
+    if (replaced > 0) {
+      logger.warn(
+        {
+          company: draftExp.company,
+          draftCount: draftBulletCount,
+          originalCount: originalBulletCount,
+          uncoveredOriginals: uncoveredSourceBullets.length,
+          proofDensityRestored: replaced,
+        },
+        'Replaced low-density bullets with source proof to prevent over-compression',
+      );
     }
   }
 
@@ -993,6 +1084,40 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length >= 4);
 }
 
+function normalizeLooseText(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function calculateTokenOverlap(leftText: string, rightText: string): number {
+  const leftTokens = tokenize(leftText);
+  const rightTokens = tokenize(rightText);
+  if (leftTokens.length === 0 || rightTokens.length === 0) return 0;
+
+  const rightSet = new Set(rightTokens);
+  const shared = leftTokens.filter((token) => rightSet.has(token)).length;
+  return Math.max(shared / leftTokens.length, shared / rightTokens.length);
+}
+
+function extractConcreteProofSignals(text: string): {
+  numbers: string[];
+  acronyms: string[];
+  distinctiveTokens: string[];
+} {
+  const normalized = normalizeLooseText(text);
+  const numberMatches = text.match(/[$~]?\d[\d.,]*(?:%|x|k|m|b)?/gi) ?? [];
+  const acronymMatches = text.match(/\b[A-Z]{2,}(?:\/[A-Z]{2,})*\b/g) ?? [];
+
+  return {
+    numbers: Array.from(new Set(numberMatches.map((value) => normalizeLooseText(value)).filter(Boolean))),
+    acronyms: Array.from(new Set(acronymMatches.map((value) => value.toLowerCase()))),
+    distinctiveTokens: Array.from(
+      new Set(
+        tokenize(text).filter((token) => !PROOF_SIGNAL_STOPWORDS.has(token) && normalized.includes(token)),
+      ),
+    ),
+  };
+}
+
 function bulletCoversSourceProof(draftBulletText: string, sourceBulletText: string): boolean {
   const draftNormalized = draftBulletText.toLowerCase().replace(/\s+/g, ' ').trim();
   const sourceNormalized = sourceBulletText.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -1001,15 +1126,77 @@ function bulletCoversSourceProof(draftBulletText: string, sourceBulletText: stri
   if (draftNormalized === sourceNormalized) return true;
   if (draftNormalized.includes(sourceNormalized) || sourceNormalized.includes(draftNormalized)) return true;
 
-  const draftTokens = tokenize(draftBulletText);
-  const sourceTokens = tokenize(sourceBulletText);
-  if (draftTokens.length === 0 || sourceTokens.length === 0) return false;
+  return calculateTokenOverlap(draftBulletText, sourceBulletText) >= 0.45;
+}
 
-  const sourceSet = new Set(sourceTokens);
-  const shared = draftTokens.filter((token) => sourceSet.has(token)).length;
-  const overlap = Math.max(shared / draftTokens.length, shared / sourceTokens.length);
+function bulletPreservesProofDensity(draftBulletText: string, sourceBulletText: string): boolean {
+  if (!bulletCoversSourceProof(draftBulletText, sourceBulletText)) return false;
 
-  return overlap >= 0.45;
+  const draftNormalized = normalizeLooseText(draftBulletText);
+  const sourceSignals = extractConcreteProofSignals(sourceBulletText);
+  const draftSignals = extractConcreteProofSignals(draftBulletText);
+
+  if (sourceSignals.numbers.length > 0) {
+    const preservedNumberCount = sourceSignals.numbers.filter((value) => draftNormalized.includes(value)).length;
+    if (preservedNumberCount === 0) return false;
+  }
+
+  if (sourceSignals.acronyms.length > 0) {
+    const draftAcronyms = new Set(draftSignals.acronyms);
+    const preservedAcronymCount = sourceSignals.acronyms.filter((value) => draftAcronyms.has(value)).length;
+    if (preservedAcronymCount === 0) return false;
+  }
+
+  const sourceHasHardProofSignals = sourceSignals.numbers.length > 0 || sourceSignals.acronyms.length > 0;
+  if (sourceHasHardProofSignals && sourceSignals.distinctiveTokens.length >= 3) {
+    const draftTokenSet = new Set(draftSignals.distinctiveTokens);
+    const sharedDistinctive = sourceSignals.distinctiveTokens.filter((token) => draftTokenSet.has(token)).length;
+    if ((sharedDistinctive / sourceSignals.distinctiveTokens.length) < 0.3) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function bulletOverCompressesImportantSourceProof(
+  draftBulletText: string,
+  sourceBulletText: string,
+  sourceImportance: number,
+): boolean {
+  if (sourceImportance < 2) return false;
+
+  const overlap = calculateTokenOverlap(draftBulletText, sourceBulletText);
+  if (overlap < 0.35) return false;
+
+  const sourceSignals = extractConcreteProofSignals(sourceBulletText);
+  if (sourceSignals.numbers.length > 0 || sourceSignals.acronyms.length > 0) return false;
+
+  const sourceLength = sourceBulletText.trim().length;
+  const draftLength = draftBulletText.trim().length;
+  if (sourceLength < 90) return false;
+
+  return draftLength < (sourceLength * 0.65);
+}
+
+function findBestDraftBulletMatch(
+  sourceBulletText: string,
+  draftBullets: ResumeBullet[],
+  excludedIndexes: Set<number>,
+): { index: number; score: number } {
+  let bestIndex = -1;
+  let bestScore = 0;
+
+  for (const [index, draftBullet] of draftBullets.entries()) {
+    if (excludedIndexes.has(index)) continue;
+    const score = calculateTokenOverlap(draftBullet.text, sourceBulletText);
+    if (score > bestScore) {
+      bestIndex = index;
+      bestScore = score;
+    }
+  }
+
+  return { index: bestIndex, score: bestScore };
 }
 
 function scoreSourceBulletImportance(bulletText: string, input: ResumeWriterInput): number {
