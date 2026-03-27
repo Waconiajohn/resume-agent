@@ -75,10 +75,10 @@ Bullet count is governed by JD-relevance and available evidence — not by minim
 - Recent but less relevant: fewer bullets, reframe explicitly for transferable skills
 - Older but highly relevant (10-15 years): only the strongest accomplishments
 - 15-20 years ago: brief; scope statement if the role was senior
-- 20+ years ago: move to "Additional Work Experience" — title, company, city/state ONLY. No bullets. No dates.
+- 20+ years ago: move to "Additional Work Experience" ONLY when the role is both old and low relevance to the current target. Keep older relevant roles detailed.
 - NEVER remove a position that would create an employment gap greater than 6 months
-- NEVER drop ANY position from the candidate's experience. Every single position must appear either in professional_experience (with bullets) or in earlier_career (title/company only for 20+ year old roles). Count the input positions and verify your output has the same total count.
-- Do not produce fewer bullets than the original resume had for a role. If the original has 4 bullets, write at least 4 — enhanced, not reduced. You are here to improve, not shrink.
+- NEVER drop ANY position from the candidate's experience. Every single position must appear either in professional_experience (with bullets) or in earlier_career (title/company only for old, low-relevance roles). Count the input positions and verify your output has the same total count.
+- Do not produce fewer bullets than the original resume had for a role that stays in professional_experience. If the source role has 4 bullets, preserve 4 distinct proof points unless one rewritten bullet clearly preserves multiple source bullets. You are here to improve, not shrink.
 
 ## EXECUTIVE SUMMARY
 
@@ -538,6 +538,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     for (const bullet of exp.bullets) {
       parts.push(`  - ${bullet}`);
     }
+    parts.push(`  [DETAIL FLOOR: If this role stays in professional_experience, preserve at least ${exp.bullets.length} distinct bullet-level proof points.]`);
     // Add experience framing from narrative strategy using fuzzy company name lookup.
     // The LLM may return slightly different company names (e.g. "Acme Corp" vs "Acme"),
     // so fall back through: exact → case-insensitive → substring-includes.
@@ -932,11 +933,17 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
 
     // If the LLM wrote fewer bullets than the original, backfill original bullets
     if (draftBulletCount < originalBulletCount) {
-      const existingTexts = new Set((draftExp.bullets ?? []).map(b => b.text.toLowerCase().slice(0, 50)));
-      const missing = originalExp.bullets.filter(
-        (origBullet) => !existingTexts.has(origBullet.toLowerCase().slice(0, 50)),
-      );
+      const missing = originalExp.bullets
+        .filter((origBullet) => {
+          return !(draftExp.bullets ?? []).some((draftBullet) => bulletCoversSourceProof(draftBullet.text, origBullet));
+        })
+        .sort((left, right) => {
+          const rightScore = scoreSourceBulletImportance(right, input);
+          const leftScore = scoreSourceBulletImportance(left, input);
+          return rightScore - leftScore;
+        });
 
+      let added = 0;
       for (const bulletText of missing) {
         if ((draftExp.bullets ?? []).length >= originalBulletCount) break;
         draftExp.bullets = draftExp.bullets ?? [];
@@ -951,11 +958,18 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
           content_origin: 'original_resume',
           support_origin: 'original_resume',
         });
+        added += 1;
       }
 
-      if (missing.length > 0) {
+      if (added > 0) {
         logger.warn(
-          { company: draftExp.company, draftCount: draftBulletCount, originalCount: originalBulletCount, backfilled: missing.length },
+          {
+            company: draftExp.company,
+            draftCount: draftBulletCount,
+            originalCount: originalBulletCount,
+            uncoveredOriginals: missing.length,
+            backfilled: added,
+          },
           'Backfilled bullets — LLM wrote fewer than original',
         );
       }
@@ -977,6 +991,31 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .split(/[^a-zA-Z0-9]+/)
     .filter((t) => t.length >= 4);
+}
+
+function bulletCoversSourceProof(draftBulletText: string, sourceBulletText: string): boolean {
+  const draftNormalized = draftBulletText.toLowerCase().replace(/\s+/g, ' ').trim();
+  const sourceNormalized = sourceBulletText.toLowerCase().replace(/\s+/g, ' ').trim();
+
+  if (!draftNormalized || !sourceNormalized) return false;
+  if (draftNormalized === sourceNormalized) return true;
+  if (draftNormalized.includes(sourceNormalized) || sourceNormalized.includes(draftNormalized)) return true;
+
+  const draftTokens = tokenize(draftBulletText);
+  const sourceTokens = tokenize(sourceBulletText);
+  if (draftTokens.length === 0 || sourceTokens.length === 0) return false;
+
+  const sourceSet = new Set(sourceTokens);
+  const shared = draftTokens.filter((token) => sourceSet.has(token)).length;
+  const overlap = Math.max(shared / draftTokens.length, shared / sourceTokens.length);
+
+  return overlap >= 0.45;
+}
+
+function scoreSourceBulletImportance(bulletText: string, input: ResumeWriterInput): number {
+  const requirementHits = matchRequirementLinks(bulletText, input.gap_analysis.requirements).length;
+  const hasMetric = /[%$]|\b\d/.test(bulletText) ? 1 : 0;
+  return (requirementHits * 2) + hasMetric;
 }
 
 interface IndexedRequirement {

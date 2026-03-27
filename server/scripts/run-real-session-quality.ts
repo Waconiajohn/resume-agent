@@ -9,6 +9,7 @@ import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '
 import { MODEL_PRIMARY } from '../src/lib/model-constants.js';
 import { repairJSON } from '../src/lib/json-repair.js';
 import { runV2Pipeline } from '../src/agents/resume-v2/orchestrator.js';
+import { buildSourceResumeOutline } from '../src/agents/resume-v2/source-resume-outline.js';
 import type {
   AssemblyOutput,
   BenchmarkCandidateOutput,
@@ -119,6 +120,10 @@ function buildResumeText(draft: ResumeDraftOutput): string {
   }
 
   return lines.join('\n').trim();
+}
+
+function countDraftProfessionalBullets(draft: ResumeDraftOutput): number {
+  return draft.professional_experience.reduce((sum, experience) => sum + experience.bullets.length, 0);
 }
 
 function collectJobRequirements(job: JobIntelligenceOutput, gap: GapAnalysisOutput): string[] {
@@ -259,7 +264,9 @@ async function runRealSessionQa() {
 
     const jobRequirements = collectJobRequirements(pipelineState.job_intelligence, pipelineState.gap_analysis);
     const benchmarkRequirements = collectBenchmarkRequirements(pipelineState.benchmark_candidate, pipelineState.gap_analysis);
-    const finalResumeText = buildResumeText((pipelineState.final_resume as AssemblyOutput).final_resume);
+    const finalDraft = (pipelineState.final_resume as AssemblyOutput).final_resume;
+    const finalResumeText = buildResumeText(finalDraft);
+    const sourceOutline = buildSourceResumeOutline(resumeText);
     const prompts = buildFinalReviewPrompts({
       companyName: pipelineState.job_intelligence.company_name || 'Target Company',
       roleTitle: pipelineState.job_intelligence.role_title || 'Target Role',
@@ -305,6 +312,14 @@ async function runRealSessionQa() {
       duration_ms: durationMs,
       company_name: pipelineState.job_intelligence.company_name,
       role_title: pipelineState.job_intelligence.role_title,
+      source_resume_positions: sourceOutline.positions.length,
+      source_resume_bullets: sourceOutline.total_bullets,
+      final_professional_positions: finalDraft.professional_experience.length,
+      final_earlier_career_positions: finalDraft.earlier_career?.length ?? 0,
+      final_selected_accomplishments: finalDraft.selected_accomplishments.length,
+      final_professional_bullets: countDraftProfessionalBullets(finalDraft),
+      final_resume_text_length: finalResumeText.length,
+      final_resume_line_count: finalResumeText.split('\n').length,
       job_requirement_count: jobRequirements.length,
       benchmark_requirement_count: benchmarkRequirements.length,
       hard_requirement_risks: effectiveHardRisks,
@@ -326,6 +341,14 @@ async function runRealSessionQa() {
       duration_minutes: Number((durationMs / 60_000).toFixed(2)),
       company_name: pipelineState.job_intelligence.company_name,
       role_title: pipelineState.job_intelligence.role_title,
+      source_resume_positions: sourceOutline.positions.length,
+      source_resume_bullets: sourceOutline.total_bullets,
+      final_professional_positions: finalDraft.professional_experience.length,
+      final_earlier_career_positions: finalDraft.earlier_career?.length ?? 0,
+      final_selected_accomplishments: finalDraft.selected_accomplishments.length,
+      final_professional_bullets: countDraftProfessionalBullets(finalDraft),
+      final_resume_text_length: finalResumeText.length,
+      final_resume_line_count: finalResumeText.split('\n').length,
       recruiter_decision: finalReview.six_second_scan.decision,
       verdict: finalReview.hiring_manager_verdict.rating,
       hard_requirement_risks: effectiveHardRisks.length,

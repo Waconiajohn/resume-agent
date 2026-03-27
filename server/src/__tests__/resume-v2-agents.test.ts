@@ -2006,6 +2006,81 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.professional_experience[0]?.bullets[3]?.text).toContain('99.99%');
     });
 
+    it('does not duplicate a source bullet when an AI rewrite already preserves that proof point', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.',
+                is_new: true,
+                addresses_requirements: [],
+                source: 'enhanced',
+                confidence: 'partial',
+                requirement_source: 'job_description',
+                evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                'Mentored 5 junior engineers and led weekly knowledge-sharing sessions',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 2,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                  'Mentored 5 junior engineers and led weekly knowledge-sharing sessions',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toHaveLength(2);
+      expect(bullets).toContain('Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.');
+      expect(bullets).not.toContain('Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization');
+      expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
+    });
+
     it('keeps older highly relevant roles in professional experience instead of collapsing them', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
