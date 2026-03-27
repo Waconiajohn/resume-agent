@@ -17,7 +17,7 @@ import { normalizeCompanyBatch } from './company-normalizer.js';
 import { scrapeCareerPages } from './career-scraper.js';
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
-import type { CsvParseResult, CsvUploadResponse } from './types.js';
+import type { CsvParseResult, CsvUploadResponse, NiSearchContext } from './types.js';
 
 // ─── CSV Import Pipeline ──────────────────────────────────────────────────────
 
@@ -128,6 +128,7 @@ export async function runCareerScrape(
   companyIds: string[],
   targetTitles: string[],
   useApiFallback = true,
+  searchContext: NiSearchContext = 'network_connections',
 ): Promise<void> {
   try {
     const { data: companies, error } = await supabaseAdmin
@@ -148,7 +149,7 @@ export async function runCareerScrape(
       }),
     );
 
-    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, useApiFallback);
+    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, useApiFallback, searchContext);
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {
       companies_scanned: result.companiesScanned,

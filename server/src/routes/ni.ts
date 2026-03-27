@@ -33,7 +33,7 @@ import { crossReferenceReferralOpportunities } from '../lib/ni/referral-cross-re
 import { getBonusSearchCompanies } from '../lib/ni/bonus-company-search.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
-import type { CsvUploadResponse } from '../lib/ni/types.js';
+import type { CsvUploadResponse, NiSearchContext } from '../lib/ni/types.js';
 
 export const ni = new Hono();
 
@@ -91,6 +91,7 @@ const scrapeStartSchema = z.object({
   target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
   /** When true (default), fall back to Firecrawl search if career page scraping finds no results. */
   use_api_fallback: z.boolean().optional().default(true),
+  search_context: z.enum(['network_connections', 'bonus_search']).optional().default('network_connections'),
 });
 
 // ─── CSV Upload ───────────────────────────────────────────────────────────────
@@ -281,13 +282,14 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   }
 
   const userId = c.get('user').id;
-  const { company_ids, target_titles = [], use_api_fallback } = parsed.data;
+  const { company_ids, target_titles = [], use_api_fallback, search_context } = parsed.data;
 
   // Create scrape log entry upfront so we can return its ID immediately
   const logId = await createScrapeLogEntry(userId, 'job_scrape', {
     company_ids,
     target_title_count: target_titles.length,
     use_api_fallback,
+    search_context,
   });
 
   if (!logId) {
@@ -295,9 +297,9 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   }
 
   // Fire-and-forget — scrape runs in background via import-service
-  void runCareerScrape(userId, logId, company_ids, target_titles, use_api_fallback);
+  void runCareerScrape(userId, logId, company_ids, target_titles, use_api_fallback, search_context as NiSearchContext);
 
-  return c.json({ scrape_log_id: logId, use_api_fallback }, 202);
+  return c.json({ scrape_log_id: logId, use_api_fallback, search_context }, 202);
 });
 
 // ─── Referral Opportunities ──────────────────────────────────────────────────

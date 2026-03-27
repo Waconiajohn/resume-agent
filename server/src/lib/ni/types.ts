@@ -155,6 +155,8 @@ export interface JobMatchRow {
   updated_at: string;
 }
 
+export type NiSearchContext = 'network_connections' | 'bonus_search';
+
 export interface ScrapeLogRow {
   id: string;
   user_id: string;

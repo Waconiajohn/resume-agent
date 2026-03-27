@@ -14,7 +14,7 @@ import FirecrawlApp from '@mendable/firecrawl-js';
 import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import logger from '../logger.js';
-import type { CompanyInfo, ScrapeResult, ScrapeSource } from './types.js';
+import type { CompanyInfo, NiSearchContext, ScrapeResult, ScrapeSource } from './types.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -307,6 +307,7 @@ async function scrapeCompany(
   targetTitles: string[],
   userId: string,
   useSearchFallback: boolean,
+  searchContext: NiSearchContext,
 ): Promise<CompanyScrapeResult> {
   if (!company.domain) {
     return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source: 'firecrawl_scrape', error: 'No domain' };
@@ -370,7 +371,10 @@ async function scrapeCompany(
       match_score: score,
       referral_available: referral,
       scraped_at: new Date().toISOString(),
-      metadata: { source },
+      metadata: {
+        source,
+        search_context: searchContext,
+      },
     });
     if (inserted) storedCount++;
   }
@@ -400,6 +404,7 @@ export async function scrapeCareerPages(
   targetTitles: string[],
   userId: string,
   useApiFallback = true,
+  searchContext: NiSearchContext = 'network_connections',
 ): Promise<ScrapeResult> {
   const fc = getFirecrawl();
   if (!fc) {
@@ -439,7 +444,7 @@ export async function scrapeCareerPages(
     );
 
     try {
-      const result = await scrapeCompany(fc, company, targetTitles, userId, useApiFallback);
+      const result = await scrapeCompany(fc, company, targetTitles, userId, useApiFallback, searchContext);
       companiesScanned++;
       jobsFound += result.jobsFound;
       matchingJobs += result.matchingJobs;

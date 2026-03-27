@@ -186,6 +186,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
         body: JSON.stringify({
           company_ids: companies.map((company) => company.companyId).slice(0, 50),
           target_titles: titles.map((title) => title.title),
+          search_context: 'bonus_search',
         }),
       });
 

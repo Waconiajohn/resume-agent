@@ -262,6 +262,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
         body: JSON.stringify({
           company_ids: companyIds,
           target_titles: titles.map((t) => t.title),
+          search_context: 'network_connections',
         }),
       });
 

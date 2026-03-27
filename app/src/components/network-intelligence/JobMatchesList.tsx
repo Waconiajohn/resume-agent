@@ -19,6 +19,42 @@ const STATUS_COLORS: Record<JobMatchStatus, string> = {
   archived: 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
 };
 
+const SEARCH_CONTEXT_BADGES: Record<NonNullable<JobMatch['searchContext']>, string> = {
+  network_connections: 'bg-[#afc4ff]/15 text-[#afc4ff]/80',
+  bonus_search: 'bg-[#f0d99f]/15 text-[#f0d99f]/80',
+};
+
+const SEARCH_CONTEXT_LABELS: Record<NonNullable<JobMatch['searchContext']>, string> = {
+  network_connections: 'Your Network',
+  bonus_search: 'Bonus Search',
+};
+
+function mapJobMatch(m: Record<string, unknown>): JobMatch {
+  const metadata = (m.metadata as Record<string, unknown> | null) ?? {};
+  const rawSearchContext = metadata.search_context;
+  const searchContext =
+    rawSearchContext === 'network_connections' || rawSearchContext === 'bonus_search'
+      ? rawSearchContext
+      : null;
+
+  return {
+    id: m.id as string,
+    companyId: m.company_id as string,
+    title: m.title as string,
+    url: (m.url as string) ?? null,
+    location: (m.location as string) ?? null,
+    salaryRange: (m.salary_range as string) ?? null,
+    descriptionSnippet: (m.description_snippet as string) ?? null,
+    matchScore: ((m.match_score as number | null) ?? (m.fit_score as number | null)) ?? null,
+    referralAvailable: m.referral_available as boolean,
+    connectionCount: m.connection_count as number,
+    searchContext,
+    status: m.status as JobMatchStatus,
+    scrapedAt: (m.scraped_at as string) ?? null,
+    createdAt: m.created_at as string,
+  };
+}
+
 export function JobMatchesList({ accessToken }: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,23 +71,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
         });
         if (res.ok && !cancelled) {
           const data = await res.json();
-          setMatches(
-            (data.matches ?? []).map((m: Record<string, unknown>) => ({
-              id: m.id as string,
-              companyId: m.company_id as string,
-              title: m.title as string,
-              url: (m.url as string) ?? null,
-              location: (m.location as string) ?? null,
-              salaryRange: (m.salary_range as string) ?? null,
-              descriptionSnippet: (m.description_snippet as string) ?? null,
-              matchScore: (m.fit_score as number) ?? null,
-              referralAvailable: m.referral_available as boolean,
-              connectionCount: m.connection_count as number,
-              status: m.status as JobMatchStatus,
-              scrapedAt: (m.scraped_at as string) ?? null,
-              createdAt: m.created_at as string,
-            })),
-          );
+          setMatches((data.matches ?? []).map((m: Record<string, unknown>) => mapJobMatch(m)));
         }
       } catch {
         // Silently fail — empty state will show
@@ -86,23 +106,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
         });
         if (refetch.ok) {
           const data = await refetch.json();
-          setMatches(
-            (data.matches ?? []).map((m: Record<string, unknown>) => ({
-              id: m.id as string,
-              companyId: m.company_id as string,
-              title: m.title as string,
-              url: (m.url as string) ?? null,
-              location: (m.location as string) ?? null,
-              salaryRange: (m.salary_range as string) ?? null,
-              descriptionSnippet: (m.description_snippet as string) ?? null,
-              matchScore: (m.fit_score as number) ?? null,
-              referralAvailable: m.referral_available as boolean,
-              connectionCount: m.connection_count as number,
-              status: m.status as JobMatchStatus,
-              scrapedAt: (m.scraped_at as string) ?? null,
-              createdAt: m.created_at as string,
-            })),
-          );
+          setMatches((data.matches ?? []).map((m: Record<string, unknown>) => mapJobMatch(m)));
         }
       }
     } catch {
@@ -124,7 +128,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
     return (
       <div className="rounded-xl border border-[var(--line-soft)] p-8 text-center">
         <p className="text-sm text-[var(--text-soft)]">
-          No job matches yet — matches appear as we find openings at your connected companies
+          No job matches yet — matches appear as we find openings from your network companies and bonus-company scans
         </p>
       </div>
     );
@@ -139,6 +143,14 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h4 className="truncate text-sm font-medium text-[var(--text-strong)]">{match.title}</h4>
+                {match.searchContext && (
+                  <span className={cn(
+                    'shrink-0 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
+                    SEARCH_CONTEXT_BADGES[match.searchContext],
+                  )}>
+                    {SEARCH_CONTEXT_LABELS[match.searchContext]}
+                  </span>
+                )}
                 {match.referralAvailable && (
                   <span className="shrink-0 rounded-md bg-[#b5dec2]/15 px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b5dec2]/80">
                     Referral

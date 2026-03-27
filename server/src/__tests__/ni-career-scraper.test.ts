@@ -35,8 +35,23 @@ const mockSupabase = vi.hoisted(() => {
   };
 });
 
+const mockFirecrawlScrape = vi.hoisted(() => vi.fn());
+const mockFirecrawlSearch = vi.hoisted(() => vi.fn());
+const mockFirecrawlConstructor = vi.hoisted(() =>
+  vi.fn(function MockFirecrawlApp() {
+    return {
+      scrape: mockFirecrawlScrape,
+      search: mockFirecrawlSearch,
+    };
+  }),
+);
+
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: mockSupabase,
+}));
+
+vi.mock('@mendable/firecrawl-js', () => ({
+  default: mockFirecrawlConstructor,
 }));
 
 vi.mock('../lib/ni/job-matches-store.js', () => ({
@@ -80,22 +95,21 @@ function makeFirecrawlSearchResponse(results: Array<{ title: string; url: string
 }
 
 function mockFetchForFirecrawlScrape(jobs: Array<{ title: string; url: string }>): void {
-  const responseBody = makeFirecrawlScrapeResponse(jobs);
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: vi.fn().mockResolvedValue(responseBody),
-  } as unknown as Response);
+  const responseBody = makeFirecrawlScrapeResponse(jobs) as { data?: { markdown?: string } };
+  mockFirecrawlScrape.mockResolvedValue({
+    markdown: responseBody.data?.markdown ?? null,
+  });
+  mockFirecrawlSearch.mockResolvedValue({ web: [] });
 }
 
 function mockFetchFailure(): void {
-  global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+  mockFirecrawlScrape.mockRejectedValue(new Error('Network error'));
+  mockFirecrawlSearch.mockResolvedValue({ web: [] });
 }
 
 function mockFetchNotFound(): void {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: false,
-    status: 404,
-  } as unknown as Response);
+  mockFirecrawlScrape.mockResolvedValue({ markdown: null });
+  mockFirecrawlSearch.mockResolvedValue({ web: [] });
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -115,6 +129,8 @@ describe('scrapeCareerPages', () => {
       return chain;
     };
     mockSupabase.from.mockImplementation(chainFn);
+    mockFirecrawlScrape.mockResolvedValue({ markdown: null });
+    mockFirecrawlSearch.mockResolvedValue({ web: [] });
   });
 
   afterEach(() => {
@@ -157,14 +173,9 @@ describe('scrapeCareerPages', () => {
   });
 
   it('does not call insertJobMatch when no matching jobs found', async () => {
-    // Firecrawl returns OK but markdown has no job links
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        success: true,
-        data: { markdown: '# About Us\n\nWe are a great company.' },
-      }),
-    } as unknown as Response);
+    mockFirecrawlScrape.mockResolvedValue({
+      markdown: '# About Us\n\nWe are a great company.',
+    });
 
     await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['VP Operations'], 'user-1');
     expect(insertJobMatch).not.toHaveBeenCalled();
@@ -208,16 +219,17 @@ describe('scrapeCareerPages', () => {
 
   it('continues processing remaining companies when one fails', async () => {
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
+    mockFirecrawlScrape.mockImplementation(() => {
       callCount++;
-      if (callCount <= 5) return Promise.reject(new Error('Timeout')); // First company all paths fail
+      if (callCount <= 5) return Promise.reject(new Error('Timeout'));
+      const response = makeFirecrawlScrapeResponse([{ title: 'Chief Operating Officer', url: '/jobs/coo' }]) as {
+        data?: { markdown?: string };
+      };
       return Promise.resolve({
-        ok: true,
-        json: vi.fn().mockResolvedValue(
-          makeFirecrawlScrapeResponse([{ title: 'Chief Operating Officer', url: '/jobs/coo' }]),
-        ),
-      } as unknown as Response);
+        markdown: response.data?.markdown ?? null,
+      });
     });
+    mockFirecrawlSearch.mockResolvedValue({ web: [] });
 
     const companies = [
       { id: 'c1', name: 'Corp A', domain: 'corpa.com' },
@@ -256,29 +268,13 @@ describe('scrapeCareerPages', () => {
   });
 
   it('falls back to Firecrawl search when scraping finds nothing', async () => {
-    // Scrape returns no job links, search returns results
-    let callIndex = 0;
-    global.fetch = vi.fn().mockImplementation(() => {
-      callIndex++;
-      // First N calls are scrape attempts (return empty markdown)
-      if (callIndex <= 5) {
-        return Promise.resolve({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            success: true,
-            data: { markdown: '# Careers\n\nNo open positions.' },
-          }),
-        } as unknown as Response);
-      }
-      // Subsequent calls are search (return results)
-      return Promise.resolve({
-        ok: true,
-        json: vi.fn().mockResolvedValue(
-          makeFirecrawlSearchResponse([
-            { title: 'Director of Operations at Acme', url: 'https://example.com/jobs/123' },
-          ]),
-        ),
-      } as unknown as Response);
+    mockFirecrawlScrape.mockResolvedValue({
+      markdown: '# Careers\n\nNo open positions.',
+    });
+    mockFirecrawlSearch.mockResolvedValue({
+      web: [
+        { title: 'Director of Operations at Acme', url: 'https://example.com/jobs/123' },
+      ],
     });
 
     const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', true);
@@ -288,7 +284,12 @@ describe('scrapeCareerPages', () => {
     expect(result.sourceBreakdown.firecrawl_scrape).toBe(0);
     expect(insertJobMatch).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ metadata: { source: 'firecrawl_search' } }),
+      expect.objectContaining({
+        metadata: {
+          source: 'firecrawl_search',
+          search_context: 'network_connections',
+        },
+      }),
     );
   });
 
@@ -323,14 +324,9 @@ describe('searchJobsByCompany', () => {
   it('returns Firecrawl search results when available', async () => {
     process.env.FIRECRAWL_API_KEY = 'test-key';
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(
-        makeFirecrawlSearchResponse([
-          { title: 'Director of Finance', url: 'https://example.com/jobs/1' },
-        ]),
-      ),
-    } as unknown as Response);
+    mockFirecrawlSearch.mockResolvedValue({
+      web: [{ title: 'Director of Finance', url: 'https://example.com/jobs/1' }],
+    });
 
     const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
 

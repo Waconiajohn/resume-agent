@@ -43,11 +43,14 @@ describe('network intelligence panels', () => {
               title: 'Staff Platform Engineer',
               location: 'Remote',
               salary_range: '$200k-$240k',
-              fit_score: 86,
+              match_score: 86,
               referral_available: true,
               connection_count: 3,
               status: 'new',
               created_at: '2026-03-21T12:00:00Z',
+              metadata: {
+                search_context: 'bonus_search',
+              },
             },
           ],
         }),
@@ -58,6 +61,7 @@ describe('network intelligence panels', () => {
     render(<JobMatchesList accessToken="test-token" />);
 
     expect(await screen.findByText('Staff Platform Engineer')).toBeInTheDocument();
+    expect(screen.getByText('Bonus Search')).toBeInTheDocument();
     expect(screen.getByText('Referral')).toBeInTheDocument();
     expect(screen.getByText('86%')).toBeInTheDocument();
     expect(screen.getByDisplayValue('new')).toBeInTheDocument();

@@ -51,6 +51,8 @@ export interface BonusCompanySearchItem {
   programUrl: string | null;
 }
 
+export type JobMatchSearchContext = 'network_connections' | 'bonus_search';
+
 export type JobMatchStatus = 'new' | 'applied' | 'referred' | 'interviewing' | 'rejected' | 'archived';
 
 export interface JobMatch {
@@ -64,6 +66,7 @@ export interface JobMatch {
   matchScore: number | null;
   referralAvailable: boolean;
   connectionCount: number;
+  searchContext: JobMatchSearchContext | null;
   status: JobMatchStatus;
   scrapedAt: string | null;
   createdAt: string;
