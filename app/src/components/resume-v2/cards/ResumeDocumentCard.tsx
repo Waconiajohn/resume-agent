@@ -1019,23 +1019,19 @@ function InlineEditPanel({
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Line context
               </p>
-              <dl className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
-                  <dd className="text-right">{requirementLabel}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
-                  <dd className="text-right">{getContentOriginLabel(contentOrigin, confidence)}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-                  <dd className="text-right">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
-                </div>
+              <dl className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm leading-6 text-slate-700">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
+                <dd className="min-w-0 break-words">{requirementLabel}</dd>
+
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
+                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
+
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
+                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence)}</dd>
               </dl>
               <div className="mt-3 border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  This line is trying to cover
+                  Coverage goal
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-700">
                   {requestedCoverage}

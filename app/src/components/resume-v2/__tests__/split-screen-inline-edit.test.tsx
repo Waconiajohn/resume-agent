@@ -870,7 +870,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getByText(/This line is trying to cover/i)).toBeInTheDocument();
+    expect(screen.getByText(/Coverage goal/i)).toBeInTheDocument();
   });
 
   it('falls back to the targeting label when addresses_requirements is empty', () => {
@@ -888,7 +888,7 @@ describe('InlineEditPanel — requirement tags', () => {
     );
 
     // index 1 has addresses_requirements: []
-    expect(screen.getByText(/This line is trying to cover/i)).toBeInTheDocument();
+    expect(screen.getByText(/Coverage goal/i)).toBeInTheDocument();
     expect(screen.getAllByText('Targets Job Need').length).toBeGreaterThan(0);
   });
 });
