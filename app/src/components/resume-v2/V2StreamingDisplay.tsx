@@ -1212,22 +1212,22 @@ function AnalysisSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.14)] overflow-hidden">
+    <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] shadow-[0_2px_12px_rgba(0,0,0,0.18)] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-neutral-50 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-[var(--surface-2)] transition-colors"
         aria-expanded={open}
       >
-        <span className="shrink-0 text-neutral-400">{icon}</span>
-        <span className="flex-1 text-sm font-medium text-neutral-700">{title}</span>
+        <span className="shrink-0 text-[var(--text-soft)]">{icon}</span>
+        <span className="flex-1 text-sm font-medium text-[var(--text-muted)]">{title}</span>
         {open
-          ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-          : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+          ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[var(--text-soft)]" />
+          : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-soft)]" />
         }
       </button>
       {open && (
-        <div className="border-t border-neutral-100 px-5 py-4 space-y-3">
+        <div className="border-t border-[var(--line-soft)] px-5 py-4 space-y-3">
           {children}
         </div>
       )}
@@ -1256,26 +1256,26 @@ function PipelineAnalysisSummary({
 
   return (
     <div className="mb-6" role="region" aria-label="Pipeline analysis summary">
-      <div className="bg-white rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.14)] overflow-hidden">
+      <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] shadow-[0_2px_12px_rgba(0,0,0,0.18)] overflow-hidden">
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 transition-colors"
+          className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-[var(--surface-2)] transition-colors"
           aria-expanded={open}
         >
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Supporting Analysis</p>
-            <p className="mt-1 text-sm font-medium text-neutral-700">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">Supporting Analysis</p>
+            <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">
               Open the full analysis if you want to inspect the benchmark, gap map, and verification details.
             </p>
           </div>
           {open
-            ? <ChevronUp className="h-4 w-4 shrink-0 text-neutral-400" />
-            : <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />}
+            ? <ChevronUp className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />
+            : <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />}
         </button>
 
         {open && (
-          <div className="border-t border-neutral-100 px-1 py-3 space-y-2">
+          <div className="border-t border-[var(--line-soft)] px-1 py-3 space-y-2">
             {/* Gap Analysis Summary */}
             {gapAnalysis && (
               <AnalysisSection
