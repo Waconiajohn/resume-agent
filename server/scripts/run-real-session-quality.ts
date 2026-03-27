@@ -126,6 +126,89 @@ function countDraftProfessionalBullets(draft: ResumeDraftOutput): number {
   return draft.professional_experience.reduce((sum, experience) => sum + experience.bullets.length, 0);
 }
 
+function collectDraftProfessionalBullets(draft: ResumeDraftOutput): string[] {
+  return draft.professional_experience.flatMap((experience) => experience.bullets.map((bullet) => bullet.text));
+}
+
+function averageTextLength(values: string[]): number {
+  if (values.length === 0) return 0;
+  const total = values.reduce((sum, value) => sum + value.trim().length, 0);
+  return Number((total / values.length).toFixed(1));
+}
+
+function countConcreteProofBullets(values: string[]): number {
+  return values.filter((value) => /[%$]|\b\d/.test(value) || /\b[A-Z]{2,}(?:\/[A-Z]{2,})*\b/.test(value)).length;
+}
+
+function normalizeRoleKey(company: string, title: string): string {
+  return `${company} ${title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeBulletText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResumeOutline>, draft: ResumeDraftOutput) {
+  const sourcePositionsByKey = new Map(
+    sourceOutline.positions.map((position) => [
+      normalizeRoleKey(position.company, position.title),
+      position,
+    ]),
+  );
+
+  const draftBullets = collectDraftProfessionalBullets(draft);
+  const sourceBullets = sourceOutline.positions.flatMap((position) => position.bullets);
+  const roleSummaries = draft.professional_experience.map((experience) => {
+    const sourcePosition = sourcePositionsByKey.get(normalizeRoleKey(experience.company, experience.title));
+    const sourcePositionBullets = sourcePosition?.bullets ?? [];
+    const sourceBulletSet = new Set(sourcePositionBullets.map((bullet) => normalizeBulletText(bullet)));
+    const finalPositionBullets = experience.bullets.map((bullet) => bullet.text);
+    const sourceAverageChars = averageTextLength(sourcePositionBullets);
+    const finalAverageChars = averageTextLength(finalPositionBullets);
+
+    return {
+      company: experience.company,
+      title: experience.title,
+      source_bullets: sourcePositionBullets.length,
+      final_bullets: finalPositionBullets.length,
+      source_average_bullet_chars: sourceAverageChars,
+      final_average_bullet_chars: finalAverageChars,
+      bullet_char_ratio: sourceAverageChars > 0 ? Number((finalAverageChars / sourceAverageChars).toFixed(2)) : null,
+      source_concrete_proof_bullets: countConcreteProofBullets(sourcePositionBullets),
+      final_concrete_proof_bullets: countConcreteProofBullets(finalPositionBullets),
+      exact_source_bullet_matches: finalPositionBullets.filter((bullet) => sourceBulletSet.has(normalizeBulletText(bullet))).length,
+      original_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'original').length,
+      enhanced_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'enhanced').length,
+      drafted_proof_bullets: experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
+      below_density_floor: sourceAverageChars >= 80 && finalAverageChars < (sourceAverageChars * 0.7),
+    };
+  });
+
+  return {
+    source_average_bullet_chars: averageTextLength(sourceBullets),
+    final_average_bullet_chars: averageTextLength(draftBullets),
+    professional_bullet_char_ratio: sourceBullets.length > 0
+      ? Number((averageTextLength(draftBullets) / averageTextLength(sourceBullets)).toFixed(2))
+      : null,
+    source_concrete_proof_bullets: countConcreteProofBullets(sourceBullets),
+    final_concrete_proof_bullets: countConcreteProofBullets(draftBullets),
+    original_proof_bullets: draft.professional_experience.reduce(
+      (sum, experience) => sum + experience.bullets.filter((bullet) => bullet.source === 'original').length,
+      0,
+    ),
+    enhanced_proof_bullets: draft.professional_experience.reduce(
+      (sum, experience) => sum + experience.bullets.filter((bullet) => bullet.source === 'enhanced').length,
+      0,
+    ),
+    drafted_proof_bullets: draft.professional_experience.reduce(
+      (sum, experience) => sum + experience.bullets.filter((bullet) => bullet.source === 'drafted').length,
+      0,
+    ),
+    roles_below_density_floor: roleSummaries.filter((role) => role.below_density_floor).map((role) => `${role.title} @ ${role.company}`),
+    role_summaries: roleSummaries,
+  };
+}
+
 function collectJobRequirements(job: JobIntelligenceOutput, gap: GapAnalysisOutput): string[] {
   const base = [
     ...job.core_competencies.map((item) => item.competency),
@@ -267,6 +350,7 @@ async function runRealSessionQa() {
     const finalDraft = (pipelineState.final_resume as AssemblyOutput).final_resume;
     const finalResumeText = buildResumeText(finalDraft);
     const sourceOutline = buildSourceResumeOutline(resumeText);
+    const proofDensity = summarizeProofDensity(sourceOutline, finalDraft);
     const prompts = buildFinalReviewPrompts({
       companyName: pipelineState.job_intelligence.company_name || 'Target Company',
       roleTitle: pipelineState.job_intelligence.role_title || 'Target Role',
@@ -320,6 +404,7 @@ async function runRealSessionQa() {
       final_professional_bullets: countDraftProfessionalBullets(finalDraft),
       final_resume_text_length: finalResumeText.length,
       final_resume_line_count: finalResumeText.split('\n').length,
+      proof_density: proofDensity,
       job_requirement_count: jobRequirements.length,
       benchmark_requirement_count: benchmarkRequirements.length,
       hard_requirement_risks: effectiveHardRisks,
@@ -349,6 +434,13 @@ async function runRealSessionQa() {
       final_professional_bullets: countDraftProfessionalBullets(finalDraft),
       final_resume_text_length: finalResumeText.length,
       final_resume_line_count: finalResumeText.split('\n').length,
+      source_average_bullet_chars: proofDensity.source_average_bullet_chars,
+      final_average_bullet_chars: proofDensity.final_average_bullet_chars,
+      professional_bullet_char_ratio: proofDensity.professional_bullet_char_ratio,
+      original_proof_bullets: proofDensity.original_proof_bullets,
+      enhanced_proof_bullets: proofDensity.enhanced_proof_bullets,
+      drafted_proof_bullets: proofDensity.drafted_proof_bullets,
+      roles_below_density_floor: proofDensity.roles_below_density_floor,
       recruiter_decision: finalReview.six_second_scan.decision,
       verdict: finalReview.hiring_manager_verdict.rating,
       hard_requirement_risks: effectiveHardRisks.length,
