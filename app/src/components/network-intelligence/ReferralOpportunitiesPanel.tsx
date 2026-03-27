@@ -123,14 +123,14 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
     return (
       <GlassCard className="p-8 text-center">
         <div className="text-3xl mb-3" aria-hidden="true">🤝</div>
-        <h3 className="text-base font-semibold text-[var(--text-muted)] mb-2">No Referral Opportunities Yet</h3>
+        <h3 className="text-base font-semibold text-[var(--text-muted)] mb-2">No Referral Bonus Opportunities Yet</h3>
         <p className="text-sm text-[var(--text-soft)] max-w-md mx-auto leading-relaxed">
-          Referral opportunities appear when you have both job matches and connections at companies with referral bonus programs. To get started:
+          This tab is the bonus layer. It only shows job matches where you already have a first-level connection and the company also has a known referral bonus program. To get started:
         </p>
         <ul className="mt-4 text-xs text-[var(--text-soft)] space-y-1.5 max-w-sm mx-auto text-left">
           <li>1. Import your LinkedIn connections (Import tab)</li>
-          <li>2. Run a job scan on your target companies (Job Scan tab)</li>
-          <li>3. Opportunities will appear here automatically</li>
+          <li>2. Run a job scan and review the results in Job Matches</li>
+          <li>3. Bonus-tagged opportunities will appear here automatically</li>
         </ul>
       </GlassCard>
     );

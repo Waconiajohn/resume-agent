@@ -24,6 +24,10 @@ vi.mock('@/components/network-intelligence/TargetTitlesManager', () => ({
   TargetTitlesManager: () => <div data-testid="target-titles-manager">Target titles</div>,
 }));
 
+vi.mock('@/components/network-intelligence/JobMatchesList', () => ({
+  JobMatchesList: () => <div data-testid="job-matches-list">Job matches</div>,
+}));
+
 vi.mock('@/components/network-intelligence/ScrapeJobsPanel', () => ({
   ScrapeJobsPanel: () => <div data-testid="scrape-jobs-panel">Scrape jobs</div>,
 }));
@@ -72,6 +76,7 @@ describe('SmartReferralsRoom', () => {
 
     expect(await screen.findByTestId('csv-uploader')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Job Matches' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Job Scan' })).toBeEnabled();
   });
 

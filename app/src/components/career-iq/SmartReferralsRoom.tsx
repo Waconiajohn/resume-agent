@@ -4,15 +4,16 @@ import { GlassCard } from '@/components/GlassCard';
 import { CsvUploader } from '@/components/network-intelligence/CsvUploader';
 import { ConnectionsBrowser } from '@/components/network-intelligence/ConnectionsBrowser';
 import { TargetTitlesManager } from '@/components/network-intelligence/TargetTitlesManager';
+import { JobMatchesList } from '@/components/network-intelligence/JobMatchesList';
 import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPanel';
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake } from 'lucide-react';
+import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake, Briefcase } from 'lucide-react';
 
-type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-scan' | 'referrals' | 'contacts' | 'outreach';
+type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'referrals' | 'contacts' | 'outreach';
 
 interface TabDef {
   id: SmartReferralsTab;
@@ -25,8 +26,9 @@ const TABS: TabDef[] = [
   { id: 'import', label: 'Import', icon: Upload, description: 'Upload LinkedIn connections CSV' },
   { id: 'connections', label: 'Connections', icon: Users, description: 'Browse by company' },
   { id: 'targets', label: 'Target Titles', icon: Target, description: 'Manage target job titles' },
+  { id: 'job-matches', label: 'Job Matches', icon: Briefcase, description: 'Jobs at companies where you have first-level connections' },
   { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
-  { id: 'referrals', label: 'Referrals', icon: Handshake, description: 'Cross-referenced referral opportunities' },
+  { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
   { id: 'contacts', label: 'Contacts', icon: UserCircle, description: 'CRM & Rule of Four' },
   { id: 'outreach', label: 'Outreach', icon: Send, description: 'AI outreach sequences' },
 ];
@@ -116,6 +118,8 @@ export function SmartReferralsRoom() {
         return <ConnectionsBrowser accessToken={accessToken} />;
       case 'targets':
         return <TargetTitlesManager accessToken={accessToken} />;
+      case 'job-matches':
+        return <JobMatchesList accessToken={accessToken} />;
       case 'job-scan':
         return <ScrapeJobsPanel accessToken={accessToken} />;
       case 'referrals':
@@ -138,7 +142,7 @@ export function SmartReferralsRoom() {
       <div>
         <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
         <p className="text-sm text-[var(--text-soft)] mt-1">
-          Import connections, find jobs at their companies, and generate targeted outreach
+          Import connections, find jobs at their companies, flag referral bonuses when they exist, and generate targeted outreach
         </p>
       </div>
 
