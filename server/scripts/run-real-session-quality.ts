@@ -66,6 +66,10 @@ function parseSessionIds(): string[] {
   return raw.split(',').map((value) => value.trim()).filter(Boolean);
 }
 
+function isTruthyEnv(value: string | undefined): boolean {
+  return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase());
+}
+
 function buildResumeText(draft: ResumeDraftOutput): string {
   const lines: string[] = [];
   const headerParts = [draft.header.name, draft.header.email, draft.header.phone, draft.header.linkedin]
@@ -396,6 +400,7 @@ async function loadDefaultSessions(limit = DEFAULT_BATCH_LIMIT): Promise<Session
 }
 
 async function runRealSessionQa() {
+  const failOnWarn = isTruthyEnv(process.env.REAL_QA_FAIL_ON_WARN);
   const sessionIds = parseSessionIds();
   const sessions = sessionIds.length > 0
     ? await loadSessions(sessionIds)
@@ -409,6 +414,7 @@ async function runRealSessionQa() {
   mkdirSync(outDir, { recursive: true });
 
   const summary: Array<Record<string, unknown>> = [];
+  const gatingFailures: Array<{ label: string; company_name: string; role_title: string; status: string; alerts: QaAlert[] }> = [];
 
   for (const [index, session] of sessions.entries()) {
     const inputs = session.tailored_sections?.inputs ?? {};
@@ -539,10 +545,48 @@ async function runRealSessionQa() {
       critical_concerns: finalReview.concerns.filter((item) => item.severity === 'critical').length,
       top_signal_preview: finalReview.six_second_scan.top_signals_seen[0]?.signal ?? null,
     });
+
+    if (
+      proofDensityQa.status === 'fail'
+      || (failOnWarn && proofDensityQa.status === 'warn')
+    ) {
+      gatingFailures.push({
+        label,
+        company_name: pipelineState.job_intelligence.company_name,
+        role_title: pipelineState.job_intelligence.role_title,
+        status: proofDensityQa.status,
+        alerts: proofDensityQa.alerts,
+      });
+    }
   }
 
-  writeFileSync(resolve(outDir, 'summary.json'), `${JSON.stringify({ generated_at: new Date().toISOString(), sessions: summary }, null, 2)}\n`);
+  writeFileSync(
+    resolve(outDir, 'summary.json'),
+    `${JSON.stringify({
+      generated_at: new Date().toISOString(),
+      fail_on_warn: failOnWarn,
+      overall_status: gatingFailures.length > 0 ? 'fail' : 'pass',
+      gating_failures: gatingFailures,
+      sessions: summary,
+    }, null, 2)}\n`,
+  );
   console.log(JSON.stringify(summary, null, 2));
+
+  if (gatingFailures.length > 0) {
+    console.error(
+      JSON.stringify(
+        {
+          ok: false,
+          reason: 'resume preservation QA gate failed',
+          fail_on_warn: failOnWarn,
+          failures: gatingFailures,
+        },
+        null,
+        2,
+      ),
+    );
+    process.exit(1);
+  }
 }
 
 runRealSessionQa().catch((error) => {
