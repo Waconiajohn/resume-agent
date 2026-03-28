@@ -172,6 +172,24 @@ const GAP_ANALYSIS_WITH_PENDING = {
     },
   ],
   coverage_score: 72,
+  score_breakdown: {
+    job_description: {
+      total: 4,
+      strong: 1,
+      partial: 2,
+      missing: 1,
+      addressed: 3,
+      coverage_score: 75,
+    },
+    benchmark: {
+      total: 3,
+      strong: 1,
+      partial: 1,
+      missing: 1,
+      addressed: 2,
+      coverage_score: 67,
+    },
+  },
   strength_summary: 'Strong candidate with minor gaps in distributed systems',
   critical_gaps: [],
   pending_strategies: [
@@ -810,7 +828,7 @@ describe('SSE event emission — ordering', () => {
 // ─── Pre-scores computation ───────────────────────────────────────────────────
 
 describe('pre-scores computation', () => {
-  it('computes pre_scores from language_keywords when not provided', async () => {
+  it('computes and enriches pre_scores from the original resume when not provided', async () => {
     // JOB_INTEL has keywords: ['typescript', 'kubernetes', 'distributed systems']
     // resume_text contains 'typescript' and 'kubernetes' but not 'distributed systems'
     const { options, emitted } = makeOptions({
@@ -818,16 +836,18 @@ describe('pre-scores computation', () => {
     });
     await runV2Pipeline(options);
 
-    const preScoresEvent = emitted.find(e => e.type === 'pre_scores') as
-      Extract<V2PipelineSSEEvent, { type: 'pre_scores' }> | undefined;
-    expect(preScoresEvent).toBeDefined();
+    const preScoreEvents = emitted.filter((e): e is Extract<V2PipelineSSEEvent, { type: 'pre_scores' }> => e.type === 'pre_scores');
+    expect(preScoreEvents).toHaveLength(2);
 
-    const data = preScoresEvent!.data;
+    const data = preScoreEvents.at(-1)!.data;
     expect(data.keywords_found).toContain('typescript');
     expect(data.keywords_found).toContain('kubernetes');
     expect(data.keywords_missing).toContain('distributed systems');
     // 2 found out of 3 = 67%
     expect(data.ats_match).toBe(67);
+    expect(data.keyword_match_score).toBe(67);
+    expect(data.job_requirement_coverage_score).toBe(75);
+    expect(data.overall_fit_score).toBe(72);
   });
 
   it('stores computed pre_scores in state', async () => {
@@ -838,6 +858,9 @@ describe('pre-scores computation', () => {
 
     expect(state.pre_scores).toBeDefined();
     expect(state.pre_scores!.keywords_found).toContain('typescript');
+    expect(state.pre_scores!.keyword_match_score).toBe(state.pre_scores!.ats_match);
+    expect(state.pre_scores!.job_requirement_coverage_score).toBe(75);
+    expect(state.pre_scores!.overall_fit_score).toBe(60);
   });
 
   it('uses provided pre_scores without recomputing', async () => {
@@ -845,6 +868,9 @@ describe('pre-scores computation', () => {
       ats_match: 55,
       keywords_found: ['typescript'],
       keywords_missing: ['kubernetes', 'distributed systems'],
+      keyword_match_score: 55,
+      job_requirement_coverage_score: 60,
+      overall_fit_score: 58,
     };
     const { options, emitted } = makeOptions({ pre_scores: providedPreScores });
     const state = await runV2Pipeline(options);
@@ -869,13 +895,23 @@ describe('pre-scores computation', () => {
           ats_match: expect.any(Number),
           keywords_found: expect.any(Array),
           keywords_missing: expect.any(Array),
+          keyword_match_score: expect.any(Number),
+          job_requirement_coverage_score: expect.any(Number),
+          overall_fit_score: expect.any(Number),
         }),
       }),
     );
   });
 
   it('passes provided pre_scores to runAssembly', async () => {
-    const providedPreScores = { ats_match: 55, keywords_found: ['typescript'], keywords_missing: ['kubernetes'] };
+    const providedPreScores = {
+      ats_match: 55,
+      keywords_found: ['typescript'],
+      keywords_missing: ['kubernetes'],
+      keyword_match_score: 55,
+      job_requirement_coverage_score: 60,
+      overall_fit_score: 58,
+    };
     const { options } = makeOptions({ pre_scores: providedPreScores });
     await runV2Pipeline(options);
 
@@ -890,11 +926,13 @@ describe('pre-scores computation', () => {
     const { options, emitted } = makeOptions();
     await runV2Pipeline(options);
 
-    const preScoresEvent = emitted.find(e => e.type === 'pre_scores') as
-      Extract<V2PipelineSSEEvent, { type: 'pre_scores' }> | undefined;
+    const preScoresEvent = emitted.filter((e): e is Extract<V2PipelineSSEEvent, { type: 'pre_scores' }> => e.type === 'pre_scores').at(-1);
     expect(preScoresEvent!.data.ats_match).toBe(0);
+    expect(preScoresEvent!.data.keyword_match_score).toBe(0);
     expect(preScoresEvent!.data.keywords_found).toEqual([]);
     expect(preScoresEvent!.data.keywords_missing).toEqual([]);
+    expect(preScoresEvent!.data.job_requirement_coverage_score).toBe(75);
+    expect(preScoresEvent!.data.overall_fit_score).toBe(49);
   });
 });
 

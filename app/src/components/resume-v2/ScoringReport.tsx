@@ -334,7 +334,7 @@ function CompactScoreSummaryHeader({
   attentionSummary?: string;
   attentionNextAction?: string;
 }) {
-  const beforeKeywordScore = preScores.ats_match;
+  const beforeKeywordScore = preScores.keyword_match_score ?? preScores.ats_match;
   const afterAts = assembly.scores.ats_match;
   const truth = assembly.scores.truth;
   const tone = assembly.scores.tone;
@@ -345,19 +345,19 @@ function CompactScoreSummaryHeader({
     : null;
   const coveredRequirements = jdBreakdown?.addressed ?? null;
   const totalRequirements = jdBreakdown?.total ?? null;
-  const beforeRequirementScore = jdBreakdown?.coverage_score ?? null;
+  const beforeRequirementScore = preScores.job_requirement_coverage_score ?? jdBreakdown?.coverage_score ?? null;
   const afterRequirementScore = coveredRequirements !== null && totalRequirements
     ? Math.round((coveredRequirements / totalRequirements) * 100)
     : null;
-  const beforeSnapshotScore = beforeRequirementScore !== null
-    ? Math.max(beforeKeywordScore, beforeRequirementScore)
-    : beforeKeywordScore;
+  const beforeSnapshotScore = preScores.overall_fit_score ?? (beforeRequirementScore !== null
+    ? Math.round((beforeKeywordScore * 0.35) + (beforeRequirementScore * 0.65))
+    : beforeKeywordScore);
   const afterSnapshotScore = afterRequirementScore !== null
     ? Math.max(afterAts, afterRequirementScore)
     : afterAts;
   const delta = afterSnapshotScore - beforeSnapshotScore;
   const redFlags = hiringManagerScan?.red_flags.length ?? 0;
-  const usesBlendedBaseline = beforeRequirementScore !== null && beforeRequirementScore !== beforeKeywordScore;
+  const usesBlendedBaseline = beforeRequirementScore !== null;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
@@ -445,7 +445,7 @@ function CompactScoreSummaryHeader({
             </div>
             {usesBlendedBaseline && (
               <p className="text-[11px] leading-5 text-[var(--text-soft)]">
-                Baseline blends keyword match ({beforeKeywordScore}%) with original JD coverage ({beforeRequirementScore}%).
+                Baseline combines original keyword match ({beforeKeywordScore}%) with JD coverage ({beforeRequirementScore}%).
               </p>
             )}
           </div>
@@ -568,10 +568,10 @@ function BeforeReport({
       {/* ATS baseline */}
       <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-[var(--text-muted)]">Original ATS Match</p>
-          <span className="text-sm font-bold tabular-nums text-[var(--text-soft)]">{preScores.ats_match}%</span>
+          <p className="text-xs font-medium text-[var(--text-muted)]">Original Keyword Match</p>
+          <span className="text-sm font-bold tabular-nums text-[var(--text-soft)]">{preScores.keyword_match_score ?? preScores.ats_match}%</span>
         </div>
-        <ScoreBar value={preScores.ats_match} color="rgba(175,196,255,0.6)" />
+        <ScoreBar value={preScores.keyword_match_score ?? preScores.ats_match} color="rgba(175,196,255,0.6)" />
         <p className="text-[11px] text-[var(--text-soft)]">
           {foundCount} of {totalCount} JD keywords detected in the original resume
         </p>

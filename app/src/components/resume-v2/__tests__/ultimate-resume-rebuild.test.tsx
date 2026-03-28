@@ -646,6 +646,9 @@ function makePreScores(): PreScores {
     ats_match: 42,
     keywords_found: ['leadership', 'strategy'],
     keywords_missing: ['kubernetes', 'terraform', 'ci/cd'],
+    keyword_match_score: 42,
+    job_requirement_coverage_score: 58,
+    overall_fit_score: 52,
   };
 }
 
@@ -832,8 +835,8 @@ describe('ScoringReport — renders with correct data', () => {
 
     // "Before Report" section should be visible (defaultOpen=true)
     expect(screen.getByText('Before Report')).toBeInTheDocument();
-    // Its content should also be visible (Original ATS Match)
-    expect(screen.getByText('Original ATS Match')).toBeInTheDocument();
+    // Its content should also be visible (Original Keyword Match)
+    expect(screen.getByText('Original Keyword Match')).toBeInTheDocument();
   });
 
   it('renders score summary strength summary when gapAnalysis has one', () => {

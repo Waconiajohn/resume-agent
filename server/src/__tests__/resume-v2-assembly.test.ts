@@ -286,6 +286,9 @@ function makePreScores(overrides?: Partial<PreScores>): PreScores {
     ats_match: 55,
     keywords_found: ['Cloud Infrastructure', 'DevOps'],
     keywords_missing: ['Kubernetes', 'Agile at Scale', 'Revenue Growth'],
+    keyword_match_score: 55,
+    job_requirement_coverage_score: 68,
+    overall_fit_score: 63,
     ...overrides,
   };
 }
@@ -768,10 +771,10 @@ describe('buildPositioningAssessment (via runAssembly)', () => {
     expect(result.positioning_assessment!.summary).toContain('No critical gaps remain');
   });
 
-  it('uses pre_scores.ats_match as before_score', () => {
+  it('uses pre_scores.overall_fit_score as before_score when available', () => {
     const result = runAssembly(makeInput());
 
-    expect(result.positioning_assessment!.before_score).toBe(55);
+    expect(result.positioning_assessment!.before_score).toBe(63);
   });
 
   it('uses ats_optimization.match_score as after_score', () => {

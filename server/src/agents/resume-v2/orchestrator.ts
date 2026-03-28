@@ -38,6 +38,87 @@ import type {
 } from './types.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
+const PRE_SCORE_KEYWORD_WEIGHT = 0.35;
+const PRE_SCORE_COVERAGE_WEIGHT = 0.65;
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function computeOverallFitScore(keywordMatchScore: number, coverageScore?: number): number {
+  if (typeof coverageScore !== 'number') {
+    return clampPercent(keywordMatchScore);
+  }
+
+  return clampPercent(
+    (keywordMatchScore * PRE_SCORE_KEYWORD_WEIGHT) +
+    (coverageScore * PRE_SCORE_COVERAGE_WEIGHT),
+  );
+}
+
+function normalizePreScores(preScores: PreScores): PreScores {
+  const keywordMatchScore = clampPercent(preScores.keyword_match_score ?? preScores.ats_match);
+  const coverageScore = typeof preScores.job_requirement_coverage_score === 'number'
+    ? clampPercent(preScores.job_requirement_coverage_score)
+    : undefined;
+
+  return {
+    ...preScores,
+    ats_match: keywordMatchScore,
+    keywords_found: Array.isArray(preScores.keywords_found) ? preScores.keywords_found : [],
+    keywords_missing: Array.isArray(preScores.keywords_missing) ? preScores.keywords_missing : [],
+    keyword_match_score: keywordMatchScore,
+    job_requirement_coverage_score: coverageScore,
+    overall_fit_score: clampPercent(
+      preScores.overall_fit_score ?? computeOverallFitScore(keywordMatchScore, coverageScore),
+    ),
+  };
+}
+
+function buildKeywordPreScores(jobIntelKeywords: string[], resumeText: string): PreScores {
+  const normalizedKeywords = jobIntelKeywords.map((keyword) => keyword.toLowerCase());
+  const resumeLower = resumeText.toLowerCase();
+  const found = normalizedKeywords.filter((keyword) => resumeLower.includes(keyword));
+  const missing = normalizedKeywords.filter((keyword) => !resumeLower.includes(keyword));
+  const keywordMatchScore = normalizedKeywords.length > 0
+    ? clampPercent((found.length / normalizedKeywords.length) * 100)
+    : 0;
+
+  return normalizePreScores({
+    ats_match: keywordMatchScore,
+    keywords_found: found,
+    keywords_missing: missing,
+    keyword_match_score: keywordMatchScore,
+    overall_fit_score: keywordMatchScore,
+  });
+}
+
+function enrichPreScoresWithGapAnalysis(preScores: PreScores, gapAnalysis: GapAnalysisOutput): PreScores {
+  const requirementCoverageScore = gapAnalysis.score_breakdown?.job_description.coverage_score;
+  if (typeof requirementCoverageScore !== 'number') {
+    return normalizePreScores(preScores);
+  }
+
+  return normalizePreScores({
+    ...preScores,
+    job_requirement_coverage_score: requirementCoverageScore,
+    overall_fit_score: undefined,
+  });
+}
+
+function preScoresEqual(a: PreScores | undefined, b: PreScores): boolean {
+  if (!a) {
+    return false;
+  }
+
+  return a.ats_match === b.ats_match
+    && a.keyword_match_score === b.keyword_match_score
+    && a.job_requirement_coverage_score === b.job_requirement_coverage_score
+    && a.overall_fit_score === b.overall_fit_score
+    && JSON.stringify(a.keywords_found) === JSON.stringify(b.keywords_found)
+    && JSON.stringify(a.keywords_missing) === JSON.stringify(b.keywords_missing);
+}
+
 /**
  * Pending gap-question resolvers, keyed by session_id.
  *
@@ -117,19 +198,11 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     // ─── Pre-scores: baseline ATS match on original resume ─────────
     if (!options.pre_scores) {
-      const jdKeywords = jobIntel.language_keywords.map(k => k.toLowerCase());
-      const resumeLower = options.resume_text.toLowerCase();
-      const found = jdKeywords.filter(k => resumeLower.includes(k));
-      const missing = jdKeywords.filter(k => !resumeLower.includes(k));
-      const preScores: PreScores = {
-        ats_match: jdKeywords.length > 0 ? Math.round((found.length / jdKeywords.length) * 100) : 0,
-        keywords_found: found,
-        keywords_missing: missing,
-      };
+      const preScores = buildKeywordPreScores(jobIntel.language_keywords, options.resume_text);
       state.pre_scores = preScores;
       emit({ type: 'pre_scores', data: preScores });
     } else {
-      state.pre_scores = options.pre_scores;
+      state.pre_scores = normalizePreScores(options.pre_scores);
     }
 
     // Agent 3 depends on Agent 1
@@ -156,6 +229,14 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     state.gap_analysis = gapAnalysis;
     emit({ type: 'gap_analysis', data: gapAnalysis });
+
+    if (!options.pre_scores && state.pre_scores) {
+      const enrichedPreScores = enrichPreScoresWithGapAnalysis(state.pre_scores, gapAnalysis);
+      if (!preScoresEqual(state.pre_scores, enrichedPreScores)) {
+        state.pre_scores = enrichedPreScores;
+        emit({ type: 'pre_scores', data: enrichedPreScores });
+      }
+    }
 
     // ─── Gap Coaching: build coaching cards from pending strategies ──
     // Always emit cards when strategies are present — including on "Add Context" re-runs.

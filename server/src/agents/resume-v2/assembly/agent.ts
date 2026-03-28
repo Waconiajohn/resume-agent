@@ -147,7 +147,7 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
     });
   }
 
-  const quickWins = wins.slice(0, 8);
+  const quickWins = wins.slice(0, 3);
 
   if (quickWins.length === 0) {
     quickWins.push({ description: 'Resume is well-optimized — no critical improvements needed', impact: 'low' });
@@ -240,7 +240,7 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
   const gap_count = requirement_map.filter(r => r.status === 'gap').length;
   const total = requirement_map.length;
 
-  const before_score = pre_scores?.ats_match ?? 0;
+  const before_score = pre_scores?.overall_fit_score ?? pre_scores?.ats_match ?? 0;
   const after_score = ats_optimization.match_score;
 
   const summary = `Your resume directly addresses ${strong_count} of ${total} key requirements. ` +

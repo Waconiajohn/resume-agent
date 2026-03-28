@@ -592,9 +592,16 @@ export interface AssemblyOutput {
 // ─── Pre-Scores (before optimization baseline) ──────────────────
 
 export interface PreScores {
+  /** Original keyword/ATS-style baseline from the uploaded resume */
   ats_match: number;
   keywords_found: string[];
   keywords_missing: string[];
+  /** Explicit alias for the keyword baseline to keep downstream semantics clear */
+  keyword_match_score?: number;
+  /** Original JD requirement coverage before optimization */
+  job_requirement_coverage_score?: number;
+  /** Blended on-paper fit baseline used for before/after headline comparisons */
+  overall_fit_score?: number;
 }
 
 // ─── Gap Coaching (AI coaching conversation for gaps) ────────────

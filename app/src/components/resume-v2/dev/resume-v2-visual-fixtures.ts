@@ -88,6 +88,9 @@ function makePreScores(): PreScores {
     ats_match: 48,
     keywords_found: ['operations', 'leadership', 'distribution'],
     keywords_missing: ['performance metrics', 'ERP', 'operating cadence'],
+    keyword_match_score: 48,
+    job_requirement_coverage_score: 67,
+    overall_fit_score: 60,
   };
 }
 

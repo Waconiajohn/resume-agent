@@ -23,6 +23,9 @@ export const startSchema = z.object({
     ats_match: z.number().int().min(0).max(100),
     keywords_found: z.array(z.string()),
     keywords_missing: z.array(z.string()),
+    keyword_match_score: z.number().int().min(0).max(100).optional(),
+    job_requirement_coverage_score: z.number().int().min(0).max(100).optional(),
+    overall_fit_score: z.number().int().min(0).max(100).optional(),
   }).optional(),
 });
 
