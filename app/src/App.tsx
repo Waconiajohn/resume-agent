@@ -159,6 +159,13 @@ export default function App() {
     }
   }, [isPipelineGateActive]);
 
+  useEffect(() => {
+    if (location.pathname !== '/coach') return;
+    if (currentSession?.product_type !== 'resume_v2') return;
+    setV2SessionId(currentSession.id);
+    navigate('/resume-builder/session', { replace: true });
+  }, [currentSession, location.pathname, navigate]);
+
   const navigateTo = useCallback((target: string) => {
     navigate(resolveNavigationTarget(target));
   }, [navigate]);
@@ -186,7 +193,13 @@ export default function App() {
         return;
       }
 
-      await loadSession(sessionId);
+      const loadedSession = await loadSession(sessionId);
+      if (loadedSession?.product_type === 'resume_v2') {
+        setV2SessionId(sessionId);
+        navigate('/resume-builder/session');
+        return;
+      }
+
       navigate('/coach');
     },
     [loadSession, navigate, sessions],

@@ -25,7 +25,7 @@ export function JobWorkspaceRoute({
   const { jobId = '' } = useParams();
 
   if (!jobId) {
-    return <Navigate to="/workspace?room=resume" replace />;
+    return <Navigate to="/resume-builder/session" replace />;
   }
 
   return (

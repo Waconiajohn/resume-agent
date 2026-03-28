@@ -602,11 +602,23 @@
   }
 
   .resume-proof-line--benchmark {
-    border-left: 4px solid #4f6b88;
+    border-left: 4px solid #9a5d0c;
   }
 
   .resume-proof-line--code-red {
     border-left: 4px solid #8f2d2d;
+  }
+
+  .resume-proof-line--partial::marker {
+    color: #8a5a14;
+  }
+
+  .resume-proof-line--benchmark::marker {
+    color: #9a5d0c;
+  }
+
+  .resume-proof-line--code-red::marker {
+    color: #8f2d2d;
   }
 
   .resume-proof-line--partial:hover,
@@ -633,11 +645,35 @@
   }
 
   .resume-proof-meta-label--benchmark {
-    color: #42566d;
+    color: #9a5d0c;
   }
 
   .resume-proof-meta-label--code-red {
     color: #8f2d2d;
+  }
+
+  .resume-proof-line--partial .resume-bullet-interactive--flagged {
+    color: #8a5a14;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: rgba(138, 90, 20, 0.45);
+    text-underline-offset: 0.18rem;
+  }
+
+  .resume-proof-line--benchmark .resume-bullet-interactive--flagged {
+    color: #9a5d0c;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: rgba(154, 93, 12, 0.45);
+    text-underline-offset: 0.18rem;
+  }
+
+  .resume-proof-line--code-red .resume-bullet-interactive--flagged {
+    color: #8f2d2d;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: rgba(143, 45, 45, 0.5);
+    text-underline-offset: 0.18rem;
   }
 
   .resume-bullet-interactive {

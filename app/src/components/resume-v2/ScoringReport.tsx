@@ -334,19 +334,30 @@ function CompactScoreSummaryHeader({
   attentionSummary?: string;
   attentionNextAction?: string;
 }) {
+  const beforeKeywordScore = preScores.ats_match;
   const afterAts = assembly.scores.ats_match;
-  const beforeAts = preScores.ats_match;
   const truth = assembly.scores.truth;
   const tone = assembly.scores.tone;
   const hiringManagerScan = assembly.hiring_manager_scan;
-  const delta = afterAts - beforeAts;
   const jdBreakdown = gapAnalysis?.score_breakdown?.job_description;
   const outstandingRequirements = jdBreakdown
     ? jdBreakdown.partial + jdBreakdown.missing
     : null;
   const coveredRequirements = jdBreakdown?.addressed ?? null;
   const totalRequirements = jdBreakdown?.total ?? null;
+  const beforeRequirementScore = jdBreakdown?.coverage_score ?? null;
+  const afterRequirementScore = coveredRequirements !== null && totalRequirements
+    ? Math.round((coveredRequirements / totalRequirements) * 100)
+    : null;
+  const beforeSnapshotScore = beforeRequirementScore !== null
+    ? Math.max(beforeKeywordScore, beforeRequirementScore)
+    : beforeKeywordScore;
+  const afterSnapshotScore = afterRequirementScore !== null
+    ? Math.max(afterAts, afterRequirementScore)
+    : afterAts;
+  const delta = afterSnapshotScore - beforeSnapshotScore;
   const redFlags = hiringManagerScan?.red_flags.length ?? 0;
+  const usesBlendedBaseline = beforeRequirementScore !== null && beforeRequirementScore !== beforeKeywordScore;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
@@ -356,7 +367,7 @@ function CompactScoreSummaryHeader({
       : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`);
 
   const topGains = [
-    `${Math.abs(delta)}-point ATS improvement from your original resume`,
+    `${Math.abs(delta)}-point on-paper improvement from your original resume`,
     coveredRequirements !== null && totalRequirements !== null
       ? `${coveredRequirements} of ${totalRequirements} measured role requirements now read as addressed`
       : null,
@@ -398,40 +409,45 @@ function CompactScoreSummaryHeader({
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="score-snapshot-hero px-4 py-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">Resume Match Score</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">On-Paper Fit Score</p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
-              <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--text-muted)]">{beforeAts}%</p>
+              <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--text-muted)]">{beforeSnapshotScore}%</p>
             </div>
             <span aria-hidden="true" className="pb-1 text-lg text-[var(--text-soft)]">-&gt;</span>
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-4xl font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterAts}%</p>
-                <DeltaBadge before={beforeAts} after={afterAts} />
+                <p className="text-4xl font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterSnapshotScore}%</p>
+                <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
               </div>
             </div>
           </div>
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
               <span>Original to tailored resume</span>
-              <span>{beforeAts}% to {afterAts}%</span>
+              <span>{beforeSnapshotScore}% to {afterSnapshotScore}%</span>
             </div>
             <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-[rgba(175,196,255,0.38)]"
-                style={{ width: `${beforeAts}%` }}
+                style={{ width: `${beforeSnapshotScore}%` }}
               />
               <div
                 className="absolute inset-y-0 left-0 rounded-full"
                 style={{
-                  width: `${afterAts}%`,
+                  width: `${afterSnapshotScore}%`,
                   background: 'linear-gradient(90deg, rgba(181,222,194,0.78), rgba(210,236,219,0.95))',
                   boxShadow: '0 0 18px rgba(181,222,194,0.25)',
                 }}
               />
             </div>
+            {usesBlendedBaseline && (
+              <p className="text-[11px] leading-5 text-[var(--text-soft)]">
+                Baseline blends keyword match ({beforeKeywordScore}%) with original JD coverage ({beforeRequirementScore}%).
+              </p>
+            )}
           </div>
           <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>

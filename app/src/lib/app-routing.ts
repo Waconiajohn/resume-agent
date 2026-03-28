@@ -100,6 +100,7 @@ export function resolveNavigationTarget(viewName: string): string {
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace?room=resume';
   if (viewName === 'cover-letter' || viewName === '/cover-letter') return '/workspace?room=resume&focus=cover-letter';
   if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') return '/workspace';
+  if (viewName.startsWith('/')) return viewName;
 
   const pathByView: Record<string, string> = {
     workspace: '/workspace',

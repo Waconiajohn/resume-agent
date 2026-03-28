@@ -155,7 +155,7 @@ export function JobWorkspaceView({
                       </GlassButton>
                     </>
                   ) : (
-                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=resume')}>
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/resume-builder/session')}>
                       <FileText size={12} className="mr-1.5" />
                       Open Resume Builder
                     </GlassButton>

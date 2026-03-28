@@ -38,5 +38,6 @@ describe('app-routing', () => {
     expect(resolveNavigationTarget('/dashboard')).toBe('/workspace?room=resume');
     expect(resolveNavigationTarget('/tools/linkedin')).toBe('/workspace?room=linkedin');
     expect(resolveNavigationTarget('resume-v2')).toBe('/resume-builder/session');
+    expect(resolveNavigationTarget('/resume-builder/session')).toBe('/resume-builder/session');
   });
 });

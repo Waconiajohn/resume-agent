@@ -274,8 +274,7 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="resume" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
-    // Active room uses glass-morphism styling instead of solid bg-white
-    expect(resumeButton?.className).toContain('bg-[rgba(255,255,255,0.045)]');
+    expect(resumeButton?.className).toContain('bg-[var(--rail-tab-active-bg)]');
   });
 
   it('calls onNavigate when a non-gated room is clicked', () => {

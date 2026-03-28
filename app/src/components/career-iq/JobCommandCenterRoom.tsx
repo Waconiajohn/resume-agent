@@ -254,7 +254,7 @@ function SmartMatches({
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => onNavigate('/workspace?room=resume')}
+                  onClick={() => onNavigate('/resume-builder/session')}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   <FileText size={11} />

@@ -11,6 +11,13 @@ const mockGetDefaultResume = vi.fn(async () => ({
   id: 'resume-1',
   raw_text: 'Default resume text',
 }));
+const mockLoadSession = vi.fn<(sessionId: string) => Promise<{ id: string; product_type?: string } | undefined>>(async () => undefined);
+const mockListSessions = vi.fn();
+const mockListResumes = vi.fn();
+const mockSessionState = {
+  sessions: [] as Array<{ id: string; product_type?: string }>,
+  currentSession: null as { id: string; product_type?: string } | null,
+};
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -28,17 +35,17 @@ vi.mock('@/hooks/useAuth', () => ({
 
 vi.mock('@/hooks/useSession', () => ({
   useSession: () => ({
-    sessions: [],
+    sessions: mockSessionState.sessions,
     resumes: [],
-    currentSession: null,
+    currentSession: mockSessionState.currentSession,
     loading: false,
     resumesLoading: false,
     error: null,
-    listSessions: vi.fn(),
-    listResumes: vi.fn(),
+    listSessions: mockListSessions,
+    listResumes: mockListResumes,
     getDefaultResume: mockGetDefaultResume,
     getResumeById: vi.fn(),
-    loadSession: vi.fn(async () => undefined),
+    loadSession: mockLoadSession,
     deleteSession: vi.fn(async () => true),
     setDefaultResume: vi.fn(async () => true),
     deleteResume: vi.fn(async () => true),
@@ -109,13 +116,16 @@ vi.mock('@/components/career-iq/CareerIQScreen', () => ({
   CareerIQScreen: ({
     initialRoom,
     onNewSession,
+    onResumeSession,
   }: {
     initialRoom?: string;
     onNewSession?: () => void;
+    onResumeSession?: (sessionId: string) => void;
   }) => (
     <div>
       <div>Workspace room: {initialRoom ?? 'dashboard'}</div>
       <button type="button" onClick={onNewSession}>New Tailored Resume</button>
+      <button type="button" onClick={() => onResumeSession?.('resume-v2-extra')}>Open Saved Resume</button>
     </div>
   ),
 }));
@@ -155,6 +165,12 @@ vi.mock('@/components/CoachScreen', () => ({
 describe('App routing shell', () => {
   beforeEach(() => {
     mockGetDefaultResume.mockClear();
+    mockLoadSession.mockReset();
+    mockLoadSession.mockResolvedValue(undefined);
+    mockListSessions.mockReset();
+    mockListResumes.mockReset();
+    mockSessionState.sessions = [];
+    mockSessionState.currentSession = null;
   });
 
   it('redirects legacy dashboard path into Workspace resume management', async () => {
@@ -182,6 +198,42 @@ describe('App routing shell', () => {
       expect(screen.getByText('Resume V2 Screen')).toBeInTheDocument();
     });
     expect(mockGetDefaultResume).toHaveBeenCalled();
+  });
+
+  it('reopens a saved resume-v2 session in the v2 builder even when it is not already in memory', async () => {
+    const user = userEvent.setup();
+    mockLoadSession.mockResolvedValue({
+      id: 'resume-v2-extra',
+      product_type: 'resume_v2',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/workspace?room=resume']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getAllByRole('button', { name: 'Open Saved Resume' })[0]);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Resume V2 Screen').length).toBeGreaterThan(0);
+    });
+    expect(mockLoadSession).toHaveBeenCalledWith('resume-v2-extra');
+  });
+
+  it('redirects a resume-v2 coach route back into the v2 builder', async () => {
+    mockSessionState.currentSession = {
+      id: 'resume-v2-current',
+      product_type: 'resume_v2',
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/coach']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect((await screen.findAllByText('Resume V2 Screen')).length).toBeGreaterThan(0);
   });
 
   it('routes tool detail pages through the router tree', async () => {

@@ -267,8 +267,12 @@ export function CareerIQScreen({
 
   const handleRoomNavigate = (room: CareerIQRoom) => {
     const resolvedRoom = toExposedWorkspaceRoom(room);
-    setActiveRoom(resolvedRoom);
     refreshCoachRec();
+    if (resolvedRoom === 'resume') {
+      onNavigate('/resume-builder/session');
+      return;
+    }
+    setActiveRoom(resolvedRoom);
     if (room === 'salary-negotiation') {
       onNavigate('/workspace?room=interview&focus=negotiation');
       return;

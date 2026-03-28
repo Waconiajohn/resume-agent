@@ -1034,7 +1034,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
     expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
     expect(screen.getByText(/Before versus now, the biggest gains, and the few items still worth tightening before export\./i)).toBeInTheDocument();
-    expect(screen.getByText('Resume Match Score')).toBeInTheDocument();
+    expect(screen.getByText('On-Paper Fit Score')).toBeInTheDocument();
     expect(screen.getByText('Biggest gains')).toBeInTheDocument();
     expect(screen.getByText('Still to close')).toBeInTheDocument();
     expect(screen.getAllByText('Not run')).toHaveLength(2);

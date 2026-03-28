@@ -673,6 +673,11 @@ export function V2StreamingDisplay({
   onGapAssist,
   initialActiveBullet = null,
 }: V2StreamingDisplayProps) {
+  // Legacy diff-suggestion review is intentionally disabled in the document-first
+  // workspace. The primary review loop now happens on the resume itself through
+  // proof states and inline editing, not through Accept/Reject suggestion passes.
+  const showLegacySuggestionReview = false;
+
   // ── Inline suggestions ────────────────────────────────────────────────────
   const {
     suggestions,
@@ -700,11 +705,12 @@ export function V2StreamingDisplay({
   // Sync incoming suggestions from SSE into the suggestion hook state
   const prevSuggestionsRef = useRef<InlineSuggestion[]>([]);
   useEffect(() => {
+    if (!showLegacySuggestionReview) return;
     const incoming = data.inlineSuggestions;
     if (incoming === prevSuggestionsRef.current || incoming.length === 0) return;
     prevSuggestionsRef.current = incoming;
     handleSuggestionEvent({ suggestions: incoming });
-  }, [data.inlineSuggestions, handleSuggestionEvent]);
+  }, [data.inlineSuggestions, handleSuggestionEvent, showLegacySuggestionReview]);
 
   // Active bullet for inline editing
   const [activeBullet, setActiveBullet] = useState<{
@@ -999,7 +1005,7 @@ export function V2StreamingDisplay({
             {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
             {/* Suggestion progress strip — sticky, shown when there are suggestions */}
-            {isComplete && suggestions.length > 0 && (
+            {showLegacySuggestionReview && isComplete && suggestions.length > 0 && (
               <SuggestionProgressStrip
                 total={suggestions.length}
                 reviewed={reviewedCount}
@@ -1030,11 +1036,11 @@ export function V2StreamingDisplay({
                     onAcceptEdit={handleAcceptEdit}
                     onRejectEdit={onRejectEdit}
                     onRequestEdit={canEdit ? onRequestEdit : undefined}
-                    inlineSuggestions={suggestions}
-                    onAcceptSuggestion={acceptSuggestion}
-                    onRejectSuggestion={rejectSuggestion}
-                    currentSuggestionId={currentSuggestionId}
-                    suggestionIndexMap={suggestionIndexMap}
+                    inlineSuggestions={showLegacySuggestionReview ? suggestions : []}
+                    onAcceptSuggestion={showLegacySuggestionReview ? acceptSuggestion : undefined}
+                    onRejectSuggestion={showLegacySuggestionReview ? rejectSuggestion : undefined}
+                    currentSuggestionId={showLegacySuggestionReview ? currentSuggestionId : null}
+                    suggestionIndexMap={showLegacySuggestionReview ? suggestionIndexMap : undefined}
                   />
                 </div>
               </AnimatedCard>
@@ -1107,18 +1113,19 @@ export function V2StreamingDisplay({
           </div>
 
           {/* SuggestionsBadge — fixed bottom-right overlay showing suggestion count */}
-          <SuggestionsBadge
-            pendingCount={pendingCount}
-            isProcessing={!isComplete && data.inlineSuggestions.length === 0}
-            processingStatus={null}
-            allResolved={allResolved}
-            onScrollToNext={scrollToNext}
-            onExport={() => {
-              // Export is handled by ResumeWorkspaceRail — scroll to it
-              const rail = containerRef.current?.querySelector('[data-workspace-rail]');
-              rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          />
+          {showLegacySuggestionReview && (
+            <SuggestionsBadge
+              pendingCount={pendingCount}
+              isProcessing={!isComplete && data.inlineSuggestions.length === 0}
+              processingStatus={null}
+              allResolved={allResolved}
+              onScrollToNext={scrollToNext}
+              onExport={() => {
+                const rail = containerRef.current?.querySelector('[data-workspace-rail]');
+                rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+          )}
         </>
       ) : (
         /* Processing layout (pipeline running, no resume yet) */

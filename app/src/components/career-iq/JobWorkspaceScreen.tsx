@@ -86,7 +86,7 @@ export function JobWorkspaceScreen({
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-soft)]">
             We could not find saved assets linked to this job yet. Open Resume Builder to review recent tailored work or attach new assets to the application.
           </p>
-          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.('/workspace?room=resume')}>
+          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.('/resume-builder/session')}>
             <ArrowLeft size={14} className="mr-1.5" />
             Back to Resume Builder
           </GlassButton>
@@ -101,7 +101,7 @@ export function JobWorkspaceScreen({
         <div>
           <button
             type="button"
-            onClick={() => onNavigate?.('/workspace?room=resume')}
+            onClick={() => onNavigate?.('/resume-builder/session')}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#98b3ff]"
           >
             <ArrowLeft size={14} />

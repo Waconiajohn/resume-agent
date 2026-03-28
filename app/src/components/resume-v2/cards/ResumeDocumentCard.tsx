@@ -862,6 +862,8 @@ function InlineEditPanel({
   onRejectEdit,
 }: InlineEditPanelProps) {
   const [draftValue, setDraftValue] = useState('');
+  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const statusMeta = getConfidencePill(confidence, requirementSource);
   const requirementLabel = requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
@@ -878,6 +880,8 @@ function InlineEditPanel({
       return;
     }
     setDraftValue(bulletText);
+    setShowCustomPrompt(false);
+    setCustomPrompt('');
   }, [bulletText, pendingEdit, section]);
 
   const matchesPendingEdit = Boolean(
@@ -891,14 +895,18 @@ function InlineEditPanel({
   const aiActions: Array<{ action: EditAction; label: string }> = isBenchmarkValidation
     ? [
         { action: 'add_metrics', label: 'Connect to my background' },
+        { action: 'add_keywords', label: 'Add keywords' },
         { action: 'rewrite', label: 'Rewrite to match my background' },
+        { action: 'custom', label: 'Custom' },
         { action: 'not_my_voice', label: 'Not my voice' },
       ]
     : [
         { action: 'strengthen', label: 'Strengthen wording' },
         { action: 'add_metrics', label: 'Add proof' },
+        { action: 'add_keywords', label: 'Add keywords' },
         { action: 'shorten', label: 'Shorten' },
         { action: 'rewrite', label: 'Rewrite safely' },
+        { action: 'custom', label: 'Custom' },
         { action: 'not_my_voice', label: 'Not my voice' },
       ];
 
@@ -1010,6 +1018,10 @@ function InlineEditPanel({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (action === 'custom') {
+                    setShowCustomPrompt((previous) => !previous);
+                    return;
+                  }
                   onRequestEdit(bulletText, section, action, aiInstruction);
                 }}
                 disabled={isEditing}
@@ -1019,6 +1031,39 @@ function InlineEditPanel({
               </button>
             ))}
           </div>
+
+          {showCustomPrompt && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Custom AI instruction
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Tell AI exactly how to revise this line. It will replace the current working draft, not append to it.
+              </p>
+              <div className="mt-3 flex flex-wrap items-start gap-2">
+                <input
+                  type="text"
+                  value={customPrompt}
+                  onChange={(event) => setCustomPrompt(event.target.value)}
+                  placeholder="Example: keep the metric but make this sound more executive."
+                  maxLength={500}
+                  className="min-w-[260px] flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!customPrompt.trim()) return;
+                    onRequestEdit(bulletText, section, 'custom', customPrompt.trim());
+                  }}
+                  disabled={isEditing || !customPrompt.trim()}
+                  className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 transition-colors"
+                >
+                  Run custom edit
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
