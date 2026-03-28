@@ -479,9 +479,6 @@ function InlineEditPanel({
   const [customPrompt, setCustomPrompt] = useState('');
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const isCodeRed = confidence === 'needs_validation' && requirementSource !== 'benchmark';
-  const targetSourceLabel = requirementSource === 'benchmark'
-    ? 'This target came from the benchmark profile.'
-    : 'This target came from the job description.';
   const hasEvidence = evidenceFound.trim().length > 0;
   const targetSummary = requirements.length > 0
     ? requirements.join(', ')
@@ -598,13 +595,10 @@ function InlineEditPanel({
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
             <div className="resume-inline-panel__target-card rounded-xl px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {requirementSource === 'benchmark' ? 'Benchmark target' : 'Role target'}
+                {requirementSource === 'benchmark' ? "Benchmark signal we're covering" : "Job need we're covering"}
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-800">
                 {targetSummary}
-              </p>
-              <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                {targetSourceLabel}
               </p>
             </div>
 
@@ -1142,33 +1136,17 @@ function getInlinePanelTone(
   return 'resume-inline-panel__status--code-red';
 }
 
-function getProofStateNextStep(
-  confidence: BulletConfidence,
-  requirementSource: RequirementSource,
-): string {
-  if (confidence === 'strong') {
-    return 'The proof is already there. Tighten the wording only if you want it sharper.';
-  }
-  if (confidence === 'partial') {
-    return 'Add one concrete metric, scope detail, or outcome so this reads as direct proof.';
-  }
-  if (requirementSource === 'benchmark') {
-    return 'This line may fit the role. Connect it to real background you can stand behind, then keep it only if it still reads honestly.';
-  }
-  return 'Look for adjacent experience, tools, scope, or strong working knowledge you can honestly claim, then rewrite this line safely before export.';
-}
-
 function getInlinePanelIntro(
   confidence: BulletConfidence,
   requirementSource: RequirementSource,
 ): string {
   if (confidence === 'partial') {
-    return 'This line is directionally right, but it still needs sharper proof before it should stay in the final resume.';
+    return 'This is part of the strongest resume we can build for this role, but the proof in this line still needs to be sharper.';
   }
   if (requirementSource === 'benchmark') {
-    return 'This ultimate-resume line is trying to cover a benchmark signal. Keep the target, but rewrite it only in a way that honestly fits the candidate’s real background.';
+    return 'This is the ultimate-resume draft for this role. The line is aiming at a benchmark signal, but the wording needs to come back to background the candidate can honestly stand behind.';
   }
-  return 'This ultimate-resume line is trying to cover a job need. Keep the target, but rewrite it so it reflects real adjacent experience or honest working knowledge.';
+  return 'This is the ultimate-resume draft for this role. The line is aiming at a real job need, but the wording needs to come back to proof the candidate can honestly support.';
 }
 
 function getInlinePanelFlagReason(

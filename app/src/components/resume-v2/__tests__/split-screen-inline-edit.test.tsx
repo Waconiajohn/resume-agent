@@ -710,7 +710,7 @@ describe('InlineEditPanel — action buttons', () => {
     );
 
     expect(screen.getAllByText('Confirm Fit').length).toBeGreaterThan(0);
-    expect(screen.getByText(/trying to cover a benchmark signal/i)).toBeInTheDocument();
+    expect(screen.getByText(/ultimate-resume draft for this role/i)).toBeInTheDocument();
     expect(screen.getByText('Not directly confirmed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect to my background' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rewrite to match my background' })).toBeInTheDocument();
@@ -905,7 +905,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getAllByText(/Role target/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Job need we're covering/i).length).toBeGreaterThan(0);
   });
 
   it('falls back to the targeting label when addresses_requirements is empty', () => {
@@ -923,7 +923,7 @@ describe('InlineEditPanel — requirement tags', () => {
     );
 
     // index 1 has addresses_requirements: []
-    expect(screen.getAllByText(/Role target/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Job need we're covering/i).length).toBeGreaterThan(0);
     expect(screen.getByText('One of the key needs from the job description.')).toBeInTheDocument();
   });
 
@@ -955,7 +955,7 @@ describe('InlineEditPanel — requirement tags', () => {
       />,
     );
 
-    const roleTargetCard = screen.getAllByText(/Role target/i)[0].parentElement as HTMLElement;
+    const roleTargetCard = screen.getAllByText(/Job need we're covering/i)[0].parentElement as HTMLElement;
     expect(within(roleTargetCard).getByText('Drilling engineering and operations expertise')).toBeInTheDocument();
   });
 });
