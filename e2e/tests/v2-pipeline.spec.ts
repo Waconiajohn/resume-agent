@@ -67,6 +67,13 @@ const MOCK_SSE_EVENTS = [
     certifications: ['AWS Solutions Architect – Professional', 'CKA', 'Terraform Associate'],
     hidden_accomplishments: ['Cross-functional partnership with CISO on zero-trust'],
   } },
+  { type: 'pre_scores', data: {
+    ats_match: 24,
+    keywords_found: ['AWS', 'Kubernetes', 'Terraform'],
+    keywords_missing: ['SOC 2', 'HIPAA'],
+    keyword_match_score: 24,
+    overall_fit_score: 24,
+  } },
   { type: 'benchmark_candidate', data: {
     ideal_profile_summary: 'A senior cloud architect with 10+ years leading multi-cloud infrastructure at enterprise scale.',
     expected_achievements: [
@@ -122,6 +129,14 @@ const MOCK_SSE_EVENTS = [
         },
       },
     ],
+  } },
+  { type: 'pre_scores', data: {
+    ats_match: 24,
+    keywords_found: ['AWS', 'Kubernetes', 'Terraform'],
+    keywords_missing: ['SOC 2', 'HIPAA'],
+    keyword_match_score: 24,
+    job_requirement_coverage_score: 67,
+    overall_fit_score: 52,
   } },
   { type: 'narrative_strategy', data: {
     primary_narrative: 'Infrastructure leader who scales platforms for mission-critical enterprises',
@@ -413,48 +428,59 @@ async function mockResumeV2Network(page: Page): Promise<void> {
 async function openResumeBuilderSession(page: Page): Promise<void> {
   await mockResumeV2Network(page);
   await page.goto('/resume-builder/session');
-  await expect(page.getByRole('heading', { name: /Position Your Resume/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: /Build Your Tailored Resume/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Drop zone for resume file/i })).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByRole('button', { name: /Drop zone for job description file/i })).toBeVisible({ timeout: 5_000 });
+}
+
+async function openPasteAreas(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /Or paste text/i }).first().click();
+  await page.getByRole('button', { name: /Or paste text/i }).first().click();
   await expect(page.locator('#v2-resume')).toBeVisible({ timeout: 5_000 });
-  await expect(page.locator('#v2-jd')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByLabel(/Job description text/i)).toBeVisible({ timeout: 5_000 });
 }
 
 async function submitPipeline(page: Page): Promise<void> {
+  await openPasteAreas(page);
   await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-  await page.locator('#v2-jd').fill(REAL_JD_TEXT);
+  await page.getByLabel(/Job description text/i).fill(REAL_JD_TEXT);
   const submit = page.getByRole('button', { name: /Analyze and craft my resume/i });
   await expect(submit).toBeEnabled();
   await submit.click();
 }
 
 async function waitForPipelineCompletion(page: Page): Promise<void> {
-  await expect(page.locator('#v2-resume')).not.toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: /Build Your Tailored Resume/i })).not.toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Requirements to Match')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Open Full Analysis')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Score Snapshot')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Full Scoring Report/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Run Final Review/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Export & Details/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /^New Resume$/i })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('Resume Builder session flow', () => {
   test('renders the current intake form on the direct session route', async ({ page }) => {
     await openResumeBuilderSession(page);
-    await expect(page.getByText(/Position yourself as the benchmark/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Upload resume file/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Upload job description file/i })).toBeVisible();
+    await expect(page.getByText(/Upload your resume and target job/i)).toBeVisible();
+    await expect(page.getByText('Your Resume', { exact: true })).toBeVisible();
+    await expect(page.getByText('Job Description', { exact: true })).toBeVisible();
+    await expect(page.getByLabel(/Job posting URL/i)).toBeVisible();
   });
 
   test('submit stays disabled until both inputs are ready', async ({ page }) => {
     await openResumeBuilderSession(page);
+    await openPasteAreas(page);
     const submit = page.getByRole('button', { name: /Analyze and craft my resume/i });
 
     await expect(submit).toBeDisabled();
     await page.locator('#v2-resume').fill('Short resume');
-    await page.locator('#v2-jd').fill('Short JD');
+    await page.getByLabel(/Job description text/i).fill('Short JD');
     await expect(submit).toBeDisabled();
 
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
+    await page.getByLabel(/Job description text/i).fill(REAL_JD_TEXT);
     await expect(submit).toBeEnabled();
   });
 
@@ -462,9 +488,9 @@ test.describe('Resume Builder session flow', () => {
     await openResumeBuilderSession(page);
     await submitPipeline(page);
 
-    await expect(page.locator('section[aria-label="Analysis"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Sarah Mitchell')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Score Snapshot')).toBeVisible({ timeout: 15_000 });
   });
 
   test('completed session shows the current review and export surfaces', async ({ page }) => {
@@ -475,14 +501,19 @@ test.describe('Resume Builder session flow', () => {
     await expect(page.getByText('Match: 85%')).toBeVisible();
     await expect(page.getByText('Accuracy: 92%')).toBeVisible();
     await expect(page.getByText('Tone: 88%')).toBeVisible();
-    await expect(page.getByText('Open Full Analysis')).toBeVisible();
-    await expect(page.getByText('Kubernetes').first()).toBeHidden();
+    await expect(page.getByRole('button', { name: /Full Scoring Report/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Export & Details/i })).toBeVisible();
 
-    await page.getByText('Open Full Analysis').click();
+    await page.getByRole('button', { name: /Export & Details/i }).click();
+    await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Download PDF/i })).toBeVisible();
 
-    await expect(page.getByText('Kubernetes').first()).toBeVisible();
-    await expect(page.getByText('Compliance Frameworks').first()).toBeVisible();
-    await expect(page.getByText(/Click a bullet to improve the wording/i)).toBeVisible();
+    await page.getByRole('button', { name: /Full Scoring Report/i }).click();
+
+    await expect(page.getByText('Before Report')).toBeVisible();
+    await expect(page.getByText('After Report')).toBeVisible();
+    await expect(page.getByText('Original Keyword Match', { exact: true })).toBeVisible();
   });
 
   test('New Resume resets the user back to the intake form', async ({ page }) => {
@@ -491,18 +522,18 @@ test.describe('Resume Builder session flow', () => {
     await waitForPipelineCompletion(page);
 
     await page.getByRole('button', { name: /^New Resume$/i }).click();
-    await expect(page.locator('#v2-resume')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('#v2-jd')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /Position Your Resume/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Build Your Tailored Resume/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /Drop zone for resume file/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /Drop zone for job description file/i })).toBeVisible({ timeout: 5_000 });
   });
 
-  test('completed session keeps the current queue guidance visible', async ({ page }) => {
+  test('completed session keeps the current score and document surfaces visible', async ({ page }) => {
     await openResumeBuilderSession(page);
     await submitPipeline(page);
     await waitForPipelineCompletion(page);
 
-    await expect(page.getByRole('button', { name: /Improve with AI|Draft with AI/i }).first()).toBeVisible();
-    await expect(page.getByText(/To make this strong enough, tell us/i).first()).toBeVisible();
-    await expect(page.getByText(/Start with the first requirement below/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Selected Accomplishments' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Professional Experience' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible();
   });
 });
