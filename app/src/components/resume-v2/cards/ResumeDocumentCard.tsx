@@ -632,7 +632,7 @@ function InlineEditPanel({
             <div className="resume-inline-panel__context-card rounded-xl px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Line context</p>
               <dl className="mt-3 grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm leading-6 text-slate-700">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Built from</dt>
                 <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
 
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
@@ -650,7 +650,7 @@ function InlineEditPanel({
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 {isBenchmarkValidation
-                  ? 'Rewrite this so it clearly matches background the candidate can honestly stand behind.'
+                  ? 'Rewrite this so it clearly matches background you can honestly stand behind.'
                   : isCodeRed
                     ? 'Reconnect this line to real adjacent experience or honest working knowledge.'
                     : 'Tighten this line with clearer proof, scope, or outcome.'}
@@ -1102,9 +1102,9 @@ function getContentOriginLabel(
   contentOrigin: ResumeContentOrigin | undefined,
   confidence: BulletConfidence,
 ): string {
-  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'From Resume';
-  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Rewritten From Resume';
-  return 'Drafted To Close Gap';
+  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'Original resume';
+  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Resume rewrite';
+  return 'Gap-closing draft';
 }
 
 function getSupportOriginLabel(
@@ -1113,11 +1113,11 @@ function getSupportOriginLabel(
   confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): string {
-  if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
+  if (supportOrigin === 'user_confirmed_context') return 'User-confirmed context';
   if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
-  if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
+  if (supportOrigin === 'original_resume' || hasEvidence) return 'Resume support found';
   if (requirementSource === 'benchmark' && confidence === 'needs_validation') return 'Not directly confirmed';
-  return 'Not found yet';
+  return 'No direct resume proof yet';
 }
 
 function getInlinePanelTone(
@@ -1144,9 +1144,9 @@ function getInlinePanelIntro(
     return 'This is part of the strongest resume we can build for this role, but the proof in this line still needs to be sharper.';
   }
   if (requirementSource === 'benchmark') {
-    return 'This is the ultimate-resume draft for this role. The line is aiming at a benchmark signal, but the wording needs to come back to background the candidate can honestly stand behind.';
+    return 'This is the ultimate-resume draft for this role. The line is aimed at a benchmark signal, and now we need to anchor it in background you can honestly stand behind.';
   }
-  return 'This is the ultimate-resume draft for this role. The line is aiming at a real job need, but the wording needs to come back to proof the candidate can honestly support.';
+  return 'This is the ultimate-resume draft for this role. The line is aimed at a real job need, and now we need to anchor it in proof you can honestly support.';
 }
 
 function getInlinePanelFlagReason(
@@ -1160,7 +1160,7 @@ function getInlinePanelFlagReason(
     return 'The line reads as plausible, but the proof is still too thin or too generic.';
   }
   if (requirementSource === 'benchmark') {
-    return 'This may be the right kind of benchmark claim, but we still need to confirm it honestly matches the candidate’s background.';
+    return 'This may be the right kind of benchmark claim, but we still need to confirm it honestly matches your background.';
   }
   return 'We do not yet have direct resume proof for this exact claim.';
 }
