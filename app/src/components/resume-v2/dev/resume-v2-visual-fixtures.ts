@@ -357,7 +357,6 @@ function makePipelineData(resume: ResumeDraft): V2PipelineData {
         quick_wins: ['Move the strongest KPI line higher.'],
       },
     },
-    inlineSuggestions: [],
     hiringManagerScan: null,
     verificationDetail: makeVerificationDetail(),
     error: null,

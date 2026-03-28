@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Lightbulb, Loader2, Wand2, FileText, Target, Check, X, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Lightbulb, Loader2, AlertTriangle } from 'lucide-react';
 import type {
   ResumeDraft,
   BulletConfidence,
@@ -7,7 +7,6 @@ import type {
   ResumeContentOrigin,
   ResumeSupportOrigin,
 } from '@/types/resume-v2';
-import type { InlineSuggestion } from '@/lib/compute-inline-diffs';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 import { BulletEditPopover } from './BulletEditPopover';
@@ -28,14 +27,6 @@ interface ResumeDocumentCardProps {
   onAcceptEdit?: (text: string) => void;
   onRejectEdit?: () => void;
   onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
-  /** Inline suggestions to render directly in the document */
-  inlineSuggestions?: InlineSuggestion[];
-  onAcceptSuggestion?: (id: string, editedText?: string) => void;
-  onRejectSuggestion?: (id: string) => void;
-  /** The id of the suggestion currently being focused/reviewed */
-  currentSuggestionId?: string | null;
-  /** Map from suggestion id to its sequential 1-based number across the document */
-  suggestionIndexMap?: Map<string, number>;
 }
 
 export function ResumeDocumentCard({
@@ -49,11 +40,6 @@ export function ResumeDocumentCard({
   onAcceptEdit,
   onRejectEdit,
   onRequestEdit,
-  inlineSuggestions = [],
-  onAcceptSuggestion,
-  onRejectSuggestion,
-  currentSuggestionId = null,
-  suggestionIndexMap,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
@@ -64,33 +50,6 @@ export function ResumeDocumentCard({
 
   // Track which suggestion popover is open (by suggestion id or bullet key)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
-
-
-  /**
-   * Find a pending inline suggestion that matches a given bullet text in a section.
-   * sectionId on the suggestion is the section name from the resume draft.
-   */
-  const findSuggestion = useCallback(
-    (sectionId: string, bulletText: string): InlineSuggestion | undefined => {
-      return inlineSuggestions.find(
-        (s) => s.sectionId === sectionId && (s.originalText === bulletText || s.suggestedText === bulletText),
-      );
-    },
-    [inlineSuggestions],
-  );
-
-  /**
-   * Build a 1-based sequential number map for all suggestions.
-   * Uses the prop when provided; falls back to generating one from inlineSuggestions order.
-   */
-  const resolvedIndexMap = useCallback((): Map<string, number> => {
-    if (suggestionIndexMap) return suggestionIndexMap;
-    const map = new Map<string, number>();
-    inlineSuggestions.forEach((s, i) => map.set(s.id, i + 1));
-    return map;
-  }, [suggestionIndexMap, inlineSuggestions])();
-
-  const totalSuggestions = inlineSuggestions.length;
 
   return (
     <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
@@ -157,17 +116,13 @@ export function ResumeDocumentCard({
               const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
-              const suggestion = findSuggestion('selected_accomplishments', a.content);
               const popoverKey = `sa-${i}`;
               const isPopoverOpen = openPopoverId === popoverKey;
-              const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
-              const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
               
               return (
                 <li
                   key={i}
                   data-bullet-id={`selected_accomplishments-${i}`}
-                  data-suggestion-id={suggestion?.id}
                   data-confidence={a.confidence}
                   className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                     getConfidenceLineClass(a.confidence, a.requirement_source)
@@ -176,57 +131,39 @@ export function ResumeDocumentCard({
                     ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
                     : {})}
                 >
-                  {suggestion ? (
-                    <BulletWithSuggestion
-                      suggestion={suggestion}
-                      popoverKey={popoverKey}
-                      isPopoverOpen={isPopoverOpen}
-                      onOpenPopover={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                      onClosePopover={() => setOpenPopoverId(null)}
-                      onAcceptSuggestion={onAcceptSuggestion}
-                      onRejectSuggestion={onRejectSuggestion}
+                  <>
+                    <BulletLineContent
+                      text={a.content}
+                      confidence={a.confidence}
+                      requirementSource={a.requirement_source}
+                      section="selected_accomplishments"
+                      bulletIndex={i}
                       requirements={accomplishmentRequirements}
-                      suggestionNumber={suggestionNum}
-                      isCurrent={suggestion.id === currentSuggestionId}
-                      suggestionDataIndex={suggestionDataIdx}
-                      totalSuggestions={totalSuggestions}
-                      onRequestEdit={onRequestEdit}
+                      onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                      onBulletClick={onBulletClick}
                     />
-                  ) : (
-                    <>
-                      <BulletLineContent
+                    {isPopoverOpen && (
+                      <BulletEditPopover
                         text={a.content}
                         confidence={a.confidence}
+                        evidenceFound={a.evidence_found}
                         requirementSource={a.requirement_source}
-                        section="selected_accomplishments"
-                        bulletIndex={i}
-                        requirements={accomplishmentRequirements}
-                        onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                        onBulletClick={onBulletClick}
+                        addressesRequirements={accomplishmentRequirements}
+                        contentOrigin={a.content_origin}
+                        supportOrigin={a.support_origin}
+                        onSave={(newText) => {
+                          onBulletEdit?.('selected_accomplishments', i, newText);
+                          setOpenPopoverId(null);
+                        }}
+                        onRemove={() => {
+                          onBulletRemove?.('selected_accomplishments', i);
+                          setOpenPopoverId(null);
+                        }}
+                        onClose={() => setOpenPopoverId(null)}
+                        onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'selected_accomplishments', action) : undefined}
                       />
-                      {isPopoverOpen && (
-                        <BulletEditPopover
-                          text={a.content}
-                          confidence={a.confidence}
-                          evidenceFound={a.evidence_found}
-                          requirementSource={a.requirement_source}
-                          addressesRequirements={accomplishmentRequirements}
-                          contentOrigin={a.content_origin}
-                          supportOrigin={a.support_origin}
-                          onSave={(newText) => {
-                            onBulletEdit?.('selected_accomplishments', i, newText);
-                            setOpenPopoverId(null);
-                          }}
-                          onRemove={() => {
-                            onBulletRemove?.('selected_accomplishments', i);
-                            setOpenPopoverId(null);
-                          }}
-                          onClose={() => setOpenPopoverId(null)}
-                          onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'selected_accomplishments', action) : undefined}
-                        />
-                      )}
-                    </>
-                  )}
+                    )}
+                  </>
                   {isActive && onRequestEdit && (
                     <InlineEditPanel
                       bulletText={a.content}
@@ -283,17 +220,13 @@ export function ResumeDocumentCard({
                     const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
-                    const suggestion = findSuggestion('professional_experience', bullet.text);
                     const popoverKey = `pe-${bulletIndex}`;
                     const isPopoverOpen = openPopoverId === popoverKey;
-                    const suggestionNum = suggestion ? resolvedIndexMap.get(suggestion.id) : undefined;
-                    const suggestionDataIdx = suggestion ? inlineSuggestions.findIndex((s) => s.id === suggestion.id) : undefined;
                     
                     return (
                       <li
                         key={j}
                         data-bullet-id={`professional_experience-${bulletIndex}`}
-                        data-suggestion-id={suggestion?.id}
                         data-confidence={bullet.confidence}
                         className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                           getConfidenceLineClass(bullet.confidence, bullet.requirement_source)
@@ -302,57 +235,39 @@ export function ResumeDocumentCard({
                           ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
                           : {})}
                       >
-                        {suggestion ? (
-                          <BulletWithSuggestion
-                            suggestion={suggestion}
-                            popoverKey={popoverKey}
-                            isPopoverOpen={isPopoverOpen}
-                            onOpenPopover={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                            onClosePopover={() => setOpenPopoverId(null)}
-                            onAcceptSuggestion={onAcceptSuggestion}
-                            onRejectSuggestion={onRejectSuggestion}
+                        <>
+                          <BulletLineContent
+                            text={bullet.text}
+                            confidence={bullet.confidence}
+                            requirementSource={bullet.requirement_source}
+                            section="professional_experience"
+                            bulletIndex={bulletIndex}
                             requirements={bulletRequirements}
-                            suggestionNumber={suggestionNum}
-                            isCurrent={suggestion.id === currentSuggestionId}
-                            suggestionDataIndex={suggestionDataIdx}
-                            totalSuggestions={totalSuggestions}
-                            onRequestEdit={onRequestEdit}
+                            onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
+                            onBulletClick={onBulletClick}
                           />
-                        ) : (
-                          <>
-                            <BulletLineContent
+                          {isPopoverOpen && (
+                            <BulletEditPopover
                               text={bullet.text}
                               confidence={bullet.confidence}
+                              evidenceFound={bullet.evidence_found}
                               requirementSource={bullet.requirement_source}
-                              section="professional_experience"
-                              bulletIndex={bulletIndex}
-                              requirements={bulletRequirements}
-                              onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                              onBulletClick={onBulletClick}
+                              addressesRequirements={bulletRequirements}
+                              contentOrigin={bullet.content_origin}
+                              supportOrigin={bullet.support_origin}
+                              onSave={(newText) => {
+                                onBulletEdit?.('professional_experience', bulletIndex, newText);
+                                setOpenPopoverId(null);
+                              }}
+                              onRemove={() => {
+                                onBulletRemove?.('professional_experience', bulletIndex);
+                                setOpenPopoverId(null);
+                              }}
+                              onClose={() => setOpenPopoverId(null)}
+                              onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'professional_experience', action) : undefined}
                             />
-                            {isPopoverOpen && (
-                              <BulletEditPopover
-                                text={bullet.text}
-                                confidence={bullet.confidence}
-                                evidenceFound={bullet.evidence_found}
-                                requirementSource={bullet.requirement_source}
-                                addressesRequirements={bulletRequirements}
-                                contentOrigin={bullet.content_origin}
-                                supportOrigin={bullet.support_origin}
-                                onSave={(newText) => {
-                                  onBulletEdit?.('professional_experience', bulletIndex, newText);
-                                  setOpenPopoverId(null);
-                                }}
-                                onRemove={() => {
-                                  onBulletRemove?.('professional_experience', bulletIndex);
-                                  setOpenPopoverId(null);
-                                }}
-                                onClose={() => setOpenPopoverId(null)}
-                                onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'professional_experience', action) : undefined}
-                              />
-                            )}
-                          </>
-                        )}
+                          )}
+                        </>
                         {isActive && onRequestEdit && (
                           <InlineEditPanel
                             bulletText={bullet.text}
@@ -502,328 +417,6 @@ function BulletLineContent({
   );
 }
 
-// ─── BulletWithSuggestion ────────────────────────────────────────────────────
-// Renders a bullet that has an attached inline suggestion.
-// - If `is_new` (addition): green text only, click opens popover.
-// - If replacement: red strikethrough original + green new text, click opens popover.
-// - If accepted: renders normal dark text.
-
-interface BulletWithSuggestionProps {
-  suggestion: InlineSuggestion;
-  popoverKey: string;
-  isPopoverOpen: boolean;
-  onOpenPopover: () => void;
-  onClosePopover: () => void;
-  onAcceptSuggestion?: (id: string, editedText?: string) => void;
-  onRejectSuggestion?: (id: string) => void;
-  requirements: string[];
-  /** 1-based sequential number for this suggestion across the whole document */
-  suggestionNumber?: number;
-  /** True when this is the currently focused/active suggestion */
-  isCurrent?: boolean;
-  /** Index in the suggestions array for data attribute (0-based) */
-  suggestionDataIndex?: number;
-  /** Total suggestion count across document */
-  totalSuggestions?: number;
-  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
-}
-
-function BulletWithSuggestion({
-  suggestion,
-  popoverKey,
-  isPopoverOpen,
-  onOpenPopover,
-  onClosePopover,
-  onAcceptSuggestion,
-  onRejectSuggestion,
-  requirements,
-  suggestionNumber,
-  isCurrent = false,
-  suggestionDataIndex,
-  totalSuggestions,
-  onRequestEdit,
-}: BulletWithSuggestionProps) {
-  const isAccepted = suggestion.status === 'accepted';
-  const isRejected = suggestion.status === 'rejected';
-  const isReplacement = suggestion.changeType === 'replacement' && Boolean(suggestion.originalText) && Boolean(suggestion.suggestedText);
-
-  // Numbered badge shown before the suggestion text
-  const NumberBadge = () => {
-    if (suggestionNumber === undefined) return null;
-
-    if (isAccepted) {
-      return (
-        <span
-          aria-label={`Suggestion ${suggestionNumber} accepted`}
-          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white mr-1.5 flex-shrink-0 align-middle"
-        >
-          <Check className="w-3 h-3" strokeWidth={3} />
-        </span>
-      );
-    }
-
-    if (isRejected) {
-      return (
-        <span
-          aria-label={`Suggestion ${suggestionNumber} rejected`}
-          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-300 text-gray-500 mr-1.5 flex-shrink-0 align-middle"
-        >
-          <X className="w-3 h-3" strokeWidth={3} />
-        </span>
-      );
-    }
-
-    return (
-      <span
-        role="button"
-        tabIndex={0}
-        onClick={(e) => { e.stopPropagation(); onOpenPopover(); }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            onOpenPopover();
-          }
-        }}
-        aria-label={`Suggestion ${suggestionNumber}. Click to review.`}
-        className={`inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[11px] font-bold mr-1.5 flex-shrink-0 align-middle cursor-pointer transition-all ${
-          isCurrent ? 'ring-2 ring-blue-400 ring-offset-1 animate-pulse' : ''
-        }`}
-      >
-        {suggestionNumber}
-      </span>
-    );
-  };
-
-  if (isAccepted) {
-    return (
-      <span
-        data-suggestion-index={suggestionDataIndex}
-        className="inline transition-colors duration-300"
-      >
-        <NumberBadge />
-        <span className="transition-colors duration-300">
-          {suggestion.acceptedText ?? suggestion.suggestedText}
-        </span>
-      </span>
-    );
-  }
-
-  if (isRejected) {
-    return (
-      <span
-        data-suggestion-index={suggestionDataIndex}
-        className="inline"
-      >
-        <NumberBadge />
-        <span className="text-gray-500 line-through">{suggestion.originalText || suggestion.suggestedText}</span>
-      </span>
-    );
-  }
-
-  return (
-    <span
-      data-suggestion-index={suggestionDataIndex}
-      className="inline"
-    >
-      <NumberBadge />
-      {/* Clickable suggestion text */}
-      <span
-        role="button"
-        tabIndex={0}
-        onClick={(e) => { e.stopPropagation(); onOpenPopover(); }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            onOpenPopover();
-          }
-        }}
-        aria-label={`Suggestion ${suggestionNumber ?? ''}: ${suggestion.suggestedText}. Click to review.`}
-        aria-expanded={isPopoverOpen}
-        className="cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-500/60"
-      >
-        {isReplacement ? (
-          <>
-            <del className="opacity-40 line-through mr-1">{suggestion.originalText}</del>
-            <ins className="no-underline font-medium">{suggestion.suggestedText}</ins>
-          </>
-        ) : (
-          <span className="font-medium">{suggestion.suggestedText}</span>
-        )}
-      </span>
-
-      {/* Inline popover */}
-      {isPopoverOpen && (
-        <SuggestionPopover
-          suggestion={suggestion}
-          requirements={requirements}
-          suggestionNumber={suggestionNumber}
-          totalSuggestions={totalSuggestions}
-          onAccept={(editedText) => {
-            onAcceptSuggestion?.(suggestion.id, editedText);
-            onClosePopover();
-          }}
-          onReject={() => {
-            onRejectSuggestion?.(suggestion.id);
-            onClosePopover();
-          }}
-          onClose={onClosePopover}
-          onRequestEdit={onRequestEdit}
-        />
-      )}
-    </span>
-  );
-}
-
-// ─── SuggestionPopover ───────────────────────────────────────────────────────
-// Inline popover that opens below a green suggestion bullet.
-
-interface SuggestionPopoverProps {
-  suggestion: InlineSuggestion;
-  requirements: string[];
-  onAccept: (editedText: string) => void;
-  onReject: () => void;
-  onClose: () => void;
-  suggestionNumber?: number;
-  totalSuggestions?: number;
-  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
-}
-
-function SuggestionPopover({ suggestion, requirements, onAccept, onReject, onClose, suggestionNumber, totalSuggestions, onRequestEdit }: SuggestionPopoverProps) {
-  const [editedText, setEditedText] = useState(suggestion.suggestedText);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  // Close on outside click
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    // Use a short delay so the originating click doesn't immediately close the popover
-    const timerId = window.setTimeout(() => {
-      window.addEventListener('mousedown', handleMouseDown);
-    }, 50);
-    return () => {
-      window.clearTimeout(timerId);
-      window.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [onClose]);
-
-  const requirementLabel = requirements[0] ?? suggestion.requirementText;
-  const isJd = suggestion.requirementSource === 'jd';
-
-  return (
-    <div
-      ref={popoverRef}
-      className="mt-2 rounded-lg border border-green-500/20 bg-white shadow-xl p-4 space-y-3.5 z-20 relative max-w-2xl"
-      role="dialog"
-      aria-label="Review suggestion"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Suggestion position header */}
-      {suggestionNumber !== undefined && totalSuggestions !== undefined && (
-        <div className="flex items-center justify-between mb-1 pb-2 border-b border-gray-100">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Suggestion {suggestionNumber} of {totalSuggestions}
-          </span>
-        </div>
-      )}
-
-      {/* Source badge — prominent at the top */}
-      <div className="flex items-center gap-2">
-        {isJd ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 border border-blue-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-blue-700">
-            <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-            Job Description
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-50 border border-gray-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-            <Target className="h-3 w-3 shrink-0" aria-hidden="true" />
-            Benchmark
-          </span>
-        )}
-        {isJd && (
-          <span className="text-[11px] text-blue-600/70 font-medium">Critical — explicitly required by this posting</span>
-        )}
-        {!isJd && (
-          <span className="text-[11px] text-gray-400">Nice to have — ideal candidate profile</span>
-        )}
-      </div>
-
-      {/* Requirement text — full, not truncated */}
-      {requirementLabel && (
-        <div className="rounded-md bg-gray-50 border border-gray-100 px-3 py-2">
-          <span className="block text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1">Addresses Requirement</span>
-          <span className="text-[13px] text-gray-700 leading-snug">{requirementLabel}</span>
-        </div>
-      )}
-
-      {/* Editable textarea */}
-      <div>
-        <span className="block text-[10px] uppercase tracking-wider font-semibold text-gray-400 mb-1.5">Edit Before Accepting</span>
-        <textarea
-          value={editedText}
-          onChange={(e) => setEditedText(e.target.value)}
-          rows={5}
-          aria-label="Edit suggestion before accepting"
-          className="w-full resize-y rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-relaxed text-gray-800 outline-none focus:border-green-400 focus:bg-white transition-colors"
-        />
-      </div>
-
-      {/* Rationale */}
-      {suggestion.rationale && (
-        <div className="rounded-md bg-green-50/60 border border-green-100 px-3 py-2">
-          <span className="block text-[10px] uppercase tracking-wider font-semibold text-green-700/60 mb-1">Why This Change</span>
-          <p className="text-[12px] text-gray-600 leading-snug">{suggestion.rationale}</p>
-        </div>
-      )}
-
-      {/* Action row */}
-      <div className="flex items-center gap-2 flex-wrap pt-0.5">
-        <button
-          type="button"
-          onClick={() => onAccept(editedText)}
-          className="rounded-md bg-green-500 border border-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-600 transition-colors"
-        >
-          Accept
-        </button>
-        <button
-          type="button"
-          onClick={onReject}
-          className="rounded-md border border-gray-200 bg-white px-4 py-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
-        >
-          Reject
-        </button>
-        {onRequestEdit && (
-          <button
-            type="button"
-            onClick={() => {
-              onRequestEdit(suggestion.suggestedText, suggestion.sectionId, 'rewrite');
-              // Do NOT close the popover — closing triggers scroll-to-next which jumps the user away.
-              // The InlineEditPanel will appear near this bullet and the user stays in context.
-            }}
-            className="flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-strong)] transition-colors"
-          >
-            <Wand2 className="h-3 w-3" />
-            AI Alternatives
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── InlineEditPanel ─────────────────────────────────────────────────────────
 
 interface InlineEditPanelProps {
@@ -865,6 +458,7 @@ function InlineEditPanel({
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
+  const isCodeRed = confidence === 'needs_validation' && requirementSource !== 'benchmark';
   const statusMeta = getConfidencePill(confidence, requirementSource);
   const requirementLabel = requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
   const hasEvidence = evidenceFound.trim().length > 0;
@@ -894,21 +488,33 @@ function InlineEditPanel({
   const aiInstruction = trimmedDraft || bulletText.trim();
   const aiActions: Array<{ action: EditAction; label: string }> = isBenchmarkValidation
     ? [
-        { action: 'add_metrics', label: 'Connect to my background' },
+        { action: 'strengthen', label: 'Connect to my background' },
+        { action: 'add_metrics', label: 'Add direct support' },
         { action: 'add_keywords', label: 'Add keywords' },
+        { action: 'shorten', label: 'Shorten' },
         { action: 'rewrite', label: 'Rewrite to match my background' },
         { action: 'custom', label: 'Custom' },
         { action: 'not_my_voice', label: 'Not my voice' },
       ]
-    : [
-        { action: 'strengthen', label: 'Strengthen wording' },
-        { action: 'add_metrics', label: 'Add proof' },
-        { action: 'add_keywords', label: 'Add keywords' },
-        { action: 'shorten', label: 'Shorten' },
-        { action: 'rewrite', label: 'Rewrite safely' },
-        { action: 'custom', label: 'Custom' },
-        { action: 'not_my_voice', label: 'Not my voice' },
-      ];
+    : isCodeRed
+      ? [
+          { action: 'strengthen', label: 'Connect adjacent proof' },
+          { action: 'add_metrics', label: 'Add working knowledge' },
+          { action: 'add_keywords', label: 'Add keywords' },
+          { action: 'shorten', label: 'Shorten' },
+          { action: 'rewrite', label: 'Rewrite safely' },
+          { action: 'custom', label: 'Custom' },
+          { action: 'not_my_voice', label: 'Not my voice' },
+        ]
+      : [
+          { action: 'strengthen', label: 'Strengthen wording' },
+          { action: 'add_metrics', label: 'Add proof' },
+          { action: 'add_keywords', label: 'Add keywords' },
+          { action: 'shorten', label: 'Shorten' },
+          { action: 'rewrite', label: 'Rewrite safely' },
+          { action: 'custom', label: 'Custom' },
+          { action: 'not_my_voice', label: 'Not my voice' },
+        ];
 
   return (
     <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
@@ -919,7 +525,7 @@ function InlineEditPanel({
               Resolve This Line
             </p>
             <p className="mt-1 text-sm leading-6 text-gray-700">
-              Keep it truthful, tighten the proof, and only use AI where it makes the line safer or sharper.
+              Keep it truthful, bring forward adjacent proof or working knowledge where it honestly exists, and only use AI where it makes the line safer or sharper.
             </p>
           </div>
           {statusMeta ? (
@@ -992,8 +598,10 @@ function InlineEditPanel({
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 {isBenchmarkValidation
-                  ? 'Review the assessment above, then confirm this line honestly fits your background. If it does, rewrite it in your own terms. If it does not, replace it with something truer.'
-                  : 'Review the assessment above, then rewrite the sentence here directly or use the AI actions to replace this box with a better draft.'}
+                  ? 'Review the assessment above, then confirm this line honestly fits your background. If it does, connect it to real experience and rewrite it in your own terms. If it does not, rewrite it to a truer fit.'
+                  : isCodeRed
+                    ? 'Review the assessment above, then use this box to connect the line to adjacent experience, tools, scope, or strong working knowledge you can honestly stand behind.'
+                    : 'Review the assessment above, then rewrite the sentence here directly or use the AI actions to make the proof stronger and clearer.'}
               </p>
             </div>
             {matchesPendingEdit && (
@@ -1302,9 +910,9 @@ function getProofStateNextStep(
     return 'Add one concrete metric, scope detail, or outcome so this reads as direct proof.';
   }
   if (requirementSource === 'benchmark') {
-    return 'This line may fit the role, but confirm it honestly matches your background before you keep it.';
+    return 'This line may fit the role. Connect it to real background you can stand behind, then keep it only if it still reads honestly.';
   }
-  return 'Confirm it, rewrite it safely, or replace it with something you can prove.';
+  return 'Look for adjacent experience, tools, scope, or strong working knowledge you can honestly claim, then rewrite this line safely before export.';
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

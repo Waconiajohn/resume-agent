@@ -365,20 +365,6 @@ export interface QuickWin {
   impact: 'high' | 'medium' | 'low';
 }
 
-export interface InlineSuggestion {
-  id: string;
-  requirementText: string;
-  requirementPriority: 'critical' | 'important' | 'supporting';
-  /** Whether this requirement came from the job description or from the benchmark profile */
-  requirementSource: 'jd' | 'benchmark';
-  sectionId: string;
-  originalText: string;
-  suggestedText: string;
-  changeType: 'addition' | 'replacement' | 'deletion';
-  rationale: string;
-  status: 'pending' | 'accepted' | 'rejected';
-}
-
 export interface HiringManagerScan {
   pass: boolean;
   scan_score: number;
@@ -395,7 +381,6 @@ export interface AssemblyResult {
   scores: VerificationScores;
   quick_wins: QuickWin[];
   positioning_assessment?: PositioningAssessment;
-  inline_suggestions?: InlineSuggestion[];
   hiring_manager_scan?: HiringManagerScan;
 }
 
@@ -740,7 +725,6 @@ export interface V2PipelineData {
   narrativeStrategy: NarrativeStrategy | null;
   resumeDraft: ResumeDraft | null;
   assembly: AssemblyResult | null;
-  inlineSuggestions: InlineSuggestion[];
   hiringManagerScan: HiringManagerScan | null;
   /** Full verification agent outputs (truth, ATS, tone) from the pipeline */
   verificationDetail: VerificationDetail | null;
@@ -764,7 +748,6 @@ export type V2SSEEvent =
   | { type: 'resume_draft'; data: ResumeDraft }
   | { type: 'verification_complete'; data?: { truth?: TruthVerificationDetail; ats?: ATSOptimizationDetail; tone?: ExecutiveToneDetail } }
   | { type: 'assembly_complete'; data: AssemblyResult }
-  | { type: 'inline_suggestions'; data: { suggestions: InlineSuggestion[] } }
   | { type: 'hiring_manager_scan'; data: HiringManagerScan }
   | { type: 'pipeline_complete'; session_id: string }
   | { type: 'pipeline_error'; stage: V2Stage; error: string }

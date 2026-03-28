@@ -1157,7 +1157,7 @@ function bulletCoversSourceProof(draftBulletText: string, sourceBulletText: stri
   return calculateTokenOverlap(draftBulletText, sourceBulletText) >= 0.45;
 }
 
-function bulletPreservesProofDensity(draftBulletText: string, sourceBulletText: string): boolean {
+export function bulletPreservesProofDensity(draftBulletText: string, sourceBulletText: string): boolean {
   if (!bulletCoversSourceProof(draftBulletText, sourceBulletText)) return false;
 
   const draftNormalized = normalizeLooseText(draftBulletText);

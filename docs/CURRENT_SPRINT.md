@@ -146,3 +146,13 @@ The first implementation wave should keep live legacy schemas working while intr
 - Resume Writer now treats bullet preservation as more than a raw count problem.
 - If an AI rewrite keeps the bullet count but drops hard proof like metrics, named systems, site counts, or materially compresses a high-value source bullet, the writer restores the stronger source proof instead of quietly accepting the thinner rewrite.
 - Live executive-session QA now shows the writer preserving full role/bullet structure while staying closer to the original resume's concrete substance, which is the right direction for 2-page executive resumes.
+
+## Resume-V2 Canonical Review Cleanup
+
+- Resume V2 no longer carries the old accept/reject inline-suggestion workflow as a live review path.
+- The canonical review model is now the document-first proof-state workflow only:
+  - `Strengthen`
+  - `Confirm Fit`
+  - `Code Red`
+- Gap states are handled as coaching opportunities, not reasons to abandon a line immediately. `Code Red` and `Confirm Fit` now explicitly encourage the user to bring forward adjacent proof, relevant scope, or strong working knowledge they can honestly stand behind.
+- The pipeline no longer emits or hydrates legacy `inline_suggestions`, which reduces split-brain UI drift and keeps the live builder centered on one editing model.

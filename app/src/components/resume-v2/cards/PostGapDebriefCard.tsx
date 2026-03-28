@@ -24,15 +24,15 @@ interface PostGapDebriefCardProps {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getStageStatusLabel(stage: V2Stage, isComplete: boolean): string {
-  if (isComplete) return 'Ready — review your suggestions below';
+  if (isComplete) return 'Ready — review and refine your resume below';
   switch (stage) {
     case 'intake':
     case 'analysis': return 'Reading your resume...';
     case 'strategy': return 'Building your positioning strategy...';
     case 'writing': return 'Drafting your resume...';
     case 'verification': return 'Running quality checks...';
-    case 'assembly': return 'Preparing your suggestions...';
-    case 'complete': return 'Ready — review your suggestions below';
+    case 'assembly': return 'Preparing your working resume...';
+    case 'complete': return 'Ready — review and refine your resume below';
     default: return 'Working on it...';
   }
 }

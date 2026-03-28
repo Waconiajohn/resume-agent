@@ -10,6 +10,7 @@ import { MODEL_PRIMARY } from '../src/lib/model-constants.js';
 import { repairJSON } from '../src/lib/json-repair.js';
 import { runV2Pipeline } from '../src/agents/resume-v2/orchestrator.js';
 import { buildSourceResumeOutline } from '../src/agents/resume-v2/source-resume-outline.js';
+import { bulletPreservesProofDensity } from '../src/agents/resume-v2/resume-writer/agent.js';
 import type {
   AssemblyOutput,
   BenchmarkCandidateOutput,
@@ -206,37 +207,12 @@ function normalizeBulletText(value: string): string {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function tokenizeBulletText(value: string): string[] {
-  return normalizeBulletText(value)
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length >= 4);
-}
-
-function calculateBulletOverlap(left: string, right: string): number {
-  const leftTokens = tokenizeBulletText(left);
-  const rightTokens = tokenizeBulletText(right);
-  if (leftTokens.length === 0 || rightTokens.length === 0) return 0;
-
-  const rightSet = new Set(rightTokens);
-  const shared = leftTokens.filter((token) => rightSet.has(token)).length;
-  return Math.max(shared / leftTokens.length, shared / rightTokens.length);
-}
-
 function bulletLooksPreserved(sourceBullet: string, candidateBullet: string): boolean {
   const normalizedSource = normalizeBulletText(sourceBullet);
   const normalizedCandidate = normalizeBulletText(candidateBullet);
   if (!normalizedSource || !normalizedCandidate) return false;
   if (normalizedSource === normalizedCandidate) return true;
-
-  const overlap = calculateBulletOverlap(sourceBullet, candidateBullet);
-  if (overlap >= 0.72) return true;
-
-  const sourceConcreteTokens = Array.from(sourceBullet.matchAll(/\$?\d[\d,.%A-Za-z-]*/g), (match) => match[0].toLowerCase());
-  if (sourceConcreteTokens.length === 0) return overlap >= 0.6;
-
-  const candidateLower = normalizedCandidate;
-  const sharedConcreteTokens = sourceConcreteTokens.filter((token) => candidateLower.includes(token));
-  return overlap >= 0.55 && sharedConcreteTokens.length >= Math.min(1, sourceConcreteTokens.length);
+  return bulletPreservesProofDensity(candidateBullet, sourceBullet);
 }
 
 function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResumeOutline>, draft: ResumeDraftOutput) {

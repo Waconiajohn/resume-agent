@@ -416,7 +416,6 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       gap_analysis: gapAnalysis,
       pre_scores: state.pre_scores,
       job_intelligence: jobIntel,
-      candidate_intelligence: candidateIntel,
     });
     state.final_resume = assembled;
 
@@ -424,10 +423,6 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     if (assembled.hiring_manager_scan) {
       emit({ type: 'hiring_manager_scan', data: assembled.hiring_manager_scan });
-    }
-
-    if (assembled.inline_suggestions && assembled.inline_suggestions.length > 0) {
-      emit({ type: 'inline_suggestions', data: { suggestions: assembled.inline_suggestions } });
     }
 
     emit({ type: 'stage_complete', stage: 'assembly', message: 'Assembly complete', duration_ms: Date.now() - assemblyStart });

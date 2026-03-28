@@ -289,14 +289,14 @@ function getProofStateTone(
   if (requirementSource === 'benchmark') {
     return {
       label: 'Confirm Fit',
-      message: 'This line may fit the role, but confirm it honestly matches your background before export.',
+      message: 'This line may fit the role. Connect it to real background you can honestly stand behind before you keep it.',
       className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
 
   return {
     label: 'Code Red',
-    message: 'We could not support this line from the resume yet. Confirm it, rewrite it, or remove it before export.',
+    message: 'We could not prove this line directly from the resume yet. Look for adjacent experience, tools, scope, or strong working knowledge you can honestly bring forward before export.',
     className: 'border-[#d8c4c4] bg-white text-[#8f2d2d]',
   };
 }
@@ -314,10 +314,10 @@ function getProofStateNextStep(
   }
 
   if (requirementSource === 'benchmark') {
-    return 'Best next move: keep it only if it truly fits your background. Otherwise rewrite it or replace it with something truer.';
+    return 'Best next move: connect it to real background you can stand behind. If it still feels like a stretch, rewrite it to a truer fit.';
   }
 
-  return 'Best next move: replace this with something you can prove, or confirm the experience and rewrite it safely.';
+  return 'Best next move: pull in adjacent proof, relevant scope, or strong working knowledge you can honestly claim, then rewrite the line safely.';
 }
 
 function getContentOriginLabel(

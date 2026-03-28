@@ -437,8 +437,9 @@ describe('BulletEditPopover — evidence display', () => {
     );
 
     expect(screen.getByText('Code Red')).toBeInTheDocument();
-    expect(screen.getByText(/we could not support this line from the resume yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/replace this with something you can prove/i)).toBeInTheDocument();
+    expect(screen.getByText(/we could not prove this line directly from the resume yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/strong working knowledge you can honestly bring forward/i)).toBeInTheDocument();
+    expect(screen.getByText(/pull in adjacent proof, relevant scope, or strong working knowledge/i)).toBeInTheDocument();
   });
 
   it('shows a benchmark-specific warning for high-risk benchmark lines', () => {
@@ -453,7 +454,7 @@ describe('BulletEditPopover — evidence display', () => {
     );
 
     expect(screen.getByText('Confirm Fit')).toBeInTheDocument();
-    expect(screen.getByText(/confirm it honestly matches your background before export/i)).toBeInTheDocument();
+    expect(screen.getByText(/connect it to real background you can honestly stand behind/i)).toBeInTheDocument();
   });
 
   it('shows a strengthening message when partial proof exists', () => {
@@ -878,7 +879,6 @@ describe('useV2Pipeline — SSE event handling', () => {
     narrativeStrategy: null,
     resumeDraft: null,
     assembly: null,
-    inlineSuggestions: [],
     hiringManagerScan: null,
     verificationDetail: null,
     error: null,

@@ -598,11 +598,11 @@
   }
 
   .resume-proof-line--partial {
-    border-left: 4px solid #64748b;
+    border-left: 4px solid #b45309;
   }
 
   .resume-proof-line--benchmark {
-    border-left: 4px solid #9a5d0c;
+    border-left: 4px solid #2563eb;
   }
 
   .resume-proof-line--code-red {
@@ -610,11 +610,11 @@
   }
 
   .resume-proof-line--partial::marker {
-    color: #8a5a14;
+    color: #b45309;
   }
 
   .resume-proof-line--benchmark::marker {
-    color: #9a5d0c;
+    color: #2563eb;
   }
 
   .resume-proof-line--code-red::marker {
@@ -641,11 +641,11 @@
   }
 
   .resume-proof-meta-label--partial {
-    color: #475569;
+    color: #b45309;
   }
 
   .resume-proof-meta-label--benchmark {
-    color: #9a5d0c;
+    color: #2563eb;
   }
 
   .resume-proof-meta-label--code-red {
@@ -653,18 +653,18 @@
   }
 
   .resume-proof-line--partial .resume-bullet-interactive--flagged {
-    color: #8a5a14;
+    color: #b45309;
     text-decoration: underline;
     text-decoration-style: dashed;
-    text-decoration-color: rgba(138, 90, 20, 0.45);
+    text-decoration-color: rgba(180, 83, 9, 0.45);
     text-underline-offset: 0.18rem;
   }
 
   .resume-proof-line--benchmark .resume-bullet-interactive--flagged {
-    color: #9a5d0c;
+    color: #2563eb;
     text-decoration: underline;
     text-decoration-style: dashed;
-    text-decoration-color: rgba(154, 93, 12, 0.45);
+    text-decoration-color: rgba(37, 99, 235, 0.4);
     text-underline-offset: 0.18rem;
   }
 
@@ -713,15 +713,15 @@
   }
 
   .resume-inline-panel__status--partial {
-    border-color: rgba(148, 163, 184, 0.24);
-    background: rgba(248, 250, 252, 0.9);
-    color: #334155;
+    border-color: rgba(180, 83, 9, 0.2);
+    background: rgba(245, 158, 11, 0.08);
+    color: #92400e;
   }
 
   .resume-inline-panel__status--benchmark {
-    border-color: rgba(79, 107, 136, 0.24);
-    background: rgba(244, 247, 250, 0.92);
-    color: #42566d;
+    border-color: rgba(37, 99, 235, 0.18);
+    background: rgba(59, 130, 246, 0.06);
+    color: #1d4ed8;
   }
 
   .resume-inline-panel__status--code-red {
@@ -750,15 +750,15 @@
   }
 
   .resume-attention-status--partial {
-    border-color: rgba(148, 163, 184, 0.24);
-    background: rgba(248, 250, 252, 0.88);
-    color: #475569;
+    border-color: rgba(180, 83, 9, 0.2);
+    background: rgba(245, 158, 11, 0.08);
+    color: #b45309;
   }
 
   .resume-attention-status--benchmark {
-    border-color: rgba(79, 107, 136, 0.22);
-    background: rgba(244, 247, 250, 0.9);
-    color: #42566d;
+    border-color: rgba(37, 99, 235, 0.18);
+    background: rgba(59, 130, 246, 0.06);
+    color: #2563eb;
   }
 
   .resume-attention-status--code-red {

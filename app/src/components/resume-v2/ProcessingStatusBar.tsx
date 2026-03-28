@@ -1,7 +1,7 @@
 /**
  * ProcessingStatusBar — Thin progress bar + single status line
  *
- * Replaces V2StreamingDisplay during the suggestion processing phase.
+ * Replaces V2StreamingDisplay during the resume processing phase.
  * Sits at the very top of its container (full width, 2px bar).
  * Fades out 2 seconds after isComplete transitions to true.
  */
@@ -54,7 +54,7 @@ export function ProcessingStatusBar({
 
   const clampedProgress = Math.min(100, Math.max(0, progress));
   const displayStatus = isComplete
-    ? 'Ready — review your suggestions below'
+    ? 'Ready — review and refine your resume below'
     : (status ?? 'Processing...');
 
   return (

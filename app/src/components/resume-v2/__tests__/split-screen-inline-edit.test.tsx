@@ -290,7 +290,6 @@ function makePipelineDataWithResume(overrides: Partial<V2PipelineData> = {}): V2
     narrativeStrategy: null,
     resumeDraft: makeResumeDraft(),
     assembly: null,
-    inlineSuggestions: [],
     hiringManagerScan: null,
     verificationDetail: null,
     error: null,
@@ -710,7 +709,7 @@ describe('InlineEditPanel — action buttons', () => {
     );
 
     expect(screen.getAllByText('Confirm Fit').length).toBeGreaterThan(0);
-    expect(screen.getByText(/confirm this line honestly fits your background/i)).toBeInTheDocument();
+    expect(screen.getByText(/connect it to real experience and rewrite it in your own terms/i)).toBeInTheDocument();
     expect(screen.getByText('Not directly confirmed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect to my background' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rewrite to match my background' })).toBeInTheDocument();
@@ -1121,7 +1120,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
 
-    expect(screen.getByRole('button', { name: 'Strengthen wording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect adjacent proof' })).toBeInTheDocument();
   });
 
   it('opens in-place editing when a needs-attention bullet is clicked directly on the resume', () => {
@@ -1196,7 +1195,7 @@ describe('V2StreamingDisplay — layout modes', () => {
       { stage: 'strategy', label: 'Building your positioning strategy...' },
       { stage: 'writing', label: 'Drafting your resume...' },
       { stage: 'verification', label: 'Running quality checks...' },
-      { stage: 'assembly', label: 'Preparing your suggestions...' },
+      { stage: 'assembly', label: 'Preparing your working resume...' },
     ];
 
     for (const { stage, label } of stageLabels) {

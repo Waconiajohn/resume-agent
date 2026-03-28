@@ -14,7 +14,7 @@ import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
 import { normalizeAssemblyResult, normalizeResumeDraft } from '@/lib/normalize-resume-draft';
-import type { GapCoachingResponse, InlineSuggestion, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage, VerificationDetail } from '@/types/resume-v2';
+import type { GapCoachingResponse, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage, VerificationDetail } from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
   sessionId: '',
@@ -29,7 +29,6 @@ const INITIAL_DATA: V2PipelineData = {
   narrativeStrategy: null,
   resumeDraft: null,
   assembly: null,
-  inlineSuggestions: [],
   hiringManagerScan: null,
   verificationDetail: null,
   error: null,
@@ -119,18 +118,6 @@ export function useV2Pipeline(accessToken: string | null) {
 
         case 'assembly_complete':
           return { ...prev, assembly: normalizeAssemblyResult(event.data) };
-
-        case 'inline_suggestions': {
-          // Append new suggestions; do not overwrite already-resolved ones
-          const existingIds = new Set(prev.inlineSuggestions.map((s) => s.id));
-          const incoming = event.data.suggestions
-            .filter((s) => !existingIds.has(s.id))
-            .map((s): InlineSuggestion => ({ ...s, status: s.status ?? 'pending' }));
-          return {
-            ...prev,
-            inlineSuggestions: [...prev.inlineSuggestions, ...incoming],
-          };
-        }
 
         case 'hiring_manager_scan':
           return { ...prev, hiringManagerScan: event.data };

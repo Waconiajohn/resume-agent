@@ -1,5 +1,13 @@
 # Architecture Decision Records — Resume Agent
 
+## ADR-047: Resume V2 Retires The Legacy Suggestion Review Workflow
+**Date:** 2026-03-28
+**Status:** accepted
+**Context:** Resume V2 accumulated two competing line-review paradigms. The newer proof-state workflow used the resume itself as the work surface, with `Strengthen`, `Confirm Fit`, and `Code Red` guiding inline edits. At the same time, the older accept/reject suggestion workflow still existed in the product and pipeline through green accepted text, rejected strikethroughs, numbered suggestion progress, `AI Alternatives`, and `inline_suggestions` SSE events. This split caused inconsistent colors, inconsistent editing behavior, and repeated confusion about what the canonical review model actually was.
+**Decision:** Retire the legacy suggestion-review workflow from live Resume V2. Resume V2 now uses one canonical document-first review model only. The live resume is the work surface, proof states are the review language, and clicking a line opens one inline repair surface. The pipeline no longer emits or hydrates `inline_suggestions`, and the old accept/reject review UI is removed from the live builder.
+**Reasoning:** The executive user needs one clear mental model: see the strongest tailored resume, understand which lines are safe versus risky, and work directly on the document. Keeping the older suggestion-review model alive created split-brain behavior and made the product feel unstable. Removing the legacy path improves clarity, reduces implementation drift, and lets the proof-state system carry a single meaning across the app.
+**Consequences:** Resume V2 review states are now standardized around `Strengthen`, `Confirm Fit`, and `Code Red`, with resolved lines returning to normal document styling. Gap states are treated as coaching opportunities rather than immediate discard instructions: users are encouraged to connect adjacent experience, relevant scope, tools, or strong working knowledge they can honestly claim before export. Any future Resume V2 work must extend the proof-state workflow rather than reintroduce accept/reject suggestion surfaces.
+
 ## ADR-046: Resume V2 Is A Document-First Rebuild Workflow
 **Date:** 2026-03-26
 **Status:** accepted

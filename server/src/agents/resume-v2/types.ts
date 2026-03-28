@@ -493,26 +493,6 @@ export interface ExecutiveToneOutput {
   banned_phrases_found: string[];
 }
 
-// ─── Inline Suggestions (diff between original and AI-drafted resume) ──────
-
-/**
- * A single inline suggestion representing a change between the original resume
- * and the AI-drafted resume, linked to the gap analysis requirement it addresses.
- * Computed deterministically in Assembly (no LLM call).
- */
-export interface InlineSuggestion {
-  id: string;
-  requirementText: string;
-  requirementPriority: 'critical' | 'important' | 'supporting';
-  /** Whether this requirement came from the job description or from the benchmark profile */
-  requirementSource: 'jd' | 'benchmark';
-  sectionId: string;
-  originalText: string;
-  suggestedText: string;
-  changeType: 'addition' | 'replacement' | 'deletion';
-  rationale: string;
-}
-
 // ─── Agent 10: Resume Assembly ───────────────────────────────────────
 
 /**
@@ -563,8 +543,6 @@ export interface AssemblyInput {
   pre_scores?: PreScores;
   /** Job intelligence used for hiring manager scan keyword matching */
   job_intelligence?: JobIntelligenceOutput;
-  /** Candidate intelligence used for inline suggestion diff (raw_text = original resume) */
-  candidate_intelligence?: CandidateIntelligenceOutput;
 }
 
 export interface AssemblyOutput {
@@ -585,8 +563,6 @@ export interface AssemblyOutput {
   positioning_assessment?: PositioningAssessment;
   /** Simulated 5-8 second hiring manager scan result */
   hiring_manager_scan?: HiringManagerScan;
-  /** Diff-based inline suggestions between original and AI-drafted resume */
-  inline_suggestions?: InlineSuggestion[];
 }
 
 // ─── Pre-Scores (before optimization baseline) ──────────────────
@@ -734,7 +710,6 @@ export type V2PipelineSSEEvent =
     }}
   | { type: 'assembly_complete'; data: AssemblyOutput }
   | { type: 'hiring_manager_scan'; data: HiringManagerScan }
-  | { type: 'inline_suggestions'; data: { suggestions: InlineSuggestion[] } }
   | { type: 'pipeline_complete'; session_id: string }
   | { type: 'pipeline_error'; stage: V2PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: V2PipelineStage };

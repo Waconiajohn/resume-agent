@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, InlineSuggestion, BulletConfidence, RequirementSource } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, RequirementSource } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType, GapAnalysis, BenchmarkCandidate, NarrativeStrategy, AssemblyResult, VerificationDetail } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -25,8 +25,6 @@ import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRa
 import { ScoringReport, ScoringReportDetailsDisclosure } from './ScoringReport';
 import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
-import { SuggestionsBadge } from './SuggestionsBadge';
-import { useInlineSuggestions } from '@/hooks/useInlineSuggestions';
 import { scrollToAndFocusTarget } from './useStrategyThread';
 
 interface V2StreamingDisplayProps {
@@ -151,7 +149,7 @@ function getAttentionStatusMeta(
 
   if (confidence === 'needs_validation') {
     return {
-      label: 'Validate Fit',
+      label: 'Confirm Fit',
       className: 'resume-attention-status resume-attention-status--benchmark',
       priority: 1,
     };
@@ -535,117 +533,6 @@ function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComple
   );
 }
 
-// ─── SuggestionProgressStrip ─────────────────────────────────────────────────
-// Sticky strip shown above the resume document to guide the user through review.
-
-interface SuggestionProgressStripProps {
-  total: number;
-  reviewed: number;
-  currentIndex: number;
-  /** Per-index status so dot colors reflect actual reviewed state, not just sequential count */
-  statuses: Array<'pending' | 'accepted' | 'rejected'>;
-  onAcceptAll: () => void;
-  allResolved: boolean;
-  onExport: () => void;
-}
-
-function SuggestionProgressStrip({
-  total,
-  reviewed,
-  currentIndex,
-  statuses,
-  onAcceptAll,
-  allResolved,
-  onExport,
-}: SuggestionProgressStripProps) {
-  const getLabel = () => {
-    if (total === 0) return null;
-    if (allResolved) return `All ${total} reviewed! Ready to export`;
-    if (reviewed === 0) return `Click suggestion \u2460 to start`;
-    return `${reviewed} of ${total} reviewed`;
-  };
-
-  const label = getLabel();
-  if (!label) return null;
-
-  return (
-    <div
-      className={`sticky top-0 z-20 rounded-lg shadow-[0_2px_16px_rgba(0,0,0,0.18)] px-5 py-3 mb-4 transition-colors duration-300 ${
-        allResolved
-          ? 'bg-green-50 border border-green-200'
-          : 'bg-white border border-neutral-200'
-      }`}
-      role="status"
-      aria-live="polite"
-      aria-label="Suggestion review progress"
-    >
-      <div className="flex items-center gap-4">
-        {/* Label */}
-        <div className="flex-1 min-w-0">
-          <p className={`text-[13px] font-medium leading-tight ${allResolved ? 'text-green-700' : 'text-neutral-700'}`}>
-            {label}
-          </p>
-
-          {/* Dot progress indicators */}
-          {total > 0 && !allResolved && (
-            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-              {Array.from({ length: total }, (_, i) => {
-                const status = statuses[i] ?? 'pending';
-                const isReviewed = status !== 'pending';
-                const isCurrent = i === currentIndex && !isReviewed;
-                if (isCurrent) {
-                  return (
-                    <span
-                      key={i}
-                      className="h-2.5 w-2.5 rounded-full bg-blue-400 motion-safe:animate-pulse ring-2 ring-blue-300 ring-offset-1 flex-shrink-0"
-                      aria-label={`Suggestion ${i + 1}: current`}
-                    />
-                  );
-                }
-                if (isReviewed) {
-                  return (
-                    <span
-                      key={i}
-                      className="h-2.5 w-2.5 rounded-full bg-green-500 flex-shrink-0"
-                      aria-label={`Suggestion ${i + 1}: reviewed`}
-                    />
-                  );
-                }
-                return (
-                  <span
-                    key={i}
-                    className="h-2.5 w-2.5 rounded-full border border-neutral-300 flex-shrink-0"
-                    aria-label={`Suggestion ${i + 1}: pending`}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Action button */}
-        {allResolved ? (
-          <button
-            type="button"
-            onClick={onExport}
-            className="shrink-0 rounded-md bg-green-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
-          >
-            Export Resume
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onAcceptAll}
-            className="shrink-0 rounded-md border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
-          >
-            Accept All
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -673,44 +560,7 @@ export function V2StreamingDisplay({
   onGapAssist,
   initialActiveBullet = null,
 }: V2StreamingDisplayProps) {
-  // Legacy diff-suggestion review is intentionally disabled in the document-first
-  // workspace. The primary review loop now happens on the resume itself through
-  // proof states and inline editing, not through Accept/Reject suggestion passes.
-  const showLegacySuggestionReview = false;
-
-  // ── Inline suggestions ────────────────────────────────────────────────────
-  const {
-    suggestions,
-    pendingCount,
-    reviewedCount,
-    allResolved,
-    currentSuggestionIndex,
-    accept: acceptSuggestion,
-    reject: rejectSuggestion,
-    scrollToNext,
-    handleSuggestionEvent,
-    containerRef,
-  } = useInlineSuggestions();
-
-  // Build a stable 1-based index map from suggestion id → sequential number
-  const suggestionIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    suggestions.forEach((s, i) => map.set(s.id, i + 1));
-    return map;
-  }, [suggestions]);
-
-  // The id of the currently focused suggestion
-  const currentSuggestionId = suggestions[currentSuggestionIndex]?.id ?? null;
-
-  // Sync incoming suggestions from SSE into the suggestion hook state
-  const prevSuggestionsRef = useRef<InlineSuggestion[]>([]);
-  useEffect(() => {
-    if (!showLegacySuggestionReview) return;
-    const incoming = data.inlineSuggestions;
-    if (incoming === prevSuggestionsRef.current || incoming.length === 0) return;
-    prevSuggestionsRef.current = incoming;
-    handleSuggestionEvent({ suggestions: incoming });
-  }, [data.inlineSuggestions, handleSuggestionEvent, showLegacySuggestionReview]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Active bullet for inline editing
   const [activeBullet, setActiveBullet] = useState<{
@@ -762,15 +612,6 @@ export function V2StreamingDisplay({
   const canEdit = isComplete && displayResume !== null && displayResume !== undefined;
 
   const canShowUndoBar = canEdit && (undoCount > 0 || redoCount > 0);
-
-  // Accept all pending suggestions at once
-  const handleAcceptAll = useCallback(() => {
-    suggestions.forEach((s) => {
-      if (s.status === 'pending') {
-        acceptSuggestion(s.id);
-      }
-    });
-  }, [suggestions, acceptSuggestion]);
 
   // A1/A2: Clear activeBullet when re-running (stale state from previous run)
   useEffect(() => {
@@ -871,7 +712,7 @@ export function V2StreamingDisplay({
     }
 
     const proofCount = attentionItems.filter((item) => item.statusLabel === 'Code Red').length;
-    const validateCount = attentionItems.filter((item) => item.statusLabel === 'Validate Fit').length;
+    const validateCount = attentionItems.filter((item) => item.statusLabel === 'Confirm Fit').length;
     const strengthenCount = attentionItems.filter((item) => item.statusLabel === 'Strengthen').length;
 
     if (proofCount > 0) {
@@ -1004,22 +845,6 @@ export function V2StreamingDisplay({
 
             {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
 
-            {/* Suggestion progress strip — sticky, shown when there are suggestions */}
-            {showLegacySuggestionReview && isComplete && suggestions.length > 0 && (
-              <SuggestionProgressStrip
-                total={suggestions.length}
-                reviewed={reviewedCount}
-                currentIndex={currentSuggestionIndex}
-                statuses={suggestions.map((s) => s.status)}
-                onAcceptAll={handleAcceptAll}
-                allResolved={allResolved}
-                onExport={() => {
-                  const rail = containerRef.current?.querySelector('[data-workspace-rail]');
-                  rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-              />
-            )}
-
             {/* Resume document with inline editing */}
             {displayResume && (
               <AnimatedCard index={0}>
@@ -1036,11 +861,6 @@ export function V2StreamingDisplay({
                     onAcceptEdit={handleAcceptEdit}
                     onRejectEdit={onRejectEdit}
                     onRequestEdit={canEdit ? onRequestEdit : undefined}
-                    inlineSuggestions={showLegacySuggestionReview ? suggestions : []}
-                    onAcceptSuggestion={showLegacySuggestionReview ? acceptSuggestion : undefined}
-                    onRejectSuggestion={showLegacySuggestionReview ? rejectSuggestion : undefined}
-                    currentSuggestionId={showLegacySuggestionReview ? currentSuggestionId : null}
-                    suggestionIndexMap={showLegacySuggestionReview ? suggestionIndexMap : undefined}
                   />
                 </div>
               </AnimatedCard>
@@ -1112,20 +932,6 @@ export function V2StreamingDisplay({
             )}
           </div>
 
-          {/* SuggestionsBadge — fixed bottom-right overlay showing suggestion count */}
-          {showLegacySuggestionReview && (
-            <SuggestionsBadge
-              pendingCount={pendingCount}
-              isProcessing={!isComplete && data.inlineSuggestions.length === 0}
-              processingStatus={null}
-              allResolved={allResolved}
-              onScrollToNext={scrollToNext}
-              onExport={() => {
-                const rail = containerRef.current?.querySelector('[data-workspace-rail]');
-                rail?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            />
-          )}
         </>
       ) : (
         /* Processing layout (pipeline running, no resume yet) */
@@ -1169,15 +975,15 @@ function getStageMessage(stage: V2Stage): string {
 
 /** One-line status label shown in the processing status bar */
 function getStageStatusLabel(stage: V2Stage, isComplete: boolean): string {
-  if (isComplete) return 'Ready — review your suggestions below';
+  if (isComplete) return 'Ready — review and refine your resume below';
   switch (stage) {
     case 'intake':
     case 'analysis': return 'Reading your resume...';
     case 'strategy': return 'Building your positioning strategy...';
     case 'writing': return 'Drafting your resume...';
     case 'verification': return 'Running quality checks...';
-    case 'assembly': return 'Preparing your suggestions...';
-    case 'complete': return 'Ready — review your suggestions below';
+    case 'assembly': return 'Preparing your working resume...';
+    case 'complete': return 'Ready — review and refine your resume below';
     default: return 'Working on it...';
   }
 }
