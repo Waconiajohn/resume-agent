@@ -500,6 +500,10 @@ async function runRealSessionQa() {
 
   const outDir = resolve(REPO_ROOT, 'test-results', 'real-session-quality');
   mkdirSync(outDir, { recursive: true });
+  const writeOutputFile = (filePath: string, contents: string) => {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, contents);
+  };
 
   const summary: Array<Record<string, unknown>> = [];
   const gatingFailures: Array<{ label: string; company_name: string; role_title: string; status: string; alerts: QaAlert[] }> = [];
@@ -602,7 +606,7 @@ async function runRealSessionQa() {
       improvement_summary: finalReview.improvement_summary,
     };
 
-    writeFileSync(resolve(outDir, `${label}.json`), `${JSON.stringify(artifact, null, 2)}\n`);
+    writeOutputFile(resolve(outDir, `${label}.json`), `${JSON.stringify(artifact, null, 2)}\n`);
 
     summary.push({
       label,
@@ -658,8 +662,8 @@ async function runRealSessionQa() {
     sessions: summary,
   };
 
-  writeFileSync(resolve(outDir, 'summary.json'), `${JSON.stringify(summaryPayload, null, 2)}\n`);
-  writeFileSync(
+  writeOutputFile(resolve(outDir, 'summary.json'), `${JSON.stringify(summaryPayload, null, 2)}\n`);
+  writeOutputFile(
     resolve(outDir, 'summary.md'),
     buildMarkdownSummary({
       generatedAt,

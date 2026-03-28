@@ -1,5 +1,13 @@
 # Architecture Decision Records — Resume Agent
 
+## ADR-048: Resume V2 Uses One Canonical Line Target
+**Date:** 2026-03-28
+**Status:** accepted
+**Context:** Resume V2 line-level review drifted into a mixed targeting model. `Selected Accomplishments` and professional bullets could carry `addresses_requirements` arrays, section-level fallback targets, and generic evidence blobs. That let the clicked-line UI and supporting analysis show several unrelated targets at once, or display evidence that did not actually support the target being shown. The result was logically confusing review cards and repeated user distrust in the "ultimate resume" logic.
+**Decision:** Treat `primary_target_requirement` as the canonical line-level target for active resume-v2 coaching, review, and positioning flows. `addresses_requirements` remains only as compatibility metadata while migration completes. Supporting proof for active coaching is now expressed as `target_evidence`, which must support that primary target instead of acting as a generic evidence dump. Active consumers such as the inline review panel, rewrite queue, final-review targeting, gap-analysis resume mapping, and positioning assessment should prefer the single primary target whenever it exists.
+**Reasoning:** The product only works if each clicked line can answer one simple question clearly: "What are we trying to prove with this line?" Allowing a line to inherit bundles of section-level needs or stale requirement arrays destroys that clarity and makes the app feel irrational. A single canonical target is also a better fit for the document-first workflow: one line, one target, one coaching path, one proof box.
+**Consequences:** New resume-v2 work should not introduce UI or helper logic that treats `addresses_requirements` arrays as the primary truth for clicked-line review. If the system cannot resolve one trustworthy target, the UI should show a review-needed state instead of inventing bundled targets. Migration work can keep `addresses_requirements` for backward compatibility, but active flows should prefer `primary_target_requirement` and `target_evidence`.
+
 ## ADR-047: Resume V2 Retires The Legacy Suggestion Review Workflow
 **Date:** 2026-03-28
 **Status:** accepted

@@ -1664,10 +1664,34 @@ function deterministicRequirementMatch(
                 bullet.support_origin,
                 bullet.evidence_found ?? '',
               );
+              const primaryTarget = bullet.primary_target_requirement
+                ? resolveBestPrimaryTarget(
+                    bullet.primary_target_requirement,
+                    requirements.map((requirement) => ({
+                      requirement: requirement.requirement,
+                      source: requirement.source,
+                    })),
+                  )
+                : resolveBestPrimaryTarget(
+                    bullet.text,
+                    requirements.map((requirement) => ({
+                      requirement: requirement.requirement,
+                      source: requirement.source,
+                    })),
+                  );
+              const singleRequirement = primaryTarget?.requirement ?? result.addresses_requirements[0];
+              const targetEvidence = typeof bullet.target_evidence === 'string' && bullet.target_evidence.trim().length > 0
+                ? bullet.target_evidence
+                : singleRequirement && evidenceSupportsRequirement(bullet.evidence_found ?? '', singleRequirement)
+                  ? bullet.evidence_found ?? ''
+                  : '';
               return {
                 ...bullet,
-                addresses_requirements: result.addresses_requirements,
-                requirement_source: result.requirement_source,
+                addresses_requirements: singleRequirement ? [singleRequirement] : [],
+                primary_target_requirement: singleRequirement,
+                primary_target_source: primaryTarget?.source ?? result.requirement_source,
+                target_evidence: targetEvidence,
+                requirement_source: primaryTarget?.source ?? result.requirement_source,
                 source: result.source,
                 confidence: result.confidence,
                 content_origin: result.content_origin,

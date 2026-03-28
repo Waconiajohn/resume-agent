@@ -3,6 +3,7 @@ import type {
   PositioningAssessment,
   ResumeDraft,
 } from '@/types/resume-v2';
+import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { findBulletForRequirement, tokenize } from './coaching-actions';
 
 export interface FinalReviewTargetMatch {
@@ -114,7 +115,10 @@ function experienceCandidates(
           text: bullet.text,
           section,
           selector: `[data-bullet-id="professional_experience-${bulletIndex}"]`,
-          signals: bullet.addresses_requirements,
+          signals: canonicalRequirementSignals(
+            bullet.primary_target_requirement,
+            bullet.addresses_requirements,
+          ),
         });
       }
     }
@@ -158,7 +162,10 @@ function allResumeCandidates(resume: ResumeDraft): CandidateMatch[] {
         text: accomplishment.content,
         section: 'Selected Accomplishments',
         selector: `[data-bullet-id="selected_accomplishments-${index}"]`,
-        signals: accomplishment.addresses_requirements,
+        signals: canonicalRequirementSignals(
+          accomplishment.primary_target_requirement,
+          accomplishment.addresses_requirements,
+        ),
       });
     }
   });
@@ -264,7 +271,10 @@ export function findResumeTargetForFinalReviewConcern(
         text: item.content,
         section: 'Selected Accomplishments',
         selector: `[data-bullet-id="selected_accomplishments-${index}"]`,
-        signals: item.addresses_requirements,
+        signals: canonicalRequirementSignals(
+          item.primary_target_requirement,
+          item.addresses_requirements,
+        ),
       }));
     const match = chooseBestCandidate(accomplishments, concern);
     if (match) return match;

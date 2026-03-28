@@ -245,6 +245,49 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('related proof into direct evidence');
   });
 
+  it('prefers a bullet primary target over stale mapped requirement arrays', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Executive stakeholder communication',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Presented quarterly operating updates to the CEO and board.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const resume = makeResume();
+    resume.executive_summary.addresses_requirements = [];
+    resume.professional_experience[0]!.bullets = [
+      {
+        text: 'Presented quarterly operating updates to the CEO and board.',
+        is_new: false,
+        addresses_requirements: ['Bachelor’s degree in engineering'],
+        primary_target_requirement: 'Executive stakeholder communication',
+        target_evidence: 'Presented quarterly operating updates to the CEO and board.',
+        confidence: 'partial',
+        evidence_found: 'Presented quarterly operating updates to the CEO and board.',
+        requirement_source: 'job_description',
+      },
+    ];
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: resume,
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.currentEvidence[0]?.text).toContain('CEO and board');
+    expect(queue.items[0]?.currentEvidence[0]?.basis).toBe('mapped');
+  });
+
   it('uses generic compatibility guidance when no shared coaching policy is available for financial scope requirements', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

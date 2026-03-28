@@ -141,4 +141,25 @@ describe('findResumeTargetForFinalReviewConcern', () => {
       selector: '[data-bullet-id="professional_experience-1"]',
     });
   });
+
+  it('prefers the canonical primary target over stale requirement arrays when picking a final-review target', () => {
+    const resume = makeResume();
+    resume.professional_experience[0]!.bullets[0] = {
+      ...resume.professional_experience[0]!.bullets[0]!,
+      text: 'Presented KPI and throughput updates to the COO and board operations committee.',
+      addresses_requirements: ['Bachelor’s degree in engineering'],
+      primary_target_requirement: 'Develop and track performance metrics',
+    };
+
+    const concern = makeConcern({
+      observation: 'The final review still needs clearer KPI ownership for executive audiences.',
+      related_requirement: 'Develop and track performance metrics',
+    });
+
+    expect(findResumeTargetForFinalReviewConcern(resume, concern)).toEqual({
+      text: 'Presented KPI and throughput updates to the COO and board operations committee.',
+      section: 'Professional Experience - Acme Manufacturing',
+      selector: '[data-bullet-id="professional_experience-0"]',
+    });
+  });
 });

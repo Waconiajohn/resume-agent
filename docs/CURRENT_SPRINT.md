@@ -156,3 +156,10 @@ The first implementation wave should keep live legacy schemas working while intr
   - `Code Red`
 - Gap states are handled as coaching opportunities, not reasons to abandon a line immediately. `Code Red` and `Confirm Fit` now explicitly encourage the user to bring forward adjacent proof, relevant scope, or strong working knowledge they can honestly stand behind.
 - The pipeline no longer emits or hydrates legacy `inline_suggestions`, which reduces split-brain UI drift and keeps the live builder centered on one editing model.
+
+## Resume-V2 Canonical Targeting Cleanup
+
+- Resume V2 line-level review now treats `primary_target_requirement` as the canonical target for active coaching, final review, and positioning assessment.
+- `addresses_requirements` remains as compatibility metadata, but active resume-v2 consumers should prefer the single primary target whenever it exists.
+- `Selected Accomplishments` and professional-experience bullets now carry target-specific support (`target_evidence`) so the clicked-line panel can explain one target with the proof that actually supports it.
+- Section-level fallback target bundles are no longer valid for clicked-line coaching. If the system cannot resolve one trustworthy target, the UI should show a review state rather than inventing a bundle.

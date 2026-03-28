@@ -10,6 +10,7 @@ import type {
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 import { BulletEditPopover } from './BulletEditPopover';
+import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -115,11 +116,12 @@ export function ResumeDocumentCard({
           <SectionHeading>Selected Accomplishments</SectionHeading>
           <ol className="resume-proof-list space-y-2 list-decimal pl-6">
             {selectedAccomplishments.map((a, i) => {
-              const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
+              const accomplishmentRequirements = canonicalRequirementSignals(
+                a.primary_target_requirement,
+                a.addresses_requirements,
+              );
               const accomplishmentPrimaryTarget = resolvePrimaryDisplayRequirement(
-                a.primary_target_requirement
-                  ? [a.primary_target_requirement]
-                  : accomplishmentRequirements,
+                accomplishmentRequirements,
                 requirementCatalog,
                 a.primary_target_source ?? a.requirement_source,
                 a.content,
@@ -139,7 +141,7 @@ export function ResumeDocumentCard({
                     getConfidenceLineClass(a.confidence, a.requirement_source)
                   }`}
                   {...(hasStrategy
-                    ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
+                    ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
                     : {})}
                 >
                   <>
@@ -228,13 +230,17 @@ export function ResumeDocumentCard({
                 )}
                 <ol className="resume-proof-list mt-2 space-y-2 list-decimal pl-6">
                   {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
-                    const bulletRequirements = Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [];
-                    const bulletDisplayTargets = resolveDisplayRequirements(
+                    const bulletRequirements = canonicalRequirementSignals(
+                      bullet.primary_target_requirement,
+                      bullet.addresses_requirements,
+                    );
+                    const bulletPrimaryTarget = resolvePrimaryDisplayRequirement(
                       bulletRequirements,
                       requirementCatalog,
-                      bullet.requirement_source,
+                      bullet.primary_target_source ?? bullet.requirement_source,
                       bullet.text,
                     );
+                    const bulletDisplayTargets = bulletPrimaryTarget ? [bulletPrimaryTarget] : [];
                     const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
@@ -250,7 +256,7 @@ export function ResumeDocumentCard({
                           getConfidenceLineClass(bullet.confidence, bullet.requirement_source)
                         }`}
                         {...(hasStrategy
-                          ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
+                          ? { 'data-addresses': JSON.stringify(bulletRequirements) }
                           : {})}
                       >
                         <>

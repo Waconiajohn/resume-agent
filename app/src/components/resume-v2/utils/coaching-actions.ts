@@ -10,6 +10,7 @@ import type {
 } from '@/types/resume-v2';
 import type { EditContext } from '@/hooks/useInlineEdit';
 import { evidenceLooksDirectForRequirement } from '@/lib/requirement-evidence';
+import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 
 /** Tokenize a string into lowercase words (strips punctuation) */
 export function tokenize(s: string): string[] {
@@ -62,11 +63,12 @@ export function findBulletForRequirement(
   }
 
   const normalizedRequirement = normalizeRequirement(requirement);
-  const exactMatch = (requirements: string[] | undefined) => (
-    (requirements ?? []).some((item) => normalizeRequirement(item) === normalizedRequirement)
+  const exactMatch = (primaryRequirement: string | null | undefined, requirements: string[] | undefined) => (
+    canonicalRequirementSignals(primaryRequirement, requirements)
+      .some((item) => normalizeRequirement(item) === normalizedRequirement)
   );
 
-  if (exactMatch(resume.executive_summary.addresses_requirements)) {
+  if (exactMatch(undefined, resume.executive_summary.addresses_requirements)) {
     if (evidenceLooksDirectForRequirement(requirement, resume.executive_summary.content)) {
       return {
         text: resume.executive_summary.content,
@@ -76,7 +78,7 @@ export function findBulletForRequirement(
   }
 
   for (const accomplishment of resume.selected_accomplishments) {
-    if (exactMatch(accomplishment.addresses_requirements)) {
+    if (exactMatch(accomplishment.primary_target_requirement, accomplishment.addresses_requirements)) {
       if (evidenceLooksDirectForRequirement(requirement, accomplishment.content)) {
         return {
           text: accomplishment.content,
@@ -88,13 +90,13 @@ export function findBulletForRequirement(
 
   for (const exp of resume.professional_experience) {
     const section = `Professional Experience - ${exp.company}`;
-    if (exactMatch(exp.scope_statement_addresses_requirements)) {
+    if (exactMatch(undefined, exp.scope_statement_addresses_requirements)) {
       if (evidenceLooksDirectForRequirement(requirement, exp.scope_statement)) {
         return { text: exp.scope_statement, section };
       }
     }
     for (const bullet of exp.bullets) {
-      if (exactMatch(bullet.addresses_requirements)) {
+      if (exactMatch(bullet.primary_target_requirement, bullet.addresses_requirements)) {
         if (evidenceLooksDirectForRequirement(requirement, bullet.text)) {
           return { text: bullet.text, section };
         }

@@ -37,6 +37,7 @@ import {
   buildCoachingLookup,
   findBenchmarkContext,
 } from '../utils/coaching-actions';
+import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { REPORT_COLORS, tierColor, tierBg, tierBorder, type Tier } from './report-colors';
 import { StatusBadge, importanceStyle, importanceLabel } from '../cards/shared-badges';
 import { GapChatThread } from './GapChatThread';
@@ -922,7 +923,10 @@ export function GapAnalysisReportPanel({
     };
 
     currentResume.selected_accomplishments.forEach((accomplishment) => {
-      accomplishment.addresses_requirements.forEach((requirement) => {
+      canonicalRequirementSignals(
+        accomplishment.primary_target_requirement,
+        accomplishment.addresses_requirements,
+      ).forEach((requirement) => {
         addEntry(requirement, {
           section: 'Selected Accomplishments',
           bullet_text: accomplishment.content,
@@ -932,7 +936,10 @@ export function GapAnalysisReportPanel({
 
     currentResume.professional_experience.forEach((experience) => {
       experience.bullets.forEach((bullet) => {
-        bullet.addresses_requirements.forEach((requirement) => {
+        canonicalRequirementSignals(
+          bullet.primary_target_requirement,
+          bullet.addresses_requirements,
+        ).forEach((requirement) => {
           addEntry(requirement, {
             section: `${experience.title} at ${experience.company}`,
             bullet_text: bullet.text,

@@ -167,6 +167,15 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
   const strategies_applied: string[] = [];
   const getAddresses = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+  const getCanonicalSignals = (
+    primaryRequirement: unknown,
+    addresses: unknown,
+  ): string[] => {
+    if (typeof primaryRequirement === 'string' && primaryRequirement.trim().length > 0) {
+      return [primaryRequirement.trim()];
+    }
+    return getAddresses(addresses);
+  };
 
   for (const req of gap_analysis.requirements) {
     // Find bullets that address this requirement
@@ -174,7 +183,7 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
 
     for (const exp of draft.professional_experience) {
       for (const bullet of exp.bullets) {
-        if (getAddresses(bullet.addresses_requirements).some(r =>
+        if (getCanonicalSignals(bullet.primary_target_requirement, bullet.addresses_requirements).some(r =>
           r.toLowerCase().includes(req.requirement.toLowerCase()) ||
           req.requirement.toLowerCase().includes(r.toLowerCase())
         )) {
@@ -188,7 +197,7 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
 
     // Check selected accomplishments too
     for (const acc of draft.selected_accomplishments) {
-      if (getAddresses(acc.addresses_requirements).some(r =>
+      if (getCanonicalSignals(acc.primary_target_requirement, acc.addresses_requirements).some(r =>
         r.toLowerCase().includes(req.requirement.toLowerCase()) ||
         req.requirement.toLowerCase().includes(r.toLowerCase())
       )) {

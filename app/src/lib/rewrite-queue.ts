@@ -15,6 +15,7 @@ import type {
   RewriteQueueSummary,
 } from '@/types/resume-v2';
 import { evidenceLooksDirectForRequirement } from './requirement-evidence';
+import { canonicalRequirementSignals } from './resume-requirement-signals';
 
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
@@ -192,11 +193,13 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   const normalizedRequirement = normalize(requirement);
   const evidence: RewriteQueueEvidence[] = [];
 
-  const matchesRequirement = (requirements: string[] | undefined) => (
-    (requirements ?? []).some((item) => normalize(item) === normalizedRequirement)
-  );
+  const matchesRequirement = (
+    primaryRequirement: string | null | undefined,
+    requirements: string[] | undefined,
+  ) => canonicalRequirementSignals(primaryRequirement, requirements)
+    .some((item) => normalize(item) === normalizedRequirement);
 
-  if (matchesRequirement(resume.executive_summary.addresses_requirements)) {
+  if (matchesRequirement(undefined, resume.executive_summary.addresses_requirements)) {
     if (evidenceLooksDirectForRequirement(requirement, resume.executive_summary.content)) {
       evidence.push({
         text: resume.executive_summary.content,
@@ -209,7 +212,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   }
 
   for (const accomplishment of resume.selected_accomplishments) {
-    if (matchesRequirement(accomplishment.addresses_requirements)) {
+    if (matchesRequirement(accomplishment.primary_target_requirement, accomplishment.addresses_requirements)) {
       if (!evidenceLooksDirectForRequirement(requirement, accomplishment.content)) {
         continue;
       }
@@ -224,7 +227,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   }
 
   for (const experience of resume.professional_experience) {
-    if (matchesRequirement(experience.scope_statement_addresses_requirements)) {
+    if (matchesRequirement(undefined, experience.scope_statement_addresses_requirements)) {
       if (!evidenceLooksDirectForRequirement(requirement, experience.scope_statement)) {
         continue;
       }
@@ -238,7 +241,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
     }
 
     for (const bullet of experience.bullets) {
-      if (matchesRequirement(bullet.addresses_requirements)) {
+      if (matchesRequirement(bullet.primary_target_requirement, bullet.addresses_requirements)) {
         if (!evidenceLooksDirectForRequirement(requirement, bullet.text)) {
           continue;
         }

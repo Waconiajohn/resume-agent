@@ -25,6 +25,7 @@ import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRa
 import { ScoringReport, ScoringReportDetailsDisclosure } from './ScoringReport';
 import { GapOverviewCard } from './cards/GapOverviewCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
+import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
 
 interface V2StreamingDisplayProps {
@@ -193,7 +194,10 @@ function buildAttentionReviewItems(
       statusClassName: status.className,
       priority: status.priority,
       order: order++,
-      requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
+      requirements: canonicalRequirementSignals(
+        bullet.primary_target_requirement,
+        bullet.addresses_requirements,
+      ),
     });
   });
 
@@ -216,7 +220,10 @@ function buildAttentionReviewItems(
         statusClassName: status.className,
         priority: status.priority,
         order: order++,
-        requirements: Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [],
+        requirements: canonicalRequirementSignals(
+          bullet.primary_target_requirement,
+          bullet.addresses_requirements,
+        ),
       });
     });
   });

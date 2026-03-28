@@ -697,6 +697,49 @@ describe('buildPositioningAssessment (via runAssembly)', () => {
     expect(accomplishmentAddresses.length).toBeGreaterThan(0);
   });
 
+  it('prefers a line primary target over stale addresses_requirements when mapping addressed_by', () => {
+    const result = runAssembly(makeInput({
+      draft: makeDraft({
+        selected_accomplishments: [
+          {
+            content: 'Built executive cloud migration scorecards across three business units.',
+            is_new: false,
+            addresses_requirements: ['Revenue Growth'],
+            primary_target_requirement: 'Cloud Infrastructure',
+            source: 'enhanced',
+            confidence: 'partial',
+            evidence_found: 'Built executive cloud migration scorecards across three business units.',
+            target_evidence: 'Built executive cloud migration scorecards across three business units.',
+            requirement_source: 'job_description',
+          },
+        ],
+      }),
+    }));
+
+    const cloudEntry = result.positioning_assessment!.requirement_map.find(
+      r => r.requirement === 'Cloud Infrastructure',
+    );
+    const revenueEntry = result.positioning_assessment!.requirement_map.find(
+      r => r.requirement === 'Revenue Growth',
+    );
+
+    expect(cloudEntry?.addressed_by).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: 'Selected Accomplishments',
+          bullet_text: 'Built executive cloud migration scorecards across three business units.',
+        }),
+      ]),
+    );
+    expect(revenueEntry?.addressed_by).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          bullet_text: 'Built executive cloud migration scorecards across three business units.',
+        }),
+      ]),
+    );
+  });
+
   it('sets strategy_used for repositioned requirements', () => {
     const result = runAssembly(makeInput());
 
