@@ -424,8 +424,9 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
       'Reduced deploy time by 60%',
       'selected_accomplishments',
       0,
-      ['CI/CD experience'],
+      expect.any(Array),
     );
+    expect(onBulletClick.mock.calls[0]?.[3]).toContain('CI/CD experience');
   });
 
   it('does not call onBulletClick for a strong bullet', () => {
@@ -709,7 +710,7 @@ describe('InlineEditPanel — action buttons', () => {
     );
 
     expect(screen.getAllByText('Confirm Fit').length).toBeGreaterThan(0);
-    expect(screen.getByText(/connect it to real experience and rewrite it in your own terms/i)).toBeInTheDocument();
+    expect(screen.getByText(/trying to cover a benchmark signal/i)).toBeInTheDocument();
     expect(screen.getByText('Not directly confirmed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect to my background' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rewrite to match my background' })).toBeInTheDocument();
@@ -904,7 +905,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getByText(/Coverage goal/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Role target/i).length).toBeGreaterThan(0);
   });
 
   it('falls back to the targeting label when addresses_requirements is empty', () => {
@@ -922,8 +923,40 @@ describe('InlineEditPanel — requirement tags', () => {
     );
 
     // index 1 has addresses_requirements: []
-    expect(screen.getByText(/Coverage goal/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Targets Job Need').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Role target/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('One of the key needs from the job description.')).toBeInTheDocument();
+  });
+
+  it('prefers a real requirement target over a sentence-like addresses_requirements value', () => {
+    const resume = makeResumeDraft();
+    resume.selected_accomplishments[0] = {
+      ...resume.selected_accomplishments[0],
+      content: 'Reduced BHA per lateral by 20% through insulated drill pipe and mud chillers',
+      addresses_requirements: ['Reduced BHA per lateral by 20% through insulated drill pipe and mud chillers'],
+      confidence: 'needs_validation',
+      evidence_found: '',
+      requirement_source: 'job_description',
+    };
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        requirementCatalog={[
+          {
+            requirement: 'Drilling engineering and operations expertise',
+            source: 'job_description',
+          },
+        ]}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onBulletClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        isEditing={false}
+        pendingEdit={null}
+      />,
+    );
+
+    const roleTargetCard = screen.getAllByText(/Role target/i)[0].parentElement as HTMLElement;
+    expect(within(roleTargetCard).getByText('Drilling engineering and operations expertise')).toBeInTheDocument();
   });
 });
 

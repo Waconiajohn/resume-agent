@@ -2153,6 +2153,81 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullet?.confidence).toBe('partial');
     });
 
+    it('overrides stale drafted metadata when a bullet is identical to original resume proof', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                is_new: false,
+                addresses_requirements: ['Cloud Infrastructure'],
+                source: 'drafted',
+                confidence: 'needs_validation',
+                requirement_source: 'job_description',
+                evidence_found: '',
+                content_origin: 'drafted_to_close_gap',
+                support_origin: 'not_found',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullet = result.professional_experience[0]?.bullets[0];
+
+      expect(bullet?.source).toBe('original');
+      expect(bullet?.confidence).toBe('strong');
+      expect(bullet?.content_origin).toBe('original_resume');
+      expect(bullet?.support_origin).toBe('original_resume');
+    });
+
     it('replaces unmatched duplicate draft bullets with missing source proof when counts already match', async () => {
       const rewrittenDraft: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,

@@ -6,6 +6,7 @@ import type {
   RequirementSource,
   ResumeContentOrigin,
   ResumeSupportOrigin,
+  ResumePriorityTarget,
 } from '@/types/resume-v2';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
@@ -13,6 +14,7 @@ import { BulletEditPopover } from './BulletEditPopover';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
+  requirementCatalog?: Array<{ requirement: string; source?: RequirementSource }>;
   /** Which bullet is currently selected for inline editing */
   activeBullet?: { section: string; index: number } | null;
   /** Click handler for bullet selection */
@@ -31,6 +33,7 @@ interface ResumeDocumentCardProps {
 
 export function ResumeDocumentCard({
   resume,
+  requirementCatalog = [],
   activeBullet = null,
   onBulletClick,
   onBulletEdit,
@@ -47,6 +50,9 @@ export function ResumeDocumentCard({
   const earlierCareer = Array.isArray(resume.earlier_career) ? resume.earlier_career : [];
   const education = Array.isArray(resume.education) ? resume.education : [];
   const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
+  const selectedAccomplishmentTargets = Array.isArray(resume.selected_accomplishment_targets)
+    ? resume.selected_accomplishment_targets
+    : [];
 
   // Track which suggestion popover is open (by suggestion id or bullet key)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
@@ -114,6 +120,13 @@ export function ResumeDocumentCard({
           <ol className="resume-proof-list space-y-2 list-decimal pl-6">
             {selectedAccomplishments.map((a, i) => {
               const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
+              const accomplishmentDisplayTargets = resolveDisplayRequirements(
+                accomplishmentRequirements,
+                requirementCatalog,
+                selectedAccomplishmentTargets.filter((target) => target.source === a.requirement_source),
+                a.requirement_source,
+                a.content,
+              );
               const hasStrategy = accomplishmentRequirements.length > 0;
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
               const popoverKey = `sa-${i}`;
@@ -138,7 +151,7 @@ export function ResumeDocumentCard({
                       requirementSource={a.requirement_source}
                       section="selected_accomplishments"
                       bulletIndex={i}
-                      requirements={accomplishmentRequirements}
+                      requirements={accomplishmentDisplayTargets}
                       onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
                       onBulletClick={onBulletClick}
                     />
@@ -148,7 +161,7 @@ export function ResumeDocumentCard({
                         confidence={a.confidence}
                         evidenceFound={a.evidence_found}
                         requirementSource={a.requirement_source}
-                        addressesRequirements={accomplishmentRequirements}
+                        addressesRequirements={accomplishmentDisplayTargets}
                         contentOrigin={a.content_origin}
                         supportOrigin={a.support_origin}
                         onSave={(newText) => {
@@ -169,7 +182,7 @@ export function ResumeDocumentCard({
                       bulletText={a.content}
                       section="selected_accomplishments"
                       bulletIndex={i}
-                      requirements={accomplishmentRequirements}
+                      requirements={accomplishmentDisplayTargets}
                       pendingEdit={pendingEdit}
                       isEditing={isEditing}
                       confidence={a.confidence}
@@ -217,6 +230,13 @@ export function ResumeDocumentCard({
                 <ol className="resume-proof-list mt-2 space-y-2 list-decimal pl-6">
                   {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
                     const bulletRequirements = Array.isArray(bullet.addresses_requirements) ? bullet.addresses_requirements : [];
+                    const bulletDisplayTargets = resolveDisplayRequirements(
+                      bulletRequirements,
+                      requirementCatalog,
+                      [],
+                      bullet.requirement_source,
+                      bullet.text,
+                    );
                     const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
@@ -242,7 +262,7 @@ export function ResumeDocumentCard({
                             requirementSource={bullet.requirement_source}
                             section="professional_experience"
                             bulletIndex={bulletIndex}
-                            requirements={bulletRequirements}
+                            requirements={bulletDisplayTargets}
                             onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
                             onBulletClick={onBulletClick}
                           />
@@ -252,7 +272,7 @@ export function ResumeDocumentCard({
                               confidence={bullet.confidence}
                               evidenceFound={bullet.evidence_found}
                               requirementSource={bullet.requirement_source}
-                              addressesRequirements={bulletRequirements}
+                              addressesRequirements={bulletDisplayTargets}
                               contentOrigin={bullet.content_origin}
                               supportOrigin={bullet.support_origin}
                               onSave={(newText) => {
@@ -273,7 +293,7 @@ export function ResumeDocumentCard({
                             bulletText={bullet.text}
                             section="professional_experience"
                             bulletIndex={bulletIndex}
-                            requirements={bulletRequirements}
+                            requirements={bulletDisplayTargets}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
                             confidence={bullet.confidence}
@@ -459,10 +479,15 @@ function InlineEditPanel({
   const [customPrompt, setCustomPrompt] = useState('');
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const isCodeRed = confidence === 'needs_validation' && requirementSource !== 'benchmark';
-  const statusMeta = getConfidencePill(confidence, requirementSource);
-  const requirementLabel = requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
+  const targetSourceLabel = requirementSource === 'benchmark'
+    ? 'This target came from the benchmark profile.'
+    : 'This target came from the job description.';
   const hasEvidence = evidenceFound.trim().length > 0;
-  const requestedCoverage = requirements.length > 0 ? requirements.join(', ') : requirementLabel;
+  const targetSummary = requirements.length > 0
+    ? requirements.join(', ')
+    : requirementSource === 'benchmark'
+      ? 'A benchmark signal from the ideal-candidate profile.'
+      : 'One of the key needs from the job description.';
 
   useEffect(() => {
     if (
@@ -554,53 +579,43 @@ function InlineEditPanel({
         ? 'Apply will replace the current line with the loaded AI draft.'
         : 'Apply will replace the current line with your working draft.'
       : 'Edit the draft or run an AI action to enable Apply to Resume.';
-  const statusHeading = confidence === 'strong'
-    ? 'Supported'
-    : confidence === 'partial'
-      ? 'Needs stronger detail'
-      : requirementSource === 'benchmark'
-        ? 'Confirm Fit'
-        : 'Code Red';
+  const panelIntro = getInlinePanelIntro(confidence, requirementSource);
+  const flagReason = getInlinePanelFlagReason(confidence, requirementSource);
 
   return (
     <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
       <div className="resume-inline-panel__surface">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Resolve This Line
-            </p>
-            <p className="mt-1 text-sm leading-6 text-gray-700">
-              Keep it truthful, bring forward adjacent proof or working knowledge where it honestly exists, and only use AI where it makes the line safer or sharper.
-            </p>
-          </div>
-          {statusMeta ? (
-            <span className={statusMeta.className}>
-              {statusMeta.label}
-            </span>
-          ) : (
-            <span className="resume-proof-meta-label text-slate-700">Supported</span>
-          )}
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+            Resolve This Line
+          </p>
+          <p className="mt-1 text-sm leading-6 text-gray-700">
+            {panelIntro}
+          </p>
         </div>
 
         <div className="mt-4 space-y-3">
-          <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">
-                  What needs attention
-                </p>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                  {statusHeading}
-                </p>
-              </div>
-              <span className="resume-inline-panel__intent-chip">
-                {requirementLabel}
-              </span>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
+            <div className="resume-inline-panel__target-card rounded-xl px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {requirementSource === 'benchmark' ? 'Benchmark target' : 'Role target'}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-800">
+                {targetSummary}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                {targetSourceLabel}
+              </p>
             </div>
-            <p className="mt-2 text-[13px] leading-6">
-              {getProofStateNextStep(confidence, requirementSource)}
-            </p>
+
+            <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">
+                Why it&apos;s flagged
+              </p>
+              <p className="mt-2 text-[13px] leading-6">
+                {flagReason}
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.82fr)]">
@@ -621,21 +636,13 @@ function InlineEditPanel({
             </div>
 
             <div className="resume-inline-panel__context-card rounded-xl px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Line context
-              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Line context</p>
               <dl className="mt-3 grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm leading-6 text-slate-700">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
-                <dd className="min-w-0 break-words">{requirementLabel}</dd>
-
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
                 <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
 
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
                 <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource)}</dd>
-
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage goal</dt>
-                <dd className="min-w-0 break-words">{requestedCoverage}</dd>
               </dl>
             </div>
           </div>
@@ -649,10 +656,10 @@ function InlineEditPanel({
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 {isBenchmarkValidation
-                  ? 'Review the assessment above, then confirm this line honestly fits your background. If it does, connect it to real experience and rewrite it in your own terms. If it does not, rewrite it to a truer fit.'
+                  ? 'Rewrite this so it clearly matches background the candidate can honestly stand behind.'
                   : isCodeRed
-                    ? 'Review the assessment above, then use this box to connect the line to adjacent experience, tools, scope, or strong working knowledge you can honestly stand behind.'
-                    : 'Review the assessment above, then rewrite the sentence here directly or use the AI actions to make the proof stronger and clearer.'}
+                    ? 'Reconnect this line to real adjacent experience or honest working knowledge.'
+                    : 'Tighten this line with clearer proof, scope, or outcome.'}
               </p>
             </div>
             {matchesPendingEdit && (
@@ -966,7 +973,135 @@ function getConfidenceSourceLabel(
   requirementSource?: RequirementSource,
 ): string | null {
   if (confidence === 'strong') return null;
-  return requirementSource === 'benchmark' ? 'Targets Benchmark Signal' : 'Targets Job Need';
+  return requirementSource === 'benchmark' ? 'Benchmark Signal' : 'Job Need';
+}
+
+function normalizeRequirementKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function tokenizeRequirementValue(value: string): string[] {
+  return normalizeRequirementKey(value).split(/\s+/).filter(Boolean);
+}
+
+function getTokenOverlapScore(a: string, b: string): number {
+  const aTokens = new Set(tokenizeRequirementValue(a));
+  const bTokens = new Set(tokenizeRequirementValue(b));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let shared = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) shared += 1;
+  }
+  return shared / Math.max(aTokens.size, bTokens.size);
+}
+
+function requirementLooksLikeBulletText(requirement: string, bulletText: string): boolean {
+  const normalizedRequirement = normalizeRequirementKey(requirement);
+  const normalizedBullet = normalizeRequirementKey(bulletText);
+  if (!normalizedRequirement || !normalizedBullet) return false;
+  if (normalizedRequirement === normalizedBullet) return true;
+  if (normalizedBullet.includes(normalizedRequirement) || normalizedRequirement.includes(normalizedBullet)) return true;
+  return getTokenOverlapScore(requirement, bulletText) >= 0.72;
+}
+
+function findRequirementCatalogMatch(
+  rawRequirement: string,
+  requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
+  requirementSource: RequirementSource,
+): string | null {
+  const normalizedRaw = normalizeRequirementKey(rawRequirement);
+  if (!normalizedRaw) return null;
+
+  const scopedCatalog = requirementCatalog.filter((item) => !item.source || item.source === requirementSource);
+  for (const entry of scopedCatalog) {
+    const normalizedEntry = normalizeRequirementKey(entry.requirement);
+    if (!normalizedEntry) continue;
+    if (normalizedEntry === normalizedRaw) return entry.requirement;
+    if (normalizedEntry.includes(normalizedRaw) || normalizedRaw.includes(normalizedEntry)) return entry.requirement;
+  }
+
+  let bestMatch: string | null = null;
+  let bestScore = 0;
+  const rawTokens = new Set(normalizedRaw.split(/\s+/).filter(Boolean));
+  for (const entry of scopedCatalog) {
+    const normalizedEntry = normalizeRequirementKey(entry.requirement);
+    const entryTokens = new Set(normalizedEntry.split(/\s+/).filter(Boolean));
+    let shared = 0;
+    for (const token of rawTokens) {
+      if (entryTokens.has(token)) shared += 1;
+    }
+    const score = shared === 0 ? 0 : shared / Math.max(rawTokens.size, entryTokens.size);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = entry.requirement;
+    }
+  }
+
+  return bestScore >= 0.45 ? bestMatch : null;
+}
+
+function inferRequirementFromBulletText(
+  bulletText: string,
+  requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
+  requirementSource: RequirementSource,
+): string | null {
+  const scopedCatalog = requirementCatalog.filter((item) => !item.source || item.source === requirementSource);
+  if (scopedCatalog.length === 0) return null;
+  if (scopedCatalog.length === 1) return scopedCatalog[0].requirement;
+
+  let bestMatch: string | null = null;
+  let bestScore = 0;
+  for (const entry of scopedCatalog) {
+    const score = getTokenOverlapScore(bulletText, entry.requirement);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = entry.requirement;
+    }
+  }
+
+  return bestScore >= 0.18 ? bestMatch : null;
+}
+
+function resolveDisplayRequirements(
+  rawRequirements: string[],
+  requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
+  fallbackTargets: ResumePriorityTarget[],
+  requirementSource: RequirementSource,
+  bulletText?: string,
+): string[] {
+  const filteredRequirements = rawRequirements.filter((requirement) => {
+    const cleaned = typeof requirement === 'string' ? requirement.trim() : '';
+    if (!cleaned) return false;
+    if (!bulletText) return true;
+    return !requirementLooksLikeBulletText(cleaned, bulletText);
+  });
+
+  const validated = filteredRequirements
+    .map((requirement) => findRequirementCatalogMatch(requirement, requirementCatalog, requirementSource))
+    .filter((value): value is string => Boolean(value));
+
+  if (validated.length > 0) {
+    return Array.from(new Set(validated));
+  }
+
+  if (bulletText) {
+    const inferredFromBullet = findRequirementCatalogMatch(bulletText, requirementCatalog, requirementSource)
+      ?? inferRequirementFromBulletText(bulletText, requirementCatalog, requirementSource);
+    if (inferredFromBullet) {
+      return [inferredFromBullet];
+    }
+  }
+
+  const fallback = fallbackTargets
+    .filter((target) => target.source === requirementSource || fallbackTargets.length === 1)
+    .map((target) => target.requirement)
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+  if (fallback.length > 0) {
+    return Array.from(new Set(fallback)).slice(0, 3);
+  }
+
+  return Array.from(new Set(filteredRequirements)).slice(0, 3);
 }
 
 function getContentOriginLabel(
@@ -1021,6 +1156,35 @@ function getProofStateNextStep(
     return 'This line may fit the role. Connect it to real background you can stand behind, then keep it only if it still reads honestly.';
   }
   return 'Look for adjacent experience, tools, scope, or strong working knowledge you can honestly claim, then rewrite this line safely before export.';
+}
+
+function getInlinePanelIntro(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): string {
+  if (confidence === 'partial') {
+    return 'This line is directionally right, but it still needs sharper proof before it should stay in the final resume.';
+  }
+  if (requirementSource === 'benchmark') {
+    return 'This ultimate-resume line is trying to cover a benchmark signal. Keep the target, but rewrite it only in a way that honestly fits the candidate’s real background.';
+  }
+  return 'This ultimate-resume line is trying to cover a job need. Keep the target, but rewrite it so it reflects real adjacent experience or honest working knowledge.';
+}
+
+function getInlinePanelFlagReason(
+  confidence: BulletConfidence,
+  requirementSource: RequirementSource,
+): string {
+  if (confidence === 'strong') {
+    return 'The supporting proof is already present.';
+  }
+  if (confidence === 'partial') {
+    return 'The line reads as plausible, but the proof is still too thin or too generic.';
+  }
+  if (requirementSource === 'benchmark') {
+    return 'This may be the right kind of benchmark claim, but we still need to confirm it honestly matches the candidate’s background.';
+  }
+  return 'We do not yet have direct resume proof for this exact claim.';
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

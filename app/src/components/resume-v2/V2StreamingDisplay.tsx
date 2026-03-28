@@ -852,6 +852,7 @@ export function V2StreamingDisplay({
                 <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
                   <ResumeDocumentCard
                     resume={displayResume}
+                    requirementCatalog={data.gapAnalysis?.requirements ?? []}
                     activeBullet={activeBullet}
                     onBulletClick={canEdit ? handleBulletClick : undefined}
                     onBulletEdit={canEdit ? onBulletEdit : undefined}

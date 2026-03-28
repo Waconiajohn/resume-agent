@@ -1436,9 +1436,9 @@ function deterministicRequirementMatch(
     indexedRequirements: IndexedRequirement[],
     existingRequirements: string[],
     existingRequirementSource: RequirementSource | undefined,
-    existingSource: BulletSource | undefined,
+    _existingSource: BulletSource | undefined,
     existingConfidence: BulletConfidence | undefined,
-    existingContentOrigin: ResumeContentOrigin | undefined,
+    _existingContentOrigin: ResumeContentOrigin | undefined,
     existingSupportOrigin: ResumeSupportOrigin | undefined,
     evidenceFound: string,
   ): {
@@ -1460,7 +1460,6 @@ function deterministicRequirementMatch(
     const hasMatch = effectiveRequirements.length > 0;
     const hasRealEvidence = typeof evidenceFound === 'string' && evidenceFound.trim().length > 0;
 
-    let source: BulletSource;
     let confidence: BulletConfidence;
     let requirementSource: RequirementSource;
 
@@ -1470,19 +1469,7 @@ function deterministicRequirementMatch(
       if (hasRealEvidence) return 'enhanced';
       return 'drafted';
     })();
-
-    if (existingSource) {
-      const normalizedExistingSource = existingSource as BulletSource;
-      if (normalizedExistingSource === 'original') {
-        source = inferredSource;
-      } else if (normalizedExistingSource === 'enhanced') {
-        source = inferredSource === 'drafted' ? 'drafted' : 'enhanced';
-      } else {
-        source = 'drafted';
-      }
-    } else {
-      source = inferredSource;
-    }
+    const source: BulletSource = inferredSource;
 
     const inferredConfidence: BulletConfidence = source === 'original'
       ? 'strong'
@@ -1511,7 +1498,7 @@ function deterministicRequirementMatch(
       requirement_source: requirementSource,
       source,
       confidence,
-      content_origin: existingContentOrigin ?? inferContentOrigin(source),
+      content_origin: inferContentOrigin(source),
       support_origin: inferSupportOrigin(source, evidenceFound, existingSupportOrigin),
     };
   };
@@ -2029,15 +2016,11 @@ function inferSupportOrigin(
   evidenceFound: string,
   existing?: ResumeSupportOrigin,
 ): ResumeSupportOrigin {
-  if (
-    existing === 'original_resume'
-    || existing === 'adjacent_resume_inference'
-    || existing === 'user_confirmed_context'
-    || existing === 'not_found'
-  ) {
-    return existing;
-  }
+  if (source === 'original') return 'original_resume';
+  if (existing === 'user_confirmed_context') return existing;
+  if (existing === 'original_resume') return existing;
   if (evidenceFound.trim().length > 0) return 'original_resume';
+  if (existing === 'adjacent_resume_inference' && source === 'enhanced') return existing;
   if (source === 'enhanced') return 'adjacent_resume_inference';
   return 'not_found';
 }
