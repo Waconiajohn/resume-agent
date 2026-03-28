@@ -2081,6 +2081,78 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
     });
 
+    it('downgrades rewritten proof bullets from original/strong to enhanced/partial when the text is no longer verbatim', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.',
+                is_new: false,
+                addresses_requirements: ['Cloud Infrastructure'],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullet = result.professional_experience[0]?.bullets[0];
+
+      expect(bullet?.text).toBe('Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.');
+      expect(bullet?.source).toBe('enhanced');
+      expect(bullet?.confidence).toBe('partial');
+    });
+
     it('replaces unmatched duplicate draft bullets with missing source proof when counts already match', async () => {
       const rewrittenDraft: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,
@@ -2184,6 +2256,77 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
                 addresses_requirements: [],
                 source: 'enhanced',
                 confidence: 'partial',
+                requirement_source: 'job_description',
+                evidence_found: 'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Built weekly KPI reviews and line-performance meetings across 3 sites.',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toHaveLength(1);
+      expect(bullets[0]).toBe('Built weekly KPI reviews and line-performance meetings across 3 sites.');
+    });
+
+    it('restores source proof even when an over-compressed rewrite is mislabeled as original and strong', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Unified plant performance reporting across the operation.',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
                 requirement_source: 'job_description',
                 evidence_found: 'Built weekly KPI reviews and line-performance meetings across 3 sites.',
               },

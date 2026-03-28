@@ -1033,11 +1033,6 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         continue;
       }
 
-      if (matchedDraft.source === 'original' && matchedDraft.confidence === 'strong') {
-        consumedDraftIndexes.add(match.index);
-        continue;
-      }
-
       draftBullets[match.index] = {
         text: sourceBulletText,
         is_new: false,
@@ -1463,36 +1458,49 @@ function deterministicRequirementMatch(
       ? normalizedExistingRequirements
       : match.matchedRequirements;
     const hasMatch = effectiveRequirements.length > 0;
+    const hasRealEvidence = typeof evidenceFound === 'string' && evidenceFound.trim().length > 0;
 
     let source: BulletSource;
     let confidence: BulletConfidence;
     let requirementSource: RequirementSource;
 
+    const inferredSource: BulletSource = (() => {
+      if (originality === 'identical') return 'original';
+      if (originality === 'similar') return 'enhanced';
+      if (hasRealEvidence) return 'enhanced';
+      return 'drafted';
+    })();
+
     if (existingSource) {
-      source = existingSource;
-    } else {
-      switch (originality) {
-        case 'identical':
-          source = 'original';
-          break;
-        case 'similar':
-          source = hasMatch ? 'enhanced' : 'original';
-          break;
-        case 'novel':
-        default:
-          source = 'drafted';
-          break;
+      const normalizedExistingSource = existingSource as BulletSource;
+      if (normalizedExistingSource === 'original') {
+        source = inferredSource;
+      } else if (normalizedExistingSource === 'enhanced') {
+        source = inferredSource === 'drafted' ? 'drafted' : 'enhanced';
+      } else {
+        source = 'drafted';
       }
+    } else {
+      source = inferredSource;
     }
 
+    const inferredConfidence: BulletConfidence = source === 'original'
+      ? 'strong'
+      : source === 'enhanced'
+        ? 'partial'
+        : 'needs_validation';
+
     if (existingConfidence) {
-      confidence = existingConfidence;
-    } else if (source === 'original') {
-      confidence = 'strong';
-    } else if (source === 'enhanced') {
-      confidence = 'partial';
+      const normalizedExistingConfidence = existingConfidence as BulletConfidence;
+      if (source === 'original') {
+        confidence = normalizedExistingConfidence === 'strong' ? 'strong' : inferredConfidence;
+      } else if (source === 'enhanced') {
+        confidence = normalizedExistingConfidence === 'needs_validation' ? 'needs_validation' : 'partial';
+      } else {
+        confidence = 'needs_validation';
+      }
     } else {
-      confidence = 'needs_validation';
+      confidence = inferredConfidence;
     }
 
     requirementSource = existingRequirementSource
