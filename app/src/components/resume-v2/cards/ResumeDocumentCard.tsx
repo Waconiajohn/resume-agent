@@ -6,7 +6,6 @@ import type {
   RequirementSource,
   ResumeContentOrigin,
   ResumeSupportOrigin,
-  ResumePriorityTarget,
 } from '@/types/resume-v2';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
@@ -50,9 +49,6 @@ export function ResumeDocumentCard({
   const earlierCareer = Array.isArray(resume.earlier_career) ? resume.earlier_career : [];
   const education = Array.isArray(resume.education) ? resume.education : [];
   const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
-  const selectedAccomplishmentTargets = Array.isArray(resume.selected_accomplishment_targets)
-    ? resume.selected_accomplishment_targets
-    : [];
 
   // Track which suggestion popover is open (by suggestion id or bullet key)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
@@ -120,13 +116,15 @@ export function ResumeDocumentCard({
           <ol className="resume-proof-list space-y-2 list-decimal pl-6">
             {selectedAccomplishments.map((a, i) => {
               const accomplishmentRequirements = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
-              const accomplishmentDisplayTargets = resolveDisplayRequirements(
-                accomplishmentRequirements,
+              const accomplishmentPrimaryTarget = resolvePrimaryDisplayRequirement(
+                a.primary_target_requirement
+                  ? [a.primary_target_requirement]
+                  : accomplishmentRequirements,
                 requirementCatalog,
-                selectedAccomplishmentTargets.filter((target) => target.source === a.requirement_source),
-                a.requirement_source,
+                a.primary_target_source ?? a.requirement_source,
                 a.content,
               );
+              const accomplishmentDisplayTargets = accomplishmentPrimaryTarget ? [accomplishmentPrimaryTarget] : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
               const popoverKey = `sa-${i}`;
@@ -188,6 +186,7 @@ export function ResumeDocumentCard({
                       confidence={a.confidence}
                       requirementSource={a.requirement_source}
                       evidenceFound={a.evidence_found}
+                      targetEvidence={a.target_evidence}
                       contentOrigin={a.content_origin}
                       supportOrigin={a.support_origin}
                       onRequestEdit={onRequestEdit}
@@ -233,7 +232,6 @@ export function ResumeDocumentCard({
                     const bulletDisplayTargets = resolveDisplayRequirements(
                       bulletRequirements,
                       requirementCatalog,
-                      [],
                       bullet.requirement_source,
                       bullet.text,
                     );
@@ -296,12 +294,13 @@ export function ResumeDocumentCard({
                             requirements={bulletDisplayTargets}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
-                            confidence={bullet.confidence}
-                            requirementSource={bullet.requirement_source}
-                            evidenceFound={bullet.evidence_found}
-                            contentOrigin={bullet.content_origin}
-                            supportOrigin={bullet.support_origin}
-                            onRequestEdit={onRequestEdit}
+                      confidence={bullet.confidence}
+                      requirementSource={bullet.requirement_source}
+                      evidenceFound={bullet.evidence_found}
+                      targetEvidence={bullet.target_evidence}
+                      contentOrigin={bullet.content_origin}
+                      supportOrigin={bullet.support_origin}
+                      onRequestEdit={onRequestEdit}
                             onBulletEdit={onBulletEdit}
                             onAcceptEdit={onAcceptEdit}
                             onRejectEdit={onRejectEdit}
@@ -449,6 +448,7 @@ interface InlineEditPanelProps {
   confidence: BulletConfidence;
   requirementSource: RequirementSource;
   evidenceFound: string;
+  targetEvidence?: string;
   contentOrigin?: ResumeContentOrigin;
   supportOrigin?: ResumeSupportOrigin;
   onRequestEdit: (text: string, section: string, action: EditAction, instruction?: string) => void;
@@ -467,6 +467,7 @@ function InlineEditPanel({
   confidence,
   requirementSource,
   evidenceFound,
+  targetEvidence,
   contentOrigin,
   supportOrigin,
   onRequestEdit,
@@ -479,12 +480,15 @@ function InlineEditPanel({
   const [customPrompt, setCustomPrompt] = useState('');
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const isCodeRed = confidence === 'needs_validation' && requirementSource !== 'benchmark';
-  const hasEvidence = evidenceFound.trim().length > 0;
-  const targetSummary = requirements.length > 0
-    ? requirements.join(', ')
+  const displayEvidence = typeof targetEvidence === 'string' && targetEvidence.trim().length > 0
+    ? targetEvidence.trim()
+    : '';
+  const hasEvidence = displayEvidence.length > 0;
+  const targetSummary = requirements[0]
+    ? requirements[0]
     : requirementSource === 'benchmark'
-      ? 'A benchmark signal from the ideal-candidate profile.'
-      : 'One of the key needs from the job description.';
+      ? 'The benchmark signal this line is trying to prove still needs review.'
+      : 'The job need this line is trying to prove still needs review.';
 
   useEffect(() => {
     if (
@@ -592,6 +596,15 @@ function InlineEditPanel({
         </div>
 
         <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Current line
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-800">
+              {bulletText}
+            </p>
+          </div>
+
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
             <div className="resume-inline-panel__target-card rounded-xl px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -619,12 +632,12 @@ function InlineEditPanel({
               </p>
               {hasEvidence ? (
                 <p className="mt-2 text-sm italic leading-6 text-slate-600">
-                  &ldquo;{evidenceFound}&rdquo;
+                  &ldquo;{displayEvidence}&rdquo;
                 </p>
               ) : (
                 <div className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#8f2d2d]">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>No original resume support found yet.</span>
+                  <span>No target-specific resume support found yet.</span>
                 </div>
               )}
             </div>
@@ -1059,7 +1072,6 @@ function inferRequirementFromBulletText(
 function resolveDisplayRequirements(
   rawRequirements: string[],
   requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
-  fallbackTargets: ResumePriorityTarget[],
   requirementSource: RequirementSource,
   bulletText?: string,
 ): string[] {
@@ -1086,16 +1098,23 @@ function resolveDisplayRequirements(
     }
   }
 
-  const fallback = fallbackTargets
-    .filter((target) => target.source === requirementSource || fallbackTargets.length === 1)
-    .map((target) => target.requirement)
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
-
-  if (fallback.length > 0) {
-    return Array.from(new Set(fallback)).slice(0, 3);
-  }
-
   return Array.from(new Set(filteredRequirements)).slice(0, 3);
+}
+
+function resolvePrimaryDisplayRequirement(
+  rawRequirements: string[],
+  requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
+  requirementSource: RequirementSource,
+  bulletText?: string,
+): string | null {
+  const resolved = resolveDisplayRequirements(
+    rawRequirements,
+    requirementCatalog,
+    requirementSource,
+    bulletText,
+  );
+
+  return resolved[0] ?? null;
 }
 
 function getContentOriginLabel(

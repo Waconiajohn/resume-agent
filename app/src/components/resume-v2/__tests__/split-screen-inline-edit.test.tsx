@@ -924,7 +924,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 1 has addresses_requirements: []
     expect(screen.getAllByText(/Job need we're covering/i).length).toBeGreaterThan(0);
-    expect(screen.getByText('One of the key needs from the job description.')).toBeInTheDocument();
+    expect(screen.getByText('The job need this line is trying to prove still needs review.')).toBeInTheDocument();
   });
 
   it('prefers a real requirement target over a sentence-like addresses_requirements value', () => {

@@ -1961,6 +1961,122 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.selected_accomplishments.length).toBeGreaterThan(0);
     });
 
+    it('limits selected accomplishments to accomplishment-compatible job needs with one primary target each', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const accomplishmentFocusedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          quantified_outcomes: [
+            { outcome: 'Grew enterprise revenue', metric_type: 'money', value: '$9M + $40M + $15M + $28M + $5M' },
+          ],
+          hidden_accomplishments: [
+            'Built consultative enterprise account strategies across complex public-sector deals',
+            'Expanded strategic accounts through solutions-based selling and revenue growth planning',
+          ],
+          experience: [
+            {
+              company: 'GrowthCo',
+              title: 'VP Sales',
+              start_date: 'Jan 2018',
+              end_date: 'Present',
+              bullets: [
+                'Drove $40M expansion revenue through consultative enterprise sales programs',
+                'Built $28M pipeline across strategic accounts with complex solutions-based selling',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 2,
+            positions: [
+              {
+                company: 'GrowthCo',
+                title: 'VP Sales',
+                start_date: 'Jan 2018',
+                end_date: 'Present',
+                bullets: [
+                  'Drove $40M expansion revenue through consultative enterprise sales programs',
+                  'Built $28M pipeline across strategic accounts with complex solutions-based selling',
+                ],
+              },
+            ],
+          },
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: "Bachelor's degree",
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['BS Computer Science'],
+            },
+            {
+              requirement: '10+ years of related experience',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['15 years leading commercial teams'],
+            },
+            {
+              requirement: 'Consultative, solutions-based selling background',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'partial',
+              evidence: ['Expanded strategic accounts through solutions-based selling'],
+            },
+            {
+              requirement: 'Revenue growth and enterprise account expansion',
+              source: 'job_description',
+              category: 'strategic_responsibility',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Drove $40M expansion revenue'],
+            },
+          ],
+        },
+        narrative: {
+          ...NARRATIVE_OUTPUT,
+          section_guidance: {
+            ...NARRATIVE_OUTPUT.section_guidance,
+            accomplishment_priorities: [
+              'Top enterprise revenue wins',
+              'Consultative sales proof',
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(accomplishmentFocusedInput);
+
+      const selectedTargets = result.selected_accomplishment_targets ?? [];
+
+      expect(selectedTargets.map((target) => target.requirement)).toEqual(
+        expect.arrayContaining([
+          'Consultative, solutions-based selling background',
+          'Revenue growth and enterprise account expansion',
+        ]),
+      );
+      expect(selectedTargets.map((target) => target.requirement)).not.toEqual(
+        expect.arrayContaining(["Bachelor's degree", '10+ years of related experience']),
+      );
+      expect(result.selected_accomplishments.every((item) => item.addresses_requirements.length <= 1)).toBe(true);
+      expect(result.selected_accomplishments.every((item) => typeof item.primary_target_requirement === 'string' && item.primary_target_requirement.length > 0)).toBe(true);
+      expect(result.selected_accomplishments.every((item) => item.target_evidence === item.evidence_found)).toBe(true);
+    });
+
     it('uses the source resume outline to preserve bullets when candidate.experience is truncated', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))

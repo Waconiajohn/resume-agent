@@ -85,6 +85,15 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
         text: typeof bullet?.text === 'string' ? bullet.text : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
+        primary_target_requirement: typeof bullet?.primary_target_requirement === 'string'
+          ? bullet.primary_target_requirement
+          : addressesRequirements[0] ?? undefined,
+        primary_target_source: normalizeRequirementSource(
+          bullet?.primary_target_source ?? bullet?.requirement_source,
+        ),
+        target_evidence: typeof bullet?.target_evidence === 'string'
+          ? bullet.target_evidence
+          : evidenceFound,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(bullet?.requirement_source),
         confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
@@ -152,6 +161,15 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
         content: typeof item?.content === 'string' ? item.content : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
+        primary_target_requirement: typeof item?.primary_target_requirement === 'string'
+          ? item.primary_target_requirement
+          : addressesRequirements[0] ?? undefined,
+        primary_target_source: normalizeRequirementSource(
+          item?.primary_target_source ?? item?.requirement_source,
+        ),
+        target_evidence: typeof item?.target_evidence === 'string'
+          ? item.target_evidence
+          : evidenceFound,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(item?.requirement_source),
         confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),

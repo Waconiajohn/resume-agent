@@ -341,6 +341,12 @@ export interface ResumeBullet {
   is_new: boolean;
   /** Which requirement(s) this bullet addresses */
   addresses_requirements: string[];
+  /** The single requirement this line is primarily trying to prove */
+  primary_target_requirement?: string;
+  /** The source of the primary requirement target */
+  primary_target_source?: RequirementSource;
+  /** Resume proof specifically tied to the primary target */
+  target_evidence?: string;
   /** Where this bullet came from: original resume, enhanced from original, or drafted from scratch */
   source: BulletSource;
   /** Whether the requirement addressed came from the job description or benchmark */
@@ -388,6 +394,9 @@ export interface ResumeDraftOutput {
     content: string;
     is_new: boolean;
     addresses_requirements: string[];
+    primary_target_requirement?: string;
+    primary_target_source?: RequirementSource;
+    target_evidence?: string;
     /** Where this accomplishment came from — guaranteed by ensureBulletMetadata() */
     source: BulletSource;
     /** Whether the requirement addressed came from the job description or benchmark */

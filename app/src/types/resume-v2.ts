@@ -295,6 +295,9 @@ export interface ResumeBullet {
   text: string;
   is_new: boolean;
   addresses_requirements: string[];
+  primary_target_requirement?: string;
+  primary_target_source?: RequirementSource;
+  target_evidence?: string;
   /** Confidence level — guaranteed by server ensureBulletMetadata() */
   confidence: BulletConfidence;
   /** The original resume text that supports this bullet */
@@ -334,6 +337,9 @@ export interface ResumeDraft {
     content: string;
     is_new: boolean;
     addresses_requirements: string[];
+    primary_target_requirement?: string;
+    primary_target_source?: RequirementSource;
+    target_evidence?: string;
     /** Confidence level — guaranteed by server ensureBulletMetadata() */
     confidence: BulletConfidence;
     /** The original resume text that supports this bullet */

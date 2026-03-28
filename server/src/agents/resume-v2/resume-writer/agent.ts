@@ -161,6 +161,12 @@ For EVERY bullet in selected_accomplishments and professional_experience, includ
 - requirement_source: 'job_description' | 'benchmark' (if addressing a specific requirement)
 - evidence_found: quote from original resume if applicable (empty string if none)
 
+For SELECTED ACCOMPLISHMENTS specifically:
+- only feature 3-4 spectacular, supportable proof points from the candidate
+- target accomplishment-worthy job needs, not screening requirements like degree, certifications, or years thresholds
+- each line must have one primary target requirement, not a bundle of unrelated needs
+- include target_evidence that directly supports that primary target
+
 For EVERY scope_statement in professional_experience, include:
 - scope_statement_source: 'original' | 'enhanced' | 'drafted'
 - scope_statement_confidence: 'strong' | 'partial' | 'needs_validation'
@@ -209,6 +215,9 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
       "content": "Strong Action Verb + What You Did (with context) + Measurable Result",
       "is_new": false,
       "addresses_requirements": ["which JD requirements this addresses"],
+      "primary_target_requirement": "single JD need this line is primarily proving",
+      "primary_target_source": "job_description",
+      "target_evidence": "proof from the original resume that supports that primary target",
       "source": "original",
       "requirement_source": "job_description",
       "evidence_found": "quote from original resume or empty string",
@@ -748,15 +757,112 @@ function importanceRank(value: 'must_have' | 'important' | 'nice_to_have'): numb
   }
 }
 
+const SELECTED_ACCOMPLISHMENT_TARGET_LIMIT = 4;
+
+interface AccomplishmentEvidenceCandidate {
+  content: string;
+  evidence: string;
+  proofStrength: number;
+  hasMetric: boolean;
+}
+
+function isCredentialOrScreeningRequirement(requirement: string): boolean {
+  const normalized = normalizeRequirementKey(requirement);
+  if (!normalized) return false;
+
+  return /\b(bachelor|master|mba|phd|doctorate|degree|certification|certified|license|licensed|clearance|citizen|citizenship|visa|work authorization|authorized to work|travel required|relocat|onsite|hybrid|remote)\b/.test(normalized)
+    || /\b\d+\+?\s+years?\b/.test(normalized)
+    || /\bminimum of\s+\d+\+?\s+years?\b/.test(normalized)
+    || /\b\d+\+?\s+years?\s+of\b/.test(normalized);
+}
+
+function isAccomplishmentCompatibleRequirement(requirement: RequirementGap): boolean {
+  if (requirement.source !== 'job_description') return false;
+  if (requirement.category === 'benchmark_certification') return false;
+  return !isCredentialOrScreeningRequirement(requirement.requirement);
+}
+
+function buildSelectedAccomplishmentEvidencePool(input: ResumeWriterInput): AccomplishmentEvidenceCandidate[] {
+  const deduped: AccomplishmentEvidenceCandidate[] = [];
+  const seen = new Set<string>();
+  const pushCandidate = (content: string, evidence: string, proofStrength: number) => {
+    const normalized = content.toLowerCase().trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    deduped.push({
+      content,
+      evidence,
+      proofStrength,
+      hasMetric: /[%$]|\b\d/.test(content),
+    });
+  };
+
+  for (const experience of getAuthoritativeSourceExperience(input.candidate)) {
+    for (const bullet of experience.bullets ?? []) {
+      pushCandidate(bullet, bullet, scoreSourceBulletImportance(bullet, input) + 2);
+    }
+  }
+
+  for (const item of input.candidate.quantified_outcomes ?? []) {
+    const content = `${item.outcome} ${item.value}`.replace(/\s+/g, ' ').trim();
+    pushCandidate(content, content, 6);
+  }
+
+  for (const item of input.candidate.hidden_accomplishments ?? []) {
+    pushCandidate(item, item, 4);
+  }
+
+  return deduped;
+}
+
+function scoreEvidenceAgainstRequirement(
+  evidence: AccomplishmentEvidenceCandidate,
+  requirement: RequirementGap,
+  accomplishmentPriorityHints: string[],
+): number {
+  const textScore = scoreRequirementTextMatch(evidence.content, requirement.requirement);
+  const directKeywordMatch = matchRequirementLinks(evidence.content, [{ requirement: requirement.requirement }]).length > 0
+    ? 18
+    : 0;
+  const hintBoost = accomplishmentPriorityHints.some((hint) => scoreRequirementTextMatch(hint, requirement.requirement) >= 40)
+    ? 8
+    : 0;
+  const metricBoost = evidence.hasMetric ? 6 : 0;
+  return textScore + directKeywordMatch + hintBoost + metricBoost + (evidence.proofStrength * 4);
+}
+
+function resolveBestPrimaryTarget(
+  text: string,
+  requirements: Array<{ requirement: string; source: RequirementSource }>,
+): { requirement: string; source: RequirementSource } | null {
+  let bestMatch: { requirement: string; source: RequirementSource } | null = null;
+  let bestScore = 0;
+
+  for (const requirement of requirements) {
+    const score = scoreRequirementTextMatch(text, requirement.requirement);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = { requirement: requirement.requirement, source: requirement.source };
+    }
+  }
+
+  return bestScore >= 25 ? bestMatch : null;
+}
+
+function evidenceSupportsRequirement(evidence: string, requirement: string): boolean {
+  if (!evidence.trim() || !requirement.trim()) return false;
+  return scoreRequirementTextMatch(evidence, requirement) >= 25
+    || matchRequirementLinks(evidence, [{ requirement }]).length > 0;
+}
+
 function deriveSelectedAccomplishmentTargets(input: ResumeWriterInput): ResumePriorityTarget[] {
   const targets: ResumePriorityTarget[] = [];
   const seen = new Set<string>();
-  const requirementMap = new Map(
-    input.gap_analysis.requirements.map((requirement) => [
-      normalizeRequirementKey(requirement.requirement),
-      requirement,
-    ] as const),
-  );
+  const accomplishmentPriorityHints = Array.isArray(input.narrative.section_guidance.accomplishment_priorities)
+    ? input.narrative.section_guidance.accomplishment_priorities
+    : [];
+  const evidencePool = buildSelectedAccomplishmentEvidencePool(input);
+  const eligibleRequirements = input.gap_analysis.requirements.filter(isAccomplishmentCompatibleRequirement);
 
   const pushTarget = (target: ResumePriorityTarget | null | undefined) => {
     if (!target) return;
@@ -766,77 +872,56 @@ function deriveSelectedAccomplishmentTargets(input: ResumeWriterInput): ResumePr
     targets.push(target);
   };
 
-  for (const hint of input.narrative.section_guidance.accomplishment_priorities ?? []) {
-    let bestMatch: RequirementGap | null = null;
-    let bestScore = 0;
-    for (const requirement of input.gap_analysis.requirements) {
-      if (requirement.source !== 'job_description') continue;
-      const score = scoreRequirementTextMatch(hint, requirement.requirement);
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = requirement;
-      }
-    }
+  const rankedRequirements = eligibleRequirements
+    .map((requirement) => {
+      const bestEvidence = evidencePool.reduce<{ score: number; evidence: AccomplishmentEvidenceCandidate | null }>(
+        (best, evidence) => {
+          const score = scoreEvidenceAgainstRequirement(evidence, requirement, accomplishmentPriorityHints);
+          if (score > best.score) {
+            return { score, evidence };
+          }
+          return best;
+        },
+        { score: 0, evidence: null },
+      );
 
-    if (bestMatch && bestScore >= 40) {
-      pushTarget({
-        requirement: bestMatch.requirement,
-        source: bestMatch.source,
-        importance: bestMatch.importance,
-        source_evidence: bestMatch.source_evidence,
-      });
-      continue;
-    }
-
-    let bestCompetency: ResumePriorityTarget | null = null;
-    let bestCompetencyScore = 0;
-    for (const competency of input.job_intelligence.core_competencies ?? []) {
-      const score = scoreRequirementTextMatch(hint, competency.competency);
-      if (score > bestCompetencyScore) {
-        bestCompetencyScore = score;
-        const matchingRequirement = requirementMap.get(normalizeRequirementKey(competency.competency));
-        bestCompetency = {
-          requirement: matchingRequirement?.requirement ?? competency.competency,
-          source: 'job_description',
-          importance: competency.importance,
-          source_evidence: matchingRequirement?.source_evidence ?? competency.evidence_from_jd,
-        };
-      }
-    }
-    if (bestCompetency && bestCompetencyScore >= 40) {
-      pushTarget(bestCompetency);
-    }
-  }
-
-  const rankedCompetencies = [...(input.job_intelligence.core_competencies ?? [])]
-    .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance));
-  for (const competency of rankedCompetencies) {
-    const matchingRequirement = requirementMap.get(normalizeRequirementKey(competency.competency));
-    pushTarget({
-      requirement: matchingRequirement?.requirement ?? competency.competency,
-      source: 'job_description',
-      importance: competency.importance,
-      source_evidence: matchingRequirement?.source_evidence ?? competency.evidence_from_jd,
+      return {
+        requirement,
+        bestEvidenceScore: bestEvidence.score,
+        bestEvidence: bestEvidence.evidence,
+      };
+    })
+    .filter((entry) => entry.bestEvidenceScore >= 35)
+    .sort((left, right) => {
+      const importanceDelta = importanceRank(left.requirement.importance) - importanceRank(right.requirement.importance);
+      if (importanceDelta !== 0) return importanceDelta;
+      if (right.bestEvidenceScore !== left.bestEvidenceScore) return right.bestEvidenceScore - left.bestEvidenceScore;
+      return left.requirement.requirement.localeCompare(right.requirement.requirement);
     });
-    if (targets.length >= 3) break;
+
+  for (const entry of rankedRequirements) {
+    pushTarget({
+      requirement: entry.requirement.requirement,
+      source: entry.requirement.source,
+      importance: entry.requirement.importance,
+      source_evidence: entry.bestEvidence?.evidence ?? entry.requirement.source_evidence,
+    });
+    if (targets.length >= SELECTED_ACCOMPLISHMENT_TARGET_LIMIT) break;
   }
 
-  if (targets.length < 3) {
-    const rankedRequirements = input.gap_analysis.requirements
-      .filter((requirement) => requirement.source === 'job_description')
-      .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance));
-    for (const requirement of rankedRequirements) {
+  if (targets.length === 0) {
+    for (const requirement of eligibleRequirements.sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance))) {
       pushTarget({
         requirement: requirement.requirement,
         source: requirement.source,
         importance: requirement.importance,
         source_evidence: requirement.source_evidence,
       });
-      if (targets.length >= 3) break;
+      if (targets.length >= Math.min(3, SELECTED_ACCOMPLISHMENT_TARGET_LIMIT)) break;
     }
   }
 
-  return targets.slice(0, 3);
+  return targets.slice(0, SELECTED_ACCOMPLISHMENT_TARGET_LIMIT);
 }
 
 function mergeSelectedAccomplishmentTargets(
@@ -858,7 +943,7 @@ function mergeSelectedAccomplishmentTargets(
       source_evidence: target.source_evidence,
     });
   }
-  return merged.slice(0, 3);
+  return merged.slice(0, SELECTED_ACCOMPLISHMENT_TARGET_LIMIT);
 }
 
 function preserveCandidateEducationDetail(
@@ -1420,8 +1505,16 @@ function deterministicRequirementMatch(
 ): ResumeDraftOutput {
   const { exactLookup, byCompany } = buildOriginalBulletIndex(candidateExperience);
   const reqIndex = buildRequirementIndex(requirements);
+  const selectedAccomplishmentTargetCatalog = (
+    selectedAccomplishmentTargets.length > 0
+      ? selectedAccomplishmentTargets
+      : requirements.filter(isAccomplishmentCompatibleRequirement)
+  ).map((target) => ({
+    requirement: target.requirement,
+    source: target.source,
+  }));
   const priorityReqIndex = buildRequirementIndex(
-    selectedAccomplishmentTargets.length > 0 ? selectedAccomplishmentTargets : requirements,
+    selectedAccomplishmentTargetCatalog.length > 0 ? selectedAccomplishmentTargetCatalog : requirements,
   );
 
   // Collect ALL originals from every company (used for selected_accomplishments)
@@ -1519,10 +1612,29 @@ function deterministicRequirementMatch(
         a.support_origin,
         a.evidence_found ?? '',
       );
+      const primaryTarget = a.primary_target_requirement
+        ? resolveBestPrimaryTarget(
+            a.primary_target_requirement,
+            selectedAccomplishmentTargetCatalog.length > 0 ? selectedAccomplishmentTargetCatalog : requirements,
+          )
+        : resolveBestPrimaryTarget(
+            a.content,
+            selectedAccomplishmentTargetCatalog.length > 0 ? selectedAccomplishmentTargetCatalog : requirements,
+          );
+      const singleRequirement = primaryTarget?.requirement ?? result.addresses_requirements[0];
+      const targetEvidence = typeof a.target_evidence === 'string' && a.target_evidence.trim().length > 0
+        ? a.target_evidence
+        : singleRequirement && evidenceSupportsRequirement(a.evidence_found ?? '', singleRequirement)
+          ? a.evidence_found ?? ''
+          : '';
+
       return {
         ...a,
-        addresses_requirements: result.addresses_requirements,
-        requirement_source: result.requirement_source,
+        addresses_requirements: singleRequirement ? [singleRequirement] : [],
+        primary_target_requirement: singleRequirement,
+        primary_target_source: primaryTarget?.source ?? result.requirement_source,
+        target_evidence: targetEvidence,
+        requirement_source: primaryTarget?.source ?? result.requirement_source,
         source: result.source,
         confidence: result.confidence,
         content_origin: result.content_origin,
@@ -1620,6 +1732,7 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     const reqs = bullet.addresses_requirements ?? [];
     const source = inferSource(bullet.is_new, bullet.evidence_found, reqs, bullet.source);
     const confidence = inferConfidence(source, bullet.evidence_found, bullet.confidence);
+    const primaryTarget = bullet.primary_target_requirement ?? reqs[0];
     return {
       ...bullet,
       source,
@@ -1627,6 +1740,9 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       evidence_found: bullet.evidence_found ?? '',
       requirement_source: bullet.requirement_source ?? inferReqSource(reqs),
       addresses_requirements: reqs,
+      primary_target_requirement: primaryTarget,
+      primary_target_source: bullet.primary_target_source ?? (primaryTarget ? (bullet.requirement_source ?? inferReqSource(reqs)) : undefined),
+      target_evidence: bullet.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget) ? bullet.evidence_found ?? '' : ''),
       content_origin: bullet.content_origin ?? inferContentOrigin(source),
       support_origin: inferSupportOrigin(source, bullet.evidence_found ?? '', bullet.support_origin),
     };
@@ -1637,6 +1753,9 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       const reqs = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
       const source = inferSource(a.is_new, a.evidence_found, reqs, a.source);
       const confidence = inferConfidence(source, a.evidence_found, a.confidence);
+      const primaryTarget = typeof a.primary_target_requirement === 'string' && a.primary_target_requirement.trim().length > 0
+        ? a.primary_target_requirement
+        : reqs[0];
       return {
         ...a,
         source,
@@ -1644,6 +1763,9 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         evidence_found: a.evidence_found ?? '',
         requirement_source: a.requirement_source ?? inferReqSource(reqs),
         addresses_requirements: reqs,
+        primary_target_requirement: primaryTarget,
+        primary_target_source: a.primary_target_source ?? (primaryTarget ? (a.requirement_source ?? inferReqSource(reqs)) : undefined),
+        target_evidence: a.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget) ? a.evidence_found ?? '' : ''),
         content_origin: a.content_origin ?? inferContentOrigin(source),
         support_origin: inferSupportOrigin(source, a.evidence_found ?? '', a.support_origin),
       };
@@ -1984,21 +2106,6 @@ function inferRequirementSource(
   return sources.includes('job_description') ? 'job_description' : 'benchmark';
 }
 
-function matchPriorityRequirementLinks(
-  text: string,
-  targets: ResumePriorityTarget[],
-  requirements: ResumeWriterInput['gap_analysis']['requirements'],
-): string[] {
-  if (targets.length === 0) {
-    return matchRequirementLinks(text, requirements);
-  }
-
-  return matchRequirementLinks(text, targets.map((target) => ({
-    requirement: target.requirement,
-    source: target.source,
-  }))).slice(0, 3);
-}
-
 function inferContentOrigin(source: BulletSource): ResumeContentOrigin {
   switch (source) {
     case 'enhanced':
@@ -2029,41 +2136,100 @@ function buildSelectedAccomplishments(
   input: ResumeWriterInput,
   targets: ResumePriorityTarget[],
 ): ResumeDraftOutput['selected_accomplishments'] {
-  const quantified = (input.candidate.quantified_outcomes ?? []).map((item) => {
-    const content = `${item.outcome}: ${item.value}`;
-    const addressesRequirements = matchPriorityRequirementLinks(content, targets, input.gap_analysis.requirements);
-    return {
+  const evidencePool = buildSelectedAccomplishmentEvidencePool(input);
+  const targetRequirements = targets.length > 0
+    ? targets.map((target) => ({ requirement: target.requirement, source: target.source }))
+    : input.gap_analysis.requirements
+      .filter(isAccomplishmentCompatibleRequirement)
+      .map((requirement) => ({ requirement: requirement.requirement, source: requirement.source }));
+  const usedEvidence = new Set<string>();
+  const selected: ResumeDraftOutput['selected_accomplishments'] = [];
+
+  const pushSelectedItem = (
+    content: string,
+    evidence: string,
+    primaryTarget: { requirement: string; source: RequirementSource } | null,
+  ) => {
+    const primaryRequirement = primaryTarget?.requirement;
+    selected.push({
       content,
       is_new: false,
-      addresses_requirements: addressesRequirements,
-      source: 'original' as const,
-      requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
-      confidence: 'strong' as const,
-      evidence_found: content,
-      content_origin: 'original_resume' as const,
-      support_origin: 'original_resume' as const,
-    };
-  });
-
-  const hidden = (input.candidate.hidden_accomplishments ?? [])
-    .map((item) => {
-      const addressesRequirements = matchPriorityRequirementLinks(item, targets, input.gap_analysis.requirements);
-      return {
-        content: item,
-        is_new: false,
-        addresses_requirements: addressesRequirements,
-        source: 'original' as const,
-        requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
-        confidence: 'strong' as const,
-        evidence_found: item,
-        content_origin: 'original_resume' as const,
-        support_origin: 'original_resume' as const,
-      };
+      addresses_requirements: primaryRequirement ? [primaryRequirement] : [],
+      primary_target_requirement: primaryRequirement,
+      primary_target_source: primaryTarget?.source ?? 'job_description',
+      target_evidence: primaryRequirement && evidenceSupportsRequirement(evidence, primaryRequirement) ? evidence : '',
+      source: 'original',
+      requirement_source: primaryTarget?.source ?? 'job_description',
+      confidence: 'strong',
+      evidence_found: evidence,
+      content_origin: 'original_resume',
+      support_origin: 'original_resume',
     });
+  };
 
-  const targeted = [...quantified, ...hidden]
-    .filter((item) => targets.length === 0 || item.addresses_requirements.length > 0);
-  const fallback = targeted.length >= 3 ? targeted : [...targeted, ...quantified, ...hidden];
+  for (const target of targets) {
+    const bestEvidence = evidencePool
+      .filter((candidate) => !usedEvidence.has(candidate.content.toLowerCase().trim()))
+      .map((candidate) => ({
+        candidate,
+        score: scoreEvidenceAgainstRequirement(candidate, {
+          requirement: target.requirement,
+          source: target.source,
+          importance: target.importance,
+          classification: 'partial',
+          evidence: [],
+          source_evidence: target.source_evidence,
+        }, []),
+      }))
+      .sort((left, right) => right.score - left.score)[0];
+
+    if (!bestEvidence || bestEvidence.score < 35) continue;
+
+    usedEvidence.add(bestEvidence.candidate.content.toLowerCase().trim());
+    pushSelectedItem(
+      bestEvidence.candidate.content,
+      bestEvidence.candidate.evidence,
+      { requirement: target.requirement, source: target.source },
+    );
+  }
+
+  const fallback = selected.length >= 3
+    ? selected
+    : [
+        ...selected,
+        ...evidencePool
+          .filter((candidate) => !usedEvidence.has(candidate.content.toLowerCase().trim()))
+          .map((candidate) => {
+            const primaryTarget = resolveBestPrimaryTarget(candidate.content, targetRequirements);
+            return {
+              content: candidate.content,
+              evidence: candidate.evidence,
+              primaryTarget,
+              score: primaryTarget
+                ? scoreRequirementTextMatch(candidate.content, primaryTarget.requirement) + (candidate.proofStrength * 4)
+                : candidate.proofStrength,
+            };
+          })
+          .filter((candidate) => candidate.primaryTarget && candidate.score >= 30)
+          .sort((left, right) => right.score - left.score)
+          .map((candidate) => ({
+            content: candidate.content,
+            is_new: false,
+            addresses_requirements: candidate.primaryTarget ? [candidate.primaryTarget.requirement] : [],
+            primary_target_requirement: candidate.primaryTarget?.requirement,
+            primary_target_source: candidate.primaryTarget?.source ?? 'job_description',
+            target_evidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
+              ? candidate.evidence
+              : '',
+            source: 'original' as const,
+            requirement_source: candidate.primaryTarget?.source ?? 'job_description',
+            confidence: 'strong' as const,
+            evidence_found: candidate.evidence,
+            content_origin: 'original_resume' as const,
+            support_origin: 'original_resume' as const,
+          })),
+      ];
+
   const deduped: ResumeDraftOutput['selected_accomplishments'] = [];
   const seen = new Set<string>();
   for (const item of fallback) {
@@ -2071,7 +2237,7 @@ function buildSelectedAccomplishments(
     if (!key || seen.has(key)) continue;
     seen.add(key);
     deduped.push(item);
-    if (deduped.length >= 6) break;
+    if (deduped.length >= SELECTED_ACCOMPLISHMENT_TARGET_LIMIT) break;
   }
 
   return deduped;
