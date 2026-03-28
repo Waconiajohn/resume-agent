@@ -313,7 +313,7 @@ function CompactMetric({
         <span className="score-snapshot-metric__value text-lg font-semibold tabular-nums">{value}</span>
       </div>
       {detail && (
-        <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-muted)]">{detail}</p>
+        <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-soft)]">{detail}</p>
       )}
     </div>
   );
@@ -394,15 +394,15 @@ function CompactScoreSummaryHeader({
         <div className="min-w-0 flex-1">
           <p className="score-snapshot-kicker">Score Snapshot</p>
           <p className="mt-2 text-lg font-semibold leading-7 text-[var(--text-strong)]">
-            How the tailored resume is performing on paper right now.
+            How this resume would read on paper right now.
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
-            Before versus now, the biggest gains, and the few items still worth tightening before export.
+            Your original baseline, what improved most, and what still needs attention before export.
           </p>
         </div>
         {reviewStatusLabel && (
           <div className="score-snapshot-status px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-            Final review: <span className="text-[var(--text-strong)]">{reviewStatusLabel}</span>
+            Final review status: <span className="text-[var(--text-strong)]">{reviewStatusLabel}</span>
           </div>
         )}
       </div>
@@ -445,11 +445,11 @@ function CompactScoreSummaryHeader({
             </div>
             {usesBlendedBaseline && (
               <p className="text-[11px] leading-5 text-[var(--text-soft)]">
-                Baseline combines original keyword match ({beforeKeywordScore}%) with JD coverage ({beforeRequirementScore}%).
+                The starting point blends original keyword match ({beforeKeywordScore}%) with job-need coverage ({beforeRequirementScore}%).
               </p>
             )}
           </div>
-          <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-3">
+          <div className="score-snapshot-meaning mt-4 rounded-xl px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
           </div>
@@ -460,33 +460,33 @@ function CompactScoreSummaryHeader({
             label="Truth"
             value={String(truth)}
             accent="soft"
-            detail="Claim confidence"
+            detail="Claim support"
           />
           <CompactMetric
             label="Tone"
             value={String(tone)}
             accent="warn"
-            detail="Executive voice"
+            detail="Executive polish"
           />
           {coveredRequirements !== null && totalRequirements !== null ? (
             <CompactMetric
-              label="Requirements"
+              label="Job Needs"
               value={`${coveredRequirements}/${totalRequirements}`}
               accent="good"
               detail="Read as covered"
             />
           ) : (
             <CompactMetric
-              label="Requirements"
+              label="Job Needs"
               value="N/A"
               detail="Waiting on mapping"
             />
           )}
           <CompactMetric
-            label={hiringManagerScan ? 'Recruiter Scan' : 'Final Review'}
+            label={hiringManagerScan ? 'First Scan' : 'Final Review'}
             value={hiringManagerScan ? String(hiringManagerScan.scan_score) : (reviewStatusLabel ?? 'Not run')}
             accent={hiringManagerScan ? (hiringManagerScan.pass ? 'good' : 'warn') : (attentionNextAction ? 'warn' : 'soft')}
-            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Passing skim' : 'Needs review') : 'Current status'}
+            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Recruiter skim' : 'Needs review') : 'Current status'}
           />
         </div>
       </div>
@@ -508,7 +508,7 @@ function CompactScoreSummaryHeader({
 
         <div className="score-snapshot-band score-snapshot-band--warn px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
-            Still to close
+            Still worth tightening
           </p>
           <ul className="mt-3 space-y-2">
             {topRisks.length > 0 ? topRisks.map((risk) => (

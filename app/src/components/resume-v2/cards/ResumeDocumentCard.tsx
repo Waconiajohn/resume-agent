@@ -486,35 +486,81 @@ function InlineEditPanel({
   const canApplyDraft = trimmedDraft.length > 0 && (matchesPendingEdit || hasManualChanges);
   const resetTarget = matchesPendingEdit && pendingEdit ? pendingEdit.replacement : bulletText;
   const aiInstruction = trimmedDraft || bulletText.trim();
-  const aiActions: Array<{ action: EditAction; label: string }> = isBenchmarkValidation
+  const actionToneByType: Record<EditAction, 'primary' | 'secondary' | 'tertiary'> = isBenchmarkValidation
+    ? {
+        strengthen: 'primary',
+        add_metrics: 'secondary',
+        add_keywords: 'tertiary',
+        shorten: 'tertiary',
+        rewrite: 'primary',
+        custom: 'secondary',
+        not_my_voice: 'secondary',
+      }
+    : isCodeRed
+      ? {
+          strengthen: 'primary',
+          add_metrics: 'primary',
+          add_keywords: 'secondary',
+          shorten: 'tertiary',
+          rewrite: 'secondary',
+          custom: 'secondary',
+          not_my_voice: 'tertiary',
+        }
+      : {
+          strengthen: 'primary',
+          add_metrics: 'primary',
+          add_keywords: 'secondary',
+          shorten: 'tertiary',
+          rewrite: 'secondary',
+          custom: 'secondary',
+          not_my_voice: 'tertiary',
+        };
+  const aiActions: Array<{ action: EditAction; label: string; tone: 'primary' | 'secondary' | 'tertiary' }> = isBenchmarkValidation
     ? [
-        { action: 'strengthen', label: 'Connect to my background' },
-        { action: 'add_metrics', label: 'Add direct support' },
-        { action: 'add_keywords', label: 'Add keywords' },
-        { action: 'shorten', label: 'Shorten' },
-        { action: 'rewrite', label: 'Rewrite to match my background' },
-        { action: 'custom', label: 'Custom' },
-        { action: 'not_my_voice', label: 'Not my voice' },
+        { action: 'strengthen', label: 'Connect to my background', tone: actionToneByType.strengthen },
+        { action: 'rewrite', label: 'Rewrite to match my background', tone: actionToneByType.rewrite },
+        { action: 'add_metrics', label: 'Add direct support', tone: actionToneByType.add_metrics },
+        { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
+        { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
+        { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
+        { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
       ]
     : isCodeRed
       ? [
-          { action: 'strengthen', label: 'Connect adjacent proof' },
-          { action: 'add_metrics', label: 'Add working knowledge' },
-          { action: 'add_keywords', label: 'Add keywords' },
-          { action: 'shorten', label: 'Shorten' },
-          { action: 'rewrite', label: 'Rewrite safely' },
-          { action: 'custom', label: 'Custom' },
-          { action: 'not_my_voice', label: 'Not my voice' },
+          { action: 'strengthen', label: 'Connect adjacent proof', tone: actionToneByType.strengthen },
+          { action: 'add_metrics', label: 'Add working knowledge', tone: actionToneByType.add_metrics },
+          { action: 'rewrite', label: 'Rewrite safely', tone: actionToneByType.rewrite },
+          { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
+          { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
+          { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
+          { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
         ]
       : [
-          { action: 'strengthen', label: 'Strengthen wording' },
-          { action: 'add_metrics', label: 'Add proof' },
-          { action: 'add_keywords', label: 'Add keywords' },
-          { action: 'shorten', label: 'Shorten' },
-          { action: 'rewrite', label: 'Rewrite safely' },
-          { action: 'custom', label: 'Custom' },
-          { action: 'not_my_voice', label: 'Not my voice' },
+          { action: 'strengthen', label: 'Strengthen wording', tone: actionToneByType.strengthen },
+          { action: 'add_metrics', label: 'Add proof', tone: actionToneByType.add_metrics },
+          { action: 'rewrite', label: 'Rewrite safely', tone: actionToneByType.rewrite },
+          { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
+          { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
+          { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
+          { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
         ];
+  const recommendedAiActions = aiActions.filter((action) => action.tone === 'primary');
+  const followOnAiActions = aiActions.filter((action) => action.tone === 'secondary');
+  const polishAiActions = aiActions.filter((action) => action.tone === 'tertiary');
+  const applyHelperText = isEditing
+    ? 'AI is generating a replacement draft now.'
+    : canApplyDraft
+      ? matchesPendingEdit
+        ? 'Apply will replace the current line with the loaded AI draft.'
+        : 'Apply will replace the current line with your working draft.'
+      : 'Edit the draft or run an AI action to enable Apply to Resume.';
+  const statusHeading = confidence === 'strong'
+    ? 'Supported'
+    : confidence === 'partial'
+      ? 'Needs stronger detail'
+      : requirementSource === 'benchmark'
+        ? 'Confirm Fit'
+        : 'Code Red';
 
   return (
     <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
@@ -537,42 +583,28 @@ function InlineEditPanel({
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Line context
-            </p>
-            <dl className="mt-3 grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm leading-6 text-slate-700">
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
-              <dd className="min-w-0 break-words">{requirementLabel}</dd>
-
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
-              <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
-
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-              <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource)}</dd>
-            </dl>
-            <div className="mt-3 border-t border-slate-200 pt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Coverage goal
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-700">
-                {requestedCoverage}
-              </p>
+        <div className="mt-4 space-y-3">
+          <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">
+                  What needs attention
+                </p>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                  {statusHeading}
+                </p>
+              </div>
+              <span className="resume-inline-panel__intent-chip">
+                {requirementLabel}
+              </span>
             </div>
+            <p className="mt-2 text-[13px] leading-6">
+              {getProofStateNextStep(confidence, requirementSource)}
+            </p>
           </div>
 
-          <div className="space-y-3">
-            <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                {confidence === 'strong' ? 'Supported' : confidence === 'partial' ? 'Needs stronger detail' : requirementSource === 'benchmark' ? 'Confirm Fit' : 'Code Red'}
-              </p>
-              <p className="mt-1 text-[13px] leading-6">
-                {getProofStateNextStep(confidence, requirementSource)}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.82fr)]">
+            <div className="resume-inline-panel__support-card rounded-xl px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Supporting evidence
               </p>
@@ -586,6 +618,25 @@ function InlineEditPanel({
                   <span>No original resume support found yet.</span>
                 </div>
               )}
+            </div>
+
+            <div className="resume-inline-panel__context-card rounded-xl px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Line context
+              </p>
+              <dl className="mt-3 grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm leading-6 text-slate-700">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target</dt>
+                <dd className="min-w-0 break-words">{requirementLabel}</dd>
+
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Origin</dt>
+                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
+
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
+                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource)}</dd>
+
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage goal</dt>
+                <dd className="min-w-0 break-words">{requestedCoverage}</dd>
+              </dl>
             </div>
           </div>
         </div>
@@ -619,25 +670,78 @@ function InlineEditPanel({
             className="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors focus:border-slate-500 focus:bg-white"
           />
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {aiActions.map(({ action, label }) => (
-              <button
-                key={action}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (action === 'custom') {
-                    setShowCustomPrompt((previous) => !previous);
-                    return;
-                  }
-                  onRequestEdit(bulletText, section, action, aiInstruction);
-                }}
-                disabled={isEditing}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 transition-colors"
-              >
-                {label}
-              </button>
-            ))}
+          <div className="mt-3 space-y-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Recommended first moves
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {recommendedAiActions.map(({ action, label }) => (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (action === 'custom') {
+                        setShowCustomPrompt((previous) => !previous);
+                        return;
+                      }
+                      onRequestEdit(bulletText, section, action, aiInstruction);
+                    }}
+                    disabled={isEditing}
+                    className="resume-inline-panel__action resume-inline-panel__action--primary"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(followOnAiActions.length > 0 || polishAiActions.length > 0) && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Other AI edits
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {followOnAiActions.map(({ action, label }) => (
+                    <button
+                      key={action}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (action === 'custom') {
+                          setShowCustomPrompt((previous) => !previous);
+                          return;
+                        }
+                        onRequestEdit(bulletText, section, action, aiInstruction);
+                      }}
+                      disabled={isEditing}
+                      className="resume-inline-panel__action resume-inline-panel__action--secondary"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  {polishAiActions.map(({ action, label }) => (
+                    <button
+                      key={action}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (action === 'custom') {
+                          setShowCustomPrompt((previous) => !previous);
+                          return;
+                        }
+                        onRequestEdit(bulletText, section, action, aiInstruction);
+                      }}
+                      disabled={isEditing}
+                      className="resume-inline-panel__action resume-inline-panel__action--tertiary"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {showCustomPrompt && (
@@ -715,6 +819,10 @@ function InlineEditPanel({
               </button>
             )}
           </div>
+
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {applyHelperText}
+          </p>
 
           {isEditing && (
             <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
