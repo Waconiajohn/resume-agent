@@ -20,7 +20,6 @@ import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/re
 import type { PipelineCard } from './ZoneYourPipeline';
 import { resolveWorkspaceRoom, toExposedWorkspaceRoom, type WorkspaceRoom } from './workspaceRoomAccess';
 
-const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then((module) => ({ default: module.LiveSessionsRoom })));
 const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));
 const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then((module) => ({ default: module.ResumeWorkshopRoom })));
 const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((module) => ({ default: module.LinkedInStudioRoom })));
@@ -40,7 +39,6 @@ const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   interview: 'Interview Prep',
   'executive-bio': 'Executive Documents',
   financial: 'Financial Wellness',
-  learning: 'Learning Center',
 };
 
 interface CoverLetterSession {
@@ -362,10 +360,6 @@ export function CareerIQScreen({
           onDeleteResume={onDeleteResume}
         />
       );
-    }
-
-    if (activeRoom === 'learning') {
-      return <LiveSessionsRoom />;
     }
 
     if (activeRoom === 'financial') {

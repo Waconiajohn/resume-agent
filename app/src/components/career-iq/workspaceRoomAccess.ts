@@ -9,8 +9,7 @@ export type ExposedWorkspaceRoom =
 
 export type HiddenWorkspaceRoom =
   | 'executive-bio'
-  | 'financial'
-  | 'learning';
+  | 'financial';
 
 export type WorkspaceRoom = ExposedWorkspaceRoom | HiddenWorkspaceRoom;
 
@@ -28,7 +27,6 @@ const ROUTABLE_WORKSPACE_ROOMS: readonly WorkspaceRoom[] = [
   ...EXPOSED_WORKSPACE_ROOMS,
   'executive-bio',
   'financial',
-  'learning',
 ];
 
 const LEGACY_REDIRECTS: Partial<Record<string, WorkspaceRoom>> = {
