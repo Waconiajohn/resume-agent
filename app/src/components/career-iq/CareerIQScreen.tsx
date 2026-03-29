@@ -28,7 +28,6 @@ const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((m
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
 const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
-const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
 const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
@@ -423,7 +422,8 @@ export function CareerIQScreen({
       );
     }
 
-    return <RoomPlaceholder room={activeRoom} />;
+    const unhandledRoom: never = activeRoom;
+    return <div data-unhandled-room={unhandledRoom} />;
   };
 
   if (isMobile) {
