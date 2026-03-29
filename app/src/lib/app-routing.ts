@@ -6,7 +6,6 @@ export type AppView =
   | 'pricing'
   | 'billing'
   | 'affiliate'
-  | 'tools'
   | 'cover-letter'
   | 'admin';
 
@@ -50,13 +49,7 @@ export function getAppView(pathname: string): AppView {
   if (pathname === '/affiliate') return 'affiliate';
   if (pathname === '/cover-letter') return 'cover-letter';
   if (pathname === '/admin') return 'admin';
-  if (pathname === '/tools' || pathname.startsWith('/tools/')) return 'tools';
   return 'workspace';
-}
-
-export function getToolSlugFromPath(pathname: string): string | undefined {
-  if (!pathname.startsWith('/tools/')) return undefined;
-  return pathname.split('/tools/')[1] || undefined;
 }
 
 export function getWorkspaceRoomFromSearch(search: string): string | undefined {

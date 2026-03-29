@@ -6,7 +6,6 @@ import {
   getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
   getNormalizedWorkspaceRedirect,
-  getToolSlugFromPath,
   getWorkspaceRoomFromSearch,
   resolveNavigationTarget,
 } from '../app-routing';
@@ -14,15 +13,13 @@ import {
 describe('app-routing', () => {
   it('maps current paths to stable app views', () => {
     expect(getAppView('/workspace')).toBe('workspace');
-    expect(getAppView('/tools/linkedin')).toBe('tools');
+    expect(getAppView('/tools/linkedin')).toBe('workspace');
     expect(getAppView('/resume-builder/session')).toBe('resume-v2');
     expect(getAppView('/coach')).toBe('coach');
     expect(getAppView('/')).toBe('sales');
   });
 
-  it('reads tool slugs and workspace rooms from URLs', () => {
-    expect(getToolSlugFromPath('/tools/linkedin')).toBe('linkedin');
-    expect(getToolSlugFromPath('/tools')).toBeUndefined();
+  it('reads workspace rooms from URLs', () => {
     expect(getWorkspaceRoomFromSearch('?room=resume')).toBe('resume');
     expect(getWorkspaceRoomFromSearch('')).toBeUndefined();
   });

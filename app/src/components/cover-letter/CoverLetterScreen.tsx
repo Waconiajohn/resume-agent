@@ -21,6 +21,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useCoverLetter } from '@/hooks/useCoverLetter';
 import { API_BASE } from '@/lib/api';
+import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import { cn } from '@/lib/utils';
 import type { MasterResume } from '@/types/resume';
 
@@ -271,7 +272,7 @@ export function CoverLetterScreen({
   onNavigate,
   onGetDefaultResume,
   embedded = false,
-  backTarget = '/tools',
+  backTarget = buildResumeWorkspaceRoute(),
   backLabel,
 }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
