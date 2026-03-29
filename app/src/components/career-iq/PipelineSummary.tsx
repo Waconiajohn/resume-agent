@@ -1,9 +1,7 @@
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
-import { ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { CareerIQRoom } from './Sidebar';
 
 const STAGES = ['Discovered', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
 
@@ -35,11 +33,7 @@ function makeEmptyCounts(): Record<string, number> {
   }, {});
 }
 
-interface PipelineSummaryProps {
-  onNavigateDashboard?: (room: CareerIQRoom) => void;
-}
-
-export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
+export function PipelineSummary() {
   const [stageCounts, setStageCounts] = useState<Record<string, number>>(makeEmptyCounts);
   const [totalActive, setTotalActive] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -139,16 +133,6 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
           );
         })}
       </div>
-
-      {onNavigateDashboard && (
-        <button
-          type="button"
-          onClick={() => onNavigateDashboard('dashboard')}
-          className="mt-3 flex items-center gap-1 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
-        >
-          View Full Pipeline <ArrowRight size={11} />
-        </button>
-      )}
     </GlassCard>
   );
 }

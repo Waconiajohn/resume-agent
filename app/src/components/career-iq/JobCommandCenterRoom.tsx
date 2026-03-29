@@ -553,7 +553,7 @@ export function JobCommandCenterRoom({
             }}
           />
 
-          <PipelineSummary onNavigateDashboard={onNavigateRoom} />
+          <PipelineSummary />
         </div>
       </div>
 
