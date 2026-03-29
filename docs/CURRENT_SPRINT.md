@@ -91,6 +91,9 @@ This sprint exists to reassert the intended operating model before more implemen
 - Resume-v2 coaching payloads may carry shared coaching-policy snapshots during migration so downstream consumers can prefer upstream guidance without breaking legacy fallback behavior.
 - Resume V2 is now explicitly targeting a document-first workflow: show the before score, generate the strongest tailored resume early, do all work on the resume itself, run final review inline, then promote validated discoveries to the master resume.
 - The next production sweep after Resume V2 should prioritize Smart Referrals, then the dashboard/workspace shell, then Interview Prep and LinkedIn Studio. See `docs/PRODUCTION_SWEEP_PLAN.md`.
+- Smart Referrals and the first two workspace-shell sweeps are now landed.
+- Interview Prep is now underway with shared master-resume context loading across the interview follow-up rooms.
+- The next Interview Prep slice should focus on `InterviewLabRoom` view/focus routing cleanup so prep, follow-up documents, and negotiation handoffs resolve from one canonical room-state model.
 
 ## Legacy Migration Note
 

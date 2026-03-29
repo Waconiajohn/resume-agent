@@ -28,6 +28,33 @@ The next best production work is:
 
 That order is not arbitrary. It is based on user value, visible risk, and how likely each area is to contain overlapping old and new product logic.
 
+## Current Sweep Status
+
+The first two waves are now materially complete:
+
+1. Smart Referrals
+2. Dashboard / workspace shell / job workspace routing
+
+What is now true:
+
+- the older overlapping NI surfaces have been removed from the live path
+- Smart Referrals now has one clearer search model and shared scan-state behavior
+- the workspace shell now has:
+  - cleaner room normalization
+  - fewer stale redirects
+  - centralized route helpers
+  - better home-room guidance
+
+What is still worth tightening before calling those areas fully done:
+
+1. Workspace Home guidance should never let the coach recommend `dashboard` while already on Home.
+   - [workspaceHomeGuidance.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/workspaceHomeGuidance.ts) still treats any exposed room other than `career-profile` and `resume` as a valid lead target. If the recommendation service ever returns `dashboard`, the CTA becomes a no-op loop.
+
+2. Smart Referrals scan polling should stop more deliberately when auth disappears or polling becomes impossible.
+   - [useNiScrapeRunner.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/useNiScrapeRunner.ts) keeps polling on transient failures by design, which is fine, but it also returns early on missing `accessToken` without resetting `running` or clearing the interval. That is a small but real lifecycle hole.
+
+These are follow-up hardening items, not reasons to reopen the broader shell/NI architecture.
+
 ## Senior-Engineer Judgment
 
 The biggest failure mode from this point forward is not “missing one more bug.”
@@ -201,6 +228,16 @@ Interview Prep is useful and fairly rich, but it is less dangerous than Smart Re
    - room-specific state juggling
    - multiple follow-up modes in one room
 
+4. Resume loading is duplicated across the interview-family follow-up rooms.
+   - [ThankYouNoteRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/ThankYouNoteRoom.tsx)
+   - [SalaryNegotiationRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/SalaryNegotiationRoom.tsx)
+   Both independently fetch the latest master resume on mount. That is the same pattern we just cleaned up elsewhere: repeated context loading that should become one shared room-family helper.
+
+5. Focus/view routing is still too local to `InterviewLabRoom`.
+   - [InterviewLabRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/InterviewLabRoom.tsx) owns the `initialFocus` to section/view mapping itself.
+   - [InterviewLabDocumentsPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/interview-lab/InterviewLabDocumentsPanel.tsx) then embeds sub-rooms directly.
+   That is workable, but it is also exactly how shell drift starts: routing intent, view selection, and embedded tool ownership all living in different places.
+
 ### Canonical workflow
 
 The room should feel like:
@@ -216,6 +253,39 @@ The room should feel like:
 1. Split large room sections into clearer subcomponents if the current structure is still too monolithic.
 2. Make “prep”, “simulation”, and “follow-up” feel like one sequence rather than a pile of tools.
 3. Remove any stale or duplicate local state once the intended workflow is explicit.
+4. Extract shared interview-family resume/context loading into one helper.
+5. Centralize focus-to-view resolution so the room, job workspace, and follow-up tools all point at the same state model.
+
+### Execution order
+
+1. Define the canonical Interview Prep sequence:
+   - prep
+   - practice
+   - debrief
+   - follow-up documents
+   - negotiation
+2. Extract shared interview-family context loading:
+   - resume
+   - company
+   - role
+   - job application id
+   - prior-result session id
+3. Move focus/view resolution into one helper owned by the room family instead of scattering it across room components.
+4. Tighten the main room hierarchy so the overview reads like one flow with branches, not several sibling tools.
+5. Add focused route and room-state regression tests before touching polish.
+
+### Current status
+
+The first slice is now landed:
+
+- shared master-resume loading has been extracted for the interview follow-up rooms
+- `ThankYouNoteRoom`, `SalaryNegotiationRoom`, and `NinetyDayPlanRoom` no longer each carry their own local `master_resumes` fetch effect
+
+That leaves the next important cleanup clearly exposed:
+
+1. centralize `InterviewLabRoom` focus/view resolution
+2. reduce duplicated room-state branching between the main lab view and embedded follow-up tools
+3. add route/state tests around direct-open interview flows before UI polish
 
 ### Deliverables
 

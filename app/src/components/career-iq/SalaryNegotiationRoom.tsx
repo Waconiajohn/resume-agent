@@ -25,8 +25,8 @@ import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSalaryNegotiation } from '@/hooks/useSalaryNegotiation';
 import { usePriorResult } from '@/hooks/usePriorResult';
-import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
+import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
 // --- Stage label map ---
 
@@ -756,8 +756,8 @@ export function SalaryNegotiationRoom({
   }));
   const [showPriorResult, setShowPriorResult] = useState(false);
   const [resumeText, setResumeText] = useState('');
-  const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const { resumeText: loadedResumeText, loading: resumeLoading } = useLatestMasterResumeText();
 
   const prefillConsumedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -798,29 +798,10 @@ export function SalaryNegotiationRoom({
   });
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadResume() {
-      setResumeLoading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data } = await supabase
-          .from('master_resumes')
-          .select('raw_text')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .single();
-        if (!cancelled && data?.raw_text) {
-          setResumeText(data.raw_text);
-        }
-      } catch { /* ignore */ } finally {
-        if (!cancelled) setResumeLoading(false);
-      }
+    if (loadedResumeText && !resumeText) {
+      setResumeText(loadedResumeText);
     }
-    loadResume();
-    return () => { cancelled = true; };
-  }, []);
+  }, [loadedResumeText, resumeText]);
 
   const setField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));

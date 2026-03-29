@@ -30,8 +30,8 @@ import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useThankYouNote, type InterviewerInput } from '@/hooks/useThankYouNote';
 import { usePriorResult } from '@/hooks/usePriorResult';
-import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
+import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
 // --- Delivery timing recommendation helpers ---
 
@@ -589,10 +589,9 @@ export function ThankYouNoteRoom({
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewType, setInterviewType] = useState('video');
   const [interviewers, setInterviewers] = useState<(InterviewerInput & { _id: number })[]>([makeEmptyInterviewer()]);
-  const [loadingResume, setLoadingResume] = useState(false);
-  const [resumeLoaded, setResumeLoaded] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const resumeRef = useRef<string>('');
+  const { resumeText: loadedResumeText, loading: loadingResume } = useLatestMasterResumeText();
 
   const {
     status,
@@ -612,32 +611,11 @@ export function ThankYouNoteRoom({
     sessionId: initialSessionId,
   });
 
-  // Auto-load resume on mount
   useEffect(() => {
-    let cancelled = false;
-    async function loadResume() {
-      setLoadingResume(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data } = await supabase
-          .from('master_resumes')
-          .select('raw_text')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .single();
-        if (!cancelled && data?.raw_text) {
-          resumeRef.current = data.raw_text;
-          setResumeLoaded(true);
-        }
-      } catch { /* ignore */ } finally {
-        if (!cancelled) setLoadingResume(false);
-      }
+    if (loadedResumeText) {
+      resumeRef.current = loadedResumeText;
     }
-    void loadResume();
-    return () => { cancelled = true; };
-  }, []);
+  }, [loadedResumeText]);
 
   useEffect(() => {
     if (initialCompany) {
@@ -671,7 +649,7 @@ export function ThankYouNoteRoom({
       setFormError('Add at least one interviewer with a name or title.');
       return;
     }
-    if (!resumeRef.current && !resumeLoaded) {
+    if (!resumeRef.current) {
       setFormError('No resume found. Please complete the Resume Strategist first to load your resume.');
       return;
     }
@@ -685,12 +663,11 @@ export function ThankYouNoteRoom({
       interviewers: validInterviewers,
       jobApplicationId: initialJobApplicationId,
     });
-  }, [company, initialJobApplicationId, role, interviewDate, interviewType, interviewers, resumeLoaded, startPipeline]);
+  }, [company, initialJobApplicationId, role, interviewDate, interviewType, interviewers, startPipeline]);
 
   const handleReset = useCallback(() => {
     reset();
     setFormError(null);
-    setResumeLoaded(false);
     setCompany(initialCompany ?? '');
     setRole(initialRole ?? '');
   }, [initialCompany, initialRole, reset]);
@@ -830,7 +807,7 @@ export function ThankYouNoteRoom({
           <Loader2 size={12} className="animate-spin" />
           Loading your resume...
         </div>
-      ) : resumeLoaded ? (
+      ) : loadedResumeText ? (
         <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
           <CheckCircle2 size={12} />
           Resume loaded from your profile

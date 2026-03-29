@@ -28,8 +28,8 @@ import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNinetyDayPlan } from '@/hooks/useNinetyDayPlan';
 import { usePriorResult } from '@/hooks/usePriorResult';
-import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
+import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
 // --- Phase configuration ---
 
@@ -465,11 +465,10 @@ export function NinetyDayPlanRoom({
   const [targetIndustry, setTargetIndustry] = useState('');
   const [reportingTo, setReportingTo] = useState('');
   const [teamSize, setTeamSize] = useState('');
-  const [loadingResume, setLoadingResume] = useState(false);
-  const [resumeLoaded, setResumeLoaded] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const resumeRef = useRef<string>('');
   const [manualResumeText, setManualResumeText] = useState('');
+  const { resumeText: loadedResumeText, loading: loadingResume } = useLatestMasterResumeText();
 
   const {
     status,
@@ -494,38 +493,11 @@ export function NinetyDayPlanRoom({
     sessionId: initialSessionId,
   });
 
-  // Auto-load resume on mount
   useEffect(() => {
-    let cancelled = false;
-    async function loadResume() {
-      setLoadingResume(true);
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data } = await supabase
-          .from('master_resumes')
-          .select('raw_text')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .single();
-        if (!cancelled && data?.raw_text) {
-          resumeRef.current = data.raw_text;
-          setResumeLoaded(true);
-        }
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) setLoadingResume(false);
-      }
+    if (loadedResumeText) {
+      resumeRef.current = loadedResumeText;
     }
-    void loadResume();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [loadedResumeText]);
 
   useEffect(() => {
     if (initialTargetRole) {
@@ -569,7 +541,6 @@ export function NinetyDayPlanRoom({
   const handleReset = useCallback(() => {
     reset();
     setFormError(null);
-    setResumeLoaded(false);
     setTargetRole(initialTargetRole ?? '');
     setTargetCompany(initialTargetCompany ?? '');
   }, [initialTargetCompany, initialTargetRole, reset]);
@@ -769,7 +740,7 @@ export function NinetyDayPlanRoom({
           'flex items-center gap-2 text-[12px]',
           loadingResume
             ? 'text-[var(--text-soft)]'
-            : resumeLoaded
+            : loadedResumeText
             ? 'text-[#b5dec2]/70'
             : 'text-[#f0d99f]/70',
         )}
@@ -778,7 +749,7 @@ export function NinetyDayPlanRoom({
           <>
             <Loader2 size={12} className="animate-spin" /> Loading resume from your profile...
           </>
-        ) : resumeLoaded ? (
+        ) : loadedResumeText ? (
           <>
             <CheckCircle2 size={12} /> Resume loaded — plan will be tailored to your background
           </>
@@ -791,7 +762,7 @@ export function NinetyDayPlanRoom({
       </div>
 
       {/* Resume fallback textarea */}
-      {!loadingResume && !resumeLoaded && (
+      {!loadingResume && !loadedResumeText && (
         <textarea
           value={manualResumeText}
           onChange={(e) => setManualResumeText(e.target.value)}
