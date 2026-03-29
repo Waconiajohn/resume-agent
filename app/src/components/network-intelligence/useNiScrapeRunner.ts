@@ -87,13 +87,25 @@ export function useNiScrapeRunner(accessToken: string | null) {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  useEffect(() => {
+    if (accessToken || !running) return;
+    stopPolling();
+    setRunning(false);
+    setError((current) => current ?? 'Sign in again to continue scanning.');
+  }, [accessToken, running, stopPolling]);
+
   const startScan = useCallback(async ({
     companyIds,
     targetTitles = [],
     searchContext,
     emptyMessage,
   }: StartNiScrapeOptions) => {
-    if (!accessToken) return false;
+    if (!accessToken) {
+      stopPolling();
+      setRunning(false);
+      setError('Sign in to start a company scan.');
+      return false;
+    }
 
     stopPolling();
     setError(null);
