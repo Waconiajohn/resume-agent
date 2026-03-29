@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useJobFinder } from '@/hooks/useJobFinder';
-import type { RankedMatch, BooleanSearch } from '@/hooks/useJobFinder';
+import type { RankedMatch } from '@/hooks/useJobFinder';
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 
@@ -56,7 +56,6 @@ describe('useJobFinder', () => {
     const { result } = renderHook(() => useJobFinder());
     expect(result.current.status).toBe('idle');
     expect(result.current.matches).toEqual([]);
-    expect(result.current.booleanSearches).toEqual([]);
     expect(result.current.gateData).toBeNull();
     expect(result.current.activityMessages).toEqual([]);
     expect(result.current.error).toBeNull();
@@ -76,7 +75,6 @@ describe('useJobFinder', () => {
     });
     expect(result.current.status).toBe('idle');
     expect(result.current.matches).toEqual([]);
-    expect(result.current.booleanSearches).toEqual([]);
     expect(result.current.gateData).toBeNull();
     expect(result.current.error).toBeNull();
     expect(result.current.activityMessages).toEqual([]);
@@ -216,8 +214,8 @@ describe('useJobFinder', () => {
     expect(result.current.matches[0].fit_score).toBe(92);
   });
 
-  it('handles search_progress SSE event and stores boolean searches', async () => {
-    const searches: BooleanSearch[] = [
+  it('handles search_progress SSE event and records activity', async () => {
+    const searches = [
       { platform: 'LinkedIn', query: '"VP Operations" OR "COO"' },
       { platform: 'Indeed', query: 'title:(VP OR Director)' },
     ];
@@ -240,8 +238,6 @@ describe('useJobFinder', () => {
       await result.current.startSearch();
     });
 
-    expect(result.current.booleanSearches).toHaveLength(2);
-    expect(result.current.booleanSearches[0].platform).toBe('LinkedIn');
     expect(result.current.activityMessages.some((m) => m.message === 'Building search strings...')).toBe(true);
   });
 

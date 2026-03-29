@@ -22,15 +22,9 @@ export interface RankedMatch {
   url?: string;
 }
 
-export interface BooleanSearch {
-  platform: string;
-  query: string;
-}
-
 interface JobFinderState {
   status: JobFinderStatus;
   matches: RankedMatch[];
-  booleanSearches: BooleanSearch[];
   gateData: { topics?: unknown; results?: unknown } | null;
   activityMessages: ActivityMessage[];
   error: string | null;
@@ -38,16 +32,6 @@ interface JobFinderState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
-
-function asBooleanSearches(value: unknown): BooleanSearch[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
-    const candidate = item as Record<string, unknown>;
-    if (typeof candidate.platform !== 'string' || typeof candidate.query !== 'string') return [];
-    return [{ platform: candidate.platform, query: candidate.query }];
-  });
-}
 
 function asRankedMatches(value: unknown): RankedMatch[] {
   if (!Array.isArray(value)) return [];
@@ -83,7 +67,6 @@ export function useJobFinder() {
   const [state, setState] = useState<JobFinderState>({
     status: 'idle',
     matches: [],
-    booleanSearches: [],
     gateData: null,
     activityMessages: [],
     error: null,
@@ -150,10 +133,6 @@ export function useJobFinder() {
           break;
 
         case 'search_progress': {
-          const searches = asBooleanSearches(data.searches);
-          if (searches.length > 0) {
-            setState((prev) => ({ ...prev, booleanSearches: searches }));
-          }
           const message = typeof data.message === 'string' ? data.message : undefined;
           if (message) {
             addActivity(message, 'search');
@@ -310,7 +289,6 @@ export function useJobFinder() {
     setState({
       status: 'connecting',
       matches: [],
-      booleanSearches: [],
       gateData: null,
       activityMessages: [],
       error: null,
@@ -383,7 +361,6 @@ export function useJobFinder() {
     setState({
       status: 'idle',
       matches: [],
-      booleanSearches: [],
       gateData: null,
       activityMessages: [],
       error: null,

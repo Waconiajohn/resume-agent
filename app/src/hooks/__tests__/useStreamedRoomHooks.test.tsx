@@ -192,9 +192,6 @@ describe('useJobFinder', () => {
     expect(started).toBe(true);
 
     await waitFor(() => expect(result.current.status).toBe('complete'));
-    expect(result.current.booleanSearches).toEqual([
-      { platform: 'LinkedIn', query: 'site:linkedin.com VP Operations' },
-    ]);
     expect(result.current.matches).toEqual([
       {
         id: 'job-1',
