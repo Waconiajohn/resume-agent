@@ -18,9 +18,6 @@ import {
   BookOpen,
   Users,
   Clock,
-  Search,
-  Eye,
-  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
@@ -821,52 +818,6 @@ function ProfileScoreRing({ score, label }: { score: number; label: string }) {
   );
 }
 
-// ─── Section Score Cards ───────────────────────────────────────────────────
-
-const SECTION_SCORE_CONFIG: {
-  key: string;
-  label: string;
-  description: string;
-  icon: React.ComponentType<{ size: number; className?: string }>;
-}[] = [
-  { key: 'headline', label: 'Headline', description: 'Positioning statement quality', icon: Zap },
-  { key: 'about', label: 'About', description: 'Career Profile narrative depth', icon: Eye },
-  { key: 'keywords', label: 'Keywords', description: 'Search discoverability', icon: Search },
-  { key: 'experience', label: 'Experience', description: 'Impact framing', icon: TrendingUp },
-];
-
-function SectionScoreCards({ qualityScore }: { qualityScore: number | null }) {
-  if (qualityScore === null) return null;
-
-  // The optimizer returns a single overall quality score — per-section scores are not
-  // available from the backend. Show the overall score once with a clear label rather
-  // than repeating the same number across four cards and implying false per-section data.
-  const scoreColor =
-    qualityScore >= 80
-      ? 'text-[#b5dec2]'
-      : qualityScore >= 60
-      ? 'text-[#f0d99f]'
-      : 'text-[#f0b8b8]';
-  const borderColor =
-    qualityScore >= 80
-      ? 'border-[#b5dec2]/15'
-      : qualityScore >= 60
-      ? 'border-[#f0d99f]/15'
-      : 'border-[#f0b8b8]/15';
-
-  return (
-    <div className={cn('rounded-xl border bg-[var(--accent-muted)] p-4 flex items-center gap-4', borderColor)}>
-      <div className={cn('text-[32px] font-bold tabular-nums', scoreColor)}>{qualityScore}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-medium text-[var(--text-soft)] mb-0.5">Current Profile Score</p>
-        <p className="text-[13px] text-[var(--text-soft)] leading-tight">
-          Use this as a baseline. Open Profile when you want rewritten sections you can actually paste into LinkedIn.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Profile Optimizer (legacy: wraps useLinkedInOptimizer) ───────────────
 
 function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | null }) {
@@ -1285,7 +1236,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
 
 // ─── Results Tab Overview ────────────────────────────────────────────────
 
-function AnalyticsOverview() {
+function ResultsSnapshot({ qualityScore }: { qualityScore: number | null }) {
   const { posts: rawPosts } = useContentPosts();
   const posts = rawPosts ?? [];
 
@@ -1314,34 +1265,78 @@ function AnalyticsOverview() {
 
   return (
     <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="eyebrow-label">Step 3 of 3</div>
+      <div className="mt-2 flex items-center gap-2">
         <BarChart3 size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Platform Metrics</h3>
-        <span className="ml-auto text-[13px] text-[var(--text-soft)]">From your generated content</span>
+        <h3 className="text-[18px] font-semibold text-[var(--text-strong)]">Review what is landing and what still needs work</h3>
       </div>
+      <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+        Use this stage to judge whether the profile reads strongly enough on paper and whether the rewritten sections are actually better than where you started.
+      </p>
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        {metrics.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <div key={metric.label} className="support-callout p-4 text-center">
-              <Icon size={16} className="mx-auto mb-2 text-[var(--text-soft)]" />
-              <div className="text-[22px] font-bold text-[var(--text-strong)] tabular-nums">{metric.value}</div>
-              <div className="mt-1 text-[13px] uppercase tracking-[0.14em] text-[var(--text-soft)]">{metric.label}</div>
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr,1fr]">
+        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+            Current Profile Score
+          </div>
+          {qualityScore !== null ? (
+            <div className="mt-4 flex items-center gap-4">
+              <ProfileScoreRing score={qualityScore} label="Baseline" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[var(--text-strong)]">
+                  {qualityScore >= 80
+                    ? 'Strong starting point'
+                    : qualityScore >= 60
+                    ? 'Solid baseline with room to sharpen'
+                    : 'Needs stronger proof and tighter positioning'}
+                </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                  Open Profile when you want rewritten sections you can actually paste into LinkedIn.
+                </p>
+              </div>
             </div>
-          );
-        })}
-      </div>
-
-      {posts.length > 0 && (
-        <div className="support-callout px-4 py-3 flex items-center gap-3">
-          <Check size={14} className="text-[#b5dec2] flex-shrink-0" />
-          <span className="text-[12px] text-[var(--text-soft)]">
-            Approval rate: <span className="text-[var(--text-muted)] font-medium">{approvalRate}%</span>
-            <span className="text-[var(--text-soft)] ml-1">({approvedOrPublished} of {posts.length} posts approved or published)</span>
-          </span>
+          ) : (
+            <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              Run Quick Optimize when you want a baseline score and a tighter read on what the profile is signaling right now.
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={16} className="text-[#98b3ff]" />
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Platform Metrics
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {metrics.map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <div key={metric.label} className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-3 text-center">
+                  <Icon size={15} className="mx-auto mb-2 text-[var(--text-soft)]" />
+                  <div className="text-[20px] font-bold text-[var(--text-strong)] tabular-nums">{metric.value}</div>
+                  <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">{metric.label}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {posts.length > 0 ? (
+            <div className="mt-4 rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.05] px-4 py-3 flex items-center gap-3">
+              <Check size={14} className="text-[#b5dec2] flex-shrink-0" />
+              <span className="text-[12px] text-[var(--text-soft)]">
+                Approval rate: <span className="text-[var(--text-muted)] font-medium">{approvalRate}%</span>
+                <span className="text-[var(--text-soft)] ml-1">({approvedOrPublished} of {posts.length} posts approved or published)</span>
+              </span>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              No saved post history yet. Use Write when you want a few real drafts to judge what is resonating.
+            </div>
+          )}
+        </div>
+      </div>
     </GlassCard>
   );
 }
@@ -1765,51 +1760,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         {activeTab === 'library' && <LibraryWorkspace />}
         {activeTab === 'analytics' && (
           <div className="flex flex-col gap-6">
-            <GlassCard className="p-5">
-              <div className="eyebrow-label">Step 3 of 3</div>
-              <h3 className="mt-2 text-[18px] font-semibold text-[var(--text-strong)]">Review what is landing and what still needs work</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-                Use this stage to judge whether the profile reads strongly enough on paper and whether the rewritten sections are actually better than where you started.
-              </p>
-            </GlassCard>
-            {/* Profile score ring + section scores */}
-            {optimizer.qualityScore !== null && (
-              <GlassCard className="p-6">
-                <div className="flex items-center gap-2 mb-5">
-                  <Linkedin size={18} className="text-[#afc4ff]" />
-                  <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Profile Score</h3>
-                  <span className="ml-auto text-[13px] text-[var(--text-soft)]">AI-assessed</span>
-                </div>
-                <div className="flex items-center gap-6 mb-5">
-                  <ProfileScoreRing score={optimizer.qualityScore} label="Overall" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-2">
-                      {optimizer.qualityScore >= 80
-                        ? 'Strong starting point. Your positioning is clear enough to build from with only lighter refinements.'
-                        : optimizer.qualityScore >= 60
-                        ? 'Solid foundation. A few targeted edits should make the profile sharper and easier to trust.'
-                        : 'This profile still needs stronger proof and tighter language before it will feel compelling.'}
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn(
-                        'text-[12px] px-1.5 py-0.5 rounded-md border',
-                        optimizer.qualityScore >= 80
-                          ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
-                          : 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20',
-                      )}>
-                        {optimizer.qualityScore >= 80 ? 'Strong starting point' : 'Needs more proof'}
-                      </span>
-                      <span className="text-[12px] text-[var(--text-soft)]">
-                        Top profiles score 85+
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <SectionScoreCards qualityScore={optimizer.qualityScore} />
-              </GlassCard>
-            )}
-
-            <AnalyticsOverview />
+            <ResultsSnapshot qualityScore={optimizer.qualityScore} />
 
             {optimizer.experienceEntries.length > 0 && (
               <GlassCard className="p-6">
