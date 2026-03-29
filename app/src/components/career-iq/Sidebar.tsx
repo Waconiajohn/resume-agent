@@ -13,29 +13,12 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { DashboardState } from './useWhyMeStory';
+import type { ExposedWorkspaceRoom, WorkspaceRoom } from './workspaceRoomAccess';
 
-export type CareerIQRoom =
-  | 'dashboard'
-  | 'career-profile'
-  | 'resume'
-  | 'linkedin'
-  | 'jobs'
-  | 'networking'
-  | 'interview'
-  | 'salary-negotiation'
-  | 'executive-bio'
-  | 'financial'
-  | 'learning'
-  // Legacy IDs — redirect to merged rooms in CareerIQScreen
-  | 'personal-brand'
-  | 'ninety-day-plan'
-  | 'content-calendar'
-  | 'case-study'
-  | 'thank-you-note'
-  | 'network-intelligence';
+export type CareerIQRoom = ExposedWorkspaceRoom;
 
 interface SidebarProps {
-  activeRoom: CareerIQRoom;
+  activeRoom: WorkspaceRoom;
   onNavigate: (room: CareerIQRoom) => void;
   dashboardState: DashboardState;
   onOpenCoach?: () => void;

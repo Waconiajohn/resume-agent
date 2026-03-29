@@ -510,7 +510,7 @@ export default function App() {
               <Route path="/sales" element={<Navigate to="/workspace" replace />} />
               <Route path="/app" element={<Navigate to="/workspace" replace />} />
               <Route path="/career-iq" element={<Navigate to={getLegacyWorkspaceRedirect(location.search)} replace />} />
-              <Route path="/dashboard" element={<Navigate to="/workspace?room=resume" replace />} />
+              <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
               <Route
                 path="/coach"
                 element={currentSession ? (

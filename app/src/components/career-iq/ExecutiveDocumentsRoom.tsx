@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { ExecutiveBioRoom } from './ExecutiveBioRoom';
@@ -17,13 +17,25 @@ const TABS: { id: DocTab; label: string; icon: typeof FileText; description: str
 interface ExecutiveDocumentsRoomProps {
   careerProfileSummary?: CareerProfileSummary;
   onOpenCareerProfile?: () => void;
+  initialFocus?: string;
 }
 
 export function ExecutiveDocumentsRoom({
   careerProfileSummary,
   onOpenCareerProfile,
+  initialFocus,
 }: ExecutiveDocumentsRoomProps) {
-  const [activeTab, setActiveTab] = useState<DocTab>('bio');
+  const [activeTab, setActiveTab] = useState<DocTab>(initialFocus === 'case-study' ? 'case-study' : 'bio');
+
+  useEffect(() => {
+    if (initialFocus === 'case-study') {
+      setActiveTab('case-study');
+      return;
+    }
+    if (initialFocus === 'bio') {
+      setActiveTab('bio');
+    }
+  }, [initialFocus]);
 
   return (
     <div className="p-6 space-y-6">

@@ -18,7 +18,7 @@ import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import type { PipelineCard } from './ZoneYourPipeline';
-import { toExposedWorkspaceRoom } from './workspaceRoomAccess';
+import { resolveWorkspaceRoom, toExposedWorkspaceRoom, type WorkspaceRoom } from './workspaceRoomAccess';
 
 const COMING_SOON_ROOMS = new Set<string>();
 
@@ -33,7 +33,7 @@ const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').the
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
 const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
 
-const ROOM_LABELS: Record<CareerIQRoom, string> = {
+const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Workspace Home',
   'career-profile': 'Your Profile',
   resume: 'Resume Builder',
@@ -41,16 +41,9 @@ const ROOM_LABELS: Record<CareerIQRoom, string> = {
   jobs: 'Job Search',
   networking: 'Network Job Search',
   interview: 'Interview Prep',
-  'salary-negotiation': 'Negotiation Prep',
-  'executive-bio': 'Executive Bio',
-  financial: 'Financial',
-  learning: 'Learning',
-  'personal-brand': 'LinkedIn',
-  'ninety-day-plan': 'Interview Prep',
-  'content-calendar': 'LinkedIn',
-  'case-study': 'Case Study',
-  'thank-you-note': 'Interview Prep',
-  'network-intelligence': 'Networking',
+  'executive-bio': 'Executive Documents',
+  financial: 'Financial Wellness',
+  learning: 'Learning Center',
 };
 
 interface CoverLetterSession {
@@ -111,7 +104,7 @@ export function CareerIQScreen({
   onRegisterTourReplay,
 }: CareerIQScreenProps) {
   const location = useLocation();
-  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toExposedWorkspaceRoom(initialRoom));
+  const [activeRoom, setActiveRoom] = useState<WorkspaceRoom>(resolveWorkspaceRoom(initialRoom));
   const {
     profile,
     story,
@@ -149,7 +142,7 @@ export function CareerIQScreen({
 
   useEffect(() => {
     if (initialRoom) {
-      setActiveRoom(toExposedWorkspaceRoom(initialRoom));
+      setActiveRoom(resolveWorkspaceRoom(initialRoom));
     }
   }, [initialRoom]);
 
@@ -265,8 +258,8 @@ export function CareerIQScreen({
     return events.slice(0, 5);
   }, [coverLetterSessions, sessions]);
 
-  const handleRoomNavigate = (room: CareerIQRoom) => {
-    const resolvedRoom = toExposedWorkspaceRoom(room);
+  const handleRoomNavigate = (room: WorkspaceRoom | CareerIQRoom | 'salary-negotiation') => {
+    const resolvedRoom = resolveWorkspaceRoom(room);
     refreshCoachRec();
     if (resolvedRoom === 'resume') {
       onNavigate('/resume-builder/session');
@@ -428,7 +421,13 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'executive-bio') {
-      return <ExecutiveDocumentsRoom careerProfileSummary={summary} onOpenCareerProfile={openCareerProfile} />;
+      return (
+        <ExecutiveDocumentsRoom
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
+          initialFocus={normalizedWorkspaceFocus}
+        />
+      );
     }
 
     return <RoomPlaceholder room={activeRoom} />;
@@ -497,7 +496,7 @@ export function CareerIQScreen({
           userName={userName}
           signals={signals}
           dashboardState={dashboardState}
-          activeRoom={activeRoom}
+          activeRoom={toExposedWorkspaceRoom(activeRoom)}
           onRefineWhyMe={openCareerProfile}
           onNavigateRoom={handleRoomNavigate}
           feedEvents={mobileFeedEvents}

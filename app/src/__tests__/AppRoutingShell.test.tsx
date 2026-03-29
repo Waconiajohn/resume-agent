@@ -173,14 +173,14 @@ describe('App routing shell', () => {
     mockSessionState.currentSession = null;
   });
 
-  it('redirects legacy dashboard path into Workspace resume management', async () => {
+  it('redirects legacy dashboard path into Workspace home', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Workspace room: resume')).toBeInTheDocument();
+    expect(await screen.findByText('Workspace room: dashboard')).toBeInTheDocument();
   });
 
   it('opens a new tailored resume session from Workspace', async () => {

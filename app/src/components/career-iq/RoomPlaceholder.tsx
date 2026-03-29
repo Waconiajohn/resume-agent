@@ -1,5 +1,5 @@
 import { GlassCard } from '@/components/GlassCard';
-import type { CareerIQRoom } from './Sidebar';
+import type { WorkspaceRoom } from './workspaceRoomAccess';
 
 const ROOM_INFO: Record<string, { title: string; description: string }> = {
   dashboard: { title: 'Workspace Home', description: '' },
@@ -13,18 +13,11 @@ const ROOM_INFO: Record<string, { title: string; description: string }> = {
   'executive-bio': { title: 'Executive Documents', description: 'Professional bios and consulting-grade case studies.' },
   financial: { title: 'Financial Wellness', description: 'Retirement readiness assessment and fiduciary planner matching.' },
   learning: { title: 'Learning Center', description: 'Browse our 150-tip library, attend live webinars, and access on-demand resources.' },
-  // Legacy IDs — fallback descriptions for any stale references
-  'content-calendar': { title: 'LinkedIn', description: 'Content Calendar has moved into LinkedIn.' },
-  'case-study': { title: 'Executive Documents', description: 'Case Studies have moved to Executive Documents.' },
-  'thank-you-note': { title: 'Interview Prep', description: 'Thank You Notes have moved into Interview Prep.' },
-  'network-intelligence': { title: 'Smart Referrals', description: 'Network Intelligence has moved to Smart Referrals.' },
-  'personal-brand': { title: 'Career Profile', description: 'Personal brand work now lives inside Career Profile.' },
-  'ninety-day-plan': { title: 'Interview Prep', description: '30-60-90 Day Plan has moved into Interview Prep.' },
 };
 
 const FALLBACK = { title: 'Coming Soon', description: 'This room is being built by the agent team.' };
 
-export function RoomPlaceholder({ room }: { room: CareerIQRoom }) {
+export function RoomPlaceholder({ room }: { room: WorkspaceRoom }) {
   const info = ROOM_INFO[room] ?? FALLBACK;
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
