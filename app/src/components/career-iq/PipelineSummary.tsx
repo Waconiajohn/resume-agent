@@ -28,47 +28,67 @@ const STAGE_COLORS: Record<string, string> = {
   Accepted: 'bg-[#b5dec2]/70',
 };
 
-const FALLBACK_COUNTS: Record<string, number> = {
-  Discovered: 2,
-  Applied: 3,
-  Interviewing: 2,
-  Offer: 1,
-  Accepted: 0,
-};
+function makeEmptyCounts(): Record<string, number> {
+  return STAGES.reduce<Record<string, number>>((counts, stage) => {
+    counts[stage] = 0;
+    return counts;
+  }, {});
+}
 
 interface PipelineSummaryProps {
   onNavigateDashboard?: (room: CareerIQRoom) => void;
 }
 
 export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
-  const [stageCounts, setStageCounts] = useState<Record<string, number>>(FALLBACK_COUNTS);
-  const [totalActive, setTotalActive] = useState(8);
+  const [stageCounts, setStageCounts] = useState<Record<string, number>>(makeEmptyCounts);
+  const [totalActive, setTotalActive] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
+        if (!user || cancelled) {
+          if (!cancelled) {
+            setStageCounts(makeEmptyCounts());
+            setTotalActive(0);
+            setLoading(false);
+          }
+          return;
+        }
 
         const { data } = await supabase
           .from('application_pipeline')
           .select('stage')
           .eq('user_id', user.id);
 
-        if (!data || cancelled) return;
-
-        if (data.length > 0) {
-          const counts: Record<string, number> = {};
-          for (const stage of STAGES) counts[stage] = 0;
-          for (const row of data) {
-            const mapped = STAGE_DB_MAP[row.stage] ?? 'Discovered';
-            counts[mapped] = (counts[mapped] ?? 0) + 1;
+        if (!data || cancelled) {
+          if (!cancelled) {
+            setStageCounts(makeEmptyCounts());
+            setTotalActive(0);
+            setLoading(false);
           }
-          setStageCounts(counts);
-          setTotalActive(data.length);
+          return;
         }
-      } catch { /* keep fallback */ }
+
+        const counts = makeEmptyCounts();
+        for (const row of data) {
+          const mapped = STAGE_DB_MAP[row.stage] ?? 'Discovered';
+          counts[mapped] = (counts[mapped] ?? 0) + 1;
+        }
+        setStageCounts(counts);
+        setTotalActive(data.length);
+      } catch {
+        if (!cancelled) {
+          setStageCounts(makeEmptyCounts());
+          setTotalActive(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
     load();
     return () => { cancelled = true; };
@@ -78,7 +98,9 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Pipeline Summary</h3>
-        <span className="text-[13px] text-[var(--text-soft)]">{totalActive} active</span>
+        <span className="text-[13px] text-[var(--text-soft)]">
+          {loading ? 'Loading…' : `${totalActive} active`}
+        </span>
       </div>
 
       {/* Horizontal bar */}
@@ -97,6 +119,12 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
           );
         })}
       </div>
+
+      {!loading && totalActive === 0 && (
+        <p className="mb-3 text-[12px] text-[var(--text-soft)]">
+          No active applications yet. Save strong roles from Discover to start building the pipeline.
+        </p>
+      )}
 
       {/* Stage pills */}
       <div className="flex flex-wrap gap-2">

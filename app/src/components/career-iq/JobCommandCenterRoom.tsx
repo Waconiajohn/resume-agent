@@ -597,35 +597,6 @@ export function JobCommandCenterRoom({
       {/* Daily Ops tab — display:none preserves state */}
       <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-6 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-5 py-3 text-[13px]">
-            <span className="text-[var(--text-soft)]">
-              Active:{' '}
-              <span className="font-semibold text-[var(--text-muted)]">{dailyOps.activeCount}</span>
-            </span>
-            <span className="text-[var(--text-soft)]">|</span>
-            <span className="text-[var(--text-soft)]">
-              Interviewing:{' '}
-              <span className="font-semibold text-[#98b3ff]">{dailyOps.interviewCount}</span>
-            </span>
-            <span className="text-[var(--text-soft)]">|</span>
-            <span className="text-[var(--text-soft)]">
-              Offers:{' '}
-              <span className="font-semibold text-[#b5dec2]">{dailyOps.offerCount}</span>
-            </span>
-            <span className="text-[var(--text-soft)]">|</span>
-            <span className="text-[var(--text-soft)]">
-              Due:{' '}
-              <span
-                className={cn(
-                  'font-semibold',
-                  dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-[var(--text-muted)]',
-                )}
-              >
-                {dailyOps.dueActions.length}
-              </span>
-            </span>
-          </div>
-
           <DailyOpsSection
             data={dailyOps}
             onPromoteJob={handlePromoteRadarJob}

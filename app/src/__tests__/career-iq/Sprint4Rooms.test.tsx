@@ -200,6 +200,17 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
   });
 
+  it('does not show synthetic pipeline counts when no real pipeline data exists', async () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(getJobTabButton(/^Pipeline$/i));
+
+    await waitFor(() => expect(screen.getByText('0 active')).toBeInTheDocument());
+    expect(screen.queryByText('8 active')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/No active applications yet\. Save strong roles from Discover/i),
+    ).toBeInTheDocument();
+  });
+
   it('renders kanban stage columns', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Pipeline$/i));
