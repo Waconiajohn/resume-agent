@@ -2,16 +2,14 @@ import { ArrowLeft, ClipboardList, Mail } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { NinetyDayPlanRoom } from '@/components/career-iq/NinetyDayPlanRoom';
-
-export type InterviewLabDocumentsView = 'overview' | 'ninety_day_plan';
+import type { InterviewLabDocumentsView } from './interviewLabRouting';
 
 interface InterviewLabDocumentsPanelProps {
   documentsView: InterviewLabDocumentsView;
   activeCompany: string;
   activeRole: string;
   activeJobApplicationId?: string;
-  initialFocus?: string;
-  initialAssetSessionId?: string;
+  initialPlanSessionId?: string;
   onDocumentsViewChange: (view: InterviewLabDocumentsView) => void;
   onOpenThankYou: () => void;
 }
@@ -21,8 +19,7 @@ export function InterviewLabDocumentsPanel({
   activeCompany,
   activeRole,
   activeJobApplicationId,
-  initialFocus,
-  initialAssetSessionId,
+  initialPlanSessionId,
   onDocumentsViewChange,
   onOpenThankYou,
 }: InterviewLabDocumentsPanelProps) {
@@ -92,7 +89,7 @@ export function InterviewLabDocumentsPanel({
         initialTargetRole={activeRole}
         initialTargetCompany={activeCompany}
         initialJobApplicationId={activeJobApplicationId}
-        initialSessionId={initialFocus === 'plan' ? initialAssetSessionId : undefined}
+        initialSessionId={initialPlanSessionId}
       />
     </div>
   );

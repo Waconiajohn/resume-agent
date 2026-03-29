@@ -38,8 +38,15 @@ import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
 import {
   InterviewLabDocumentsPanel,
-  type InterviewLabDocumentsView,
 } from '@/components/career-iq/interview-lab/InterviewLabDocumentsPanel';
+import {
+  resolveInterviewLabRouteState,
+  resolveInterviewLabSessionTargets,
+  type InterviewLabDocumentsView,
+  type InterviewLabFollowUpView,
+  type InterviewLabSection,
+  type InterviewLabViewMode,
+} from '@/components/career-iq/interview-lab/interviewLabRouting';
 
 // --- Types ---
 
@@ -1412,11 +1419,7 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
 
 // --- Main component ---
 
-type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
-type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
-type FollowUpView = 'overview' | 'thank_you' | 'negotiation' | 'debrief' | 'follow_up_email';
-
-const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
+const LAB_SECTION_COPY: Record<InterviewLabSection, { label: string; description: string }> = {
   prep: {
     label: 'Prep',
     description: 'Research the role, generate prep, and walk into the interview with a plan.',
@@ -1451,11 +1454,13 @@ export function InterviewLabRoom({
   initialFocus,
   initialAssetSessionId,
 }: InterviewLabRoomProps) {
+  const initialRouteState = resolveInterviewLabRouteState(initialFocus);
+  const sessionTargets = resolveInterviewLabSessionTargets(initialFocus, initialAssetSessionId);
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
-  const [viewMode, setViewMode] = useState<ViewMode>('lab');
-  const [activeSection, setActiveSection] = useState<LabSection>('prep');
-  const [documentsView, setDocumentsView] = useState<InterviewLabDocumentsView>('overview');
-  const [followUpView, setFollowUpView] = useState<FollowUpView>('overview');
+  const [viewMode, setViewMode] = useState<InterviewLabViewMode>('lab');
+  const [activeSection, setActiveSection] = useState<InterviewLabSection>(initialRouteState.activeSection);
+  const [documentsView, setDocumentsView] = useState<InterviewLabDocumentsView>(initialRouteState.documentsView);
+  const [followUpView, setFollowUpView] = useState<InterviewLabFollowUpView>(initialRouteState.followUpView);
   const [activeCompany, setActiveCompany] = useState(initialCompany ?? '');
   const [activeRole, setActiveRole] = useState(initialRole ?? '');
   const [activeJobApplicationId, setActiveJobApplicationId] = useState<string | undefined>(initialJobApplicationId);
@@ -1483,8 +1488,8 @@ export function InterviewLabRoom({
     quality_score?: number;
   }>({
     productSlug: 'interview-prep',
-    skip: status !== 'idle' || initialFocus !== 'prep' || !initialAssetSessionId,
-    sessionId: initialAssetSessionId,
+    skip: status !== 'idle' || !sessionTargets.prepSessionId,
+    sessionId: sessionTargets.prepSessionId,
   });
 
   useEffect(() => {
@@ -1494,10 +1499,10 @@ export function InterviewLabRoom({
   }, [status, report]);
 
   useEffect(() => {
-    if (initialFocus === 'prep' && initialAssetSessionId && savedPrepResult?.report_markdown) {
+    if (sessionTargets.prepSessionId && savedPrepResult?.report_markdown) {
       setViewMode('report');
     }
-  }, [initialAssetSessionId, initialFocus, savedPrepResult?.report_markdown]);
+  }, [savedPrepResult?.report_markdown, sessionTargets.prepSessionId]);
 
   useEffect(() => {
     if (initialCompany) {
@@ -1512,47 +1517,10 @@ export function InterviewLabRoom({
   }, [initialCompany, initialRole, initialJobApplicationId]);
 
   useEffect(() => {
-    if (initialFocus === 'plan') {
-      setActiveSection('documents');
-      setDocumentsView('ninety_day_plan');
-      setFollowUpView('overview');
-      return;
-    }
-    if (initialFocus === 'thank-you') {
-      setActiveSection('follow_up');
-      setFollowUpView('thank_you');
-      setDocumentsView('overview');
-      return;
-    }
-    if (initialFocus === 'negotiation') {
-      setActiveSection('follow_up');
-      setFollowUpView('negotiation');
-      setDocumentsView('overview');
-      return;
-    }
-    if (initialFocus === 'debrief') {
-      setActiveSection('follow_up');
-      setFollowUpView('debrief');
-      setDocumentsView('overview');
-      return;
-    }
-    if (initialFocus === 'follow-up-email') {
-      setActiveSection('follow_up');
-      setFollowUpView('follow_up_email');
-      setDocumentsView('overview');
-      return;
-    }
-    if (initialFocus === 'practice') {
-      setActiveSection('practice');
-      setDocumentsView('overview');
-      setFollowUpView('overview');
-      return;
-    }
-    if (initialFocus === 'prep') {
-      setActiveSection('prep');
-      setDocumentsView('overview');
-      setFollowUpView('overview');
-    }
+    const nextRouteState = resolveInterviewLabRouteState(initialFocus);
+    setActiveSection(nextRouteState.activeSection);
+    setDocumentsView(nextRouteState.documentsView);
+    setFollowUpView(nextRouteState.followUpView);
   }, [initialFocus]);
 
   useEffect(() => {
@@ -1836,7 +1804,7 @@ export function InterviewLabRoom({
         </div>
       )}
 
-      {savedPrepLoading && initialFocus === 'prep' && initialAssetSessionId && (
+      {savedPrepLoading && sessionTargets.prepSessionId && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
             <Loader2 size={12} className="animate-spin" />
@@ -1846,7 +1814,7 @@ export function InterviewLabRoom({
       )}
 
       <div className="rail-tabs">
-        {(Object.entries(LAB_SECTION_COPY) as Array<[LabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
+        {(Object.entries(LAB_SECTION_COPY) as Array<[InterviewLabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
           const isActive = activeSection === sectionId;
           return (
             <button
@@ -1919,8 +1887,7 @@ export function InterviewLabRoom({
             activeCompany={activeCompany}
             activeRole={activeRole}
             activeJobApplicationId={activeJobApplicationId}
-            initialFocus={initialFocus}
-            initialAssetSessionId={initialAssetSessionId}
+            initialPlanSessionId={sessionTargets.planSessionId}
             onDocumentsViewChange={setDocumentsView}
             onOpenThankYou={() => {
               setActiveSection('follow_up');
@@ -2053,7 +2020,7 @@ export function InterviewLabRoom({
               initialCompany={activeCompany}
               initialRole={activeRole}
               initialJobApplicationId={activeJobApplicationId}
-              initialSessionId={initialFocus === 'thank-you' ? initialAssetSessionId : undefined}
+              initialSessionId={sessionTargets.thankYouSessionId}
             />
           )}
 
@@ -2070,7 +2037,7 @@ export function InterviewLabRoom({
               prefillCompany={activeCompany}
               prefillRole={activeRole}
               prefillJobApplicationId={activeJobApplicationId}
-              initialSessionId={initialFocus === 'negotiation' ? initialAssetSessionId : undefined}
+              initialSessionId={sessionTargets.negotiationSessionId}
             />
           )}
 
