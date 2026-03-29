@@ -281,6 +281,24 @@ function bulletLooksPreserved(sourceBullet: string, candidateBullet: string): bo
   return bulletPreservesProofDensity(candidateBullet, sourceBullet);
 }
 
+function metadataLooksPreserved(sourceBullet: string, candidateValue: string | null | undefined): boolean {
+  if (typeof candidateValue !== 'string' || candidateValue.trim().length === 0) return false;
+  return bulletLooksPreserved(sourceBullet, candidateValue);
+}
+
+function lineItemPreservesSourceBullet(
+  sourceBullet: string,
+  lineItem: {
+    text?: string | null;
+    evidence_found?: string | null;
+    target_evidence?: string | null;
+  },
+): boolean {
+  return metadataLooksPreserved(sourceBullet, lineItem.text)
+    || metadataLooksPreserved(sourceBullet, lineItem.evidence_found)
+    || metadataLooksPreserved(sourceBullet, lineItem.target_evidence);
+}
+
 function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResumeOutline>, draft: ResumeDraftOutput) {
   const sourcePositionsByKey = new Map(
     sourceOutline.positions.map((position) => [
@@ -291,23 +309,33 @@ function summarizeProofDensity(sourceOutline: ReturnType<typeof buildSourceResum
 
   const draftBullets = collectDraftProfessionalBullets(draft);
   const sourceBullets = sourceOutline.positions.flatMap((position) => position.bullets);
-  const selectedAccomplishmentBullets = draft.selected_accomplishments.map((item) => item.content);
+  const selectedAccomplishmentLines = draft.selected_accomplishments.map((item) => ({
+    text: item.content,
+    evidence_found: item.evidence_found,
+    target_evidence: item.target_evidence,
+  }));
   const roleSummaries = draft.professional_experience.map((experience) => {
     const sourcePosition = sourcePositionsByKey.get(normalizeRoleKey(experience.company, experience.title));
     const sourcePositionBullets = sourcePosition?.bullets ?? [];
     const sourceBulletSet = new Set(sourcePositionBullets.map((bullet) => normalizeBulletText(bullet)));
-    const finalPositionBullets = experience.bullets.map((bullet) => bullet.text);
+    const finalPositionLines = experience.bullets.map((bullet) => ({
+      text: bullet.text,
+      evidence_found: bullet.evidence_found,
+      target_evidence: bullet.target_evidence,
+      source: bullet.source,
+    }));
+    const finalPositionBullets = finalPositionLines.map((bullet) => bullet.text);
     const sourceAverageChars = averageTextLength(sourcePositionBullets);
     const finalAverageChars = averageTextLength(finalPositionBullets);
 
     const promotedSourceBullets = sourcePositionBullets.filter((sourceBullet) => {
-      const alreadyCoveredInRole = finalPositionBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+      const alreadyCoveredInRole = finalPositionLines.some((line) => lineItemPreservesSourceBullet(sourceBullet, line));
       if (alreadyCoveredInRole) return false;
-      return selectedAccomplishmentBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+      return selectedAccomplishmentLines.some((line) => lineItemPreservesSourceBullet(sourceBullet, line));
     });
     const documentCoveredSourceBullets = sourcePositionBullets.filter((sourceBullet) => {
-      if (finalPositionBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet))) return true;
-      return selectedAccomplishmentBullets.some((bullet) => bulletLooksPreserved(sourceBullet, bullet));
+      if (finalPositionLines.some((line) => lineItemPreservesSourceBullet(sourceBullet, line))) return true;
+      return selectedAccomplishmentLines.some((line) => lineItemPreservesSourceBullet(sourceBullet, line));
     });
 
     return {
