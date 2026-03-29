@@ -9,7 +9,6 @@ import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPan
 import { BonusSearchPanel } from '@/components/network-intelligence/BonusSearchPanel';
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
-import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
@@ -48,13 +47,19 @@ export function SmartReferralsRoom() {
   const { session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [hasConnections, setHasConnections] = useState(false);
-  const [uploadSummary, setUploadSummary] = useState<CsvUploadSummary | null>(null);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
   const accessToken = session?.access_token ?? null;
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setHasConnections(false);
+      setOutreachPrefill(null);
+      setActiveTab('import');
+      return;
+    }
+
     let cancelled = false;
+
     async function checkConnections() {
       try {
         const res = await fetch(`${API_BASE}/ni/connections/count`, {
@@ -64,16 +69,25 @@ export function SmartReferralsRoom() {
           const data = await res.json();
           const has = (data.count ?? 0) > 0;
           setHasConnections(has);
-          if (has) setActiveTab('connections');
+          setActiveTab((prev) => {
+            if (has) {
+              return prev === 'import' ? 'connections' : prev;
+            }
+            return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+          });
         }
-      } catch { /* ignore */ }
+      } catch {
+        if (!cancelled) {
+          setHasConnections(false);
+          setActiveTab((prev) => (ALWAYS_UNLOCKED.includes(prev) ? prev : 'import'));
+        }
+      }
     }
     checkConnections();
     return () => { cancelled = true; };
   }, [accessToken]);
 
-  const handleUploadComplete = useCallback((summary: CsvUploadSummary) => {
-    setUploadSummary(summary);
+  const handleUploadComplete = useCallback(() => {
     setHasConnections(true);
     setActiveTab('connections');
   }, []);
@@ -133,9 +147,6 @@ export function SmartReferralsRoom() {
         return null;
     }
   };
-
-  // Suppress unused variable warning — uploadSummary is retained for future use
-  void uploadSummary;
 
   return (
     <div className="p-6 space-y-6">

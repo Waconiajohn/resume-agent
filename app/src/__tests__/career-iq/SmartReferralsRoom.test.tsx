@@ -142,4 +142,34 @@ describe('SmartReferralsRoom', () => {
     });
     expect(screen.getByTestId('networking-hub-prefill')).toHaveTextContent('Acme Corp');
   });
+
+  it('falls back to the signed-out locked state when auth disappears after load', async () => {
+    mockUseAuth.mockReturnValue({
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 3 }), { status: 200 }),
+    );
+
+    const { rerender } = render(<SmartReferralsRoom />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connections-browser')).toBeInTheDocument();
+    });
+
+    mockUseAuth.mockReturnValue({
+      session: null,
+      loading: false,
+    });
+
+    rerender(<SmartReferralsRoom />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
+    expect(screen.queryByTestId('connections-browser')).not.toBeInTheDocument();
+  });
 });
