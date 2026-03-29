@@ -4,31 +4,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import { API_BASE } from '@/lib/api';
 import type { CompanySummary, TargetTitle } from '@/types/ni';
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-interface ScrapeStatus {
-  id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  output_summary: {
-    companies_scanned?: number;
-    jobs_found?: number;
-    matching_jobs?: number;
-    referral_available?: number;
-    error_count?: number;
-  };
-  error_message: string | null;
-  started_at: string;
-  completed_at: string | null;
-}
-
-interface ScrapeResult {
-  companiesScanned: number;
-  jobsFound: number;
-  matchingJobs: number;
-  referralAvailable: number;
-  errorCount: number;
-}
+import { useNiScrapeRunner } from './useNiScrapeRunner';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -91,15 +67,16 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [titles, setTitles] = useState<TargetTitle[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-
-  const [scrapeLogId, setScrapeLogId] = useState<string | null>(null);
-  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus | null>(null);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<ScrapeResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
+  const {
+    scrapeLogId,
+    scrapeStatus,
+    running,
+    result,
+    error,
+    currentScanned,
+    startScan,
+  } = useNiScrapeRunner(accessToken);
 
   // ─── Load companies + titles ───────────────────────────────────────────────
 
@@ -165,55 +142,9 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
     void loadPanelData();
   }, [loadPanelData]);
 
-  // ─── Poll for scrape status ────────────────────────────────────────────────
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
-
-  const pollStatus = useCallback(async (logId: string) => {
-    if (!accessToken) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/ni/scrape/status/${logId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      const log = data.log as ScrapeStatus;
-      setScrapeStatus(log);
-
-      if (log.status === 'completed') {
-        stopPolling();
-        setRunning(false);
-        setResult({
-          companiesScanned: log.output_summary.companies_scanned ?? 0,
-          jobsFound: log.output_summary.jobs_found ?? 0,
-          matchingJobs: log.output_summary.matching_jobs ?? 0,
-          referralAvailable: log.output_summary.referral_available ?? 0,
-          errorCount: log.output_summary.error_count ?? 0,
-        });
-      } else if (log.status === 'failed') {
-        stopPolling();
-        setRunning(false);
-        setError(log.error_message ?? 'Scrape failed. Please try again.');
-      }
-    } catch {
-      // Polling error — keep trying
-    }
-  }, [accessToken, stopPolling]);
-
-  // Clean up polling on unmount
-  useEffect(() => () => stopPolling(), [stopPolling]);
-
   // ─── Derived state ─────────────────────────────────────────────────────────
 
   const eligibleCompanyCount = companies.filter((c) => c.companyId !== null).length;
-  const currentScanned = scrapeStatus?.output_summary.companies_scanned ?? 0;
   const normalizationPending = companies.length > 0 && eligibleCompanyCount === 0;
 
   useEffect(() => {
@@ -231,58 +162,17 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
   // ─── Start scrape ──────────────────────────────────────────────────────────
 
   const handleScan = useCallback(async () => {
-    if (!accessToken) return;
-
-    stopPolling();
-    setError(null);
-    setResult(null);
-    setScrapeStatus(null);
-    setScrapeLogId(null);
-    setRunning(true);
-
-    // Collect company IDs that have a known companyId
     const companyIds = companies
       .filter((c) => c.companyId !== null)
       .map((c) => c.companyId as string)
       .slice(0, 50);
-
-    if (companyIds.length === 0) {
-      setError('No companies with recognized IDs found. Import connections and wait for normalization to complete.');
-      setRunning(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/ni/scrape/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          company_ids: companyIds,
-          target_titles: titles.map((t) => t.title),
-          search_context: 'network_connections',
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? `Server error ${res.status}`);
-      }
-
-      const data = await res.json();
-      const logId = data.scrape_log_id as string;
-      setScrapeLogId(logId);
-
-      // Start polling every 3 seconds
-      void pollStatus(logId);
-      pollRef.current = setInterval(() => void pollStatus(logId), 3_000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start scan. Please try again.');
-      setRunning(false);
-    }
-  }, [accessToken, companies, titles, pollStatus]);
+    await startScan({
+      companyIds,
+      targetTitles: titles.map((t) => t.title),
+      searchContext: 'network_connections',
+      emptyMessage: 'No companies with recognized IDs found. Import connections and wait for normalization to complete.',
+    });
+  }, [companies, startScan, titles]);
 
   // ─── Loading skeleton ──────────────────────────────────────────────────────
 

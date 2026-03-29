@@ -67,6 +67,53 @@ describe('network intelligence panels', () => {
     expect(screen.getByDisplayValue('new')).toBeInTheDocument();
   });
 
+  it('filters job matches by source and referral overlay', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matches: [
+            {
+              id: 'match-1',
+              company_id: 'company-1',
+              title: 'VP Operations',
+              match_score: 82,
+              referral_available: false,
+              connection_count: 2,
+              status: 'new',
+              created_at: '2026-03-21T12:00:00Z',
+              metadata: { search_context: 'network_connections' },
+            },
+            {
+              id: 'match-2',
+              company_id: 'company-2',
+              title: 'Chief Revenue Officer',
+              match_score: 79,
+              referral_available: true,
+              connection_count: 0,
+              status: 'new',
+              created_at: '2026-03-21T12:00:00Z',
+              metadata: { search_context: 'bonus_search' },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    render(<JobMatchesList accessToken="test-token" />);
+
+    expect(await screen.findByText('VP Operations')).toBeInTheDocument();
+    expect(screen.getByText('Chief Revenue Officer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Your Network \(1\)/i }));
+    expect(screen.getByText('VP Operations')).toBeInTheDocument();
+    expect(screen.queryByText('Chief Revenue Officer')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Referral Bonus \(1\)/i }));
+    expect(screen.getByText('Chief Revenue Officer')).toBeInTheDocument();
+    expect(screen.queryByText('VP Operations')).not.toBeInTheDocument();
+  });
+
   it('loads company connections when a company card is expanded', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(

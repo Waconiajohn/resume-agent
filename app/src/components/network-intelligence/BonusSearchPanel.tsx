@@ -1,34 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassInput } from '@/components/GlassInput';
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { BonusCompanySearchItem, TargetTitle } from '@/types/ni';
+import { useNiScrapeRunner } from './useNiScrapeRunner';
 
 interface BonusSearchPanelProps {
   accessToken: string | null;
-}
-
-interface ScrapeStatus {
-  id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  output_summary: {
-    companies_scanned?: number;
-    jobs_found?: number;
-    matching_jobs?: number;
-    referral_available?: number;
-    error_count?: number;
-  };
-  error_message: string | null;
-}
-
-interface ScrapeResult {
-  companiesScanned: number;
-  jobsFound: number;
-  matchingJobs: number;
-  referralAvailable: number;
-  errorCount: number;
 }
 
 function formatCurrencyAmount(value: number | null): string | null {
@@ -47,21 +27,15 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
   const [titles, setTitles] = useState<TargetTitle[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
-
-  const [scrapeLogId, setScrapeLogId] = useState<string | null>(null);
-  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus | null>(null);
-  const [result, setResult] = useState<ScrapeResult | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
+  const {
+    scrapeLogId,
+    scrapeStatus,
+    result,
+    running,
+    error,
+    currentScanned,
+    startScan,
+  } = useNiScrapeRunner(accessToken);
 
   const loadPanelData = useCallback(async (minBonus: number) => {
     if (!accessToken) return;
@@ -126,88 +100,19 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
     void loadPanelData(activeMinBonus);
   }, [accessToken, activeMinBonus, loadPanelData]);
 
-  useEffect(() => () => stopPolling(), [stopPolling]);
-
-  const pollStatus = useCallback(async (logId: string) => {
-    if (!accessToken) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/ni/scrape/status/${logId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      const log = data.log as ScrapeStatus;
-      setScrapeStatus(log);
-
-      if (log.status === 'completed') {
-        stopPolling();
-        setRunning(false);
-        setResult({
-          companiesScanned: log.output_summary.companies_scanned ?? 0,
-          jobsFound: log.output_summary.jobs_found ?? 0,
-          matchingJobs: log.output_summary.matching_jobs ?? 0,
-          referralAvailable: log.output_summary.referral_available ?? 0,
-          errorCount: log.output_summary.error_count ?? 0,
-        });
-      } else if (log.status === 'failed') {
-        stopPolling();
-        setRunning(false);
-        setError(log.error_message ?? 'Bonus company scan failed. Please try again.');
-      }
-    } catch {
-      // keep polling
-    }
-  }, [accessToken, stopPolling]);
-
   const handleRefresh = useCallback(() => {
     const parsed = Number.parseInt(minBonusInput.replace(/[^\d]/g, ''), 10);
     setActiveMinBonus(Number.isFinite(parsed) && parsed > 0 ? parsed : 1000);
   }, [minBonusInput]);
 
   const handleScan = useCallback(async () => {
-    if (!accessToken || companies.length === 0) return;
-
-    stopPolling();
-    setError(null);
-    setResult(null);
-    setScrapeStatus(null);
-    setScrapeLogId(null);
-    setRunning(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/ni/scrape/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          company_ids: companies.map((company) => company.companyId).slice(0, 50),
-          target_titles: titles.map((title) => title.title),
-          search_context: 'bonus_search',
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? `Server error ${res.status}`);
-      }
-
-      const data = await res.json();
-      const logId = data.scrape_log_id as string;
-      setScrapeLogId(logId);
-
-      void pollStatus(logId);
-      pollRef.current = setInterval(() => void pollStatus(logId), 3_000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start bonus company scan');
-      setRunning(false);
-    }
-  }, [accessToken, companies, pollStatus, stopPolling, titles]);
-
-  const currentScanned = scrapeStatus?.output_summary.companies_scanned ?? 0;
+    await startScan({
+      companyIds: companies.map((company) => company.companyId).slice(0, 50),
+      targetTitles: titles.map((title) => title.title),
+      searchContext: 'bonus_search',
+      emptyMessage: 'No bonus companies meet the current threshold yet.',
+    });
+  }, [companies, startScan, titles]);
 
   if (loading) {
     return (

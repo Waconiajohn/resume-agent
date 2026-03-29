@@ -150,6 +150,29 @@ export function SmartReferralsRoom() {
         </p>
       </div>
 
+      <GlassCard className="p-5">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">Your Network</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              Import first-level connections, run <span className="text-[var(--text-strong)]">Job Scan</span>, and surface roles at companies where you already know someone.
+            </p>
+          </div>
+          <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">Bonus Search</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              Search high-referral-bonus companies even without a connection. These results still land in <span className="text-[var(--text-strong)]">Job Matches</span>.
+            </p>
+          </div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">Referral Bonus</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              Treat this as a bonus overlay, not a separate search engine. It only highlights matches where a referral program is known.
+            </p>
+          </div>
+        </div>
+      </GlassCard>
+
       {/* Tab bar */}
       <GlassCard className="p-1">
         <div className="flex gap-1 overflow-x-auto">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
-import type { JobMatch, JobMatchStatus } from '@/types/ni';
+import type { JobMatch, JobMatchSearchContext, JobMatchStatus } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 
 export interface JobMatchesListProps {
@@ -27,6 +27,15 @@ const SEARCH_CONTEXT_BADGES: Record<NonNullable<JobMatch['searchContext']>, stri
 const SEARCH_CONTEXT_LABELS: Record<NonNullable<JobMatch['searchContext']>, string> = {
   network_connections: 'Your Network',
   bonus_search: 'Bonus Search',
+};
+
+type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
+
+const FILTER_LABELS: Record<MatchFilter, string> = {
+  all: 'All Matches',
+  network_connections: 'Your Network',
+  bonus_search: 'Bonus Search',
+  referral_bonus: 'Referral Bonus',
 };
 
 function mapJobMatch(m: Record<string, unknown>): JobMatch {
@@ -58,6 +67,7 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
 export function JobMatchesList({ accessToken }: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<MatchFilter>('all');
 
   useEffect(() => {
     if (!accessToken) return;
@@ -83,6 +93,19 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
     void load();
     return () => { cancelled = true; };
   }, [accessToken]);
+
+  const filteredMatches = matches.filter((match) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'referral_bonus') return match.referralAvailable;
+    return match.searchContext === activeFilter;
+  });
+
+  const filterCounts: Record<MatchFilter, number> = {
+    all: matches.length,
+    network_connections: matches.filter((match) => match.searchContext === 'network_connections').length,
+    bonus_search: matches.filter((match) => match.searchContext === 'bonus_search').length,
+    referral_bonus: matches.filter((match) => match.referralAvailable).length,
+  };
 
   const handleStatusChange = useCallback(async (matchId: string, status: JobMatchStatus) => {
     if (!accessToken) return;
@@ -136,8 +159,41 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-[var(--text-muted)]">Job Matches</h3>
-      {matches.map((match) => (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--text-muted)]">Job Matches</h3>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
+            Review one combined result stream, then narrow it by source or by known referral bonus.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(['all', 'network_connections', 'bonus_search', 'referral_bonus'] as const).map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setActiveFilter(filter)}
+              className={cn(
+                'rounded-md border px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                activeFilter === filter
+                  ? 'border-[#afc4ff]/20 bg-[#afc4ff]/10 text-[#afc4ff]/80'
+                  : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-1)]',
+              )}
+            >
+              {FILTER_LABELS[filter]} ({filterCounts[filter]})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredMatches.length === 0 && (
+        <div className="rounded-xl border border-[var(--line-soft)] p-6 text-center">
+          <p className="text-sm text-[var(--text-soft)]">
+            No matches in <span className="text-[var(--text-muted)]">{FILTER_LABELS[activeFilter]}</span> yet.
+          </p>
+        </div>
+      )}
+
+      {filteredMatches.map((match) => (
         <GlassCard key={match.id} className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">

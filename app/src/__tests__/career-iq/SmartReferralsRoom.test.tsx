@@ -63,6 +63,8 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom />);
 
     expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
+    expect(screen.getByText('Your Network')).toBeInTheDocument();
+    expect(screen.getAllByText('Bonus Search').length).toBeGreaterThan(0);
     expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
   });
 
