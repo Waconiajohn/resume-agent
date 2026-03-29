@@ -36,6 +36,18 @@ vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: vi.fn().mockReturnValue({ [Symbol.asyncIterator]: async function* () {} }),
 }));
 
+vi.mock('@/components/career-iq/ExecutiveBioRoom', () => ({
+  ExecutiveBioRoom: () => <div>Executive Bio Workspace</div>,
+}));
+
+vi.mock('@/components/career-iq/CaseStudyRoom', () => ({
+  CaseStudyRoom: () => <div>Case Study Workspace</div>,
+}));
+
+vi.mock('@/components/career-iq/CareerProfileSummaryCard', () => ({
+  CareerProfileSummaryCard: ({ title }: { title: string }) => <div>{title}</div>,
+}));
+
 // Mock clipboard
 Object.assign(navigator, {
   clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -57,6 +69,7 @@ import { LinkedInStudioRoom } from '@/components/career-iq/LinkedInStudioRoom';
 import { JobCommandCenterRoom } from '@/components/career-iq/JobCommandCenterRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
+import { ExecutiveDocumentsRoom } from '@/components/career-iq/ExecutiveDocumentsRoom';
 import type { WhyMeSignals } from '@/components/career-iq/useWhyMeStory';
 
 afterEach(() => {
@@ -362,5 +375,24 @@ describe('NetworkingHubRoom', () => {
       screen.queryByText(/no contacts/i) ||
       screen.queryByText(/Add Contact/i);
     expect(el).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ExecutiveDocumentsRoom
+// ---------------------------------------------------------------------------
+
+describe('ExecutiveDocumentsRoom', () => {
+  it('renders the document workflow guidance on the default landing state', () => {
+    render(<ExecutiveDocumentsRoom />);
+    expect(screen.getByText('Document workflow')).toBeInTheDocument();
+    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Case Studies/i }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Executive Bio Workspace')).toBeInTheDocument();
+  });
+
+  it('opens directly into case studies when case-study focus is provided', () => {
+    render(<ExecutiveDocumentsRoom initialFocus="case-study" />);
+    expect(screen.getByText('Case Study Workspace')).toBeInTheDocument();
   });
 });

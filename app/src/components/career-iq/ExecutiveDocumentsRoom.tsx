@@ -14,6 +14,37 @@ const TABS: { id: DocTab; label: string; icon: typeof FileText; description: str
   { id: 'case-study', label: 'Case Studies', icon: BookOpen, description: 'Consulting-grade narratives' },
 ];
 
+type DocumentStageConfig = {
+  focusTitle: string;
+  focusSummary: string;
+  next: {
+    tab: DocTab;
+    label: string;
+    description: string;
+  };
+};
+
+const DOCUMENT_STAGE_CONFIG: Record<DocTab, DocumentStageConfig> = {
+  bio: {
+    focusTitle: 'Write the short-form narrative people will reuse most often',
+    focusSummary: 'Use Executive Bios for the concise identity docs that need to stay aligned with your resume, LinkedIn, and speaking profile.',
+    next: {
+      tab: 'case-study',
+      label: 'Case Studies',
+      description: 'Move into Case Studies when you want the deeper proof stories that back up the executive narrative.',
+    },
+  },
+  'case-study': {
+    focusTitle: 'Turn your strongest wins into proof-led narratives',
+    focusSummary: 'Use Case Studies when you need the longer consulting-style stories that show how you think, lead, and create results.',
+    next: {
+      tab: 'bio',
+      label: 'Executive Bios',
+      description: 'Return to Bios when the deeper proof is ready and you want the tighter executive summary version.',
+    },
+  },
+};
+
 interface ExecutiveDocumentsRoomProps {
   careerProfileSummary?: CareerProfileSummary;
   onOpenCareerProfile?: () => void;
@@ -26,6 +57,7 @@ export function ExecutiveDocumentsRoom({
   initialFocus,
 }: ExecutiveDocumentsRoomProps) {
   const [activeTab, setActiveTab] = useState<DocTab>(initialFocus === 'case-study' ? 'case-study' : 'bio');
+  const activeStage = DOCUMENT_STAGE_CONFIG[activeTab];
 
   useEffect(() => {
     if (initialFocus === 'case-study') {
@@ -60,6 +92,67 @@ export function ExecutiveDocumentsRoom({
           Professional bios and consulting-grade case studies
         </p>
       </div>
+
+      <GlassCard className="p-5">
+        <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
+          <div>
+            <div className="eyebrow-label">Document workflow</div>
+            <h3 className="text-[17px] font-semibold text-[var(--text-strong)]">
+              Keep the shorter bio and the deeper proof stories aligned.
+            </h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              This room works best when Executive Bios handles the concise executive story and Case Studies handles the longer proof that supports it.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {TABS.map((tab, index) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <span
+                    key={tab.id}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
+                      isActive
+                        ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.08] text-[#98b3ff]'
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
+                    )}
+                  >
+                    <span className="tabular-nums opacity-80">{index + 1}</span>
+                    {tab.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Current focus
+            </div>
+            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              {activeStage.focusTitle}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.focusSummary}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeStage.next.tab)}
+            className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
+          >
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Next best move
+            </div>
+            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              {activeStage.next.label}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.next.description}
+            </p>
+          </button>
+        </div>
+      </GlassCard>
 
       {/* Tab bar */}
       <GlassCard className="p-1">
