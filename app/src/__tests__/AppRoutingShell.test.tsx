@@ -134,10 +134,6 @@ vi.mock('@/components/resume-v2/V2ResumeScreen', () => ({
   V2ResumeScreen: () => <div>Resume V2 Screen</div>,
 }));
 
-vi.mock('@/components/platform/ToolsScreen', () => ({
-  ToolsScreen: ({ slug }: { slug?: string }) => <div>Tools slug: {slug ?? 'catalog'}</div>,
-}));
-
 vi.mock('@/components/PricingPage', () => ({
   PricingPage: () => <div>Pricing</div>,
 }));
