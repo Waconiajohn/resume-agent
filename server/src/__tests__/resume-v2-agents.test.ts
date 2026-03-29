@@ -1919,7 +1919,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runResumeWriter(input);
 
-      expect(result).toEqual(RESUME_DRAFT_OUTPUT);
+      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
+      expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
+      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
+      expect(result.professional_experience[0]?.company).toBe('Acme Startup');
+      expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
+      expect(result.selected_accomplishments[0]).toEqual(
+        expect.objectContaining({
+          content: 'Scaled platform to 500K DAU with 99.99% SLA',
+          primary_target_requirement: 'Cloud Architecture',
+        }),
+      );
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
@@ -1933,7 +1943,10 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runResumeWriter(input);
 
-      expect(result).toEqual(RESUME_DRAFT_OUTPUT);
+      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
+      expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
+      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
+      expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
@@ -1945,7 +1958,10 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runResumeWriter(input);
 
-      expect(result).toEqual(RESUME_DRAFT_OUTPUT);
+      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
+      expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
+      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
+      expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
@@ -2072,9 +2088,94 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(selectedTargets.map((target) => target.requirement)).not.toEqual(
         expect.arrayContaining(["Bachelor's degree", '10+ years of related experience']),
       );
+      const revenueAccomplishment = result.selected_accomplishments.find((item) => item.content.includes('$40M expansion revenue'));
+      expect(revenueAccomplishment).toEqual(
+        expect.objectContaining({
+          source: 'original',
+          confidence: 'strong',
+          support_origin: 'original_resume',
+        }),
+      );
+      expect(revenueAccomplishment?.content_origin).toBe('verbatim_resume');
       expect(result.selected_accomplishments.every((item) => item.addresses_requirements.length <= 1)).toBe(true);
       expect(result.selected_accomplishments.every((item) => typeof item.primary_target_requirement === 'string' && item.primary_target_requirement.length > 0)).toBe(true);
-      expect(result.selected_accomplishments.every((item) => item.target_evidence === item.evidence_found)).toBe(true);
+      expect(result.selected_accomplishments.every((item) => typeof item.target_evidence === 'string')).toBe(true);
+    });
+
+    it('marks synthesized selected accomplishments as enhanced/strong when they are backed by resume-derived metrics', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const synthesizedAccomplishmentInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'RevenueCo',
+              title: 'VP of Sales',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Led enterprise account strategy across healthcare and SaaS portfolios',
+              ],
+            },
+          ],
+          quantified_outcomes: [
+            { outcome: 'Expanded enterprise revenue', metric_type: 'money', value: '$40M' },
+          ],
+          hidden_accomplishments: [],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'RevenueCo',
+                title: 'VP of Sales',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Led enterprise account strategy across healthcare and SaaS portfolios',
+                ],
+              },
+            ],
+          },
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: 'Revenue growth and enterprise account expansion',
+              source: 'job_description',
+              category: 'strategic_responsibility',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Expanded enterprise revenue $40M'],
+            },
+          ],
+        },
+        narrative: {
+          ...NARRATIVE_OUTPUT,
+          section_guidance: {
+            ...NARRATIVE_OUTPUT.section_guidance,
+            accomplishment_priorities: ['Revenue growth'],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(synthesizedAccomplishmentInput);
+      const accomplishment = result.selected_accomplishments.find((item) => item.content.includes('Expanded enterprise revenue'));
+
+      expect(accomplishment).toEqual(
+        expect.objectContaining({
+          source: 'enhanced',
+          confidence: 'strong',
+          content_origin: 'multi_source_synthesis',
+          support_origin: 'original_resume',
+        }),
+      );
     });
 
     it('uses the source resume outline to preserve bullets when candidate.experience is truncated', async () => {
@@ -2197,7 +2298,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
     });
 
-    it('downgrades rewritten proof bullets from original/strong to enhanced/partial when the text is no longer verbatim', async () => {
+    it('marks near-verbatim proof bullets as enhanced/strong when the wording is rewritten but the proof stays intact', async () => {
       const rewrittenDraft: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,
         professional_experience: [
@@ -2266,7 +2367,80 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(bullet?.text).toBe('Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.');
       expect(bullet?.source).toBe('enhanced');
-      expect(bullet?.confidence).toBe('partial');
+      expect(bullet?.confidence).toBe('strong');
+      expect(bullet?.content_origin).toBe('resume_rewrite');
+    });
+
+    it('restores the original proof bullet when a material rewrite loses the specific evidence', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Accelerated release velocity by modernizing engineering workflows and automation practices.',
+                is_new: false,
+                addresses_requirements: ['Cloud Infrastructure'],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullet = result.professional_experience[0]?.bullets[0];
+
+      expect(bullet?.text).toBe('Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization');
+      expect(bullet?.source).toBe('original');
+      expect(bullet?.confidence).toBe('strong');
     });
 
     it('overrides stale drafted metadata when a bullet is identical to original resume proof', async () => {
@@ -2291,7 +2465,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
                 confidence: 'needs_validation',
                 requirement_source: 'job_description',
                 evidence_found: '',
-                content_origin: 'drafted_to_close_gap',
+                content_origin: 'gap_closing_draft',
                 support_origin: 'not_found',
               },
             ],
@@ -2340,7 +2514,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(bullet?.source).toBe('original');
       expect(bullet?.confidence).toBe('strong');
-      expect(bullet?.content_origin).toBe('original_resume');
+      expect(bullet?.content_origin).toBe('verbatim_resume');
       expect(bullet?.support_origin).toBe('original_resume');
     });
 
@@ -2886,6 +3060,74 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(result.executive_summary.content).toContain('12 years in cloud infrastructure/architecture roles');
       expect(result.executive_summary.content).toContain('Operational excellence leader driving manufacturing scale and transformation.');
+    });
+
+    it('patches parseable model output so the strongest source proof stays visible in the summary', async () => {
+      const parsedDraftWithoutStrongestProof: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          content: 'Growth leader helping enterprise teams expand revenue through consultative selling.',
+          is_new: true,
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutStrongestProof);
+
+      const strongestProofInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          leadership_scope: 'Led regional enterprise account teams across multiple business units',
+          operational_scale: '$250M portfolio responsibility across national accounts',
+          experience: [
+            {
+              company: 'RevenueCo',
+              title: 'VP of Sales',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Drove $40M expansion revenue through consultative enterprise sales programs',
+                'Built enterprise account playbooks across healthcare and SaaS clients',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 2,
+            positions: [
+              {
+                company: 'RevenueCo',
+                title: 'VP of Sales',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Drove $40M expansion revenue through consultative enterprise sales programs',
+                  'Built enterprise account playbooks across healthcare and SaaS clients',
+                ],
+              },
+            ],
+          },
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: 'Revenue growth and enterprise account expansion',
+              source: 'job_description',
+              category: 'strategic_responsibility',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Drove $40M expansion revenue'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(strongestProofInput);
+
+      expect(result.executive_summary.content).toContain('Drove $40M expansion revenue through consultative enterprise sales programs.');
+      expect(result.executive_summary.content).toContain('Growth leader helping enterprise teams expand revenue through consultative selling.');
     });
 
     it('preserves detailed candidate education when the model output downgrades it to a generic degree', async () => {

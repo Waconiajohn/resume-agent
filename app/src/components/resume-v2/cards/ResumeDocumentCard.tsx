@@ -652,10 +652,10 @@ function InlineEditPanel({
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Line context</p>
               <dl className="mt-3 grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm leading-6 text-slate-700">
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Built from</dt>
-                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin, confidence)}</dd>
+                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin)}</dd>
 
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource)}</dd>
+                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, requirementSource)}</dd>
               </dl>
             </div>
           </div>
@@ -1125,23 +1125,22 @@ function resolvePrimaryDisplayRequirement(
 
 function getContentOriginLabel(
   contentOrigin: ResumeContentOrigin | undefined,
-  confidence: BulletConfidence,
 ): string {
-  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'Original resume';
-  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Resume rewrite';
+  if (contentOrigin === 'verbatim_resume') return 'Direct resume line';
+  if (contentOrigin === 'resume_rewrite') return 'Resume rewrite';
+  if (contentOrigin === 'multi_source_synthesis') return 'Resume-backed synthesis';
   return 'Gap-closing draft';
 }
 
 function getSupportOriginLabel(
   supportOrigin: ResumeSupportOrigin | undefined,
   hasEvidence: boolean,
-  confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): string {
   if (supportOrigin === 'user_confirmed_context') return 'User-confirmed context';
-  if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
+  if (supportOrigin === 'adjacent_resume_inference') return 'Adjacent resume proof';
   if (supportOrigin === 'original_resume' || hasEvidence) return 'Resume support found';
-  if (requirementSource === 'benchmark' && confidence === 'needs_validation') return 'Not directly confirmed';
+  if (requirementSource === 'benchmark') return 'Not directly confirmed';
   return 'No direct resume proof yet';
 }
 

@@ -333,6 +333,7 @@ export async function runResumeWriter(
   }
 
   parsed = ensureSatisfiedYearsThresholdVisible(parsed, input);
+  parsed = ensureStrongestProofVisible(parsed, input);
 
   // Guardrail: ensure contact info is from candidate, not a placeholder
   if (!parsed.header?.name || parsed.header.name.toLowerCase().includes('john doe')) {
@@ -382,17 +383,17 @@ export async function runResumeWriter(
   // Log color distribution summary
   const colorCounts = { green: 0, amber: 0, red: 0, orange: 0 };
   for (const a of parsed.selected_accomplishments ?? []) {
-    if (a.source === 'original' && a.confidence === 'strong') colorCounts.green++;
-    else if (a.source === 'enhanced' && a.confidence === 'partial') colorCounts.amber++;
-    else if (a.source === 'drafted' && a.requirement_source === 'benchmark') colorCounts.orange++;
-    else if (a.source === 'drafted') colorCounts.red++;
+      if (a.confidence === 'strong') colorCounts.green++;
+      else if (a.confidence === 'partial') colorCounts.amber++;
+      else if (a.requirement_source === 'benchmark') colorCounts.orange++;
+      else colorCounts.red++;
   }
   for (const exp of parsed.professional_experience ?? []) {
     for (const b of exp.bullets ?? []) {
-      if (b.source === 'original' && b.confidence === 'strong') colorCounts.green++;
-      else if (b.source === 'enhanced' && b.confidence === 'partial') colorCounts.amber++;
-      else if (b.source === 'drafted' && b.requirement_source === 'benchmark') colorCounts.orange++;
-      else if (b.source === 'drafted') colorCounts.red++;
+      if (b.confidence === 'strong') colorCounts.green++;
+      else if (b.confidence === 'partial') colorCounts.amber++;
+      else if (b.requirement_source === 'benchmark') colorCounts.orange++;
+      else colorCounts.red++;
     }
   }
   logger.info({ colorCounts }, 'Resume Writer: deterministic color distribution');
@@ -764,6 +765,10 @@ interface AccomplishmentEvidenceCandidate {
   evidence: string;
   proofStrength: number;
   hasMetric: boolean;
+  source: BulletSource;
+  confidence: BulletConfidence;
+  contentOrigin: ResumeContentOrigin;
+  supportOrigin: ResumeSupportOrigin;
 }
 
 function isCredentialOrScreeningRequirement(requirement: string): boolean {
@@ -785,7 +790,15 @@ function isAccomplishmentCompatibleRequirement(requirement: RequirementGap): boo
 function buildSelectedAccomplishmentEvidencePool(input: ResumeWriterInput): AccomplishmentEvidenceCandidate[] {
   const deduped: AccomplishmentEvidenceCandidate[] = [];
   const seen = new Set<string>();
-  const pushCandidate = (content: string, evidence: string, proofStrength: number) => {
+  const pushCandidate = (
+    content: string,
+    evidence: string,
+    proofStrength: number,
+    source: BulletSource,
+    confidence: BulletConfidence,
+    contentOrigin: ResumeContentOrigin,
+    supportOrigin: ResumeSupportOrigin,
+  ) => {
     const normalized = content.toLowerCase().trim();
     if (!normalized || seen.has(normalized)) return;
     seen.add(normalized);
@@ -794,22 +807,50 @@ function buildSelectedAccomplishmentEvidencePool(input: ResumeWriterInput): Acco
       evidence,
       proofStrength,
       hasMetric: /[%$]|\b\d/.test(content),
+      source,
+      confidence,
+      contentOrigin,
+      supportOrigin,
     });
   };
 
   for (const experience of getAuthoritativeSourceExperience(input.candidate)) {
     for (const bullet of experience.bullets ?? []) {
-      pushCandidate(bullet, bullet, scoreSourceBulletImportance(bullet, input) + 2);
+      pushCandidate(
+        bullet,
+        bullet,
+        scoreSourceBulletImportance(bullet, input) + 2,
+        'original',
+        'strong',
+        'verbatim_resume',
+        'original_resume',
+      );
     }
   }
 
   for (const item of input.candidate.quantified_outcomes ?? []) {
     const content = `${item.outcome} ${item.value}`.replace(/\s+/g, ' ').trim();
-    pushCandidate(content, content, 6);
+    pushCandidate(
+      content,
+      content,
+      6,
+      'enhanced',
+      'strong',
+      'multi_source_synthesis',
+      'original_resume',
+    );
   }
 
   for (const item of input.candidate.hidden_accomplishments ?? []) {
-    pushCandidate(item, item, 4);
+    pushCandidate(
+      item,
+      item,
+      4,
+      'enhanced',
+      'partial',
+      'multi_source_synthesis',
+      'adjacent_resume_inference',
+    );
   }
 
   return deduped;
@@ -1075,7 +1116,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
           confidence: 'strong',
           evidence_found: bulletText,
           requirement_source: 'job_description',
-          content_origin: 'original_resume',
+          content_origin: 'verbatim_resume',
           support_origin: 'original_resume',
         });
         added += 1;
@@ -1126,7 +1167,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         confidence: 'strong',
         evidence_found: sourceBulletText,
         requirement_source: 'job_description',
-        content_origin: 'original_resume',
+        content_origin: 'verbatim_resume',
         support_origin: 'original_resume',
       };
       consumedDraftIndexes.add(match.index);
@@ -1161,7 +1202,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         confidence: 'strong',
         evidence_found: sourceBulletText,
         requirement_source: 'job_description',
-        content_origin: 'original_resume',
+        content_origin: 'verbatim_resume',
         support_origin: 'original_resume',
       };
       coverageRestored += 1;
@@ -1209,6 +1250,31 @@ function calculateTokenOverlap(leftText: string, rightText: string): number {
   const rightSet = new Set(rightTokens);
   const shared = leftTokens.filter((token) => rightSet.has(token)).length;
   return Math.max(shared / leftTokens.length, shared / rightTokens.length);
+}
+
+function calculateLongestCommonSubstringRatio(leftText: string, rightText: string): number {
+  const left = normalizeLooseText(leftText);
+  const right = normalizeLooseText(rightText);
+  if (!left || !right) return 0;
+
+  const widths = new Array(right.length + 1).fill(0);
+  let longest = 0;
+
+  for (let i = 1; i <= left.length; i += 1) {
+    let previous = 0;
+    for (let j = 1; j <= right.length; j += 1) {
+      const nextPrevious = widths[j];
+      if (left[i - 1] === right[j - 1]) {
+        widths[j] = previous + 1;
+        if (widths[j] > longest) longest = widths[j];
+      } else {
+        widths[j] = 0;
+      }
+      previous = nextPrevious;
+    }
+  }
+
+  return longest / Math.max(left.length, right.length);
 }
 
 function extractConcreteProofSignals(text: string): {
@@ -1564,24 +1630,18 @@ function deterministicRequirementMatch(
     })();
     const source: BulletSource = inferredSource;
 
-    const inferredConfidence: BulletConfidence = source === 'original'
-      ? 'strong'
-      : source === 'enhanced'
-        ? 'partial'
-        : 'needs_validation';
-
-    if (existingConfidence) {
-      const normalizedExistingConfidence = existingConfidence as BulletConfidence;
-      if (source === 'original') {
-        confidence = normalizedExistingConfidence === 'strong' ? 'strong' : inferredConfidence;
-      } else if (source === 'enhanced') {
-        confidence = normalizedExistingConfidence === 'needs_validation' ? 'needs_validation' : 'partial';
-      } else {
-        confidence = 'needs_validation';
-      }
-    } else {
-      confidence = inferredConfidence;
-    }
+    const contentOrigin = inferContentOrigin(source, {
+      originality,
+      hasRealEvidence,
+      existing: _existingContentOrigin,
+    });
+    const supportOrigin = inferSupportOrigin(source, evidenceFound, existingSupportOrigin);
+    confidence = inferConfidenceFromSupport({
+      source,
+      evidenceFound,
+      supportOrigin,
+      contentOrigin,
+    });
 
     requirementSource = existingRequirementSource
       ?? (hasMatch ? (match.hasBenchmarkSource ? 'benchmark' : 'job_description') : 'job_description');
@@ -1591,8 +1651,8 @@ function deterministicRequirementMatch(
       requirement_source: requirementSource,
       source,
       confidence,
-      content_origin: inferContentOrigin(source),
-      support_origin: inferSupportOrigin(source, evidenceFound, existingSupportOrigin),
+      content_origin: contentOrigin,
+      support_origin: supportOrigin,
     };
   };
 
@@ -1730,10 +1790,24 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     return 'job_description';
   };
 
-  const inferSource = (isNew: boolean, evidenceFound: string | undefined, addressesReqs: string[], existingSource?: string): BulletSource => {
+  const inferSource = (
+    text: string,
+    isNew: boolean,
+    evidenceFound: string | undefined,
+    addressesReqs: string[],
+    existingSource?: string,
+    existingContentOrigin?: ResumeContentOrigin,
+  ): BulletSource => {
     if (existingSource) return existingSource as BulletSource;
+    const normalizedContentOrigin = coerceContentOrigin(existingContentOrigin);
+    if (normalizedContentOrigin === 'verbatim_resume') return 'original';
+    if (normalizedContentOrigin === 'gap_closing_draft') return 'drafted';
+    if (normalizedContentOrigin === 'resume_rewrite' || normalizedContentOrigin === 'multi_source_synthesis') return 'enhanced';
     // is_new=true is a clear signal from the LLM
     if (isNew) return 'drafted';
+    const normalizedText = normalizeLooseText(text);
+    const normalizedEvidence = normalizeLooseText(evidenceFound ?? '');
+    if (normalizedText && normalizedEvidence && normalizedText === normalizedEvidence) return 'original';
     // Has evidence (non-empty string) AND addresses requirements → enhanced from original
     const hasRealEvidence = typeof evidenceFound === 'string' && evidenceFound.length > 0;
     // If bullet addresses requirements AND has substantive evidence → it was enhanced
@@ -1744,18 +1818,34 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     return 'original';
   };
 
-  const inferConfidence = (source: BulletSource, evidenceFound?: string, existingConfidence?: string): BulletConfidence => {
-    if (existingConfidence) return existingConfidence as BulletConfidence;
-    if (source === 'original') return 'strong';
-    if (source === 'enhanced') return 'partial';
-    // drafted — needs user validation
-    return 'needs_validation';
-  };
+  const inferConfidence = (
+    source: BulletSource,
+    evidenceFound: string | undefined,
+    supportOrigin?: ResumeSupportOrigin,
+    contentOrigin?: ResumeContentOrigin,
+  ): BulletConfidence => inferConfidenceFromSupport({
+    source,
+    evidenceFound: evidenceFound ?? '',
+    supportOrigin,
+    contentOrigin,
+  });
 
   const fillBullet = (bullet: ResumeBullet): ResumeBullet => {
     const reqs = bullet.addresses_requirements ?? [];
-    const source = inferSource(bullet.is_new, bullet.evidence_found, reqs, bullet.source);
-    const confidence = inferConfidence(source, bullet.evidence_found, bullet.confidence);
+    const source = inferSource(
+      bullet.text,
+      bullet.is_new,
+      bullet.evidence_found,
+      reqs,
+      bullet.source,
+      bullet.content_origin,
+    );
+    const normalizedSupportOrigin = inferSupportOrigin(source, bullet.evidence_found ?? '', bullet.support_origin);
+    const contentOrigin = bullet.content_origin ?? inferContentOrigin(source, {
+      hasRealEvidence: Boolean(bullet.evidence_found?.trim()),
+      existing: bullet.content_origin,
+    });
+    const confidence = inferConfidence(source, bullet.evidence_found, normalizedSupportOrigin, contentOrigin);
     const primaryTarget = bullet.primary_target_requirement ?? reqs[0];
     return {
       ...bullet,
@@ -1767,16 +1857,22 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       primary_target_requirement: primaryTarget,
       primary_target_source: bullet.primary_target_source ?? (primaryTarget ? (bullet.requirement_source ?? inferReqSource(reqs)) : undefined),
       target_evidence: bullet.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget) ? bullet.evidence_found ?? '' : ''),
-      content_origin: bullet.content_origin ?? inferContentOrigin(source),
-      support_origin: inferSupportOrigin(source, bullet.evidence_found ?? '', bullet.support_origin),
+      content_origin: contentOrigin,
+      support_origin: normalizedSupportOrigin,
     };
   };
 
   if (Array.isArray(draft.selected_accomplishments)) {
     draft.selected_accomplishments = draft.selected_accomplishments.map((a) => {
       const reqs = Array.isArray(a.addresses_requirements) ? a.addresses_requirements : [];
-      const source = inferSource(a.is_new, a.evidence_found, reqs, a.source);
-      const confidence = inferConfidence(source, a.evidence_found, a.confidence);
+      const contentText = typeof a.content === 'string' ? a.content : '';
+      const source = inferSource(contentText, a.is_new, a.evidence_found, reqs, a.source, a.content_origin);
+      const normalizedSupportOrigin = inferSupportOrigin(source, a.evidence_found ?? '', a.support_origin);
+      const contentOrigin = a.content_origin ?? inferContentOrigin(source, {
+        hasRealEvidence: Boolean(a.evidence_found?.trim()),
+        existing: a.content_origin,
+      });
+      const confidence = inferConfidence(source, a.evidence_found, normalizedSupportOrigin, contentOrigin);
       const primaryTarget = typeof a.primary_target_requirement === 'string' && a.primary_target_requirement.trim().length > 0
         ? a.primary_target_requirement
         : reqs[0];
@@ -1790,8 +1886,8 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         primary_target_requirement: primaryTarget,
         primary_target_source: a.primary_target_source ?? (primaryTarget ? (a.requirement_source ?? inferReqSource(reqs)) : undefined),
         target_evidence: a.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget) ? a.evidence_found ?? '' : ''),
-        content_origin: a.content_origin ?? inferContentOrigin(source),
-        support_origin: inferSupportOrigin(source, a.evidence_found ?? '', a.support_origin),
+        content_origin: contentOrigin,
+        support_origin: normalizedSupportOrigin,
       };
     });
   }
@@ -2083,7 +2179,7 @@ function buildProfessionalExperienceEntry(
         requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
         confidence: 'strong' as const,
         evidence_found: bullet,
-        content_origin: 'original_resume' as const,
+        content_origin: 'verbatim_resume' as const,
         support_origin: 'original_resume' as const,
       };
     }),
@@ -2111,12 +2207,37 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
 
 function buildExecutiveSummary(input: ResumeWriterInput): string {
   const yearsThresholdLine = buildSatisfiedYearsThresholdLine(input);
+  const strongestProofLine = buildStrongestProofSummaryLine(input);
   return [
     yearsThresholdLine,
+    strongestProofLine,
     input.narrative.why_me_concise,
     input.candidate.leadership_scope,
     input.candidate.operational_scale,
   ].filter(Boolean).join(' ').trim();
+}
+
+function buildStrongestProofSummaryLine(input: ResumeWriterInput): string {
+  const bestSourceBullet = getAuthoritativeSourceExperience(input.candidate)
+    .flatMap((experience) => experience.bullets ?? [])
+    .map((bullet) => ({
+      bullet,
+      score: scoreSourceBulletImportance(bullet, input) + (/[%$]|\b\d/.test(bullet) ? 4 : 0),
+    }))
+    .sort((left, right) => right.score - left.score)[0]?.bullet?.trim();
+
+  if (!bestSourceBullet) return '';
+
+  const summaryText = [
+    input.narrative.why_me_concise,
+    input.candidate.leadership_scope,
+    input.candidate.operational_scale,
+  ].join(' ').toLowerCase();
+  if (summaryText.includes(bestSourceBullet.toLowerCase())) {
+    return '';
+  }
+
+  return bestSourceBullet.endsWith('.') ? bestSourceBullet : `${bestSourceBullet}.`;
 }
 
 function inferRequirementSource(
@@ -2130,16 +2251,41 @@ function inferRequirementSource(
   return sources.includes('job_description') ? 'job_description' : 'benchmark';
 }
 
-function inferContentOrigin(source: BulletSource): ResumeContentOrigin {
-  switch (source) {
-    case 'enhanced':
-      return 'enhanced_from_resume';
-    case 'drafted':
-      return 'drafted_to_close_gap';
-    case 'original':
+function coerceContentOrigin(value: ResumeContentOrigin | string | undefined): ResumeContentOrigin | undefined {
+  switch (value) {
+    case 'verbatim_resume':
+    case 'resume_rewrite':
+    case 'multi_source_synthesis':
+    case 'gap_closing_draft':
+      return value;
+    case 'original_resume':
+      return 'verbatim_resume';
+    case 'enhanced_from_resume':
+      return 'resume_rewrite';
+    case 'drafted_to_close_gap':
+      return 'gap_closing_draft';
     default:
-      return 'original_resume';
+      return undefined;
   }
+}
+
+function inferContentOrigin(
+  source: BulletSource,
+  options?: {
+    originality?: 'identical' | 'similar' | 'novel';
+    hasRealEvidence?: boolean;
+    existing?: ResumeContentOrigin | string | undefined;
+  },
+): ResumeContentOrigin {
+  const existing = coerceContentOrigin(options?.existing);
+  if (source === 'drafted') return 'gap_closing_draft';
+  if (source === 'original') return 'verbatim_resume';
+  if (existing === 'multi_source_synthesis' || existing === 'resume_rewrite') {
+    return existing;
+  }
+  if (options?.originality === 'similar') return 'resume_rewrite';
+  if (options?.hasRealEvidence) return 'multi_source_synthesis';
+  return 'resume_rewrite';
 }
 
 function inferSupportOrigin(
@@ -2150,10 +2296,25 @@ function inferSupportOrigin(
   if (source === 'original') return 'original_resume';
   if (existing === 'user_confirmed_context') return existing;
   if (existing === 'original_resume') return existing;
-  if (evidenceFound.trim().length > 0) return 'original_resume';
   if (existing === 'adjacent_resume_inference' && source === 'enhanced') return existing;
+  if (evidenceFound.trim().length > 0) return 'original_resume';
   if (source === 'enhanced') return 'adjacent_resume_inference';
   return 'not_found';
+}
+
+function inferConfidenceFromSupport(options: {
+  source: BulletSource;
+  evidenceFound: string;
+  supportOrigin?: ResumeSupportOrigin;
+  contentOrigin?: ResumeContentOrigin | string;
+}): BulletConfidence {
+  const contentOrigin = coerceContentOrigin(options.contentOrigin);
+  if (options.source === 'drafted' || contentOrigin === 'gap_closing_draft') return 'needs_validation';
+  if (options.source === 'original' || contentOrigin === 'verbatim_resume') return 'strong';
+  if (options.supportOrigin === 'user_confirmed_context' || options.supportOrigin === 'original_resume') return 'strong';
+  if (options.supportOrigin === 'adjacent_resume_inference') return 'partial';
+  if (options.evidenceFound.trim().length > 0) return 'strong';
+  return 'partial';
 }
 
 function buildSelectedAccomplishments(
@@ -2161,6 +2322,12 @@ function buildSelectedAccomplishments(
   targets: ResumePriorityTarget[],
 ): ResumeDraftOutput['selected_accomplishments'] {
   const evidencePool = buildSelectedAccomplishmentEvidencePool(input);
+  const evidenceStrengthByContent = new Map(
+    evidencePool.map((candidate) => [
+      candidate.content.toLowerCase().trim(),
+      candidate.proofStrength + (candidate.hasMetric ? 4 : 0),
+    ]),
+  );
   const targetRequirements = targets.length > 0
     ? targets.map((target) => ({ requirement: target.requirement, source: target.source }))
     : input.gap_analysis.requirements
@@ -2170,24 +2337,31 @@ function buildSelectedAccomplishments(
   const selected: ResumeDraftOutput['selected_accomplishments'] = [];
 
   const pushSelectedItem = (
-    content: string,
-    evidence: string,
+    candidate: AccomplishmentEvidenceCandidate,
     primaryTarget: { requirement: string; source: RequirementSource } | null,
   ) => {
     const primaryRequirement = primaryTarget?.requirement;
+    const targetEvidence = primaryRequirement && evidenceSupportsRequirement(candidate.evidence, primaryRequirement)
+      ? candidate.evidence
+      : '';
     selected.push({
-      content,
-      is_new: false,
+      content: candidate.content,
+      is_new: candidate.contentOrigin !== 'verbatim_resume',
       addresses_requirements: primaryRequirement ? [primaryRequirement] : [],
       primary_target_requirement: primaryRequirement,
       primary_target_source: primaryTarget?.source ?? 'job_description',
-      target_evidence: primaryRequirement && evidenceSupportsRequirement(evidence, primaryRequirement) ? evidence : '',
-      source: 'original',
+      target_evidence: targetEvidence,
+      source: candidate.source,
       requirement_source: primaryTarget?.source ?? 'job_description',
-      confidence: 'strong',
-      evidence_found: evidence,
-      content_origin: 'original_resume',
-      support_origin: 'original_resume',
+      confidence: targetEvidence ? candidate.confidence : inferConfidenceFromSupport({
+        source: candidate.source,
+        evidenceFound: candidate.evidence,
+        supportOrigin: candidate.supportOrigin,
+        contentOrigin: candidate.contentOrigin,
+      }),
+      evidence_found: candidate.evidence,
+      content_origin: candidate.contentOrigin,
+      support_origin: candidate.supportOrigin,
     });
   };
 
@@ -2211,8 +2385,7 @@ function buildSelectedAccomplishments(
 
     usedEvidence.add(bestEvidence.candidate.content.toLowerCase().trim());
     pushSelectedItem(
-      bestEvidence.candidate.content,
-      bestEvidence.candidate.evidence,
+      bestEvidence.candidate,
       { requirement: target.requirement, source: target.source },
     );
   }
@@ -2226,6 +2399,7 @@ function buildSelectedAccomplishments(
           .map((candidate) => {
             const primaryTarget = resolveBestPrimaryTarget(candidate.content, targetRequirements);
             return {
+              candidate,
               content: candidate.content,
               evidence: candidate.evidence,
               primaryTarget,
@@ -2238,19 +2412,26 @@ function buildSelectedAccomplishments(
           .sort((left, right) => right.score - left.score)
           .map((candidate) => ({
             content: candidate.content,
-            is_new: false,
+            is_new: candidate.candidate.contentOrigin !== 'verbatim_resume',
             addresses_requirements: candidate.primaryTarget ? [candidate.primaryTarget.requirement] : [],
             primary_target_requirement: candidate.primaryTarget?.requirement,
             primary_target_source: candidate.primaryTarget?.source ?? 'job_description',
             target_evidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
               ? candidate.evidence
               : '',
-            source: 'original' as const,
+            source: candidate.candidate.source,
             requirement_source: candidate.primaryTarget?.source ?? 'job_description',
-            confidence: 'strong' as const,
+            confidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
+              ? candidate.candidate.confidence
+              : inferConfidenceFromSupport({
+                source: candidate.candidate.source,
+                evidenceFound: candidate.evidence,
+                supportOrigin: candidate.candidate.supportOrigin,
+                contentOrigin: candidate.candidate.contentOrigin,
+              }),
             evidence_found: candidate.evidence,
-            content_origin: 'original_resume' as const,
-            support_origin: 'original_resume' as const,
+            content_origin: candidate.candidate.contentOrigin,
+            support_origin: candidate.candidate.supportOrigin,
           })),
       ];
 
@@ -2261,10 +2442,19 @@ function buildSelectedAccomplishments(
     if (!key || seen.has(key)) continue;
     seen.add(key);
     deduped.push(item);
-    if (deduped.length >= SELECTED_ACCOMPLISHMENT_TARGET_LIMIT) break;
   }
 
-  return deduped;
+  return deduped
+    .sort((left, right) => {
+      const rightScore = evidenceStrengthByContent.get(right.content.toLowerCase().trim()) ?? 0;
+      const leftScore = evidenceStrengthByContent.get(left.content.toLowerCase().trim()) ?? 0;
+      if (rightScore !== leftScore) return rightScore - leftScore;
+
+      const rightImportance = targets.find((target) => target.requirement === right.primary_target_requirement)?.importance ?? 'nice_to_have';
+      const leftImportance = targets.find((target) => target.requirement === left.primary_target_requirement)?.importance ?? 'nice_to_have';
+      return importanceRank(leftImportance) - importanceRank(rightImportance);
+    })
+    .slice(0, SELECTED_ACCOMPLISHMENT_TARGET_LIMIT);
 }
 
 function buildProfessionalExperience(
@@ -2350,6 +2540,40 @@ function ensureSatisfiedYearsThresholdVisible(
     executive_summary: {
       ...draft.executive_summary,
       content: `${yearsThresholdLine} ${currentSummary}`.trim(),
+      is_new: true,
+    },
+  };
+}
+
+function ensureStrongestProofVisible(
+  draft: ResumeDraftOutput,
+  input: ResumeWriterInput,
+): ResumeDraftOutput {
+  const strongestProofLine = buildStrongestProofSummaryLine(input);
+  if (!strongestProofLine) return draft;
+
+  const currentSummary = draft.executive_summary?.content?.trim() ?? '';
+  if (!currentSummary) {
+    return {
+      ...draft,
+      executive_summary: {
+        content: strongestProofLine,
+        is_new: true,
+      },
+    };
+  }
+
+  const normalizedSummary = currentSummary.toLowerCase();
+  const normalizedStrongestProof = strongestProofLine.toLowerCase().replace(/\.$/, '');
+  if (normalizedSummary.includes(normalizedStrongestProof)) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    executive_summary: {
+      ...draft.executive_summary,
+      content: `${strongestProofLine} ${currentSummary}`.trim(),
       is_new: true,
     },
   };

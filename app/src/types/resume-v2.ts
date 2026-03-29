@@ -275,9 +275,10 @@ export interface NarrativeStrategy {
 
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
 export type ResumeContentOrigin =
-  | 'original_resume'
-  | 'enhanced_from_resume'
-  | 'drafted_to_close_gap';
+  | 'verbatim_resume'
+  | 'resume_rewrite'
+  | 'multi_source_synthesis'
+  | 'gap_closing_draft';
 export type ResumeSupportOrigin =
   | 'original_resume'
   | 'adjacent_resume_inference'
@@ -298,6 +299,7 @@ export interface ResumeBullet {
   primary_target_requirement?: string;
   primary_target_source?: RequirementSource;
   target_evidence?: string;
+  source?: 'original' | 'enhanced' | 'drafted';
   /** Confidence level — guaranteed by server ensureBulletMetadata() */
   confidence: BulletConfidence;
   /** The original resume text that supports this bullet */
@@ -340,6 +342,7 @@ export interface ResumeDraft {
     primary_target_requirement?: string;
     primary_target_source?: RequirementSource;
     target_evidence?: string;
+    source?: 'original' | 'enhanced' | 'drafted';
     /** Confidence level — guaranteed by server ensureBulletMetadata() */
     confidence: BulletConfidence;
     /** The original resume text that supports this bullet */

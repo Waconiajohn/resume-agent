@@ -185,6 +185,61 @@ function countDraftProfessionalBullets(draft: ResumeDraftOutput): number {
   return draft.professional_experience.reduce((sum, experience) => sum + experience.bullets.length, 0);
 }
 
+function summarizeFinalDraftMetadata(draft: ResumeDraftOutput) {
+  const lineItems = [
+    ...draft.selected_accomplishments.map((item) => ({
+      section: 'selected_accomplishments' as const,
+      company: null,
+      title: null,
+      text: item.content,
+      source: item.source,
+      confidence: item.confidence,
+      content_origin: item.content_origin ?? null,
+      support_origin: item.support_origin ?? null,
+      primary_target_requirement: item.primary_target_requirement ?? null,
+      primary_target_source: item.primary_target_source ?? null,
+      target_evidence: item.target_evidence ?? null,
+      evidence_found: item.evidence_found ?? null,
+    })),
+    ...draft.professional_experience.flatMap((experience) =>
+      experience.bullets.map((bullet) => ({
+        section: 'professional_experience' as const,
+        company: experience.company,
+        title: experience.title,
+        text: bullet.text,
+        source: bullet.source,
+        confidence: bullet.confidence,
+        content_origin: bullet.content_origin ?? null,
+        support_origin: bullet.support_origin ?? null,
+        primary_target_requirement: bullet.primary_target_requirement ?? null,
+        primary_target_source: bullet.primary_target_source ?? null,
+        target_evidence: bullet.target_evidence ?? null,
+        evidence_found: bullet.evidence_found ?? null,
+      })),
+    ),
+  ];
+
+  const provenanceCounts = {
+    verbatim_resume: lineItems.filter((item) => item.content_origin === 'verbatim_resume').length,
+    resume_rewrite: lineItems.filter((item) => item.content_origin === 'resume_rewrite').length,
+    multi_source_synthesis: lineItems.filter((item) => item.content_origin === 'multi_source_synthesis').length,
+    gap_closing_draft: lineItems.filter((item) => item.content_origin === 'gap_closing_draft').length,
+  };
+
+  const supportCounts = {
+    strong: lineItems.filter((item) => item.confidence === 'strong').length,
+    partial: lineItems.filter((item) => item.confidence === 'partial').length,
+    needs_validation: lineItems.filter((item) => item.confidence === 'needs_validation').length,
+  };
+
+  return {
+    provenance_counts: provenanceCounts,
+    support_counts: supportCounts,
+    selected_accomplishments: lineItems.filter((item) => item.section === 'selected_accomplishments'),
+    professional_experience: lineItems.filter((item) => item.section === 'professional_experience'),
+  };
+}
+
 function collectDraftProfessionalBullets(draft: ResumeDraftOutput): string[] {
   return draft.professional_experience.flatMap((experience) => experience.bullets.map((bullet) => bullet.text));
 }
@@ -575,6 +630,7 @@ async function runRealSessionQa() {
       materialJobFitRisks,
       resumeText: finalResumeText,
     });
+    const finalLineMetadata = summarizeFinalDraftMetadata(finalDraft);
 
     const artifact = {
       label,
@@ -591,6 +647,8 @@ async function runRealSessionQa() {
       final_professional_bullets: countDraftProfessionalBullets(finalDraft),
       final_resume_text_length: finalResumeText.length,
       final_resume_line_count: finalResumeText.split('\n').length,
+      final_resume_text: finalResumeText,
+      final_line_metadata: finalLineMetadata,
       proof_density: proofDensity,
       proof_density_qa: proofDensityQa,
       job_requirement_count: jobRequirements.length,
@@ -622,6 +680,10 @@ async function runRealSessionQa() {
       final_professional_bullets: countDraftProfessionalBullets(finalDraft),
       final_resume_text_length: finalResumeText.length,
       final_resume_line_count: finalResumeText.split('\n').length,
+      verbatim_resume_lines: finalLineMetadata.provenance_counts.verbatim_resume,
+      resume_rewrite_lines: finalLineMetadata.provenance_counts.resume_rewrite,
+      multi_source_synthesis_lines: finalLineMetadata.provenance_counts.multi_source_synthesis,
+      gap_closing_draft_lines: finalLineMetadata.provenance_counts.gap_closing_draft,
       source_average_bullet_chars: proofDensity.source_average_bullet_chars,
       final_average_bullet_chars: proofDensity.final_average_bullet_chars,
       professional_bullet_char_ratio: proofDensity.professional_bullet_char_ratio,

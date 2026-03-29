@@ -319,9 +319,10 @@ export interface ResumeWriterInput {
 export type BulletSource = 'original' | 'enhanced' | 'drafted';
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
 export type ResumeContentOrigin =
-  | 'original_resume'
-  | 'enhanced_from_resume'
-  | 'drafted_to_close_gap';
+  | 'verbatim_resume'
+  | 'resume_rewrite'
+  | 'multi_source_synthesis'
+  | 'gap_closing_draft';
 export type ResumeSupportOrigin =
   | 'original_resume'
   | 'adjacent_resume_inference'

@@ -127,8 +127,8 @@ export function BulletEditPopover({
   const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
   const statusTone = getProofStateTone(confidence, requirementSource);
   const nextStepHint = getProofStateNextStep(confidence, requirementSource);
-  const contentOriginLabel = getContentOriginLabel(contentOrigin, confidence);
-  const supportOriginLabel = getSupportOriginLabel(supportOrigin, hasEvidence, confidence, requirementSource);
+  const contentOriginLabel = getContentOriginLabel(contentOrigin);
+  const supportOriginLabel = getSupportOriginLabel(supportOrigin, hasEvidence, requirementSource);
 
   return (
     <div
@@ -322,22 +322,21 @@ function getProofStateNextStep(
 
 function getContentOriginLabel(
   contentOrigin: ResumeContentOrigin | undefined,
-  confidence: BulletConfidence,
 ): string {
-  if (contentOrigin === 'original_resume' || confidence === 'strong') return 'From Resume';
-  if (contentOrigin === 'enhanced_from_resume' || confidence === 'partial') return 'Rewritten From Resume';
+  if (contentOrigin === 'verbatim_resume') return 'Direct Resume Line';
+  if (contentOrigin === 'resume_rewrite') return 'Rewritten From Resume';
+  if (contentOrigin === 'multi_source_synthesis') return 'Synthesized From Resume';
   return 'Drafted To Close Gap';
 }
 
 function getSupportOriginLabel(
   supportOrigin: ResumeSupportOrigin | undefined,
   hasEvidence: boolean,
-  confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): string {
   if (supportOrigin === 'user_confirmed_context') return 'User confirmed';
-  if (supportOrigin === 'adjacent_resume_inference' || confidence === 'partial') return 'Adjacent resume proof';
+  if (supportOrigin === 'adjacent_resume_inference') return 'Adjacent resume proof';
   if (supportOrigin === 'original_resume' || hasEvidence) return 'Original resume';
-  if (requirementSource === 'benchmark' && confidence === 'needs_validation') return 'Not directly confirmed';
+  if (requirementSource === 'benchmark') return 'Not directly confirmed';
   return 'Not found yet';
 }

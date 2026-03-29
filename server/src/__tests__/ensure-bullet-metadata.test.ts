@@ -29,11 +29,16 @@ function inferSource(
 function inferConfidence(
   source: BulletSource,
   evidenceFound?: string,
+  supportOrigin?: 'original_resume' | 'adjacent_resume_inference' | 'user_confirmed_context' | 'not_found',
   existingConfidence?: string,
 ): BulletConfidence {
   if (existingConfidence) return existingConfidence as BulletConfidence;
   if (source === 'original') return 'strong';
-  if (source === 'enhanced') return 'partial';
+  if (source === 'enhanced') {
+    if (supportOrigin === 'original_resume' || supportOrigin === 'user_confirmed_context') return 'strong';
+    if (supportOrigin === 'adjacent_resume_inference') return 'partial';
+    return evidenceFound ? 'strong' : 'partial';
+  }
   return 'needs_validation';
 }
 
@@ -78,16 +83,20 @@ describe('inferSource — determines where a bullet came from', () => {
 
 describe('inferConfidence — maps source to color', () => {
   it('uses existing confidence when LLM provides it', () => {
-    expect(inferConfidence('original', '', 'needs_validation')).toBe('needs_validation');
-    expect(inferConfidence('drafted', 'evidence', 'strong')).toBe('strong');
+    expect(inferConfidence('original', '', undefined, 'needs_validation')).toBe('needs_validation');
+    expect(inferConfidence('drafted', 'evidence', undefined, 'strong')).toBe('strong');
   });
 
   it('maps original → strong (GREEN)', () => {
     expect(inferConfidence('original')).toBe('strong');
   });
 
-  it('maps enhanced → partial (AMBER)', () => {
-    expect(inferConfidence('enhanced')).toBe('partial');
+  it('maps enhanced with direct support → strong', () => {
+    expect(inferConfidence('enhanced', 'Led team of 12', 'original_resume')).toBe('strong');
+  });
+
+  it('maps enhanced with adjacent support → partial (AMBER)', () => {
+    expect(inferConfidence('enhanced', 'Led team of 12', 'adjacent_resume_inference')).toBe('partial');
   });
 
   it('maps drafted → needs_validation (RED)', () => {
@@ -130,7 +139,7 @@ describe('Color distribution — realistic LLM output scenarios', () => {
   it('scenario: LLM provides all metadata → uses LLM values', () => {
     const bullet = { is_new: false, source: 'enhanced' as const, confidence: 'partial' as const, evidence_found: 'Led team of 12', addresses_requirements: ['Team Leadership'] };
     const source = inferSource(bullet.is_new, bullet.evidence_found, bullet.addresses_requirements, bullet.source);
-    const confidence = inferConfidence(source, bullet.evidence_found, bullet.confidence);
+    const confidence = inferConfidence(source, bullet.evidence_found, 'original_resume', bullet.confidence);
     expect(source).toBe('enhanced');
     expect(confidence).toBe('partial'); // AMBER
   });

@@ -13,6 +13,7 @@ type LooseRequirementSource = RequirementSource | string | null | undefined;
 type LooseBulletConfidence = BulletConfidence | string | null | undefined;
 type LooseContentOrigin = ResumeContentOrigin | string | null | undefined;
 type LooseSupportOrigin = ResumeSupportOrigin | string | null | undefined;
+type LooseBulletSource = 'original' | 'enhanced' | 'drafted' | string | null | undefined;
 
 function normalizeRequirementSource(value: LooseRequirementSource): RequirementSource {
   return value === 'benchmark' ? 'benchmark' : 'job_description';
@@ -23,25 +24,81 @@ function inferConfidence(
   evidenceFound: string,
   addressesRequirements: string[],
   existingConfidence: LooseBulletConfidence,
+  existingContentOrigin: LooseContentOrigin,
 ): BulletConfidence {
   if (existingConfidence === 'strong' || existingConfidence === 'partial' || existingConfidence === 'needs_validation') {
     return existingConfidence;
   }
 
-  if (isNew) return 'needs_validation';
+  const normalizedOrigin = typeof existingContentOrigin === 'string' ? existingContentOrigin.trim() : '';
+  if (normalizedOrigin === 'gap_closing_draft' || normalizedOrigin === 'drafted_to_close_gap') return 'needs_validation';
+  if (normalizedOrigin === 'verbatim_resume' || normalizedOrigin === 'original_resume') return 'strong';
+  if (normalizedOrigin === 'resume_rewrite' || normalizedOrigin === 'multi_source_synthesis' || normalizedOrigin === 'enhanced_from_resume') {
+    return evidenceFound.trim().length > 0 ? 'strong' : 'partial';
+  }
+
+  if (isNew && evidenceFound.trim().length === 0) return 'needs_validation';
   if (addressesRequirements.length > 0 && evidenceFound.trim().length === 0) return 'needs_validation';
+  if (evidenceFound.trim().length > 0) return 'strong';
   if (addressesRequirements.length > 0) return 'partial';
   return 'strong';
 }
 
-function normalizeContentOrigin(value: LooseContentOrigin, confidence: BulletConfidence): ResumeContentOrigin {
-  if (value === 'original_resume' || value === 'enhanced_from_resume' || value === 'drafted_to_close_gap') {
+function normalizeBulletSource(value: LooseBulletSource): 'original' | 'enhanced' | 'drafted' | undefined {
+  if (value === 'original' || value === 'enhanced' || value === 'drafted') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeLooseText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizeContentOrigin(
+  value: LooseContentOrigin,
+  options: {
+    confidence: BulletConfidence;
+    source?: LooseBulletSource;
+    evidenceFound: string;
+    currentText: string;
+    isNew: boolean;
+  },
+): ResumeContentOrigin {
+  if (
+    value === 'verbatim_resume'
+    || value === 'resume_rewrite'
+    || value === 'multi_source_synthesis'
+    || value === 'gap_closing_draft'
+  ) {
     return value;
   }
 
-  if (confidence === 'strong') return 'original_resume';
-  if (confidence === 'partial') return 'enhanced_from_resume';
-  return 'drafted_to_close_gap';
+  if (value === 'original_resume') return 'verbatim_resume';
+  if (value === 'enhanced_from_resume') return 'resume_rewrite';
+  if (value === 'drafted_to_close_gap') return 'gap_closing_draft';
+
+  const normalizedSource = normalizeBulletSource(options.source);
+  if (normalizedSource === 'original') return 'verbatim_resume';
+  if (normalizedSource === 'drafted') return 'gap_closing_draft';
+  if (normalizedSource === 'enhanced') {
+    return options.evidenceFound.trim().length > 0 ? 'resume_rewrite' : 'multi_source_synthesis';
+  }
+
+  const normalizedText = normalizeLooseText(options.currentText);
+  const normalizedEvidence = normalizeLooseText(options.evidenceFound);
+  if (normalizedText && normalizedEvidence && normalizedText === normalizedEvidence) {
+    return 'verbatim_resume';
+  }
+
+  if (options.confidence === 'needs_validation' && options.evidenceFound.trim().length === 0) {
+    return 'gap_closing_draft';
+  }
+  if (options.evidenceFound.trim().length > 0) {
+    return options.isNew ? 'multi_source_synthesis' : 'resume_rewrite';
+  }
+  if (options.confidence === 'partial') return 'resume_rewrite';
+  return 'verbatim_resume';
 }
 
 function normalizeSupportOrigin(value: LooseSupportOrigin, evidenceFound: string, confidence: BulletConfidence): ResumeSupportOrigin {
@@ -79,6 +136,7 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
       const evidenceFound = typeof bullet?.evidence_found === 'string' ? bullet.evidence_found : '';
       const addressesRequirements = normalizeRequirements(bullet?.addresses_requirements);
       const isNew = Boolean(bullet?.is_new);
+      const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence, bullet?.content_origin);
 
       return {
         ...bullet,
@@ -96,15 +154,22 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
           : evidenceFound,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(bullet?.requirement_source),
-        confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+        source: normalizeBulletSource((bullet as { source?: LooseBulletSource })?.source),
+        confidence,
         content_origin: normalizeContentOrigin(
           bullet?.content_origin,
-          inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+          {
+            confidence,
+            source: (bullet as { source?: LooseBulletSource })?.source,
+            evidenceFound,
+            currentText: typeof bullet?.text === 'string' ? bullet.text : '',
+            isNew,
+          },
         ),
         support_origin: normalizeSupportOrigin(
           bullet?.support_origin,
           evidenceFound,
-          inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence),
+          confidence,
         ),
       };
     }),
@@ -155,6 +220,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
       const evidenceFound = typeof item?.evidence_found === 'string' ? item.evidence_found : '';
       const addressesRequirements = normalizeRequirements(item?.addresses_requirements);
       const isNew = Boolean(item?.is_new);
+      const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence, item?.content_origin);
 
       return {
         ...item,
@@ -172,15 +238,22 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
           : evidenceFound,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(item?.requirement_source),
-        confidence: inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+        source: normalizeBulletSource((item as { source?: LooseBulletSource })?.source),
+        confidence,
         content_origin: normalizeContentOrigin(
           item?.content_origin,
-          inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+          {
+            confidence,
+            source: (item as { source?: LooseBulletSource })?.source,
+            evidenceFound,
+            currentText: typeof item?.content === 'string' ? item.content : '',
+            isNew,
+          },
         ),
         support_origin: normalizeSupportOrigin(
           item?.support_origin,
           evidenceFound,
-          inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence),
+          confidence,
         ),
       };
     }),
