@@ -70,6 +70,7 @@ import { JobCommandCenterRoom } from '@/components/career-iq/JobCommandCenterRoo
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
 import { ExecutiveDocumentsRoom } from '@/components/career-iq/ExecutiveDocumentsRoom';
+import { LiveSessionsRoom } from '@/components/career-iq/LiveSessionsRoom';
 import type { WhyMeSignals } from '@/components/career-iq/useWhyMeStory';
 
 afterEach(() => {
@@ -419,5 +420,24 @@ describe('ExecutiveDocumentsRoom', () => {
   it('opens directly into case studies when case-study focus is provided', () => {
     render(<ExecutiveDocumentsRoom initialFocus="case-study" />);
     expect(screen.getByText('Case Study Workspace')).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LiveSessionsRoom
+// ---------------------------------------------------------------------------
+
+describe('LiveSessionsRoom', () => {
+  it('keeps the room focused on coach support and resources', () => {
+    render(<LiveSessionsRoom />);
+    expect(screen.getByText('Expert Guidance')).toBeInTheDocument();
+    expect(screen.getByText('Resource Library')).toBeInTheDocument();
+    expect(screen.getByText('1:1 Office Hours')).toBeInTheDocument();
+  });
+
+  it('does not surface sample schedule or sample content labels', () => {
+    render(<LiveSessionsRoom />);
+    expect(screen.queryByText(/sample schedule/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sample content/i)).not.toBeInTheDocument();
   });
 });
