@@ -34,7 +34,7 @@ interface ZoneAgentFeedProps {
 const EVENT_CONFIG: Record<RealFeedEvent['type'], { agent: string; icon: typeof FileText; room: CareerIQRoom }> = {
   session_created: { agent: 'Resume Agent', icon: FileText, room: 'resume' },
   session_completed: { agent: 'Resume Agent', icon: FileText, room: 'resume' },
-  pipeline_moved: { agent: 'Application Tracker', icon: Search, room: 'jobs' },
+  pipeline_moved: { agent: 'Job Search Agent', icon: Search, room: 'jobs' },
   interview_added: { agent: 'Interview Prep Agent', icon: Mic, room: 'interview' },
 };
 

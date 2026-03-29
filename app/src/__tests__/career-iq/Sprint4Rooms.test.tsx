@@ -189,9 +189,10 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('Daily Ops')).toBeInTheDocument();
   });
 
-  it('renders application tracker section', () => {
+  it('keeps Today focused on daily ops instead of a second tracker workflow', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Application Tracker')).toBeInTheDocument();
+    expect(screen.getByText('Daily Ops')).toBeInTheDocument();
+    expect(screen.queryByText('Application Tracker')).not.toBeInTheDocument();
   });
 });
 
