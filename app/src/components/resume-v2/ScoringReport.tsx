@@ -394,10 +394,10 @@ function CompactScoreSummaryHeader({
         <div className="min-w-0 flex-1">
           <p className="score-snapshot-kicker">Score Snapshot</p>
           <p className="mt-2 text-lg font-semibold leading-7 text-[var(--text-strong)]">
-            How this resume would read on paper right now.
+            How the tailored resume is reading right now.
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
-            Your original baseline, what improved most, and what still needs attention before export.
+            Original baseline, biggest gains, and the last items worth fixing before export.
           </p>
         </div>
         {reviewStatusLabel && (
@@ -494,7 +494,7 @@ function CompactScoreSummaryHeader({
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="score-snapshot-band score-snapshot-band--good px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#b5dec2' }}>
-            Biggest gains
+            What improved
           </p>
           <ul className="mt-3 space-y-2">
             {topGains.map((gain) => (
@@ -508,7 +508,7 @@ function CompactScoreSummaryHeader({
 
         <div className="score-snapshot-band score-snapshot-band--warn px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
-            Still worth tightening
+            Still to close
           </p>
           <ul className="mt-3 space-y-2">
             {topRisks.length > 0 ? topRisks.map((risk) => (
@@ -527,7 +527,7 @@ function CompactScoreSummaryHeader({
       </div>
 
       <div className="support-callout px-4 py-3">
-        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Next best action</p>
+        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Do this next</p>
         <p className="mt-2 text-sm font-medium leading-6 text-[var(--text-muted)]">
           {attentionNextAction
             ? attentionNextAction

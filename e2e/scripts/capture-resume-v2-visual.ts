@@ -66,7 +66,7 @@ async function main() {
 
       if (scenario.expandConcern) {
         await page.getByRole('button', { name: scenario.expandConcern }).click();
-        await page.getByText('Will revise on the resume').first().waitFor();
+        await page.getByText('Resume line to edit').first().waitFor();
       }
 
       const screenshotPath = resolve(outputDir, scenario.screenshot);

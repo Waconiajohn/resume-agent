@@ -108,6 +108,13 @@ const CONCERN_LABELS: Record<HiringManagerConcern['type'], string> = {
 
 const FALLBACK_VERDICT = VERDICT_CONFIG.needs_improvement;
 const FALLBACK_SCAN = SCAN_CONFIG.skip;
+const FINAL_REVIEW_META_ITEMS = ['Recruiter Skim', 'Manager Read', 'Benchmark Pressure', 'Fixes on Resume'] as const;
+
+function getConcernReviewButtonLabel(concern: HiringManagerConcern): string {
+  return concern.requires_candidate_input
+    ? 'Review Suggested Fix on Resume'
+    : 'Review Edit on Resume';
+}
 
 function SectionHeader({
   icon: Icon,
@@ -224,15 +231,14 @@ export function HiringManagerReviewCard({
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h3>
             <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
-              Combine a six-second recruiter scan with a deeper hiring manager critique before you export.
-              This stage tells the user what is obvious immediately, what still weakens interview odds,
+              Run one last recruiter skim and hiring-manager read before export.
+              This tells you what is obvious immediately, what still weakens interview odds,
               and which fixes are worth making now.
             </p>
             <div className="room-meta-strip mt-4 text-[13px]">
-              <div className="room-meta-item">Recruiter Scan</div>
-              <div className="room-meta-item">Hiring Manager Verdict</div>
-              <div className="room-meta-item">Benchmark Comparison</div>
-              <div className="room-meta-item">Concrete Fixes</div>
+              {FINAL_REVIEW_META_ITEMS.map((item) => (
+                <div key={item} className="room-meta-item">{item}</div>
+              ))}
             </div>
             <button
               type="button"
@@ -256,7 +262,7 @@ export function HiringManagerReviewCard({
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-strong)]">Running Final Review...</h3>
             <p className="mt-0.5 text-xs text-[var(--text-soft)]">
-              Simulating the recruiter skim and the {roleTitle} hiring manager at {companyName}
+              Checking the recruiter skim and the {roleTitle} hiring-manager read for {companyName}
             </p>
           </div>
         </div>
@@ -300,7 +306,7 @@ export function HiringManagerReviewCard({
             <h2 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h2>
           </div>
           <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
-            Job-description fit drives the verdict. Benchmark alignment shows how competitive the resume looks against stronger peers.
+            Job-description fit drives the verdict. Benchmark alignment shows where the resume still needs stronger competitive proof.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -313,8 +319,8 @@ export function HiringManagerReviewCard({
         <section>
           <SectionHeader
             icon={Search}
-            title="6-Second Recruiter Scan"
-            description={`This is the top-third skim test for ${companyName}. If the strongest signals are not obvious immediately, the candidate is at risk before the deeper review even starts.`}
+            title="Recruiter Skim"
+            description={`This is the top-third skim for ${companyName}. If the strongest signals are not obvious immediately, the resume is at risk before the deeper review even starts.`}
           />
           <div className="shell-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -373,8 +379,8 @@ export function HiringManagerReviewCard({
         <section>
           <SectionHeader
             icon={Target}
-            title="Hiring Manager Verdict"
-            description={`This is the deeper interview-readiness view for the ${roleTitle} role.`}
+            title="Hiring Manager Read"
+            description={`This is the deeper interview-readiness read for the ${roleTitle} role.`}
           />
           <div className="shell-panel p-4">
             <p className="text-sm leading-relaxed text-[var(--text-muted)]">{result.hiring_manager_verdict.summary}</p>
@@ -392,7 +398,7 @@ export function HiringManagerReviewCard({
             <SectionHeader
               icon={Trophy}
               title="Top Wins"
-              description="These are the strongest reasons to interview the candidate. If they are not prominent enough, the resume should be restructured before export."
+              description="These are the strongest reasons to interview the candidate. If they are buried, move them higher before export."
             />
             <div className="space-y-3">
               {result.top_wins.map((win, index) => (
@@ -424,7 +430,7 @@ export function HiringManagerReviewCard({
             <SectionHeader
               icon={Sparkles}
               title="Priority Fixes"
-              description="These are the issues most likely to change the interview decision. Apply fixes directly from here when the recommendation is solid."
+              description="These are the issues most likely to change the interview decision."
             />
             <div className="space-y-2">
               {result.concerns.map((concern) => {
@@ -504,7 +510,7 @@ export function HiringManagerReviewCard({
                         {resolvedTarget && (
                           <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
                             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
-                              Will revise on the resume
+                              Resume line to edit
                             </p>
                             <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
                               {resolvedTarget.section}
@@ -517,7 +523,7 @@ export function HiringManagerReviewCard({
 
                         <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
                           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
-                            Fix Strategy
+                            What to change
                           </p>
                           <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.fix_strategy}</p>
                         </div>
@@ -525,7 +531,7 @@ export function HiringManagerReviewCard({
                         {concern.suggested_resume_edit && (
                           <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
                             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
-                              Sample Language
+                              Suggested wording
                             </p>
                             <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.suggested_resume_edit}</p>
                           </div>
@@ -534,7 +540,7 @@ export function HiringManagerReviewCard({
                         {concern.clarifying_question && (
                           <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
                             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
-                              Candidate Question
+                              Question to answer
                             </p>
                             <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.clarifying_question}</p>
                           </div>
@@ -542,7 +548,7 @@ export function HiringManagerReviewCard({
 
                         {isResolved && (
                           <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-[var(--text-muted)]">
-                            This concern already has an accepted edit on the resume. If you undo that change, it will show up as unresolved again.
+                            This concern already has an accepted resume edit. If you undo that change, it will show up as unresolved again.
                           </div>
                         )}
 
@@ -571,9 +577,7 @@ export function HiringManagerReviewCard({
                               }}
                             >
                               <Wrench className="h-3 w-3" />
-                              {concern.requires_candidate_input
-                                ? 'Review Suggested Fix on Resume'
-                                : 'Review Edit on Resume'}
+                              {getConcernReviewButtonLabel(concern)}
                             </button>
                           )}
 
@@ -646,8 +650,8 @@ export function HiringManagerReviewCard({
         <section>
           <SectionHeader
             icon={CheckCircle2}
-            title="Benchmark Comparison"
-            description="Benchmark gaps should not override solid job fit, but they do show where the candidate may look less competitive against stronger peers."
+            title="Benchmark Pressure Test"
+            description="These signals do not override solid job fit, but they do show where the resume may look less competitive against stronger peers."
           />
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
@@ -695,8 +699,8 @@ export function HiringManagerReviewCard({
           <section>
             <SectionHeader
               icon={Sparkles}
-              title="Improvement Summary"
-              description="These are the highest-value moves left before export."
+              title="Last Tune-Ups"
+              description="These are the highest-value moves still worth making before export."
             />
             <TextList items={result.improvement_summary} />
           </section>
