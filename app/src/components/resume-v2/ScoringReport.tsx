@@ -397,7 +397,7 @@ function CompactScoreSummaryHeader({
             How the tailored resume is reading right now.
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
-            Original baseline, biggest gains, and the last items worth fixing before export.
+            Original baseline, what got stronger, and the last items still worth tightening before export.
           </p>
         </div>
         {reviewStatusLabel && (
@@ -466,7 +466,7 @@ function CompactScoreSummaryHeader({
             label="Tone"
             value={String(tone)}
             accent="warn"
-            detail="Executive polish"
+            detail="Voice and polish"
           />
           {coveredRequirements !== null && totalRequirements !== null ? (
             <CompactMetric
@@ -483,10 +483,10 @@ function CompactScoreSummaryHeader({
             />
           )}
           <CompactMetric
-            label={hiringManagerScan ? 'First Scan' : 'Final Review'}
+            label={hiringManagerScan ? 'Recruiter Skim' : 'Final Review'}
             value={hiringManagerScan ? String(hiringManagerScan.scan_score) : (reviewStatusLabel ?? 'Not run')}
             accent={hiringManagerScan ? (hiringManagerScan.pass ? 'good' : 'warn') : (attentionNextAction ? 'warn' : 'soft')}
-            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Recruiter skim' : 'Needs review') : 'Current status'}
+            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Fast first read' : 'Needs stronger first read') : 'Current status'}
           />
         </div>
       </div>

@@ -71,7 +71,7 @@ describe('HiringManagerReviewCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Performance metrics ownership is still too vague/i }));
 
     expect(screen.getByText('Resume line to edit')).toBeInTheDocument();
-    expect(screen.getByText('Professional Experience - Acme Manufacturing')).toBeInTheDocument();
+    expect(screen.getAllByText('Professional Experience - Acme Manufacturing')).toHaveLength(2);
     expect(screen.getByText(/Built and tracked plant performance metrics across safety, throughput, and labor efficiency/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Show on Resume/i }));
     expect(onPreviewConcernTarget).toHaveBeenCalledTimes(1);

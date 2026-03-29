@@ -116,6 +116,48 @@ function getConcernReviewButtonLabel(concern: HiringManagerConcern): string {
     : 'Review Edit on Resume';
 }
 
+function ReviewCallout({
+  title,
+  titleClassName,
+  children,
+  className,
+}: {
+  title: string;
+  titleClassName: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('support-callout final-review-callout', className)}>
+      <p className={cn('final-review-callout__title', titleClassName)}>
+        {title}
+      </p>
+      <div className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ReviewStagePill({ children }: { children: React.ReactNode }) {
+  return <span className="final-review-stage-pill">{children}</span>;
+}
+
+function ReviewMetaChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="final-review-meta-chip">
+      <span className="final-review-meta-chip__label">{label}</span>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -235,9 +277,9 @@ export function HiringManagerReviewCard({
               This tells you what is obvious immediately, what still weakens interview odds,
               and which fixes are worth making now.
             </p>
-            <div className="room-meta-strip mt-4 text-[13px]">
+            <div className="final-review-stage-strip mt-4">
               {FINAL_REVIEW_META_ITEMS.map((item) => (
-                <div key={item} className="room-meta-item">{item}</div>
+                <ReviewStagePill key={item}>{item}</ReviewStagePill>
               ))}
             </div>
             <button
@@ -331,11 +373,12 @@ export function HiringManagerReviewCard({
             </div>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
-                <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
-                  Signals Seen
-                </p>
-                <div className="mt-3 space-y-3">
+              <ReviewCallout
+                title="Signals Seen"
+                titleClassName="text-[#b5dec2]"
+                className="border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]"
+              >
+                <div className="space-y-3">
                   {result.six_second_scan.top_signals_seen.length > 0 ? (
                     result.six_second_scan.top_signals_seen.map((signal, index) => (
                       <div key={`${signal.signal}-${index}`} className="text-xs">
@@ -353,13 +396,14 @@ export function HiringManagerReviewCard({
                     <p className="text-xs text-[var(--text-soft)]">No clear strengths were surfaced in the recruiter skim.</p>
                   )}
                 </div>
-              </div>
+              </ReviewCallout>
 
-              <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
-                <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
-                  Still Missing
-                </p>
-                <div className="mt-3 space-y-3">
+              <ReviewCallout
+                title="Still Missing"
+                titleClassName="text-[#f0d99f]"
+                className="border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]"
+              >
+                <div className="space-y-3">
                   {result.six_second_scan.important_signals_missing.length > 0 ? (
                     result.six_second_scan.important_signals_missing.map((signal, index) => (
                       <div key={`${signal.signal}-${index}`} className="text-xs">
@@ -371,7 +415,7 @@ export function HiringManagerReviewCard({
                     <p className="text-xs text-[var(--text-soft)]">No major top-of-page omissions were flagged.</p>
                   )}
                 </div>
-              </div>
+              </ReviewCallout>
             </div>
           </div>
         </section>
@@ -489,70 +533,77 @@ export function HiringManagerReviewCard({
                         isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
                       )}
                     >
-                      <div className="space-y-3 border-t border-[var(--line-soft)] px-3 pb-4 pt-3">
-                        <p className="text-sm leading-relaxed text-[var(--text-soft)]">{concern.why_it_hurts}</p>
+                      <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-4 pt-3">
+                        <div className="final-review-note">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
+                            Why this matters
+                          </p>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">{concern.why_it_hurts}</p>
+                        </div>
 
                         {(concern.target_section || concern.related_requirement) && (
-                          <div className="room-meta-strip gap-2 text-[13px] text-[var(--text-soft)]">
+                          <div className="final-review-meta-strip">
                             {concern.target_section && (
-                              <span className="room-meta-item">
-                                Section: {concern.target_section}
-                              </span>
+                              <ReviewMetaChip label="Section" value={concern.target_section} />
                             )}
                             {concern.related_requirement && (
-                              <span className="room-meta-item">
-                                Requirement: {concern.related_requirement}
-                              </span>
+                              <ReviewMetaChip label="Requirement" value={concern.related_requirement} />
                             )}
                           </div>
                         )}
 
-                        {resolvedTarget && (
-                          <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
-                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
-                              Resume line to edit
-                            </p>
-                            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                              {resolvedTarget.section}
-                            </p>
-                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-                              &ldquo;{truncatePreview(resolvedTarget.text)}&rdquo;
-                            </p>
-                          </div>
-                        )}
+                        <div className="final-review-callout-grid">
+                          {resolvedTarget && (
+                            <ReviewCallout
+                              title="Resume line to edit"
+                              titleClassName="text-[#afc4ff]"
+                              className="border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04]"
+                            >
+                              <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                                {resolvedTarget.section}
+                              </p>
+                              <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+                                &ldquo;{truncatePreview(resolvedTarget.text)}&rdquo;
+                              </p>
+                            </ReviewCallout>
+                          )}
 
-                        <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
-                          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
-                            What to change
-                          </p>
-                          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.fix_strategy}</p>
+                          <ReviewCallout
+                            title="What to change"
+                            titleClassName="text-[#afc4ff]"
+                            className="border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04]"
+                          >
+                            {concern.fix_strategy}
+                          </ReviewCallout>
                         </div>
 
                         {concern.suggested_resume_edit && (
-                          <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
-                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
-                              Suggested wording
-                            </p>
-                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.suggested_resume_edit}</p>
-                          </div>
+                          <ReviewCallout
+                            title="Suggested wording"
+                            titleClassName="text-[#b5dec2]"
+                            className="border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]"
+                          >
+                            {concern.suggested_resume_edit}
+                          </ReviewCallout>
                         )}
 
                         {concern.clarifying_question && (
-                          <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
-                            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
-                              Question to answer
-                            </p>
-                            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{concern.clarifying_question}</p>
-                          </div>
+                          <ReviewCallout
+                            title="Question to answer"
+                            titleClassName="text-[#f0d99f]"
+                            className="border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]"
+                          >
+                            {concern.clarifying_question}
+                          </ReviewCallout>
                         )}
 
                         {isResolved && (
-                          <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-[var(--text-muted)]">
+                          <div className="support-callout final-review-status-note border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-[var(--text-muted)]">
                             This concern already has an accepted resume edit. If you undo that change, it will show up as unresolved again.
                           </div>
                         )}
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="final-review-actions">
                           {resolvedTarget && onPreviewConcernTarget && (
                             <button
                               type="button"
