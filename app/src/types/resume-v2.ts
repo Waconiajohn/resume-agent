@@ -274,6 +274,12 @@ export interface NarrativeStrategy {
 }
 
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+export type ResumeReviewState =
+  | 'supported'
+  | 'supported_rewrite'
+  | 'strengthen'
+  | 'confirm_fit'
+  | 'code_red';
 export type ResumeContentOrigin =
   | 'verbatim_resume'
   | 'resume_rewrite'
@@ -302,6 +308,7 @@ export interface ResumeBullet {
   source?: 'original' | 'enhanced' | 'drafted';
   /** Confidence level — guaranteed by server ensureBulletMetadata() */
   confidence: BulletConfidence;
+  review_state?: ResumeReviewState;
   /** The original resume text that supports this bullet */
   evidence_found: string;
   /** Whether this requirement came from the JD or from the benchmark profile */
@@ -345,6 +352,7 @@ export interface ResumeDraft {
     source?: 'original' | 'enhanced' | 'drafted';
     /** Confidence level — guaranteed by server ensureBulletMetadata() */
     confidence: BulletConfidence;
+    review_state?: ResumeReviewState;
     /** The original resume text that supports this bullet */
     evidence_found: string;
     /** Whether this requirement came from the JD or from the benchmark profile */

@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, CheckCircle, Check, X, TrendingUp, Target, Lightbulb, ShieldCheck } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, RequirementSource } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType, GapAnalysis, BenchmarkCandidate, NarrativeStrategy, AssemblyResult, VerificationDetail } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -137,10 +137,20 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
 }
 
 function getAttentionStatusMeta(
+  reviewState: ResumeReviewState | undefined,
   confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): { label: string; className: string; priority: number } {
-  if (confidence === 'needs_validation' && requirementSource !== 'benchmark') {
+  const resolvedReviewState = reviewState
+    ?? (confidence === 'needs_validation' && requirementSource === 'benchmark'
+      ? 'confirm_fit'
+      : confidence === 'needs_validation'
+        ? 'code_red'
+        : confidence === 'partial'
+          ? 'strengthen'
+          : 'supported');
+
+  if (resolvedReviewState === 'code_red') {
     return {
       label: 'Code Red',
       className: 'resume-attention-status resume-attention-status--code-red',
@@ -148,7 +158,7 @@ function getAttentionStatusMeta(
     };
   }
 
-  if (confidence === 'needs_validation') {
+  if (resolvedReviewState === 'confirm_fit') {
     return {
       label: 'Confirm Fit',
       className: 'resume-attention-status resume-attention-status--benchmark',
@@ -156,7 +166,7 @@ function getAttentionStatusMeta(
     };
   }
 
-  if (confidence === 'partial') {
+  if (resolvedReviewState === 'strengthen') {
     return {
       label: 'Strengthen',
       className: 'resume-attention-status resume-attention-status--partial',
@@ -179,10 +189,18 @@ function buildAttentionReviewItems(
   let order = 0;
 
   resume.selected_accomplishments.forEach((bullet, index) => {
-    if (bullet.confidence === 'strong') return;
+    const reviewState = bullet.review_state
+      ?? (bullet.confidence === 'needs_validation' && bullet.requirement_source === 'benchmark'
+        ? 'confirm_fit'
+        : bullet.confidence === 'needs_validation'
+          ? 'code_red'
+          : bullet.confidence === 'partial'
+            ? 'strengthen'
+            : 'supported');
+    if (reviewState === 'supported' || reviewState === 'supported_rewrite') return;
     const baselineText = baselineResume?.selected_accomplishments[index]?.content;
     if (baselineText && baselineText !== bullet.content) return;
-    const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
+    const status = getAttentionStatusMeta(reviewState, bullet.confidence, bullet.requirement_source);
     items.push({
       id: `selected_accomplishments-${index}`,
       section: 'selected_accomplishments',
@@ -204,11 +222,19 @@ function buildAttentionReviewItems(
   resume.professional_experience.forEach((experience, experienceIndex) => {
     const bullets = Array.isArray(experience.bullets) ? experience.bullets : [];
     bullets.forEach((bullet, bulletOffset) => {
-      if (bullet.confidence === 'strong') return;
+      const reviewState = bullet.review_state
+        ?? (bullet.confidence === 'needs_validation' && bullet.requirement_source === 'benchmark'
+          ? 'confirm_fit'
+          : bullet.confidence === 'needs_validation'
+            ? 'code_red'
+            : bullet.confidence === 'partial'
+              ? 'strengthen'
+              : 'supported');
+      if (reviewState === 'supported' || reviewState === 'supported_rewrite') return;
       const index = experienceIndex * 100 + bulletOffset;
       const baselineText = baselineResume?.professional_experience[experienceIndex]?.bullets[bulletOffset]?.text;
       if (baselineText && baselineText !== bullet.text) return;
-      const status = getAttentionStatusMeta(bullet.confidence, bullet.requirement_source);
+      const status = getAttentionStatusMeta(reviewState, bullet.confidence, bullet.requirement_source);
       items.push({
         id: `professional_experience-${index}`,
         section: 'professional_experience',

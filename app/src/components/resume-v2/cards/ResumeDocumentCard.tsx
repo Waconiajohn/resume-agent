@@ -5,6 +5,7 @@ import type {
   BulletConfidence,
   RequirementSource,
   ResumeContentOrigin,
+  ResumeReviewState,
   ResumeSupportOrigin,
 } from '@/types/resume-v2';
 import { scrollToAndHighlight } from '../useStrategyThread';
@@ -138,7 +139,7 @@ export function ResumeDocumentCard({
                   data-bullet-id={`selected_accomplishments-${i}`}
                   data-confidence={a.confidence}
                   className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
-                    getConfidenceLineClass(a.confidence, a.requirement_source)
+                    getConfidenceLineClass(a.review_state, a.confidence, a.requirement_source)
                   }`}
                   {...(hasStrategy
                     ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
@@ -148,6 +149,7 @@ export function ResumeDocumentCard({
                     <BulletLineContent
                       text={a.content}
                       confidence={a.confidence}
+                      reviewState={a.review_state}
                       requirementSource={a.requirement_source}
                       section="selected_accomplishments"
                       bulletIndex={i}
@@ -186,6 +188,7 @@ export function ResumeDocumentCard({
                       pendingEdit={pendingEdit}
                       isEditing={isEditing}
                       confidence={a.confidence}
+                      reviewState={a.review_state}
                       requirementSource={a.requirement_source}
                       evidenceFound={a.evidence_found}
                       targetEvidence={a.target_evidence}
@@ -253,7 +256,7 @@ export function ResumeDocumentCard({
                         data-bullet-id={`professional_experience-${bulletIndex}`}
                         data-confidence={bullet.confidence}
                         className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
-                          getConfidenceLineClass(bullet.confidence, bullet.requirement_source)
+                          getConfidenceLineClass(bullet.review_state, bullet.confidence, bullet.requirement_source)
                         }`}
                         {...(hasStrategy
                           ? { 'data-addresses': JSON.stringify(bulletRequirements) }
@@ -263,6 +266,7 @@ export function ResumeDocumentCard({
                           <BulletLineContent
                             text={bullet.text}
                             confidence={bullet.confidence}
+                            reviewState={bullet.review_state}
                             requirementSource={bullet.requirement_source}
                             section="professional_experience"
                             bulletIndex={bulletIndex}
@@ -300,13 +304,14 @@ export function ResumeDocumentCard({
                             requirements={bulletDisplayTargets}
                             pendingEdit={pendingEdit}
                             isEditing={isEditing}
-                      confidence={bullet.confidence}
-                      requirementSource={bullet.requirement_source}
-                      evidenceFound={bullet.evidence_found}
-                      targetEvidence={bullet.target_evidence}
-                      contentOrigin={bullet.content_origin}
-                      supportOrigin={bullet.support_origin}
-                      onRequestEdit={onRequestEdit}
+                            confidence={bullet.confidence}
+                            reviewState={bullet.review_state}
+                            requirementSource={bullet.requirement_source}
+                            evidenceFound={bullet.evidence_found}
+                            targetEvidence={bullet.target_evidence}
+                            contentOrigin={bullet.content_origin}
+                            supportOrigin={bullet.support_origin}
+                            onRequestEdit={onRequestEdit}
                             onBulletEdit={onBulletEdit}
                             onAcceptEdit={onAcceptEdit}
                             onRejectEdit={onRejectEdit}
@@ -373,6 +378,7 @@ export function ResumeDocumentCard({
 interface BulletLineContentProps {
   text: string;
   confidence: BulletConfidence;
+  reviewState?: ResumeReviewState;
   requirementSource?: RequirementSource;
   section: string;
   bulletIndex: number;
@@ -384,6 +390,7 @@ interface BulletLineContentProps {
 function BulletLineContent({
   text,
   confidence,
+  reviewState,
   requirementSource,
   section,
   bulletIndex,
@@ -391,10 +398,11 @@ function BulletLineContent({
   onToggle,
   onBulletClick,
 }: BulletLineContentProps) {
-  const statusMeta = getConfidencePill(confidence, requirementSource);
-  const sourceLabel = getConfidenceSourceLabel(confidence, requirementSource);
+  const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
+  const statusMeta = getConfidencePill(resolvedReviewState, requirementSource);
+  const sourceLabel = getConfidenceSourceLabel(resolvedReviewState, requirementSource);
   const handleActivate = () => {
-    if (confidence !== 'strong' && onBulletClick) {
+    if (!isResolvedReviewState(resolvedReviewState) && onBulletClick) {
       onBulletClick?.(text, section, bulletIndex, requirements);
       return;
     }
@@ -431,7 +439,7 @@ function BulletLineContent({
           }
         }}
         className={`resume-bullet-interactive block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none ${
-          confidence === 'strong'
+          isResolvedReviewState(resolvedReviewState)
             ? 'resume-bullet-interactive--strong font-normal text-gray-800 hover:bg-gray-50/90'
             : 'resume-bullet-interactive--flagged font-medium text-gray-900 hover:bg-slate-50/70'
         }`}
@@ -452,6 +460,7 @@ interface InlineEditPanelProps {
   pendingEdit: PendingEdit | null;
   isEditing: boolean;
   confidence: BulletConfidence;
+  reviewState?: ResumeReviewState;
   requirementSource: RequirementSource;
   evidenceFound: string;
   targetEvidence?: string;
@@ -471,6 +480,7 @@ function InlineEditPanel({
   pendingEdit,
   isEditing,
   confidence,
+  reviewState,
   requirementSource,
   evidenceFound,
   targetEvidence,
@@ -484,8 +494,9 @@ function InlineEditPanel({
   const [draftValue, setDraftValue] = useState('');
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
-  const isBenchmarkValidation = confidence === 'needs_validation' && requirementSource === 'benchmark';
-  const isCodeRed = confidence === 'needs_validation' && requirementSource !== 'benchmark';
+  const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
+  const isBenchmarkValidation = resolvedReviewState === 'confirm_fit';
+  const isCodeRed = resolvedReviewState === 'code_red';
   const displayEvidence = typeof targetEvidence === 'string' && targetEvidence.trim().length > 0
     ? targetEvidence.trim()
     : '';
@@ -586,8 +597,8 @@ function InlineEditPanel({
         ? 'Apply will replace the current line with the loaded AI draft.'
         : 'Apply will replace the current line with your working draft.'
       : 'Edit the draft or run an AI action to enable Apply to Resume.';
-  const panelIntro = getInlinePanelIntro(confidence, requirementSource);
-  const flagReason = getInlinePanelFlagReason(confidence, requirementSource);
+  const panelIntro = getInlinePanelIntro(resolvedReviewState, requirementSource);
+  const flagReason = getInlinePanelFlagReason(resolvedReviewState, requirementSource);
 
   return (
     <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
@@ -621,7 +632,7 @@ function InlineEditPanel({
               </p>
             </div>
 
-            <div className={`resume-inline-panel__status ${getInlinePanelTone(confidence, requirementSource)}`}>
+            <div className={`resume-inline-panel__status ${getInlinePanelTone(resolvedReviewState, requirementSource)}`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">
                 Why it&apos;s flagged
               </p>
@@ -932,29 +943,48 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
 
 // ─── Confidence styling helpers ──────────────────────────────────────────────
 
+function resolveReviewState(
+  reviewState: ResumeReviewState | undefined,
+  confidence: BulletConfidence,
+  requirementSource?: RequirementSource,
+): ResumeReviewState {
+  if (reviewState) return reviewState;
+  if (confidence === 'needs_validation' && requirementSource === 'benchmark') return 'confirm_fit';
+  if (confidence === 'needs_validation') return 'code_red';
+  if (confidence === 'partial') return 'strengthen';
+  return 'supported';
+}
+
+function isResolvedReviewState(reviewState: ResumeReviewState): boolean {
+  return reviewState === 'supported' || reviewState === 'supported_rewrite';
+}
+
 function getConfidenceLineClass(
+  reviewState: ResumeReviewState | undefined,
   confidence: BulletConfidence,
   requirementSource?: RequirementSource,
 ): string {
-  switch (confidence) {
-    case 'strong':
+  const resolved = resolveReviewState(reviewState, confidence, requirementSource);
+  switch (resolved) {
+    case 'supported':
+    case 'supported_rewrite':
       return 'resume-proof-line--strong';
-    case 'partial':
+    case 'strengthen':
       return 'resume-proof-line--partial';
-    case 'needs_validation':
-      return requirementSource === 'benchmark'
-        ? 'resume-proof-line--benchmark'
-        : 'resume-proof-line--code-red';
+    case 'confirm_fit':
+      return 'resume-proof-line--benchmark';
+    case 'code_red':
+      return 'resume-proof-line--code-red';
     default:
       return '';
   }
 }
 
 function getConfidencePill(
-  confidence: BulletConfidence,
+  reviewState: ResumeReviewState,
   requirementSource?: RequirementSource,
 ): { label: string; className: string } | null {
-  if (confidence === 'partial') {
+  if (reviewState === 'strengthen') {
     return {
       label: 'Strengthen',
       className:
@@ -962,7 +992,7 @@ function getConfidencePill(
     };
   }
 
-  if (confidence === 'needs_validation' && requirementSource === 'benchmark') {
+  if (reviewState === 'confirm_fit' || (reviewState === 'code_red' && requirementSource === 'benchmark')) {
     return {
       label: 'Confirm Fit',
       className:
@@ -970,7 +1000,7 @@ function getConfidencePill(
     };
   }
 
-  if (confidence === 'needs_validation') {
+  if (reviewState === 'code_red') {
     return {
       label: 'Code Red',
       className:
@@ -982,10 +1012,10 @@ function getConfidencePill(
 }
 
 function getConfidenceSourceLabel(
-  confidence: BulletConfidence,
+  reviewState: ResumeReviewState,
   requirementSource?: RequirementSource,
 ): string | null {
-  if (confidence === 'strong') return null;
+  if (isResolvedReviewState(reviewState)) return null;
   return requirementSource === 'benchmark' ? 'Benchmark Signal' : 'Job Need';
 }
 
@@ -1145,45 +1175,45 @@ function getSupportOriginLabel(
 }
 
 function getInlinePanelTone(
-  confidence: BulletConfidence,
+  reviewState: ResumeReviewState,
   requirementSource: RequirementSource,
 ): string {
-  if (confidence === 'strong') {
+  if (isResolvedReviewState(reviewState)) {
     return 'resume-inline-panel__status--supported';
   }
-  if (confidence === 'partial') {
+  if (reviewState === 'strengthen') {
     return 'resume-inline-panel__status--partial';
   }
-  if (requirementSource === 'benchmark') {
+  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
     return 'resume-inline-panel__status--benchmark';
   }
   return 'resume-inline-panel__status--code-red';
 }
 
 function getInlinePanelIntro(
-  confidence: BulletConfidence,
+  reviewState: ResumeReviewState,
   requirementSource: RequirementSource,
 ): string {
-  if (confidence === 'partial') {
+  if (reviewState === 'strengthen') {
     return 'This is part of the strongest resume we can build for this role, but the proof in this line still needs to be sharper.';
   }
-  if (requirementSource === 'benchmark') {
+  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
     return 'This is the ultimate-resume draft for this role. The line is aimed at a benchmark signal, and now we need to anchor it in background you can honestly stand behind.';
   }
   return 'This is the ultimate-resume draft for this role. The line is aimed at a real job need, and now we need to anchor it in proof you can honestly support.';
 }
 
 function getInlinePanelFlagReason(
-  confidence: BulletConfidence,
+  reviewState: ResumeReviewState,
   requirementSource: RequirementSource,
 ): string {
-  if (confidence === 'strong') {
+  if (isResolvedReviewState(reviewState)) {
     return 'The supporting proof is already present.';
   }
-  if (confidence === 'partial') {
+  if (reviewState === 'strengthen') {
     return 'The line reads as plausible, but the proof is still too thin or too generic.';
   }
-  if (requirementSource === 'benchmark') {
+  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
     return 'This may be the right kind of benchmark claim, but we still need to confirm it honestly matches your background.';
   }
   return 'We do not yet have direct resume proof for this exact claim.';

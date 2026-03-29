@@ -194,6 +194,7 @@ function summarizeFinalDraftMetadata(draft: ResumeDraftOutput) {
       text: item.content,
       source: item.source,
       confidence: item.confidence,
+      review_state: item.review_state ?? null,
       content_origin: item.content_origin ?? null,
       support_origin: item.support_origin ?? null,
       primary_target_requirement: item.primary_target_requirement ?? null,
@@ -209,6 +210,7 @@ function summarizeFinalDraftMetadata(draft: ResumeDraftOutput) {
         text: bullet.text,
         source: bullet.source,
         confidence: bullet.confidence,
+        review_state: bullet.review_state ?? null,
         content_origin: bullet.content_origin ?? null,
         support_origin: bullet.support_origin ?? null,
         primary_target_requirement: bullet.primary_target_requirement ?? null,
@@ -232,9 +234,18 @@ function summarizeFinalDraftMetadata(draft: ResumeDraftOutput) {
     needs_validation: lineItems.filter((item) => item.confidence === 'needs_validation').length,
   };
 
+  const reviewStateCounts = {
+    supported: lineItems.filter((item) => item.review_state === 'supported').length,
+    supported_rewrite: lineItems.filter((item) => item.review_state === 'supported_rewrite').length,
+    strengthen: lineItems.filter((item) => item.review_state === 'strengthen').length,
+    confirm_fit: lineItems.filter((item) => item.review_state === 'confirm_fit').length,
+    code_red: lineItems.filter((item) => item.review_state === 'code_red').length,
+  };
+
   return {
     provenance_counts: provenanceCounts,
     support_counts: supportCounts,
+    review_state_counts: reviewStateCounts,
     selected_accomplishments: lineItems.filter((item) => item.section === 'selected_accomplishments'),
     professional_experience: lineItems.filter((item) => item.section === 'professional_experience'),
   };
@@ -684,6 +695,11 @@ async function runRealSessionQa() {
       resume_rewrite_lines: finalLineMetadata.provenance_counts.resume_rewrite,
       multi_source_synthesis_lines: finalLineMetadata.provenance_counts.multi_source_synthesis,
       gap_closing_draft_lines: finalLineMetadata.provenance_counts.gap_closing_draft,
+      supported_lines: finalLineMetadata.review_state_counts.supported,
+      supported_rewrite_lines: finalLineMetadata.review_state_counts.supported_rewrite,
+      strengthen_lines: finalLineMetadata.review_state_counts.strengthen,
+      confirm_fit_lines: finalLineMetadata.review_state_counts.confirm_fit,
+      code_red_lines: finalLineMetadata.review_state_counts.code_red,
       source_average_bullet_chars: proofDensity.source_average_bullet_chars,
       final_average_bullet_chars: proofDensity.final_average_bullet_chars,
       professional_bullet_char_ratio: proofDensity.professional_bullet_char_ratio,

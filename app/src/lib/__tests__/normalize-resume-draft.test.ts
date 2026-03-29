@@ -50,8 +50,10 @@ describe('normalizeResumeDraft', () => {
     expect(normalized?.selected_accomplishments[0].evidence_found).toBe('');
     expect(normalized?.selected_accomplishments[0].requirement_source).toBe('job_description');
     expect(normalized?.selected_accomplishments[0].confidence).toBe('needs_validation');
+    expect(normalized?.selected_accomplishments[0].review_state).toBe('code_red');
     expect(normalized?.professional_experience[0].bullets[0].evidence_found).toBe('');
     expect(normalized?.professional_experience[0].bullets[0].confidence).toBe('needs_validation');
+    expect(normalized?.professional_experience[0].bullets[0].review_state).toBe('code_red');
     expect(normalized?.education).toEqual([]);
     expect(normalized?.certifications).toEqual([]);
   });
@@ -83,7 +85,40 @@ describe('normalizeResumeDraft', () => {
 
     const normalized = normalizeResumeDraft(resume);
     expect(normalized?.selected_accomplishments[0].confidence).toBe('partial');
+    expect(normalized?.selected_accomplishments[0].review_state).toBe('strengthen');
     expect(normalized?.selected_accomplishments[0].evidence_found).toBe('Improved deployment workflow and lead times');
+  });
+
+  it('derives supported_rewrite for strongly supported resume rewrites', () => {
+    const resume: ResumeDraft = {
+      header: {
+        name: 'Jane Doe',
+        phone: '555-0100',
+        email: 'jane@example.com',
+        branded_title: 'VP Engineering',
+      },
+      executive_summary: { content: 'Leader.', is_new: false },
+      core_competencies: [],
+      selected_accomplishments: [
+        {
+          content: 'Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.',
+          is_new: false,
+          addresses_requirements: ['CI/CD'],
+          confidence: 'strong',
+          evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+          requirement_source: 'job_description',
+          content_origin: 'resume_rewrite',
+          support_origin: 'original_resume',
+        },
+      ],
+      professional_experience: [],
+      education: [],
+      certifications: [],
+    };
+
+    const normalized = normalizeResumeDraft(resume);
+    expect(normalized?.selected_accomplishments[0].confidence).toBe('strong');
+    expect(normalized?.selected_accomplishments[0].review_state).toBe('supported_rewrite');
   });
 });
 

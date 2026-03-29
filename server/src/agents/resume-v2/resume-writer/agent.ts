@@ -26,6 +26,7 @@ import type {
   BulletConfidence,
   ResumePriorityTarget,
   ResumeContentOrigin,
+  ResumeReviewState,
   ResumeSupportOrigin,
 } from '../types.js';
 
@@ -380,29 +381,39 @@ export async function runResumeWriter(
     selectedAccomplishmentTargets,
   );
 
-  // Log color distribution summary
-  const colorCounts = { green: 0, amber: 0, red: 0, orange: 0 };
+  // Log review-state distribution summary
+  const reviewStateCounts = {
+    supported: 0,
+    supported_rewrite: 0,
+    strengthen: 0,
+    confirm_fit: 0,
+    code_red: 0,
+  };
   for (const a of parsed.selected_accomplishments ?? []) {
-      if (a.confidence === 'strong') colorCounts.green++;
-      else if (a.confidence === 'partial') colorCounts.amber++;
-      else if (a.requirement_source === 'benchmark') colorCounts.orange++;
-      else colorCounts.red++;
+    const reviewState = a.review_state ?? inferReviewState({
+      confidence: a.confidence,
+      requirementSource: a.requirement_source,
+      contentOrigin: a.content_origin,
+    });
+    reviewStateCounts[reviewState]++;
   }
   for (const exp of parsed.professional_experience ?? []) {
     for (const b of exp.bullets ?? []) {
-      if (b.confidence === 'strong') colorCounts.green++;
-      else if (b.confidence === 'partial') colorCounts.amber++;
-      else if (b.requirement_source === 'benchmark') colorCounts.orange++;
-      else colorCounts.red++;
+      const reviewState = b.review_state ?? inferReviewState({
+        confidence: b.confidence,
+        requirementSource: b.requirement_source,
+        contentOrigin: b.content_origin,
+      });
+      reviewStateCounts[reviewState]++;
     }
   }
-  logger.info({ colorCounts }, 'Resume Writer: deterministic color distribution');
+  logger.info({ reviewStateCounts }, 'Resume Writer: deterministic review-state distribution');
 
   // Temp debug: write to file so we can inspect
   try {
     const fs = await import('node:fs');
     const debugData = {
-      colorCounts,
+      reviewStateCounts,
       totalBullets: (parsed.selected_accomplishments?.length ?? 0) + (parsed.professional_experience ?? []).reduce((s, e) => s + (e.bullets?.length ?? 0), 0),
       positions: (parsed.professional_experience ?? []).map(e => ({
         company: e.company,
@@ -1114,6 +1125,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
           addresses_requirements: [],
           source: 'original',
           confidence: 'strong',
+          review_state: 'supported',
           evidence_found: bulletText,
           requirement_source: 'job_description',
           content_origin: 'verbatim_resume',
@@ -1165,6 +1177,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         addresses_requirements: [],
         source: 'original',
         confidence: 'strong',
+        review_state: 'supported',
         evidence_found: sourceBulletText,
         requirement_source: 'job_description',
         content_origin: 'verbatim_resume',
@@ -1200,6 +1213,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         addresses_requirements: [],
         source: 'original',
         confidence: 'strong',
+        review_state: 'supported',
         evidence_found: sourceBulletText,
         requirement_source: 'job_description',
         content_origin: 'verbatim_resume',
@@ -1605,6 +1619,7 @@ function deterministicRequirementMatch(
     requirement_source: RequirementSource;
     source: BulletSource;
     confidence: BulletConfidence;
+    review_state: ResumeReviewState;
     content_origin: ResumeContentOrigin;
     support_origin: ResumeSupportOrigin;
   } => {
@@ -1645,12 +1660,18 @@ function deterministicRequirementMatch(
 
     requirementSource = existingRequirementSource
       ?? (hasMatch ? (match.hasBenchmarkSource ? 'benchmark' : 'job_description') : 'job_description');
+    const reviewState = inferReviewState({
+      confidence,
+      requirementSource,
+      contentOrigin,
+    });
 
     return {
       addresses_requirements: effectiveRequirements,
       requirement_source: requirementSource,
       source,
       confidence,
+      review_state: reviewState,
       content_origin: contentOrigin,
       support_origin: supportOrigin,
     };
@@ -1697,6 +1718,7 @@ function deterministicRequirementMatch(
         requirement_source: primaryTarget?.source ?? result.requirement_source,
         source: result.source,
         confidence: result.confidence,
+        review_state: result.review_state,
         content_origin: result.content_origin,
         support_origin: result.support_origin,
       };
@@ -1754,6 +1776,7 @@ function deterministicRequirementMatch(
                 requirement_source: primaryTarget?.source ?? result.requirement_source,
                 source: result.source,
                 confidence: result.confidence,
+                review_state: result.review_state,
                 content_origin: result.content_origin,
                 support_origin: result.support_origin,
               };
@@ -1847,15 +1870,21 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     });
     const confidence = inferConfidence(source, bullet.evidence_found, normalizedSupportOrigin, contentOrigin);
     const primaryTarget = bullet.primary_target_requirement ?? reqs[0];
+    const requirementSource = bullet.requirement_source ?? inferReqSource(reqs);
     return {
       ...bullet,
       source,
       confidence,
+      review_state: inferReviewState({
+        confidence,
+        requirementSource,
+        contentOrigin,
+      }),
       evidence_found: bullet.evidence_found ?? '',
-      requirement_source: bullet.requirement_source ?? inferReqSource(reqs),
+      requirement_source: requirementSource,
       addresses_requirements: reqs,
       primary_target_requirement: primaryTarget,
-      primary_target_source: bullet.primary_target_source ?? (primaryTarget ? (bullet.requirement_source ?? inferReqSource(reqs)) : undefined),
+      primary_target_source: bullet.primary_target_source ?? (primaryTarget ? requirementSource : undefined),
       target_evidence: bullet.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget) ? bullet.evidence_found ?? '' : ''),
       content_origin: contentOrigin,
       support_origin: normalizedSupportOrigin,
@@ -1876,15 +1905,21 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       const primaryTarget = typeof a.primary_target_requirement === 'string' && a.primary_target_requirement.trim().length > 0
         ? a.primary_target_requirement
         : reqs[0];
+      const requirementSource = a.requirement_source ?? inferReqSource(reqs);
       return {
         ...a,
         source,
         confidence,
+        review_state: inferReviewState({
+          confidence,
+          requirementSource,
+          contentOrigin,
+        }),
         evidence_found: a.evidence_found ?? '',
-        requirement_source: a.requirement_source ?? inferReqSource(reqs),
+        requirement_source: requirementSource,
         addresses_requirements: reqs,
         primary_target_requirement: primaryTarget,
-        primary_target_source: a.primary_target_source ?? (primaryTarget ? (a.requirement_source ?? inferReqSource(reqs)) : undefined),
+        primary_target_source: a.primary_target_source ?? (primaryTarget ? requirementSource : undefined),
         target_evidence: a.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget) ? a.evidence_found ?? '' : ''),
         content_origin: contentOrigin,
         support_origin: normalizedSupportOrigin,
@@ -2178,6 +2213,7 @@ function buildProfessionalExperienceEntry(
         source: 'original' as const,
         requirement_source: inferRequirementSource(addressesRequirements, input.gap_analysis.requirements),
         confidence: 'strong' as const,
+        review_state: 'supported' as const,
         evidence_found: bullet,
         content_origin: 'verbatim_resume' as const,
         support_origin: 'original_resume' as const,
@@ -2317,6 +2353,26 @@ function inferConfidenceFromSupport(options: {
   return 'partial';
 }
 
+function inferReviewState(options: {
+  confidence: BulletConfidence;
+  requirementSource: RequirementSource;
+  contentOrigin?: ResumeContentOrigin | string;
+}): ResumeReviewState {
+  const contentOrigin = coerceContentOrigin(options.contentOrigin);
+  if (options.confidence === 'needs_validation' && options.requirementSource === 'benchmark') {
+    return 'confirm_fit';
+  }
+  if (options.confidence === 'needs_validation') {
+    return 'code_red';
+  }
+  if (options.confidence === 'partial') {
+    return 'strengthen';
+  }
+  return contentOrigin && contentOrigin !== 'verbatim_resume'
+    ? 'supported_rewrite'
+    : 'supported';
+}
+
 function buildSelectedAccomplishments(
   input: ResumeWriterInput,
   targets: ResumePriorityTarget[],
@@ -2344,19 +2400,26 @@ function buildSelectedAccomplishments(
     const targetEvidence = primaryRequirement && evidenceSupportsRequirement(candidate.evidence, primaryRequirement)
       ? candidate.evidence
       : '';
+    const confidence = targetEvidence ? candidate.confidence : inferConfidenceFromSupport({
+      source: candidate.source,
+      evidenceFound: candidate.evidence,
+      supportOrigin: candidate.supportOrigin,
+      contentOrigin: candidate.contentOrigin,
+    });
+    const requirementSource = primaryTarget?.source ?? 'job_description';
     selected.push({
       content: candidate.content,
       is_new: candidate.contentOrigin !== 'verbatim_resume',
       addresses_requirements: primaryRequirement ? [primaryRequirement] : [],
       primary_target_requirement: primaryRequirement,
-      primary_target_source: primaryTarget?.source ?? 'job_description',
+      primary_target_source: requirementSource,
       target_evidence: targetEvidence,
       source: candidate.source,
-      requirement_source: primaryTarget?.source ?? 'job_description',
-      confidence: targetEvidence ? candidate.confidence : inferConfidenceFromSupport({
-        source: candidate.source,
-        evidenceFound: candidate.evidence,
-        supportOrigin: candidate.supportOrigin,
+      requirement_source: requirementSource,
+      confidence,
+      review_state: inferReviewState({
+        confidence,
+        requirementSource,
         contentOrigin: candidate.contentOrigin,
       }),
       evidence_found: candidate.evidence,
@@ -2411,6 +2474,14 @@ function buildSelectedAccomplishments(
           .filter((candidate) => candidate.primaryTarget && candidate.score >= 30)
           .sort((left, right) => right.score - left.score)
           .map((candidate) => ({
+            confidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
+              ? candidate.candidate.confidence
+              : inferConfidenceFromSupport({
+                source: candidate.candidate.source,
+                evidenceFound: candidate.evidence,
+                supportOrigin: candidate.candidate.supportOrigin,
+                contentOrigin: candidate.candidate.contentOrigin,
+              }),
             content: candidate.content,
             is_new: candidate.candidate.contentOrigin !== 'verbatim_resume',
             addresses_requirements: candidate.primaryTarget ? [candidate.primaryTarget.requirement] : [],
@@ -2421,14 +2492,18 @@ function buildSelectedAccomplishments(
               : '',
             source: candidate.candidate.source,
             requirement_source: candidate.primaryTarget?.source ?? 'job_description',
-            confidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
-              ? candidate.candidate.confidence
-              : inferConfidenceFromSupport({
-                source: candidate.candidate.source,
-                evidenceFound: candidate.evidence,
-                supportOrigin: candidate.candidate.supportOrigin,
-                contentOrigin: candidate.candidate.contentOrigin,
-              }),
+            review_state: inferReviewState({
+              confidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
+                ? candidate.candidate.confidence
+                : inferConfidenceFromSupport({
+                  source: candidate.candidate.source,
+                  evidenceFound: candidate.evidence,
+                  supportOrigin: candidate.candidate.supportOrigin,
+                  contentOrigin: candidate.candidate.contentOrigin,
+                }),
+              requirementSource: candidate.primaryTarget?.source ?? 'job_description',
+              contentOrigin: candidate.candidate.contentOrigin,
+            }),
             evidence_found: candidate.evidence,
             content_origin: candidate.candidate.contentOrigin,
             support_origin: candidate.candidate.supportOrigin,

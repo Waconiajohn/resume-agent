@@ -318,6 +318,12 @@ export interface ResumeWriterInput {
 
 export type BulletSource = 'original' | 'enhanced' | 'drafted';
 export type BulletConfidence = 'strong' | 'partial' | 'needs_validation';
+export type ResumeReviewState =
+  | 'supported'
+  | 'supported_rewrite'
+  | 'strengthen'
+  | 'confirm_fit'
+  | 'code_red';
 export type ResumeContentOrigin =
   | 'verbatim_resume'
   | 'resume_rewrite'
@@ -356,6 +362,8 @@ export interface ResumeBullet {
   evidence_found: string;
   /** How confident we are in this bullet's accuracy — guaranteed by ensureBulletMetadata() */
   confidence: BulletConfidence;
+  /** User-facing review severity for this line */
+  review_state?: ResumeReviewState;
   /** Why this bullet exists on the tailored resume */
   content_origin?: ResumeContentOrigin;
   /** Where the current support comes from */
@@ -406,6 +414,8 @@ export interface ResumeDraftOutput {
     evidence_found: string;
     /** How confident we are in this accomplishment's accuracy — guaranteed by ensureBulletMetadata() */
     confidence: BulletConfidence;
+    /** User-facing review severity for this line */
+    review_state?: ResumeReviewState;
     /** Why this line exists on the tailored resume */
     content_origin?: ResumeContentOrigin;
     /** Where the current support comes from */

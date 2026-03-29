@@ -2369,6 +2369,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullet?.source).toBe('enhanced');
       expect(bullet?.confidence).toBe('strong');
       expect(bullet?.content_origin).toBe('resume_rewrite');
+      expect(bullet?.review_state).toBe('supported_rewrite');
     });
 
     it('restores the original proof bullet when a material rewrite loses the specific evidence', async () => {

@@ -6,6 +6,7 @@ import type {
   ResumeDraft,
   ResumeExperience,
   ResumePriorityTarget,
+  ResumeReviewState,
   ResumeSupportOrigin,
 } from '@/types/resume-v2';
 
@@ -13,6 +14,7 @@ type LooseRequirementSource = RequirementSource | string | null | undefined;
 type LooseBulletConfidence = BulletConfidence | string | null | undefined;
 type LooseContentOrigin = ResumeContentOrigin | string | null | undefined;
 type LooseSupportOrigin = ResumeSupportOrigin | string | null | undefined;
+type LooseReviewState = ResumeReviewState | string | null | undefined;
 type LooseBulletSource = 'original' | 'enhanced' | 'drafted' | string | null | undefined;
 
 function normalizeRequirementSource(value: LooseRequirementSource): RequirementSource {
@@ -49,6 +51,38 @@ function normalizeBulletSource(value: LooseBulletSource): 'original' | 'enhanced
     return value;
   }
   return undefined;
+}
+
+function normalizeReviewState(
+  value: LooseReviewState,
+  options: {
+    confidence: BulletConfidence;
+    requirementSource: RequirementSource;
+    contentOrigin?: ResumeContentOrigin;
+  },
+): ResumeReviewState {
+  if (
+    value === 'supported'
+    || value === 'supported_rewrite'
+    || value === 'strengthen'
+    || value === 'confirm_fit'
+    || value === 'code_red'
+  ) {
+    return value;
+  }
+
+  if (options.confidence === 'needs_validation' && options.requirementSource === 'benchmark') {
+    return 'confirm_fit';
+  }
+  if (options.confidence === 'needs_validation') {
+    return 'code_red';
+  }
+  if (options.confidence === 'partial') {
+    return 'strengthen';
+  }
+  return options.contentOrigin && options.contentOrigin !== 'verbatim_resume'
+    ? 'supported_rewrite'
+    : 'supported';
 }
 
 function normalizeLooseText(value: string): string {
@@ -171,6 +205,20 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
           evidenceFound,
           confidence,
         ),
+        review_state: normalizeReviewState((bullet as { review_state?: LooseReviewState })?.review_state, {
+          confidence,
+          requirementSource: normalizeRequirementSource(bullet?.requirement_source),
+          contentOrigin: normalizeContentOrigin(
+            bullet?.content_origin,
+            {
+              confidence,
+              source: (bullet as { source?: LooseBulletSource })?.source,
+              evidenceFound,
+              currentText: typeof bullet?.text === 'string' ? bullet.text : '',
+              isNew,
+            },
+          ),
+        }),
       };
     }),
   };
@@ -255,6 +303,20 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
           evidenceFound,
           confidence,
         ),
+        review_state: normalizeReviewState((item as { review_state?: LooseReviewState })?.review_state, {
+          confidence,
+          requirementSource: normalizeRequirementSource(item?.requirement_source),
+          contentOrigin: normalizeContentOrigin(
+            item?.content_origin,
+            {
+              confidence,
+              source: (item as { source?: LooseBulletSource })?.source,
+              evidenceFound,
+              currentText: typeof item?.content === 'string' ? item.content : '',
+              isNew,
+            },
+          ),
+        }),
       };
     }),
     selected_accomplishment_targets: normalizeSelectedAccomplishmentTargets(resume.selected_accomplishment_targets),
