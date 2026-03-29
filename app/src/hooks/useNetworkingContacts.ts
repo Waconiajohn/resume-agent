@@ -262,49 +262,6 @@ export function useNetworkingContacts() {
     }
   }, []);
 
-  const fetchOverdue = useCallback(async (): Promise<NetworkingContact[]> => {
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) return [];
-
-      const res = await fetch(`${API_BASE}/networking/overdue`, {
-        headers: authHeader,
-      });
-
-      if (!res.ok) return [];
-
-      const data = (await res.json()) as { contacts: NetworkingContact[]; count: number };
-      return data.contacts;
-    } catch {
-      return [];
-    }
-  }, []);
-
-  const importFromNI = useCallback(async (): Promise<{ imported: number; skipped: number; message: string } | null> => {
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) return null;
-
-      const res = await fetch(`${API_BASE}/networking/ni-import`, {
-        method: 'POST',
-        headers: authHeader,
-      });
-
-      if (!res.ok) return null;
-
-      const data = (await res.json()) as { imported: number; skipped: number; message: string };
-
-      // Refresh contacts list after import
-      if (mountedRef.current && data.imported > 0) {
-        await fetchContacts();
-      }
-
-      return data;
-    } catch {
-      return null;
-    }
-  }, [fetchContacts]);
-
   const fetchTouchpoints = useCallback(async (contactId: string): Promise<Touchpoint[]> => {
     try {
       const authHeader = await getAuthHeader();
@@ -331,8 +288,6 @@ export function useNetworkingContacts() {
     deleteContact,
     logTouchpoint,
     fetchFollowUps,
-    fetchOverdue,
     fetchTouchpoints,
-    importFromNI,
   };
 }

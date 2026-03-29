@@ -21,7 +21,6 @@ import {
   Plus,
   Zap,
   Minus,
-  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -951,10 +950,6 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
   const [followUps, setFollowUps] = useState<NetworkingContact[]>([]);
   const [contactsError, setContactsError] = useState<string | null>(null);
 
-  // NH1-3: NI import state
-  const [niImporting, setNiImporting] = useState(false);
-  const [niImportMessage, setNiImportMessage] = useState<string | null>(null);
-
   // Story 62-1: prefill state for outreach generator + expose messages for GeneratedMessages
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(initialPrefill ?? null);
   const [outreachState, setOutreachState] = useState<ReturnType<typeof useNetworkingOutreach> | null>(null);
@@ -1065,22 +1060,6 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
     [networkingContacts.updateContact],
   );
 
-  // NH1-3: Import contacts from Network Intelligence
-  const handleNIImport = useCallback(async () => {
-    setNiImporting(true);
-    setNiImportMessage(null);
-    try {
-      const result = await networkingContacts.importFromNI();
-      if (result) {
-        setNiImportMessage(result.message);
-      } else {
-        setNiImportMessage('Import failed. Please try again.');
-      }
-    } finally {
-      setNiImporting(false);
-    }
-  }, [networkingContacts.importFromNI]);
-
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-3">
@@ -1096,42 +1075,12 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
           />
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleNIImport}
-            disabled={niImporting}
-            aria-label="Import from Network Intelligence"
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {niImporting ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <Download size={13} />
-            )}
-            {niImporting ? 'Importing...' : 'Import from NI'}
-          </button>
           <GlassButton onClick={handleAddGenericContact}>
             <Plus size={14} />
             Add Contact
           </GlassButton>
         </div>
       </div>
-
-      {/* NI import result message */}
-      {niImportMessage && (
-        <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-4 py-2.5">
-          <Check size={13} className="text-[#b5dec2] flex-shrink-0" />
-          <span className="text-[12px] text-[#b5dec2]/80 flex-1">{niImportMessage}</span>
-          <button
-            type="button"
-            onClick={() => setNiImportMessage(null)}
-            className="text-[#b5dec2]/40 hover:text-[#b5dec2]/70 transition-colors text-[13px]"
-            aria-label="Dismiss"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* Contacts load error */}
       {contactsError && (
