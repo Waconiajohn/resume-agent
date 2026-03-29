@@ -959,6 +959,10 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(initialPrefill ?? null);
   const [outreachState, setOutreachState] = useState<ReturnType<typeof useNetworkingOutreach> | null>(null);
 
+  useEffect(() => {
+    setOutreachPrefill(initialPrefill ?? null);
+  }, [initialPrefill]);
+
   const handleGenerateMessage = useCallback((prefill: OutreachPrefill) => {
     setOutreachPrefill(prefill);
     // Scroll to generator section

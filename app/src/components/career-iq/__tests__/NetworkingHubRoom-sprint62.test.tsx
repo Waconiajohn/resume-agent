@@ -311,6 +311,32 @@ describe('NetworkingHubRoom — completed outreach uses the dedicated results ca
   });
 });
 
+describe('NetworkingHubRoom — outreach prefill sync', () => {
+  it('updates the outreach form when initialPrefill changes after mount', async () => {
+    const { rerender } = render(
+      <NetworkingHubRoom
+        initialPrefill={{ name: 'Jordan Lee', title: 'VP Sales', company: 'Acme Corp' }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText('Target name *')).toHaveValue('Jordan Lee');
+    expect(screen.getByPlaceholderText('Target title *')).toHaveValue('VP Sales');
+    expect(screen.getByPlaceholderText('Target company *')).toHaveValue('Acme Corp');
+
+    rerender(
+      <NetworkingHubRoom
+        initialPrefill={{ name: 'Riley Chen', title: 'COO', company: 'Northstar Labs' }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Target name *')).toHaveValue('Riley Chen');
+    });
+    expect(screen.getByPlaceholderText('Target title *')).toHaveValue('COO');
+    expect(screen.getByPlaceholderText('Target company *')).toHaveValue('Northstar Labs');
+  });
+});
+
 // ─── RuleOfFourSection — empty state ─────────────────────────────────────────
 
 describe('RuleOfFourSection — empty state (no application groups)', () => {

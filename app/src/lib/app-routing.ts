@@ -86,7 +86,7 @@ export function resolveNavigationTarget(viewName: string): string {
   if (viewName.startsWith('/workspace')) return viewName;
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace';
   if (viewName === 'cover-letter' || viewName === '/cover-letter') return buildResumeWorkspaceRoute('cover-letter');
-  if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') return buildWorkspaceRoute();
+  if (viewName === 'workspace' || viewName === '/workspace') return buildWorkspaceRoute();
   if (viewName.startsWith('/')) return viewName;
 
   const pathByView: Record<string, string> = {

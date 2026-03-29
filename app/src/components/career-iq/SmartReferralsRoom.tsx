@@ -12,9 +12,9 @@ import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHub
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Upload, Users, Target, ScanLine, UserCircle, Send, Handshake, Briefcase, Coins } from 'lucide-react';
+import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
-type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts' | 'outreach';
+type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts';
 
 interface TabDef {
   id: SmartReferralsTab;
@@ -31,12 +31,11 @@ const TABS: TabDef[] = [
   { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
   { id: 'bonus-search', label: 'Bonus Search', icon: Coins, description: 'Search high-referral-bonus companies even without a connection' },
   { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
-  { id: 'contacts', label: 'Contacts', icon: UserCircle, description: 'CRM & Rule of Four' },
-  { id: 'outreach', label: 'Outreach', icon: Send, description: 'AI outreach sequences' },
+  { id: 'contacts', label: 'Contacts & Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and AI outreach' },
 ];
 
 // Tabs accessible without connections
-const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'bonus-search', 'referrals', 'contacts', 'outreach'];
+const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'bonus-search', 'referrals', 'contacts'];
 
 interface OutreachPrefill {
   name: string;
@@ -81,7 +80,7 @@ export function SmartReferralsRoom() {
 
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
     setOutreachPrefill(prefill);
-    setActiveTab('outreach');
+    setActiveTab('contacts');
   }, []);
 
   const isTabLocked = (tabId: SmartReferralsTab) =>
@@ -129,8 +128,6 @@ export function SmartReferralsRoom() {
       case 'referrals':
         return <ReferralOpportunitiesPanel onGenerateOutreach={handleGenerateOutreach} />;
       case 'contacts':
-        return <NetworkingHubRoom />;
-      case 'outreach':
         return <NetworkingHubRoom initialPrefill={outreachPrefill ?? undefined} />;
       default:
         return null;
@@ -146,7 +143,7 @@ export function SmartReferralsRoom() {
       <div>
         <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
         <p className="text-sm text-[var(--text-soft)] mt-1">
-          Import connections, find jobs at their companies, scan high-bonus companies separately, and generate targeted outreach
+          Import connections, find jobs at their companies, scan high-bonus companies separately, and run contact plus outreach work from one place
         </p>
       </div>
 
