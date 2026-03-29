@@ -6,6 +6,7 @@ import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
+import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
@@ -97,22 +98,22 @@ export function ResumeWorkshopRoom({
 
   const openTools = () => {
     setActiveTab('tools');
-    onNavigate?.('/workspace?room=resume');
+    onNavigate?.(buildResumeWorkspaceRoute());
   };
 
   const openJobWorkspaces = () => {
     setActiveTab('sessions');
-    onNavigate?.('/workspace?room=resume&focus=job-workspaces');
+    onNavigate?.(buildResumeWorkspaceRoute('job-workspaces'));
   };
 
   const openMasterResume = () => {
     setActiveTab('master_resume');
-    onNavigate?.('/workspace?room=resume&focus=master-resume');
+    onNavigate?.(buildResumeWorkspaceRoute('master-resume'));
   };
 
   const openCoverLetter = () => {
     setActiveTab('cover_letter');
-    onNavigate?.('/workspace?room=resume&focus=cover-letter');
+    onNavigate?.(buildResumeWorkspaceRoute('cover-letter'));
   };
 
   return (
@@ -242,7 +243,7 @@ export function ResumeWorkshopRoom({
             onNavigate={onNavigate ?? (() => undefined)}
             onGetDefaultResume={onGetDefaultResume}
             embedded
-            backTarget="/workspace?room=resume"
+            backTarget={buildResumeWorkspaceRoute()}
             backLabel="Back to Resume Tools"
           />
         </div>

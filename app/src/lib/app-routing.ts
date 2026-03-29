@@ -10,10 +10,41 @@ export type AppView =
   | 'cover-letter'
   | 'admin';
 
+export const RESUME_BUILDER_SESSION_ROUTE = '/resume-builder/session';
+
+export function buildWorkspaceRoute(
+  room?: string | null,
+  params?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const search = new URLSearchParams();
+
+  if (room && room !== 'dashboard') {
+    search.set('room', room);
+  }
+
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, String(value));
+  }
+
+  const query = search.toString();
+  return query ? `/workspace?${query}` : '/workspace';
+}
+
+export function buildResumeWorkspaceRoute(
+  focus?: string,
+  params?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  return buildWorkspaceRoute('resume', {
+    ...(focus ? { focus } : {}),
+    ...(params ?? {}),
+  });
+}
+
 export function getAppView(pathname: string): AppView {
   if (pathname === '/' || pathname === '/sales') return 'sales';
   if (pathname === '/coach') return 'coach';
-  if (pathname === '/resume-builder/session') return 'resume-v2';
+  if (pathname === RESUME_BUILDER_SESSION_ROUTE) return 'resume-v2';
   if (pathname === '/pricing') return 'pricing';
   if (pathname === '/billing') return 'billing';
   if (pathname === '/affiliate') return 'affiliate';
@@ -37,7 +68,7 @@ export function getLegacyWorkspaceRedirect(search: string): string {
   const normalized = getNormalizedWorkspaceRedirect(search);
   if (normalized) return normalized;
   const room = getWorkspaceRoomFromSearch(search);
-  return room ? `/workspace?room=${room}` : '/workspace';
+  return buildWorkspaceRoute(room);
 }
 
 export function getNormalizedWorkspaceRedirect(search: string): string | null {
@@ -50,28 +81,28 @@ export function getNormalizedWorkspaceRedirect(search: string): string | null {
     case 'salary-negotiation':
       params.set('room', 'interview');
       if (!params.get('focus')) params.set('focus', 'negotiation');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'personal-brand':
       params.set('room', 'career-profile');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'thank-you-note':
       params.set('room', 'interview');
       if (!params.get('focus')) params.set('focus', 'thank-you');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'ninety-day-plan':
       params.set('room', 'interview');
       if (!params.get('focus')) params.set('focus', 'plan');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'content-calendar':
       params.set('room', 'linkedin');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'case-study':
       params.set('room', 'executive-bio');
       if (!params.get('focus')) params.set('focus', 'case-study');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     case 'network-intelligence':
       params.set('room', 'networking');
-      return `/workspace?${params.toString()}`;
+      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
     default:
       return null;
   }
@@ -80,21 +111,21 @@ export function getNormalizedWorkspaceRedirect(search: string): string | null {
 export function getLegacyToolRedirect(slug?: string): string {
   switch (slug) {
     case 'onboarding':
-      return '/workspace?room=career-profile';
+      return buildWorkspaceRoute('career-profile');
     case 'resume':
-      return '/workspace?room=resume';
+      return buildResumeWorkspaceRoute();
     case 'cover-letter':
-      return '/workspace?room=resume&focus=cover-letter';
+      return buildResumeWorkspaceRoute('cover-letter');
     case 'linkedin':
-      return '/workspace?room=linkedin';
+      return buildWorkspaceRoute('linkedin');
     case 'jobs':
-      return '/workspace?room=jobs';
+      return buildWorkspaceRoute('jobs');
     case 'interview':
-      return '/workspace?room=interview';
+      return buildWorkspaceRoute('interview');
     case 'salary-negotiation':
-      return '/workspace?room=interview&focus=negotiation';
+      return buildWorkspaceRoute('interview', { focus: 'negotiation' });
     default:
-      return '/workspace';
+      return buildWorkspaceRoute();
   }
 }
 
@@ -103,19 +134,19 @@ export function resolveNavigationTarget(viewName: string): string {
   if (viewName === '/tools' || viewName === 'tools') return '/workspace';
   if (viewName.startsWith('/workspace')) return viewName;
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace';
-  if (viewName === 'cover-letter' || viewName === '/cover-letter') return '/workspace?room=resume&focus=cover-letter';
-  if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') return '/workspace';
+  if (viewName === 'cover-letter' || viewName === '/cover-letter') return buildResumeWorkspaceRoute('cover-letter');
+  if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') return buildWorkspaceRoute();
   if (viewName.startsWith('/')) return viewName;
 
   const pathByView: Record<string, string> = {
-    workspace: '/workspace',
+    workspace: buildWorkspaceRoute(),
     coach: '/coach',
-    'resume-v2': '/resume-builder/session',
+    'resume-v2': RESUME_BUILDER_SESSION_ROUTE,
     pricing: '/pricing',
     billing: '/billing',
     affiliate: '/affiliate',
     admin: '/admin',
   };
 
-  return pathByView[viewName] ?? '/workspace';
+  return pathByView[viewName] ?? buildWorkspaceRoute();
 }

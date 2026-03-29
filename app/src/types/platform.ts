@@ -1,3 +1,5 @@
+import { buildResumeWorkspaceRoute, buildWorkspaceRoute } from '@/lib/app-routing';
+
 export type ProductStatus = 'active' | 'coming_soon' | 'beta';
 
 export type ProductCategory =
@@ -40,7 +42,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
     icon: '🎯',
     status: 'active',
-    route: '/workspace?room=career-profile',
+    route: buildWorkspaceRoute('career-profile'),
     category: 'career',
     features: [
       {
@@ -75,7 +77,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Three AI agents collaborate to transform your resume into a strategic positioning document. The Strategist researches your market and identifies competitive advantages. The Craftsman writes each section with your authentic voice. The Producer ensures ATS compliance across 5 major systems.',
     icon: '\u{1F4C4}',
     status: 'active',
-    route: '/workspace?room=resume',
+    route: buildResumeWorkspaceRoute(),
     category: 'career',
     features: [
       {
@@ -110,7 +112,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a tailored cover letter that reinforces your resume positioning. Leverages your existing strategy, evidence, and career narrative so you never start from scratch.',
     icon: '\u2709\uFE0F',
     status: 'active',
-    route: '/workspace?room=resume&focus=cover-letter',
+    route: buildResumeWorkspaceRoute('cover-letter'),
     category: 'writing',
     features: [
       {
@@ -147,7 +149,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Your complete LinkedIn command center. Optimize your headline, summary, and experience sections for recruiter visibility. Generate thought-leadership posts from your real expertise. Plan a 30-day content calendar aligned to your positioning strategy.',
     icon: '\u{1F4BC}',
     status: 'active',
-    route: '/workspace?room=linkedin',
+    route: buildWorkspaceRoute('linkedin'),
     category: 'career',
     features: [
       {
@@ -182,7 +184,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generate polished executive biographies for speaking engagements, board profiles, and media kits — plus structured case studies that turn your biggest career wins into publication-ready narratives with quantified outcomes.',
     icon: '\u{1F4DD}',
     status: 'active',
-    route: '/workspace?room=executive-bio',
+    route: buildWorkspaceRoute('executive-bio'),
     category: 'writing',
     features: [
       {
@@ -219,7 +221,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, monitor your search velocity, and get coaching nudges to keep momentum.',
     icon: '\u{1F50D}',
     status: 'active',
-    route: '/workspace?room=jobs',
+    route: buildWorkspaceRoute('jobs'),
     category: 'career',
     features: [
       {
@@ -254,7 +256,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Upload your LinkedIn connections and we map open positions to companies where you have existing contacts. Surface referral bonus opportunities, generate personalized outreach sequences, and track your networking across every target company.',
     icon: '\u{1F310}',
     status: 'active',
-    route: '/workspace?room=networking',
+    route: buildWorkspaceRoute('networking'),
     category: 'networking',
     features: [
       {
@@ -327,7 +329,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Your complete interview command center. Prepare with JD-driven question banks, practice in realistic mock interviews with AI feedback, debrief immediately after real interviews, and generate personalized thank-you notes — all in one place.',
     icon: '\u{1F3AF}',
     status: 'active',
-    route: '/workspace?room=interview',
+    route: buildWorkspaceRoute('interview'),
     category: 'interview',
     features: [
       {
@@ -362,7 +364,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts, leverage points, and compensation tradeoff guidance so you walk in fully prepared.',
     icon: '\u{1F4B0}',
     status: 'active',
-    route: '/workspace?room=interview&focus=negotiation',
+    route: buildWorkspaceRoute('interview', { focus: 'negotiation' }),
     category: 'planning',
     features: [
       {
@@ -397,7 +399,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'A seven-dimension retirement readiness assessment that evaluates your financial, health, social, and psychological preparedness. Provides fiduciary-grade guidance and matches you with qualified financial planners for a warm, documented handoff.',
     icon: '🏦',
     status: 'active',
-    route: '/workspace?room=financial',
+    route: buildWorkspaceRoute('financial'),
     category: 'financial',
     features: [
       {

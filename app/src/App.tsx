@@ -22,11 +22,14 @@ import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import {
+  buildResumeWorkspaceRoute,
+  buildWorkspaceRoute,
   getAppView,
   getLegacyToolRedirect,
   getNormalizedWorkspaceRedirect,
   getLegacyWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
+  RESUME_BUILDER_SESSION_ROUTE,
   resolveNavigationTarget,
 } from '@/lib/app-routing';
 import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
@@ -163,7 +166,7 @@ export default function App() {
     if (location.pathname !== '/coach') return;
     if (currentSession?.product_type !== 'resume_v2') return;
     setV2SessionId(currentSession.id);
-    navigate('/resume-builder/session', { replace: true });
+    navigate(RESUME_BUILDER_SESSION_ROUTE, { replace: true });
   }, [currentSession, location.pathname, navigate]);
 
   const navigateTo = useCallback((target: string) => {
@@ -175,7 +178,7 @@ export default function App() {
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
     trackProductEvent('resume_builder_session_started', { source: 'workspace_resume_builder' });
-    navigate('/resume-builder/session');
+    navigate(RESUME_BUILDER_SESSION_ROUTE);
     void listResumes();
     const defaultResume = await getDefaultResume();
     if (defaultResume?.raw_text?.trim()) {
@@ -189,14 +192,14 @@ export default function App() {
       const targetSession = sessions.find((session) => session.id === sessionId);
       if (targetSession?.product_type === 'resume_v2') {
         setV2SessionId(sessionId);
-        navigate('/resume-builder/session');
+        navigate(RESUME_BUILDER_SESSION_ROUTE);
         return;
       }
 
       const loadedSession = await loadSession(sessionId);
       if (loadedSession?.product_type === 'resume_v2') {
         setV2SessionId(sessionId);
-        navigate('/resume-builder/session');
+        navigate(RESUME_BUILDER_SESSION_ROUTE);
         return;
       }
 
@@ -209,7 +212,7 @@ export default function App() {
     async (sessionId: string) => {
       const ok = await deleteSession(sessionId);
       if (ok && currentSession?.id === sessionId) {
-        navigate('/workspace?room=resume');
+        navigate(buildResumeWorkspaceRoute());
       }
       return ok;
     },
@@ -560,13 +563,13 @@ export default function App() {
                   <Navigate to="/workspace?room=resume" replace />
                 )}
               />
-              <Route path="/resume-builder" element={<Navigate to="/workspace?room=resume" replace />} />
+              <Route path="/resume-builder" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
               <Route
-                path="/resume-builder/session"
+                path={RESUME_BUILDER_SESSION_ROUTE}
                 element={(
                   <V2ResumeScreen
                     accessToken={accessToken}
-                    onBack={() => navigate('/workspace?room=resume')}
+                    onBack={() => navigate(buildResumeWorkspaceRoute())}
                     initialResumeText={intakeInitialResumeText}
                     initialSessionId={v2SessionId ?? undefined}
                     onSyncToMasterResume={handleSyncV2ResumeToMaster}
@@ -603,7 +606,7 @@ export default function App() {
               />
               <Route
                 path="/cover-letter"
-                element={<Navigate to="/workspace?room=resume&focus=cover-letter" replace />}
+                element={<Navigate to={buildResumeWorkspaceRoute('cover-letter')} replace />}
               />
               <Route
                 path="/workspace"

@@ -23,6 +23,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobTracker, type ApplicationInputItem } from '@/hooks/useJobTracker';
 import { useJobFinder, type RankedMatch, type BooleanSearch } from '@/hooks/useJobFinder';
@@ -254,7 +255,7 @@ function SmartMatches({
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => onNavigate('/resume-builder/session')}
+                  onClick={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   <FileText size={11} />

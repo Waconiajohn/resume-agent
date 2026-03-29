@@ -1,5 +1,6 @@
 import { Navigate, useParams } from 'react-router-dom';
 import { JobWorkspaceScreen } from '@/components/career-iq/JobWorkspaceScreen';
+import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import type { FinalResume } from '@/types/resume';
 import type { CoachSession } from '@/types/session';
 
@@ -25,7 +26,7 @@ export function JobWorkspaceRoute({
   const { jobId = '' } = useParams();
 
   if (!jobId) {
-    return <Navigate to="/resume-builder/session" replace />;
+    return <Navigate to={RESUME_BUILDER_SESSION_ROUTE} replace />;
   }
 
   return (

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildResumeWorkspaceRoute,
+  buildWorkspaceRoute,
   getAppView,
   getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
@@ -23,6 +25,16 @@ describe('app-routing', () => {
     expect(getToolSlugFromPath('/tools')).toBeUndefined();
     expect(getWorkspaceRoomFromSearch('?room=resume')).toBe('resume');
     expect(getWorkspaceRoomFromSearch('')).toBeUndefined();
+  });
+
+  it('builds workspace routes from one shared helper', () => {
+    expect(buildWorkspaceRoute()).toBe('/workspace');
+    expect(buildWorkspaceRoute('dashboard')).toBe('/workspace');
+    expect(buildWorkspaceRoute('interview', { focus: 'negotiation', job: 'abc123' })).toBe(
+      '/workspace?room=interview&focus=negotiation&job=abc123',
+    );
+    expect(buildResumeWorkspaceRoute()).toBe('/workspace?room=resume');
+    expect(buildResumeWorkspaceRoute('cover-letter')).toBe('/workspace?room=resume&focus=cover-letter');
   });
 
   it('normalizes legacy redirects and navigation targets', () => {
