@@ -146,41 +146,25 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
   });
 
-  it('renders boolean search builder section', () => {
+  it('keeps Discover focused on radar and smart matches', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Advanced search')).toBeInTheDocument();
+    expect(screen.getByText('Radar Search')).toBeInTheDocument();
+    expect(screen.getByText('Smart Matches')).toBeInTheDocument();
+  });
+
+  it('does not surface the removed advanced-search controls in Discover', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(getJobTabButton(/^Discover$/i));
+    expect(screen.queryByText('Advanced search')).not.toBeInTheDocument();
     expect(screen.queryByText('Search Strings')).not.toBeInTheDocument();
-  });
-
-  it('renders "Generate Searches" after opening search tools', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    fireEvent.click(screen.getByRole('button', { name: /Open advanced search/i }));
-    expect(screen.getByText('Generate Searches')).toBeInTheDocument();
-  });
-
-  it('shows collapsed search tools by default in Discover', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Advanced search')).toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
 
-  it('falls back to default search preferences when saved preferences are malformed', () => {
-    localStorageMock.getItem.mockImplementation((key: string) => (
-      key === 'careeriq_search_prefs'
-        ? JSON.stringify({ titles: 123, locations: null, salaryMin: [], remote: 'spaceship' })
-        : ''
-    ));
-
+  it('keeps the live job-finder action in Discover', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Discover$/i));
-    fireEvent.click(screen.getByRole('button', { name: /Open advanced search/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Open filters/i }));
-
-    expect(screen.getByDisplayValue('VP Operations, Director Supply Chain, COO')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Remote, Chicago, Minneapolis')).toBeInTheDocument();
+    expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
   });
 
   it('renders application pipeline kanban board', () => {

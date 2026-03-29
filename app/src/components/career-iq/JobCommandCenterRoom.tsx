@@ -9,7 +9,6 @@ import {
   Copy,
   Check,
   FileText,
-  Settings2,
   Loader2,
   AlertCircle,
   RotateCcw,
@@ -26,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobTracker, type ApplicationInputItem } from '@/hooks/useJobTracker';
-import { useJobFinder, type RankedMatch, type BooleanSearch } from '@/hooks/useJobFinder';
+import { useJobFinder, type RankedMatch } from '@/hooks/useJobFinder';
 import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
@@ -270,184 +269,7 @@ function SmartMatches({
   );
 }
 
-// --- BooleanSearchBuilder ---
-
-function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearch[]; onGenerate: () => void }) {
-  const [copied, setCopied] = useState<number | null>(null);
-
-  const handleCopy = (text: string, index: number) => {
-    navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(index);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Search size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Strings</h3>
-      </div>
-      <p className="text-[12px] text-[var(--text-soft)] mb-4">
-        AI-generated search strings for the sites you use when the main discovery view is not enough.
-      </p>
-
-      {searches.length === 0 ? (
-        <GlassButton onClick={onGenerate} className="w-full">
-          <Search size={14} /> Generate Searches
-        </GlassButton>
-      ) : (
-        <div className="space-y-3">
-          {searches.map((search, i) => (
-            <div key={i} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-semibold text-[var(--text-soft)]">{search.platform}</span>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(search.query, i)}
-                  className="flex items-center gap-1 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-                >
-                  {copied === i ? (
-                    <>
-                      <Check size={11} className="text-[#b5dec2]" /> Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={11} /> Copy
-                    </>
-                  )}
-                </button>
-              </div>
-              <code className="text-[13px] text-[var(--text-soft)] leading-relaxed block break-all font-mono">
-                {search.query}
-              </code>
-            </div>
-          ))}
-        </div>
-      )}
-    </GlassCard>
-  );
-}
-
 // DailyOps is now rendered via DailyOpsSection (imported above)
-
-// --- SearchPreferences (unchanged, local state only) ---
-
-interface SearchPrefs {
-  titles: string;
-  locations: string;
-  salaryMin: string;
-  remote: 'any' | 'remote' | 'hybrid' | 'onsite';
-}
-
-const DEFAULT_SEARCH_PREFS: SearchPrefs = {
-  titles: 'VP Operations, Director Supply Chain, COO',
-  locations: 'Remote, Chicago, Minneapolis',
-  salaryMin: '170000',
-  remote: 'any',
-};
-
-function isSearchPrefs(value: unknown): value is SearchPrefs {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.titles === 'string' &&
-    typeof candidate.locations === 'string' &&
-    typeof candidate.salaryMin === 'string' &&
-    (candidate.remote === 'any' ||
-      candidate.remote === 'remote' ||
-      candidate.remote === 'hybrid' ||
-      candidate.remote === 'onsite')
-  );
-}
-
-function SearchPreferences() {
-  const [prefs, setPrefs] = useState<SearchPrefs>(() => {
-    try {
-      const saved = localStorage.getItem('careeriq_search_prefs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (isSearchPrefs(parsed)) {
-          return parsed;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return DEFAULT_SEARCH_PREFS;
-  });
-
-  const handleChange = (field: keyof SearchPrefs, value: string) => {
-    const updated = { ...prefs, [field]: value };
-    setPrefs(updated);
-    try {
-      localStorage.setItem('careeriq_search_prefs', JSON.stringify(updated));
-    } catch {
-      /* ignore */
-    }
-  };
-
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Settings2 size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Preferences</h3>
-      </div>
-
-      <div className="space-y-3">
-        <div>
-          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
-            Target Titles
-          </label>
-          <input
-            type="text"
-            value={prefs.titles}
-            onChange={(e) => handleChange('titles', e.target.value)}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
-          />
-        </div>
-        <div>
-          <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
-            Locations
-          </label>
-          <input
-            type="text"
-            value={prefs.locations}
-            onChange={(e) => handleChange('locations', e.target.value)}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
-          />
-        </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
-              Min Salary
-            </label>
-            <input
-              type="text"
-              value={prefs.salaryMin}
-              onChange={(e) => handleChange('salaryMin', e.target.value)}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block">
-              Work Type
-            </label>
-            <select
-              value={prefs.remote}
-              onChange={(e) => handleChange('remote', e.target.value)}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
-            >
-              <option value="any">Any</option>
-              <option value="remote">Remote</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">On-site</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
 
 // --- Tracker Generator (unchanged) ---
 
@@ -775,7 +597,7 @@ const JCC_STAGE_CONFIG: Record<JCCTab, JCCStageConfig> = {
     icon: Search,
     workflowLabel: 'Discover',
     focusTitle: 'Find new roles worth working',
-    focusSummary: 'Use Radar, Smart Matches, and advanced search when you need net-new options worth promoting into the pipeline.',
+    focusSummary: 'Use Radar and Smart Matches when you need net-new options worth promoting into the pipeline.',
     next: {
       tab: 'pipeline',
       label: 'Pipeline',
@@ -813,8 +635,6 @@ export function JobCommandCenterRoom({
   const [activeTab, setActiveTab] = useState<JCCTab>('daily-ops');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
-  const [showSearchPreferences, setShowSearchPreferences] = useState(false);
-  const [showSearchTools, setShowSearchTools] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
   const activeStage = JCC_STAGE_CONFIG[activeTab];
@@ -828,12 +648,6 @@ export function JobCommandCenterRoom({
     radar.loadLatestScan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (jobFinder.booleanSearches.length > 0) {
-      setShowSearchTools(true);
-    }
-  }, [jobFinder.booleanSearches.length]);
 
   const handleAddApplication = useCallback(() => {
     setShowAddDialog(true);
@@ -1075,72 +889,6 @@ export function JobCommandCenterRoom({
             onRespondGate={jobFinder.respondToGate}
             onReset={jobFinder.reset}
           />
-
-          {showSearchTools ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
-                <div>
-                  <div className="text-sm font-semibold text-[var(--text-strong)]">Advanced search</div>
-                  <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                    Open these when you want more control over search strings and filters.
-                  </div>
-                </div>
-                <GlassButton variant="ghost" onClick={() => setShowSearchTools(false)}>
-                  Hide advanced search
-                </GlassButton>
-              </div>
-
-              <BooleanSearchBuilder
-                searches={jobFinder.booleanSearches}
-                onGenerate={jobFinder.startSearch}
-              />
-
-              {showSearchPreferences ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
-                    <div>
-                      <div className="text-sm font-semibold text-[var(--text-strong)]">Search filters</div>
-                      <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                        Tune titles, locations, and work style here.
-                      </div>
-                    </div>
-                    <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(false)}>
-                      Hide filters
-                    </GlassButton>
-                  </div>
-                  <SearchPreferences />
-                </div>
-              ) : (
-                <GlassCard className="p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="text-sm font-semibold text-[var(--text-strong)]">Search filters</div>
-                      <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                        Open this when you want to tune titles, locations, or work style.
-                      </div>
-                    </div>
-                    <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(true)}>
-                      Open filters
-                    </GlassButton>
-                  </div>
-                </GlassCard>
-              )}
-            </div>
-          ) : (
-            <GlassCard className="p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-[var(--text-strong)]">Advanced search</div>
-                  <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                    Open this when you want boolean strings or deeper search controls.
-                  </div>
-                </div>
-                <GlassButton variant="ghost" onClick={() => setShowSearchTools(true)}>
-                  Open advanced search
-                </GlassButton>
-              </div>
-            </GlassCard>
-          )}
         </div>
       </div>
 

@@ -331,37 +331,10 @@ export function useRadarSearch() {
           return;
         }
 
-        // Merge saved preferences from SearchPreferences component.
-        // Caller-supplied filter values always win; prefs fill in only unset fields.
-        let savedPrefs: { salaryMin?: string; remote?: string } = {};
-        try {
-          const raw = localStorage.getItem('careeriq_search_prefs');
-          if (raw) savedPrefs = JSON.parse(raw) as { salaryMin?: string; remote?: string };
-        } catch {
-          // ignore — corrupted storage should not break the search
-        }
-
-        const mergedFilters: RadarSearchFilters = { ...filters };
-
-        if (mergedFilters.salaryMin == null && savedPrefs.salaryMin) {
-          const parsed = parseInt(savedPrefs.salaryMin, 10);
-          if (!isNaN(parsed) && parsed > 0) {
-            mergedFilters.salaryMin = parsed;
-          }
-        }
-
-        if (mergedFilters.remoteType == null && savedPrefs.remote) {
-          const validRemoteTypes = ['remote', 'hybrid', 'onsite', 'any'] as const;
-          type RemoteType = (typeof validRemoteTypes)[number];
-          if (validRemoteTypes.includes(savedPrefs.remote as RemoteType)) {
-            mergedFilters.remoteType = savedPrefs.remote as RemoteType;
-          }
-        }
-
         const res = await fetch(`${API_BASE}/job-search`, {
           method: 'POST',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, location, filters: mergedFilters }),
+          body: JSON.stringify({ query, location, filters }),
         });
 
         if (!res.ok) {
