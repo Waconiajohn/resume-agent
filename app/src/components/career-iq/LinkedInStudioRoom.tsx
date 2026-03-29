@@ -55,6 +55,90 @@ const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
 
 const PROFILE_SECTION_ORDER: ProfileSection[] = ['headline', 'about', 'experience', 'skills', 'education'];
 
+type StudioStageMeta = {
+  label: string;
+  icon: React.ComponentType<{ size: number; className?: string }>;
+  category: 'primary' | 'support';
+  workflowLabel?: string;
+  focusTitle: string;
+  focusSummary: string;
+  next?: {
+    tab: StudioTab;
+    label: string;
+    description: string;
+  };
+};
+
+const STUDIO_STAGE_CONFIG: Record<StudioTab, StudioStageMeta> = {
+  editor: {
+    label: 'Profile',
+    icon: PenLine,
+    category: 'primary',
+    workflowLabel: 'Profile',
+    focusTitle: 'Sharpen the profile people land on',
+    focusSummary: 'Rewrite the sections that matter most so the profile supports the story your posts are telling.',
+    next: {
+      tab: 'composer',
+      label: 'Write',
+      description: 'Turn the stronger positioning into a post once the profile reads cleanly.',
+    },
+  },
+  composer: {
+    label: 'Write',
+    icon: FileText,
+    category: 'primary',
+    workflowLabel: 'Write',
+    focusTitle: 'Draft a post in your own voice',
+    focusSummary: 'Start with one authentic idea, tighten the hook, and only keep what feels publishable.',
+    next: {
+      tab: 'analytics',
+      label: 'Review Results',
+      description: 'Check how the profile and post signals are reading before you keep building outward.',
+    },
+  },
+  analytics: {
+    label: 'Results',
+    icon: BarChart3,
+    category: 'primary',
+    workflowLabel: 'Results',
+    focusTitle: 'Review how strong the profile looks on paper',
+    focusSummary: 'Use the score, rewritten sections, and weak spots to decide what should be tightened next.',
+    next: {
+      tab: 'calendar',
+      label: 'Plan Content',
+      description: 'Map the next stretch of posts once the profile and writing direction look solid.',
+    },
+  },
+  calendar: {
+    label: 'Content Plan',
+    icon: Calendar,
+    category: 'support',
+    focusTitle: 'Plan the next stretch of posts',
+    focusSummary: 'Use this support workspace to map themes, sequence ideas, and build a usable content rhythm.',
+    next: {
+      tab: 'composer',
+      label: 'Return to Write',
+      description: 'Turn the plan into a post as soon as you have a topic worth drafting.',
+    },
+  },
+  library: {
+    label: 'Library',
+    icon: BookOpen,
+    category: 'support',
+    focusTitle: 'Reuse saved drafts and ideas',
+    focusSummary: 'Pull older posts and approved drafts back into the main flow when you want a faster starting point.',
+    next: {
+      tab: 'composer',
+      label: 'Write from saved work',
+      description: 'Start with a saved idea or turn a past draft into something publishable.',
+    },
+  },
+};
+
+const PRIMARY_STUDIO_TABS: StudioTab[] = ['editor', 'composer', 'analytics'];
+const SUPPORT_STUDIO_TABS: StudioTab[] = ['calendar', 'library'];
+const LINKEDIN_WORKFLOW_ORDER: StudioTab[] = ['editor', 'composer', 'analytics'];
+
 // ─── Sub-components ───────────────────────────────────────────────────────
 
 function ActivityFeed({ messages, label }: { messages: Array<{ id: string; message: string; timestamp: number }>; label?: string }) {
@@ -1508,17 +1592,18 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   }, [optimizer]);
 
   const isOptimizerRunning = optimizer.status === 'connecting' || optimizer.status === 'running';
-
-  const primaryTabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
-    { id: 'composer', label: 'Write', icon: FileText },
-    { id: 'editor', label: 'Profile', icon: PenLine },
-    { id: 'analytics', label: 'Results', icon: BarChart3 },
-  ];
-  const utilityActions: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
-    { id: 'calendar', label: 'Content Plan', icon: Calendar },
-    { id: 'library', label: 'Library', icon: BookOpen },
-  ];
-  const utilityTabActive = activeTab === 'calendar' || activeTab === 'library';
+  const activeStage = STUDIO_STAGE_CONFIG[activeTab];
+  const ActiveStageIcon = activeStage.icon;
+  const primaryTabs = PRIMARY_STUDIO_TABS.map((id) => ({
+    id,
+    label: STUDIO_STAGE_CONFIG[id].label,
+    icon: STUDIO_STAGE_CONFIG[id].icon,
+  }));
+  const utilityActions = SUPPORT_STUDIO_TABS.map((id) => ({
+    id,
+    label: STUDIO_STAGE_CONFIG[id].label,
+    icon: STUDIO_STAGE_CONFIG[id].icon,
+  }));
 
   return (
     <div className="room-shell">
@@ -1527,7 +1612,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           <div className="eyebrow-label">LinkedIn</div>
           <h1 className="room-title">Build a stronger profile and publish with intent</h1>
           <p className="room-subtitle">
-            Keep the main work focused on writing and profile strength. Content planning and saved ideas stay quieter in the background.
+            Strengthen the profile people land on, publish in your own voice, and keep planning tools close without letting them take over the room.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
@@ -1584,6 +1669,64 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         </div>
       )}
 
+      <GlassCard className="p-5">
+        <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
+          <div>
+            <div className="eyebrow-label">LinkedIn workflow</div>
+            <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
+              Sharpen the profile, write with intent, then review what is landing.
+            </h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              Content Plan and Library stay available as support workspaces, but the main flow stays centered on profile strength, writing, and results.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {LINKEDIN_WORKFLOW_ORDER.map((tab, index) => {
+                const stage = STUDIO_STAGE_CONFIG[tab];
+                return (
+                  <span
+                    key={tab}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
+                      activeTab === tab
+                        ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.08] text-[#98b3ff]'
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
+                    )}
+                  >
+                    <span className="tabular-nums opacity-80">{index + 1}</span>
+                    {stage.workflowLabel ?? stage.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Current focus
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              <ActiveStageIcon size={15} className="text-[#98b3ff]" />
+              {activeStage.focusTitle}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.focusSummary}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Next best move
+            </div>
+            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              {activeStage.next?.label ?? 'Keep refining this stage'}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.next?.description ?? 'Stay with the current work until the profile, writing, or evidence feels solid enough to move on.'}
+            </p>
+          </div>
+        </div>
+      </GlassCard>
+
       {/* Keyword multiplier coaching nudge */}
       {(activeTab === 'composer' || activeTab === 'calendar') && (
         <KeywordMultiplierNudge />
@@ -1608,15 +1751,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           );
         })}
       </div>
-
-      {utilityTabActive && (
-        <div className="support-callout">
-          <div className="text-sm font-semibold text-[var(--text-strong)]">Secondary workspace</div>
-          <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
-            Use this when you want planning or saved-post support, then go back to the main LinkedIn flow.
-          </div>
-        </div>
-      )}
 
       {/* Tab content */}
       <div>

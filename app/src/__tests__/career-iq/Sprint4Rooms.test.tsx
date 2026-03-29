@@ -73,9 +73,11 @@ describe('LinkedInStudioRoom', () => {
 
   it('renders tab navigation with all tabs', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.getByText('Write')).toBeInTheDocument();
-    expect(screen.getByText('Profile')).toBeInTheDocument();
-    expect(screen.getByText('Results')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
+    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Profile$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Results$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Content Plan$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Library$/i })).toBeInTheDocument();
   });
@@ -89,7 +91,7 @@ describe('LinkedInStudioRoom', () => {
 
   it('renders analytics when Results tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('Results'));
+    fireEvent.click(screen.getByRole('button', { name: /^Results$/i }));
     // Results shows content-based metrics from generated posts
     expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
     expect(screen.getByText('Total Posts')).toBeInTheDocument();
@@ -109,7 +111,7 @@ describe('LinkedInStudioRoom', () => {
 
   it('renders the Profile tab content when clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('Profile'));
+    fireEvent.click(screen.getByRole('button', { name: /^Profile$/i }));
     expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
   });
 });

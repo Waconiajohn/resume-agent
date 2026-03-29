@@ -163,14 +163,21 @@ afterEach(() => {
 // ─── Tab rendering ────────────────────────────────────────────────────────────
 
 describe('LinkedInStudioRoom — tab rendering', () => {
+  it('renders the workflow guidance strip', () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
+    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    expect(screen.getByText('Next best move')).toBeInTheDocument();
+  });
+
   it('renders the tab bar', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Write')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Write' })).toBeInTheDocument();
   });
 
   it('renders Profile tab button', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
   });
 
   it('renders Content Plan button', () => {
@@ -180,7 +187,7 @@ describe('LinkedInStudioRoom — tab rendering', () => {
 
   it('renders Results tab button', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Results')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Results' })).toBeInTheDocument();
   });
 
   it('renders Library tab button', () => {
@@ -195,13 +202,14 @@ describe('LinkedInStudioRoom — tab switching', () => {
   it('defaults to composer tab (shows "Write a LinkedIn Post")', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     expect(screen.getByText('Write a LinkedIn Post')).toBeInTheDocument();
+    expect(screen.getByText('Draft a post in your own voice')).toBeInTheDocument();
   });
 
   it('switches to Content Plan on click', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Content Plan' }));
     await waitFor(() => {
-      expect(document.body).toBeTruthy();
+      expect(screen.getByText('Plan the next stretch of posts')).toBeInTheDocument();
     });
   });
 
