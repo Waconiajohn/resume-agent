@@ -1,3 +1,5 @@
+import { getLegacyWorkspaceAliasConfig } from './workspace-legacy-aliases';
+
 export type AppView =
   | 'sales'
   | 'workspace'
@@ -69,36 +71,13 @@ export function getNormalizedWorkspaceRedirect(search: string): string | null {
   const room = params.get('room');
 
   if (!room) return null;
-
-  switch (room) {
-    case 'salary-negotiation':
-      params.set('room', 'interview');
-      if (!params.get('focus')) params.set('focus', 'negotiation');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'personal-brand':
-      params.set('room', 'career-profile');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'thank-you-note':
-      params.set('room', 'interview');
-      if (!params.get('focus')) params.set('focus', 'thank-you');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'ninety-day-plan':
-      params.set('room', 'interview');
-      if (!params.get('focus')) params.set('focus', 'plan');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'content-calendar':
-      params.set('room', 'linkedin');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'case-study':
-      params.set('room', 'executive-bio');
-      if (!params.get('focus')) params.set('focus', 'case-study');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    case 'network-intelligence':
-      params.set('room', 'networking');
-      return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
-    default:
-      return null;
+  const alias = getLegacyWorkspaceAliasConfig(room);
+  if (!alias) return null;
+  params.set('room', alias.room);
+  if ('focus' in alias && alias.focus && !params.get('focus')) {
+    params.set('focus', alias.focus);
   }
+  return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
 }
 
 export function resolveNavigationTarget(viewName: string): string {

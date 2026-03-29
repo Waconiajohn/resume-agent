@@ -1,3 +1,5 @@
+import { getLegacyWorkspaceAliasConfig } from '@/lib/workspace-legacy-aliases';
+
 export type ExposedWorkspaceRoom =
   | 'dashboard'
   | 'career-profile'
@@ -29,20 +31,10 @@ const ROUTABLE_WORKSPACE_ROOMS: readonly WorkspaceRoom[] = [
   'financial',
 ];
 
-const LEGACY_REDIRECTS: Partial<Record<string, WorkspaceRoom>> = {
-  'content-calendar': 'linkedin',
-  'thank-you-note': 'interview',
-  'case-study': 'executive-bio',
-  'network-intelligence': 'networking',
-  'personal-brand': 'career-profile',
-  'ninety-day-plan': 'interview',
-  'salary-negotiation': 'interview',
-};
-
 export function resolveWorkspaceRoom(value: string | null | undefined): WorkspaceRoom {
   if (!value) return 'dashboard';
-  const redirected = LEGACY_REDIRECTS[value];
-  if (redirected) return redirected;
+  const alias = getLegacyWorkspaceAliasConfig(value);
+  if (alias) return alias.room as WorkspaceRoom;
   return (ROUTABLE_WORKSPACE_ROOMS as readonly string[]).includes(value)
     ? (value as WorkspaceRoom)
     : 'dashboard';
