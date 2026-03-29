@@ -452,6 +452,9 @@ export function CareerIQScreen({
             activeRoom={activeRoom}
             onRefineWhyMe={openCareerProfile}
             onNavigateRoom={handleRoomNavigate}
+            hasResumeSessions={sessions.length > 0}
+            sessionCount={sessions.length}
+            coachRecommendation={coachRec}
             feedEvents={mobileFeedEvents}
           />
           <Suspense fallback={null}>

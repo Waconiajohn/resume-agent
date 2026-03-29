@@ -15,6 +15,8 @@ import { useState, useRef, useCallback } from 'react';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CareerIQRoom } from './Sidebar';
 import type { RealFeedEvent } from './ZoneAgentFeed';
+import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { deriveWorkspaceHomeGuidance } from './workspaceHomeGuidance';
 
 interface MobileBriefingProps {
   userName: string;
@@ -23,6 +25,9 @@ interface MobileBriefingProps {
   activeRoom: CareerIQRoom;
   onRefineWhyMe: () => void;
   onNavigateRoom: (room: CareerIQRoom) => void;
+  hasResumeSessions?: boolean;
+  sessionCount?: number;
+  coachRecommendation?: CoachRecommendation | null;
   feedEvents?: RealFeedEvent[];
   /** When true, renders only the bottom nav (used when a room is active) */
   navOnly?: boolean;
@@ -30,31 +35,23 @@ interface MobileBriefingProps {
 
 // --- Card 1: One Action Today ---
 
-function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom }: {
+function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, hasResumeSessions, sessionCount, coachRecommendation }: {
   userName: string;
   dashboardState: DashboardState;
   onRefineWhyMe: () => void;
   onNavigateRoom: (room: CareerIQRoom) => void;
+  hasResumeSessions: boolean;
+  sessionCount: number;
+  coachRecommendation?: CoachRecommendation | null;
 }) {
   const firstName = userName?.split('@')[0]?.split('.')[0] ?? 'there';
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-
-  const actions: Record<DashboardState, { insight: string; cta: string }> = {
-    'new-user': {
-      insight: 'Build your Career Profile to give the rest of the platform clear direction.',
-      cta: 'Build Career Profile',
-    },
-    refining: {
-      insight: 'Strengthening your Career Profile will sharpen every agent\'s output.',
-      cta: 'Refine Career Profile',
-    },
-    strong: {
-      insight: 'Your profile is in good shape. Use it to target stronger-fit roles next.',
-      cta: 'Update LinkedIn Headline',
-    },
-  };
-
-  const { insight, cta } = actions[dashboardState];
+  const guidance = deriveWorkspaceHomeGuidance({
+    dashboardState,
+    hasResumeSessions,
+    sessionCount,
+    coachRecommendation,
+  });
 
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
@@ -66,14 +63,14 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom }:
       </h2>
       <p className="text-[14px] text-[var(--text-soft)] leading-relaxed flex-1">
         <Sparkles size={14} className="inline mr-1.5 text-[#98b3ff] -mt-0.5" />
-        {insight}
+        {guidance.mobileInsight}
       </p>
       <button
         type="button"
-        onClick={dashboardState === 'strong' ? () => onNavigateRoom('linkedin') : onRefineWhyMe}
+        onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe() : onNavigateRoom(guidance.primary.room))}
         className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[#9eb8ff]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
       >
-        {cta}
+        {guidance.primary.label}
         <ArrowRight size={16} />
       </button>
     </GlassCard>
@@ -252,7 +249,19 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
 
 // --- Main export ---
 
-export function MobileBriefing({ userName, signals, dashboardState, activeRoom, onRefineWhyMe, onNavigateRoom, feedEvents, navOnly = false }: MobileBriefingProps) {
+export function MobileBriefing({
+  userName,
+  signals,
+  dashboardState,
+  activeRoom,
+  onRefineWhyMe,
+  onNavigateRoom,
+  hasResumeSessions = false,
+  sessionCount = 0,
+  coachRecommendation = null,
+  feedEvents,
+  navOnly = false,
+}: MobileBriefingProps) {
   // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
   if (navOnly) {
     return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />;
@@ -270,7 +279,15 @@ export function MobileBriefing({ userName, signals, dashboardState, activeRoom, 
       {/* Swipeable card stack */}
       <div className="flex-1 pt-2">
         <CardStack>
-          <ActionCard userName={userName} dashboardState={dashboardState} onRefineWhyMe={onRefineWhyMe} onNavigateRoom={onNavigateRoom} />
+          <ActionCard
+            userName={userName}
+            dashboardState={dashboardState}
+            onRefineWhyMe={onRefineWhyMe}
+            onNavigateRoom={onNavigateRoom}
+            hasResumeSessions={hasResumeSessions}
+            sessionCount={sessionCount}
+            coachRecommendation={coachRecommendation}
+          />
           <AgentActivityCard feedEvents={feedEvents} />
         </CardStack>
       </div>

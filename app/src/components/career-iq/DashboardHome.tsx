@@ -8,6 +8,7 @@ import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CoachingNudge } from '@/hooks/useMomentum';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { CoachSpotlight } from './CoachSpotlight';
+import { deriveWorkspaceHomeGuidance } from './workspaceHomeGuidance';
 
 interface DashboardHomeProps {
   userName: string;
@@ -51,7 +52,7 @@ function HomeGuideCard({
   sessionCount,
   dashboardState,
   signals,
-  coachRecommendationTitle,
+  coachRecommendation,
   onNavigateRoom,
   onRefineWhyMe,
 }: {
@@ -59,51 +60,35 @@ function HomeGuideCard({
   sessionCount: number;
   dashboardState: DashboardState;
   signals: WhyMeSignals;
-  coachRecommendationTitle?: string;
+  coachRecommendation?: CoachRecommendation | null;
   onNavigateRoom?: (room: CareerIQRoom) => void;
   onRefineWhyMe?: () => void;
 }) {
-  const primaryAction = dashboardState === 'new-user'
-      ? {
-          eyebrow: 'Start here',
-          title: 'Finish your Career Profile first',
-          description: 'This is the shared why-me story every agent reads. Be accurate here because Resume Builder, Job Search, LinkedIn, and Interview Prep all use it, and you can strengthen it anytime.',
-          label: 'Open Career Profile',
-          onClick: onRefineWhyMe,
-        }
-    : !hasResumeSessions
-      ? {
-          eyebrow: 'Next best move',
-          title: 'Build the first tailored resume for a live job',
-          description: 'Your Career Profile is strong enough to stop starting from scratch. Turn it into a job-specific resume you can reopen later by company, role, and date.',
-          label: 'Open Resume Builder',
-          onClick: () => onNavigateRoom?.('resume'),
-        }
-      : {
-          eyebrow: 'Daily workspace',
-          title: 'Reopen active work and move one application forward',
-          description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Resume Builder and Job Search should now be the main places you work from day to day.`,
-          label: 'Open Resume Builder',
-          onClick: () => onNavigateRoom?.('resume'),
-        };
+  const guidance = deriveWorkspaceHomeGuidance({
+    dashboardState,
+    hasResumeSessions,
+    sessionCount,
+    coachRecommendation,
+  });
 
   const signalSummary = [
     `Clarity: ${signals.clarity}`,
     `Alignment: ${signals.alignment}`,
     `Differentiation: ${signals.differentiation}`,
   ];
+  const secondaryAction = guidance.secondary;
 
   return (
     <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
       <div className="p-6 sm:p-7">
         <div className="text-[13px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
-          {primaryAction.eyebrow}
+          {guidance.eyebrow}
         </div>
         <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-[var(--text-strong)] sm:text-[2rem]">
-          {primaryAction.title}
+          {guidance.title}
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--text-soft)] sm:text-[15px]">
-          {primaryAction.description}
+          {guidance.description}
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[13px] text-[var(--text-soft)]">
           {signalSummary.map((item) => (
@@ -112,19 +97,28 @@ function HomeGuideCard({
             </span>
           ))}
         </div>
-        {coachRecommendationTitle && (
+        {guidance.coachLine && (
           <p className="mt-4 text-xs leading-relaxed text-[var(--text-soft)]">
-            Coach says: {coachRecommendationTitle}
+            Coach says: {guidance.coachLine}
           </p>
         )}
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={primaryAction.onClick}
+            onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(guidance.primary.room))}
             className="rounded-md border border-[#4a6bbf] bg-[#4a6bbf] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#3b5aa8]"
           >
-            {primaryAction.label}
+            {guidance.primary.label}
           </button>
+          {secondaryAction && (
+            <button
+              type="button"
+              onClick={() => (secondaryAction.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(secondaryAction.room))}
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:border-[#98b3ff]/35 hover:text-white"
+            >
+              {secondaryAction.label}
+            </button>
+          )}
         </div>
       </div>
 
@@ -261,7 +255,7 @@ export function DashboardHome({
         sessionCount={sessionCount}
         dashboardState={dashboardState}
         signals={signals}
-        coachRecommendationTitle={coachRecommendation?.action}
+        coachRecommendation={coachRecommendation}
         onNavigateRoom={onNavigateRoom}
         onRefineWhyMe={onRefineWhyMe}
       />
