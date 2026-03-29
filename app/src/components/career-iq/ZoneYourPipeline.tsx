@@ -77,8 +77,6 @@ const STAGE_COLORS: Record<PipelineStage, string> = {
 
 interface ZoneYourPipelineProps {
   onNavigateRoom?: (room: CareerIQRoom) => void;
-  /** When provided, skip Supabase fetch and render these cards (demo mode). */
-  mockCards?: PipelineCard[];
   /** Called when user clicks "Prepare for this interview?" on an Interviewing card. */
   onInterviewPrepClick?: (card: PipelineCard) => void;
   /** Called when user clicks "Prepare your negotiation?" on an Offer card. */
@@ -215,20 +213,14 @@ function PipelineCardItem({
   );
 }
 
-export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepClick, onNegotiationPrepClick }: ZoneYourPipelineProps) {
+export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegotiationPrepClick }: ZoneYourPipelineProps) {
   const [cards, setCards] = useState<PipelineCard[]>([]);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
   const [loaded, setLoaded] = useState(false);
   const draggedCardId = useRef<string | null>(null);
-  const isDemo = !!mockCards;
 
-  // Load from Supabase on mount (skip in demo mode)
+  // Load from Supabase on mount.
   useEffect(() => {
-    if (mockCards) {
-      setCards(mockCards);
-      setLoaded(true);
-      return;
-    }
     let cancelled = false;
     async function load() {
       try {
@@ -253,7 +245,7 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
     }
     load();
     return () => { cancelled = true; };
-  }, [mockCards]);
+  }, []);
 
   const handleDragStart = useCallback((_e: React.DragEvent, cardId: string) => {
     draggedCardId.current = cardId;
@@ -283,9 +275,6 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
       ),
     );
 
-    // Skip persistence in demo mode
-    if (isDemo) return;
-
     // Persist to Supabase
     const dbStage = STAGE_TO_DB[targetStage];
     supabase
@@ -310,9 +299,6 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
   const handleArchive = useCallback((cardId: string) => {
     // Optimistic remove
     setCards((prev) => prev.filter((c) => c.id !== cardId));
-
-    // Skip persistence in demo mode
-    if (isDemo) return;
 
     // Persist archive to Supabase
     supabase
