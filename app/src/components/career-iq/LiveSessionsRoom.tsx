@@ -1,9 +1,7 @@
 import { GlassCard } from '@/components/GlassCard';
-import { GlassButton } from '@/components/GlassButton';
 import {
   Clock,
   Star,
-  Lock,
   FileText,
   Lightbulb,
   ArrowRight,
@@ -17,27 +15,6 @@ import { cn } from '@/lib/utils';
 import React, { useMemo, useState } from 'react';
 import { AskCoachForm } from './AskCoachForm';
 import { RESOURCE_LIBRARY, RESOURCE_CATEGORIES, type Resource } from '@/data/resource-library';
-
-function OfficeHours() {
-  return (
-    <GlassCard className="p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Star size={16} className="text-[#f0d99f]" />
-        <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">1:1 Office Hours</h3>
-        <span className="ml-auto rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-2 py-0.5 text-[12px] font-medium text-[#f0d99f]/70 uppercase tracking-wider">
-          Premium
-        </span>
-      </div>
-      <p className="text-[12px] text-[var(--text-soft)] mb-4">
-        Book a private 30-minute session with a career coach for personalized guidance on your search strategy.
-      </p>
-      <GlassButton variant="ghost" className="w-full">
-        <Lock size={14} className="mr-1.5 text-[var(--text-soft)]" />
-        Upgrade to Book Office Hours
-      </GlassButton>
-    </GlassCard>
-  );
-}
 
 // --- Resource Library ---
 
@@ -191,10 +168,7 @@ export function LiveSessionsRoom() {
           <ResourceLibrary />
         </div>
         <div className="flex-[2] min-w-0">
-          <div className="flex flex-col gap-6">
-            <AskCoachForm />
-            <OfficeHours />
-          </div>
+          <AskCoachForm />
         </div>
       </div>
     </div>

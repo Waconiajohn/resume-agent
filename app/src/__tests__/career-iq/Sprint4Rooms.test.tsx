@@ -432,7 +432,7 @@ describe('LiveSessionsRoom', () => {
     render(<LiveSessionsRoom />);
     expect(screen.getByText('Expert Guidance')).toBeInTheDocument();
     expect(screen.getByText('Resource Library')).toBeInTheDocument();
-    expect(screen.getByText('1:1 Office Hours')).toBeInTheDocument();
+    expect(screen.getByText('Ask a Coach')).toBeInTheDocument();
   });
 
   it('does not surface sample schedule or sample content labels', () => {
