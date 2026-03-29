@@ -744,6 +744,60 @@ function TrackerGenerator() {
 
 type JCCTab = 'pipeline' | 'radar' | 'daily-ops';
 
+type JCCStageConfig = {
+  label: string;
+  icon: React.ComponentType<{ size: number; className?: string }>;
+  workflowLabel: string;
+  focusTitle: string;
+  focusSummary: string;
+  next: {
+    tab: JCCTab;
+    label: string;
+    description: string;
+  };
+};
+
+const JCC_STAGE_CONFIG: Record<JCCTab, JCCStageConfig> = {
+  'daily-ops': {
+    label: 'Today',
+    icon: Clock,
+    workflowLabel: 'Today',
+    focusTitle: 'Work the active list first',
+    focusSummary: 'Use Today for follow-ups, urgent actions, and the small set of roles that actually need your attention right now.',
+    next: {
+      tab: 'radar',
+      label: 'Discover',
+      description: 'Open Discover when you want fresh roles or search support instead of more follow-up work.',
+    },
+  },
+  radar: {
+    label: 'Discover',
+    icon: Search,
+    workflowLabel: 'Discover',
+    focusTitle: 'Find new roles worth working',
+    focusSummary: 'Use Radar, Smart Matches, and advanced search when you need net-new options worth promoting into the pipeline.',
+    next: {
+      tab: 'pipeline',
+      label: 'Pipeline',
+      description: 'Move the strong roles into Pipeline once they are worth tracking and advancing.',
+    },
+  },
+  pipeline: {
+    label: 'Pipeline',
+    icon: Briefcase,
+    workflowLabel: 'Pipeline',
+    focusTitle: 'Review the full application portfolio',
+    focusSummary: 'Use Pipeline when you want the complete board, stage movement, and a broader read on what is moving or getting stuck.',
+    next: {
+      tab: 'daily-ops',
+      label: 'Back to Today',
+      description: 'Return to Today when you are ready to work the next concrete actions on the active list.',
+    },
+  },
+};
+
+const JCC_WORKFLOW_ORDER: JCCTab[] = ['daily-ops', 'radar', 'pipeline'];
+
 // --- Main component ---
 
 export function JobCommandCenterRoom({
@@ -763,6 +817,8 @@ export function JobCommandCenterRoom({
   const [showSearchTools, setShowSearchTools] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
+  const activeStage = JCC_STAGE_CONFIG[activeTab];
+  const ActiveStageIcon = activeStage.icon;
 
   // Load initial data on mount
   useEffect(() => {
@@ -859,45 +915,79 @@ export function JobCommandCenterRoom({
         </div>
       </div>
 
-      <div className="room-meta-strip">
-        <div className="room-meta-item">
-          Default View
-          <strong>Today</strong>
-        </div>
-        <div className="room-meta-item">
-          Watchlist
-          <strong>{watchlist.companies.length}</strong>
-        </div>
-        <div className="room-meta-item">
-          Pipeline
-          <strong>{pipeline.applications.length}</strong>
-        </div>
-      </div>
-
-      <div className="room-frame">
-        <div className="support-callout">
-          <div className="text-sm font-semibold text-[var(--text-strong)]">Today is where daily work happens</div>
-          <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
-          Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
-          </div>
-          {activeTab !== 'daily-ops' && (
-            <div className="mt-4">
-              <GlassButton variant="ghost" onClick={() => setActiveTab('daily-ops')}>
-                Back to Today
-              </GlassButton>
+      <GlassCard className="p-5">
+        <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
+          <div>
+            <div className="eyebrow-label">Job workflow</div>
+            <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
+              Stay on daily work, open discovery when you need new options, and use the pipeline for the full board.
+            </h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              This room works best when Today stays the home base, Discover stays focused on new opportunities, and Pipeline stays focused on stage movement and full-list review.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {JCC_WORKFLOW_ORDER.map((tab, index) => {
+                const stage = JCC_STAGE_CONFIG[tab];
+                return (
+                  <span
+                    key={tab}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
+                      activeTab === tab
+                        ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.08] text-[#98b3ff]'
+                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
+                    )}
+                  >
+                    <span className="tabular-nums opacity-80">{index + 1}</span>
+                    {stage.workflowLabel}
+                  </span>
+                );
+              })}
             </div>
-          )}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Current focus
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              <ActiveStageIcon size={15} className="text-[#98b3ff]" />
+              {activeStage.focusTitle}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.focusSummary}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-[12px] text-[var(--text-soft)]">
+              <span>Watchlist: <strong className="text-[var(--text-muted)]">{watchlist.companies.length}</strong></span>
+              <span>Pipeline: <strong className="text-[var(--text-muted)]">{pipeline.applications.length}</strong></span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Next best move
+            </div>
+            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+              {activeStage.next.label}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              {activeStage.next.description}
+            </p>
+            {activeTab !== activeStage.next.tab && (
+              <div className="mt-4">
+                <GlassButton variant="ghost" onClick={() => setActiveTab(activeStage.next.tab)}>
+                  {activeStage.next.label}
+                </GlassButton>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </GlassCard>
 
       <div className="rail-tabs">
-        {(
-          [
-            { id: 'daily-ops', label: 'Today', Icon: Clock },
-            { id: 'pipeline', label: 'Pipeline', Icon: Briefcase },
-            { id: 'radar', label: 'Discover', Icon: Search },
-          ] as const
-        ).map(({ id, label, Icon }) => (
+        {JCC_WORKFLOW_ORDER.map((id) => {
+          const { label, icon: Icon } = JCC_STAGE_CONFIG[id];
+          return (
           <button
             key={id}
             type="button"
@@ -908,7 +998,8 @@ export function JobCommandCenterRoom({
             <Icon size={14} />
             {label}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Pipeline tab — display:none preserves state */}

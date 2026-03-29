@@ -122,6 +122,8 @@ describe('LinkedInStudioRoom', () => {
 
 describe('JobCommandCenterRoom', () => {
   const mockNavigate = vi.fn();
+  const getJobTabButton = (name: RegExp) =>
+    screen.getAllByRole('button', { name }).find((element) => element.className.includes('rail-tab')) as HTMLButtonElement;
 
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -132,33 +134,35 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders smart matches section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    expect(screen.getByText('Job workflow')).toBeInTheDocument();
+    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     expect(screen.getByText('Smart Matches')).toBeInTheDocument();
   });
 
   it('renders "Run Job Finder" button when no matches exist', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
   });
 
   it('renders boolean search builder section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     expect(screen.getByText('Advanced search')).toBeInTheDocument();
     expect(screen.queryByText('Search Strings')).not.toBeInTheDocument();
   });
 
   it('renders "Generate Searches" after opening search tools', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     fireEvent.click(screen.getByRole('button', { name: /Open advanced search/i }));
     expect(screen.getByText('Generate Searches')).toBeInTheDocument();
   });
 
   it('shows collapsed search tools by default in Discover', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     expect(screen.getByText('Advanced search')).toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
@@ -171,7 +175,7 @@ describe('JobCommandCenterRoom', () => {
     ));
 
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(getJobTabButton(/^Discover$/i));
     fireEvent.click(screen.getByRole('button', { name: /Open advanced search/i }));
     fireEvent.click(screen.getByRole('button', { name: /Open filters/i }));
 
@@ -181,13 +185,13 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders application pipeline kanban board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
+    fireEvent.click(getJobTabButton(/^Pipeline$/i));
     expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
   });
 
   it('renders kanban stage columns', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
+    fireEvent.click(getJobTabButton(/^Pipeline$/i));
     // Use getAllByText because stage names appear in multiple places (kanban + PipelineSummary)
     expect(screen.getAllByText('Saved').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
@@ -197,7 +201,7 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders the Today section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByRole('button', { name: /^Today$/i })).toBeInTheDocument();
+    expect(getJobTabButton(/^Today$/i)).toBeInTheDocument();
     expect(screen.getByText('Daily Ops')).toBeInTheDocument();
   });
 
