@@ -53,15 +53,11 @@ interface RadarSearchState {
   scoring: boolean;
   error: string | null;
   lastScanId: string | null;
-  sources_queried: string[];
-  executionTimeMs: number | null;
 }
 
 interface SearchResponse {
   scan_id: string;
   jobs: RadarJob[];
-  sources_queried: string[];
-  execution_time_ms: number;
 }
 
 interface EnrichedResult {
@@ -192,10 +188,6 @@ function sanitizeRadarJobs(value: unknown): RadarJob[] {
     .filter((job): job is RadarJob => job !== null);
 }
 
-function sanitizeSourcesQueried(value: unknown): string[] {
-  return safeStringArray(value).map((item) => item.trim()).filter(Boolean);
-}
-
 /**
  * Best-effort NI enrichment — fetches network contacts for a scan and merges them
  * into the job list. Returns the original jobs unchanged on any error.
@@ -262,8 +254,6 @@ export function useRadarSearch() {
     scoring: false,
     error: null,
     lastScanId: null,
-    sources_queried: [],
-    executionTimeMs: null,
   });
 
   const mountedRef = useRef(true);
@@ -323,8 +313,6 @@ export function useRadarSearch() {
             jobs: enrichedJobs,
             loading: false,
             lastScanId: scanId,
-            sources_queried: sanitizeSourcesQueried(data.sources_queried),
-            executionTimeMs: data.execution_time_ms == null ? null : safeNumber(data.execution_time_ms),
           }));
         }
       } catch (err) {

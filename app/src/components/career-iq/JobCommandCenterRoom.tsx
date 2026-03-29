@@ -572,8 +572,6 @@ export function JobCommandCenterRoom({
             scoring={radar.scoring}
             error={radar.error}
             lastScanId={radar.lastScanId}
-            sources_queried={radar.sources_queried}
-            executionTimeMs={radar.executionTimeMs}
             onSearch={radar.search}
             onScoreResults={radar.scoreResults}
             onDismiss={radar.dismissJob}

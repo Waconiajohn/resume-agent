@@ -23,8 +23,6 @@ interface RadarSectionProps {
   scoring: boolean;
   error: string | null;
   lastScanId: string | null;
-  sources_queried: string[];
-  executionTimeMs: number | null;
   onSearch: (query: string, location: string, filters?: RadarSearchFilters) => void;
   onScoreResults: () => void;
   onDismiss: (externalId: string) => void;

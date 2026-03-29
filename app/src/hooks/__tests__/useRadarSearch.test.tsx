@@ -51,8 +51,6 @@ function makeSearchResponse(jobs: RadarJob[] = []) {
   return {
     scan_id: 'scan-test-001',
     jobs,
-    sources_queried: ['jsearch', 'adzuna'],
-    execution_time_ms: 420,
   };
 }
 
@@ -235,8 +233,6 @@ describe('useRadarSearch — search()', () => {
             source: 'linkedin',
           },
         ],
-        sources_queried: ['linkedin', '', 4],
-        execution_time_ms: '450',
       }),
     }) as unknown as typeof fetch;
 
@@ -247,8 +243,6 @@ describe('useRadarSearch — search()', () => {
     });
 
     expect(result.current.lastScanId).toBe('42');
-    expect(result.current.executionTimeMs).toBe(450);
-    expect(result.current.sources_queried).toEqual(['linkedin']);
     expect(result.current.jobs).toHaveLength(1);
     expect(result.current.jobs[0]).toMatchObject({
       external_id: 'jsearch_good',

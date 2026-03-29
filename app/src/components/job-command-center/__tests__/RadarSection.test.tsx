@@ -79,8 +79,6 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof RadarSectio
     scoring: false,
     error: null,
     lastScanId: null,
-    sources_queried: [],
-    executionTimeMs: null,
     onSearch: vi.fn(),
     onScoreResults: vi.fn(),
     onDismiss: vi.fn(),
