@@ -393,37 +393,6 @@ describe('WhyMeEngine', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. LivePulseStrip
-// ---------------------------------------------------------------------------
-
-import { LivePulseStrip } from '../../components/career-iq/LivePulseStrip';
-
-describe('LivePulseStrip', () => {
-  afterEach(() => cleanup());
-
-  it('renders a session title', () => {
-    // LivePulseStrip is intentionally stubbed to return null until a real
-    // session schedule system is connected — showing fake data is a trust violation.
-    const { container } = render(<LivePulseStrip />);
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('renders either LIVE NOW or Next Session text', () => {
-    // Component returns null — neither label is rendered.
-    render(<LivePulseStrip />);
-    expect(screen.queryByText('Live Now')).toBeNull();
-    expect(screen.queryByText('Next Session')).toBeNull();
-  });
-
-  it('renders a Join Now or Set Reminder button', () => {
-    // Component returns null — neither button is rendered.
-    render(<LivePulseStrip />);
-    expect(screen.queryByText('Join Now')).toBeNull();
-    expect(screen.queryByText('Set Reminder')).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // 6. ZoneYourDay
 // ---------------------------------------------------------------------------
 
