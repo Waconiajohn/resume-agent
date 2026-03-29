@@ -669,7 +669,6 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
   const [contextNotes, setContextNotes] = useState('');
   const [resumeText, setResumeText] = useState('');
   const [messagingMethod, setMessagingMethod] = useState<MessagingMethod>('group_message');
-  const [copied, setCopied] = useState(false);
   const [showForm, setShowForm] = useState(true);
 
   // Auto-load master resume on mount
@@ -744,17 +743,17 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
     contextNotes,
   ]);
 
-  const handleCopyReport = useCallback(() => {
-    if (!outreach.report) return;
-    navigator.clipboard.writeText(outreach.report).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [outreach.report]);
-
   const handleReset = useCallback(() => {
     outreach.reset();
     setShowForm(true);
   }, [outreach.reset]);
+
+  const handleReviewGeneratedSequence = useCallback(() => {
+    const el = document.getElementById('generated-outreach-sequence');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   return (
     <GlassCard className="p-6">
@@ -904,47 +903,26 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
         </div>
       )}
 
-      {/* Complete state — show report */}
+      {/* Complete state — hand off to the dedicated results card below */}
       {outreach.status === 'complete' && outreach.report && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            {outreach.qualityScore != null && (
-              <span
-                className={cn(
-                  'text-[13px] font-medium px-2 py-0.5 rounded-full',
-                  outreach.qualityScore >= 80
-                    ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-                    : outreach.qualityScore >= 60
-                    ? 'text-[#f0d99f] bg-[#f0d99f]/10'
-                    : 'text-red-400 bg-red-400/10',
-                )}
-              >
-                Quality: {outreach.qualityScore}%
-              </span>
-            )}
-            {outreach.messageCount != null && (
-              <span className="text-[13px] text-[var(--text-soft)]">{outreach.messageCount} messages</span>
-            )}
-            <button
-              type="button"
-              onClick={handleCopyReport}
-              className="ml-auto flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-            >
-              {copied ? (
-                <>
-                  <Check size={11} className="text-[#b5dec2]" /> Copied
-                </>
-              ) : (
-                <>
-                  <Copy size={11} /> Copy All
-                </>
+        <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[13px] font-semibold text-[#b5dec2]">Sequence ready</div>
+              <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                Review the finished outreach sequence in the Generated Sequence card below, then copy or reset from there.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {outreach.messageCount != null && (
+                <span className="text-[12px] text-[var(--text-soft)]">
+                  {outreach.messageCount} messages ready
+                </span>
               )}
-            </button>
-          </div>
-          <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 max-h-[500px] overflow-y-auto">
-            <pre className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
-              {outreach.report}
-            </pre>
+              <GlassButton variant="ghost" onClick={handleReviewGeneratedSequence}>
+                View sequence
+              </GlassButton>
+            </div>
           </div>
         </div>
       )}
@@ -1210,7 +1188,7 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
 
       {/* Generated Outreach Messages + Follow-Up Timeline + Weekly Activity */}
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-[3] min-w-0">
+        <div id="generated-outreach-sequence" className="flex-[3] min-w-0">
           <GeneratedMessages
             report={outreachState?.report ?? null}
             qualityScore={outreachState?.qualityScore ?? null}

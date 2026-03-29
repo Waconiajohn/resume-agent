@@ -89,20 +89,32 @@ vi.mock('@/hooks/useNetworkingContacts', () => ({
 
 const mockStartPipeline = vi.fn().mockResolvedValue(undefined);
 const mockReset = vi.fn();
+let mockOutreachState: {
+  status: string;
+  loading: boolean;
+  error: string | null;
+  report: string | null;
+  qualityScore: number | null;
+  messageCount: number | null;
+  currentStage: string | null;
+  activityMessages: Array<{ id: string; message: string; timestamp: number }>;
+  startPipeline: typeof mockStartPipeline;
+  reset: typeof mockReset;
+} = {
+  status: 'idle',
+  loading: false,
+  error: null,
+  report: null,
+  qualityScore: null,
+  messageCount: null,
+  currentStage: null,
+  activityMessages: [],
+  startPipeline: mockStartPipeline,
+  reset: mockReset,
+};
 
 vi.mock('@/hooks/useNetworkingOutreach', () => ({
-  useNetworkingOutreach: () => ({
-    status: 'idle',
-    loading: false,
-    error: null,
-    report: null,
-    qualityScore: null,
-    messageCount: null,
-    currentStage: null,
-    activityMessages: [],
-    startPipeline: mockStartPipeline,
-    reset: mockReset,
-  }),
+  useNetworkingOutreach: () => mockOutreachState,
 }));
 
 const mockAddContactToApplication = vi.fn().mockResolvedValue(null);
@@ -225,6 +237,18 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRuleOfFourGroups = [];
   mockRuleOfFourLoading = false;
+  mockOutreachState = {
+    status: 'idle',
+    loading: false,
+    error: null,
+    report: null,
+    qualityScore: null,
+    messageCount: null,
+    currentStage: null,
+    activityMessages: [],
+    startPipeline: mockStartPipeline,
+    reset: mockReset,
+  };
 });
 
 afterEach(() => {
@@ -264,6 +288,26 @@ describe('GeneratedMessages — empty state (no outreach report)', () => {
   it('does not render a "Copy Full Sequence" button when report is null', () => {
     render(<NetworkingHubRoom />);
     expect(screen.queryByText(/Copy Full Sequence/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('NetworkingHubRoom — completed outreach uses the dedicated results card', () => {
+  it('shows the completion handoff in the generator and keeps the full sequence in Generated Sequence', () => {
+    mockOutreachState = {
+      ...mockOutreachState,
+      status: 'complete',
+      report: 'Connection Request\nCustom follow-up message',
+      qualityScore: 88,
+      messageCount: 4,
+    };
+
+    render(<NetworkingHubRoom />);
+
+    expect(screen.getByText('Sequence ready')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Generated Sequence' })).toBeInTheDocument();
+    expect(screen.getByText(/Custom follow-up message/i)).toBeInTheDocument();
+    expect(screen.getByText(/Copy Full Sequence/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Copy All/i)).not.toBeInTheDocument();
   });
 });
 
