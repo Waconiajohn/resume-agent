@@ -1,6 +1,6 @@
 import { buildResumeWorkspaceRoute, buildWorkspaceRoute } from '@/lib/app-routing';
 
-export type ProductStatus = 'active' | 'coming_soon' | 'beta';
+export type ProductStatus = 'active' | 'beta';
 
 export type ProductCategory =
   | 'career'

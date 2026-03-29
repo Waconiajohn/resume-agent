@@ -41,6 +41,12 @@ describe('ProductCatalogGrid', () => {
     expect(screen.queryByRole('button', { name: 'Open Smart Referrals' })).not.toBeInTheDocument();
   });
 
+  it('does not render coming-soon badges or demo catalog messaging', () => {
+    render(<ProductCatalogGrid onNavigate={vi.fn()} />);
+
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+  });
+
   it('shows secondary tools as workflow hints instead', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
 

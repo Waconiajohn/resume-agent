@@ -15,7 +15,7 @@ const ROOM_INFO: Record<string, { title: string; description: string }> = {
   learning: { title: 'Learning Center', description: 'Browse our 150-tip library, attend live webinars, and access on-demand resources.' },
 };
 
-const FALLBACK = { title: 'Coming Soon', description: 'This room is being built by the agent team.' };
+const FALLBACK = { title: 'Workspace Room Not Available', description: 'This room is not part of the current workspace experience.' };
 
 export function RoomPlaceholder({ room }: { room: WorkspaceRoom }) {
   const info = ROOM_INFO[room] ?? FALLBACK;
@@ -23,14 +23,14 @@ export function RoomPlaceholder({ room }: { room: WorkspaceRoom }) {
     <div className="p-6 max-w-[1400px] mx-auto">
       <GlassCard className="p-8 text-center">
         <div className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-2">
-          Coming Soon
+          Not Available
         </div>
         <h2 className="text-xl font-semibold text-[var(--text-strong)]">{info.title}</h2>
         <p className="mt-3 text-[14px] text-[var(--text-soft)] max-w-md mx-auto leading-relaxed">
           {info.description}
         </p>
         <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-2 text-[12px] text-[var(--text-soft)]">
-          This room is being built by the agent team
+          Use one of the active workspace rooms instead
         </div>
       </GlassCard>
     </div>

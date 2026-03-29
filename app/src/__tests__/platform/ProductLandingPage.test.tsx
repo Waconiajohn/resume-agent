@@ -7,7 +7,6 @@ import { PRODUCT_CATALOG } from '../../types/platform';
 afterEach(() => cleanup());
 
 const activeProduct = PRODUCT_CATALOG.find((p) => p.status === 'active');
-const comingSoonProduct = PRODUCT_CATALOG.find((p) => p.status === 'coming_soon') ?? null;
 
 if (!activeProduct) throw new Error('No active product in PRODUCT_CATALOG');
 
@@ -34,16 +33,6 @@ describe('ProductLandingPage', () => {
     expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
 
-  it('coming-soon product CTA is disabled', () => {
-    if (!comingSoonProduct) {
-      expect(true).toBe(true);
-      return;
-    }
-    render(<ProductLandingPage product={comingSoonProduct} onNavigate={vi.fn()} />);
-    const cta = screen.getByRole('button', { name: 'Coming Soon' });
-    expect(cta).toBeDisabled();
-  });
-
   it('back link calls onNavigate with /tools', () => {
     const onNavigate = vi.fn();
     render(<ProductLandingPage product={activeProduct} onNavigate={onNavigate} />);
@@ -64,12 +53,9 @@ describe('ProductLandingPage', () => {
     expect(screen.getByRole('button', { name: activeProduct.ctaLabel })).toBeInTheDocument();
   });
 
-  it('CTA shows "Coming Soon" text for coming-soon products', () => {
-    if (!comingSoonProduct) {
-      expect(true).toBe(true);
-      return;
-    }
-    render(<ProductLandingPage product={comingSoonProduct} onNavigate={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Coming Soon' })).toBeInTheDocument();
+  it('does not render waitlist or coming-soon messaging', () => {
+    render(<ProductLandingPage product={activeProduct} onNavigate={vi.fn()} />);
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/join waitlist/i)).not.toBeInTheDocument();
   });
 });

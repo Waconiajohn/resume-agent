@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { PRODUCT_CATALOG } from '@/types/platform';
 import type { ProductDefinition } from '@/types/platform';
@@ -33,30 +32,21 @@ interface ProductCatalogGridProps {
 /* ─── Product Card (compact variant for inside groups) ─── */
 
 function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNavigate: (route: string) => void }) {
-  const isNavigable = product.status === 'active' || product.status === 'beta';
   const isBeta = product.status === 'beta';
   const usesCareerProfile = CAREER_PROFILE_POWERED_IDS.has(product.id);
 
   return (
     <GlassCard
-      hover={isNavigable}
-      className={cn(
-        'flex flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-black/10 p-4',
-        isNavigable ? 'cursor-pointer' : 'opacity-60 cursor-default',
-      )}
-      onClick={isNavigable ? () => onNavigate(product.route) : undefined}
-      role={isNavigable ? 'button' : undefined}
-      tabIndex={isNavigable ? 0 : undefined}
-      onKeyDown={isNavigable ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate(product.route); } : undefined}
-      aria-label={isNavigable ? `Open ${product.name}` : `${product.name} — coming soon`}
+      hover
+      className="flex cursor-pointer flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-black/10 p-4"
+      onClick={() => onNavigate(product.route)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate(product.route); }}
+      aria-label={`Open ${product.name}`}
     >
       <div className="flex items-start justify-between">
         <span className="text-2xl" aria-hidden="true">{product.icon}</span>
-        {product.status === 'coming_soon' && (
-          <span className="rounded-full bg-[var(--surface-1)] border border-[var(--line-soft)] px-2 py-0.5 text-[12px] font-medium uppercase tracking-wider text-[var(--text-soft)]">
-            Coming Soon
-          </span>
-        )}
         {isBeta && (
           <span className="rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-2 py-0.5 text-[12px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
             Beta
@@ -65,16 +55,10 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <h4 className={cn(
-          'text-sm font-semibold',
-          isNavigable ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]',
-        )}>
+        <h4 className="text-sm font-semibold text-[var(--text-strong)]">
           {product.name}
         </h4>
-        <p className={cn(
-          'text-xs leading-relaxed',
-          isNavigable ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]',
-        )}>
+        <p className="text-xs leading-relaxed text-[var(--text-soft)]">
           {product.shortDescription}
         </p>
         {usesCareerProfile && (
@@ -102,23 +86,19 @@ function FeaturedToolCard({
   onNavigate: (route: string) => void;
   eyebrow: string;
 }) {
-  const isNavigable = product.status === 'active' || product.status === 'beta';
   const usesCareerProfile = CAREER_PROFILE_POWERED_IDS.has(product.id);
 
   return (
     <GlassCard
-      hover={isNavigable}
-      className={cn(
-        'p-5 flex h-full flex-col justify-between gap-4',
-        isNavigable ? 'cursor-pointer' : 'opacity-60 cursor-default',
-      )}
-      onClick={isNavigable ? () => onNavigate(product.route) : undefined}
-      role={isNavigable ? 'button' : undefined}
-      tabIndex={isNavigable ? 0 : undefined}
-      onKeyDown={isNavigable ? (event) => {
+      hover
+      className="flex h-full cursor-pointer flex-col justify-between gap-4 p-5"
+      onClick={() => onNavigate(product.route)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onNavigate(product.route);
-      } : undefined}
-      aria-label={isNavigable ? `Open ${product.name}` : `${product.name} — coming soon`}
+      }}
+      aria-label={`Open ${product.name}`}
     >
       <div>
         <div className="text-[13px] uppercase tracking-[0.18em] text-[#98b3ff]/70">{eyebrow}</div>
@@ -127,9 +107,9 @@ function FeaturedToolCard({
             <span className="text-2xl" aria-hidden="true">{product.icon}</span>
             <div className="mt-3 text-base font-semibold text-[var(--text-strong)]">{product.name}</div>
           </div>
-          {product.status !== 'active' && (
+          {product.status === 'beta' && (
             <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-0.5 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              {product.status === 'beta' ? 'Beta' : 'Coming Soon'}
+              Beta
             </span>
           )}
         </div>

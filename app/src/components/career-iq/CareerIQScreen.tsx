@@ -20,8 +20,6 @@ import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/re
 import type { PipelineCard } from './ZoneYourPipeline';
 import { resolveWorkspaceRoom, toExposedWorkspaceRoom, type WorkspaceRoom } from './workspaceRoomAccess';
 
-const COMING_SOON_ROOMS = new Set<string>();
-
 const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then((module) => ({ default: module.LiveSessionsRoom })));
 const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));
 const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then((module) => ({ default: module.ResumeWorkshopRoom })));
@@ -309,10 +307,6 @@ export function CareerIQScreen({
       ];
 
   const renderContent = () => {
-    if (COMING_SOON_ROOMS.has(activeRoom)) {
-      return <RoomPlaceholder room={activeRoom} />;
-    }
-
     if (activeRoom === 'dashboard') {
       return (
         <DashboardHome
