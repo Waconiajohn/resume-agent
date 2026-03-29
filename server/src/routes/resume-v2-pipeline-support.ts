@@ -826,12 +826,111 @@ function isPositiveRecruiterSignalCandidate(result: FinalReviewResult): boolean 
     || result.hiring_manager_verdict.rating === 'possible_interview';
 }
 
+type RecruiterSignal = FinalReviewResult['six_second_scan']['top_signals_seen'][number];
+
+function hasConcreteRecruiterMetric(signal: string): boolean {
+  const normalized = normalizeReviewText(signal);
+  const hasDigits = /\d/.test(signal);
+
+  if (/\$|%/.test(signal)) return true;
+
+  return hasDigits && /\b(million|billion|thousand|percent|employees?|people|team|sites?|facilities|plants?|brands?|markets?|states?|countries?|regions?|portfolio|budget|revenue|arr|output|savings|growth|roi|lift|reduction)\b/i.test(normalized);
+}
+
+function hasConcreteRecruiterScope(signal: string): boolean {
+  const normalized = normalizeReviewText(signal);
+  return /\d/.test(signal)
+    && /\b(employees?|people|team|sites?|facilities|plants?|brands?|markets?|states?|countries?|regions?|portfolio|budget|output)\b/i.test(normalized);
+}
+
+function hasVisibleRecruiterCredential(signal: string): boolean {
+  const normalized = normalizeReviewText(signal);
+  return /\b(certification|certified|license|licensed|licensure|mba|bachelor'?s|master'?s|phd|doctorate|pmp|cpa|pe|aws solutions architect)\b/i.test(normalized);
+}
+
+function hasVisibleRecruiterTitle(signal: string): boolean {
+  const normalized = normalizeReviewText(signal);
+  return /\b(vp|vice president|chief|cmo|coo|cto|cfo|director|head of|senior director|general manager)\b/i.test(normalized);
+}
+
+function isGenericExecutiveRecruiterSignal(signal: string): boolean {
+  const normalized = normalizeReviewText(signal);
+  const hasConcreteProof = hasConcreteRecruiterMetric(signal) || hasConcreteRecruiterScope(signal);
+
+  if (hasConcreteProof) return false;
+
+  return /\b(\d+\+?\s+years?(?:\s+of)?\s+experience|strong\s+background|proven\s+track\s+record|operations\s+excellence\s+leader|transformational\s+\w+\s+leader|experience\s+driving|background\s+in|leader\s+with\s+\d+\+?\s+years)\b/i.test(normalized);
+}
+
+function recruiterSignalPriority(signal: RecruiterSignal): number {
+  let score = 0;
+
+  if (signal.visible_in_top_third) score += 3;
+  if (hasConcreteRecruiterMetric(signal.signal)) score += 8;
+  else if (/\d/.test(signal.signal)) score += 2;
+  if (hasConcreteRecruiterScope(signal.signal)) score += 4;
+  if (hasVisibleRecruiterCredential(signal.signal)) score += 3;
+  if (hasVisibleRecruiterTitle(signal.signal)) score += 2;
+  if (isGenericExecutiveRecruiterSignal(signal.signal)) score -= 7;
+  if (recruiterSignalNeedsSpecificity(signal.why_it_matters)) score -= 1;
+
+  return score;
+}
+
+function recruiterSignalKey(signal: string): string {
+  return normalizeReviewText(signal)
+    .replace(/[^a-z0-9$%\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function areNearEquivalentRecruiterSignals(left: RecruiterSignal, right: RecruiterSignal): boolean {
+  const leftKey = recruiterSignalKey(left.signal);
+  const rightKey = recruiterSignalKey(right.signal);
+
+  if (!leftKey || !rightKey) return false;
+  if (leftKey === rightKey) return true;
+  if (leftKey.includes(rightKey) || rightKey.includes(leftKey)) return true;
+
+  const leftTokens = extractSalientRequirementTokens(leftKey);
+  const rightTokens = extractSalientRequirementTokens(rightKey);
+  if (leftTokens.length === 0 || rightTokens.length === 0) return false;
+
+  const rightTokenSet = new Set(rightTokens);
+  const shared = leftTokens.filter((token) => rightTokenSet.has(token));
+  return shared.length / Math.min(leftTokens.length, rightTokens.length) >= 0.7;
+}
+
+function rankRecruiterSignals(signals: RecruiterSignal[]): RecruiterSignal[] {
+  const ranked = signals
+    .map((signal, index) => ({
+      signal,
+      score: recruiterSignalPriority(signal),
+      index,
+    }))
+    .sort((left, right) => (
+      right.score - left.score
+      || Number(right.signal.visible_in_top_third) - Number(left.signal.visible_in_top_third)
+      || left.index - right.index
+    ));
+
+  const deduped: RecruiterSignal[] = [];
+  for (const candidate of ranked) {
+    if (deduped.some((existing) => areNearEquivalentRecruiterSignals(existing, candidate.signal))) {
+      continue;
+    }
+    deduped.push(candidate.signal);
+  }
+
+  return deduped.slice(0, 3);
+}
+
 function createRecruiterSignalsFromWins(result: FinalReviewResult) {
-  return result.top_wins.slice(0, 3).map((win) => ({
+  return rankRecruiterSignals(result.top_wins.map((win) => ({
     signal: win.win,
     why_it_matters: win.why_powerful,
     visible_in_top_third: win.prominent_enough,
-  }));
+  })));
 }
 
 function createMissingSignalsFromConcerns(result: FinalReviewResult) {
@@ -853,8 +952,17 @@ function hasInterviewPositiveSummaryLanguage(summary: string): boolean {
 }
 
 function createRecruiterSignalFromSummary(summary: string) {
-  const firstSentence = summary.split(/(?<=[.!?])\s+/)[0]?.trim() || summary.trim();
-  const signal = firstSentence.length > 140 ? `${firstSentence.slice(0, 137).trim()}...` : firstSentence;
+  const sentences = summary
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  const signal = rankRecruiterSignals(sentences.map((sentence) => ({
+    signal: sentence.length > 140 ? `${sentence.slice(0, 137).trim()}...` : sentence,
+    why_it_matters: 'This was the clearest positive signal described in the deeper hiring-manager review.',
+    visible_in_top_third: false,
+  })))[0]?.signal ?? summary.trim();
+
   return {
     signal,
     why_it_matters: 'This was the clearest positive signal described in the deeper hiring-manager review.',
@@ -1202,18 +1310,17 @@ export function stabilizeFinalReviewResult(
     .map((concern) => sanitizeConcernGuidance(concern));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
-  if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
-    normalized.six_second_scan.top_signals_seen = createRecruiterSignalsFromWins(normalized);
+  const recruiterSignalCandidates: RecruiterSignal[] = [
+    ...normalized.six_second_scan.top_signals_seen,
+    ...createRecruiterSignalsFromWins(normalized),
+  ];
+
+  const hasConcreteRecruiterSignal = recruiterSignalCandidates.some((signal) => recruiterSignalPriority(signal) >= 6);
+  if (!hasConcreteRecruiterSignal && hasPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)) {
+    recruiterSignalCandidates.push(createRecruiterSignalFromSummary(normalized.hiring_manager_verdict.summary));
   }
 
-  if (
-    normalized.six_second_scan.top_signals_seen.length === 0
-    && hasPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)
-  ) {
-    normalized.six_second_scan.top_signals_seen = [
-      createRecruiterSignalFromSummary(normalized.hiring_manager_verdict.summary),
-    ];
-  }
+  normalized.six_second_scan.top_signals_seen = rankRecruiterSignals(recruiterSignalCandidates);
 
   if (normalized.six_second_scan.important_signals_missing.length === 0 && normalized.concerns.length > 0) {
     normalized.six_second_scan.important_signals_missing = createMissingSignalsFromConcerns(normalized);
@@ -1409,7 +1516,11 @@ export function stabilizeFinalReviewResult(
     && normalized.six_second_scan.top_signals_seen.length > 0
     && (
       hasInterviewPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)
-      || (normalized.fit_assessment.business_impact === 'strong' && normalized.six_second_scan.top_signals_seen.length >= 2)
+      || (
+        normalized.fit_assessment.business_impact === 'strong'
+        && normalized.six_second_scan.top_signals_seen.length >= 2
+        && normalized.six_second_scan.top_signals_seen.some((signal) => recruiterSignalPriority(signal) >= 6)
+      )
     )
   ) {
     normalized.concerns = normalized.concerns.map((concern) => (
@@ -2382,6 +2493,7 @@ RULES:
 - The recruiter scan, top_signals_seen list, and hiring manager verdict must be internally consistent.
 - Every positive claim must point to specific resume evidence, not generic praise about the summary or competencies.
 - top_signals_seen.signal should name a concrete accomplishment, scope indicator, credential, title line, or metric the recruiter can actually see in the top third.
+- When concrete proof exists, lead top_signals_seen with that proof instead of generic years-of-experience or broad leadership phrasing.
 - Avoid vague statements like "clear executive summary", "strong background", or "relevant skills" unless they are paired with the exact proof that makes them credible.
 - important_signals_missing should name the exact missing proof, metric, credential, or scope statement that a recruiter would expect to see quickly.
 - The hiring_manager_verdict.summary should cite at least one concrete strength or concern from the resume, not only general impressions.

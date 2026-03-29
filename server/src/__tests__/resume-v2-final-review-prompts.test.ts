@@ -160,6 +160,88 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.six_second_scan.decision).toBe('continue_reading');
   });
 
+  it('reranks recruiter signals so concrete wins beat generic years-of-experience phrasing', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Worth a closer look.',
+        top_signals_seen: [
+          {
+            signal: 'Operations Excellence Leader with 18 years of experience',
+            why_it_matters: 'This clears an early experience screen.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Promising operations leader with credible scale and execution wins.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [
+        {
+          win: 'Delivered $14.2M in annual cost savings across 3 plants.',
+          why_powerful: 'This gives the recruiter hard proof of business impact and network scale in the top third.',
+          aligned_requirement: 'Operational excellence',
+          prominent_enough: true,
+          repositioning_recommendation: 'Keep this high on page one.',
+        },
+      ],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.top_signals_seen[0]?.signal).toContain('$14.2M');
+    const yearsSignalIndex = stabilized.six_second_scan.top_signals_seen.findIndex((item) => item.signal.includes('18 years'));
+    expect(yearsSignalIndex === -1 || yearsSignalIndex > 0).toBe(true);
+  });
+
+  it('chooses the most concrete summary sentence when fallback recruiter signals are needed', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'skip',
+        reason: 'Mixed first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong marketing leader. Owns a $180M revenue portfolio and drove 340% digital-attributed growth.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.top_signals_seen).toHaveLength(1);
+    expect(stabilized.six_second_scan.top_signals_seen[0]?.signal).toContain('$180M');
+    expect(stabilized.six_second_scan.top_signals_seen[0]?.signal).toContain('340%');
+  });
+
   it('forces hard requirement risks to remain visible in the final verdict', () => {
     const hardRisks = extractHardRequirementRisksFromGapAnalysis({
       requirements: [
