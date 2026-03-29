@@ -119,4 +119,57 @@ describe('ResumeDocumentCard', () => {
     expect(screen.queryByText(/\$40M revenue growth across enterprise accounts/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Expanded strategic accounts through solutions-based selling/i)).toBeInTheDocument();
   });
+
+  it('shows nearby proof when a line lacks direct target evidence', () => {
+    const runtimeResume = {
+      header: {
+        name: 'Jane Doe',
+        phone: '555-0100',
+        email: 'jane@example.com',
+        branded_title: 'VP Engineering',
+      },
+      executive_summary: {
+        content: 'Seasoned engineering leader driving outcomes at scale.',
+        is_new: false,
+      },
+      core_competencies: [],
+      selected_accomplishments: [
+        {
+          content: 'Led platform modernization across three business units',
+          is_new: false,
+          addresses_requirements: ['Transformation leadership'],
+          primary_target_requirement: 'Transformation leadership',
+          primary_target_source: 'job_description',
+          target_evidence: '',
+          evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+          confidence: 'strong',
+          review_state: 'strengthen',
+          requirement_source: 'job_description',
+          content_origin: 'resume_rewrite',
+          support_origin: 'original_resume',
+        },
+      ],
+      professional_experience: [],
+      education: [],
+      certifications: [],
+    } as unknown as ResumeDraft;
+
+    render(
+      <ResumeDocumentCard
+        resume={runtimeResume}
+        requirementCatalog={[
+          { requirement: 'Transformation leadership', source: 'job_description' },
+        ]}
+        activeBullet={{ section: 'selected_accomplishments', index: 0 }}
+        onRequestEdit={() => {}}
+        isEditing={false}
+        pendingEdit={null}
+      />,
+    );
+
+    expect(screen.getByText('Nearby proof we can use')).toBeInTheDocument();
+    expect(screen.getByText(/does not directly prove the target yet, but it gives us real resume proof to build from/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization/i)).toBeInTheDocument();
+    expect(screen.getByText('Nearby resume proof')).toBeInTheDocument();
+  });
 });

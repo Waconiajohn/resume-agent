@@ -500,7 +500,11 @@ function InlineEditPanel({
   const displayEvidence = typeof targetEvidence === 'string' && targetEvidence.trim().length > 0
     ? targetEvidence.trim()
     : '';
-  const hasEvidence = displayEvidence.length > 0;
+  const nearbyEvidence = displayEvidence.length === 0 && typeof evidenceFound === 'string' && evidenceFound.trim().length > 0
+    ? evidenceFound.trim()
+    : '';
+  const hasDirectEvidence = displayEvidence.length > 0;
+  const hasNearbyEvidence = nearbyEvidence.length > 0;
   const targetSummary = requirements[0]
     ? requirements[0]
     : requirementSource === 'benchmark'
@@ -645,12 +649,21 @@ function InlineEditPanel({
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.82fr)]">
             <div className="resume-inline-panel__support-card rounded-xl px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Supporting evidence
+                {hasDirectEvidence ? 'Supporting evidence' : hasNearbyEvidence ? 'Nearby proof we can use' : 'Supporting evidence'}
               </p>
-              {hasEvidence ? (
+              {hasDirectEvidence ? (
                 <p className="mt-2 text-sm italic leading-6 text-slate-600">
                   &ldquo;{displayEvidence}&rdquo;
                 </p>
+              ) : hasNearbyEvidence ? (
+                <>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    This does not directly prove the target yet, but it gives us real resume proof to build from.
+                  </p>
+                  <p className="mt-2 text-sm italic leading-6 text-slate-600">
+                    &ldquo;{nearbyEvidence}&rdquo;
+                  </p>
+                </>
               ) : (
                 <div className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#8f2d2d]">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -666,7 +679,7 @@ function InlineEditPanel({
                 <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin)}</dd>
 
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasEvidence, requirementSource)}</dd>
+                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasDirectEvidence, hasNearbyEvidence, requirementSource)}</dd>
               </dl>
             </div>
           </div>
@@ -680,10 +693,12 @@ function InlineEditPanel({
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 {isBenchmarkValidation
-                  ? 'Rewrite this so it clearly matches background you can honestly stand behind.'
+                  ? 'Use the nearby proof to ground this benchmark signal in background you can honestly stand behind.'
                   : isCodeRed
                     ? 'Reconnect this line to real adjacent experience or honest working knowledge.'
-                    : 'Tighten this line with clearer proof, scope, or outcome.'}
+                    : hasNearbyEvidence
+                      ? 'Use the nearby proof to tighten this line so it directly supports the target.'
+                      : 'Tighten this line with clearer proof, scope, or outcome.'}
               </p>
             </div>
             {matchesPendingEdit && (
@@ -1164,12 +1179,16 @@ function getContentOriginLabel(
 
 function getSupportOriginLabel(
   supportOrigin: ResumeSupportOrigin | undefined,
-  hasEvidence: boolean,
+  hasDirectEvidence: boolean,
+  hasNearbyEvidence: boolean,
   requirementSource?: RequirementSource,
 ): string {
   if (supportOrigin === 'user_confirmed_context') return 'User-confirmed context';
-  if (supportOrigin === 'adjacent_resume_inference') return 'Adjacent resume proof';
-  if (supportOrigin === 'original_resume' || hasEvidence) return 'Resume support found';
+  if (supportOrigin === 'adjacent_resume_inference') {
+    return hasDirectEvidence ? 'Adjacent proof connected' : 'Adjacent resume proof';
+  }
+  if (hasDirectEvidence) return 'Direct support found';
+  if (supportOrigin === 'original_resume' || hasNearbyEvidence) return 'Nearby resume proof';
   if (requirementSource === 'benchmark') return 'Not directly confirmed';
   return 'No direct resume proof yet';
 }
@@ -1195,10 +1214,10 @@ function getInlinePanelIntro(
   requirementSource: RequirementSource,
 ): string {
   if (reviewState === 'strengthen') {
-    return 'This is part of the strongest resume we can build for this role, but the proof in this line still needs to be sharper.';
+    return 'This line is headed in the right direction, but the current resume proof does not directly support this exact target yet.';
   }
   if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
-    return 'This is the ultimate-resume draft for this role. The line is aimed at a benchmark signal, and now we need to anchor it in background you can honestly stand behind.';
+    return 'This is the ultimate-resume draft for this role. The line is aimed at a benchmark signal, and now we need to anchor that signal in background you can honestly stand behind.';
   }
   return 'This is the ultimate-resume draft for this role. The line is aimed at a real job need, and now we need to anchor it in proof you can honestly support.';
 }
@@ -1211,10 +1230,10 @@ function getInlinePanelFlagReason(
     return 'The supporting proof is already present.';
   }
   if (reviewState === 'strengthen') {
-    return 'The line reads as plausible, but the proof is still too thin or too generic.';
+    return 'The line may be valid, but the proof we have nearby still needs to be connected more directly to this job need.';
   }
   if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
-    return 'This may be the right kind of benchmark claim, but we still need to confirm it honestly matches your background.';
+    return 'This may be the right kind of benchmark claim, but the current proof still needs to be tied more clearly to your actual background.';
   }
   return 'We do not yet have direct resume proof for this exact claim.';
 }
