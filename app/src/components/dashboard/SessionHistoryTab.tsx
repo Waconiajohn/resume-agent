@@ -249,7 +249,7 @@ export function SessionHistoryTab({
               const nextActionRoute = activeStage === 'interviewing'
                 ? buildWorkspaceRoomRoute('interview', record, { focus: 'prep' })
                 : activeStage === 'offer'
-                ? buildWorkspaceRoomRoute('salary-negotiation', record)
+                ? buildWorkspaceRoomRoute('interview', record, { focus: 'negotiation' })
                 : null;
               const reopenSessionId = resumeAsset?.id ?? record.latestSession.id;
               const fullWorkspaceRoute = record.jobApplicationId ? buildJobWorkspaceRoute(record.jobApplicationId) : null;

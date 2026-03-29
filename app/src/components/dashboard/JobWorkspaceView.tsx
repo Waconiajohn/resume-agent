@@ -60,7 +60,8 @@ export function JobWorkspaceView({
     focus: 'plan',
     sessionId: ninetyDayPlanAsset?.id ?? null,
   });
-  const salaryNegotiationRoute = buildWorkspaceRoomRoute('salary-negotiation', record, {
+  const salaryNegotiationRoute = buildWorkspaceRoomRoute('interview', record, {
+    focus: 'negotiation',
     sessionId: salaryNegotiationAsset?.id ?? null,
   });
   const stageHistory = Array.isArray(application?.stage_history) && application?.stage_history.length > 0

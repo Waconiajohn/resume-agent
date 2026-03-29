@@ -253,7 +253,7 @@ export function CareerIQScreen({
     return events.slice(0, 5);
   }, [coverLetterSessions, sessions]);
 
-  const handleRoomNavigate = (room: WorkspaceRoom | CareerIQRoom | 'salary-negotiation') => {
+  const handleRoomNavigate = (room: WorkspaceRoom | CareerIQRoom) => {
     const resolvedRoom = resolveWorkspaceRoom(room);
     refreshCoachRec();
     if (resolvedRoom === 'resume') {
@@ -261,10 +261,6 @@ export function CareerIQScreen({
       return;
     }
     setActiveRoom(resolvedRoom);
-    if (room === 'salary-negotiation') {
-      onNavigate('/workspace?room=interview&focus=negotiation');
-      return;
-    }
     onNavigate(resolvedRoom === 'dashboard' ? '/workspace' : `/workspace?room=${resolvedRoom}`);
   };
 

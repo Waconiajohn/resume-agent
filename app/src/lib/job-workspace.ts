@@ -148,7 +148,7 @@ export function getUniqueProductTypes(sessions: CoachSession[]): string[] {
 }
 
 export function buildWorkspaceRoomRoute(
-  room: 'interview' | 'salary-negotiation',
+  room: 'interview',
   context: {
     company: string;
     role: string;
@@ -159,8 +159,7 @@ export function buildWorkspaceRoomRoute(
     sessionId?: string | null;
   },
 ): string {
-  const resolvedRoom = room === 'salary-negotiation' ? 'interview' : room;
-  const params = new URLSearchParams({ room: resolvedRoom });
+  const params = new URLSearchParams({ room });
   if (context.jobApplicationId) {
     params.set('job', context.jobApplicationId);
   }
@@ -170,9 +169,8 @@ export function buildWorkspaceRoomRoute(
   if (context.role) {
     params.set('role', context.role);
   }
-  const resolvedFocus = options?.focus ?? (room === 'salary-negotiation' ? 'negotiation' : undefined);
-  if (resolvedFocus) {
-    params.set('focus', resolvedFocus);
+  if (options?.focus) {
+    params.set('focus', options.focus);
   }
   if (options?.sessionId) {
     params.set('session', options.sessionId);
