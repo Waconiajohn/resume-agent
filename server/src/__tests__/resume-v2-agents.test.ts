@@ -2316,10 +2316,12 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
                 text: 'Cut deployment time from 45 minutes to 8 minutes by optimizing CI/CD pipelines.',
                 is_new: false,
                 addresses_requirements: ['Cloud Infrastructure'],
+                primary_target_requirement: 'Cloud Infrastructure',
                 source: 'original',
                 confidence: 'strong',
                 requirement_source: 'job_description',
                 evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                target_evidence: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
               },
             ],
           },
@@ -2370,6 +2372,93 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullet?.confidence).toBe('strong');
       expect(bullet?.content_origin).toBe('resume_rewrite');
       expect(bullet?.review_state).toBe('supported_rewrite');
+    });
+
+    it('marks strongly supported selected accomplishments as strengthen when the proof does not directly support the claimed target', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        selected_accomplishments: [
+          {
+            content: 'Led platform modernization across three business units.',
+            is_new: false,
+            addresses_requirements: ['Transformation Leadership'],
+            primary_target_requirement: 'Transformation Leadership',
+            source: 'enhanced',
+            confidence: 'strong',
+            requirement_source: 'job_description',
+            evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+            target_evidence: '',
+            content_origin: 'resume_rewrite',
+            support_origin: 'original_resume',
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: 'Transformation Leadership',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'partial',
+              evidence: [],
+              source_evidence: 'Job description',
+              strategy: {
+                real_experience: '',
+                positioning: '',
+                inferred_metric: '',
+                inference_rationale: '',
+                ai_reasoning: '',
+                interview_questions: [],
+              },
+            },
+          ],
+        },
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 1,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullet = result.selected_accomplishments[0];
+
+      expect(bullet?.content_origin).toBe('resume_rewrite');
+      expect(bullet?.target_evidence).toBe('');
+      expect(bullet?.review_state).toBe('strengthen');
     });
 
     it('restores the original proof bullet when a material rewrite loses the specific evidence', async () => {

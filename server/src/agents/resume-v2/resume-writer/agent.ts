@@ -394,6 +394,8 @@ export async function runResumeWriter(
       confidence: a.confidence,
       requirementSource: a.requirement_source,
       contentOrigin: a.content_origin,
+      primaryTargetRequirement: a.primary_target_requirement,
+      targetEvidence: a.target_evidence,
     });
     reviewStateCounts[reviewState]++;
   }
@@ -403,6 +405,8 @@ export async function runResumeWriter(
         confidence: b.confidence,
         requirementSource: b.requirement_source,
         contentOrigin: b.content_origin,
+        primaryTargetRequirement: b.primary_target_requirement,
+        targetEvidence: b.target_evidence,
       });
       reviewStateCounts[reviewState]++;
     }
@@ -1718,7 +1722,13 @@ function deterministicRequirementMatch(
         requirement_source: primaryTarget?.source ?? result.requirement_source,
         source: result.source,
         confidence: result.confidence,
-        review_state: result.review_state,
+        review_state: inferReviewState({
+          confidence: result.confidence,
+          requirementSource: primaryTarget?.source ?? result.requirement_source,
+          contentOrigin: result.content_origin,
+          primaryTargetRequirement: singleRequirement,
+          targetEvidence,
+        }),
         content_origin: result.content_origin,
         support_origin: result.support_origin,
       };
@@ -1776,7 +1786,13 @@ function deterministicRequirementMatch(
                 requirement_source: primaryTarget?.source ?? result.requirement_source,
                 source: result.source,
                 confidence: result.confidence,
-                review_state: result.review_state,
+                review_state: inferReviewState({
+                  confidence: result.confidence,
+                  requirementSource: primaryTarget?.source ?? result.requirement_source,
+                  contentOrigin: result.content_origin,
+                  primaryTargetRequirement: singleRequirement,
+                  targetEvidence,
+                }),
                 content_origin: result.content_origin,
                 support_origin: result.support_origin,
               };
@@ -1871,6 +1887,11 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     const confidence = inferConfidence(source, bullet.evidence_found, normalizedSupportOrigin, contentOrigin);
     const primaryTarget = bullet.primary_target_requirement ?? reqs[0];
     const requirementSource = bullet.requirement_source ?? inferReqSource(reqs);
+    const targetEvidence = bullet.target_evidence ?? (
+      primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget)
+        ? bullet.evidence_found ?? ''
+        : ''
+    );
     return {
       ...bullet,
       source,
@@ -1879,13 +1900,15 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         confidence,
         requirementSource,
         contentOrigin,
+        primaryTargetRequirement: primaryTarget,
+        targetEvidence,
       }),
       evidence_found: bullet.evidence_found ?? '',
       requirement_source: requirementSource,
       addresses_requirements: reqs,
       primary_target_requirement: primaryTarget,
       primary_target_source: bullet.primary_target_source ?? (primaryTarget ? requirementSource : undefined),
-      target_evidence: bullet.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget) ? bullet.evidence_found ?? '' : ''),
+      target_evidence: targetEvidence,
       content_origin: contentOrigin,
       support_origin: normalizedSupportOrigin,
     };
@@ -1906,6 +1929,11 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         ? a.primary_target_requirement
         : reqs[0];
       const requirementSource = a.requirement_source ?? inferReqSource(reqs);
+      const targetEvidence = a.target_evidence ?? (
+        primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget)
+          ? a.evidence_found ?? ''
+          : ''
+      );
       return {
         ...a,
         source,
@@ -1914,13 +1942,15 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
           confidence,
           requirementSource,
           contentOrigin,
+          primaryTargetRequirement: primaryTarget,
+          targetEvidence,
         }),
         evidence_found: a.evidence_found ?? '',
         requirement_source: requirementSource,
         addresses_requirements: reqs,
         primary_target_requirement: primaryTarget,
         primary_target_source: a.primary_target_source ?? (primaryTarget ? requirementSource : undefined),
-        target_evidence: a.target_evidence ?? (primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget) ? a.evidence_found ?? '' : ''),
+        target_evidence: targetEvidence,
         content_origin: contentOrigin,
         support_origin: normalizedSupportOrigin,
       };
@@ -2357,16 +2387,34 @@ function inferReviewState(options: {
   confidence: BulletConfidence;
   requirementSource: RequirementSource;
   contentOrigin?: ResumeContentOrigin | string;
+  primaryTargetRequirement?: string;
+  targetEvidence?: string;
 }): ResumeReviewState {
   const contentOrigin = coerceContentOrigin(options.contentOrigin);
+  const hasPrimaryTarget = typeof options.primaryTargetRequirement === 'string'
+    && options.primaryTargetRequirement.trim().length > 0;
+  const hasTargetEvidence = typeof options.targetEvidence === 'string'
+    && options.targetEvidence.trim().length > 0;
+
   if (options.confidence === 'needs_validation' && options.requirementSource === 'benchmark') {
     return 'confirm_fit';
   }
   if (options.confidence === 'needs_validation') {
     return 'code_red';
   }
+  if (options.requirementSource === 'benchmark' && hasPrimaryTarget && !hasTargetEvidence) {
+    return 'confirm_fit';
+  }
   if (options.confidence === 'partial') {
-    return 'strengthen';
+    return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
+  }
+  if (
+    contentOrigin
+    && contentOrigin !== 'verbatim_resume'
+    && hasPrimaryTarget
+    && !hasTargetEvidence
+  ) {
+    return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
   }
   return contentOrigin && contentOrigin !== 'verbatim_resume'
     ? 'supported_rewrite'
@@ -2421,6 +2469,8 @@ function buildSelectedAccomplishments(
         confidence,
         requirementSource,
         contentOrigin: candidate.contentOrigin,
+        primaryTargetRequirement: primaryRequirement,
+        targetEvidence,
       }),
       evidence_found: candidate.evidence,
       content_origin: candidate.contentOrigin,
@@ -2503,6 +2553,10 @@ function buildSelectedAccomplishments(
                 }),
               requirementSource: candidate.primaryTarget?.source ?? 'job_description',
               contentOrigin: candidate.candidate.contentOrigin,
+              primaryTargetRequirement: candidate.primaryTarget?.requirement,
+              targetEvidence: candidate.primaryTarget && evidenceSupportsRequirement(candidate.evidence, candidate.primaryTarget.requirement)
+                ? candidate.evidence
+                : '',
             }),
             evidence_found: candidate.evidence,
             content_origin: candidate.candidate.contentOrigin,

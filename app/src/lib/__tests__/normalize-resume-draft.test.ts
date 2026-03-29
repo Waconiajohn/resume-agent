@@ -107,6 +107,8 @@ describe('normalizeResumeDraft', () => {
           confidence: 'strong',
           evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
           requirement_source: 'job_description',
+          primary_target_requirement: 'CI/CD',
+          target_evidence: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
           content_origin: 'resume_rewrite',
           support_origin: 'original_resume',
         },
@@ -119,6 +121,71 @@ describe('normalizeResumeDraft', () => {
     const normalized = normalizeResumeDraft(resume);
     expect(normalized?.selected_accomplishments[0].confidence).toBe('strong');
     expect(normalized?.selected_accomplishments[0].review_state).toBe('supported_rewrite');
+  });
+
+  it('downgrades strong rewrites without target-specific proof to strengthen', () => {
+    const resume: ResumeDraft = {
+      header: {
+        name: 'Jane Doe',
+        phone: '555-0100',
+        email: 'jane@example.com',
+        branded_title: 'VP Engineering',
+      },
+      executive_summary: { content: 'Leader.', is_new: false },
+      core_competencies: [],
+      selected_accomplishments: [
+        {
+          content: 'Led platform modernization across three business units',
+          is_new: false,
+          addresses_requirements: ['Transformation leadership'],
+          primary_target_requirement: 'Transformation leadership',
+          confidence: 'strong',
+          evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+          requirement_source: 'job_description',
+          content_origin: 'resume_rewrite',
+          support_origin: 'original_resume',
+        },
+      ],
+      professional_experience: [],
+      education: [],
+      certifications: [],
+    };
+
+    const normalized = normalizeResumeDraft(resume);
+    expect(normalized?.selected_accomplishments[0].target_evidence).toBe('');
+    expect(normalized?.selected_accomplishments[0].review_state).toBe('strengthen');
+  });
+
+  it('uses confirm_fit for benchmark rewrites without target-specific proof', () => {
+    const resume: ResumeDraft = {
+      header: {
+        name: 'Jane Doe',
+        phone: '555-0100',
+        email: 'jane@example.com',
+        branded_title: 'VP Engineering',
+      },
+      executive_summary: { content: 'Leader.', is_new: false },
+      core_competencies: [],
+      selected_accomplishments: [
+        {
+          content: 'Positioned as an enterprise transformation leader',
+          is_new: false,
+          addresses_requirements: ['Benchmark transformation signal'],
+          primary_target_requirement: 'Benchmark transformation signal',
+          confidence: 'strong',
+          evidence_found: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+          requirement_source: 'benchmark',
+          content_origin: 'resume_rewrite',
+          support_origin: 'original_resume',
+        },
+      ],
+      professional_experience: [],
+      education: [],
+      certifications: [],
+    };
+
+    const normalized = normalizeResumeDraft(resume);
+    expect(normalized?.selected_accomplishments[0].review_state).toBe('confirm_fit');
   });
 });
 

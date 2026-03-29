@@ -59,6 +59,8 @@ function normalizeReviewState(
     confidence: BulletConfidence;
     requirementSource: RequirementSource;
     contentOrigin?: ResumeContentOrigin;
+    primaryTargetRequirement?: string;
+    targetEvidence?: string;
   },
 ): ResumeReviewState {
   if (
@@ -71,14 +73,30 @@ function normalizeReviewState(
     return value;
   }
 
+  const hasPrimaryTarget = typeof options.primaryTargetRequirement === 'string'
+    && options.primaryTargetRequirement.trim().length > 0;
+  const hasTargetEvidence = typeof options.targetEvidence === 'string'
+    && options.targetEvidence.trim().length > 0;
+
   if (options.confidence === 'needs_validation' && options.requirementSource === 'benchmark') {
     return 'confirm_fit';
   }
   if (options.confidence === 'needs_validation') {
     return 'code_red';
   }
+  if (options.requirementSource === 'benchmark' && hasPrimaryTarget && !hasTargetEvidence) {
+    return 'confirm_fit';
+  }
   if (options.confidence === 'partial') {
-    return 'strengthen';
+    return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
+  }
+  if (
+    options.contentOrigin
+    && options.contentOrigin !== 'verbatim_resume'
+    && hasPrimaryTarget
+    && !hasTargetEvidence
+  ) {
+    return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
   }
   return options.contentOrigin && options.contentOrigin !== 'verbatim_resume'
     ? 'supported_rewrite'
@@ -171,21 +189,23 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
       const addressesRequirements = normalizeRequirements(bullet?.addresses_requirements);
       const isNew = Boolean(bullet?.is_new);
       const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence, bullet?.content_origin);
+      const primaryTargetRequirement = typeof bullet?.primary_target_requirement === 'string'
+        ? bullet.primary_target_requirement
+        : addressesRequirements[0] ?? undefined;
+      const targetEvidence = typeof bullet?.target_evidence === 'string'
+        ? bullet.target_evidence
+        : '';
 
       return {
         ...bullet,
         text: typeof bullet?.text === 'string' ? bullet.text : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
-        primary_target_requirement: typeof bullet?.primary_target_requirement === 'string'
-          ? bullet.primary_target_requirement
-          : addressesRequirements[0] ?? undefined,
+        primary_target_requirement: primaryTargetRequirement,
         primary_target_source: normalizeRequirementSource(
           bullet?.primary_target_source ?? bullet?.requirement_source,
         ),
-        target_evidence: typeof bullet?.target_evidence === 'string'
-          ? bullet.target_evidence
-          : evidenceFound,
+        target_evidence: targetEvidence,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(bullet?.requirement_source),
         source: normalizeBulletSource((bullet as { source?: LooseBulletSource })?.source),
@@ -218,6 +238,8 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
               isNew,
             },
           ),
+          primaryTargetRequirement,
+          targetEvidence,
         }),
       };
     }),
@@ -269,21 +291,23 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
       const addressesRequirements = normalizeRequirements(item?.addresses_requirements);
       const isNew = Boolean(item?.is_new);
       const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence, item?.content_origin);
+      const primaryTargetRequirement = typeof item?.primary_target_requirement === 'string'
+        ? item.primary_target_requirement
+        : addressesRequirements[0] ?? undefined;
+      const targetEvidence = typeof item?.target_evidence === 'string'
+        ? item.target_evidence
+        : '';
 
       return {
         ...item,
         content: typeof item?.content === 'string' ? item.content : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
-        primary_target_requirement: typeof item?.primary_target_requirement === 'string'
-          ? item.primary_target_requirement
-          : addressesRequirements[0] ?? undefined,
+        primary_target_requirement: primaryTargetRequirement,
         primary_target_source: normalizeRequirementSource(
           item?.primary_target_source ?? item?.requirement_source,
         ),
-        target_evidence: typeof item?.target_evidence === 'string'
-          ? item.target_evidence
-          : evidenceFound,
+        target_evidence: targetEvidence,
         evidence_found: evidenceFound,
         requirement_source: normalizeRequirementSource(item?.requirement_source),
         source: normalizeBulletSource((item as { source?: LooseBulletSource })?.source),
@@ -316,6 +340,8 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
               isNew,
             },
           ),
+          primaryTargetRequirement,
+          targetEvidence,
         }),
       };
     }),
