@@ -232,14 +232,14 @@ describe('App routing shell', () => {
     expect((await screen.findAllByText('Resume V2 Screen')).length).toBeGreaterThan(0);
   });
 
-  it('routes tool detail pages through the router tree', async () => {
+  it('routes legacy tool detail pages back to workspace home', async () => {
     render(
       <MemoryRouter initialEntries={['/tools/linkedin']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Workspace room: linkedin')).toBeInTheDocument();
+    expect(await screen.findByText('Workspace room: dashboard')).toBeInTheDocument();
   });
 
   it('redirects the old cover letter route into Resume Builder', async () => {

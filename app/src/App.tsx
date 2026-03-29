@@ -25,7 +25,6 @@ import {
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
   getAppView,
-  getLegacyToolRedirect,
   getNormalizedWorkspaceRedirect,
   getLegacyWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
@@ -602,7 +601,7 @@ export default function App() {
               />
               <Route
                 path="/tools/:slug"
-                element={<Navigate to={getLegacyToolRedirect(location.pathname.split('/tools/')[1] || undefined)} replace />}
+                element={<Navigate to="/workspace" replace />}
               />
               <Route
                 path="/cover-letter"

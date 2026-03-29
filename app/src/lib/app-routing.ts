@@ -101,29 +101,8 @@ export function getNormalizedWorkspaceRedirect(search: string): string | null {
   }
 }
 
-export function getLegacyToolRedirect(slug?: string): string {
-  switch (slug) {
-    case 'onboarding':
-      return buildWorkspaceRoute('career-profile');
-    case 'resume':
-      return buildResumeWorkspaceRoute();
-    case 'cover-letter':
-      return buildResumeWorkspaceRoute('cover-letter');
-    case 'linkedin':
-      return buildWorkspaceRoute('linkedin');
-    case 'jobs':
-      return buildWorkspaceRoute('jobs');
-    case 'interview':
-      return buildWorkspaceRoute('interview');
-    case 'salary-negotiation':
-      return buildWorkspaceRoute('interview', { focus: 'negotiation' });
-    default:
-      return buildWorkspaceRoute();
-  }
-}
-
 export function resolveNavigationTarget(viewName: string): string {
-  if (viewName.startsWith('/tools/')) return getLegacyToolRedirect(viewName.split('/tools/')[1] || undefined);
+  if (viewName.startsWith('/tools/')) return buildWorkspaceRoute();
   if (viewName === '/tools' || viewName === 'tools') return '/workspace';
   if (viewName.startsWith('/workspace')) return viewName;
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace';

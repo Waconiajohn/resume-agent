@@ -3,7 +3,6 @@ import {
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
   getAppView,
-  getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
   getNormalizedWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
@@ -42,12 +41,10 @@ describe('app-routing', () => {
     expect(getNormalizedWorkspaceRedirect('?room=network-intelligence')).toBe('/workspace?room=networking');
     expect(getNormalizedWorkspaceRedirect('?room=case-study')).toBe('/workspace?room=executive-bio&focus=case-study');
     expect(getNormalizedWorkspaceRedirect('?room=resume')).toBeNull();
-    expect(getLegacyToolRedirect('linkedin')).toBe('/workspace?room=linkedin');
-    expect(getLegacyToolRedirect('cover-letter')).toBe('/workspace?room=resume&focus=cover-letter');
     expect(resolveNavigationTarget('workspace')).toBe('/workspace');
     expect(resolveNavigationTarget('tools')).toBe('/workspace');
     expect(resolveNavigationTarget('/dashboard')).toBe('/workspace');
-    expect(resolveNavigationTarget('/tools/linkedin')).toBe('/workspace?room=linkedin');
+    expect(resolveNavigationTarget('/tools/linkedin')).toBe('/workspace');
     expect(resolveNavigationTarget('resume-v2')).toBe('/resume-builder/session');
     expect(resolveNavigationTarget('/resume-builder/session')).toBe('/resume-builder/session');
   });
