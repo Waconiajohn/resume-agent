@@ -348,7 +348,6 @@ export function JobCommandCenterRoom({
     pipeline.fetchApplications();
     pipeline.fetchDueActions();
     watchlist.fetchCompanies();
-    radar.loadLatestScan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

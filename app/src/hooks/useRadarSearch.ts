@@ -82,48 +82,6 @@ interface ScoreResponse {
   jobs: Array<{ external_id: string; match_score: number | null }>;
 }
 
-interface LatestScanMeta {
-  id: string;
-  query: string;
-  location: string | null;
-  sources_queried: string[];
-  execution_time_ms: number | null;
-  result_count: number;
-  created_at: string;
-}
-
-interface LatestScanResultRow {
-  id: string;
-  scan_id: string;
-  listing_id: string;
-  user_id: string;
-  status: string;
-  match_score: number | null;
-  created_at: string;
-  updated_at: string;
-  job_listings: {
-    id: string;
-    external_id: string;
-    source: string;
-    title: string;
-    company: string;
-    location: string | null;
-    salary_min: number | null;
-    salary_max: number | null;
-    description: string | null;
-    posted_date: string;
-    apply_url: string | null;
-    remote_type: string | null;
-    employment_type: string | null;
-    required_skills: string[] | null;
-  } | null;
-}
-
-interface LatestScanResponse {
-  scan: LatestScanMeta | null;
-  results: LatestScanResultRow[];
-}
-
 function safeNullableString(value: unknown): string | null {
   const normalized = safeString(value).trim();
   return normalized ? normalized : null;
@@ -445,87 +403,6 @@ export function useRadarSearch() {
     }
   }, [state.lastScanId]);
 
-  const loadLatestScan = useCallback(async (): Promise<void> => {
-    if (!mountedRef.current) return;
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) {
-        if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
-        }
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/job-search/scans/latest`, {
-        headers: authHeader,
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        if (mountedRef.current) {
-          setState((prev) => ({
-            ...prev,
-            loading: false,
-            error: `Failed to load scan (${res.status}): ${body}`,
-          }));
-        }
-        return;
-      }
-
-      const data = (await res.json()) as LatestScanResponse;
-
-      // No scans yet — backend returns 200 with scan: null
-      if (!data.scan) {
-        if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false }));
-        }
-        return;
-      }
-
-      // Flatten each result row: merge job_listings fields + match_score → RadarJob
-      const jobs: RadarJob[] = (data.results ?? [])
-        .filter((row) => row.job_listings !== null)
-        .map((row) => {
-          const listing = row.job_listings!;
-          return sanitizeRadarJob({
-            external_id: listing.external_id,
-            title: listing.title,
-            company: listing.company,
-            location: listing.location,
-            salary_min: listing.salary_min,
-            salary_max: listing.salary_max,
-            description: listing.description,
-            posted_date: listing.posted_date,
-            apply_url: listing.apply_url,
-            source: listing.source,
-            remote_type: listing.remote_type,
-            employment_type: listing.employment_type,
-            required_skills: listing.required_skills,
-            match_score: row.match_score,
-          });
-        })
-        .filter((job): job is RadarJob => job !== null);
-
-      if (mountedRef.current) {
-        setState((prev) => ({
-          ...prev,
-          jobs,
-          loading: false,
-          lastScanId: safeString(data.scan!.id).trim() || null,
-          sources_queried: sanitizeSourcesQueried(data.scan!.sources_queried),
-          executionTimeMs: data.scan!.execution_time_ms == null ? null : safeNumber(data.scan!.execution_time_ms),
-        }));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (mountedRef.current) {
-        setState((prev) => ({ ...prev, loading: false, error: message }));
-      }
-    }
-  }, []);
-
   const dismissJob = useCallback((externalId: string): void => {
     if (!mountedRef.current) return;
     setState((prev) => ({
@@ -542,7 +419,6 @@ export function useRadarSearch() {
     ...state,
     search,
     scoreResults,
-    loadLatestScan,
     dismissJob,
     promoteJob,
   };

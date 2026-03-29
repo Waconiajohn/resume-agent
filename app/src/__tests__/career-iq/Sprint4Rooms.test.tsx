@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 // Mock supabase client (used by ZoneYourPipeline and pipeline hooks)
 vi.mock('@/lib/supabase', () => ({
@@ -172,6 +172,20 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.queryByText('Advanced search')).not.toBeInTheDocument();
     expect(screen.queryByText('Search Strings')).not.toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
+  });
+
+  it('does not auto-load the latest generic radar scan on mount', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) => typeof input === 'string' && input.includes('/job-search/scans/latest'),
+      ),
+    ).toBe(false);
   });
 
   it('keeps the live job-finder action in Discover', () => {
