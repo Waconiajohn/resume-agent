@@ -219,6 +219,12 @@ describe('InterviewLabRoom', () => {
     expect(screen.getByText('Upcoming Interviews')).toBeInTheDocument();
   });
 
+  it('shows the interview workflow sequence on the default landing state', () => {
+    render(<InterviewLabRoom />);
+    expect(screen.getByText('Interview workflow')).toBeInTheDocument();
+    expect(screen.getByText('Next in the sequence')).toBeInTheDocument();
+  });
+
   it('renders interview history section', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));

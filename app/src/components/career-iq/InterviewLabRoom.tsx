@@ -1133,6 +1133,15 @@ const LAB_SECTION_COPY: Record<InterviewLabSection, { label: string; description
   },
 };
 
+const LAB_SECTION_ORDER: InterviewLabSection[] = ['prep', 'practice', 'documents', 'follow_up'];
+
+const LAB_SEQUENCE_COPY: Record<InterviewLabSection, string> = {
+  prep: 'Research the role and build the interview brief.',
+  practice: 'Pressure-test your positioning out loud before the conversation.',
+  documents: 'Create leave-behinds that reinforce the same story.',
+  follow_up: 'Debrief quickly, then send the right follow-up while the signal is fresh.',
+};
+
 const FOLLOW_UP_TOOL_COPY: Array<{
   view: InterviewLabFollowUpView;
   label: string;
@@ -1416,6 +1425,9 @@ export function InterviewLabRoom({
     setFollowUpView((current) => (current === view ? 'overview' : view));
   }, []);
 
+  const currentSectionIndex = LAB_SECTION_ORDER.indexOf(activeSection);
+  const nextSection = currentSectionIndex >= 0 ? LAB_SECTION_ORDER[currentSectionIndex + 1] : undefined;
+
   if (viewMode === 'mock_interview' && mockInterviewConfig) {
     return (
       <MockInterviewView
@@ -1548,27 +1560,74 @@ export function InterviewLabRoom({
         </GlassCard>
       )}
 
-      <div className="rail-tabs">
-        {(Object.entries(LAB_SECTION_COPY) as Array<[InterviewLabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
-          const isActive = activeSection === sectionId;
-          return (
-            <button
-              key={sectionId}
-              type="button"
-              onClick={() => setActiveSection(sectionId)}
-              className="rail-tab"
-              data-active={isActive}
-            >
-              <div>{section.label}</div>
-            </button>
-          );
-        })}
-      </div>
+      <GlassCard className="p-5">
+        <div className="eyebrow-label">Interview workflow</div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+          {LAB_SECTION_ORDER.map((sectionId, index) => {
+            const isActive = activeSection === sectionId;
+            return (
+              <button
+                key={sectionId}
+                type="button"
+                onClick={() => setActiveSection(sectionId)}
+                className={cn(
+                  'rounded-2xl border p-4 text-left transition-colors',
+                  isActive
+                    ? 'border-[#afc4ff]/30 bg-[#afc4ff]/[0.06]'
+                    : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
+                )}
+              >
+                <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Step {index + 1}
+                </div>
+                <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+                  {LAB_SECTION_COPY[sectionId].label}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+                  {LAB_SEQUENCE_COPY[sectionId]}
+                </p>
+                <div className="mt-3 text-[12px] font-medium text-[var(--text-soft)]">
+                  {isActive ? 'Current step' : 'Open step'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </GlassCard>
 
-      <div className="support-callout">
-        <div className="text-sm font-semibold text-[var(--text-strong)]">{LAB_SECTION_COPY[activeSection].label}</div>
-        <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">{LAB_SECTION_COPY[activeSection].description}</div>
-      </div>
+      <GlassCard className="p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              Current focus
+            </div>
+            <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+              {LAB_SECTION_COPY[activeSection].label}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              {LAB_SECTION_COPY[activeSection].description}
+            </p>
+          </div>
+          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+              Next in the sequence
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+              {nextSection ? LAB_SECTION_COPY[nextSection].label : 'Follow-up and keep the loop moving'}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+              {nextSection
+                ? LAB_SEQUENCE_COPY[nextSection]
+                : 'Once the follow-up tools are done, you should be ready to move back into the live job process with a cleaner story and stronger momentum.'}
+            </p>
+            {nextSection ? (
+              <GlassButton variant="ghost" onClick={() => setActiveSection(nextSection)} className="mt-4 text-[13px]">
+                Open {LAB_SECTION_COPY[nextSection].label}
+              </GlassButton>
+            ) : null}
+          </div>
+        </div>
+      </GlassCard>
 
       {activeSection === 'prep' && (
         <>
