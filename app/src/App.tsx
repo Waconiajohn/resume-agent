@@ -26,7 +26,7 @@ import {
   buildWorkspaceRoute,
   getAppView,
   getNormalizedWorkspaceRedirect,
-  getLegacyWorkspaceRedirect,
+  getWorkspaceEntryRedirect,
   getWorkspaceRoomFromSearch,
   RESUME_BUILDER_SESSION_ROUTE,
   resolveNavigationTarget,
@@ -511,7 +511,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/workspace" replace />} />
               <Route path="/sales" element={<Navigate to="/workspace" replace />} />
               <Route path="/app" element={<Navigate to="/workspace" replace />} />
-              <Route path="/career-iq" element={<Navigate to={getLegacyWorkspaceRedirect(location.search)} replace />} />
+              <Route path="/career-iq" element={<Navigate to={getWorkspaceEntryRedirect(location.search)} replace />} />
               <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
               <Route
                 path="/coach"

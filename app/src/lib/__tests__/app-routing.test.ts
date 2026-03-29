@@ -3,7 +3,7 @@ import {
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
   getAppView,
-  getLegacyWorkspaceRedirect,
+  getWorkspaceEntryRedirect,
   getNormalizedWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
   resolveNavigationTarget,
@@ -34,8 +34,8 @@ describe('app-routing', () => {
   });
 
   it('normalizes legacy redirects and navigation targets', () => {
-    expect(getLegacyWorkspaceRedirect('?room=career-profile')).toBe('/workspace?room=career-profile');
-    expect(getLegacyWorkspaceRedirect('')).toBe('/workspace');
+    expect(getWorkspaceEntryRedirect('?room=career-profile')).toBe('/workspace?room=career-profile');
+    expect(getWorkspaceEntryRedirect('')).toBe('/workspace');
     expect(getNormalizedWorkspaceRedirect('?room=salary-negotiation')).toBe('/workspace?room=interview&focus=negotiation');
     expect(getNormalizedWorkspaceRedirect('?room=personal-brand&job=123')).toBe('/workspace?room=career-profile&job=123');
     expect(getNormalizedWorkspaceRedirect('?room=network-intelligence')).toBe('/workspace?room=networking');

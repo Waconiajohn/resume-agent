@@ -122,7 +122,6 @@ export function CareerIQScreen({
     const sessionId = params.get('session');
 
     return {
-      room: params.get('room')?.trim() || undefined,
       jobApplicationId: jobApplicationId?.trim() || undefined,
       company: company?.trim() || undefined,
       role: role?.trim() || undefined,
@@ -130,10 +129,7 @@ export function CareerIQScreen({
       sessionId: sessionId?.trim() || undefined,
     };
   }, [location.search]);
-  const normalizedWorkspaceFocus = useMemo(() => {
-    if (workspaceLaunchContext.focus) return workspaceLaunchContext.focus;
-    return workspaceLaunchContext.room === 'salary-negotiation' ? 'negotiation' : undefined;
-  }, [workspaceLaunchContext.focus, workspaceLaunchContext.room]);
+  const normalizedWorkspaceFocus = workspaceLaunchContext.focus;
 
   useEffect(() => {
     if (initialRoom) {

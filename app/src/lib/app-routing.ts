@@ -59,7 +59,7 @@ export function getWorkspaceRoomFromSearch(search: string): string | undefined {
   return params.get('room') ?? undefined;
 }
 
-export function getLegacyWorkspaceRedirect(search: string): string {
+export function getWorkspaceEntryRedirect(search: string): string {
   const normalized = getNormalizedWorkspaceRedirect(search);
   if (normalized) return normalized;
   const room = getWorkspaceRoomFromSearch(search);
