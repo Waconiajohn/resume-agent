@@ -255,6 +255,12 @@ describe('InterviewLabRoom', () => {
     expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
   });
 
+  it('opens directly into follow-up email when follow-up-email focus is provided', () => {
+    render(<InterviewLabRoom initialFocus="follow-up-email" initialCompany="Acme Corp" initialRole="VP Engineering" />);
+    expect(screen.getAllByText('Follow-Up Email').length).toBeGreaterThan(0);
+    expect(screen.getByText('Acme Corp — VP Engineering')).toBeInTheDocument();
+  });
+
   it('allows adding a new interview entry', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));

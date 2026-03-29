@@ -1133,6 +1133,48 @@ const LAB_SECTION_COPY: Record<InterviewLabSection, { label: string; description
   },
 };
 
+const FOLLOW_UP_TOOL_COPY: Array<{
+  view: InterviewLabFollowUpView;
+  label: string;
+  description: string;
+  buttonLabel: string;
+  openLabel: string;
+  icon: typeof ClipboardList;
+}> = [
+  {
+    view: 'debrief',
+    label: 'Interview Debrief',
+    description: 'Capture what happened while it is still fresh — strengths, weak spots, follow-up actions, and company signals.',
+    buttonLabel: 'Debrief',
+    openLabel: 'Open Debrief',
+    icon: ClipboardList,
+  },
+  {
+    view: 'thank_you',
+    label: 'Thank You Note',
+    description: 'Turn the debrief into a focused follow-up note while the conversation is still fresh.',
+    buttonLabel: 'Thank You Note',
+    openLabel: 'Open Thank You Note',
+    icon: Mail,
+  },
+  {
+    view: 'follow_up_email',
+    label: 'Follow-Up Email',
+    description: 'Status check-in, no-response nudge, graceful rejection response, or negotiation counter — generated and ready to send.',
+    buttonLabel: 'Follow-Up Email',
+    openLabel: 'Open Follow-Up Email',
+    icon: Send,
+  },
+  {
+    view: 'negotiation',
+    label: 'Negotiation Prep',
+    description: 'Get ready for the offer conversation without leaving this workflow.',
+    buttonLabel: 'Negotiation Prep',
+    openLabel: 'Open Negotiation Prep',
+    icon: Star,
+  },
+];
+
 interface MockInterviewConfig {
   resumeText: string;
   jobDescription?: string;
@@ -1364,6 +1406,16 @@ export function InterviewLabRoom({
     setMockInterviewConfig(null);
   }, []);
 
+  const setFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
+    setActiveSection('follow_up');
+    setFollowUpView(view);
+  }, []);
+
+  const toggleFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
+    setActiveSection('follow_up');
+    setFollowUpView((current) => (current === view ? 'overview' : view));
+  }, []);
+
   if (viewMode === 'mock_interview' && mockInterviewConfig) {
     return (
       <MockInterviewView
@@ -1573,8 +1625,7 @@ export function InterviewLabRoom({
             initialPlanSessionId={sessionTargets.planSessionId}
             onDocumentsViewChange={setDocumentsView}
             onOpenThankYou={() => {
-              setActiveSection('follow_up');
-              setFollowUpView('thank_you');
+              setFollowUpTool('thank_you');
             }}
           />
         </div>
@@ -1588,38 +1639,20 @@ export function InterviewLabRoom({
                 Debrief, thank-you notes, follow-up emails, and negotiation prep — all tied to the same story you built in prep.
               </div>
               <div className="flex flex-wrap gap-2">
-                <GlassButton
-                  variant="ghost"
-                  onClick={() => setFollowUpView((current) => (current === 'debrief' ? 'overview' : 'debrief'))}
-                  className="text-[13px]"
-                >
-                  <ClipboardList size={14} className="mr-1.5" />
-                  {followUpView === 'debrief' ? 'Hide Debrief' : 'Debrief'}
-                </GlassButton>
-                <GlassButton
-                  variant="ghost"
-                  onClick={() => setFollowUpView((current) => (current === 'thank_you' ? 'overview' : 'thank_you'))}
-                  className="text-[13px]"
-                >
-                  <Mail size={14} className="mr-1.5" />
-                  {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Thank You Note'}
-                </GlassButton>
-                <GlassButton
-                  variant="ghost"
-                  onClick={() => setFollowUpView((current) => (current === 'follow_up_email' ? 'overview' : 'follow_up_email'))}
-                  className="text-[13px]"
-                >
-                  <Send size={14} className="mr-1.5" />
-                  {followUpView === 'follow_up_email' ? 'Hide Follow-Up Email' : 'Follow-Up Email'}
-                </GlassButton>
-                <GlassButton
-                  variant="ghost"
-                  onClick={() => setFollowUpView((current) => (current === 'negotiation' ? 'overview' : 'negotiation'))}
-                  className="text-[13px]"
-                >
-                  <Star size={14} className="mr-1.5" />
-                  {followUpView === 'negotiation' ? 'Hide Negotiation Prep' : 'Negotiation Prep'}
-                </GlassButton>
+                {FOLLOW_UP_TOOL_COPY.map((tool) => {
+                  const Icon = tool.icon;
+                  return (
+                    <GlassButton
+                      key={tool.view}
+                      variant="ghost"
+                      onClick={() => toggleFollowUpTool(tool.view)}
+                      className="text-[13px]"
+                    >
+                      <Icon size={14} className="mr-1.5" />
+                      {followUpView === tool.view ? `Hide ${tool.buttonLabel}` : tool.buttonLabel}
+                    </GlassButton>
+                  );
+                })}
               </div>
             </div>
           </GlassCard>
@@ -1627,65 +1660,25 @@ export function InterviewLabRoom({
           {followUpView === 'overview' && (
             <GlassCard className="p-5">
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                    Interview Debrief
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-                    Capture what happened while it is still fresh — strengths, weak spots, follow-up actions, and company signals.
-                  </p>
-                  <div className="mt-4">
-                    <GlassButton variant="ghost" onClick={() => setFollowUpView('debrief')} className="text-[13px]">
-                      <ClipboardList size={14} className="mr-1.5" />
-                      Open Debrief
-                    </GlassButton>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                    Thank You Note
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-                    Turn the debrief into a focused follow-up note while the conversation is still fresh.
-                  </p>
-                  <div className="mt-4">
-                    <GlassButton variant="ghost" onClick={() => setFollowUpView('thank_you')} className="text-[13px]">
-                      <Mail size={14} className="mr-1.5" />
-                      Open Thank You Note
-                    </GlassButton>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                    Follow-Up Email
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-                    Status check-in, no-response nudge, graceful rejection response, or negotiation counter — generated and ready to send.
-                  </p>
-                  <div className="mt-4">
-                    <GlassButton variant="ghost" onClick={() => setFollowUpView('follow_up_email')} className="text-[13px]">
-                      <Send size={14} className="mr-1.5" />
-                      Open Follow-Up Email
-                    </GlassButton>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                    Negotiation Prep
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-                    Get ready for the offer conversation without leaving this workflow.
-                  </p>
-                  <div className="mt-4">
-                    <GlassButton variant="ghost" onClick={() => setFollowUpView('negotiation')} className="text-[13px]">
-                      <Star size={14} className="mr-1.5" />
-                      Open Negotiation Prep
-                    </GlassButton>
-                  </div>
-                </div>
+                {FOLLOW_UP_TOOL_COPY.map((tool) => {
+                  const Icon = tool.icon;
+                  return (
+                    <div key={tool.view} className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                      <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                        {tool.label}
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+                        {tool.description}
+                      </p>
+                      <div className="mt-4">
+                        <GlassButton variant="ghost" onClick={() => setFollowUpTool(tool.view)} className="text-[13px]">
+                          <Icon size={14} className="mr-1.5" />
+                          {tool.openLabel}
+                        </GlassButton>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </GlassCard>
           )}
