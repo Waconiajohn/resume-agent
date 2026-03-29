@@ -7,7 +7,7 @@ export type InterviewLabInitialFocus =
   | 'debrief'
   | 'follow-up-email';
 
-export type InterviewLabViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
+export type InterviewLabViewMode = 'lab' | 'generating' | 'report' | 'mock_interview';
 export type InterviewLabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
 export type InterviewLabDocumentsView = 'overview' | 'ninety_day_plan';
 export type InterviewLabFollowUpView = 'overview' | 'thank_you' | 'negotiation' | 'debrief' | 'follow_up_email';

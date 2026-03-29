@@ -94,7 +94,8 @@ This sprint exists to reassert the intended operating model before more implemen
 - Smart Referrals and the first two workspace-shell sweeps are now landed.
 - Interview Prep is now underway with shared master-resume context loading across the interview follow-up rooms.
 - `InterviewLabRoom` focus/view routing is now being centralized so prep, follow-up documents, and negotiation handoffs resolve from one canonical room-state model.
-- The next Interview Prep slice should tighten direct-open interview flows and simplify the remaining room-state branching between the lab overview and its embedded tools.
+- Interview Prep now uses one debrief path inside the Follow-up section instead of carrying a second standalone debrief mode.
+- The next Interview Prep slice should simplify the remaining overview branching and tighten direct-open coverage for the smaller follow-up modes before polish.
 
 ## Legacy Migration Note
 

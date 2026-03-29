@@ -885,311 +885,6 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
   );
 }
 
-// --- Post-Interview Debrief Form ---
-
-type DebriefImpression = 'positive' | 'neutral' | 'negative';
-
-interface PostInterviewDebriefFormProps {
-  company: string;
-  role: string;
-  onBack: () => void;
-}
-
-function PostInterviewDebriefForm({ company, role, onBack }: PostInterviewDebriefFormProps) {
-  const [whatWentWell, setWhatWentWell] = useState('');
-  const [whatWasDifficult, setWhatWasDifficult] = useState('');
-  const [questionsInput, setQuestionsInput] = useState('');
-  const [companySignals, setCompanySignals] = useState('');
-  const [impression, setImpression] = useState<DebriefImpression>('neutral');
-  const [result, setResult] = useState<null | {
-    strengths_demonstrated: string[];
-    areas_to_improve: string[];
-    follow_up_items: string[];
-    lessons_for_next: string[];
-    company_signals: string[];
-  }>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleGenerate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const questions = questionsInput
-        .split('\n')
-        .map((q) => q.trim())
-        .filter(Boolean);
-
-      const res = await fetch('/api/interview-prep/debrief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company,
-          role,
-          what_went_well: whatWentWell,
-          what_was_difficult: whatWasDifficult,
-          questions_asked: questions,
-          company_signals: companySignals,
-          overall_impression: impression,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        setError(data.error ?? 'Failed to generate debrief. Please try again.');
-        return;
-      }
-
-      const data = await res.json() as {
-        strengths_demonstrated: string[];
-        areas_to_improve: string[];
-        follow_up_items: string[];
-        lessons_for_next: string[];
-        company_signals: string[];
-      };
-      setResult(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [company, role, whatWentWell, whatWasDifficult, questionsInput, companySignals, impression]);
-
-  const impressionConfig: Record<DebriefImpression, { label: string; color: string }> = {
-    positive: { label: 'Positive', color: 'text-[#b5dec2]' },
-    neutral: { label: 'Neutral', color: 'text-[#f0d99f]' },
-    negative: { label: 'Negative', color: 'text-[#f0b8b8]' },
-  };
-
-  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30 resize-none';
-  const labelClass = 'block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5';
-
-  if (result) {
-    return (
-      <GlassCard className="p-6 space-y-5">
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            type="button"
-            onClick={() => setResult(null)}
-            className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-          >
-            <ArrowLeft size={13} />
-            Edit responses
-          </button>
-          <div className="ml-auto">
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-[#afc4ff]/10 p-2">
-            <ClipboardList size={15} className="text-[#afc4ff]" />
-          </div>
-          <div>
-            <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Interview Debrief</h3>
-            <p className="text-[13px] text-[var(--text-soft)]">{company} — {role}</p>
-          </div>
-          <div className={cn('ml-auto text-[13px] font-medium', impressionConfig[impression].color)}>
-            {impressionConfig[impression].label}
-          </div>
-        </div>
-
-        {result.strengths_demonstrated.length > 0 && (
-          <div>
-            <div className={labelClass}>What you demonstrated</div>
-            <ul className="space-y-1.5">
-              {result.strengths_demonstrated.map((s, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                  <CheckCircle2 size={12} className="text-[#b5dec2] mt-0.5 flex-shrink-0" />
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {result.areas_to_improve.length > 0 && (
-          <div>
-            <div className={labelClass}>Areas to strengthen</div>
-            <ul className="space-y-1.5">
-              {result.areas_to_improve.map((a, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                  <TrendingUp size={12} className="text-[#f0d99f] mt-0.5 flex-shrink-0" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {result.follow_up_items.length > 0 && (
-          <div>
-            <div className={labelClass}>Follow-up actions</div>
-            <ul className="space-y-1.5">
-              {result.follow_up_items.map((f, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                  <span className="h-1 w-1 rounded-full bg-[#afc4ff]/50 mt-2 flex-shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {result.lessons_for_next.length > 0 && (
-          <div>
-            <div className={labelClass}>For next time</div>
-            <ul className="space-y-1.5">
-              {result.lessons_for_next.map((l, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                  <span className="h-1 w-1 rounded-full bg-[var(--line-strong)] mt-2 flex-shrink-0" />
-                  {l}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {result.company_signals.length > 0 && (
-          <div>
-            <div className={labelClass}>Company signals</div>
-            <ul className="space-y-1.5">
-              {result.company_signals.map((c, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                  <Building2 size={12} className="text-[var(--text-soft)] mt-0.5 flex-shrink-0" />
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </GlassCard>
-    );
-  }
-
-  return (
-    <GlassCard className="p-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
-          <ClipboardList size={15} className="text-[#afc4ff]" />
-        </div>
-        <div>
-          <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Interview Debrief</h3>
-          <p className="text-[13px] text-[var(--text-soft)]">Capture what happened while it is still fresh — {company}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="ml-auto text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-
-      <div>
-        <label className={labelClass}>Overall impression</label>
-        <div className="flex gap-2">
-          {(['positive', 'neutral', 'negative'] as DebriefImpression[]).map((imp) => {
-            const cfg = impressionConfig[imp];
-            return (
-              <button
-                key={imp}
-                type="button"
-                onClick={() => setImpression(imp)}
-                className={cn(
-                  'rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors',
-                  impression === imp
-                    ? `border-current bg-[var(--accent-muted)] ${cfg.color}`
-                    : 'border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-soft)]',
-                )}
-              >
-                {cfg.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass}>What went well</label>
-        <textarea
-          rows={3}
-          placeholder="Specific moments, answers, or interactions that felt strong..."
-          value={whatWentWell}
-          onChange={(e) => setWhatWentWell(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className={labelClass}>What was difficult or uncertain</label>
-        <textarea
-          rows={3}
-          placeholder="Questions you struggled with, answers that felt vague, moments of uncertainty..."
-          value={whatWasDifficult}
-          onChange={(e) => setWhatWasDifficult(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className={labelClass}>Questions they asked (one per line)</label>
-        <textarea
-          rows={4}
-          placeholder={"Tell me about a time you...\nHow would you approach...\nWhy are you interested in..."}
-          value={questionsInput}
-          onChange={(e) => setQuestionsInput(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className={labelClass}>Company or culture signals observed</label>
-        <textarea
-          rows={2}
-          placeholder="What you noticed about the team, the pace, the culture, or how they talked about the role..."
-          value={companySignals}
-          onChange={(e) => setCompanySignals(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-3 py-2">
-          <AlertCircle size={13} className="text-[#f0b8b8] flex-shrink-0" />
-          <span className="text-[12px] text-[#f0b8b8]/80">{error}</span>
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <GlassButton
-          variant="primary"
-          onClick={() => void handleGenerate()}
-          disabled={loading || (!whatWentWell && !whatWasDifficult && !questionsInput)}
-          className="text-[13px]"
-        >
-          {loading ? (
-            <Loader2 size={13} className="mr-1.5 animate-spin" />
-          ) : (
-            <ClipboardList size={13} className="mr-1.5" />
-          )}
-          {loading ? 'Processing...' : 'Generate Debrief'}
-        </GlassButton>
-        <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
-          Cancel
-        </GlassButton>
-      </div>
-    </GlassCard>
-  );
-}
-
 // --- Post-Interview Follow-Up Email Form ---
 
 type FollowUpSituation = 'post_interview' | 'no_response' | 'rejection_graceful' | 'keep_warm' | 'negotiation_counter';
@@ -1620,7 +1315,8 @@ export function InterviewLabRoom({
   }, []);
 
   const handleAddDebriefClick = useCallback(() => {
-    setViewMode('debrief');
+    setActiveSection('follow_up');
+    setFollowUpView('debrief');
   }, []);
 
   const handleDebriefSave = useCallback(
@@ -1629,10 +1325,6 @@ export function InterviewLabRoom({
     },
     [createDebrief],
   );
-
-  const handleDebriefCancel = useCallback(() => {
-    setViewMode('lab');
-  }, []);
 
   const fetchResumeText = useCallback(async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1671,15 +1363,6 @@ export function InterviewLabRoom({
     setViewMode('lab');
     setMockInterviewConfig(null);
   }, []);
-
-  if (viewMode === 'debrief') {
-    return (
-      <DebriefForm
-        onSave={handleDebriefSave}
-        onCancel={handleDebriefCancel}
-      />
-    );
-  }
 
   if (viewMode === 'mock_interview' && mockInterviewConfig) {
     return (
@@ -2008,10 +1691,12 @@ export function InterviewLabRoom({
           )}
 
           {followUpView === 'debrief' && (
-            <PostInterviewDebriefForm
-              company={activeCompany || 'Unknown company'}
-              role={activeRole || 'Unknown role'}
-              onBack={() => setFollowUpView('overview')}
+            <DebriefForm
+              onSave={handleDebriefSave}
+              onCancel={() => setFollowUpView('overview')}
+              initialCompany={activeCompany}
+              initialRole={activeRole}
+              initialJobApplicationId={activeJobApplicationId}
             />
           )}
 

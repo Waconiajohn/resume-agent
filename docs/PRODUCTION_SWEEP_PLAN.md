@@ -281,11 +281,13 @@ The first slice is now landed:
 - shared master-resume loading has been extracted for the interview follow-up rooms
 - `ThankYouNoteRoom`, `SalaryNegotiationRoom`, and `NinetyDayPlanRoom` no longer each carry their own local `master_resumes` fetch effect
 - `InterviewLabRoom` now resolves initial focus and saved-asset routing through one shared helper instead of scattering that mapping across the room and child panels
+- the duplicate standalone debrief mode has been removed; follow-up debriefing now uses the same saved `DebriefForm` path inside the room
+- direct-open tests now cover the main interview follow-up entry points (`plan`, `thank-you`, `negotiation`, `debrief`)
 
 That leaves the next important cleanup clearly exposed:
 
-1. reduce duplicated room-state branching between the main lab view and embedded follow-up tools
-2. add route/state tests around direct-open interview flows before UI polish
+1. reduce the remaining overview branching between the lab landing state and the embedded follow-up tools
+2. add route/state coverage for the smaller remaining direct-open modes before UI polish
 3. tighten the default lab hierarchy once the remaining room-state branching is smaller
 
 ### Deliverables

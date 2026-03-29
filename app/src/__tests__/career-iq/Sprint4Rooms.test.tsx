@@ -231,6 +231,30 @@ describe('InterviewLabRoom', () => {
     expect(screen.getByRole('button', { name: /open 30-60-90 day plan/i })).toBeInTheDocument();
   });
 
+  it('opens directly into the 30-60-90 plan when plan focus is provided', () => {
+    render(<InterviewLabRoom initialFocus="plan" initialCompany="Acme Corp" initialRole="VP Operations" />);
+    expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+  });
+
+  it('opens directly into thank-you notes when thank-you focus is provided', () => {
+    render(<InterviewLabRoom initialFocus="thank-you" initialCompany="Acme Corp" initialRole="VP Engineering" />);
+    expect(screen.getByText('Thank-You Notes')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+  });
+
+  it('opens directly into negotiation prep when negotiation focus is provided', () => {
+    render(<InterviewLabRoom initialFocus="negotiation" initialCompany="Acme Corp" initialRole="VP Engineering" />);
+    expect(screen.getAllByText('Negotiation Prep').length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+  });
+
+  it('opens directly into the saved debrief form when debrief focus is provided', () => {
+    render(<InterviewLabRoom initialFocus="debrief" initialCompany="Acme Corp" initialRole="VP Engineering" />);
+    expect(screen.getByText('Post-Interview Debrief')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+  });
+
   it('allows adding a new interview entry', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
