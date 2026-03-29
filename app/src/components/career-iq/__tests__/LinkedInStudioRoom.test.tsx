@@ -271,7 +271,7 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 
   it('renders the post description text', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText(/agent analyzes your positioning/)).toBeInTheDocument();
+    expect(screen.getByText(/Once the profile direction feels strong enough/)).toBeInTheDocument();
   });
 });
 

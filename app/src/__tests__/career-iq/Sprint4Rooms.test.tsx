@@ -72,7 +72,7 @@ describe('LinkedInStudioRoom', () => {
   const yellowSignals: WhyMeSignals = { clarity: 'yellow', alignment: 'green', differentiation: 'green' };
 
   it('renders tab navigation with all tabs', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
     expect(screen.getByText('Current focus')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
@@ -83,14 +83,14 @@ describe('LinkedInStudioRoom', () => {
   });
 
   it('renders content calendar when Content Plan tab is clicked', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     fireEvent.click(screen.getByRole('button', { name: /^Content Plan$/i }));
     // ContentCalendar in idle state renders "Build Content Plan"
     expect(screen.getByText('Build Content Plan')).toBeInTheDocument();
   });
 
   it('renders analytics when Results tab is clicked', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     fireEvent.click(screen.getByRole('button', { name: /^Results$/i }));
     // Results shows content-based metrics from generated posts
     expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
@@ -99,18 +99,18 @@ describe('LinkedInStudioRoom', () => {
   });
 
   it('renders LinkedIn header', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 
   it('renders the Write tab by default', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     // Write shows a start button when idle
     expect(screen.getByText(/Write a Post/i)).toBeInTheDocument();
   });
 
   it('renders the Profile tab content when clicked', () => {
-    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    render(<LinkedInStudioRoom signals={greenSignals} />);
     fireEvent.click(screen.getByRole('button', { name: /^Profile$/i }));
     expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
   });

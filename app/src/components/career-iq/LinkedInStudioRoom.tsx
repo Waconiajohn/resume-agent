@@ -40,7 +40,6 @@ import type { ProfileSection } from '@/hooks/useLinkedInEditor';
 
 interface LinkedInStudioRoomProps {
   signals: WhyMeSignals;
-  whyMeClarity?: string;
 }
 
 type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library';
@@ -224,9 +223,10 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
         <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
           <FileText size={32} className="text-[var(--text-soft)]" />
           <div>
+            <div className="eyebrow-label justify-center">Step 2 of 3</div>
             <p className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Write a LinkedIn Post</p>
             <p className="text-[13px] text-[var(--text-soft)] max-w-[380px]">
-              The agent analyzes your positioning and suggests compelling topics, then writes an authentic post in your voice.
+              Once the profile direction feels strong enough, draft one authentic post that sounds like you and gives people a reason to keep reading.
             </p>
           </div>
           <GlassButton onClick={handleStart} className="flex items-center gap-2">
@@ -536,9 +536,10 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
         <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
           <PenLine size={32} className="text-[var(--text-soft)]" />
           <div>
+            <div className="eyebrow-label justify-center">Step 1 of 3</div>
             <p className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Optimize Your LinkedIn Profile</p>
             <p className="text-[13px] text-[var(--text-soft)] max-w-[380px]">
-              The agent writes each profile section in your authentic voice — headline, about, experience, skills, and education.
+              Start by sharpening the profile people land on first so your positioning is clear before you build posts and content around it.
             </p>
           </div>
           <GlassButton onClick={handleStart} className="flex items-center gap-2">
@@ -1119,9 +1120,10 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
           <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
             <Calendar size={32} className="text-[var(--text-soft)]" />
             <div>
+              <div className="eyebrow-label justify-center">Support workspace</div>
               <p className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Build Content Plan</p>
               <p className="text-[13px] text-[var(--text-soft)] max-w-[380px]">
-                Build a 30-day LinkedIn plan around your positioning so you always know what to write next.
+                Use this after the profile and writing direction feel right, so you can sequence strong ideas instead of guessing what to post next.
               </p>
             </div>
             <GlassButton onClick={handleGenerate} className="flex items-center gap-2">
@@ -1472,12 +1474,10 @@ function LibraryWorkspace() {
   return (
     <div className="space-y-4">
       <GlassCard className="p-6">
-        <div className="eyebrow-label">
-          Library
-        </div>
+        <div className="eyebrow-label">Support workspace</div>
         <h3 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your best LinkedIn work in one place</h3>
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-          Reuse strong posts here, then open the extra checks only when you want them.
+          Come here when you want to reuse strong drafts or restart from saved work instead of beginning from a blank page.
         </p>
       </GlassCard>
 
@@ -1765,6 +1765,13 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         {activeTab === 'library' && <LibraryWorkspace />}
         {activeTab === 'analytics' && (
           <div className="flex flex-col gap-6">
+            <GlassCard className="p-5">
+              <div className="eyebrow-label">Step 3 of 3</div>
+              <h3 className="mt-2 text-[18px] font-semibold text-[var(--text-strong)]">Review what is landing and what still needs work</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                Use this stage to judge whether the profile reads strongly enough on paper and whether the rewritten sections are actually better than where you started.
+              </p>
+            </GlassCard>
             {/* Profile score ring + section scores */}
             {optimizer.qualityScore !== null && (
               <GlassCard className="p-6">
