@@ -35,7 +35,6 @@ vi.mock('@/lib/export-validation', () => ({
 }));
 
 vi.mock('@/lib/export-diagnostics', () => ({
-  buildExportDiagnosticsReport: vi.fn().mockReturnValue('report'),
   recordExportDiagnostic: vi.fn(),
 }));
 
@@ -128,7 +127,7 @@ describe('CompletionPanel', () => {
   // 4. Shows unavailable message when resume is null
   it('shows resume unavailable message when resume is null', () => {
     render(<CompletionPanel data={makeData()} resume={null} />);
-    expect(screen.getByText(/resume data not available/i)).toBeInTheDocument();
+    expect(screen.getByText(/not ready to download yet/i)).toBeInTheDocument();
   });
 
   // 5. Save as base resume section renders when handler provided

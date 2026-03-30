@@ -83,22 +83,3 @@ export function recordExportDiagnostic(
   events.push(event);
   writeEvents(events);
 }
-
-export function buildExportDiagnosticsReport(limit = 40): string {
-  const rows = readEvents().slice(-limit);
-  const lines: string[] = [];
-  lines.push('Resume Agent Export Diagnostics');
-  lines.push(`Generated: ${new Date().toISOString()}`);
-  lines.push(`Events: ${rows.length}`);
-  lines.push('');
-  for (const row of rows) {
-    lines.push(
-      `[${row.timestamp}] ${row.outcome.toUpperCase()} ${row.format.toUpperCase()} filename="${row.filename}" name=${row.has_name} email=${row.has_email} phone=${row.has_phone} ats=${row.ats_score}${row.error ? ` error="${row.error}"` : ''}`,
-    );
-  }
-  if (rows.length === 0) {
-    lines.push('No export diagnostic events found.');
-  }
-  return lines.join('\n');
-}
-

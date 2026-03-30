@@ -64,11 +64,11 @@ export function ProcessStepGuideCard({
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{summary}</p>
       <div className={`mt-3 ${compact ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}`}>
         <div className="support-callout px-3.5 py-3">
-          <div className="text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">What AI is doing</div>
+          <div className="text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">What happens here</div>
           <div className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">{systemDoes}</div>
         </div>
         <div className="support-callout px-3.5 py-3">
-          <div className="text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">What you should do</div>
+          <div className="text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">Your next move</div>
           <div className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">{userDoes}</div>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { validateResumeForExport } from '@/lib/export-validation';
-import { buildExportDiagnosticsReport, recordExportDiagnostic } from '@/lib/export-diagnostics';
+import { recordExportDiagnostic } from '@/lib/export-diagnostics';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import type { FinalResume } from '@/types/resume';
@@ -79,7 +79,7 @@ export function CompletionPanel({
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (checkRes.status === 402) {
-        const message = 'Word (.docx) export requires a paid plan. Please upgrade to download in Word format.';
+        const message = 'Word (.docx) export is available on paid plans. Upgrade to download this version in Word format.';
         recordExportDiagnostic(resume, 'docx', 'failure', message);
         setExportError(message);
         setDocxBlocked(true);
@@ -87,7 +87,7 @@ export function CompletionPanel({
       }
       if (!checkRes.ok) {
         // Non-402 errors: log and proceed (fail open so auth issues don't block export)
-        const message = 'Could not verify export permissions. Proceeding with export.';
+        const message = 'We could not confirm Word export access, so we tried the export anyway.';
         setExportInfo(message);
       }
 
@@ -139,18 +139,6 @@ export function CompletionPanel({
       }
     } finally {
       setExportingResume(false);
-    }
-  };
-
-  const handleCopyDiagnostics = async () => {
-    setExportError(null);
-    setExportInfo(null);
-    try {
-      const report = buildExportDiagnosticsReport();
-      await navigator.clipboard.writeText(report);
-      setExportInfo('Export diagnostics copied to clipboard.');
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Failed to copy diagnostics');
     }
   };
 
@@ -216,7 +204,7 @@ export function CompletionPanel({
         ))}
         {data.export_validation && !data.export_validation.passed && (
           <div className={`support-callout px-3 py-2 text-xs ${toneClass('warning')}`}>
-            We found {data.export_validation.findings.length} formatting item(s) that some hiring systems might flag. Please review before submitting.
+            We found {data.export_validation.findings.length} formatting item(s) worth checking before you submit.
           </div>
         )}
         {saveMessage && (
@@ -251,7 +239,7 @@ export function CompletionPanel({
         {/* Missing contact info warning */}
         {resume && !resume.contact_info?.name && (
           <div className={`support-callout px-3 py-2 text-xs ${toneClass('warning')}`}>
-            Contact name is missing. Your exports will not include a name header.
+            Your name is missing, so exported versions will not include a name header.
           </div>
         )}
 
@@ -296,7 +284,7 @@ export function CompletionPanel({
               </GlassButton>
             </div>
           ) : (
-            <p className="text-xs text-[var(--text-soft)]">Resume data not available for export.</p>
+            <p className="text-xs text-[var(--text-soft)]">This resume is not ready to download yet.</p>
           )}
         </GlassCard>
 
