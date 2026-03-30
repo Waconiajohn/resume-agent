@@ -388,16 +388,19 @@ function CompactScoreSummaryHeader({
       : null,
   ].filter((item): item is string => Boolean(item));
 
+  const visibleTopGains = topGains.slice(0, 2);
+  const visibleTopRisks = topRisks.slice(0, 2);
+
   return (
-    <div className="score-snapshot-shell px-4 py-4 space-y-4">
+    <div className="score-snapshot-shell px-4 py-3.5 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="score-snapshot-kicker">Score Snapshot</p>
-          <p className="mt-2 text-lg font-semibold leading-7 text-[var(--text-strong)]">
-            How the tailored resume is reading right now.
+          <p className="mt-2 text-[1.05rem] font-semibold leading-6 text-[var(--text-strong)]">
+            How the tailored resume is reading.
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
-            Original baseline, what got stronger, and the last items still worth tightening before export.
+          <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
+            Baseline, what improved, and the last items still worth tightening before export.
           </p>
         </div>
         {reviewStatusLabel && (
@@ -407,24 +410,24 @@ function CompactScoreSummaryHeader({
         )}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div className="score-snapshot-hero px-4 py-4">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="score-snapshot-hero px-4 py-3.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">On-Paper Fit Score</p>
-          <div className="mt-3 flex flex-wrap items-end gap-3">
+          <div className="mt-2.5 flex flex-wrap items-end gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
-              <p className="mt-1 text-3xl font-semibold tabular-nums text-[var(--text-muted)]">{beforeSnapshotScore}%</p>
+              <p className="mt-1 text-[1.75rem] font-semibold tabular-nums text-[var(--text-muted)]">{beforeSnapshotScore}%</p>
             </div>
             <span aria-hidden="true" className="pb-1 text-lg text-[var(--text-soft)]">-&gt;</span>
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-4xl font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterSnapshotScore}%</p>
+                <p className="text-[2.25rem] font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterSnapshotScore}%</p>
                 <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
               </div>
             </div>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
               <span>Original to tailored resume</span>
               <span>{beforeSnapshotScore}% to {afterSnapshotScore}%</span>
@@ -449,9 +452,9 @@ function CompactScoreSummaryHeader({
               </p>
             )}
           </div>
-          <div className="score-snapshot-meaning mt-4 rounded-xl px-3 py-3">
+          <div className="score-snapshot-meaning mt-3 rounded-xl px-3 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{summaryLine}</p>
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-muted)]">{summaryLine}</p>
           </div>
         </div>
 
@@ -492,13 +495,13 @@ function CompactScoreSummaryHeader({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="score-snapshot-band score-snapshot-band--good px-4 py-3">
+        <div className="score-snapshot-band score-snapshot-band--good px-3.5 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#b5dec2' }}>
             What improved
           </p>
-          <ul className="mt-3 space-y-2">
-            {topGains.map((gain) => (
-              <li key={gain} className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+          <ul className="mt-2.5 space-y-1.5">
+            {visibleTopGains.map((gain) => (
+              <li key={gain} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
                 <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
                 <span>{gain}</span>
               </li>
@@ -506,18 +509,18 @@ function CompactScoreSummaryHeader({
           </ul>
         </div>
 
-        <div className="score-snapshot-band score-snapshot-band--warn px-4 py-3">
+        <div className="score-snapshot-band score-snapshot-band--warn px-3.5 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
             Still to close
           </p>
-          <ul className="mt-3 space-y-2">
-            {topRisks.length > 0 ? topRisks.map((risk) => (
-              <li key={risk} className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+          <ul className="mt-2.5 space-y-1.5">
+            {visibleTopRisks.length > 0 ? visibleTopRisks.map((risk) => (
+              <li key={risk} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
                 <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#f0d99f' }} />
                 <span>{risk}</span>
               </li>
             )) : (
-              <li className="flex items-start gap-2 text-sm leading-6 text-[var(--text-muted)]">
+              <li className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
                 <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
                 <span>No major issues are blocking the draft right now.</span>
               </li>
@@ -526,9 +529,9 @@ function CompactScoreSummaryHeader({
         </div>
       </div>
 
-      <div className="support-callout px-4 py-3">
+      <div className="support-callout px-3.5 py-2.5">
         <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Do this next</p>
-        <p className="mt-2 text-sm font-medium leading-6 text-[var(--text-muted)]">
+        <p className="mt-1.5 text-[13px] font-medium leading-5 text-[var(--text-muted)]">
           {attentionNextAction
             ? attentionNextAction
             : 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.'}

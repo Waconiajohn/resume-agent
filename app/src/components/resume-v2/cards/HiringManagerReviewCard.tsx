@@ -340,15 +340,15 @@ export function HiringManagerReviewCard({
     : FALLBACK_SCAN;
 
   return (
-    <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <GlassCard className="p-4 animate-[card-enter_500ms_ease-out_forwards]">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <UserCheck className="h-4 w-4 shrink-0 text-[#afc4ff]" />
             <h2 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h2>
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
-            Job-description fit drives the verdict. Benchmark alignment shows where the resume still needs stronger competitive proof.
+          <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
+            Job-description fit drives the verdict. Benchmark alignment shows where stronger competitive proof would still help.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -357,16 +357,16 @@ export function HiringManagerReviewCard({
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         <section>
           <SectionHeader
             icon={Search}
             title="Recruiter Skim"
-            description={`This is the top-third skim for ${companyName}. If the strongest signals are not obvious immediately, the resume is at risk before the deeper review even starts.`}
+            description={`Top-third skim for ${companyName}. If the strongest signals are not obvious immediately, the deeper review may never happen.`}
           />
-          <div className="shell-panel p-4">
+          <div className="shell-panel p-3.5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="max-w-3xl text-sm leading-relaxed text-[var(--text-muted)]">
+              <p className="max-w-3xl text-[13px] leading-5 text-[var(--text-muted)]">
                 {result.six_second_scan.reason}
               </p>
               <ToneBadge label={recruiterTone.label} tone={recruiterTone} />
@@ -424,10 +424,10 @@ export function HiringManagerReviewCard({
           <SectionHeader
             icon={Target}
             title="Hiring Manager Read"
-            description={`This is the deeper interview-readiness read for the ${roleTitle} role.`}
+            description={`Deeper interview-readiness read for the ${roleTitle} role.`}
           />
-          <div className="shell-panel p-4">
-            <p className="text-sm leading-relaxed text-[var(--text-muted)]">{result.hiring_manager_verdict.summary}</p>
+          <div className="shell-panel p-3.5">
+            <p className="text-[13px] leading-5 text-[var(--text-muted)]">{result.hiring_manager_verdict.summary}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <AssessmentPill label="Job Description Fit" value={result.fit_assessment.job_description_fit} />
               <AssessmentPill label="Benchmark Alignment" value={result.fit_assessment.benchmark_alignment} />
@@ -446,7 +446,7 @@ export function HiringManagerReviewCard({
             />
             <div className="space-y-3">
               {result.top_wins.map((win, index) => (
-                <div key={`${win.win}-${index}`} className="shell-panel p-4">
+                <div key={`${win.win}-${index}`} className="shell-panel p-3.5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[var(--text-strong)]">{win.win}</p>
@@ -457,10 +457,10 @@ export function HiringManagerReviewCard({
                       tone={win.prominent_enough ? ASSESSMENT_CONFIG.strong : ASSESSMENT_CONFIG.moderate}
                     />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{win.why_powerful}</p>
+                  <p className="mt-2.5 text-[13px] leading-5 text-[var(--text-muted)]">{win.why_powerful}</p>
                   {!win.prominent_enough && (
-                    <div className="support-callout mt-3 border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
-                      <p className="text-xs text-[var(--text-muted)]">{win.repositioning_recommendation}</p>
+                    <div className="support-callout mt-2.5 border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
+                      <p className="text-[12px] leading-5 text-[var(--text-muted)]">{win.repositioning_recommendation}</p>
                     </div>
                   )}
                 </div>
@@ -533,7 +533,7 @@ export function HiringManagerReviewCard({
                         isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
                       )}
                     >
-                      <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-4 pt-3">
+                      <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-3.5 pt-3">
                         <div className="final-review-note">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
                             Why this matters
@@ -702,10 +702,10 @@ export function HiringManagerReviewCard({
           <SectionHeader
             icon={CheckCircle2}
             title="Benchmark Pressure Test"
-            description="These signals do not override solid job fit, but they do show where the resume may look less competitive against stronger peers."
+            description="These signals do not override solid job fit, but they do show where the resume may still look less competitive against stronger peers."
           />
           <div className="grid gap-3 lg:grid-cols-3">
-            <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
+            <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3.5">
               <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                 Advantages
               </p>
@@ -718,7 +718,7 @@ export function HiringManagerReviewCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-4">
+            <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3.5">
               <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                 Competitive Gaps
               </p>
@@ -731,7 +731,7 @@ export function HiringManagerReviewCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
               <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
                 Reframing Opportunities
               </p>
