@@ -11,7 +11,9 @@ import { BonusSearchPanel } from '@/components/network-intelligence/BonusSearchP
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
 import { API_BASE } from '@/lib/api';
+import { trackProductEvent } from '@/lib/product-telemetry';
 import { useAuth } from '@/hooks/useAuth';
+import type { CsvUploadSummary } from '@/types/ni';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
 type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts';
@@ -258,7 +260,14 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     return () => { cancelled = true; };
   }, [accessToken, requestedTab, selectedPath]);
 
-  const handleUploadComplete = useCallback(() => {
+  const handleUploadComplete = useCallback((summary: CsvUploadSummary) => {
+    trackProductEvent('smart_referrals_connections_imported', {
+      total_rows: summary.totalRows,
+      valid_rows: summary.validRows,
+      skipped_rows: summary.skippedRows,
+      duplicates_removed: summary.duplicatesRemoved,
+      unique_companies: summary.uniqueCompanies,
+    });
     setHasConnections(true);
     setSelectedPath('network');
     setActiveTab('connections');
@@ -266,6 +275,11 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   }, []);
 
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
+    trackProductEvent('smart_referrals_outreach_opened', {
+      path: prefill.referralContext ? 'bonus' : 'network',
+      prefilled: true,
+      trigger: 'referral_bonus',
+    });
     setOutreachPrefill(prefill);
     setSelectedPath(prefill.referralContext ? 'bonus' : 'network');
     setActiveTab('contacts');
@@ -352,6 +366,11 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   };
 
   const handlePathSelect = useCallback((path: ReferralPath) => {
+    trackProductEvent('smart_referrals_path_selected', {
+      path,
+      source: 'user',
+      has_connections: hasConnections,
+    });
     setSelectedPath(path);
     setActiveTab(getDefaultTab(path, hasConnections));
     setNetworkSupportView(null);
@@ -443,6 +462,19 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
                 type="button"
                 onClick={() => {
                   if (locked) return;
+                  if (tab.id === 'job-matches') {
+                    trackProductEvent('smart_referrals_matches_opened', {
+                      path: selectedPath,
+                      initial_filter: selectedPath === 'bonus' ? 'bonus_search' : 'network_connections',
+                    });
+                  }
+                  if (tab.id === 'contacts') {
+                    trackProductEvent('smart_referrals_outreach_opened', {
+                      path: selectedPath,
+                      prefilled: false,
+                      trigger: 'manual',
+                    });
+                  }
                   setActiveTab(tab.id);
                   if (tab.id !== 'connections') {
                     setNetworkSupportView(null);

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
+import { trackProductEvent } from '@/lib/product-telemetry';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobFinder, type RankedMatch } from '@/hooks/useJobFinder';
 import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
@@ -52,7 +53,8 @@ function SmartMatches({
   gateData,
   error,
   onNavigate,
-  onRunFinder,
+  onRequestSuggestions,
+  onBuildResume,
   onRespondGate,
   onReset,
 }: {
@@ -62,7 +64,8 @@ function SmartMatches({
   gateData: { topics?: unknown; results?: unknown } | null;
   error: string | null;
   onNavigate: (route: string) => void;
-  onRunFinder: () => void;
+  onRequestSuggestions: () => void;
+  onBuildResume: (job: RankedMatch) => void;
   onRespondGate: (response: unknown) => void;
   onReset: () => void;
 }) {
@@ -149,7 +152,7 @@ function SmartMatches({
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
           Optional: surface a few extra roles that look strong against your profile, then decide whether they belong in your shortlist.
         </p>
-        <GlassButton onClick={onRunFinder} className="w-full">
+        <GlassButton onClick={onRequestSuggestions} className="w-full">
           <Sparkles size={14} /> Get More Suggestions
         </GlassButton>
       </GlassCard>
@@ -253,7 +256,10 @@ function SmartMatches({
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
+                  onClick={() => {
+                    onBuildResume(job);
+                    onNavigate(RESUME_BUILDER_SESSION_ROUTE);
+                  }}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   Build Resume
@@ -384,6 +390,13 @@ export function JobCommandCenterRoom({
 
   const handleSearchCompany = useCallback(
     (companyName: string) => {
+      trackProductEvent('job_board_search_run', {
+        query: companyName,
+        location: null,
+        date_posted: 'any',
+        remote_type: 'any',
+        source: 'watchlist',
+      });
       radar.search(companyName, '');
     },
     [radar],
@@ -391,6 +404,13 @@ export function JobCommandCenterRoom({
 
   const handlePromoteRadarJob = useCallback(
     async (job: ReturnType<typeof radar.promoteJob>) => {
+      trackProductEvent('job_saved_to_shortlist', {
+        source: 'job_board',
+        company_name: job.company,
+        role_title: job.title,
+        has_apply_url: Boolean(job.apply_url),
+        job_source: job.source ?? null,
+      });
       await pipeline.createApplication({
         role_title: job.title,
         company_name: job.company,
@@ -405,6 +425,27 @@ export function JobCommandCenterRoom({
       radar.dismissJob(job.external_id);
     },
     [pipeline, radar],
+  );
+
+  const handleRequestMoreSuggestions = useCallback(() => {
+    trackProductEvent('more_role_suggestions_requested', { source: 'suggestions_card' });
+    void jobFinder.startSearch();
+  }, [jobFinder]);
+
+  const handleBuildResumeRequest = useCallback(
+    (
+      source: 'job_board' | 'pipeline' | 'suggestions',
+      roleTitle: string | null = null,
+      companyName: string | null = null,
+    ) => {
+      trackProductEvent('job_resume_build_requested', {
+        source,
+        company_name: companyName,
+        role_title: roleTitle,
+      });
+      onNavigate(RESUME_BUILDER_SESSION_ROUTE);
+    },
+    [onNavigate],
   );
 
   const filteredApplications = useMemo(() => {
@@ -430,10 +471,14 @@ export function JobCommandCenterRoom({
 
   const dueCount = dailyOps.dueActions.length;
 
-  const handleOpenShortlist = useCallback(() => {
+  const handleOpenShortlist = useCallback((entryPoint: 'overview_cta' | 'board_target') => {
+    trackProductEvent('job_shortlist_opened', {
+      entry_point: entryPoint,
+      shortlist_count: shortlistCount,
+    });
     setStageFilter('saved');
     setActiveTab('pipeline');
-  }, []);
+  }, [shortlistCount]);
 
   return (
     <div className="room-shell">
@@ -481,7 +526,7 @@ export function JobCommandCenterRoom({
               </div>
             </div>
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <GlassButton variant="ghost" onClick={handleOpenShortlist}>
+              <GlassButton variant="ghost" onClick={() => handleOpenShortlist('overview_cta')}>
                 Open Shortlist
               </GlassButton>
               {activeTab !== 'board' && (
@@ -533,7 +578,7 @@ export function JobCommandCenterRoom({
             onMoveStage={pipeline.moveToStage}
             onSelect={() => {}}
             onAddApplication={handleAddApplication}
-            onBuildResume={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
+            onBuildResume={() => handleBuildResumeRequest('pipeline')}
             onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
             onNegotiateSalary={(application) => {
               const params = new URLSearchParams({
@@ -575,7 +620,7 @@ export function JobCommandCenterRoom({
                       Aim for 5 or 6 good roles.
                     </div>
                   </div>
-                  <GlassButton variant="ghost" onClick={handleOpenShortlist}>
+                  <GlassButton variant="ghost" onClick={() => handleOpenShortlist('board_target')}>
                     Open Shortlist
                   </GlassButton>
                 </div>
@@ -604,7 +649,7 @@ export function JobCommandCenterRoom({
             onSearch={radar.search}
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
-            onBuildResume={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
+            onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company)}
           />
 
           {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (
@@ -623,7 +668,8 @@ export function JobCommandCenterRoom({
                 gateData={jobFinder.gateData}
                 error={jobFinder.error}
                 onNavigate={onNavigate}
-                onRunFinder={jobFinder.startSearch}
+                onRequestSuggestions={handleRequestMoreSuggestions}
+                onBuildResume={(job) => handleBuildResumeRequest('suggestions', job.title, job.company)}
                 onRespondGate={jobFinder.respondToGate}
                 onReset={jobFinder.reset}
               />

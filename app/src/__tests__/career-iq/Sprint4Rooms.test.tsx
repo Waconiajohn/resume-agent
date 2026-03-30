@@ -2,10 +2,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
-const { mockGetUser, mockGetSession, mockOnAuthStateChange } = vi.hoisted(() => ({
+const { mockGetUser, mockGetSession, mockOnAuthStateChange, trackProductEventMock } = vi.hoisted(() => ({
   mockGetUser: vi.fn().mockResolvedValue({ data: { user: null } }),
   mockGetSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } } }),
   mockOnAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+  trackProductEventMock: vi.fn(),
 }));
 
 // Mock supabase client (used by ZoneYourPipeline and pipeline hooks)
@@ -41,6 +42,10 @@ vi.mock('@/lib/api', () => ({
 // Mock SSE parser for useJobFinder
 vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: vi.fn().mockReturnValue({ [Symbol.asyncIterator]: async function* () {} }),
+}));
+
+vi.mock('@/lib/product-telemetry', () => ({
+  trackProductEvent: trackProductEventMock,
 }));
 
 vi.mock('@/components/career-iq/ExecutiveBioRoom', () => ({
@@ -148,6 +153,7 @@ describe('JobCommandCenterRoom', () => {
 
   beforeEach(() => {
     mockNavigate.mockClear();
+    trackProductEventMock.mockClear();
     localStorageMock.clear();
     // Reset fetch mock for each test — pipeline hooks make fetch calls
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
@@ -167,6 +173,26 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getAllByText('Show More Suggestions').length).toBeGreaterThan(0);
   });
 
+  it('tracks manual job-board searches', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Job title, keywords...'), {
+      target: { value: 'VP Marketing' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Location or Remote'), {
+      target: { value: 'Chicago' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/i }));
+
+    expect(trackProductEventMock).toHaveBeenCalledWith('job_board_search_run', {
+      query: 'VP Marketing',
+      location: 'Chicago',
+      date_posted: 'any',
+      remote_type: 'any',
+      source: 'manual',
+    });
+  });
+
   it('keeps the board focused on search first and boolean strings second', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText(/Search public roles, check how old they are/i)).toBeInTheDocument();
@@ -177,6 +203,27 @@ describe('JobCommandCenterRoom', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(screen.getAllByText('Show More Suggestions')[0]);
     expect(screen.getByText('More Role Ideas')).toBeInTheDocument();
+  });
+
+  it('tracks when the shortlist is opened from the board', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open Shortlist' })[0]);
+
+    expect(trackProductEventMock).toHaveBeenCalledWith('job_shortlist_opened', {
+      entry_point: 'overview_cta',
+      shortlist_count: 0,
+    });
+  });
+
+  it('tracks when more role suggestions are requested from the boolean-search panel', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+
+    fireEvent.click(screen.getAllByText('Show More Suggestions')[0]);
+
+    expect(trackProductEventMock).toHaveBeenCalledWith('more_role_suggestions_requested', {
+      source: 'boolean_search_panel',
+    });
   });
 
   it('does not surface the removed advanced-search controls in the board', () => {

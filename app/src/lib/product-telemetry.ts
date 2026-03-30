@@ -1,23 +1,126 @@
-export type ProductTelemetryEventName =
-  | 'route_viewed'
-  | 'career_profile_started'
-  | 'career_profile_completed'
-  | 'career_profile_stalled'
-  | 'resume_builder_opened'
-  | 'resume_builder_session_started'
-  | 'resume_rewrite_stalled'
-  | 'final_review_requested'
-  | 'final_review_completed'
-  | 'final_review_stalled'
-  | 'export_warning_acknowledged'
-  | 'export_attempted';
+export interface ProductTelemetryPayloadMap {
+  route_viewed: {
+    view: string;
+    room: string | null;
+  };
+  career_profile_started: {
+    readiness_percent: number;
+    dashboard_state: string | null;
+  };
+  career_profile_completed: {
+    readiness_percent: number;
+  };
+  career_profile_stalled: {
+    dashboard_state: string | null;
+    readiness_percent: number;
+    focus_areas: string[];
+  };
+  resume_builder_opened: {
+    surface: string;
+  };
+  resume_builder_session_started: {
+    source: string;
+  };
+  resume_rewrite_stalled: {
+    session_id: string;
+    has_resume: boolean;
+    has_final_review: boolean;
+  };
+  final_review_requested: {
+    session_id: string;
+    company_name: string;
+    role_title: string;
+  };
+  final_review_completed: {
+    session_id: string;
+    verdict: string;
+    unresolved_critical_count: number;
+  };
+  final_review_stalled: {
+    session_id: string;
+    is_stale: boolean;
+    unresolved_critical_count: number;
+  };
+  export_warning_acknowledged: {
+    unresolved_critical_count: number;
+    queue_needs_attention_count: number;
+    queue_partial_count: number;
+  };
+  export_attempted: {
+    format: string;
+    export_blocked: boolean;
+    has_completed_final_review: boolean;
+    is_final_review_stale: boolean;
+    unresolved_critical_count: number;
+    unresolved_hard_gap_count: number;
+    queue_needs_attention_count: number;
+    queue_partial_count: number;
+  };
+  job_board_search_run: {
+    query: string;
+    location: string | null;
+    date_posted: string;
+    remote_type: string;
+    source: 'manual' | 'watchlist';
+  };
+  job_saved_to_shortlist: {
+    source: 'job_board';
+    company_name: string;
+    role_title: string;
+    has_apply_url: boolean;
+    job_source: string | null;
+  };
+  job_shortlist_opened: {
+    entry_point: 'overview_cta' | 'board_target';
+    shortlist_count: number;
+  };
+  job_resume_build_requested: {
+    source: 'job_board' | 'pipeline' | 'suggestions';
+    company_name: string | null;
+    role_title: string | null;
+  };
+  boolean_search_generated: {
+    title_count: number;
+    has_resume_text: boolean;
+  };
+  boolean_search_copied: {
+    target: 'linkedin' | 'indeed' | 'titles';
+    title_count: number;
+  };
+  more_role_suggestions_requested: {
+    source: 'boolean_search_panel' | 'suggestions_card';
+  };
+  smart_referrals_path_selected: {
+    path: 'network' | 'bonus';
+    source: 'user';
+    has_connections: boolean;
+  };
+  smart_referrals_connections_imported: {
+    total_rows: number;
+    valid_rows: number;
+    skipped_rows: number;
+    duplicates_removed: number;
+    unique_companies: number;
+  };
+  smart_referrals_matches_opened: {
+    path: 'network' | 'bonus';
+    initial_filter: 'network_connections' | 'bonus_search';
+  };
+  smart_referrals_outreach_opened: {
+    path: 'network' | 'bonus';
+    prefilled: boolean;
+    trigger: 'manual' | 'referral_bonus';
+  };
+}
 
-export interface ProductTelemetryEvent {
+export type ProductTelemetryEventName = keyof ProductTelemetryPayloadMap;
+
+export interface ProductTelemetryEvent<Name extends ProductTelemetryEventName = ProductTelemetryEventName> {
   id: string;
-  name: ProductTelemetryEventName;
+  name: Name;
   timestamp: string;
   path: string;
-  payload: Record<string, unknown>;
+  payload: ProductTelemetryPayloadMap[Name];
 }
 
 const STORAGE_KEY = 'resume-agent:product-telemetry:v1';
@@ -57,13 +160,13 @@ function writeEvents(events: ProductTelemetryEvent[]) {
   }
 }
 
-export function trackProductEvent(
-  name: ProductTelemetryEventName,
-  payload: Record<string, unknown> = {},
-): ProductTelemetryEvent | null {
+export function trackProductEvent<Name extends ProductTelemetryEventName>(
+  name: Name,
+  payload: ProductTelemetryPayloadMap[Name],
+): ProductTelemetryEvent<Name> | null {
   if (typeof window === 'undefined') return null;
 
-  const event: ProductTelemetryEvent = {
+  const event: ProductTelemetryEvent<Name> = {
     id: buildEventId(),
     name,
     timestamp: new Date().toISOString(),
@@ -74,7 +177,7 @@ export function trackProductEvent(
   const nextEvents = [...readEvents(), event];
   writeEvents(nextEvents);
 
-  window.dispatchEvent(new CustomEvent<ProductTelemetryEvent>('resume-agent:product-telemetry', {
+  window.dispatchEvent(new CustomEvent<ProductTelemetryEvent<Name>>('resume-agent:product-telemetry', {
     detail: event,
   }));
 

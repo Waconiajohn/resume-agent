@@ -132,6 +132,10 @@ Measure the real hiring loop end to end instead of relying on internal intuition
 2. One event-owner map by room
 3. One funnel dashboard for the critical path
 
+Current schema reference:
+
+- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
+
 ### Exit criteria
 
 - We can see room entry, meaningful action, and successful completion for the core loop

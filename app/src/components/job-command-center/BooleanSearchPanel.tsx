@@ -3,6 +3,7 @@ import { Copy, Check, Sparkles, Search } from 'lucide-react';
 import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { trackProductEvent } from '@/lib/product-telemetry';
 
 interface BooleanSearchResult {
   linkedin: string;
@@ -16,6 +17,8 @@ interface BooleanSearchResult {
   };
   generatedAt: string;
 }
+
+type CopyTarget = 'linkedin' | 'indeed' | 'titles';
 
 interface BooleanSearchPanelProps {
   accessToken: string | null;
@@ -59,13 +62,18 @@ export function BooleanSearchPanel({
       }
 
       const payload = (await response.json()) as BooleanSearchResult & { id: string };
-      setResult({
+      const nextResult = {
         linkedin: payload.linkedin,
         indeed: payload.indeed,
         google: payload.google,
         recommendedTitles: Array.isArray(payload.recommendedTitles) ? payload.recommendedTitles : [],
         extractedTerms: payload.extractedTerms ?? { skills: [], titles: [], industries: [] },
         generatedAt: payload.generatedAt,
+      };
+      setResult(nextResult);
+      trackProductEvent('boolean_search_generated', {
+        title_count: nextResult.recommendedTitles.length,
+        has_resume_text: Boolean(resumeText.trim()),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not generate search strings.');
@@ -74,9 +82,13 @@ export function BooleanSearchPanel({
     }
   }
 
-  async function handleCopy(text: string, key: string) {
+  async function handleCopy(text: string, key: CopyTarget) {
     try {
       await navigator.clipboard.writeText(text);
+      trackProductEvent('boolean_search_copied', {
+        target: key,
+        title_count: result?.recommendedTitles.length ?? 0,
+      });
       setCopiedKey(key);
       window.setTimeout(() => setCopiedKey((current) => (current === key ? null : current)), 1500);
     } catch {
@@ -116,7 +128,13 @@ export function BooleanSearchPanel({
           <Sparkles size={14} /> Generate Search Strings
         </GlassButton>
         {onShowAiSuggestions && (
-          <GlassButton variant="ghost" onClick={onShowAiSuggestions}>
+          <GlassButton
+            variant="ghost"
+            onClick={() => {
+              trackProductEvent('more_role_suggestions_requested', { source: 'boolean_search_panel' });
+              onShowAiSuggestions();
+            }}
+          >
             Show More Suggestions
           </GlassButton>
         )}

@@ -27,12 +27,38 @@ describe('product-telemetry', () => {
 
   it('keeps only the newest events when the buffer grows', () => {
     for (let index = 0; index < 205; index += 1) {
-      trackProductEvent('route_viewed', { index });
+      trackProductEvent('route_viewed', {
+        view: `workspace-${index}`,
+        room: null,
+      });
     }
 
     const events = readProductTelemetryEvents();
     expect(events).toHaveLength(200);
-    expect(events[0].payload.index).toBe(5);
-    expect(events.at(-1)?.payload.index).toBe(204);
+    expect(events[0]).toMatchObject({
+      name: 'route_viewed',
+      payload: { view: 'workspace-5' },
+    });
+    expect(events.at(-1)).toMatchObject({
+      name: 'route_viewed',
+      payload: { view: 'workspace-204' },
+    });
+  });
+
+  it('stores the new job-search funnel events', () => {
+    trackProductEvent('job_shortlist_opened', {
+      entry_point: 'overview_cta',
+      shortlist_count: 3,
+    });
+
+    const events = readProductTelemetryEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      name: 'job_shortlist_opened',
+      payload: {
+        entry_point: 'overview_cta',
+        shortlist_count: 3,
+      },
+    });
   });
 });

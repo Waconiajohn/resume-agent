@@ -3,6 +3,10 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { BooleanSearchPanel } from '../BooleanSearchPanel';
 
+const { trackProductEventMock } = vi.hoisted(() => ({
+  trackProductEventMock: vi.fn(),
+}));
+
 vi.mock('lucide-react', () => ({
   Copy: () => <span data-testid="icon-copy" />,
   Check: () => <span data-testid="icon-check" />,
@@ -13,6 +17,10 @@ vi.mock('lucide-react', () => ({
 
 vi.mock('@/lib/api', () => ({
   API_BASE: '/api',
+}));
+
+vi.mock('@/lib/product-telemetry', () => ({
+  trackProductEvent: trackProductEventMock,
 }));
 
 const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
@@ -75,6 +83,10 @@ describe('BooleanSearchPanel', () => {
       expect(screen.getByDisplayValue('("VP Operations" OR "COO")')).toBeInTheDocument();
     });
 
+    expect(trackProductEventMock).toHaveBeenCalledWith('boolean_search_generated', {
+      title_count: 2,
+      has_resume_text: true,
+    });
     expect(screen.getByDisplayValue('title:("VP Operations" OR "COO")')).toBeInTheDocument();
     expect(screen.getByText('VP Operations')).toBeInTheDocument();
     expect(screen.getByText('COO')).toBeInTheDocument();
@@ -116,6 +128,10 @@ describe('BooleanSearchPanel', () => {
     await waitFor(() => {
       expect(clipboardWriteText).toHaveBeenCalledWith('("VP Operations" OR "COO")');
     });
+    expect(trackProductEventMock).toHaveBeenCalledWith('boolean_search_copied', {
+      target: 'linkedin',
+      title_count: 2,
+    });
   });
 
   it('shows the optional extra-suggestions button when requested', () => {
@@ -132,5 +148,8 @@ describe('BooleanSearchPanel', () => {
     fireEvent.click(screen.getByText('Show More Suggestions'));
 
     expect(onShowAiSuggestions).toHaveBeenCalledOnce();
+    expect(trackProductEventMock).toHaveBeenCalledWith('more_role_suggestions_requested', {
+      source: 'boolean_search_panel',
+    });
   });
 });

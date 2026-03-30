@@ -2,7 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-const mockUseAuth = vi.fn();
+const { mockUseAuth, trackProductEventMock } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  trackProductEventMock: vi.fn(),
+}));
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
@@ -12,8 +15,34 @@ vi.mock('@/lib/api', () => ({
   API_BASE: 'http://localhost:3001/api',
 }));
 
+vi.mock('@/lib/product-telemetry', () => ({
+  trackProductEvent: trackProductEventMock,
+}));
+
 vi.mock('@/components/network-intelligence/CsvUploader', () => ({
-  CsvUploader: () => <div data-testid="csv-uploader">CSV uploader</div>,
+  CsvUploader: ({ onUploadComplete }: { onUploadComplete: (summary: {
+    totalRows: number;
+    validRows: number;
+    skippedRows: number;
+    duplicatesRemoved: number;
+    uniqueCompanies: number;
+  }) => void }) => (
+    <div data-testid="csv-uploader">
+      CSV uploader
+      <button
+        type="button"
+        onClick={() => onUploadComplete({
+          totalRows: 125,
+          validRows: 101,
+          skippedRows: 12,
+          duplicatesRemoved: 8,
+          uniqueCompanies: 44,
+        })}
+      >
+        Finish upload
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('@/components/network-intelligence/ConnectionsBrowser', () => ({
@@ -61,6 +90,7 @@ import { SmartReferralsRoom } from '@/components/career-iq/SmartReferralsRoom';
 describe('SmartReferralsRoom', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
+    trackProductEventMock.mockClear();
   });
 
   afterEach(() => {
@@ -164,6 +194,11 @@ describe('SmartReferralsRoom', () => {
       expect(screen.getByTestId('networking-hub-room')).toBeInTheDocument();
     });
     expect(screen.getByTestId('networking-hub-prefill')).toHaveTextContent('Acme Corp');
+    expect(trackProductEventMock).toHaveBeenCalledWith('smart_referrals_outreach_opened', {
+      path: 'network',
+      prefilled: true,
+      trigger: 'referral_bonus',
+    });
   });
 
   it('falls back to the signed-out locked state when auth disappears after load', async () => {
@@ -243,6 +278,52 @@ describe('SmartReferralsRoom', () => {
 
     expect(await screen.findByTestId('bonus-search-panel')).toBeInTheDocument();
     expect(screen.getAllByText(/coverage is still limited to the bonus programs/i).length).toBeGreaterThan(0);
+  });
+
+  it('tracks path selection when switching to the bonus path', async () => {
+    mockUseAuth.mockReturnValue({
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 0 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom />);
+
+    await screen.findByTestId('csv-uploader');
+    fireEvent.click(screen.getByRole('button', { name: /Second visible path.*Chase strong referral bonuses separately/i }));
+
+    expect(trackProductEventMock).toHaveBeenCalledWith('smart_referrals_path_selected', {
+      path: 'bonus',
+      source: 'user',
+      has_connections: false,
+    });
+  });
+
+  it('tracks connection imports when a CSV upload completes', async () => {
+    mockUseAuth.mockReturnValue({
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 0 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom />);
+
+    await screen.findByTestId('csv-uploader');
+    fireEvent.click(screen.getByRole('button', { name: 'Finish upload' }));
+
+    expect(trackProductEventMock).toHaveBeenCalledWith('smart_referrals_connections_imported', {
+      total_rows: 125,
+      valid_rows: 101,
+      skipped_rows: 12,
+      duplicates_removed: 8,
+      unique_companies: 44,
+    });
   });
 
   it('opens the company scan support tool inside setup when that focus is provided', async () => {

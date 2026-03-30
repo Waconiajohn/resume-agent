@@ -16,6 +16,7 @@ import {
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { trackProductEvent } from '@/lib/product-telemetry';
 import { ReferralBadge, getBestBonusDisplay } from '@/components/job-command-center/ReferralBadge';
 import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
 import { formatJobAgeLabel } from './job-age';
@@ -92,6 +93,13 @@ export function RadarSection({
   const handleSearch = useCallback(() => {
     if (!query.trim()) return;
     const filters: RadarSearchFilters = { datePosted, remoteType };
+    trackProductEvent('job_board_search_run', {
+      query: query.trim(),
+      location: location.trim() || null,
+      date_posted: datePosted ?? 'any',
+      remote_type: remoteType ?? 'any',
+      source: 'manual',
+    });
     onSearch(query.trim(), location.trim(), filters);
   }, [query, location, datePosted, remoteType, onSearch]);
 
