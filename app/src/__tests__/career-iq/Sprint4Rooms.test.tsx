@@ -93,7 +93,7 @@ describe('LinkedInStudioRoom', () => {
   it('renders tab navigation with all tabs', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
     expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
-    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    expect(screen.getByText('Right now')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Profile$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Results$/i })).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe('InterviewLabRoom', () => {
   it('shows the interview workflow sequence on the default landing state', () => {
     render(<InterviewLabRoom />);
     expect(screen.getByText('Interview workflow')).toBeInTheDocument();
-    expect(screen.getByText('Next in the sequence')).toBeInTheDocument();
+    expect(screen.getByText('Then')).toBeInTheDocument();
   });
 
   it('renders interview history section', () => {

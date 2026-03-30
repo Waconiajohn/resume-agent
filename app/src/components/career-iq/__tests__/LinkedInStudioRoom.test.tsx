@@ -166,8 +166,8 @@ describe('LinkedInStudioRoom — tab rendering', () => {
   it('renders the workflow guidance strip', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
-    expect(screen.getByText('Current focus')).toBeInTheDocument();
-    expect(screen.getByText('Next best move')).toBeInTheDocument();
+    expect(screen.getByText('Right now')).toBeInTheDocument();
+    expect(screen.getByText('Then')).toBeInTheDocument();
   });
 
   it('renders the tab bar', () => {

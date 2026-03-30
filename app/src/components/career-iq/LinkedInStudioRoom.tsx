@@ -1682,17 +1682,17 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         </div>
       )}
 
-      <GlassCard className="p-5">
+      <GlassCard className="p-4">
         <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
           <div>
             <div className="eyebrow-label">LinkedIn workflow</div>
             <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
-              Sharpen the profile, write with intent, then review what is landing.
+              Sharpen the profile, write, then review what is landing.
             </h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              Content planning and saved drafts still stay close, but the main room now stays centered on profile strength, writing, and results.
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+              Keep the main room centered on profile strength, writing, and results. Planning and saved drafts stay close without taking over.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {LINKEDIN_WORKFLOW_ORDER.map((tab, index) => {
                 const stage = STUDIO_STAGE_CONFIG[tab];
                 return (
@@ -1713,27 +1713,27 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Current focus
+              Right now
             </div>
             <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
               <ActiveStageIcon size={15} className="text-[#98b3ff]" />
               {activeStage.focusTitle}
             </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
               {activeStage.focusSummary}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Next best move
+              Then
             </div>
             <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
               {activeStage.next?.label ?? 'Keep refining this stage'}
             </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
               {activeStage.next?.description ?? 'Stay with the current work until the profile, writing, or evidence feels solid enough to move on.'}
             </p>
           </div>
@@ -1741,7 +1741,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       </GlassCard>
 
       {(activeTab === 'calendar' || activeTab === 'library') && (
-        <GlassCard className="p-4">
+        <GlassCard className="p-3.5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
@@ -1750,10 +1750,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               <div className="mt-1 text-[14px] font-semibold text-[var(--text-strong)]">
                 {activeTab === 'calendar' ? 'Content Plan' : 'Library'}
               </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
                 {activeTab === 'calendar'
-                  ? 'Use this when you want to map a stronger posting rhythm, then step back into Write.'
-                  : 'Use this when you want to reuse saved work, then step back into Write.'}
+                  ? 'Map the next stretch of posts here, then step back into Write.'
+                  : 'Reuse saved work here, then step back into Write.'}
               </p>
             </div>
             <GlassButton variant="ghost" onClick={() => setActiveTab('composer')}>

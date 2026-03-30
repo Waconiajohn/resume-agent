@@ -1607,9 +1607,9 @@ export function InterviewLabRoom({
         </GlassCard>
       )}
 
-      <GlassCard className="p-5">
+      <GlassCard className="p-4">
         <div className="eyebrow-label">Interview workflow</div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 lg:grid-cols-4">
           {LAB_SECTION_ORDER.map((sectionId, index) => {
             const isActive = activeSection === sectionId;
             return (
@@ -1618,7 +1618,7 @@ export function InterviewLabRoom({
                 type="button"
                 onClick={() => setActiveSection(sectionId)}
                 className={cn(
-                  'rounded-2xl border p-4 text-left transition-colors',
+                  'rounded-2xl border p-3.5 text-left transition-colors',
                   isActive
                     ? 'border-[#afc4ff]/30 bg-[#afc4ff]/[0.06]'
                     : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
@@ -1630,11 +1630,11 @@ export function InterviewLabRoom({
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
                   {LAB_SECTION_COPY[sectionId].label}
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+                <p className="mt-2 text-[13px] leading-5 text-[var(--text-soft)]">
                   {LAB_SEQUENCE_COPY[sectionId]}
                 </p>
                 <div className="mt-3 text-[12px] font-medium text-[var(--text-soft)]">
-                  {isActive ? 'Current step' : 'Open step'}
+                  {isActive ? 'Current' : 'Open'}
                 </div>
               </button>
             );
@@ -1642,27 +1642,27 @@ export function InterviewLabRoom({
         </div>
       </GlassCard>
 
-      <GlassCard className="p-5">
+      <GlassCard className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-              Current focus
+              Right now
             </div>
             <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
               {LAB_SECTION_COPY[activeSection].label}
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-muted)]">
               {LAB_SECTION_COPY[activeSection].description}
             </p>
           </div>
-          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
             <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Next in the sequence
+              Then
             </div>
             <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
               {nextSection ? LAB_SECTION_COPY[nextSection].label : 'Follow-up and keep the loop moving'}
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
               {nextSection
                 ? LAB_SEQUENCE_COPY[nextSection]
                 : 'Once the follow-up tools are done, you should be ready to move back into the live job process with a cleaner story and stronger momentum.'}
