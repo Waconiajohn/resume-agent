@@ -74,9 +74,10 @@ export default defineConfig({
       testMatch: [
         /workspace-responsive-audit\.spec\.ts/,
         /workspace-guided-flows\.spec\.ts/,
-        /workspace-core-actions\.spec\.ts/,
+        /workspace-core-actions(?:-[a-z-]+)?\.spec\.ts/,
         /chat-drawer\.spec\.ts/,
       ],
+      workers: 1,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 960 },

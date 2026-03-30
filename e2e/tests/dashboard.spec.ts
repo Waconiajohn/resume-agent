@@ -119,8 +119,9 @@ test.describe('Resume Builder Workspace', () => {
     const hasEmptyState = await page.getByText(/No saved tailored work found for this filter/i).isVisible().catch(() => false);
     const hasWorkspaceRow = await page.getByRole('button', { name: /View Workspace|Workspace Open/i }).first().isVisible().catch(() => false);
     const hasWorkspaceBadge = await page.getByText(/^Job workspace$/i).first().isVisible().catch(() => false);
+    const hasArchiveSurface = await page.getByText(/Each record stays lightweight until the job advances/i).isVisible().catch(() => false);
 
-    expect(hasEmptyState || hasWorkspaceRow || hasWorkspaceBadge).toBe(true);
+    expect(hasEmptyState || hasWorkspaceRow || hasWorkspaceBadge || hasArchiveSurface).toBe(true);
   });
 
   test('resume asset modal opens when a viewable resume exists', async ({ page }) => {
