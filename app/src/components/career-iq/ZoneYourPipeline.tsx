@@ -222,10 +222,19 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
   // Load from Supabase on mount.
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function load(userIdOverride?: string | null) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
+        const resolvedUserId = userIdOverride === undefined
+          ? (await supabase.auth.getUser()).data.user?.id ?? null
+          : userIdOverride;
+
+        if (!resolvedUserId || cancelled) {
+          if (!cancelled) {
+            setCards([]);
+            setLoaded(true);
+          }
+          return;
+        }
 
         const { data, error } = await supabase
           .from('job_applications')
@@ -243,8 +252,17 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
         setLoaded(true);
       }
     }
-    load();
-    return () => { cancelled = true; };
+
+    void load();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void load(session?.user?.id ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleDragStart = useCallback((_e: React.DragEvent, cardId: string) => {

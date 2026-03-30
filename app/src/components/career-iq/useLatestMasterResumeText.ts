@@ -13,15 +13,24 @@ export function useLatestMasterResumeText(): UseLatestMasterResumeTextResult {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadResume() {
+    async function loadResume(userIdOverride?: string | null) {
       setLoading(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
+        const resolvedUserId = userIdOverride === undefined
+          ? (await supabase.auth.getUser()).data.user?.id ?? null
+          : userIdOverride;
+
+        if (!resolvedUserId || cancelled) {
+          if (!cancelled) {
+            setResumeText('');
+            setLoading(false);
+          }
+          return;
+        }
         const { data } = await supabase
           .from('master_resumes')
           .select('raw_text')
-          .eq('user_id', user.id)
+          .eq('user_id', resolvedUserId)
           .order('updated_at', { ascending: false })
           .limit(1)
           .single();
@@ -41,8 +50,13 @@ export function useLatestMasterResumeText(): UseLatestMasterResumeTextResult {
     }
 
     void loadResume();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadResume(session?.user?.id ?? null);
+    });
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
 

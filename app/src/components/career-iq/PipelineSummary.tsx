@@ -40,10 +40,13 @@ export function PipelineSummary() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function load(userIdOverride?: string | null) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) {
+        const resolvedUserId = userIdOverride === undefined
+          ? (await supabase.auth.getUser()).data.user?.id ?? null
+          : userIdOverride;
+
+        if (!resolvedUserId || cancelled) {
           if (!cancelled) {
             setStageCounts(makeEmptyCounts());
             setTotalActive(0);
@@ -55,7 +58,7 @@ export function PipelineSummary() {
         const { data } = await supabase
           .from('application_pipeline')
           .select('stage')
-          .eq('user_id', user.id);
+          .eq('user_id', resolvedUserId);
 
         if (!data || cancelled) {
           if (!cancelled) {
@@ -84,8 +87,16 @@ export function PipelineSummary() {
         }
       }
     }
-    load();
-    return () => { cancelled = true; };
+    void load();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void load(session?.user?.id ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
