@@ -92,6 +92,7 @@ This sprint exists to reassert the intended operating model before more implemen
 - Resume V2 is now explicitly targeting a document-first workflow: show the before score, generate the strongest tailored resume early, do all work on the resume itself, run final review inline, then promote validated discoveries to the master resume.
 - The next production sweep after Resume V2 should prioritize Smart Referrals, then the dashboard/workspace shell, then Interview Prep and LinkedIn Studio. See `docs/PRODUCTION_SWEEP_PLAN.md`.
 - The current release-hardening stack for the core hiring loop is captured in `docs/PRODUCTION_HARDENING_PLAN.md`: Job Search + Pipeline, Smart Referrals, Resume V2, cross-cutting auth/persistence, then LinkedIn Studio before release-candidate QA.
+- The next post-hardening phase should now shift from broad cleanup into launch readiness, instrumentation, pilot user testing, production observability, and monetization design. See `docs/NEXT_PHASE_PLAN.md`.
 - Smart Referrals and the first two workspace-shell sweeps are now landed.
 - Interview Prep is now underway with shared master-resume context loading across the interview follow-up rooms.
 - `InterviewLabRoom` focus/view routing is now being centralized so prep, follow-up documents, and negotiation handoffs resolve from one canonical room-state model.
