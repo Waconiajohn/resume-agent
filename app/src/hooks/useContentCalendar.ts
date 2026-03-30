@@ -180,7 +180,7 @@ export function useContentCalendar() {
       const token = session?.access_token ?? null;
       if (!token) {
         if (mountedRef.current) {
-          setState((prev) => ({ ...prev, reportsLoading: false }));
+          setState((prev) => ({ ...prev, savedReports: [], reportsLoading: false }));
         }
         return;
       }
@@ -196,7 +196,13 @@ export function useContentCalendar() {
         return;
       }
 
-      const data = (await res.json()) as { reports?: unknown };
+      const data = (await res.json()) as { reports?: unknown; feature_disabled?: boolean };
+      if (data.feature_disabled) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, savedReports: [], reportsLoading: false }));
+        }
+        return;
+      }
       if (mountedRef.current) {
         setState((prev) => ({
           ...prev,

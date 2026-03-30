@@ -252,6 +252,46 @@ describe('useContentCalendar — fetchReports populates savedReports', () => {
     expect(result.current.savedReports).toEqual([]);
   });
 
+  it('clears stale savedReports when auth is lost on refetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ reports: [makeReport('r1')] }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentCalendar());
+
+    await waitFor(() => expect(result.current.savedReports).toHaveLength(1));
+
+    mockGetSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+
+    await act(async () => {
+      await result.current.fetchReports();
+    });
+
+    expect(result.current.savedReports).toEqual([]);
+  });
+
+  it('clears stale savedReports when the feature is disabled', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ reports: [makeReport('r1')] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ feature_disabled: true }), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentCalendar());
+
+    await waitFor(() => expect(result.current.savedReports).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.fetchReports();
+    });
+
+    expect(result.current.savedReports).toEqual([]);
+  });
+
   it('drops malformed report payloads instead of storing invalid entries', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
       new Response(
