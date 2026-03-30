@@ -1065,7 +1065,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     const resumeBullet = screen.getByText('Reduced deploy time by 60%');
     const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
     expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
-    expect(screen.getByText(/Original baseline, what got stronger, and the last items still worth tightening before export\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Baseline, what improved, and the last items still worth tightening before export\./i)).toBeInTheDocument();
     expect(screen.getByText('On-Paper Fit Score')).toBeInTheDocument();
     expect(screen.getByText('What improved')).toBeInTheDocument();
     expect(screen.getByText('Still to close')).toBeInTheDocument();

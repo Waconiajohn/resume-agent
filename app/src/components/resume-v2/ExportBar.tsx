@@ -166,23 +166,23 @@ export function ExportBar({
   return (
     <div className="space-y-2">
       {hasWarnings && (
-        <div className="support-callout border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-4">
+        <div className="support-callout border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3.5">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-[var(--text-strong)]">Export warning</p>
+              <p className="text-sm font-medium text-[var(--text-strong)]">Export still has open warnings</p>
               <div className="mt-1 space-y-1 text-xs leading-5 text-[var(--text-soft)]">
                 {!hasCompletedFinalReview && (
-                  <p>Final Review has not been run yet, so the draft has not been pressure-tested with the recruiter scan and hiring manager critique.</p>
+                  <p>Final Review has not been run yet.</p>
                 )}
                 {isFinalReviewStale && (
-                  <p>Final Review is out of date because the resume changed after the last review.</p>
+                  <p>Final Review is out of date because the resume changed.</p>
                 )}
                 {unresolvedCriticalCount > 0 && (
                   <p>{unresolvedCriticalCount} critical Final Review concern{unresolvedCriticalCount === 1 ? '' : 's'} still remain unresolved.</p>
                 )}
                 {unresolvedHardGapCount > 0 && (
-                  <p>{unresolvedHardGapCount} hard requirement risk{unresolvedHardGapCount === 1 ? '' : 's'} still remain on the draft. These may still create screening risk if they are truly missing.</p>
+                  <p>{unresolvedHardGapCount} hard requirement risk{unresolvedHardGapCount === 1 ? '' : 's'} still remain on the draft.</p>
                 )}
                 {(queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
                   <p>
