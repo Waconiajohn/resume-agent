@@ -147,6 +147,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   // Store inputs for inline edit context and re-runs
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [previousResume, setPreviousResume] = useState<ResumeDraft | null>(null);
 
   const {
     pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -353,16 +354,99 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }
   }, [data.assembly, setInitialScores]);
 
-  // Load a historical V2 session on mount
-  const [sessionLoadAttempted, setSessionLoadAttempted] = useState(false);
+  const [attemptedHistoricalSessionKey, setAttemptedHistoricalSessionKey] = useState<string | null>(null);
+  const [activeHistoricalSessionKey, setActiveHistoricalSessionKey] = useState<string | null>(null);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
+  const requestedHistoricalSessionKey = useMemo(() => (
+    initialSessionId ? `${storageUserId ?? 'anon'}:${initialSessionId}` : null
+  ), [initialSessionId, storageUserId]);
+
+  const resetScreenState = useCallback((options?: { clearInputs?: boolean; clearSessionError?: boolean }) => {
+    setEditableResume(null);
+    setPreviousResume(null);
+    lastMasterSnapshotRef.current = '';
+    lastPersistedDraftRef.current = 'null';
+    setMasterSaveMode('session_only');
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
+    });
+    if (options?.clearInputs) {
+      setResumeText('');
+      setJobDescription('');
+    }
+    if (options?.clearSessionError ?? true) {
+      setSessionLoadError(null);
+    }
+    resetHistory();
+    resetGapChat();
+    resetFinalReviewChat();
+    resetHiringManagerReview();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
+  }, [
+    resetFinalReviewChat,
+    resetGapChat,
+    resetHiringManagerReview,
+    resetHistory,
+    resetPostReviewPolish,
+  ]);
+
+  const previousStorageUserIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (!initialSessionId || sessionLoadAttempted || !accessToken) return;
-    setSessionLoadAttempted(true);
+    const previousStorageUserId = previousStorageUserIdRef.current;
+    if (previousStorageUserId === undefined) {
+      previousStorageUserIdRef.current = storageUserId;
+      return;
+    }
+    if (previousStorageUserId === storageUserId) return;
+
+    previousStorageUserIdRef.current = storageUserId;
+    setAttemptedHistoricalSessionKey(null);
+    setActiveHistoricalSessionKey(null);
+    reset();
+    resetScreenState({ clearInputs: true });
+  }, [reset, resetScreenState, storageUserId]);
+
+  useEffect(() => {
+    if (!requestedHistoricalSessionKey) {
+      if (activeHistoricalSessionKey || attemptedHistoricalSessionKey) {
+        setAttemptedHistoricalSessionKey(null);
+        setActiveHistoricalSessionKey(null);
+        reset();
+        resetScreenState({ clearInputs: true });
+      }
+      return;
+    }
+
+    if (!accessToken) {
+      setAttemptedHistoricalSessionKey(null);
+      setActiveHistoricalSessionKey(null);
+      return;
+    }
+
+    const requestedSessionId = initialSessionId;
+    if (!requestedSessionId) return;
+
+    if (attemptedHistoricalSessionKey === requestedHistoricalSessionKey) return;
+
+    setAttemptedHistoricalSessionKey(requestedHistoricalSessionKey);
+    setActiveHistoricalSessionKey(null);
+    setSessionLoadError(null);
+    reset();
+    resetScreenState({ clearInputs: true, clearSessionError: false });
+
+    let cancelled = false;
     void (async () => {
-      const result = await loadSession(initialSessionId);
+      const result = await loadSession(requestedSessionId);
+      if (cancelled) return;
+
       if (result) {
-        const resolvedDraftState = result.draftState ?? readLocalDraftState(initialSessionId, storageUserId);
+        const resolvedDraftState = result.draftState ?? readLocalDraftState(requestedSessionId, storageUserId);
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
         setEditableResume(normalizeResumeDraft(resolvedDraftState?.editable_resume ?? null));
@@ -377,19 +461,29 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         hydratePostReviewPolish(resolvedDraftState?.post_review_polish ?? null);
         setSelectedMasterPromotionIds(resolvedDraftState?.master_promotion_state?.selected_item_ids ?? []);
         lastPersistedDraftRef.current = JSON.stringify(resolvedDraftState ?? null);
-      } else {
-        setSessionLoadError('Failed to load session. It may have expired or belong to a different account.');
+        setActiveHistoricalSessionKey(requestedHistoricalSessionKey);
+        return;
       }
+
+      setSessionLoadError('Failed to load session. It may have expired or belong to a different account.');
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     accessToken,
-    initialSessionId,
-    sessionLoadAttempted,
-    loadSession,
+    activeHistoricalSessionKey,
+    attemptedHistoricalSessionKey,
     hydrateFinalReviewChatSnapshot,
     hydrateGapChatSnapshot,
     hydrateHiringManagerReview,
     hydratePostReviewPolish,
+    initialSessionId,
+    loadSession,
+    requestedHistoricalSessionKey,
+    reset,
+    resetScreenState,
     storageUserId,
   ]);
 
@@ -950,9 +1044,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     requestEdit(targetBullet, section, 'add_keywords', `Naturally integrate this specific keyword/phrase into the text: "${keyword}"`);
   }, [currentResume, data.assembly, requestEdit]);
 
-  // Track the resume from the previous run so the WhatChangedCard can diff it
-  const [previousResume, setPreviousResume] = useState<ResumeDraft | null>(null);
-
   const handleAddContext = useCallback((userContext: string) => {
     // Snapshot the current resume before the re-run so we can show what changed
     setPreviousResume(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null);
@@ -988,30 +1079,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, []);
 
   const handleStartOver = useCallback(() => {
+    setAttemptedHistoricalSessionKey(null);
+    setActiveHistoricalSessionKey(null);
     reset();
-    setEditableResume(null);
-    setPreviousResume(null);
-    lastMasterSnapshotRef.current = '';
-    lastPersistedDraftRef.current = 'null';
-    setMasterSaveMode('session_only');
-    setMasterSaveStatus({
-      tone: 'neutral',
-      message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
-    });
-    setResumeText('');
-    setJobDescription('');
-    setSessionLoadAttempted(false);
-    setSessionLoadError(null);
-    resetHiringManagerReview();
-    resetGapChat();
-    resetFinalReviewChat();
-    setResolvedFinalReviewConcernIds([]);
-    setFinalReviewWarningsAcknowledged(false);
-    setIsFinalReviewStale(false);
-    setFinalReviewResumeText(null);
-    setSelectedMasterPromotionIds([]);
-    resetPostReviewPolish();
-  }, [reset, resetHiringManagerReview, resetGapChat, resetFinalReviewChat, resetPostReviewPolish]);
+    resetScreenState({ clearInputs: true });
+  }, [reset, resetScreenState]);
 
   const handleSaveCurrentToMaster = useCallback(() => {
     if (!currentResume) return;

@@ -9,6 +9,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import {
+  buildAuthScopedStorageKey,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 
 export interface LinkedInProfile {
   headline: string;
@@ -17,7 +23,6 @@ export interface LinkedInProfile {
 
 const STORAGE_NAMESPACE = 'careeriq_linkedin_profile';
 const LEGACY_STORAGE_KEY = STORAGE_NAMESPACE;
-const ANONYMOUS_STORAGE_SCOPE = 'anon';
 const DEBOUNCE_MS = 1_000;
 
 const EMPTY_PROFILE: LinkedInProfile = { headline: '', about: '' };
@@ -27,7 +32,7 @@ function hasProfileContent(profile: LinkedInProfile) {
 }
 
 function getStorageKey(userId: string | null) {
-  return `${STORAGE_NAMESPACE}:${userId ?? ANONYMOUS_STORAGE_SCOPE}`;
+  return buildAuthScopedStorageKey(STORAGE_NAMESPACE, userId);
 }
 
 function normalizeProfile(parsed: unknown): LinkedInProfile {
@@ -39,21 +44,12 @@ function normalizeProfile(parsed: unknown): LinkedInProfile {
 }
 
 function loadProfileFromStorageKey(key: string): LinkedInProfile | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return normalizeProfile(JSON.parse(raw));
-  } catch {
-    return null;
-  }
+  const parsed = readJsonFromLocalStorage<LinkedInProfile>(key);
+  return parsed ? normalizeProfile(parsed) : null;
 }
 
 function saveToStorageForUser(userId: string | null, profile: LinkedInProfile) {
-  try {
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(profile));
-  } catch {
-    // localStorage may be full or unavailable
-  }
+  writeJsonToLocalStorage(getStorageKey(userId), profile);
 }
 
 function loadFromStorage(userId: string | null): LinkedInProfile {
@@ -64,11 +60,7 @@ function loadFromStorage(userId: string | null): LinkedInProfile {
     const legacyProfile = loadProfileFromStorageKey(LEGACY_STORAGE_KEY);
     if (legacyProfile) {
       saveToStorageForUser(null, legacyProfile);
-      try {
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-      } catch {
-        // ignore storage cleanup errors
-      }
+      removeLocalStorageKey(LEGACY_STORAGE_KEY);
       return legacyProfile;
     }
   }

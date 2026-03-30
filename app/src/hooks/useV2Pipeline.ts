@@ -49,6 +49,15 @@ export function useV2Pipeline(accessToken: string | null) {
     };
   }, []);
 
+  useEffect(() => {
+    if (accessToken) return;
+    abortRef.current?.abort();
+    setData(INITIAL_DATA);
+    setIsConnected(false);
+    setIsComplete(false);
+    setIsStarting(false);
+  }, [accessToken]);
+
   const handleEvent = useCallback((event: V2SSEEvent) => {
     setData(prev => {
       switch (event.type) {

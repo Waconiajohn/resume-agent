@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  buildAuthScopedStorageKey,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 
 export interface WhyMeStory {
   colleaguesCameForWhat: string;
@@ -19,7 +25,6 @@ export type DashboardState = 'new-user' | 'refining' | 'strong';
 
 const STORAGE_NAMESPACE = 'careeriq_why_me_story';
 const LEGACY_STORAGE_KEY = STORAGE_NAMESPACE;
-const ANONYMOUS_STORAGE_SCOPE = 'anon';
 const DEBOUNCE_MS = 500;
 
 const EMPTY_STORY: WhyMeStory = {
@@ -36,7 +41,7 @@ function assessSignal(text: string): SignalLevel {
 }
 
 function getStorageKey(userId: string | null) {
-  return `${STORAGE_NAMESPACE}:${userId ?? ANONYMOUS_STORAGE_SCOPE}`;
+  return buildAuthScopedStorageKey(STORAGE_NAMESPACE, userId);
 }
 
 function normalizeStory(parsed: unknown): WhyMeStory {
@@ -49,21 +54,12 @@ function normalizeStory(parsed: unknown): WhyMeStory {
 }
 
 function loadStoryFromStorageKey(key: string): WhyMeStory | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return normalizeStory(JSON.parse(raw));
-  } catch {
-    return null;
-  }
+  const parsed = readJsonFromLocalStorage<WhyMeStory>(key);
+  return parsed ? normalizeStory(parsed) : null;
 }
 
 function saveToStorageForUser(userId: string | null, story: WhyMeStory) {
-  try {
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(story));
-  } catch {
-    // localStorage may be full or unavailable
-  }
+  writeJsonToLocalStorage(getStorageKey(userId), story);
 }
 
 function loadFromStorage(userId: string | null): WhyMeStory {
@@ -74,11 +70,7 @@ function loadFromStorage(userId: string | null): WhyMeStory {
     const legacyStory = loadStoryFromStorageKey(LEGACY_STORAGE_KEY);
     if (legacyStory) {
       saveToStorageForUser(null, legacyStory);
-      try {
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-      } catch {
-        // ignore storage cleanup errors
-      }
+      removeLocalStorageKey(LEGACY_STORAGE_KEY);
       return legacyStory;
     }
   }
