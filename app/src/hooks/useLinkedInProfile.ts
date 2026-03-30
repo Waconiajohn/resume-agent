@@ -15,31 +15,65 @@ export interface LinkedInProfile {
   about: string;
 }
 
-const STORAGE_KEY = 'careeriq_linkedin_profile';
+const STORAGE_NAMESPACE = 'careeriq_linkedin_profile';
+const LEGACY_STORAGE_KEY = STORAGE_NAMESPACE;
+const ANONYMOUS_STORAGE_SCOPE = 'anon';
 const DEBOUNCE_MS = 1_000;
 
 const EMPTY_PROFILE: LinkedInProfile = { headline: '', about: '' };
 
-function loadFromStorage(): LinkedInProfile {
+function hasProfileContent(profile: LinkedInProfile) {
+  return Boolean(profile.headline.trim() || profile.about.trim());
+}
+
+function getStorageKey(userId: string | null) {
+  return `${STORAGE_NAMESPACE}:${userId ?? ANONYMOUS_STORAGE_SCOPE}`;
+}
+
+function normalizeProfile(parsed: unknown): LinkedInProfile {
+  const source = (parsed ?? {}) as Partial<LinkedInProfile>;
+  return {
+    headline: source.headline ?? '',
+    about: source.about ?? '',
+  };
+}
+
+function loadProfileFromStorageKey(key: string): LinkedInProfile | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_PROFILE;
-    const parsed = JSON.parse(raw) as Partial<LinkedInProfile>;
-    return {
-      headline: parsed.headline ?? '',
-      about: parsed.about ?? '',
-    };
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return normalizeProfile(JSON.parse(raw));
   } catch {
-    return EMPTY_PROFILE;
+    return null;
   }
 }
 
-function saveToStorage(profile: LinkedInProfile) {
+function saveToStorageForUser(userId: string | null, profile: LinkedInProfile) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(profile));
   } catch {
     // localStorage may be full or unavailable
   }
+}
+
+function loadFromStorage(userId: string | null): LinkedInProfile {
+  const scopedProfile = loadProfileFromStorageKey(getStorageKey(userId));
+  if (scopedProfile) return scopedProfile;
+
+  if (!userId) {
+    const legacyProfile = loadProfileFromStorageKey(LEGACY_STORAGE_KEY);
+    if (legacyProfile) {
+      saveToStorageForUser(null, legacyProfile);
+      try {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch {
+        // ignore storage cleanup errors
+      }
+      return legacyProfile;
+    }
+  }
+
+  return EMPTY_PROFILE;
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -50,52 +84,91 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 export function useLinkedInProfile() {
-  const [profile, setProfile] = useState<LinkedInProfile>(loadFromStorage);
+  const [profile, setProfile] = useState<LinkedInProfile>(EMPTY_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeUserId, setActiveUserId] = useState<string | null | undefined>(undefined);
   const initialLoadDone = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const activeLoadId = useRef(0);
 
-  // Load from server on mount
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function loadForSession(userIdOverride?: string | null, tokenOverride?: string | null) {
+      const loadId = ++activeLoadId.current;
+      initialLoadDone.current = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setLoading(true);
+      setError(null);
+
       try {
-        const token = await getAccessToken();
-        if (!token || cancelled) {
-          setLoading(false);
+        let resolvedUserId = userIdOverride ?? null;
+        let resolvedToken = tokenOverride ?? null;
+
+        if (userIdOverride === undefined) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          resolvedUserId = session?.user?.id ?? null;
+          resolvedToken = session?.access_token ?? null;
+        }
+
+        if (cancelled || loadId !== activeLoadId.current) return;
+
+        setActiveUserId(resolvedUserId);
+        const localProfile = loadFromStorage(resolvedUserId);
+        setProfile(localProfile);
+
+        if (!resolvedUserId || !resolvedToken) {
           initialLoadDone.current = true;
+          setLoading(false);
           return;
         }
 
         const res = await fetch(`${API_BASE}/platform-context/linkedin-profile`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${resolvedToken}` },
         });
 
-        if (cancelled) return;
+        if (cancelled || loadId !== activeLoadId.current) return;
 
         if (res.ok) {
           const data = (await res.json()) as { linkedin_profile: LinkedInProfile | null };
           if (data.linkedin_profile) {
             setProfile(data.linkedin_profile);
-            saveToStorage(data.linkedin_profile);
+            saveToStorageForUser(resolvedUserId, data.linkedin_profile);
+          } else if (hasProfileContent(localProfile)) {
+            await fetch(`${API_BASE}/platform-context/linkedin-profile`, {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${resolvedToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(localProfile),
+            });
           }
         }
       } catch {
-        // Server unavailable — use localStorage data
+        // Server unavailable — use the scoped local draft.
       } finally {
-        if (!cancelled) {
+        if (!cancelled && loadId === activeLoadId.current) {
           setLoading(false);
           initialLoadDone.current = true;
         }
       }
     }
 
-    void load();
+    void loadForSession(undefined, undefined);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadForSession(session?.user?.id ?? null, session?.access_token ?? null);
+    });
+
     return () => {
       cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -130,7 +203,7 @@ export function useLinkedInProfile() {
         return false;
       }
 
-      saveToStorage(profile);
+      saveToStorageForUser(activeUserId ?? null, profile);
       return true;
     } catch {
       setError('Failed to save. Please try again.');
@@ -140,15 +213,16 @@ export function useLinkedInProfile() {
     }
   }, [profile]);
 
-  // Sync localStorage on every change
   useEffect(() => {
+    if (activeUserId === undefined) return;
     if (!initialLoadDone.current) return;
-    saveToStorage(profile);
-  }, [profile]);
+    saveToStorageForUser(activeUserId, profile);
+  }, [activeUserId, profile]);
 
-  // Debounced auto-save to server
   useEffect(() => {
+    if (activeUserId === undefined) return;
     if (!initialLoadDone.current) return;
+    if (!activeUserId) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -160,11 +234,11 @@ export function useLinkedInProfile() {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
           },
           body: JSON.stringify(profile),
         });
-        saveToStorage(profile);
+        saveToStorageForUser(activeUserId, profile);
       } catch {
         // Best-effort auto-save
       }
@@ -173,7 +247,7 @@ export function useLinkedInProfile() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [profile]);
+  }, [activeUserId, profile]);
 
   const hasContent = profile.headline.trim().length > 0 || profile.about.trim().length > 0;
 

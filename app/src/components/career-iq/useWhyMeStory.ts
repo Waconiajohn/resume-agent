@@ -17,7 +17,9 @@ export interface WhyMeSignals {
 
 export type DashboardState = 'new-user' | 'refining' | 'strong';
 
-const STORAGE_KEY = 'careeriq_why_me_story';
+const STORAGE_NAMESPACE = 'careeriq_why_me_story';
+const LEGACY_STORAGE_KEY = STORAGE_NAMESPACE;
+const ANONYMOUS_STORAGE_SCOPE = 'anon';
 const DEBOUNCE_MS = 500;
 
 const EMPTY_STORY: WhyMeStory = {
@@ -33,43 +35,95 @@ function assessSignal(text: string): SignalLevel {
   return 'green';
 }
 
-function loadFromStorage(): WhyMeStory {
+function getStorageKey(userId: string | null) {
+  return `${STORAGE_NAMESPACE}:${userId ?? ANONYMOUS_STORAGE_SCOPE}`;
+}
+
+function normalizeStory(parsed: unknown): WhyMeStory {
+  const source = (parsed ?? {}) as Partial<WhyMeStory>;
+  return {
+    colleaguesCameForWhat: source.colleaguesCameForWhat ?? '',
+    knownForWhat: source.knownForWhat ?? '',
+    whyNotMe: source.whyNotMe ?? '',
+  };
+}
+
+function loadStoryFromStorageKey(key: string): WhyMeStory | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_STORY;
-    const parsed = JSON.parse(raw);
-    return {
-      colleaguesCameForWhat: parsed.colleaguesCameForWhat ?? '',
-      knownForWhat: parsed.knownForWhat ?? '',
-      whyNotMe: parsed.whyNotMe ?? '',
-    };
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return normalizeStory(JSON.parse(raw));
   } catch {
-    return EMPTY_STORY;
+    return null;
   }
 }
 
-function saveToStorage(story: WhyMeStory) {
+function saveToStorageForUser(userId: string | null, story: WhyMeStory) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(story));
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(story));
   } catch {
     // localStorage may be full or unavailable
   }
 }
 
+function loadFromStorage(userId: string | null): WhyMeStory {
+  const scopedStory = loadStoryFromStorageKey(getStorageKey(userId));
+  if (scopedStory) return scopedStory;
+
+  if (!userId) {
+    const legacyStory = loadStoryFromStorageKey(LEGACY_STORAGE_KEY);
+    if (legacyStory) {
+      saveToStorageForUser(null, legacyStory);
+      try {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch {
+        // ignore storage cleanup errors
+      }
+      return legacyStory;
+    }
+  }
+
+  return EMPTY_STORY;
+}
+
+function hasStoryContent(story: WhyMeStory) {
+  return Boolean(
+    story.colleaguesCameForWhat.trim()
+    || story.knownForWhat.trim()
+    || story.whyNotMe.trim(),
+  );
+}
+
 export function useWhyMeStory() {
-  const [story, setStory] = useState<WhyMeStory>(loadFromStorage);
+  const [story, setStory] = useState<WhyMeStory>(EMPTY_STORY);
   const [supabaseLoading, setSupabaseLoading] = useState(true);
+  const [activeUserId, setActiveUserId] = useState<string | null | undefined>(undefined);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const initialLoadDone = useRef(false);
+  const activeLoadId = useRef(0);
 
-  // Load from Supabase on mount — merge with localStorage
   useEffect(() => {
     let cancelled = false;
 
-    async function loadFromSupabase() {
+    async function loadForUser(userIdOverride?: string | null) {
+      const loadId = ++activeLoadId.current;
+      initialLoadDone.current = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setSupabaseLoading(true);
+
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) {
+        const resolvedUserId = userIdOverride === undefined
+          ? (await supabase.auth.getUser()).data.user?.id ?? null
+          : userIdOverride;
+
+        if (cancelled || loadId !== activeLoadId.current) return;
+
+        setActiveUserId(resolvedUserId);
+        const localStory = loadFromStorage(resolvedUserId);
+        setStory(localStory);
+
+        if (!resolvedUserId) {
+          initialLoadDone.current = true;
           setSupabaseLoading(false);
           return;
         }
@@ -77,85 +131,88 @@ export function useWhyMeStory() {
         const { data, error } = await supabase
           .from('why_me_stories')
           .select('colleagues_came_for_what, known_for_what, why_not_me')
-          .eq('user_id', user.id)
+          .eq('user_id', resolvedUserId)
           .maybeSingle();
 
-        if (cancelled) return;
+        if (cancelled || loadId !== activeLoadId.current) return;
 
         if (error) {
-          console.warn('Failed to load Why-Me story from Supabase, using localStorage:', error.message);
-          initialLoadDone.current = true;
-          setSupabaseLoading(false);
-          return;
-        }
-
-        if (data) {
-          // Supabase data exists — use it
+          console.warn('Failed to load Why-Me story from Supabase, using scoped local draft:', error.message);
+        } else if (data) {
           const supabaseStory: WhyMeStory = {
             colleaguesCameForWhat: data.colleagues_came_for_what ?? '',
             knownForWhat: data.known_for_what ?? '',
             whyNotMe: data.why_not_me ?? '',
           };
           setStory(supabaseStory);
-          saveToStorage(supabaseStory);
-        } else {
-          // No Supabase row — migrate localStorage data if any
-          const localStory = loadFromStorage();
-          const hasLocalData = localStory.colleaguesCameForWhat.trim() || localStory.knownForWhat.trim() || localStory.whyNotMe.trim();
-          if (hasLocalData) {
+          saveToStorageForUser(resolvedUserId, supabaseStory);
+        } else if (hasStoryContent(localStory)) {
+          try {
             await supabase.from('why_me_stories').upsert({
-              user_id: user.id,
+              user_id: resolvedUserId,
               colleagues_came_for_what: localStory.colleaguesCameForWhat,
               known_for_what: localStory.knownForWhat,
               why_not_me: localStory.whyNotMe,
             }, { onConflict: 'user_id' });
+          } catch {
+            // Keep the user-scoped local draft until the server is available.
           }
         }
-
-        initialLoadDone.current = true;
-        setSupabaseLoading(false);
       } catch {
-        if (!cancelled) {
+        if (!cancelled && loadId === activeLoadId.current) {
           initialLoadDone.current = true;
           setSupabaseLoading(false);
         }
+        return;
+      }
+
+      if (!cancelled && loadId === activeLoadId.current) {
+        initialLoadDone.current = true;
+        setSupabaseLoading(false);
       }
     }
 
-    void loadFromSupabase();
-    return () => { cancelled = true; };
+    void loadForUser(undefined);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadForUser(session?.user?.id ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Debounced save to Supabase on changes
   useEffect(() => {
-    // Always sync to localStorage immediately
-    saveToStorage(story);
+    if (activeUserId === undefined) return;
 
-    // Don't save to Supabase until initial load is done
+    saveToStorageForUser(activeUserId, story);
+
     if (!initialLoadDone.current) return;
+    if (!activeUserId) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
         await supabase.from('why_me_stories').upsert({
-          user_id: user.id,
+          user_id: activeUserId,
           colleagues_came_for_what: story.colleaguesCameForWhat,
           known_for_what: story.knownForWhat,
           why_not_me: story.whyNotMe,
         }, { onConflict: 'user_id' });
       } catch {
-        // Supabase unavailable — localStorage has the data
+        // Supabase unavailable — the user-scoped local draft remains.
       }
     }, DEBOUNCE_MS);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [story]);
+  }, [activeUserId, story]);
 
   const updateField = useCallback(
     (field: keyof WhyMeStory, value: string) => {

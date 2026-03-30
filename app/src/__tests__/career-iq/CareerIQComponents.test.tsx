@@ -1,25 +1,38 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { renderHook, act } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
+const mockGetUser = vi.fn().mockResolvedValue({ data: { user: null } });
+const mockOnAuthStateChange = vi.fn().mockReturnValue({
+  data: {
+    subscription: {
+      unsubscribe: vi.fn(),
+    },
+  },
+});
+const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+const mockSelect = vi.fn().mockReturnValue({
+  eq: vi.fn().mockReturnValue({
+    maybeSingle: mockMaybeSingle,
+  }),
+});
+const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+
 // Mock supabase client
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      getUser: mockGetUser,
+      onAuthStateChange: mockOnAuthStateChange,
     },
     from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      }),
-      upsert: vi.fn().mockResolvedValue({ error: null }),
+      select: mockSelect,
+      upsert: mockUpsert,
     }),
   },
 }));
@@ -70,6 +83,15 @@ describe('useWhyMeStory', () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockOnAuthStateChange.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    });
   });
   afterEach(() => cleanup());
 
@@ -82,12 +104,14 @@ describe('useWhyMeStory', () => {
   it('returns new-user state when story is empty', async () => {
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.dashboardState).toBe('new-user');
   });
 
   it('returns all red signals for empty story', async () => {
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.signals.clarity).toBe('red');
     expect(result.current.signals.alignment).toBe('red');
     expect(result.current.signals.differentiation).toBe('red');
@@ -96,6 +120,7 @@ describe('useWhyMeStory', () => {
   it('returns isComplete=false and hasStarted=false for new-user', async () => {
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.isComplete).toBe(false);
     expect(result.current.hasStarted).toBe(false);
   });
@@ -111,6 +136,7 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.dashboardState).toBe('refining');
   });
 
@@ -125,6 +151,7 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.signals.clarity).toBe('yellow');
     expect(result.current.signals.alignment).toBe('yellow');
     expect(result.current.signals.differentiation).toBe('yellow');
@@ -141,6 +168,7 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.hasStarted).toBe(true);
   });
 
@@ -156,6 +184,7 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.dashboardState).toBe('strong');
   });
 
@@ -171,6 +200,7 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.signals.clarity).toBe('green');
     expect(result.current.signals.alignment).toBe('green');
     expect(result.current.signals.differentiation).toBe('green');
@@ -188,12 +218,14 @@ describe('useWhyMeStory', () => {
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.isComplete).toBe(true);
   });
 
   it('updateField correctly updates a single field', async () => {
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => {
       result.current.updateField('colleaguesCameForWhat', 'New value');
@@ -208,6 +240,7 @@ describe('useWhyMeStory', () => {
     localStorageMock.setItem('careeriq_why_me_story', '{invalid json!!!');
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.dashboardState).toBe('new-user');
     expect(result.current.story.colleaguesCameForWhat).toBe('');
   });
