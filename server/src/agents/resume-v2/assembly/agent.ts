@@ -16,6 +16,7 @@ import type {
   PositioningAssessment,
   PositioningAssessmentEntry,
 } from '../types.js';
+import { bulletPreservesProofDensity } from '../resume-writer/agent.js';
 
 export function runAssembly(input: AssemblyInput): AssemblyOutput {
   const { draft, truth_verification, ats_optimization, executive_tone } = input;
@@ -81,6 +82,12 @@ function applyToneFixes(
     return result;
   };
 
+  const applyProtectedReplacements = (text: string): string => {
+    const updated = applyReplacements(text);
+    if (updated === text) return text;
+    return bulletPreservesProofDensity(updated, text) ? updated : text;
+  };
+
   return {
     ...draft,
     executive_summary: {
@@ -90,14 +97,14 @@ function applyToneFixes(
     core_competencies: draft.core_competencies.map(applyReplacements),
     selected_accomplishments: draft.selected_accomplishments.map(a => ({
       ...a,
-      content: applyReplacements(a.content),
+      content: applyProtectedReplacements(a.content),
     })),
     professional_experience: draft.professional_experience.map(exp => ({
       ...exp,
-      scope_statement: applyReplacements(exp.scope_statement),
+      scope_statement: applyProtectedReplacements(exp.scope_statement),
       bullets: exp.bullets.map(b => ({
         ...b,
-        text: applyReplacements(b.text),
+        text: applyProtectedReplacements(b.text),
       })),
     })),
   };

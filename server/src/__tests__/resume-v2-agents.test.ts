@@ -3001,6 +3001,279 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullets[0]).toBe('Led multi-brand portfolio management across pricing, retail, and digital campaign planning, giving category teams one shared growth calendar and launch rhythm.');
     });
 
+    it('restores missing numeric proof when same-count rewrites generalize source bullets', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'CloudScale Systems',
+            title: 'Senior DevOps Engineer',
+            start_date: '2016',
+            end_date: '2020',
+            scope_statement: '',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: '',
+            bullets: [
+              {
+                text: 'Orchestrated CI/CD pipelines for 30+ teams using Jenkins and GitLab CI',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: '30+ development teams',
+              },
+              {
+                text: 'Architected Terraform modules for AWS infrastructure provisioning',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: '4 environments',
+              },
+              {
+                text: 'Implemented monitoring and alerting stack using Prometheus, Grafana, and PagerDuty',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Prometheus, Grafana, and PagerDuty',
+              },
+              {
+                text: 'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: '45 minutes to 8 minutes',
+              },
+              {
+                text: 'Developed junior engineers through weekly knowledge-sharing sessions',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: '5 junior engineers',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'CloudScale Systems',
+              title: 'Senior DevOps Engineer',
+              start_date: '2016',
+              end_date: '2020',
+              bullets: [
+                'Designed and maintained CI/CD pipelines using Jenkins and GitLab CI for 30+ development teams',
+                'Built Terraform modules for provisioning AWS infrastructure across 4 environments',
+                'Implemented monitoring and alerting stack using Prometheus, Grafana, and PagerDuty',
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                'Mentored 5 junior engineers and led weekly knowledge-sharing sessions',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 5,
+            positions: [
+              {
+                company: 'CloudScale Systems',
+                title: 'Senior DevOps Engineer',
+                start_date: '2016',
+                end_date: '2020',
+                bullets: [
+                  'Designed and maintained CI/CD pipelines using Jenkins and GitLab CI for 30+ development teams',
+                  'Built Terraform modules for provisioning AWS infrastructure across 4 environments',
+                  'Implemented monitoring and alerting stack using Prometheus, Grafana, and PagerDuty',
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                  'Mentored 5 junior engineers and led weekly knowledge-sharing sessions',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toContain('Built Terraform modules for provisioning AWS infrastructure across 4 environments');
+      expect(bullets).toContain('Mentored 5 junior engineers and led weekly knowledge-sharing sessions');
+    });
+
+    it('replaces duplicate source coverage with a missing role-local proof bullet', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Pinnacle Industrial Solutions',
+            title: 'Director of Operations',
+            start_date: '2018',
+            end_date: 'Present',
+            scope_statement: '',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: '',
+            bullets: [
+              {
+                text: 'Generated $14.2M in cumulative cost savings via process enhancements and supply chain optimization.',
+                is_new: true,
+                addresses_requirements: [],
+                source: 'enhanced',
+                confidence: 'strong',
+                review_state: 'strengthen',
+                requirement_source: 'job_description',
+                evidence_found: 'Cumulative cost savings of $14.2M',
+                content_origin: 'resume_rewrite',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Improved on-time delivery from 87% to 96.5% by redesigning production scheduling and implementing demand-driven MRP',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'supported',
+                requirement_source: 'job_description',
+                evidence_found: 'On-time delivery improvement from 87% to 96.5%',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Reduced manufacturing defect rate from 3.8% to 0.9% by implementing statistical process control and automated quality inspection systems',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'supported',
+                requirement_source: 'job_description',
+                evidence_found: 'Manufacturing defect rate reduction from 3.8% to 0.9%',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Negotiated and managed $45M annual procurement budget, achieving 12% cost reduction through strategic sourcing and vendor consolidation',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'supported',
+                requirement_source: 'job_description',
+                evidence_found: 'Cost reduction of 12% through strategic sourcing',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Led $8M capital investment in robotic welding and CNC automation, increasing throughput 35% with no headcount increase',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'confirm_fit',
+                requirement_source: 'benchmark',
+                evidence_found: 'Throughput increase of 35% through robotic welding and CNC automation',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Oversee operations for 3 manufacturing facilities (Dallas, Houston, Tulsa) with 420 employees and $175M combined output',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'supported',
+                requirement_source: 'benchmark',
+                evidence_found: 'Oversee operations for 3 manufacturing facilities (Dallas, Houston, Tulsa) with 420 employees and $175M combined output',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+              {
+                text: 'Led operational excellence program delivering $14.2M in cumulative cost savings over 4 years through lean manufacturing, waste reduction, and process automation',
+                is_new: false,
+                addresses_requirements: [],
+                source: 'original',
+                confidence: 'strong',
+                review_state: 'supported',
+                requirement_source: 'benchmark',
+                evidence_found: 'Led operational excellence program delivering $14.2M in cumulative cost savings over 4 years through lean manufacturing, waste reduction, and process automation',
+                content_origin: 'verbatim_resume',
+                support_origin: 'original_resume',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Pinnacle Industrial Solutions',
+              title: 'Director of Operations',
+              start_date: '2018',
+              end_date: 'Present',
+              bullets: [
+                'Oversee operations for 3 manufacturing facilities (Dallas, Houston, Tulsa) with 420 employees and $175M combined output',
+                'Led operational excellence program delivering $14.2M in cumulative cost savings over 4 years through lean manufacturing, waste reduction, and process automation',
+                'Reduced manufacturing defect rate from 3.8% to 0.9% by implementing statistical process control and automated quality inspection systems',
+                'Negotiated and managed $45M annual procurement budget, achieving 12% cost reduction through strategic sourcing and vendor consolidation',
+                'Improved on-time delivery from 87% to 96.5% by redesigning production scheduling and implementing demand-driven MRP',
+                'Championed safety culture transformation reducing OSHA recordable incidents by 62% (from 8.2 to 3.1 per 200K hours)',
+                'Led $8M capital investment in robotic welding and CNC automation, increasing throughput 35% with no headcount increase',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 7,
+            positions: [
+              {
+                company: 'Pinnacle Industrial Solutions',
+                title: 'Director of Operations',
+                start_date: '2018',
+                end_date: 'Present',
+                bullets: [
+                  'Oversee operations for 3 manufacturing facilities (Dallas, Houston, Tulsa) with 420 employees and $175M combined output',
+                  'Led operational excellence program delivering $14.2M in cumulative cost savings over 4 years through lean manufacturing, waste reduction, and process automation',
+                  'Reduced manufacturing defect rate from 3.8% to 0.9% by implementing statistical process control and automated quality inspection systems',
+                  'Negotiated and managed $45M annual procurement budget, achieving 12% cost reduction through strategic sourcing and vendor consolidation',
+                  'Improved on-time delivery from 87% to 96.5% by redesigning production scheduling and implementing demand-driven MRP',
+                  'Championed safety culture transformation reducing OSHA recordable incidents by 62% (from 8.2 to 3.1 per 200K hours)',
+                  'Led $8M capital investment in robotic welding and CNC automation, increasing throughput 35% with no headcount increase',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toContain('Championed safety culture transformation reducing OSHA recordable incidents by 62% (from 8.2 to 3.1 per 200K hours)');
+      expect(bullets).not.toContain('Generated $14.2M in cumulative cost savings via process enhancements and supply chain optimization.');
+    });
+
     it('keeps older highly relevant roles in professional experience instead of collapsing them', async () => {
       mockLlmChat
         .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))

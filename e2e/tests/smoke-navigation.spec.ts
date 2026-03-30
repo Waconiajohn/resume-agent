@@ -102,7 +102,7 @@ async function setupSignedInApp(page: Page) {
 
 async function expectWorkspaceHome(page: Page) {
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
-  await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'Open Resume Builder', exact: true })).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Smoke: major routes and redirects', () => {

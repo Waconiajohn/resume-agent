@@ -9,14 +9,14 @@ test.describe('workspace core room actions', () => {
   test('workspace home entry points open Your Profile and Job Search', async ({ page }) => {
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByText('Career Profile backbone').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Resume Builder', exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: /Review Career Profile/i }).click();
+    await page.getByRole('button', { name: /Review story/i }).click();
     await expect(page).toHaveURL(/room=career-profile/);
     await expect(page.getByRole('heading', { name: 'Your Profile', exact: true })).toBeVisible();
 
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /Open Job Search/i }).click();
+    await page.getByRole('button', { name: /Open jobs/i }).click();
     await expect(page).toHaveURL(/room=jobs/);
     await expect(page.getByRole('heading', { name: /One job board, one shortlist, one pipeline/i })).toBeVisible();
   });
@@ -48,7 +48,8 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(page.getByText(/Current Profile Score/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /Open Content Plan/i }).click();
+    await page.getByRole('button', { name: 'Write', exact: true }).click();
+    await page.getByRole('button', { name: /Plan posts/i }).click();
     await expect(page.getByText(/Support workspace/i).first()).toBeVisible();
     await expect(page.getByText('Content Plan', { exact: true })).toBeVisible();
   });
@@ -57,6 +58,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByText('LinkedIn workflow')).toBeVisible();
+    await page.getByRole('button', { name: 'Write', exact: true }).click();
     await page.getByRole('button', { name: /Write a Post/i }).click();
 
     await expect(page.getByRole('heading', { name: /Choose a Topic/i })).toBeVisible();
@@ -173,7 +175,8 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=networking', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Smart Referrals', exact: true })).toBeVisible();
-    await expect(page.getByText('Your Network', { exact: true })).toBeVisible();
+    await expect(page.getByText('Use your existing connections first').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Connections', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Bonus Search', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Referral Bonus', exact: true })).toBeVisible();
 

@@ -442,6 +442,49 @@ describe('applyToneFixes (via runAssembly)', () => {
     expect(acmeBullets[0].text).toContain('CI/CD');
   });
 
+  it('skips tone replacements that strip numeric proof from a bullet', () => {
+    const draft = makeDraft({
+      professional_experience: [
+        {
+          company: 'CloudScale Systems',
+          title: 'Senior DevOps Engineer',
+          start_date: '2016',
+          end_date: '2020',
+          scope_statement: '',
+          scope_statement_source: 'original' as const,
+          scope_statement_confidence: 'strong' as const,
+          scope_statement_evidence_found: '',
+          bullets: [
+            {
+              text: 'Built Terraform modules for provisioning AWS infrastructure across 4 environments',
+              is_new: false,
+              addresses_requirements: ['Terraform'],
+              source: 'original' as const,
+              confidence: 'strong' as const,
+              evidence_found: '4 environments',
+              requirement_source: 'job_description' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const tone = makeExecutiveTone({
+      findings: [
+        {
+          text: 'Built Terraform modules for provisioning AWS infrastructure across 4 environments',
+          section: 'professional_experience',
+          issue: 'generic_filler',
+          suggestion: 'Architected Terraform modules for AWS infrastructure provisioning',
+        },
+      ],
+    });
+
+    const result = runAssembly(makeInput({ draft, executive_tone: tone }));
+    const bullet = result.final_resume.professional_experience[0].bullets[0].text;
+
+    expect(bullet).toBe('Built Terraform modules for provisioning AWS infrastructure across 4 environments');
+  });
+
   it('replaces text in professional_experience scope_statement', () => {
     // Both scope_statements contain "responsible for" → should become "overseeing"
     const result = runAssembly(makeInput());
