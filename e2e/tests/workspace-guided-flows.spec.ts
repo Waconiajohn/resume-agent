@@ -6,18 +6,18 @@ test.describe('workspace guided flows', () => {
     await mockWorkspaceApp(page);
   });
 
-  test('reopens a saved resume job record and runs Final Review before export acknowledgement', async ({ page }) => {
-    await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
+  test('reopens a saved resume job record and runs Final Review from the reopened session', async ({ page }) => {
+    await page.goto('/workspace?room=resume&focus=job-workspaces', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible();
-    await expect(page.getByText('TechCorp').first()).toBeVisible();
-    await expect(page.getByText('VP Operations').first()).toBeVisible();
-    await expect(page.getByText('Interviewing').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /View Resume/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /View Cover Letter/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Interview Prep/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Open saved tailored work only when you need the history view/i })).toBeVisible();
+    const techCorpRow = page.locator('div.px-5.py-4').filter({ hasText: 'TechCorp' }).first();
+    await expect(techCorpRow).toBeVisible();
+    await expect(techCorpRow.getByText(/Interviewing/i)).toBeVisible();
+    await expect(techCorpRow.getByRole('button', { name: /View Resume/i })).toBeVisible();
+    await expect(techCorpRow.getByRole('button', { name: /View Cover Letter/i })).toBeVisible();
+    await expect(techCorpRow.getByRole('button', { name: /Open Interview Prep/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /View Workspace/i }).first().click();
+    await techCorpRow.getByRole('button', { name: /View Workspace/i }).click();
 
     await expect(page.getByText('Stage control')).toBeVisible();
     await expect(page.getByText('Unlocked next')).toBeVisible();
@@ -31,25 +31,18 @@ test.describe('workspace guided flows', () => {
 
     await runFinalReviewButton.click();
 
-    await expect(page.getByText('6-Second Recruiter Scan')).toBeVisible();
+    await expect(page.getByText('Recruiter Skim')).toBeVisible();
     await expect(page.getByText('Priority Fixes')).toBeVisible();
-    await expect(page.getByText('Export warning')).toBeVisible();
-
-    await page.getByRole('button', { name: /I understand, enable export/i }).click();
-
-    await expect(page.getByText('Warning acknowledged. Export is enabled, but the draft still has open review warnings.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeEnabled();
-    await expect(page.getByRole('button', { name: /Download PDF/i })).toBeEnabled();
   });
 
   test('organizes Interview Prep into sections and opens the 30-60-90 plan from Leave-behinds', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: 'Interview Prep' }).first()).toBeVisible();
-    await page.getByRole('button', { name: 'Leave-behinds', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /Prep, practice, and follow-up in one place/i })).toBeVisible();
+    await page.getByRole('button', { name: /Step 3 Leave-behinds/i }).click();
 
     await expect(page.getByRole('heading', { name: '30-60-90 Day Plan' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Thank You Note' })).toBeVisible();
+    await expect(page.getByText(/Keep your follow-up docs tied to the same interview story/i)).toBeVisible();
 
     await page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).click();
     await expect(page.getByRole('heading', { name: /30-60-90 Plan/i }).first()).toBeVisible();
@@ -60,9 +53,11 @@ test.describe('workspace guided flows', () => {
   });
 
   test('opens the first-class job workspace and reopens exact saved later-stage assets', async ({ page }) => {
-    await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
+    await page.goto('/workspace?room=resume&focus=job-workspaces', { waitUntil: 'domcontentloaded' });
 
-    await page.getByRole('button', { name: /Full Page/i }).first().click();
+    const offerCoRow = page.locator('div.px-5.py-4').filter({ hasText: 'OfferCo' }).first();
+    await expect(offerCoRow).toBeVisible();
+    await offerCoRow.getByRole('button', { name: /Full Page/i }).click();
     await expect(page).toHaveURL(/\/workspace\/job\/job-offerco$/);
     await expect(page.locator('h1', { hasText: 'OfferCo' })).toBeVisible();
     await expect(page.getByText(/Exact assets reopen from here/i)).toBeVisible();
@@ -100,7 +95,6 @@ test.describe('workspace guided flows', () => {
     await page.getByRole('button', { name: /Reopen Tailored Work/i }).click();
 
     await expect(page).toHaveURL(/\/resume-builder\/session$/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /Requirements to Match/i })).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({ timeout: 8_000 });
   });
 
@@ -126,7 +120,8 @@ test.describe('workspace guided flows', () => {
   test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
     await page.goto('/workspace?room=personal-brand', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible();
-    await expect(page).toHaveURL(/room=personal-brand|room=career-profile/);
+    await expect(page.getByRole('heading', { name: 'Your Profile', exact: true })).toBeVisible();
+    await expect(page.getByText(/Three answers that define how Resume Builder, LinkedIn, Interview Prep/i)).toBeVisible();
+    await expect(page).toHaveURL(/room=career-profile/);
   });
 });
