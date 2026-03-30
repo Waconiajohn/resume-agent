@@ -2,12 +2,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
+const { mockGetUser, mockGetSession, mockOnAuthStateChange } = vi.hoisted(() => ({
+  mockGetUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+  mockGetSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } } }),
+  mockOnAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+}));
+
 // Mock supabase client (used by ZoneYourPipeline and pipeline hooks)
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } } }),
+      getUser: mockGetUser,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
     },
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -241,6 +248,9 @@ describe('JobCommandCenterRoom', () => {
 describe('InterviewLabRoom', () => {
   beforeEach(() => {
     localStorageMock.clear();
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    mockGetSession.mockResolvedValue({ data: { session: { access_token: 'test-token' } } });
+    mockOnAuthStateChange.mockImplementation(() => ({ data: { subscription: { unsubscribe: vi.fn() } } }));
   });
 
   it('renders upcoming interviews section', () => {
@@ -314,22 +324,45 @@ describe('InterviewLabRoom', () => {
     fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'VP' } });
     fireEvent.click(screen.getByText('Save'));
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'careeriq_interview_history',
+      'careeriq_interview_history:anon',
       expect.stringContaining('Persist Co'),
     );
   });
 
-  it('allows updating outcome on existing entry', () => {
+  it('scopes interview history to the signed-in user', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } });
+
+    render(<InterviewLabRoom />);
+    await waitFor(() => {
+      expect(mockGetUser).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
+    fireEvent.click(screen.getByText('Add Interview'));
+    fireEvent.change(screen.getByPlaceholderText('Company'), { target: { value: 'Scoped Co' } });
+    fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'VP' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'careeriq_interview_history:user-123',
+        expect.stringContaining('Scoped Co'),
+      );
+    });
+  });
+
+  it('allows updating outcome on existing entry', async () => {
     // Pre-populate localStorage with a history entry
     localStorageMock.getItem.mockReturnValue(JSON.stringify([
       { id: '1', company: 'TestCo', role: 'CTO', date: '2026-03-01', outcome: 'pending', notes: '' },
     ]));
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
-    expect(screen.getByText('TestCo')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('TestCo')).toBeInTheDocument();
+    });
   });
 
-  it('ignores malformed saved interview history entries', () => {
+  it('ignores malformed saved interview history entries', async () => {
     localStorageMock.getItem.mockReturnValue(JSON.stringify([
       { id: 'broken', company: 42, role: null, date: '2026-03-01', outcome: 'pending' },
     ]));
@@ -337,8 +370,10 @@ describe('InterviewLabRoom', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
 
-    expect(screen.getByText('Interview History')).toBeInTheDocument();
-    expect(screen.queryByText('broken')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Interview History')).toBeInTheDocument();
+      expect(screen.queryByText('broken')).not.toBeInTheDocument();
+    });
   });
 });
 

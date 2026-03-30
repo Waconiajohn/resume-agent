@@ -35,6 +35,13 @@ import { useToast } from '@/components/Toast';
 import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
+import {
+  buildAuthScopedStorageKey,
+  decodeUserIdFromAccessToken,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -62,32 +69,29 @@ interface V2ResumeScreenProps {
   ) => Promise<MasterResumeSaveResult>;
 }
 
-function v2DraftStorageKey(sessionId: string): string {
-  return `resume-agent:v2-draft:${sessionId}`;
+const V2_DRAFT_STORAGE_NAMESPACE = 'resume-agent:v2-draft';
+
+function v2DraftStorageKey(sessionId: string, userId: string | null): string {
+  return buildAuthScopedStorageKey(V2_DRAFT_STORAGE_NAMESPACE, userId, sessionId);
 }
 
-function readLocalDraftState(sessionId: string): V2PersistedDraftState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(v2DraftStorageKey(sessionId));
-    if (!raw) return null;
-    return JSON.parse(raw) as V2PersistedDraftState;
-  } catch {
-    return null;
-  }
+function legacyV2DraftStorageKey(sessionId: string): string {
+  return `${V2_DRAFT_STORAGE_NAMESPACE}:${sessionId}`;
 }
 
-function writeLocalDraftState(sessionId: string, draftState: V2PersistedDraftState | null) {
-  if (typeof window === 'undefined') return;
-  try {
-    if (draftState === null) {
-      window.localStorage.removeItem(v2DraftStorageKey(sessionId));
-      return;
-    }
-    window.localStorage.setItem(v2DraftStorageKey(sessionId), JSON.stringify(draftState));
-  } catch {
-    // Best effort only
+function readLocalDraftState(sessionId: string, userId: string | null): V2PersistedDraftState | null {
+  return readJsonFromLocalStorage<V2PersistedDraftState>(v2DraftStorageKey(sessionId, userId));
+}
+
+function writeLocalDraftState(sessionId: string, userId: string | null, draftState: V2PersistedDraftState | null) {
+  const scopedKey = v2DraftStorageKey(sessionId, userId);
+  if (draftState === null) {
+    removeLocalStorageKey(scopedKey);
+    removeLocalStorageKey(legacyV2DraftStorageKey(sessionId));
+    return;
   }
+  writeJsonToLocalStorage(scopedKey, draftState);
+  removeLocalStorageKey(legacyV2DraftStorageKey(sessionId));
 }
 
 function extractResumeExcerptForSection(resume: ResumeDraft, section: string | undefined): string {
@@ -128,6 +132,7 @@ function extractResumeExcerptForSection(resume: ResumeDraft, section: string | u
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
+  const storageUserId = useMemo(() => decodeUserIdFromAccessToken(accessToken), [accessToken]);
 
   // Track the editable resume separately — starts as the pipeline output,
   // then gets mutated by inline edits
@@ -352,12 +357,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [sessionLoadAttempted, setSessionLoadAttempted] = useState(false);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
   useEffect(() => {
-    if (!initialSessionId || sessionLoadAttempted) return;
+    if (!initialSessionId || sessionLoadAttempted || !accessToken) return;
     setSessionLoadAttempted(true);
     void (async () => {
       const result = await loadSession(initialSessionId);
       if (result) {
-        const resolvedDraftState = result.draftState ?? readLocalDraftState(initialSessionId);
+        const resolvedDraftState = result.draftState ?? readLocalDraftState(initialSessionId, storageUserId);
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
         setEditableResume(normalizeResumeDraft(resolvedDraftState?.editable_resume ?? null));
@@ -377,6 +382,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       }
     })();
   }, [
+    accessToken,
     initialSessionId,
     sessionLoadAttempted,
     loadSession,
@@ -384,6 +390,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     hydrateGapChatSnapshot,
     hydrateHiringManagerReview,
     hydratePostReviewPolish,
+    storageUserId,
   ]);
 
   const acceptEdit = useCallback((editedText: string) => {
@@ -814,7 +821,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     if (serialized === lastPersistedDraftRef.current) return;
 
     const timer = window.setTimeout(() => {
-      writeLocalDraftState(data.sessionId, nextDraftState);
+      writeLocalDraftState(data.sessionId, storageUserId, nextDraftState);
       void (async () => {
         const ok = await saveDraftState(data.sessionId, nextDraftState);
         if (ok) {
@@ -840,6 +847,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     resolvedFinalReviewConcernIds,
     saveDraftState,
     selectedMasterPromotionIds,
+    storageUserId,
   ]);
 
   const isPipelineActive = data.sessionId !== '';

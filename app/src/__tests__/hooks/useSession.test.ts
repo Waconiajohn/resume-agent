@@ -20,6 +20,17 @@ vi.mock('@/lib/api', () => ({
   API_BASE: 'http://localhost:3001/api',
 }));
 
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: vi.fn((key: string) => { delete store[key]; }),
+    clear: vi.fn(() => { store = {}; }),
+  };
+})();
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function makeResponse(
@@ -31,6 +42,14 @@ function makeResponse(
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+function makeAccessToken(userId: string): string {
+  const payload = btoa(JSON.stringify({ sub: userId }))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+  return `header.${payload}.signature`;
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('useSession — respondToGate auto-retry on 429', () => {
@@ -39,6 +58,7 @@ describe('useSession — respondToGate auto-retry on 429', () => {
   beforeEach(() => {
     mockFetch = vi.fn<typeof fetch>();
     vi.stubGlobal('fetch', mockFetch);
+    localStorageMock.clear();
   });
 
   afterEach(() => {
@@ -189,6 +209,7 @@ describe('useSession — resume payload normalization', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    localStorageMock.clear();
   });
 
   it('drops malformed resume list items when loading resumes', async () => {
@@ -359,6 +380,70 @@ describe('useSession — resume payload normalization', () => {
       ],
       created_at: '2026-03-01T00:00:00Z',
       updated_at: '2026-03-02T00:00:00Z',
+    });
+  });
+});
+
+describe('useSession — auth-scoped pipeline restart cache', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    localStorageMock.clear();
+  });
+
+  it('stores restart inputs under the active user scope', async () => {
+    const mockFetch = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      makeResponse(200, { ok: true }),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useSession(makeAccessToken('user-1')));
+
+    let started = false;
+    await act(async () => {
+      started = await result.current.startPipeline(
+        'session-1',
+        'Resume text',
+        'Job description',
+        'Acme',
+      );
+    });
+
+    expect(started).toBe(true);
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      'resume-agent:pipeline-start:user-1:session-1',
+      expect.stringContaining('Resume text'),
+    );
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('resume-agent:pipeline-start:session-1');
+  });
+
+  it('only reloads cached restart inputs for the same signed-in user', async () => {
+    localStorageMock.setItem(
+      'resume-agent:pipeline-start:user-a:session-1',
+      JSON.stringify({
+        rawResumeText: 'Scoped resume',
+        jobDescription: 'Scoped JD',
+        companyName: 'Scoped Co',
+        workflowMode: 'balanced',
+        savedAt: '2026-03-29T00:00:00.000Z',
+      }),
+    );
+
+    const mockFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(makeResponse(404, { error: 'Not found' }))
+      .mockResolvedValueOnce(makeResponse(404, { error: 'No inputs' }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useSession(makeAccessToken('user-b')));
+
+    let restartResult: { success: boolean; message: string } | null = null;
+    await act(async () => {
+      restartResult = await result.current.restartPipelineWithCachedInputs('session-1');
+    });
+
+    expect(restartResult).toEqual({
+      success: false,
+      message: 'No restart inputs are available for this session. Please restart from the intake form.',
     });
   });
 });

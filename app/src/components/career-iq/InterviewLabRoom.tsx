@@ -27,6 +27,12 @@ import {
 } from 'lucide-react';
 import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
+import {
+  buildAuthScopedStorageKey,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
 import { usePriorResult } from '@/hooks/usePriorResult';
@@ -85,7 +91,8 @@ export interface PipelineInterviewCard {
   role: string;
 }
 
-const HISTORY_STORAGE_KEY = 'careeriq_interview_history';
+const HISTORY_STORAGE_NAMESPACE = 'careeriq_interview_history';
+const LEGACY_HISTORY_STORAGE_KEY = HISTORY_STORAGE_NAMESPACE;
 
 function isPastInterview(value: unknown): value is PastInterview {
   if (!value || typeof value !== 'object') return false;
@@ -100,21 +107,36 @@ function isPastInterview(value: unknown): value is PastInterview {
   );
 }
 
-function loadHistory(): PastInterview[] {
-  try {
-    const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed.filter(isPastInterview);
-      }
+function historyStorageKey(userId: string | null) {
+  return buildAuthScopedStorageKey(HISTORY_STORAGE_NAMESPACE, userId);
+}
+
+function normalizeHistory(value: unknown): PastInterview[] {
+  return Array.isArray(value) ? value.filter(isPastInterview) : [];
+}
+
+function loadHistory(userId: string | null): PastInterview[] {
+  const scoped = readJsonFromLocalStorage<unknown>(historyStorageKey(userId));
+  if (scoped) {
+    return normalizeHistory(scoped);
+  }
+
+  if (!userId) {
+    const legacy = readJsonFromLocalStorage<unknown>(LEGACY_HISTORY_STORAGE_KEY);
+    if (legacy) {
+      const normalized = normalizeHistory(legacy);
+      writeJsonToLocalStorage(historyStorageKey(null), normalized);
+      removeLocalStorageKey(LEGACY_HISTORY_STORAGE_KEY);
+      return normalized;
     }
-  } catch { /* ignore */ }
+  }
+
   return [];
 }
 
-function saveHistory(history: PastInterview[]) {
-  try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); } catch { /* ignore */ }
+function saveHistory(userId: string | null, history: PastInterview[]) {
+  writeJsonToLocalStorage(historyStorageKey(userId), history);
+  removeLocalStorageKey(LEGACY_HISTORY_STORAGE_KEY);
 }
 
 // --- Readiness Gauge (SVG ring) ---
@@ -1202,7 +1224,8 @@ export function InterviewLabRoom({
 }: InterviewLabRoomProps) {
   const initialRouteState = resolveInterviewLabRouteState(initialFocus);
   const sessionTargets = resolveInterviewLabSessionTargets(initialFocus, initialAssetSessionId);
-  const [history, setHistory] = useState<PastInterview[]>(loadHistory);
+  const [history, setHistory] = useState<PastInterview[]>([]);
+  const [activeUserId, setActiveUserId] = useState<string | null | undefined>(undefined);
   const [viewMode, setViewMode] = useState<InterviewLabViewMode>('lab');
   const [activeSection, setActiveSection] = useState<InterviewLabSection>(initialRouteState.activeSection);
   const [documentsView, setDocumentsView] = useState<InterviewLabDocumentsView>(initialRouteState.documentsView);
@@ -1237,6 +1260,30 @@ export function InterviewLabRoom({
     skip: status !== 'idle' || !sessionTargets.prepSessionId,
     sessionId: sessionTargets.prepSessionId,
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHistoryForUser(userIdOverride?: string | null) {
+      const resolvedUserId = userIdOverride === undefined
+        ? (await supabase.auth.getUser()).data.user?.id ?? null
+        : userIdOverride;
+      if (cancelled) return;
+      setActiveUserId(resolvedUserId);
+      setHistory(loadHistory(resolvedUserId));
+    }
+
+    void loadHistoryForUser(undefined);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadHistoryForUser(session?.user?.id ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (status === 'complete' && report) {
@@ -1351,19 +1398,19 @@ export function InterviewLabRoom({
   const handleUpdateOutcome = useCallback((id: string, outcome: PastInterview['outcome']) => {
     setHistory((prev) => {
       const updated = prev.map((item) => item.id === id ? { ...item, outcome } : item);
-      saveHistory(updated);
+      saveHistory(activeUserId ?? null, updated);
       return updated;
     });
-  }, []);
+  }, [activeUserId]);
 
   const handleAddInterview = useCallback((entry: Omit<PastInterview, 'id'>) => {
     setHistory((prev) => {
       const newEntry: PastInterview = { ...entry, id: `h${Date.now()}` };
       const updated = [newEntry, ...prev];
-      saveHistory(updated);
+      saveHistory(activeUserId ?? null, updated);
       return updated;
     });
-  }, []);
+  }, [activeUserId]);
 
   const handleAddDebriefClick = useCallback(() => {
     setActiveSection('follow_up');

@@ -4,6 +4,13 @@ import type { FinalResume, MasterResume, MasterResumeEvidenceItem, MasterResumeL
 import { resumeToText } from '@/lib/export';
 import { retryDelayMsFromHeaders } from '@/lib/http-retry';
 import { safeNumber, safeString } from '@/lib/safe-cast';
+import {
+  buildAuthScopedStorageKey,
+  decodeUserIdFromAccessToken,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 import { API_BASE } from '../lib/api';
 
 type WorkflowMode = 'fast_draft' | 'balanced' | 'deep_dive';
@@ -21,47 +28,46 @@ interface PipelineStartCacheEntry {
   savedAt: string;
 }
 
-const PIPELINE_START_CACHE_PREFIX = 'resume-agent:pipeline-start:';
+const PIPELINE_START_CACHE_NAMESPACE = 'resume-agent:pipeline-start';
+const LEGACY_PIPELINE_START_CACHE_PREFIX = `${PIPELINE_START_CACHE_NAMESPACE}:`;
 
-function pipelineStartCacheKey(sessionId: string): string {
-  return `${PIPELINE_START_CACHE_PREFIX}${sessionId}`;
+function pipelineStartCacheKey(sessionId: string, userId: string | null): string {
+  return buildAuthScopedStorageKey(PIPELINE_START_CACHE_NAMESPACE, userId, sessionId);
 }
 
-function persistPipelineStartCache(sessionId: string, entry: PipelineStartCacheEntry) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(pipelineStartCacheKey(sessionId), JSON.stringify(entry));
-  } catch {
-    // Best effort
-  }
+function legacyPipelineStartCacheKey(sessionId: string): string {
+  return `${LEGACY_PIPELINE_START_CACHE_PREFIX}${sessionId}`;
 }
 
-function loadPipelineStartCache(sessionId: string): PipelineStartCacheEntry | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(pipelineStartCacheKey(sessionId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PipelineStartCacheEntry> | null;
-    if (!parsed) return null;
-    if (typeof parsed.rawResumeText !== 'string' || typeof parsed.jobDescription !== 'string' || typeof parsed.companyName !== 'string') {
-      return null;
-    }
-    const workflowMode: WorkflowMode = parsed.workflowMode === 'fast_draft' || parsed.workflowMode === 'deep_dive'
-      ? parsed.workflowMode
-      : 'balanced';
-    return {
-      rawResumeText: parsed.rawResumeText,
-      jobDescription: parsed.jobDescription,
-      companyName: parsed.companyName,
-      workflowMode,
-      minimumEvidenceTarget: typeof parsed.minimumEvidenceTarget === 'number' ? parsed.minimumEvidenceTarget : undefined,
-      resumePriority: parsed.resumePriority,
-      seniorityDelta: parsed.seniorityDelta,
-      savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
-    };
-  } catch {
+function normalizePipelineStartCache(parsed: Partial<PipelineStartCacheEntry> | null): PipelineStartCacheEntry | null {
+  if (!parsed) return null;
+  if (typeof parsed.rawResumeText !== 'string' || typeof parsed.jobDescription !== 'string' || typeof parsed.companyName !== 'string') {
     return null;
   }
+  const workflowMode: WorkflowMode = parsed.workflowMode === 'fast_draft' || parsed.workflowMode === 'deep_dive'
+    ? parsed.workflowMode
+    : 'balanced';
+  return {
+    rawResumeText: parsed.rawResumeText,
+    jobDescription: parsed.jobDescription,
+    companyName: parsed.companyName,
+    workflowMode,
+    minimumEvidenceTarget: typeof parsed.minimumEvidenceTarget === 'number' ? parsed.minimumEvidenceTarget : undefined,
+    resumePriority: parsed.resumePriority,
+    seniorityDelta: parsed.seniorityDelta,
+    savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
+  };
+}
+
+function persistPipelineStartCache(sessionId: string, userId: string | null, entry: PipelineStartCacheEntry) {
+  writeJsonToLocalStorage(pipelineStartCacheKey(sessionId, userId), entry);
+  removeLocalStorageKey(legacyPipelineStartCacheKey(sessionId));
+}
+
+function loadPipelineStartCache(sessionId: string, userId: string | null): PipelineStartCacheEntry | null {
+  return normalizePipelineStartCache(
+    readJsonFromLocalStorage<Partial<PipelineStartCacheEntry>>(pipelineStartCacheKey(sessionId, userId)),
+  );
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -611,7 +617,7 @@ export function useSession(accessToken: string | null) {
         setError(message);
         return false;
       }
-      persistPipelineStartCache(sessionId, {
+      persistPipelineStartCache(sessionId, decodeUserIdFromAccessToken(accessTokenRef.current), {
         rawResumeText,
         jobDescription,
         companyName,
@@ -654,7 +660,8 @@ export function useSession(accessToken: string | null) {
       }
     }
 
-    let cached = loadPipelineStartCache(sessionId);
+    const storageUserId = decodeUserIdFromAccessToken(accessTokenRef.current);
+    let cached = loadPipelineStartCache(sessionId, storageUserId);
     if (!cached && accessTokenRef.current) {
       try {
         const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/restart-inputs`, {
@@ -688,7 +695,7 @@ export function useSession(accessToken: string | null) {
               seniorityDelta: inputs.seniority_delta ?? undefined,
               savedAt: new Date().toISOString(),
             };
-            persistPipelineStartCache(sessionId, cached);
+            persistPipelineStartCache(sessionId, storageUserId, cached);
           }
         }
       } catch {
