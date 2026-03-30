@@ -43,12 +43,44 @@ interface OutreachPrefill {
   referralContext?: OutreachReferralContext;
 }
 
-export function SmartReferralsRoom() {
-  const { session, loading: authLoading } = useAuth();
+interface SmartReferralsRoomProps {
+  initialFocus?: string | null;
+}
+
+const FOCUS_TO_TAB: Partial<Record<string, SmartReferralsTab>> = {
+  import: 'import',
+  connections: 'connections',
+  targets: 'targets',
+  'job-matches': 'job-matches',
+  'job-scan': 'job-scan',
+  'bonus-search': 'bonus-search',
+  referrals: 'referrals',
+  contacts: 'contacts',
+  outreach: 'contacts',
+};
+
+function resolveFocusTab(focus: string | null | undefined): SmartReferralsTab | null {
+  if (!focus) return null;
+  return FOCUS_TO_TAB[focus] ?? null;
+}
+
+export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
+  const { user, session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [hasConnections, setHasConnections] = useState(false);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
   const accessToken = session?.access_token ?? null;
+  const requestedTab = resolveFocusTab(initialFocus);
+
+  useEffect(() => {
+    if (!requestedTab) return;
+
+    setActiveTab((prev) => {
+      if (requestedTab === 'import') return 'import';
+      if (!hasConnections && !ALWAYS_UNLOCKED.includes(requestedTab)) return 'import';
+      return prev === requestedTab ? prev : requestedTab;
+    });
+  }, [hasConnections, requestedTab]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -70,6 +102,10 @@ export function SmartReferralsRoom() {
           const has = (data.count ?? 0) > 0;
           setHasConnections(has);
           setActiveTab((prev) => {
+            if (requestedTab) {
+              if (!has && !ALWAYS_UNLOCKED.includes(requestedTab)) return 'import';
+              return requestedTab;
+            }
             if (has) {
               return prev === 'import' ? 'connections' : prev;
             }
@@ -79,13 +115,16 @@ export function SmartReferralsRoom() {
       } catch {
         if (!cancelled) {
           setHasConnections(false);
-          setActiveTab((prev) => (ALWAYS_UNLOCKED.includes(prev) ? prev : 'import'));
+          setActiveTab((prev) => {
+            if (requestedTab && ALWAYS_UNLOCKED.includes(requestedTab)) return requestedTab;
+            return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+          });
         }
       }
     }
     checkConnections();
     return () => { cancelled = true; };
-  }, [accessToken]);
+  }, [accessToken, requestedTab]);
 
   const handleUploadComplete = useCallback(() => {
     setHasConnections(true);
@@ -142,7 +181,7 @@ export function SmartReferralsRoom() {
       case 'referrals':
         return <ReferralOpportunitiesPanel onGenerateOutreach={handleGenerateOutreach} />;
       case 'contacts':
-        return <NetworkingHubRoom initialPrefill={outreachPrefill ?? undefined} />;
+        return <NetworkingHubRoom key={user?.id ?? 'anonymous'} initialPrefill={outreachPrefill ?? undefined} />;
       default:
         return null;
     }

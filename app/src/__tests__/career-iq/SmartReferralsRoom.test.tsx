@@ -172,4 +172,37 @@ describe('SmartReferralsRoom', () => {
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.queryByTestId('connections-browser')).not.toBeInTheDocument();
   });
+
+  it('opens directly into Bonus Search when that focus is provided', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-1' },
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 0 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom initialFocus="bonus-search" />);
+
+    expect(await screen.findByTestId('bonus-search-panel')).toBeInTheDocument();
+  });
+
+  it('falls back to Import when a locked focus is requested without connections', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-1' },
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 0 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom initialFocus="connections" />);
+
+    expect(await screen.findByTestId('csv-uploader')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
+  });
 });
