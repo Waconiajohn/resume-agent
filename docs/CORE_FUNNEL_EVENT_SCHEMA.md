@@ -135,6 +135,14 @@ The internal funnel readout is currently available through:
 
 This is enough for launch-readiness measurement and pilot sessions.
 
+The current daily watch metrics are:
+
+1. Job Search -> Shortlist
+2. Shortlist -> Resume Build
+3. Boolean Search -> Copy
+4. Smart Referrals -> Outreach
+5. Smart Referrals Network Path Share
+
 The next step after pilot validation is deciding whether to:
 
 1. keep this as the internal source of truth and add richer summaries

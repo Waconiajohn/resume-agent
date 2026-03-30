@@ -16,6 +16,16 @@ export interface ProductTelemetryFunnelStep {
   events: number;
 }
 
+export interface ProductTelemetryWatchMetric {
+  id: string;
+  label: string;
+  numerator: number;
+  denominator: number;
+  rate_pct: number | null;
+  status: 'healthy' | 'watch' | 'needs_attention';
+  note: string;
+}
+
 export interface ProductTelemetrySummary {
   generated_at: string;
   days: number;
@@ -23,6 +33,7 @@ export interface ProductTelemetrySummary {
   active_users: number;
   event_counts: Record<string, number>;
   funnel_steps: ProductTelemetryFunnelStep[];
+  watch_metrics: ProductTelemetryWatchMetric[];
   path_breakdown: {
     smart_referrals: Record<string, number>;
     shortlist_entry_points: Record<string, number>;
@@ -147,6 +158,86 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
     };
   });
 
+  const usersByStep = Object.fromEntries(
+    funnelSteps.map((step) => [step.id, step.users]),
+  ) as Record<string, number>;
+
+  const buildRatioMetric = (
+    id: string,
+    label: string,
+    numerator: number,
+    denominator: number,
+    note: string,
+    thresholds: { healthy: number; watch: number },
+  ): ProductTelemetryWatchMetric => {
+    const rate = denominator > 0 ? Number(((numerator / denominator) * 100).toFixed(1)) : null;
+    const status =
+      rate === null
+        ? 'watch'
+        : rate >= thresholds.healthy
+          ? 'healthy'
+          : rate >= thresholds.watch
+            ? 'watch'
+            : 'needs_attention';
+
+    return {
+      id,
+      label,
+      numerator,
+      denominator,
+      rate_pct: rate,
+      status,
+      note,
+    };
+  };
+
+  const networkSelections = smartReferralsBreakdown.network ?? 0;
+  const bonusSelections = smartReferralsBreakdown.bonus ?? 0;
+  const totalPathSelections = networkSelections + bonusSelections;
+
+  const watchMetrics: ProductTelemetryWatchMetric[] = [
+    buildRatioMetric(
+      'job_search_to_shortlist',
+      'Job Search -> Shortlist',
+      usersByStep.shortlist_built ?? 0,
+      usersByStep.job_search_used ?? 0,
+      'Are people finding enough worthwhile roles to save?',
+      { healthy: 40, watch: 20 },
+    ),
+    buildRatioMetric(
+      'shortlist_to_resume',
+      'Shortlist -> Resume Build',
+      eventCounts.job_resume_build_requested ?? 0,
+      usersByStep.shortlist_built ?? 0,
+      'Are shortlisted roles turning into actual resume work?',
+      { healthy: 35, watch: 15 },
+    ),
+    buildRatioMetric(
+      'boolean_generate_to_copy',
+      'Boolean Search -> Copy',
+      eventCounts.boolean_search_copied ?? 0,
+      eventCounts.boolean_search_generated ?? 0,
+      'Are generated search strings useful enough to leave the product and use externally?',
+      { healthy: 60, watch: 30 },
+    ),
+    buildRatioMetric(
+      'smart_referrals_to_outreach',
+      'Smart Referrals -> Outreach',
+      usersByStep.outreach_started ?? 0,
+      usersByStep.smart_referrals_used ?? 0,
+      'Are referral paths making it all the way into outreach work?',
+      { healthy: 30, watch: 15 },
+    ),
+    buildRatioMetric(
+      'smart_referrals_network_share',
+      'Smart Referrals Network Path Share',
+      networkSelections,
+      totalPathSelections,
+      'The network path is the stronger default and should usually lead the room.',
+      { healthy: 60, watch: 40 },
+    ),
+  ];
+
   return {
     generated_at: new Date().toISOString(),
     days,
@@ -154,6 +245,7 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
     active_users: activeUsers.size,
     event_counts: eventCounts,
     funnel_steps: funnelSteps,
+    watch_metrics: watchMetrics,
     path_breakdown: {
       smart_referrals: smartReferralsBreakdown,
       shortlist_entry_points: shortlistEntryBreakdown,

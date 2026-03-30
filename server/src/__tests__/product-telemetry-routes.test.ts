@@ -149,6 +149,10 @@ describe('product telemetry routes', () => {
       active_users: number;
       total_events: number;
       event_counts: Record<string, number>;
+      watch_metrics: Array<{
+        id: string;
+        rate_pct: number | null;
+      }>;
       path_breakdown: { smart_referrals: Record<string, number> };
     };
 
@@ -158,5 +162,6 @@ describe('product telemetry routes', () => {
     expect(body.event_counts.resume_builder_session_started).toBe(1);
     expect(body.event_counts.job_board_search_run).toBe(1);
     expect(body.path_breakdown.smart_referrals.bonus).toBe(1);
+    expect(body.watch_metrics.some((metric) => metric.id === 'smart_referrals_network_share')).toBe(true);
   });
 });

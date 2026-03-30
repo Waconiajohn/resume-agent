@@ -74,6 +74,16 @@ interface ProductFunnelStep {
   events: number;
 }
 
+interface ProductFunnelWatchMetric {
+  id: string;
+  label: string;
+  numerator: number;
+  denominator: number;
+  rate_pct: number | null;
+  status: 'healthy' | 'watch' | 'needs_attention';
+  note: string;
+}
+
 interface ProductFunnelResponse {
   generated_at: string;
   days: number;
@@ -81,6 +91,7 @@ interface ProductFunnelResponse {
   active_users: number;
   event_counts: Record<string, number>;
   funnel_steps: ProductFunnelStep[];
+  watch_metrics: ProductFunnelWatchMetric[];
   path_breakdown: {
     smart_referrals: Record<string, number>;
     shortlist_entry_points: Record<string, number>;
@@ -104,6 +115,11 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function formatRate(value: number | null): string {
+  if (value === null) return '—';
+  return `${value}%`;
 }
 
 function StatCard({
@@ -476,6 +492,37 @@ export function AdminDashboard() {
             accent="blue"
           />
         </div>
+
+        <GlassCard className="p-4">
+          <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Watch Daily</p>
+          <div className="space-y-2">
+            {funnel.watch_metrics.map((metric) => (
+              <div key={metric.id} className="flex items-start justify-between gap-4 text-sm">
+                <div className="min-w-0">
+                  <p className="text-[var(--text-muted)]">{metric.label}</p>
+                  <p className="text-xs text-[var(--text-soft)]">{metric.note}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p
+                    className={cn(
+                      'font-medium',
+                      metric.status === 'healthy'
+                        ? 'text-[#b5dec2]'
+                        : metric.status === 'watch'
+                          ? 'text-[#f0d99f]'
+                          : 'text-[#f0a0a0]',
+                    )}
+                  >
+                    {formatRate(metric.rate_pct)}
+                  </p>
+                  <p className="text-xs text-[var(--text-soft)]">
+                    {metric.numerator}/{metric.denominator}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
 
         <GlassCard className="p-4">
           <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">

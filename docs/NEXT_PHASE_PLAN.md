@@ -180,6 +180,10 @@ Each session should produce:
 4. severity
 5. recommended fix or product decision
 
+Pilot session reference:
+
+- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+
 ### Exit criteria
 
 - At least 5 observed sessions completed
