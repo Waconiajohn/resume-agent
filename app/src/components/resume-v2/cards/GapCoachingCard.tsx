@@ -153,12 +153,12 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         </div>
       </div>
 
-      {/* AI Coach reasoning bubble */}
+      {/* Coach reasoning bubble */}
       <div className="mx-4 mb-3 flex gap-3">
         {/* Avatar */}
         <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
           <div className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#afc4ff]/30 bg-[#afc4ff]/15">
-            <span className="text-[12px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
+            <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
           </div>
           {/* Connector line */}
           <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
@@ -177,7 +177,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           />
           <div className="support-callout border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
             <div className="text-[12px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
-              AI Coach
+              Coach note
             </div>
             <p className="text-[14px] text-[var(--text-muted)] leading-[1.7]">{card.ai_reasoning}</p>
           </div>

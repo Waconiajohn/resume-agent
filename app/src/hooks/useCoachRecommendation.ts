@@ -2,7 +2,7 @@
  * useCoachRecommendation — Lightweight hook for the coach's deterministic recommendation.
  *
  * Calls GET /api/coach/recommend (no LLM cost) and caches in sessionStorage.
- * Used by CoachBanner (sidebar) and CoachSpotlight (dashboard) for the nudge.
+ * Used by the workspace coach surfaces and home guidance copy.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';

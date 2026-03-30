@@ -109,7 +109,7 @@ export function CareerIQScreen({
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
   const { nudges, dismissNudge, checkStalls } = useMomentum();
-  const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
+  const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
   const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
   const workspaceLaunchContext = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -297,7 +297,6 @@ export function CareerIQScreen({
     if (activeRoom === 'dashboard') {
       return (
         <DashboardHome
-          userName={userName}
           signals={signals}
           dashboardState={dashboardState}
           onNavigateRoom={handleRoomNavigate}
@@ -306,9 +305,7 @@ export function CareerIQScreen({
           sessionCount={sessions.length}
           nudges={nudges}
           onDismissNudge={dismissNudge}
-          onOpenCoach={() => setCoachDrawerOpen(true)}
           coachRecommendation={coachRec}
-          coachLoading={coachLoading}
           onInterviewPrepClick={handleInterviewPrepClick}
           onNegotiationPrepClick={handleNegotiationPrepClick}
         />
@@ -496,7 +493,6 @@ export function CareerIQScreen({
         dashboardState={dashboardState}
         onOpenCoach={() => setCoachDrawerOpen(true)}
         coachData={{
-          firstName: userName?.split(' ')[0] || '',
           phase: coachRec?.phase_label || 'Career Profile',
           recommendation: coachRec?.action,
         }}

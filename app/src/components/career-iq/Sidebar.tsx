@@ -5,6 +5,7 @@ import {
   Linkedin,
   Search,
   Mic,
+  MessageSquare,
   ChevronLeft,
   ChevronRight,
   Lock,
@@ -22,7 +23,7 @@ interface SidebarProps {
   onNavigate: (room: CareerIQRoom) => void;
   dashboardState: DashboardState;
   onOpenCoach?: () => void;
-  coachData?: { firstName: string; phase: string; recommendation?: string };
+  coachData?: { phase: string; recommendation?: string };
 }
 
 interface RoomGroup {
@@ -131,7 +132,6 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(!collapsed)}
         onOpenCoach={onOpenCoach}
-        firstName={coachData?.firstName}
         phase={coachData?.phase}
         recommendation={coachData?.recommendation}
       />
@@ -171,13 +171,11 @@ interface CoachBannerProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onOpenCoach?: () => void;
-  firstName?: string;
   phase?: string;
   recommendation?: string;
 }
 
-function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phase, recommendation }: CoachBannerProps) {
-  const displayName = firstName ? `AI ${firstName}` : 'AI Coach';
+function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, phase, recommendation }: CoachBannerProps) {
   const displayPhase = phase || 'Career Profile';
 
   if (collapsed) {
@@ -187,10 +185,10 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
           type="button"
           onClick={onOpenCoach}
           className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)] text-[var(--text-strong)] transition-colors hover:border-[var(--sidebar-coach-hover-border)] hover:bg-[var(--sidebar-coach-hover-bg)]"
-          aria-label={`Open ${displayName}`}
-          title={displayName}
+          aria-label="Open coach"
+          title="Coach"
         >
-          <span className="text-[13px] font-semibold uppercase tracking-[0.14em]">AI</span>
+          <MessageSquare size={16} className="text-[var(--text-strong)]" />
         </button>
         <button
           type="button"
@@ -212,14 +210,14 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
           type="button"
           onClick={onOpenCoach}
           className="flex min-w-0 items-center gap-3 text-left transition-opacity hover:opacity-80"
-          aria-label={`Open ${displayName}`}
+          aria-label="Open coach"
         >
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)]">
-            <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--text-strong)]">AI</span>
+            <MessageSquare size={16} className="text-[var(--text-strong)]" />
           </div>
           <div className="min-w-0">
             <div className="eyebrow-label">Coach</div>
-            <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{displayName}</div>
+            <div className="truncate text-sm font-semibold text-[var(--text-strong)]">Coach</div>
             <div className="truncate text-[13px] text-[var(--text-soft)]">{displayPhase}</div>
           </div>
         </button>

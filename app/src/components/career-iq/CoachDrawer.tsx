@@ -94,7 +94,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn('fixed right-6 z-50 flex h-14 items-center gap-2 rounded-md border border-[#8ea8ff]/25 bg-[var(--surface-elevated)] px-4 text-[var(--text-strong)] shadow-[0_24px_50px_rgba(11,15,24,0.38)] transition-all hover:border-[#8ea8ff]/45 hover:bg-[var(--surface-elevated)]', isMobile ? 'bottom-20' : 'bottom-6')}
-        aria-label="Open AI Coach"
+        aria-label="Open coach"
       >
         <MessageSquare size={22} />
         <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Coach</span>
@@ -108,10 +108,10 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line-soft)]">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md border border-indigo-400/20 bg-indigo-600/20">
-            <span className="text-xs font-semibold text-indigo-300">AI</span>
+            <MessageSquare size={16} className="text-indigo-300" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-[var(--text-strong)]">{firstName ? `AI ${firstName}` : 'AI Coach'}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-strong)]">Coach</h3>
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-emerald-400" />
               <span className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider">
@@ -145,7 +145,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
         {messages.length === 0 && !loading && (
           <div className="text-center text-[var(--text-soft)] text-sm mt-8">
             <p className="font-medium text-[var(--text-soft)] mb-1">Hi {firstName || 'there'}!</p>
-            <p>I'm your AI career coach. Ask me anything about your career transition.</p>
+            <p>Ask a question about your search, resume, or transition.</p>
           </div>
         )}
         {messages.map((msg, i) => (

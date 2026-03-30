@@ -22,24 +22,25 @@ const BASE_PROPS = {
 };
 
 describe('CoachBanner (via Sidebar)', () => {
-  it('renders "AI John" when firstName is "John"', () => {
+  it('renders a generic coach label', () => {
     render(
       <Sidebar
         {...BASE_PROPS}
-        coachData={{ firstName: 'John', phase: 'Resume Building' }}
+        coachData={{ phase: 'Resume Building' }}
       />,
     );
-    expect(screen.getByText('AI John')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Coach').length).toBeGreaterThan(0);
   });
 
   it('renders the phase subtitle from coachData.phase', () => {
     render(
       <Sidebar
         {...BASE_PROPS}
-        coachData={{ firstName: 'Sarah', phase: 'Interview Prep' }}
+        coachData={{ phase: 'Interview Prep' }}
       />,
     );
-    expect(within(screen.getByRole('button', { name: /open ai sarah/i })).getByText('Interview Prep')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /open coach/i })).getByText('Interview Prep')).toBeInTheDocument();
   });
 
   it('renders recommendation text when coachData.recommendation is provided', () => {
@@ -47,7 +48,6 @@ describe('CoachBanner (via Sidebar)', () => {
       <Sidebar
         {...BASE_PROPS}
         coachData={{
-          firstName: 'Alex',
           phase: 'Networking',
           recommendation: 'Update your LinkedIn headline today.',
         }}
@@ -60,7 +60,7 @@ describe('CoachBanner (via Sidebar)', () => {
     render(
       <Sidebar
         {...BASE_PROPS}
-        coachData={{ firstName: 'Alex', phase: 'Networking' }}
+        coachData={{ phase: 'Networking' }}
       />,
     );
     // Without a recommendation, no recommendation button should be present
@@ -72,16 +72,14 @@ describe('CoachBanner (via Sidebar)', () => {
     render(
       <Sidebar
         {...BASE_PROPS}
-        coachData={{ firstName: 'Maria', phase: 'Job Search' }}
+        coachData={{ phase: 'Job Search' }}
       />,
     );
     const collapseBtn = screen.getByRole('button', { name: /collapse sidebar/i });
     fireEvent.click(collapseBtn);
 
-    // After collapsing, the display name text should no longer be visible
-    expect(screen.queryByText('AI Maria')).not.toBeInTheDocument();
-    // The avatar circle is still rendered (aria-label still contains the name)
-    expect(screen.getByRole('button', { name: /open ai maria/i })).toBeInTheDocument();
+    expect(screen.queryByText('Coach')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
   });
 
   it('calls onOpenCoach when the avatar/banner button is clicked', () => {
@@ -90,10 +88,10 @@ describe('CoachBanner (via Sidebar)', () => {
       <Sidebar
         {...BASE_PROPS}
         onOpenCoach={onOpenCoach}
-        coachData={{ firstName: 'Tom', phase: 'Offer Negotiation' }}
+        coachData={{ phase: 'Offer Negotiation' }}
       />,
     );
-    const openBtn = screen.getByRole('button', { name: /open ai tom/i });
+    const openBtn = screen.getByRole('button', { name: /open coach/i });
     fireEvent.click(openBtn);
     expect(onOpenCoach).toHaveBeenCalledTimes(1);
   });
@@ -105,7 +103,6 @@ describe('CoachBanner (via Sidebar)', () => {
         {...BASE_PROPS}
         onOpenCoach={onOpenCoach}
         coachData={{
-          firstName: 'Tom',
           phase: 'Offer Negotiation',
           recommendation: 'Negotiate your base salary first.',
         }}
@@ -115,13 +112,14 @@ describe('CoachBanner (via Sidebar)', () => {
     expect(onOpenCoach).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to "AI Coach" display name when firstName is not provided', () => {
+  it('falls back to "Coach" when no coach data is provided', () => {
     render(<Sidebar {...BASE_PROPS} />);
-    expect(screen.getByText('AI Coach')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Coach').length).toBeGreaterThan(0);
   });
 
   it('falls back to "Career Profile" phase when phase is not provided', () => {
     render(<Sidebar {...BASE_PROPS} />);
-    expect(within(screen.getByRole('button', { name: /open ai coach/i })).getByText('Career Profile')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /open coach/i })).getByText('Career Profile')).toBeInTheDocument();
   });
 });

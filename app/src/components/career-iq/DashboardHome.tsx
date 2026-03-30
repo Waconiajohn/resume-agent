@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRight, FileText, Search, Target } from 'lucide-react';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
@@ -7,11 +7,9 @@ import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CoachingNudge } from '@/hooks/useMomentum';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
-import { CoachSpotlight } from './CoachSpotlight';
 import { deriveWorkspaceHomeGuidance } from './workspaceHomeGuidance';
 
 interface DashboardHomeProps {
-  userName: string;
   signals: WhyMeSignals;
   dashboardState: DashboardState;
   onNavigateRoom?: (room: CareerIQRoom) => void;
@@ -20,9 +18,7 @@ interface DashboardHomeProps {
   sessionCount?: number;
   nudges?: CoachingNudge[];
   onDismissNudge?: (nudgeId: string) => void;
-  onOpenCoach?: () => void;
   coachRecommendation?: CoachRecommendation | null;
-  coachLoading?: boolean;
   onInterviewPrepClick?: (card: PipelineCard) => void;
   onNegotiationPrepClick?: (card: PipelineCard) => void;
 }
@@ -193,7 +189,6 @@ function StepCard({
 }
 
 export function DashboardHome({
-  userName,
   signals,
   dashboardState,
   onNavigateRoom,
@@ -202,9 +197,7 @@ export function DashboardHome({
   sessionCount = 0,
   nudges = [],
   onDismissNudge,
-  onOpenCoach,
   coachRecommendation,
-  coachLoading = false,
   onInterviewPrepClick,
   onNegotiationPrepClick,
 }: DashboardHomeProps) {
@@ -216,39 +209,6 @@ export function DashboardHome({
     setDismissed(updated);
     saveDismissed(updated);
   };
-  const supportSurface = useMemo(() => {
-    if (showMomentumNudge && firstMomentumNudge) {
-      return (
-        <CoachingNudgeBar
-          nudges={[firstMomentumNudge]}
-          onDismiss={(nudgeId) => {
-            handleDismiss(nudgeId);
-            onDismissNudge?.(nudgeId);
-          }}
-        />
-      );
-    }
-
-    return (
-      <CoachSpotlight
-        userName={userName}
-        recommendation={coachRecommendation ?? null}
-        loading={coachLoading}
-        onNavigateRoom={onNavigateRoom}
-        onOpenCoach={onOpenCoach}
-      />
-    );
-  }, [
-    coachLoading,
-    coachRecommendation,
-    firstMomentumNudge,
-    handleDismiss,
-    onDismissNudge,
-    onNavigateRoom,
-    onOpenCoach,
-    showMomentumNudge,
-    userName,
-  ]);
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
@@ -262,19 +222,21 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="space-y-4">
-          {supportSurface}
-        </div>
+      {showMomentumNudge && firstMomentumNudge ? (
+        <CoachingNudgeBar
+          nudges={[firstMomentumNudge]}
+          onDismiss={(nudgeId) => {
+            handleDismiss(nudgeId);
+            onDismissNudge?.(nudgeId);
+          }}
+        />
+      ) : null}
 
-        <div className="space-y-4">
-          <ZoneYourPipeline
-            onNavigateRoom={onNavigateRoom}
-            onInterviewPrepClick={onInterviewPrepClick}
-            onNegotiationPrepClick={onNegotiationPrepClick}
-          />
-        </div>
-      </div>
+      <ZoneYourPipeline
+        onNavigateRoom={onNavigateRoom}
+        onInterviewPrepClick={onInterviewPrepClick}
+        onNegotiationPrepClick={onNegotiationPrepClick}
+      />
     </div>
   );
 }
