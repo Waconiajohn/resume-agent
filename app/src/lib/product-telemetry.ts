@@ -125,6 +125,7 @@ export interface ProductTelemetryEvent<Name extends ProductTelemetryEventName = 
 
 const STORAGE_KEY = 'resume-agent:product-telemetry:v1';
 const MAX_EVENTS = 200;
+export const PRODUCT_TELEMETRY_SCHEMA_VERSION = 1;
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -160,6 +161,12 @@ function writeEvents(events: ProductTelemetryEvent[]) {
   }
 }
 
+function removeEventsById(eventIds: string[]) {
+  if (eventIds.length === 0) return;
+  const ids = new Set(eventIds);
+  writeEvents(readEvents().filter((event) => !ids.has(event.id)));
+}
+
 export function trackProductEvent<Name extends ProductTelemetryEventName>(
   name: Name,
   payload: ProductTelemetryPayloadMap[Name],
@@ -193,6 +200,16 @@ export function clearProductTelemetryEvents() {
 
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Best effort only.
+  }
+}
+
+export function removeProductTelemetryEvents(eventIds: string[]) {
+  if (!canUseStorage()) return;
+
+  try {
+    removeEventsById(eventIds);
   } catch {
     // Best effort only.
   }

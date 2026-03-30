@@ -314,6 +314,12 @@ Build the next roadmap from evidence, not momentum.
 4. Decide which production dashboards/alerts are mandatory before launch.
 5. Draft the first free-to-paid map around the strongest value moments.
 
+Current status:
+
+- event schema: in place
+- capture model: hybrid client buffer + server ingestion
+- internal readout: basic admin funnel summary in place
+
 ## Suggested Order For The Next Working Block
 
 1. Instrument Resume V2, Job Search, and Smart Referrals first

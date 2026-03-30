@@ -6,6 +6,7 @@ import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
 import { resetSessionRouteStateForTests } from './sessions.js';
 import { getPipelineMetrics } from '../lib/pipeline-metrics.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
+import { buildProductTelemetrySummary, listProductTelemetryRows } from '../lib/product-telemetry.js';
 import { lookupOrCreateCompany } from '../lib/ni/seed-referral-programs.js';
 import logger from '../lib/logger.js';
 
@@ -282,6 +283,25 @@ admin.get('/stats', async (c) => {
     active_sessions: activeSessions ?? 0,
     generated_at: new Date().toISOString(),
   });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/product-funnel
+// Basic internal funnel summary for the first launch-readiness telemetry slice.
+// Query params: days (optional, default 7, max 30)
+// ---------------------------------------------------------------------------
+admin.get('/product-funnel', async (c) => {
+  const requestedDays = Number.parseInt(c.req.query('days') ?? '7', 10);
+  const days = Number.isFinite(requestedDays) ? Math.max(1, Math.min(30, requestedDays)) : 7;
+
+  try {
+    const rows = await listProductTelemetryRows(days);
+    const summary = buildProductTelemetrySummary(rows, days);
+    return c.json(summary);
+  } catch (err) {
+    logger.error({ err, days }, 'Failed to build product funnel summary');
+    return c.json({ error: 'Failed to load product funnel summary' }, 500);
+  }
 });
 
 // ---------------------------------------------------------------------------

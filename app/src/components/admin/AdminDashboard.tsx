@@ -66,7 +66,29 @@ interface SessionsResponse {
   offset: number;
 }
 
-type AdminTab = 'stats' | 'errors' | 'sessions';
+interface ProductFunnelStep {
+  id: string;
+  label: string;
+  event_names: string[];
+  users: number;
+  events: number;
+}
+
+interface ProductFunnelResponse {
+  generated_at: string;
+  days: number;
+  total_events: number;
+  active_users: number;
+  event_counts: Record<string, number>;
+  funnel_steps: ProductFunnelStep[];
+  path_breakdown: {
+    smart_referrals: Record<string, number>;
+    shortlist_entry_points: Record<string, number>;
+    boolean_copy_targets: Record<string, number>;
+  };
+}
+
+type AdminTab = 'stats' | 'funnel' | 'errors' | 'sessions';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -123,6 +145,7 @@ export function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('stats');
   const [stats, setStats] = useState<AdminStatsResponse | null>(null);
+  const [funnel, setFunnel] = useState<ProductFunnelResponse | null>(null);
   const [errors, setErrors] = useState<ErrorsResponse | null>(null);
   const [sessions, setSessions] = useState<SessionsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -185,6 +208,19 @@ export function AdminDashboard() {
     }
   }, [fetchWithKey, adminKey]);
 
+  const loadFunnel = useCallback(async () => {
+    setLoading(true);
+    setFetchError('');
+    try {
+      const data = await fetchWithKey(`${API_BASE}/admin/product-funnel?days=7`, adminKey) as ProductFunnelResponse;
+      setFunnel(data);
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchWithKey, adminKey]);
+
   const loadErrors = useCallback(async (offset: number) => {
     setLoading(true);
     setFetchError('');
@@ -220,6 +256,7 @@ export function AdminDashboard() {
   useEffect(() => {
     if (!isAuthenticated) return;
     if (activeTab === 'stats') void loadStats();
+    if (activeTab === 'funnel') void loadFunnel();
     if (activeTab === 'errors') void loadErrors(errorsPage * PAGE_SIZE);
     if (activeTab === 'sessions') void loadSessions(sessionsPage * PAGE_SIZE);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -413,6 +450,108 @@ export function AdminDashboard() {
     );
   };
 
+  const renderFunnel = () => {
+    if (!funnel) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard
+            label="Active Users"
+            value={funnel.active_users}
+            accent="blue"
+          />
+          <StatCard
+            label="Tracked Events"
+            value={funnel.total_events}
+          />
+          <StatCard
+            label="Job Searches"
+            value={funnel.event_counts.job_board_search_run ?? 0}
+            accent="green"
+          />
+          <StatCard
+            label="Smart Referrals"
+            value={funnel.event_counts.smart_referrals_path_selected ?? 0}
+            accent="blue"
+          />
+        </div>
+
+        <GlassCard className="p-4">
+          <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">
+            Core Funnel (Last {funnel.days} Days)
+          </p>
+          <div className="space-y-2">
+            {funnel.funnel_steps.map((step) => (
+              <div key={step.id} className="flex items-center justify-between gap-4 text-sm">
+                <div className="min-w-0">
+                  <p className="text-[var(--text-muted)]">{step.label}</p>
+                  <p className="text-xs text-[var(--text-soft)]">{step.event_names.join(', ')}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-white font-medium">{step.users} users</p>
+                  <p className="text-xs text-[var(--text-soft)]">{step.events} events</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <GlassCard className="p-4">
+            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Smart Referrals Paths</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Network</span>
+                <span className="text-white">{funnel.path_breakdown.smart_referrals.network ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Bonus</span>
+                <span className="text-white">{funnel.path_breakdown.smart_referrals.bonus ?? 0}</span>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-4">
+            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Shortlist Entry</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Overview CTA</span>
+                <span className="text-white">{funnel.path_breakdown.shortlist_entry_points.overview_cta ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Board Target</span>
+                <span className="text-white">{funnel.path_breakdown.shortlist_entry_points.board_target ?? 0}</span>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-4">
+            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Boolean Copy Targets</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">LinkedIn</span>
+                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.linkedin ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Indeed</span>
+                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.indeed ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">Titles</span>
+                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.titles ?? 0}</span>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+
+        <p className="text-xs text-[var(--text-soft)] text-right">
+          Generated {formatDate(funnel.generated_at)}
+        </p>
+      </div>
+    );
+  };
+
   // ─── Sessions tab ──────────────────────────────────────────────────────────
   const STATUS_COLORS: Record<string, string> = {
     complete: 'text-[#b5dec2]',
@@ -499,6 +638,7 @@ export function AdminDashboard() {
   // ─── Full dashboard ────────────────────────────────────────────────────────
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'stats', label: 'Stats' },
+    { id: 'funnel', label: 'Funnel' },
     { id: 'errors', label: 'Errors' },
     { id: 'sessions', label: 'Sessions' },
   ];
@@ -546,6 +686,7 @@ export function AdminDashboard() {
             type="button"
             onClick={() => {
               if (activeTab === 'stats') void loadStats();
+              if (activeTab === 'funnel') void loadFunnel();
               if (activeTab === 'errors') void loadErrors(errorsPage * PAGE_SIZE);
               if (activeTab === 'sessions') void loadSessions(sessionsPage * PAGE_SIZE);
             }}
@@ -569,6 +710,7 @@ export function AdminDashboard() {
         )}
 
         {!loading && !fetchError && activeTab === 'stats' && renderStats()}
+        {!loading && !fetchError && activeTab === 'funnel' && renderFunnel()}
         {!loading && !fetchError && activeTab === 'errors' && renderErrors()}
         {!loading && !fetchError && activeTab === 'sessions' && renderSessions()}
       </div>

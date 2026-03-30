@@ -42,6 +42,7 @@ import { extensionRoutes } from './routes/extension.js';
 import { coachRoutes } from './routes/coach.js';
 import { platformContextRoutes } from './routes/platform-context.js';
 import { products } from './routes/products.js';
+import { productTelemetryRoutes } from './routes/product-telemetry.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -339,6 +340,7 @@ app.route('/api/extension', extensionRoutes);
 app.route('/api/coach', coachRoutes);
 app.route('/api/platform-context', platformContextRoutes);
 app.route('/api/products', products);
+app.route('/api/product-telemetry', productTelemetryRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

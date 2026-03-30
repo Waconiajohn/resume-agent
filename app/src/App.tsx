@@ -21,6 +21,7 @@ import { resumeToText } from '@/lib/export';
 import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { trackProductEvent } from '@/lib/product-telemetry';
+import { flushProductTelemetryEvents } from '@/lib/product-telemetry-sync';
 import {
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
@@ -167,6 +168,50 @@ export default function App() {
     setV2SessionId(currentSession.id);
     navigate(RESUME_BUILDER_SESSION_ROUTE, { replace: true });
   }, [currentSession, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!accessToken) return undefined;
+
+    let cancelled = false;
+    let flushing = false;
+
+    const flush = async () => {
+      if (cancelled || flushing) return;
+      flushing = true;
+      try {
+        let remaining = Infinity;
+        while (!cancelled && remaining > 0) {
+          const result = await flushProductTelemetryEvents(accessToken);
+          remaining = result.remaining;
+          if (result.flushed === 0) break;
+        }
+      } catch {
+        // Best effort only — telemetry should never block the app.
+      } finally {
+        flushing = false;
+      }
+    };
+
+    void flush();
+
+    const intervalId = window.setInterval(() => {
+      void flush();
+    }, 30_000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void flush();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [accessToken]);
 
   const navigateTo = useCallback((target: string) => {
     navigate(resolveNavigationTarget(target));

@@ -117,16 +117,26 @@ For the first 5 to 10 observed sessions, review these events alongside screen re
 
 Those are the cleanest signals for whether the product is helping people move through the real hiring loop or just browse.
 
-## Storage Note
+## Storage And Delivery
 
-Events currently live in the local product telemetry buffer at:
+Events now flow through two layers:
 
-- [product-telemetry.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/lib/product-telemetry.ts)
+1. local browser buffer
+   - [product-telemetry.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/lib/product-telemetry.ts)
+2. batched server ingestion
+   - [product-telemetry-sync.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/lib/product-telemetry-sync.ts)
+   - [product-telemetry.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/product-telemetry.ts)
+   - [20260330130000_product_telemetry_events.sql](/Users/johnschrup/Documents/New%20project/resume-agent/supabase/migrations/20260330130000_product_telemetry_events.sql)
 
-That is sufficient for schema hardening and browser QA.
+The internal funnel readout is currently available through:
+
+- [admin.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/admin.ts) at `/api/admin/product-funnel`
+- [AdminDashboard.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/admin/AdminDashboard.tsx) in the `Funnel` tab
+
+This is enough for launch-readiness measurement and pilot sessions.
 
 The next step after pilot validation is deciding whether to:
 
-1. ship them to a real analytics endpoint
-2. batch them from the client
-3. or mirror only a subset server-side
+1. keep this as the internal source of truth and add richer summaries
+2. mirror a subset into a dedicated analytics vendor
+3. or forward all events into a warehouse/reporting path
