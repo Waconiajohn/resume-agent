@@ -132,6 +132,7 @@ The internal funnel readout is currently available through:
 
 - [admin.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/admin.ts) at `/api/admin/product-funnel`
 - [AdminDashboard.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/admin/AdminDashboard.tsx) in the `Funnel` tab
+- rollout checklist: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
 
 This is enough for launch-readiness measurement and pilot sessions.
 

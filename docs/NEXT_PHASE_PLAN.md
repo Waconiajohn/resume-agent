@@ -323,6 +323,8 @@ Current status:
 - event schema: in place
 - capture model: hybrid client buffer + server ingestion
 - internal readout: basic admin funnel summary in place
+- rollout runbook: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
+- current apply blocker from this environment: `SUPABASE_DB_PASSWORD` is not set for the linked Supabase database
 
 ## Suggested Order For The Next Working Block
 
