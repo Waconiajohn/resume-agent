@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockUseAuth = vi.fn();
 
@@ -94,11 +94,11 @@ describe('SmartReferralsRoom', () => {
 
     expect(await screen.findByTestId('csv-uploader')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Job Matches' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Contacts & Outreach' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Job Scan' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Matches' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Outreach' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Target titles/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Job Scan' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bonus Search' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Outreach' })).not.toBeInTheDocument();
   });
 
   it('switches to the connections view automatically when imported connections already exist', async () => {
@@ -116,6 +116,27 @@ describe('SmartReferralsRoom', () => {
     await waitFor(() => {
       expect(screen.getByTestId('connections-browser')).toBeInTheDocument();
     });
+  });
+
+  it('keeps target titles and company scans as support tools inside the connection setup view', async () => {
+    mockUseAuth.mockReturnValue({
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 3 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connections-browser')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Target titles' }));
+    expect(screen.getByTestId('target-titles-manager')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scan company pages' })).toBeInTheDocument();
   });
 
   it('routes referral-generated outreach into the merged contacts workspace with prefill context', async () => {
@@ -222,6 +243,25 @@ describe('SmartReferralsRoom', () => {
 
     expect(await screen.findByTestId('bonus-search-panel')).toBeInTheDocument();
     expect(screen.getAllByText(/coverage is still limited to the bonus programs/i).length).toBeGreaterThan(0);
+  });
+
+  it('opens the company scan support tool inside setup when that focus is provided', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-1' },
+      session: { access_token: 'test-token' },
+      loading: false,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 3 }), { status: 200 }),
+    );
+
+    render(<SmartReferralsRoom initialFocus="job-scan" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connections-browser')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('scrape-jobs-panel')).toBeInTheDocument();
   });
 
   it('falls back to Import when a locked focus is requested without connections', async () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
 import { CsvUploader } from '@/components/network-intelligence/CsvUploader';
 import { ConnectionsBrowser } from '@/components/network-intelligence/ConnectionsBrowser';
 import { TargetTitlesManager } from '@/components/network-intelligence/TargetTitlesManager';
@@ -15,6 +16,7 @@ import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coin
 
 type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts';
 type ReferralPath = 'network' | 'bonus';
+type NetworkSupportView = 'targets' | 'job-scan' | null;
 
 interface TabDef {
   id: SmartReferralsTab;
@@ -27,17 +29,17 @@ const TABS: TabDef[] = [
   { id: 'import', label: 'Import', icon: Upload, description: 'Upload LinkedIn connections CSV' },
   { id: 'connections', label: 'Connections', icon: Users, description: 'Browse by company' },
   { id: 'targets', label: 'Target Titles', icon: Target, description: 'Manage target job titles' },
-  { id: 'job-matches', label: 'Job Matches', icon: Briefcase, description: 'Jobs at companies where you have first-level connections' },
+  { id: 'job-matches', label: 'Matches', icon: Briefcase, description: 'Jobs at companies where you have first-level connections' },
   { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
   { id: 'bonus-search', label: 'Bonus Search', icon: Coins, description: 'Search high-referral-bonus companies even without a connection' },
   { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
-  { id: 'contacts', label: 'Contacts & Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and AI outreach' },
+  { id: 'contacts', label: 'Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and AI outreach' },
 ];
 
 const TAB_MAP = Object.fromEntries(TABS.map((tab) => [tab.id, tab])) as Record<SmartReferralsTab, TabDef>;
 
 const PATH_TABS: Record<ReferralPath, SmartReferralsTab[]> = {
-  network: ['import', 'connections', 'targets', 'job-scan', 'job-matches', 'contacts'],
+  network: ['import', 'connections', 'job-matches', 'contacts'],
   bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
 };
 
@@ -107,10 +109,63 @@ function getDefaultTab(path: ReferralPath, hasConnections: boolean): SmartReferr
   return hasConnections ? 'connections' : 'import';
 }
 
+function isNetworkSupportTab(tab: SmartReferralsTab | null): tab is 'targets' | 'job-scan' {
+  return tab === 'targets' || tab === 'job-scan';
+}
+
+function NetworkSetupPanel({
+  accessToken,
+  supportView,
+  onToggleSupportView,
+}: {
+  accessToken: string;
+  supportView: NetworkSupportView;
+  onToggleSupportView: (view: Exclude<NetworkSupportView, null>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <ConnectionsBrowser accessToken={accessToken} />
+
+      <GlassCard className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+              Support tools
+            </div>
+            <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
+              Keep target titles and company-page scans close to the connection workflow without turning them into first-class tabs.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <GlassButton
+              variant={supportView === 'targets' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => onToggleSupportView('targets')}
+            >
+              Target titles
+            </GlassButton>
+            <GlassButton
+              variant={supportView === 'job-scan' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => onToggleSupportView('job-scan')}
+            >
+              Scan company pages
+            </GlassButton>
+          </div>
+        </div>
+      </GlassCard>
+
+      {supportView === 'targets' && <TargetTitlesManager accessToken={accessToken} />}
+      {supportView === 'job-scan' && <ScrapeJobsPanel accessToken={accessToken} />}
+    </div>
+  );
+}
+
 export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
   const { user, session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
+  const [networkSupportView, setNetworkSupportView] = useState<NetworkSupportView>(null);
   const [hasConnections, setHasConnections] = useState(false);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
   const accessToken = session?.access_token ?? null;
@@ -122,7 +177,8 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     if (!requestedTab) return;
 
     setSelectedPath(getPathForTab(requestedTab));
-    setActiveTab(requestedTab);
+    setActiveTab(isNetworkSupportTab(requestedTab) ? 'connections' : requestedTab);
+    setNetworkSupportView(isNetworkSupportTab(requestedTab) ? requestedTab : null);
   }, [requestedTab]);
 
   useEffect(() => {
@@ -131,6 +187,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     previousAccessTokenRef.current = accessToken;
 
     setOutreachPrefill(null);
+    setNetworkSupportView(null);
 
     if (!accessToken) {
       setHasConnections(false);
@@ -165,10 +222,16 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           if (cancelled || requestId !== connectionsRequestIdRef.current) return;
           const has = (data.count ?? 0) > 0;
           setHasConnections(has);
+          if (requestedTab && isNetworkSupportTab(requestedTab)) {
+            setNetworkSupportView(has && selectedPath === 'network' ? requestedTab : null);
+          }
           setActiveTab((prev) => {
             if (requestedTab) {
               if (getPathForTab(requestedTab) !== selectedPath) {
                 return getDefaultTab(selectedPath, has);
+              }
+              if (isNetworkSupportTab(requestedTab)) {
+                return has && selectedPath === 'network' ? 'connections' : getDefaultTab(selectedPath, has);
               }
               if (!has && !ALWAYS_UNLOCKED[selectedPath].includes(requestedTab)) return getDefaultTab(selectedPath, has);
               return requestedTab;
@@ -183,6 +246,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
         if (!cancelled) {
           if (requestId !== connectionsRequestIdRef.current) return;
           setHasConnections(false);
+          setNetworkSupportView(null);
           setActiveTab((prev) => {
             if (requestedTab && ALWAYS_UNLOCKED[selectedPath].includes(requestedTab)) return requestedTab;
             return ALWAYS_UNLOCKED[selectedPath].includes(prev) ? prev : getDefaultTab(selectedPath, false);
@@ -198,12 +262,14 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     setHasConnections(true);
     setSelectedPath('network');
     setActiveTab('connections');
+    setNetworkSupportView(null);
   }, []);
 
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
     setOutreachPrefill(prefill);
     setSelectedPath(prefill.referralContext ? 'bonus' : 'network');
     setActiveTab('contacts');
+    setNetworkSupportView(null);
   }, []);
 
   const visibleTabs = PATH_TABS[selectedPath];
@@ -247,9 +313,18 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           />
         );
       case 'connections':
-        return <ConnectionsBrowser accessToken={accessToken} />;
+        return (
+          <NetworkSetupPanel
+            accessToken={accessToken}
+            supportView={networkSupportView}
+            onToggleSupportView={(view) => {
+              setActiveTab('connections');
+              setNetworkSupportView((current) => (current === view ? null : view));
+            }}
+          />
+        );
       case 'targets':
-        return <TargetTitlesManager accessToken={accessToken} />;
+        return null;
       case 'job-matches':
         return (
           <JobMatchesList
@@ -264,7 +339,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           />
         );
       case 'job-scan':
-        return <ScrapeJobsPanel accessToken={accessToken} />;
+        return null;
       case 'bonus-search':
         return <BonusSearchPanel accessToken={accessToken} />;
       case 'referrals':
@@ -279,6 +354,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   const handlePathSelect = useCallback((path: ReferralPath) => {
     setSelectedPath(path);
     setActiveTab(getDefaultTab(path, hasConnections));
+    setNetworkSupportView(null);
   }, [hasConnections]);
 
   return (
@@ -365,7 +441,13 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => !locked && setActiveTab(tab.id)}
+                onClick={() => {
+                  if (locked) return;
+                  setActiveTab(tab.id);
+                  if (tab.id !== 'connections') {
+                    setNetworkSupportView(null);
+                  }
+                }}
                 disabled={locked}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
