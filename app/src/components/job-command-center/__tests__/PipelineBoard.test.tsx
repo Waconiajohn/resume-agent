@@ -17,6 +17,7 @@ vi.mock('lucide-react', () => ({
   ChevronDown: () => <span data-testid="icon-chevron" />,
   Mic: () => <span data-testid="icon-mic" />,
   DollarSign: () => <span data-testid="icon-dollar" />,
+  FileText: () => <span data-testid="icon-filetext" />,
 }));
 
 vi.mock('@dnd-kit/core', () => ({
@@ -144,6 +145,24 @@ describe('PipelineBoard — application cards', () => {
     );
     expect(screen.getByText('Role A')).toBeInTheDocument();
     expect(screen.getByText('Role B')).toBeInTheDocument();
+  });
+
+  it('passes through the Build Resume action for shortlist cards', () => {
+    const onBuildResume = vi.fn();
+    const apps = [makeApplication({ id: 'app-1', role_title: 'Shortlist Role', stage: 'saved' })];
+    render(
+      <PipelineBoard
+        applications={apps}
+        loading={false}
+        onMoveStage={vi.fn()}
+        onBuildResume={onBuildResume}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /build resume/i }));
+
+    expect(onBuildResume).toHaveBeenCalledOnce();
+    expect(onBuildResume).toHaveBeenCalledWith(expect.objectContaining({ id: 'app-1' }));
   });
 });
 

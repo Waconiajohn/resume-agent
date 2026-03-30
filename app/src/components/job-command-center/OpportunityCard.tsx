@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Building2, ChevronDown, Mic, DollarSign } from 'lucide-react';
+import { Building2, ChevronDown, Mic, DollarSign, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { ScoreBadge } from './ScoreBadge';
@@ -32,6 +32,7 @@ interface OpportunityCardProps {
   application: Application;
   onMoveStage: (id: string, stage: PipelineStage) => void;
   onClick?: (application: Application) => void;
+  onBuildResume?: (application: Application) => void;
   onPrepInterview?: (application: Application) => void;
   onNegotiateSalary?: (application: Application) => void;
 }
@@ -40,6 +41,7 @@ export function OpportunityCard({
   application,
   onMoveStage,
   onClick,
+  onBuildResume,
   onPrepInterview,
   onNegotiateSalary,
 }: OpportunityCardProps) {
@@ -85,6 +87,20 @@ export function OpportunityCard({
             <div className="mt-1.5 text-[13px] text-[#98b3ff]/50 truncate">
               {application.next_action}
             </div>
+          )}
+          {(application.stage === 'saved' || application.stage === 'researching') && onBuildResume && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuildResume(application);
+              }}
+              className="mt-2 flex items-center gap-1 text-[12px] font-medium text-[#98b3ff]/70 hover:text-[#98b3ff] transition-colors"
+            >
+              <FileText size={10} />
+              Build Resume
+            </button>
           )}
           {application.stage === 'interviewing' && onPrepInterview && (
             <button

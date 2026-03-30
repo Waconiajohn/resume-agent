@@ -293,6 +293,7 @@ export function JobCommandCenterRoom({
   const [activeTab, setActiveTab] = useState<JCCTab>('board');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
 
@@ -303,6 +304,16 @@ export function JobCommandCenterRoom({
     watchlist.fetchCompanies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (
+      jobFinder.status !== 'idle' ||
+      jobFinder.matches.length > 0 ||
+      jobFinder.error
+    ) {
+      setShowAiSuggestions(true);
+    }
+  }, [jobFinder.error, jobFinder.matches.length, jobFinder.status]);
 
   const handleAddApplication = useCallback(() => {
     setShowAddDialog(true);
@@ -479,6 +490,7 @@ export function JobCommandCenterRoom({
             onMoveStage={pipeline.moveToStage}
             onSelect={() => {}}
             onAddApplication={handleAddApplication}
+            onBuildResume={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
             onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
             onNegotiateSalary={(application) => {
               const params = new URLSearchParams({
@@ -543,19 +555,58 @@ export function JobCommandCenterRoom({
             onSearch={radar.search}
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
+            onBuildResume={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
           />
 
-          <SmartMatches
-            matches={jobFinder.matches}
-            status={jobFinder.status}
-            activityMessages={jobFinder.activityMessages}
-            gateData={jobFinder.gateData}
-            error={jobFinder.error}
-            onNavigate={onNavigate}
-            onRunFinder={jobFinder.startSearch}
-            onRespondGate={jobFinder.respondToGate}
-            onReset={jobFinder.reset}
-          />
+          {!showAiSuggestions && jobFinder.status === 'idle' && jobFinder.matches.length === 0 && !jobFinder.error ? (
+            <GlassCard className="p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="eyebrow-label">Optional AI help</div>
+                  <h3 className="text-[16px] font-semibold text-[var(--text-strong)]">
+                    Want a second pass after you search the board?
+                  </h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                    Use AI suggestions only if you want a few extra roles surfaced against your profile. The public job board stays primary.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <GlassButton variant="ghost" onClick={() => setShowAiSuggestions(true)}>
+                    Show AI Suggestions
+                  </GlassButton>
+                  <GlassButton
+                    onClick={() => {
+                      setShowAiSuggestions(true);
+                      jobFinder.startSearch();
+                    }}
+                  >
+                    <Sparkles size={14} /> Run AI Suggestions
+                  </GlassButton>
+                </div>
+              </div>
+            </GlassCard>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {jobFinder.status === 'idle' && jobFinder.matches.length === 0 && !jobFinder.error && (
+                <div className="flex justify-end">
+                  <GlassButton variant="ghost" size="sm" onClick={() => setShowAiSuggestions(false)}>
+                    Hide AI Suggestions
+                  </GlassButton>
+                </div>
+              )}
+              <SmartMatches
+                matches={jobFinder.matches}
+                status={jobFinder.status}
+                activityMessages={jobFinder.activityMessages}
+                gateData={jobFinder.gateData}
+                error={jobFinder.error}
+                onNavigate={onNavigate}
+                onRunFinder={jobFinder.startSearch}
+                onRespondGate={jobFinder.respondToGate}
+                onReset={jobFinder.reset}
+              />
+            </div>
+          )}
         </div>
       </div>
 

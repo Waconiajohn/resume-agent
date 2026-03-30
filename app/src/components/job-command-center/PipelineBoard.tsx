@@ -28,6 +28,7 @@ interface PipelineBoardProps {
   onMoveStage: (id: string, stage: PipelineStage) => void;
   onSelect?: (application: Application) => void;
   onAddApplication?: () => void;
+  onBuildResume?: (application: Application) => void;
   onPrepInterview?: (application: Application) => void;
   onNegotiateSalary?: (application: Application) => void;
 }
@@ -38,6 +39,7 @@ export function PipelineBoard({
   onMoveStage,
   onSelect,
   onAddApplication,
+  onBuildResume,
   onPrepInterview,
   onNegotiateSalary,
 }: PipelineBoardProps) {
@@ -100,6 +102,7 @@ export function PipelineBoard({
                     application={app}
                     onMoveStage={onMoveStage}
                     onClick={onSelect}
+                    onBuildResume={onBuildResume}
                     onPrepInterview={onPrepInterview}
                     onNegotiateSalary={onNegotiateSalary}
                   />

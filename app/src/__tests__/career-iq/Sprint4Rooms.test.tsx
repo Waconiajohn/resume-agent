@@ -156,17 +156,24 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('How this works')).toBeInTheDocument();
     expect(screen.getByText('Working numbers')).toBeInTheDocument();
     expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
-    expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Optional AI help')).toBeInTheDocument();
   });
 
-  it('renders "Get AI Suggestions" button when no matches exist', () => {
+  it('renders the optional AI-suggestions teaser by default', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Get AI Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Show AI Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Run AI Suggestions')).toBeInTheDocument();
   });
 
-  it('keeps the board focused on search plus AI suggestions', () => {
+  it('keeps the board focused on search first and optional AI second', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText(/Search public roles, check how old they are/i)).toBeInTheDocument();
+    expect(screen.getByText('Optional AI help')).toBeInTheDocument();
+  });
+
+  it('reveals the full AI suggestions panel when requested', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByText('Show AI Suggestions'));
     expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
   });
 
@@ -193,7 +200,7 @@ describe('JobCommandCenterRoom', () => {
 
   it('keeps the live AI suggestion action in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Get AI Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Run AI Suggestions')).toBeInTheDocument();
   });
 
   it('renders application pipeline kanban board', () => {

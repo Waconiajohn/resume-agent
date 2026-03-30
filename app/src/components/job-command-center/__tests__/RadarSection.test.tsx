@@ -20,6 +20,9 @@ vi.mock('lucide-react', () => ({
   Plus: () => <span data-testid="icon-plus" />,
   Loader2: () => <span data-testid="icon-loader" />,
   Sparkles: () => <span data-testid="icon-sparkles" />,
+  Users: () => <span data-testid="icon-users" />,
+  ExternalLink: () => <span data-testid="icon-external-link" />,
+  FileText: () => <span data-testid="icon-filetext" />,
 }));
 
 vi.mock('@/components/GlassCard', () => ({
@@ -151,6 +154,18 @@ describe('RadarSection — job result cards', () => {
     const dismissButtons = screen.getAllByRole('button', { name: /dismiss/i });
     expect(dismissButtons).toHaveLength(2);
   });
+
+  it('renders an Open Job link when apply_url is provided', () => {
+    const job = makeJob('j1', { apply_url: 'https://example.com/job' });
+    render(<RadarSection {...defaultProps({ jobs: [job] })} />);
+    expect(screen.getByRole('link', { name: /open job/i })).toHaveAttribute('href', 'https://example.com/job');
+  });
+
+  it('renders a Build Resume button when the handler is provided', () => {
+    const job = makeJob('j1');
+    render(<RadarSection {...defaultProps({ jobs: [job], onBuildResume: vi.fn() })} />);
+    expect(screen.getByRole('button', { name: /build resume/i })).toBeInTheDocument();
+  });
 });
 
 describe('RadarSection — loading state', () => {
@@ -199,6 +214,17 @@ describe('RadarSection — button callbacks', () => {
 
     expect(onDismiss).toHaveBeenCalledOnce();
     expect(onDismiss).toHaveBeenCalledWith('jsearch_j1');
+  });
+
+  it('calls onBuildResume with the job data when Build Resume is clicked', () => {
+    const onBuildResume = vi.fn();
+    const job = makeJob('j1');
+    render(<RadarSection {...defaultProps({ jobs: [job], onBuildResume })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /build resume/i }));
+
+    expect(onBuildResume).toHaveBeenCalledOnce();
+    expect(onBuildResume).toHaveBeenCalledWith(job);
   });
 
   it('calls onSearch when Enter key is pressed in the query input', () => {

@@ -10,6 +10,8 @@ import {
   Loader2,
   Sparkles,
   Users,
+  ExternalLink,
+  FileText,
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -25,6 +27,7 @@ interface RadarSectionProps {
   onSearch: (query: string, location: string, filters?: RadarSearchFilters) => void;
   onDismiss: (externalId: string) => void;
   onPromote: (job: RadarJob) => void;
+  onBuildResume?: (job: RadarJob) => void;
 }
 
 function formatSalary(min: number | null, max: number | null): string | null {
@@ -79,6 +82,7 @@ export function RadarSection({
   onSearch,
   onDismiss,
   onPromote,
+  onBuildResume,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
@@ -300,6 +304,27 @@ export function RadarSection({
                       <Plus size={11} />
                       Save
                     </button>
+                    {job.apply_url && (
+                      <a
+                        href={job.apply_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
+                      >
+                        <ExternalLink size={11} />
+                        Open Job
+                      </a>
+                    )}
+                    {onBuildResume && (
+                      <button
+                        type="button"
+                        onClick={() => onBuildResume(job)}
+                        className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
+                      >
+                        <FileText size={11} />
+                        Build Resume
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onDismiss(job.external_id)}
