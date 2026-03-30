@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAuthScopedStorageKey,
+  buildAuthScopedSessionStorageKey,
   decodeUserIdFromAccessToken,
   normalizeStorageUserId,
 } from '@/lib/auth-scoped-storage';
@@ -22,6 +23,8 @@ describe('auth-scoped storage helpers', () => {
   it('builds scoped keys with item identifiers', () => {
     expect(buildAuthScopedStorageKey('resume-agent:v2-draft', 'user-1', 'session-99'))
       .toBe('resume-agent:v2-draft:user-1:session-99');
+    expect(buildAuthScopedSessionStorageKey('coach_recommendation', 'user-1'))
+      .toBe('coach_recommendation:user-1');
   });
 
   it('decodes the user id from a JWT access token payload', () => {
@@ -32,4 +35,3 @@ describe('auth-scoped storage helpers', () => {
     expect(decodeUserIdFromAccessToken('not-a-jwt')).toBeNull();
   });
 });
-

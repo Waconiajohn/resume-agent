@@ -11,14 +11,19 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: getSessionMock,
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
     },
   },
 }));
 
+const latestCacheKey = (productSlug: string) => `prior_result:${productSlug}:user-1:latest`;
+
 describe('usePriorResult', () => {
   beforeEach(() => {
     sessionStorage.clear();
-    getSessionMock.mockResolvedValue({ data: { session: { access_token: 'token-123' } } });
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: 'token-123', user: { id: 'user-1' } } } });
     vi.stubGlobal('fetch', vi.fn());
   });
 
@@ -69,7 +74,7 @@ describe('usePriorResult', () => {
 
   it('clears a cached prior result when auth is missing', async () => {
     sessionStorage.setItem(
-      'prior_result_thank-you-note_latest',
+      latestCacheKey('thank-you-note'),
       JSON.stringify({ report_markdown: 'cached report' }),
     );
     getSessionMock.mockResolvedValue({ data: { session: null } });
@@ -83,7 +88,7 @@ describe('usePriorResult', () => {
       expect(result.current.priorResult).toBeNull();
     });
 
-    expect(sessionStorage.getItem('prior_result_thank-you-note_latest')).toBeNull();
+    expect(sessionStorage.getItem(latestCacheKey('thank-you-note'))).not.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -101,6 +106,6 @@ describe('usePriorResult', () => {
       expect(result.current.priorResult).toBeNull();
     });
 
-    expect(sessionStorage.getItem('prior_result_thank-you-note_latest')).toBeNull();
+    expect(sessionStorage.getItem(latestCacheKey('thank-you-note'))).toBeNull();
   });
 });

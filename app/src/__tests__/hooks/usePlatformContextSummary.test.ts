@@ -11,14 +11,19 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: getSessionMock,
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
     },
   },
 }));
 
+const CACHE_KEY = 'platform_context_summary:user-1';
+
 describe('usePlatformContextSummary', () => {
   beforeEach(() => {
     sessionStorage.clear();
-    getSessionMock.mockResolvedValue({ data: { session: { access_token: 'token-123' } } });
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: 'token-123', user: { id: 'user-1' } } } });
     vi.stubGlobal('fetch', vi.fn());
   });
 
@@ -42,12 +47,12 @@ describe('usePlatformContextSummary', () => {
       expect(result.current.items).toHaveLength(1);
     });
 
-    expect(sessionStorage.getItem('platform_context_summary')).not.toBeNull();
+    expect(sessionStorage.getItem(CACHE_KEY)).not.toBeNull();
   });
 
   it('clears cached context summary items when auth is missing', async () => {
     sessionStorage.setItem(
-      'platform_context_summary',
+      CACHE_KEY,
       JSON.stringify([{ context_type: 'resume', source_product: 'resume-builder', updated_at: '2026-03-29T00:00:00Z' }]),
     );
     getSessionMock.mockResolvedValue({ data: { session: null } });
@@ -59,7 +64,7 @@ describe('usePlatformContextSummary', () => {
       expect(result.current.items).toEqual([]);
     });
 
-    expect(sessionStorage.getItem('platform_context_summary')).toBeNull();
+    expect(sessionStorage.getItem(CACHE_KEY)).not.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -75,6 +80,6 @@ describe('usePlatformContextSummary', () => {
       expect(result.current.items).toEqual([]);
     });
 
-    expect(sessionStorage.getItem('platform_context_summary')).toBeNull();
+    expect(sessionStorage.getItem(CACHE_KEY)).toBeNull();
   });
 });

@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  buildAuthScopedSessionStorageKey,
+  readJsonFromSessionStorage,
+  removeSessionStorageKey,
+  writeJsonToSessionStorage,
+} from '@/lib/auth-scoped-storage';
 
 interface UsePriorResultOptions {
   /** Product API slug (e.g., 'executive-bio', 'case-study') */
@@ -21,16 +27,17 @@ export function usePriorResult<T = Record<string, unknown>>({
   skip = false,
   sessionId,
 }: UsePriorResultOptions): UsePriorResultReturn<T> {
-  const cacheKey = `prior_result_${productSlug}_${sessionId ?? 'latest'}`;
   const [priorResult, setPriorResult] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const mounted = useRef(true);
+  const activeCacheKeyRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
 
-    const clearCachedResult = () => {
-      sessionStorage.removeItem(cacheKey);
+    const clearCachedResult = (cacheKey: string | null) => {
+      if (cacheKey) removeSessionStorageKey(cacheKey);
       if (mounted.current) {
         setPriorResult(null);
       }
@@ -43,40 +50,36 @@ export function usePriorResult<T = Record<string, unknown>>({
       };
     }
 
-    let cached: T | null = null;
-    try {
-      const cachedValue = sessionStorage.getItem(cacheKey);
-      cached = cachedValue ? (JSON.parse(cachedValue) as T) : null;
-    } catch {
-      cached = null;
-    }
-
-    setPriorResult(cached);
-    if (cached) {
-      setLoading(false);
-      void supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!mounted.current) return;
-        if (!session?.access_token) {
-          clearCachedResult();
-        }
-      });
-      return () => {
-        mounted.current = false;
-      };
-    }
-
     const endpoint = sessionId
       ? `/api/${productSlug}/reports/session/${sessionId}`
       : `/api/${productSlug}/reports/latest`;
 
-    setLoading(true);
-    void (async () => {
+    const loadPriorResult = async (sessionOverride?: {
+      access_token?: string | null;
+      user?: { id?: string | null } | null;
+    } | null) => {
+      const requestId = ++requestIdRef.current;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = sessionOverride === undefined
+          ? (await supabase.auth.getSession()).data.session
+          : sessionOverride;
         const token = session?.access_token ?? '';
+        const userId = session?.user?.id ?? null;
+        const cacheKey = buildAuthScopedSessionStorageKey(`prior_result:${productSlug}`, userId, sessionId ?? 'latest');
+        activeCacheKeyRef.current = cacheKey;
+        const cached = readJsonFromSessionStorage<T>(cacheKey);
+
+        setPriorResult(cached);
+        setLoading(Boolean(token) && !cached);
+
         if (!token) {
           if (!mounted.current) return;
-          clearCachedResult();
+          clearCachedResult(cacheKey);
+          setLoading(false);
+          return;
+        }
+
+        if (cached) {
           setLoading(false);
           return;
         }
@@ -85,16 +88,16 @@ export function usePriorResult<T = Record<string, unknown>>({
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!mounted.current) return;
+        if (!mounted.current || requestId !== requestIdRef.current) return;
         if (response.status === 404 || !response.ok) {
-          clearCachedResult();
+          clearCachedResult(cacheKey);
           setLoading(false);
           return;
         }
 
         const json = await response.json() as { report?: T; feature_disabled?: boolean } | null;
         if (json && 'feature_disabled' in json) {
-          clearCachedResult();
+          clearCachedResult(cacheKey);
           setLoading(false);
           return;
         }
@@ -102,9 +105,9 @@ export function usePriorResult<T = Record<string, unknown>>({
         const report = (json as { report?: T } | null)?.report ?? null;
         setPriorResult(report);
         if (report) {
-          sessionStorage.setItem(cacheKey, JSON.stringify(report));
+          writeJsonToSessionStorage(cacheKey, report);
         } else {
-          sessionStorage.removeItem(cacheKey);
+          removeSessionStorageKey(cacheKey);
         }
         setLoading(false);
       } catch {
@@ -112,17 +115,23 @@ export function usePriorResult<T = Record<string, unknown>>({
           setLoading(false);
         }
       }
-    })();
+    };
+
+    void loadPriorResult();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadPriorResult(session);
+    });
 
     return () => {
       mounted.current = false;
+      subscription.unsubscribe();
     };
-  }, [cacheKey, productSlug, sessionId, skip]);
+  }, [productSlug, sessionId, skip]);
 
   const clearPrior = useCallback(() => {
-    sessionStorage.removeItem(cacheKey);
+    removeSessionStorageKey(activeCacheKeyRef.current ?? '');
     setPriorResult(null);
-  }, [cacheKey]);
+  }, []);
 
   return { priorResult, loading, clearPrior };
 }

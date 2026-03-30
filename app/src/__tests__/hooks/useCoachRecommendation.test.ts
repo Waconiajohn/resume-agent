@@ -16,8 +16,11 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: 'test-token' } },
+        data: { session: { access_token: 'test-token', user: { id: 'user-1' } } },
       }),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
     },
   },
 }));
@@ -31,6 +34,8 @@ vi.mock('@/lib/api', () => ({
 const sessionStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
+    key: vi.fn((index: number) => Object.keys(store)[index] ?? null),
+    get length() { return Object.keys(store).length; },
     getItem: vi.fn((_key: string): string | null => store[_key] ?? null),
     setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
     removeItem: vi.fn((key: string) => { delete store[key]; }),
@@ -60,7 +65,7 @@ const MOCK_RECOMMENDATION: CoachRecommendation = {
   rationale: 'Your resume is 80% complete — one section away from your first apply-ready draft.',
 };
 
-const CACHE_KEY = 'coach_recommendation';
+const CACHE_KEY = 'coach_recommendation:user-1';
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +91,7 @@ describe('useCoachRecommendation', () => {
 
     const { result } = renderHook(() => useCoachRecommendation());
 
+    await waitFor(() => expect(result.current.recommendation).not.toBeNull());
     expect(result.current.recommendation).not.toBeNull();
     expect(result.current.recommendation?.action).toBe('Complete your resume summary section.');
     expect(result.current.loading).toBe(false);
@@ -170,7 +176,7 @@ describe('useCoachRecommendation', () => {
     await waitFor(() => expect(result.current.recommendation).toBeNull());
 
     expect(result.current.error).toBeNull();
-    expect(sessionStorageMock.removeItem).toHaveBeenCalledWith(CACHE_KEY);
+    expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('coach_recommendation:anon');
   });
 
   it('clears cached recommendation when feature_disabled is returned', async () => {
@@ -191,7 +197,7 @@ describe('useCoachRecommendation', () => {
   });
 
   it('clearCoachRecommendationCache removes the sessionStorage entry', () => {
-    sessionStorageMock.getItem.mockReturnValue(JSON.stringify(MOCK_RECOMMENDATION));
+    sessionStorageMock.setItem(CACHE_KEY, JSON.stringify(MOCK_RECOMMENDATION));
 
     act(() => {
       clearCoachRecommendationCache();

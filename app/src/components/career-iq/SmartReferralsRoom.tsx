@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { CsvUploader } from '@/components/network-intelligence/CsvUploader';
@@ -71,6 +71,8 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
   const accessToken = session?.access_token ?? null;
   const requestedTab = resolveFocusTab(initialFocus);
+  const previousAccessTokenRef = useRef<string | null>(accessToken);
+  const connectionsRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!requestedTab) return;
@@ -83,14 +85,33 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   }, [hasConnections, requestedTab]);
 
   useEffect(() => {
+    const previousAccessToken = previousAccessTokenRef.current;
+    if (previousAccessToken === accessToken) return;
+    previousAccessTokenRef.current = accessToken;
+
+    setOutreachPrefill(null);
+
     if (!accessToken) {
       setHasConnections(false);
-      setOutreachPrefill(null);
       setActiveTab('import');
       return;
     }
 
+    setHasConnections(false);
+    setActiveTab((prev) => {
+      if (requestedTab && ALWAYS_UNLOCKED.includes(requestedTab)) return requestedTab;
+      return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+    });
+  }, [accessToken, requestedTab]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      connectionsRequestIdRef.current += 1;
+      return;
+    }
+
     let cancelled = false;
+    const requestId = ++connectionsRequestIdRef.current;
 
     async function checkConnections() {
       try {
@@ -99,6 +120,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
         });
         if (res.ok && !cancelled) {
           const data = await res.json();
+          if (cancelled || requestId !== connectionsRequestIdRef.current) return;
           const has = (data.count ?? 0) > 0;
           setHasConnections(has);
           setActiveTab((prev) => {
@@ -114,6 +136,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
         }
       } catch {
         if (!cancelled) {
+          if (requestId !== connectionsRequestIdRef.current) return;
           setHasConnections(false);
           setActiveTab((prev) => {
             if (requestedTab && ALWAYS_UNLOCKED.includes(requestedTab)) return requestedTab;

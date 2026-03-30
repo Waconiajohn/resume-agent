@@ -12,6 +12,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  buildAuthScopedSessionStorageKey,
+  readJsonFromSessionStorage,
+  removeSessionStorageKey,
+  writeJsonToSessionStorage,
+} from '@/lib/auth-scoped-storage';
 
 export interface ContextSummaryItem {
   context_type: string;
@@ -19,48 +25,47 @@ export interface ContextSummaryItem {
   updated_at: string;
 }
 
-const CACHE_KEY = 'platform_context_summary';
+const CACHE_NAMESPACE = 'platform_context_summary';
+
+function buildCacheKey(userId: string | null | undefined) {
+  return buildAuthScopedSessionStorageKey(CACHE_NAMESPACE, userId);
+}
 
 export function usePlatformContextSummary() {
-  const [items, setItems] = useState<ContextSummaryItem[]>(() => {
-    try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      return cached ? (JSON.parse(cached) as ContextSummaryItem[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<ContextSummaryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const mounted = useRef(true);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
-    const cached = sessionStorage.getItem(CACHE_KEY);
-
     let cancelled = false;
-    const clearCachedSummary = () => {
-      sessionStorage.removeItem(CACHE_KEY);
-      if (mounted.current && !cancelled) {
-        setItems([]);
-      }
-    };
 
-    if (!cached) {
-      setLoading(true);
-    }
-
-    void (async () => {
+    const loadSummary = async (sessionOverride?: {
+      access_token?: string | null;
+      user?: { id?: string | null } | null;
+    } | null) => {
+      const requestId = ++requestIdRef.current;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = sessionOverride === undefined
+          ? (await supabase.auth.getSession()).data.session
+          : sessionOverride;
         const token = session?.access_token;
-        if (!token || cancelled) {
-          clearCachedSummary();
-          if (mounted.current && !cancelled) setLoading(false);
-          return;
+        const userId = session?.user?.id ?? null;
+        const cacheKey = buildCacheKey(userId);
+        const cached = readJsonFromSessionStorage<ContextSummaryItem[]>(cacheKey) ?? [];
+
+        if (mounted.current && !cancelled) {
+          setItems(cached);
+          setLoading(Boolean(token) && cached.length === 0);
         }
 
-        if (cached) {
-          if (mounted.current && !cancelled) setLoading(false);
+        if (!token || cancelled) {
+          removeSessionStorageKey(cacheKey);
+          if (mounted.current && !cancelled) {
+            setItems([]);
+            setLoading(false);
+          }
           return;
         }
 
@@ -68,31 +73,41 @@ export function usePlatformContextSummary() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.ok || cancelled) {
-          if (mounted.current) setLoading(false);
+        if (!res.ok || cancelled || requestId !== requestIdRef.current) {
+          if (mounted.current && !cancelled) setLoading(false);
           return;
         }
 
         const data = (await res.json()) as { types?: ContextSummaryItem[]; feature_disabled?: boolean };
         if (data.feature_disabled) {
-          clearCachedSummary();
+          removeSessionStorageKey(cacheKey);
+          if (mounted.current && !cancelled) {
+            setItems([]);
+            setLoading(false);
+          }
           return;
         }
         const types = data?.types ?? [];
 
-        if (!mounted.current || cancelled) return;
+        if (!mounted.current || cancelled || requestId !== requestIdRef.current) return;
         setItems(types);
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(types));
+        writeJsonToSessionStorage(cacheKey, types);
       } catch {
         // Best-effort — badge simply won't appear if the fetch fails
       } finally {
         if (mounted.current && !cancelled) setLoading(false);
       }
-    })();
+    };
+
+    void loadSummary();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadSummary(session);
+    });
 
     return () => {
       cancelled = true;
       mounted.current = false;
+      subscription.unsubscribe();
     };
   }, []);
 

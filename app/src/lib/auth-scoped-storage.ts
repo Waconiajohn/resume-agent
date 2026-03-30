@@ -15,6 +15,14 @@ export function buildAuthScopedStorageKey(
   return segments.join(':');
 }
 
+export function buildAuthScopedSessionStorageKey(
+  namespace: string,
+  userId: string | null | undefined,
+  itemId?: string,
+): string {
+  return buildAuthScopedStorageKey(namespace, userId, itemId);
+}
+
 export function readJsonFromLocalStorage<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -39,6 +47,49 @@ export function removeLocalStorageKey(key: string): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(key);
+  } catch {
+    // Best effort only
+  }
+}
+
+export function readJsonFromSessionStorage<T>(key: string): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function writeJsonToSessionStorage(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Best effort only
+  }
+}
+
+export function removeSessionStorageKey(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Best effort only
+  }
+}
+
+export function removeSessionStorageKeysWithPrefix(prefix: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < window.sessionStorage.length; index += 1) {
+      const key = window.sessionStorage.key(index);
+      if (key?.startsWith(prefix)) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
   } catch {
     // Best effort only
   }
@@ -72,4 +123,3 @@ export function decodeUserIdFromAccessToken(accessToken: string | null | undefin
     return null;
   }
 }
-

@@ -173,6 +173,38 @@ describe('SmartReferralsRoom', () => {
     expect(screen.queryByTestId('connections-browser')).not.toBeInTheDocument();
   });
 
+  it('resets to the unlocked-safe tabs when the signed-in user changes to one without connections', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-1' },
+      session: { access_token: 'token-a' },
+      loading: false,
+    });
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ count: 3 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ count: 0 }), { status: 200 }));
+
+    const { rerender } = render(<SmartReferralsRoom initialFocus="connections" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connections-browser')).toBeInTheDocument();
+    });
+
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-2' },
+      session: { access_token: 'token-b' },
+      loading: false,
+    });
+
+    rerender(<SmartReferralsRoom initialFocus="connections" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('csv-uploader')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
+    expect(screen.queryByTestId('connections-browser')).not.toBeInTheDocument();
+  });
+
   it('opens directly into Bonus Search when that focus is provided', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'user-1' },

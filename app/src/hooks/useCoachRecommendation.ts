@@ -8,8 +8,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import {
+  buildAuthScopedSessionStorageKey,
+  readJsonFromSessionStorage,
+  removeSessionStorageKey,
+  removeSessionStorageKeysWithPrefix,
+  writeJsonToSessionStorage,
+} from '@/lib/auth-scoped-storage';
 
-const CACHE_KEY = 'coach_recommendation';
+const CACHE_NAMESPACE = 'coach_recommendation';
 
 export interface CoachRecommendation {
   action: string;
@@ -28,37 +35,36 @@ interface UseCoachRecommendationResult {
   refresh: () => void;
 }
 
-function loadCached(): CoachRecommendation | null {
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (raw) return JSON.parse(raw) as CoachRecommendation;
-  } catch { /* ignore corrupt cache */ }
-  return null;
+function buildCacheKey(userId: string | null | undefined) {
+  return buildAuthScopedSessionStorageKey(CACHE_NAMESPACE, userId);
 }
 
-function saveCache(rec: CoachRecommendation) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rec)); } catch { /* ignore */ }
+function loadCached(userId: string | null | undefined): CoachRecommendation | null {
+  return readJsonFromSessionStorage<CoachRecommendation>(buildCacheKey(userId));
+}
+
+function saveCache(userId: string | null | undefined, rec: CoachRecommendation) {
+  writeJsonToSessionStorage(buildCacheKey(userId), rec);
 }
 
 export function clearCoachRecommendationCache() {
-  try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+  removeSessionStorageKeysWithPrefix(CACHE_NAMESPACE);
 }
 
 export function useCoachRecommendation(): UseCoachRecommendationResult {
-  const [cached] = useState(loadCached);
-  const [recommendation, setRecommendation] = useState<CoachRecommendation | null>(cached);
-  const [loading, setLoading] = useState(!cached);
+  const [recommendation, setRecommendation] = useState<CoachRecommendation | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  const fetchedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
-  const clearRecommendationState = useCallback(() => {
-    clearCoachRecommendationCache();
+  const clearRecommendationState = useCallback((userId: string | null | undefined) => {
+    removeSessionStorageKey(buildCacheKey(userId));
     if (mountedRef.current) {
       setLoading(false);
       setRecommendation(null);
@@ -66,25 +72,41 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
     }
   }, []);
 
-  const fetchRecommendation = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+  const fetchRecommendation = useCallback(async (options?: {
+    session?: { access_token?: string | null; user?: { id?: string | null } | null } | null;
+    forceRefresh?: boolean;
+  }) => {
+    const requestId = ++requestIdRef.current;
+    const session = options?.session === undefined
+      ? (await supabase.auth.getSession()).data.session
+      : options.session;
     const token = session?.access_token;
-    if (!token) {
-      clearRecommendationState();
-      return;
+    const userId = session?.user?.id ?? null;
+    const cacheKey = buildCacheKey(userId);
+    const cached = options?.forceRefresh ? null : loadCached(userId);
+
+    if (mountedRef.current) {
+      setRecommendation(cached);
+      setLoading(Boolean(token) && !cached);
+      setError(null);
     }
 
-    if (mountedRef.current) setLoading(true);
+    if (!token) {
+      clearRecommendationState(userId);
+      return;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/coach/recommend`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+
       if (!res.ok) {
         // Feature flag off returns 404 — graceful fallback
         if (res.status === 404) {
-          clearRecommendationState();
+          clearRecommendationState(userId);
           return;
         }
         throw new Error(`Recommend failed (${res.status})`);
@@ -92,10 +114,10 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
 
       const data = await res.json() as Record<string, unknown>;
       if ('feature_disabled' in data) {
-        clearRecommendationState();
+        clearRecommendationState(userId);
         return;
       }
-      saveCache(data as unknown as CoachRecommendation);
+      writeJsonToSessionStorage(cacheKey, data);
       if (mountedRef.current) {
         setRecommendation(data as unknown as CoachRecommendation);
         setLoading(false);
@@ -109,16 +131,18 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
     }
   }, [clearRecommendationState]);
 
-  // Fetch on mount (if no cache)
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
     void fetchRecommendation();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void fetchRecommendation({ session });
+    });
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [fetchRecommendation]);
 
   const refresh = useCallback(() => {
-    clearCoachRecommendationCache();
-    void fetchRecommendation();
+    void fetchRecommendation({ forceRefresh: true });
   }, [fetchRecommendation]);
 
   return { recommendation, loading, error, refresh };
