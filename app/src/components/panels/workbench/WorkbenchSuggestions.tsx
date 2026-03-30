@@ -194,8 +194,8 @@ export function WorkbenchSuggestions({
       )}
     >
       <AiHelperHint
-        title="AI Suggestion"
-        body="This is a guided fix for the current gap. Apply it to have AI rewrite the section for you instead of starting from a blank answer."
+        title="Suggested Fix"
+        body="This is a guided fix for the current gap. Apply it to have the section rewritten for you instead of starting from a blank answer."
         tip="When the updated draft lands below, click any line to tweak it before you save or approve."
         className="mb-4"
       />

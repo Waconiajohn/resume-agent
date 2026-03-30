@@ -47,7 +47,7 @@ describe('QualityDashboardPanel', () => {
   it('renders the Quality Dashboard header', () => {
     render(<QualityDashboardPanel data={makeData()} />);
     expect(screen.getByText('Quality Scores')).toBeInTheDocument();
-    expect(screen.getByText('AI estimate')).toBeInTheDocument();
+    expect(screen.getByText('Estimated')).toBeInTheDocument();
   });
 
   // 2. Renders primary score rings
@@ -179,7 +179,7 @@ describe('QualityDashboardPanel', () => {
   it('renders without crashing with minimal data', () => {
     render(<QualityDashboardPanel data={{}} />);
     expect(screen.getByText('Quality Scores')).toBeInTheDocument();
-    expect(screen.getByText('AI estimate')).toBeInTheDocument();
+    expect(screen.getByText('Estimated')).toBeInTheDocument();
   });
 
   // 10. Shows coherence issues when populated

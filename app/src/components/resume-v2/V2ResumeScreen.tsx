@@ -633,7 +633,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         tone: 'neutral',
         message: selectedPromotableItems.length > 0
           ? `Auto-sync is on. ${selectedPromotableItems.length} selected edit${selectedPromotableItems.length === 1 ? '' : 's'} can be promoted to your master resume.`
-          : 'Auto-sync is on, but no accepted AI-created edits are selected for master resume promotion yet.',
+          : 'Auto-sync is on, but no accepted draft edits are selected for master resume promotion yet.',
       });
       return;
     }
@@ -657,7 +657,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0) {
       setMasterSaveStatus({
         tone: 'neutral',
-        message: 'Select at least one accepted AI-created edit before promoting content to the master resume.',
+        message: 'Select at least one accepted draft edit before promoting content to the master resume.',
       });
       if (reason === 'manual') {
         addToast({

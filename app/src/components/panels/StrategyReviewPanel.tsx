@@ -245,14 +245,14 @@ export function StrategyReviewPanel({ data, onApprove }: StrategyReviewPanelProp
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
-        {/* AI estimate disclaimer — prominent by design */}
+        {/* Estimated market-data disclaimer — prominent by design */}
         <div className="rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-3 py-2.5">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-[#f0d99f]/70" />
             <div>
-              <p className="text-[13px] font-semibold text-[#f0d99f]/85">AI-Estimated Market Data</p>
+              <p className="text-[13px] font-semibold text-[#f0d99f]/85">Estimated Market Data</p>
               <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                These numbers are based on AI analysis of available market signals — not live salary databases.
+                These numbers are based on pattern analysis of available market signals — not live salary databases.
                 Verify against Levels.fyi, Glassdoor, or Payscale before entering negotiations.
                 Confidence: <span className="font-medium text-[var(--text-muted)]">{confidenceLabel}</span>.
               </p>

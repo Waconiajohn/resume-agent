@@ -137,7 +137,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-[var(--text-strong)]">Quality Scores</span>
-          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-amber-400/60">AI estimate</span>
+          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-amber-400/60">Estimated</span>
         </div>
       </div>
       <span className="sr-only" aria-live="polite">
@@ -160,7 +160,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             {primaryRings.length > 0 && (
               <div className="flex items-center justify-around gap-y-4">
                 {primaryRings.map((ring) => (
-                  <div key={ring.label} title="AI-estimated score based on pattern analysis — not a guarantee of outcome">
+                  <div key={ring.label} title="Estimated score based on pattern analysis — not a guarantee of outcome">
                     <ScoreRing
                       score={ring.score}
                       max={ring.max}
@@ -176,7 +176,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             {secondaryMetrics.length > 0 && (
               <div className={cn('space-y-2', primaryRings.length > 0 && 'mt-4 border-t border-[var(--line-soft)] pt-4')}>
                 {secondaryMetrics.map((metric) => (
-                  <div key={metric.label} className="flex items-center justify-between text-xs" title="AI-estimated score based on pattern analysis — not a guarantee of outcome">
+                  <div key={metric.label} className="flex items-center justify-between text-xs" title="Estimated score based on pattern analysis — not a guarantee of outcome">
                     <span className="text-[var(--text-soft)]">{metric.label}</span>
                     <span className={cn('font-medium', secondaryScoreColor(metric.score))}>
                       {metric.score}%

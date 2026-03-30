@@ -398,7 +398,7 @@ function AIAssistedCard({
           </p>
           <p className="text-[13px] text-neutral-600 leading-relaxed">
             {question.classification === 'partial'
-              ? 'We found related experience in your resume, but it doesn\'t fully demonstrate this requirement. Our AI identified adjacent skills that can strengthen your positioning.'
+              ? 'We found related experience in your resume, but it doesn\'t fully demonstrate this requirement. We also found adjacent skills that can strengthen your positioning.'
               : 'This requirement doesn\'t appear directly in your resume. However, we found transferable experience in your background that can be positioned to address it.'}
           </p>
         </div>
@@ -418,11 +418,11 @@ function AIAssistedCard({
           </p>
         </div>
 
-        {/* AI assist buttons */}
+        {/* Assist buttons */}
         {onAssist && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mr-1">
-              AI Assist
+              Quick Help
             </span>
             {(['strengthen', 'add_metrics', 'rewrite'] as const).map((action) => {
               const labels: Record<string, string> = {
@@ -456,7 +456,7 @@ function AIAssistedCard({
         )}
         {assistError && (
           <p className="text-[12px] text-red-500">
-            AI assist didn&apos;t return a result. Try again or edit manually.
+            Help didn&apos;t return a result. Try again or edit manually.
           </p>
         )}
 

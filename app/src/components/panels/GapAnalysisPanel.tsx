@@ -179,7 +179,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-[var(--text-strong)]">How Your Experience Matches</span>
-          <span className="text-[12px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5 ml-2">AI assessment</span>
+          <span className="text-[12px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5 ml-2">Assessment</span>
         </div>
       </div>
 

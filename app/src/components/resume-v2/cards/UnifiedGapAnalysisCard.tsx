@@ -446,7 +446,7 @@ function RequirementRow({
                       className="w-full rounded-md border border-[#afc4ff]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label="Choose placement section"
                     >
-                      <option value="auto">Let AI decide (recommended)</option>
+                      <option value="auto">Auto (recommended)</option>
                       <option value="summary">Executive Summary</option>
                       <option value="competencies">Core Competencies</option>
                       <option value="accomplishments">Selected Accomplishments</option>
@@ -532,7 +532,7 @@ function RequirementRow({
                       ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
                         ? 'Submit context'
                         : 'Answer above...'
-                      : 'Tell AI one more detail'}
+                        : 'Tell us one more detail'}
                   </button>
                 )}
 

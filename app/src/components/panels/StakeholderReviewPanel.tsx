@@ -61,7 +61,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
         {/* Guidance card */}
         <GlassCard className="p-3">
           <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-            The AI inferred these stakeholders from your role context. Confirm or correct this map before the plan is written — the engagement strategies in your 90-day plan depend on it.
+            We inferred these stakeholders from your role context. Confirm or correct this map before the plan is written — the engagement strategies in your 90-day plan depend on it.
           </p>
         </GlassCard>
 

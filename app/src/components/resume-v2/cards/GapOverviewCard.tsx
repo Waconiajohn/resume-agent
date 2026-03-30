@@ -294,7 +294,7 @@ export function GapOverviewCard({
             </span>
           </div>
           <p className="text-[11px] text-neutral-400 italic leading-relaxed">
-            Strong and Partial matches include evidence from your resume. Missing items may still be addressable &mdash; the AI will help position you.
+            Strong and Partial matches include evidence from your resume. Missing items may still be addressable &mdash; we can still help position adjacent experience.
           </p>
         </div>
 
@@ -442,7 +442,7 @@ export function GapOverviewCard({
                   Use This
                 </p>
                 <p className="text-[12px] text-neutral-500 leading-relaxed">
-                  The AI will weave this positioning into your resume bullets
+                  This positioning will be woven into your resume bullets
                   naturally. It won&apos;t appear as a separate section.
                 </p>
               </div>
@@ -456,7 +456,7 @@ export function GapOverviewCard({
                   Add Context
                 </p>
                 <p className="text-[12px] text-neutral-500 leading-relaxed">
-                  Share details the AI couldn&apos;t find. Your input rewrites
+                  Share details we couldn&apos;t find. Your input rewrites
                   the positioning with your specifics.
                 </p>
               </div>

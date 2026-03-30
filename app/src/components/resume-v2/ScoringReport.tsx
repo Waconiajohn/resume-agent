@@ -1074,7 +1074,7 @@ function ScoringReportDetails({
       {/* Before Report */}
       <CollapsibleSection
         title="Before Report"
-        subtitle="How the original resume scored before AI optimization"
+        subtitle="How the original resume scored before the rebuild"
         icon={<BarChart3 className="h-3.5 w-3.5" />}
         defaultOpen={true}
       >

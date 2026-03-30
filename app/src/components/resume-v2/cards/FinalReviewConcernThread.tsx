@@ -334,7 +334,7 @@ export function FinalReviewConcernThread({
             disabled={isLoading}
             className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
           >
-            Ask AI What Detail Is Missing
+            Ask What Detail Is Missing
           </button>
           <button
             type="button"
@@ -395,8 +395,8 @@ export function FinalReviewConcernThread({
           }}
           onKeyDown={handleKeyDown}
           placeholder={messages.length === 0
-            ? (context.clarifyingQuestion ?? context.fixStrategy ?? 'Add one concrete detail here and AI will turn it into a stronger draft...')
-            : 'Add the next detail or ask AI for a stronger version...'}
+            ? (context.clarifyingQuestion ?? context.fixStrategy ?? 'Add one concrete detail here and we will turn it into a stronger draft...')
+            : 'Add the next detail or ask for a stronger version...'}
           rows={1}
           disabled={isLoading}
           className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-sm leading-6 text-[var(--text-strong)] transition-colors focus:outline-none disabled:opacity-50"

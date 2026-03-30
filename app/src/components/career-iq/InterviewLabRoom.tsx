@@ -1191,7 +1191,7 @@ const FOLLOW_UP_TOOL_COPY: Array<{
   {
     view: 'follow_up_email',
     label: 'Follow-Up Email',
-    description: 'Status check-in, no-response nudge, graceful rejection response, or negotiation counter — generated and ready to send.',
+    description: 'Status check-in, no-response nudge, graceful rejection response, or negotiation counter — drafted and ready to review.',
     buttonLabel: 'Follow-Up Email',
     openLabel: 'Open Follow-Up Email',
     icon: Send,

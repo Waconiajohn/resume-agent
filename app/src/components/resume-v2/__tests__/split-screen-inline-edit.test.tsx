@@ -745,7 +745,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Apply to Resume' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Discard AI Draft' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discard Draft' })).toBeInTheDocument();
   });
 
   it('does NOT show the suggestion when pendingEdit section differs', () => {
@@ -769,7 +769,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     );
 
     expect(screen.queryByDisplayValue('Some improvement text')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Discard AI Draft' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discard Draft' })).not.toBeInTheDocument();
   });
 
   it('does NOT show the suggestion when pendingEdit originalText differs', () => {
@@ -859,7 +859,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
     );
   });
 
-  it('calls onRejectEdit when Discard AI Draft is clicked', () => {
+  it('calls onRejectEdit when Discard Draft is clicked', () => {
     const resume = makeResumeDraft();
     const onRejectEdit = vi.fn();
     const pendingEdit: PendingEdit = {
@@ -882,7 +882,7 @@ describe('InlineEditPanel — pending edit suggestion', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Discard AI Draft' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard Draft' }));
 
     expect(onRejectEdit).toHaveBeenCalledOnce();
   });

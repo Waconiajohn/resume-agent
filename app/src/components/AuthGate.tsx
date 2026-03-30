@@ -43,7 +43,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
         <div className="mb-6 flex flex-col items-center gap-2">
           <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Resume Agent</h1>
-          <p className="text-sm text-[var(--text-soft)]">Your AI resume coach</p>
+          <p className="text-sm text-[var(--text-soft)]">Your career workspace</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

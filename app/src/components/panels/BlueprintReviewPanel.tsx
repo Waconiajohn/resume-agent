@@ -217,7 +217,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               </span>
             )}
             {!angleWasEdited && (
-              <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
+              <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">Suggested</span>
             )}
             <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Target
@@ -302,7 +302,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 </span>
               )}
               {!orderWasEdited && (
-                <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">AI-suggested</span>
+                <span className="rounded-md border border-indigo-400/20 bg-indigo-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-indigo-300/60">Suggested</span>
               )}
               <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Section Layout

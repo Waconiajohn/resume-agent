@@ -200,7 +200,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           {benchmarkSummary && (
             <div className="mb-3">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-[12px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">AI-generated estimate</span>
+                <span className="text-[12px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">Estimated summary</span>
                 <button
                   type="button"
                   onClick={() => {

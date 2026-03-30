@@ -331,7 +331,7 @@ export function GapChatThread({
   const isAccepted = resolvedLanguage !== null;
   const introSourceLabel = sourceLabel ?? 'What the role is asking for';
   const introSourceExcerpt = sourceExcerpt ?? context.jobDescriptionExcerpt;
-  const introQuestion = preferredInitialQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
+  const introQuestion = preferredInitialQuestion ?? promptHint ?? 'Add one concrete detail so we can turn this into direct proof for the role.';
 
   if (resolvedLanguage) {
     return (
@@ -396,7 +396,7 @@ export function GapChatThread({
             </p>
             {context.coachingPolicy?.lookingFor && (
               <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                What AI is looking for: {context.coachingPolicy.lookingFor}
+                What to add next: {context.coachingPolicy.lookingFor}
               </p>
             )}
           </div>
@@ -444,7 +444,7 @@ export function GapChatThread({
               </>
             ) : (
               <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
-                We do not have a safe rewrite yet. Add one concrete detail first, and AI will turn it into a truthful resume line.
+                We do not have a safe rewrite yet. Add one concrete detail first, and we can turn it into a truthful resume line.
               </p>
             )}
           </div>
@@ -483,12 +483,12 @@ export function GapChatThread({
             </p>
             {context.coachingPolicy?.lookingFor && (
               <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                What AI is looking for: {context.coachingPolicy.lookingFor}
+                What to add next: {context.coachingPolicy.lookingFor}
               </p>
             )}
             {activeRewriteSeed && (
               <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                The latest AI rewrite is ready below. Keep editing it there or ask AI for a stronger or different version.
+                The latest rewrite is ready below. Keep editing it there or ask for a stronger or different version.
               </p>
             )}
           </div>
@@ -596,7 +596,7 @@ export function GapChatThread({
 
       {!resolvedLanguage && (
         <div className="px-4 pb-1 text-xs leading-5 text-[var(--text-soft)]">
-          Fastest path: add one concrete detail below, and AI will rewrite from that instead of guessing.
+          Fastest path: add one concrete detail below, and we will rewrite from that instead of guessing.
         </div>
       )}
 
@@ -639,7 +639,7 @@ export function GapChatThread({
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             placeholder={messages.length === 0
-              ? 'Add one concrete detail here, like a metric, scope, reporting cadence, stakeholder group, or business result, and AI will improve the rewrite.'
+              ? 'Add one concrete detail here, like a metric, scope, reporting cadence, stakeholder group, or business result, and we will improve the rewrite.'
               : 'Add the next missing detail or ask for another rewrite...'
             }
             rows={1}

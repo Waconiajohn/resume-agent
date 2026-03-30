@@ -101,7 +101,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
         transform: flipped ? 'translateX(-50%)' : 'translate(-50%, -100%) translateY(-8px)',
       }}
       role="toolbar"
-      aria-label="AI editing actions"
+      aria-label="Editing actions"
     >
       {isEditing ? (
         <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500">

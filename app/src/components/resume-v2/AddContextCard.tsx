@@ -47,7 +47,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
           className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] hover:border-[#afc4ff]/30 hover:text-[var(--text-muted)] transition-colors w-full text-left"
         >
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
-          Tell us what we missed — add context the AI didn't find in your resume
+          Tell us what we missed — add context not visible in your resume
         </button>
       )}
 
@@ -64,7 +64,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
           </div>
 
           <p className="text-xs text-[var(--text-soft)] mb-2">
-            Tell us about experience, skills, or accomplishments the AI missed. Examples:
+            Tell us about experience, skills, or accomplishments that are not visible in the resume yet. Examples:
           </p>
 
           {/* Clickable example pills */}

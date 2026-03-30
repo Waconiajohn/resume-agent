@@ -313,8 +313,8 @@ export function SectionWorkbench({
 
           {!isRefining && !hasLocalEdits && (
             <AiHelperHint
-              title="How AI Help Works Here"
-              body="Use the helper buttons when you want a starting point. AI rewrites the full section below for you instead of making you type the whole request from memory."
+              title="How Help Works Here"
+              body="Use the helper buttons when you want a starting point. The section is rewritten below for you instead of making you type the whole request from memory."
               tip="After the rewrite lands, review it in place, click any line to edit it, then save your edits or approve the section."
             />
           )}
@@ -611,10 +611,10 @@ export function SectionWorkbench({
           {isRefining && (
             <div className="relative rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
               <AiHelperHint
-                title="AI Is Rewriting This Section"
+                title="This Section Is Being Rewritten"
                 body={lastAiAction
                   ? `Working on: ${lastAiAction}`
-                  : 'AI is rewriting this section based on the instruction you selected.'}
+                  : 'This section is being rewritten based on the instruction you selected.'}
                 tip="You do not need to type the whole answer from scratch here. Wait for the updated draft, then review and fine-tune it inline."
               />
               <div className="mt-2 h-0.5 w-full overflow-hidden bg-[var(--accent-muted)]">

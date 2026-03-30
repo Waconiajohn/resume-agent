@@ -149,9 +149,9 @@ export function WorkbenchActionChips({ section, onAction, disabled }: WorkbenchA
   return (
     <div className="space-y-2">
       <AiHelperHint
-        title="AI Quick Starts"
+        title="Quick Starts"
         body="Use one of these as a starting point when you do not want to write the request from scratch."
-        tip="Each button asks AI to rewrite the section for you. When the draft comes back, you can still click any line and edit it directly."
+        tip="Each button rewrites the section for you. When the draft comes back, you can still click any line and edit it directly."
       />
       <div className="flex flex-wrap gap-2">
         {chips.map((chip) => (

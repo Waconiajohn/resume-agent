@@ -123,8 +123,8 @@ export function ResumeAiWorklogCard({
     <div className="room-shell space-y-4 border border-[#98b3ff]/14 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="eyebrow-label text-[#c9d7ff]/72">Live AI review</p>
-          <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">What AI is doing right now</p>
+          <p className="eyebrow-label text-[#c9d7ff]/72">Live review</p>
+          <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">What's happening right now</p>
         </div>
         <div className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] px-3 py-1.5 text-[12px] uppercase tracking-[0.18em] text-[#c9d7ff]/78">
           Updates as the review moves
@@ -137,7 +137,7 @@ export function ResumeAiWorklogCard({
       </div>
 
       <p className="text-sm leading-6 text-[var(--text-soft)]">
-        You should not have to guess what the system is doing. This panel stays plain-English while AI reads the role, maps the requirements, and prepares the next edit.
+        You should not have to guess what the system is doing. This panel stays plain-English while the role is reviewed, the requirements are mapped, and the next edit is prepared.
       </p>
 
       <div className="space-y-3">

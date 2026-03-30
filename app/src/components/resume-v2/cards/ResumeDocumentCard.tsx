@@ -595,12 +595,12 @@ function InlineEditPanel({
   const followOnAiActions = aiActions.filter((action) => action.tone === 'secondary');
   const polishAiActions = aiActions.filter((action) => action.tone === 'tertiary');
   const applyHelperText = isEditing
-    ? 'AI is generating a replacement draft now.'
+    ? 'A replacement draft is loading now.'
     : canApplyDraft
       ? matchesPendingEdit
-        ? 'Apply will replace the current line with the loaded AI draft.'
+        ? 'Apply will replace the current line with the loaded draft.'
         : 'Apply will replace the current line with your working draft.'
-      : 'Edit the draft or run an AI action to enable Apply to Resume.';
+      : 'Edit the draft or run another rewrite to enable Apply to Resume.';
   const panelIntro = getInlinePanelIntro(resolvedReviewState, requirementSource);
   const flagReason = getInlinePanelFlagReason(resolvedReviewState, requirementSource);
 
@@ -703,7 +703,7 @@ function InlineEditPanel({
             </div>
             {matchesPendingEdit && (
               <span className="resume-proof-meta-label text-slate-600">
-                AI draft loaded
+                Draft loaded
               </span>
             )}
           </div>
@@ -746,7 +746,7 @@ function InlineEditPanel({
             {(followOnAiActions.length > 0 || polishAiActions.length > 0) && (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Other AI edits
+                  Other edits
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {followOnAiActions.map(({ action, label }) => (
@@ -793,10 +793,10 @@ function InlineEditPanel({
           {showCustomPrompt && (
             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Custom AI instruction
+                Custom instruction
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Tell AI exactly how to revise this line. It will replace the current working draft, not append to it.
+                Tell us exactly how to revise this line. It will replace the current working draft, not append to it.
               </p>
               <div className="mt-3 flex flex-wrap items-start gap-2">
                 <input
@@ -861,7 +861,7 @@ function InlineEditPanel({
                 }}
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                Discard AI Draft
+                Discard Draft
               </button>
             )}
           </div>

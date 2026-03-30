@@ -92,7 +92,7 @@ describe('ResumeAiWorklogCard', () => {
       />,
     );
 
-    expect(screen.getByText('What AI is doing right now')).toBeInTheDocument();
+    expect(screen.getByText("What's happening right now")).toBeInTheDocument();
     expect(screen.getByText(/you should not have to guess what the system is doing/i)).toBeInTheDocument();
     expect(screen.getByText(/Right now we are working on "Executive stakeholder leadership"/i)).toBeInTheDocument();
   });

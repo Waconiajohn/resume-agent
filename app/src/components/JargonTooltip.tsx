@@ -33,7 +33,7 @@ const BUILT_IN_DEFINITIONS: Record<string, string> = {
   'Adversarial Review':
     "A simulated hiring manager's critical read of your resume, looking for weaknesses before real employers do.",
   Humanise:
-    'The process of removing AI-sounding language so your resume reads like a real person wrote it.',
+    'The process of removing robotic or synthetic-sounding language so your resume reads like a real person wrote it.',
 };
 
 interface JargonTooltipProps {

@@ -57,7 +57,7 @@ function Hero() {
           We fix that.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-white/60">
-          AI-powered career coaching that understands executive positioning
+          Career coaching that understands executive positioning
         </p>
         <div className="mt-10">
           <a href="/workspace">
@@ -250,7 +250,7 @@ function AgeSmartSection() {
         </div>
 
         <p className="mx-auto mt-10 max-w-xl text-center text-sm text-white/50">
-          Our AI detects and neutralizes age signals that trigger unconscious bias
+          We help detect and neutralize age signals that trigger unconscious bias
         </p>
       </div>
     </section>

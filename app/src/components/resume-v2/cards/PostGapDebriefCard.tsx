@@ -112,7 +112,7 @@ export function PostGapDebriefCard({
             </p>
           ) : (
             <p className="text-[13px] text-blue-700 leading-relaxed">
-              The AI is now weaving your approved positioning into the resume.
+              Your approved positioning is now being woven into the resume.
               Each strategy will be integrated naturally into relevant experience
               bullets &mdash; they won&apos;t appear as a separate section or
               footnote.

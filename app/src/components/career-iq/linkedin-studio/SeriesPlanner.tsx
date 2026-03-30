@@ -120,7 +120,7 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
       <div className="flex flex-col gap-3">
         <GlassCard className="p-6 flex flex-col items-center gap-3 text-center">
           <Calendar size={28} className="text-[var(--text-soft)]" />
-          <p className="text-[14px] font-medium text-[var(--text-soft)]">No series generated yet</p>
+          <p className="text-[14px] font-medium text-[var(--text-soft)]">No series plan yet</p>
           <p className="text-[12px] text-[var(--text-soft)] max-w-[320px]">
             Generate a content calendar above to populate your 30-day series plan.
           </p>

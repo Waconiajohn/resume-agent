@@ -567,7 +567,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
         <div className="mb-10 text-center">
           <h1 className="mb-3 text-3xl font-bold text-[var(--text-strong)]">Build Your Tailored Resume</h1>
           <p className="mx-auto max-w-xl text-sm text-[var(--text-soft)]">
-            Upload your resume and target job — our AI positions you as the benchmark candidate.
+            Upload your resume and target job — we position you as the benchmark candidate.
           </p>
         </div>
 

@@ -333,8 +333,8 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
       <div className="px-4 pb-3 -mt-1">
         <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
           {card.classification === 'missing'
-            ? 'Approving lets the AI position adjacent experience to address this gap on your resume.'
-            : 'Approving lets the AI strengthen how this requirement is presented using your related experience.'}
+            ? 'Approving lets us position adjacent experience to address this gap on your resume.'
+            : 'Approving lets us strengthen how this requirement is presented using your related experience.'}
         </p>
       </div>
     </div>
