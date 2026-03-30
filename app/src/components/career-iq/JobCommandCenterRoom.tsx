@@ -448,7 +448,7 @@ export function JobCommandCenterRoom({
       </div>
 
       <GlassCard className="p-5">
-        <div className="grid gap-4 xl:grid-cols-[1.6fr,1fr]">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <div className="eyebrow-label">How this works</div>
             <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
@@ -459,25 +459,27 @@ export function JobCommandCenterRoom({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Working numbers
+          <div className="flex flex-col gap-3 xl:min-w-[360px]">
+            <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                Working numbers
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
+                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Shortlist</div>
+                </div>
+                <div>
+                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
+                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Pipeline roles</div>
+                </div>
+                <div>
+                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
+                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Due actions</div>
+                </div>
+              </div>
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-              <div>
-                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
-                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Shortlist</div>
-              </div>
-              <div>
-                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
-                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Pipeline roles</div>
-              </div>
-              <div>
-                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
-                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Due actions</div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <GlassButton variant="ghost" onClick={handleOpenShortlist}>
                 Open Shortlist
               </GlassButton>
@@ -552,27 +554,29 @@ export function JobCommandCenterRoom({
       <div style={{ display: activeTab === 'board' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
           <GlassCard className="p-5">
-            <div className="grid gap-4 lg:grid-cols-[1.4fr,1fr] lg:items-start">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="eyebrow-label">Job Board</div>
-                <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
-                  Search public roles, check how old they are, and save only the worthwhile ones.
-                </h2>
-                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                <p className="mt-1 text-[14px] font-medium leading-relaxed text-[var(--text-strong)]">
+                  Search public roles, check how old they are, and save only the worthwhile ones before you build resumes.
+                </p>
+                <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                   The first-degree-connection company-site scraper is separate in Smart Referrals. This board is the simpler public job search surface.
                 </p>
               </div>
-              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 lg:min-w-[300px]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                  Shortlist guidance
+                  Shortlist target
                 </div>
-                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-                  Try to keep the shortlist to about 5 or 6 roles. That gives you a manageable set to revisit for resumes and cover letters.
-                </p>
-                <div className="mt-3 text-[14px] font-semibold text-[var(--text-strong)]">
-                  {shortlistCount} role{shortlistCount === 1 ? '' : 's'} saved
-                </div>
-                <div className="mt-4">
+                <div className="mt-2 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[14px] font-semibold text-[var(--text-strong)]">
+                      {shortlistCount} role{shortlistCount === 1 ? '' : 's'} saved
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--text-soft)]">
+                      Aim for 5 or 6 good roles.
+                    </div>
+                  </div>
                   <GlassButton variant="ghost" onClick={handleOpenShortlist}>
                     Open Shortlist
                   </GlassButton>

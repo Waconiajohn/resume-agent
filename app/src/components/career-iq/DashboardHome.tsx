@@ -80,17 +80,17 @@ function HomeGuideCard({
 
   return (
     <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
-      <div className="p-6 sm:p-7">
+      <div className="p-5 sm:p-6">
         <div className="text-[13px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
           {guidance.eyebrow}
         </div>
-        <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-[var(--text-strong)] sm:text-[2rem]">
+        <h1 className="mt-3 max-w-3xl text-[1.75rem] font-semibold leading-tight text-[var(--text-strong)] sm:text-[1.9rem]">
           {guidance.title}
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--text-soft)] sm:text-[15px]">
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-soft)] sm:text-[15px]">
           {guidance.description}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-[13px] text-[var(--text-soft)]">
+        <div className="mt-4 flex flex-wrap gap-2 text-[12px] text-[var(--text-soft)]">
           {signalSummary.map((item) => (
             <span key={item} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 uppercase tracking-[0.08em]">
               {item}
@@ -102,7 +102,7 @@ function HomeGuideCard({
             Coach says: {guidance.coachLine}
           </p>
         )}
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(guidance.primary.room))}
@@ -122,11 +122,11 @@ function HomeGuideCard({
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-5 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.1fr_0.85fr_0.85fr]">
         <StepCard
           icon={Target}
           title="Career Profile backbone"
-          description="Set the shared story every other tool reads, then revisit it whenever your positioning gets stronger."
+          description="Sharpen the shared story every other tool reads."
           actionLabel="Review Career Profile"
           onClick={onRefineWhyMe}
           className="border-[#98b3ff]/18 bg-[#98b3ff]/[0.08]"
@@ -135,8 +135,8 @@ function HomeGuideCard({
           icon={FileText}
           title="Resume Builder"
           description={hasResumeSessions
-            ? `You have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen by company, role, and date.`
-            : 'Create a tailored resume for a target job and keep the strongest additions for future use.'}
+            ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
+            : 'Start a tailored resume and keep the best additions for future use.'}
           actionLabel={hasResumeSessions ? 'Open saved work' : 'Start a tailored resume'}
           onClick={() => onNavigateRoom?.('resume')}
           className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
@@ -144,7 +144,7 @@ function HomeGuideCard({
         <StepCard
           icon={Search}
           title="Job Search"
-          description="Track active roles, discover new ones, and keep your next moves moving in one place."
+          description="Track live roles and keep your next moves moving."
           actionLabel="Open Job Board"
           onClick={() => onNavigateRoom?.('jobs')}
           className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
@@ -170,22 +170,24 @@ function StepCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 ${className ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
+    <div className={`rounded-2xl border p-3.5 ${className ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
       <div className="flex items-center gap-2">
-        <div className="rounded-xl bg-black/20 p-2.5">
+        <div className="rounded-xl bg-black/20 p-2">
           <Icon size={16} className="text-[#98b3ff]" />
         </div>
         <div className="text-sm font-semibold text-[var(--text-strong)]">{title}</div>
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
-      <button
-        type="button"
-        onClick={onClick}
-        className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[#98b3ff] transition-colors hover:text-[#c9d7ff]"
-      >
-        {actionLabel}
-        <ArrowRight size={12} />
-      </button>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p className="text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
+        <button
+          type="button"
+          onClick={onClick}
+          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[#98b3ff] transition-colors hover:text-[#c9d7ff]"
+        >
+          {actionLabel}
+          <ArrowRight size={12} />
+        </button>
+      </div>
     </div>
   );
 }

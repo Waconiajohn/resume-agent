@@ -52,8 +52,17 @@ async function main() {
     await page.goto(`${baseUrl}/workspace?room=networking`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Smart Referrals', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Job Matches', exact: true }).click();
-    await page.getByRole('heading', { name: 'Job Matches', exact: true }).waitFor();
-    await capture(page, 'smart-referrals.png');
+    await page.getByRole('heading', { name: 'Network Matches', exact: true }).waitFor();
+    await capture(page, 'smart-referrals-network.png');
+
+    await page.getByRole('button', {
+      name: /Second visible path.*Chase strong referral bonuses separately/i,
+    }).click();
+    await page.getByText('Bonus path', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Referral Bonus', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Referral Bonus', exact: true }).click();
+    await page.getByText(/No Referral Bonus Opportunities Yet/i).waitFor();
+    await capture(page, 'smart-referrals-bonus.png');
 
     await page.goto(`${baseUrl}/workspace?room=interview`, { waitUntil: 'domcontentloaded' });
     await page.getByText('Interview workflow').first().waitFor();
