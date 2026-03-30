@@ -83,7 +83,7 @@ const jobMatchStatusSchema = z.object({
 
 const booleanSearchSchema = z.object({
   resume_text: z.string().min(1, 'resume_text is required').max(50_000),
-  target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
+  target_titles: z.array(z.string().min(1).max(200)).max(40).optional(),
 });
 
 const scrapeStartSchema = z.object({

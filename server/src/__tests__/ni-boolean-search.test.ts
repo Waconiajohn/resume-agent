@@ -82,13 +82,14 @@ describe('generateBooleanSearch', () => {
     expect(callArgs.messages[0].content).toContain(SAMPLE_RESUME.trim().slice(0, 100));
   });
 
-  it('returns a result with linkedin, indeed, google, extractedTerms, generatedAt', async () => {
+  it('returns a result with linkedin, indeed, google, recommendedTitles, extractedTerms, generatedAt', async () => {
     mockLlmSuccess();
     const { result } = await generateBooleanSearch(SAMPLE_RESUME);
 
     expect(result).toHaveProperty('linkedin');
     expect(result).toHaveProperty('indeed');
     expect(result).toHaveProperty('google');
+    expect(result).toHaveProperty('recommendedTitles');
     expect(result).toHaveProperty('extractedTerms');
     expect(result).toHaveProperty('generatedAt');
     expect(typeof result.linkedin).toBe('string');
@@ -114,11 +115,12 @@ describe('generateBooleanSearch', () => {
     expect(result.indeed).toContain('Chief Supply Chain Officer');
   });
 
-  it('linkedin string includes negative terms', async () => {
+  it('linkedin string is an OR-only title group', async () => {
     mockLlmSuccess();
     const { result } = await generateBooleanSearch(SAMPLE_RESUME);
-    expect(result.linkedin).toContain('-intern');
-    expect(result.linkedin).toContain('-entry');
+    expect(result.linkedin).toContain('"VP Operations"');
+    expect(result.linkedin).toContain(' OR ');
+    expect(result.linkedin).not.toContain(' AND ');
   });
 
   it('google string includes site: filters', async () => {
@@ -162,17 +164,17 @@ describe('generateBooleanSearch', () => {
     expect(typeof result.linkedin).toBe('string');
   });
 
-  it('caps extracted terms at defined limits (skills 15, titles 10, industries 5)', async () => {
+  it('caps extracted terms at defined limits (skills 15, titles 40, industries 5)', async () => {
     const oversized = {
       skills: Array.from({ length: 30 }, (_, i) => `Skill ${i}`),
-      titles: Array.from({ length: 20 }, (_, i) => `Title ${i}`),
+      titles: Array.from({ length: 80 }, (_, i) => `Title ${i}`),
       industries: Array.from({ length: 10 }, (_, i) => `Industry ${i}`),
     };
     mockLlm.chat.mockResolvedValue({ text: JSON.stringify(oversized), usage: { input_tokens: 0, output_tokens: 0 } });
 
     const { result } = await generateBooleanSearch(SAMPLE_RESUME);
     expect(result.extractedTerms.skills.length).toBeLessThanOrEqual(15);
-    expect(result.extractedTerms.titles.length).toBeLessThanOrEqual(10);
+    expect(result.extractedTerms.titles.length).toBeLessThanOrEqual(40);
     expect(result.extractedTerms.industries.length).toBeLessThanOrEqual(5);
   });
 
@@ -186,6 +188,14 @@ describe('generateBooleanSearch', () => {
     // Should appear once in the linkedin string — count occurrences
     const occurrences = (result.linkedin.match(/"VP Operations"/g) ?? []).length;
     expect(occurrences).toBe(1);
+  });
+
+  it('surfaces recommendedTitles for copy-and-paste search workflows', async () => {
+    mockLlmSuccess();
+    const { result } = await generateBooleanSearch(SAMPLE_RESUME, ['Chief Supply Chain Officer']);
+
+    expect(result.recommendedTitles).toContain('Chief Supply Chain Officer');
+    expect(result.recommendedTitles).toContain('VP Operations');
   });
 });
 

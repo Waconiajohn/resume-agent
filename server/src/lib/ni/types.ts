@@ -176,6 +176,7 @@ export interface BooleanSearchResult {
   linkedin: string;
   indeed: string;
   google: string;
+  recommendedTitles: string[];
   extractedTerms: {
     skills: string[];
     titles: string[];

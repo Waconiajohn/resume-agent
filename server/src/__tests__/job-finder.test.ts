@@ -12,6 +12,15 @@
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+const mockFirecrawlSearch = vi.hoisted(() => vi.fn());
+const mockFirecrawlConstructor = vi.hoisted(() =>
+  vi.fn(function MockFirecrawlApp() {
+    return {
+      search: mockFirecrawlSearch,
+    };
+  }),
+);
+
 // ─── Module mocks (hoisted before imports) ──────────────────────────────────
 
 vi.mock('../lib/supabase.js', () => ({
@@ -78,17 +87,8 @@ vi.mock('../lib/ni/career-scraper.js', () => ({
   }),
 }));
 
-vi.mock('../lib/ni/boolean-search.js', () => ({
-  generateBooleanSearch: vi.fn().mockResolvedValue({
-    id: 'bs_test_123',
-    result: {
-      linkedin: '"VP Operations" AND "supply chain"',
-      indeed: 'title:("VP Operations") "supply chain"',
-      google: '(site:linkedin.com/jobs) ("VP Operations")',
-      extractedTerms: { skills: ['supply chain'], titles: ['VP Operations'], industries: ['manufacturing'] },
-      generatedAt: '2026-03-07T00:00:00Z',
-    },
-  }),
+vi.mock('@mendable/firecrawl-js', () => ({
+  default: mockFirecrawlConstructor,
 }));
 
 vi.mock('../lib/ni/job-matches-store.js', () => ({
@@ -126,7 +126,6 @@ import { searcherTools } from '../agents/job-finder/searcher/tools.js';
 import { rankerTools } from '../agents/job-finder/ranker/tools.js';
 import { createJobFinderProductConfig } from '../agents/job-finder/product.js';
 import { llm } from '../lib/llm.js';
-import { generateBooleanSearch } from '../lib/ni/boolean-search.js';
 import { getJobMatchesByUser } from '../lib/ni/job-matches-store.js';
 import { getCompanySummary } from '../lib/ni/connections-store.js';
 import type { JobFinderSSEEvent } from '../agents/job-finder/types.js';
@@ -208,15 +207,23 @@ describe('Searcher: generate_search_queries', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.FIRECRAWL_API_KEY = 'test-firecrawl-key';
+    mockFirecrawlSearch.mockResolvedValue({
+      web: [
+        { title: 'VP Operations - Acme', url: 'https://example.com/jobs/1', description: 'Lead operations' },
+        { title: 'COO - Beta', url: 'https://example.com/jobs/2', description: 'Scale manufacturing' },
+      ],
+    });
   });
 
-  it('returns success with boolean search strings', async () => {
+  it('returns success with Firecrawl search results', async () => {
     const ctx = makeCtx();
     const result = await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
-    expect(parsed.query_id).toBe('bs_test_123');
-    expect(ctx.scratchpad.search_queries).toBeTruthy();
+    expect(parsed.jobs_found).toBe(2);
+    expect(parsed.target_titles_searched).toContain('executive');
+    expect(ctx.scratchpad.firecrawl_search_results).toHaveLength(2);
   });
 
   it('returns error for short resume text', async () => {
@@ -241,9 +248,9 @@ describe('Searcher: generate_search_queries', () => {
     const ctx = makeCtx({ shared_context: sharedContext });
     await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
 
-    expect(generateBooleanSearch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.arrayContaining(['Chief Operating Officer']),
+    expect(mockFirecrawlSearch).toHaveBeenCalledWith(
+      expect.stringContaining('Chief Operating Officer jobs'),
+      expect.objectContaining({ limit: 10 }),
     );
   });
 });

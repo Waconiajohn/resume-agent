@@ -22,6 +22,7 @@ import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicati
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { useAuth } from '@/hooks/useAuth';
 import { PipelineBoard } from '@/components/job-command-center/PipelineBoard';
 import { AddOpportunityDialog } from '@/components/job-command-center/AddOpportunityDialog';
 import { PipelineFilters } from '@/components/job-command-center/PipelineFilters';
@@ -29,7 +30,9 @@ import { RadarSection } from '@/components/job-command-center/RadarSection';
 import { WatchlistBar } from '@/components/job-command-center/WatchlistBar';
 import { WatchlistManager } from '@/components/job-command-center/WatchlistManager';
 import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
+import { BooleanSearchPanel } from '@/components/job-command-center/BooleanSearchPanel';
 import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
+import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
 import { PipelineSummary } from './PipelineSummary';
 import type { CareerIQRoom } from './Sidebar';
@@ -284,6 +287,8 @@ export function JobCommandCenterRoom({
   onNavigate,
   onNavigateRoom,
 }: JobCommandCenterRoomProps) {
+  const { session } = useAuth();
+  const { resumeText: masterResumeText, loading: loadingMasterResume } = useLatestMasterResumeText();
   const jobFinder = useJobFinder();
   const pipeline = useApplicationPipeline();
   const radar = useRadarSearch();
@@ -548,6 +553,13 @@ export function JobCommandCenterRoom({
             description="Click a company to search public jobs from the board."
           />
 
+          <BooleanSearchPanel
+            accessToken={session?.access_token ?? null}
+            resumeText={masterResumeText}
+            loadingResume={loadingMasterResume}
+            onShowAiSuggestions={() => setShowAiSuggestions(true)}
+          />
+
           <RadarSection
             jobs={radar.jobs}
             loading={radar.loading}
@@ -558,34 +570,7 @@ export function JobCommandCenterRoom({
             onBuildResume={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
           />
 
-          {!showAiSuggestions && jobFinder.status === 'idle' && jobFinder.matches.length === 0 && !jobFinder.error ? (
-            <GlassCard className="p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="eyebrow-label">Optional AI help</div>
-                  <h3 className="text-[16px] font-semibold text-[var(--text-strong)]">
-                    Want a second pass after you search the board?
-                  </h3>
-                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-                    Use AI suggestions only if you want a few extra roles surfaced against your profile. The public job board stays primary.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <GlassButton variant="ghost" onClick={() => setShowAiSuggestions(true)}>
-                    Show AI Suggestions
-                  </GlassButton>
-                  <GlassButton
-                    onClick={() => {
-                      setShowAiSuggestions(true);
-                      jobFinder.startSearch();
-                    }}
-                  >
-                    <Sparkles size={14} /> Run AI Suggestions
-                  </GlassButton>
-                </div>
-              </div>
-            </GlassCard>
-          ) : (
+          {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (
             <div className="flex flex-col gap-3">
               {jobFinder.status === 'idle' && jobFinder.matches.length === 0 && !jobFinder.error && (
                 <div className="flex justify-end">

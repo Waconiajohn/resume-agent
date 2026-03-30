@@ -156,31 +156,31 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('How this works')).toBeInTheDocument();
     expect(screen.getByText('Working numbers')).toBeInTheDocument();
     expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
-    expect(screen.getByText('Optional AI help')).toBeInTheDocument();
+    expect(screen.getByText('Search Strings')).toBeInTheDocument();
   });
 
-  it('renders the optional AI-suggestions teaser by default', () => {
+  it('renders the boolean-search generator by default', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Show AI Suggestions')).toBeInTheDocument();
-    expect(screen.getByText('Run AI Suggestions')).toBeInTheDocument();
+    expect(screen.getByText('Generate Search Strings')).toBeInTheDocument();
+    expect(screen.getAllByText('Show AI Suggestions').length).toBeGreaterThan(0);
   });
 
-  it('keeps the board focused on search first and optional AI second', () => {
+  it('keeps the board focused on search first and boolean strings second', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText(/Search public roles, check how old they are/i)).toBeInTheDocument();
-    expect(screen.getByText('Optional AI help')).toBeInTheDocument();
+    expect(screen.getByText(/Generate OR-only job-title strings from your master resume/i)).toBeInTheDocument();
   });
 
   it('reveals the full AI suggestions panel when requested', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getByText('Show AI Suggestions'));
+    fireEvent.click(screen.getAllByText('Show AI Suggestions')[0]);
     expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
   });
 
   it('does not surface the removed advanced-search controls in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.queryByText('Advanced search')).not.toBeInTheDocument();
-    expect(screen.queryByText('Search Strings')).not.toBeInTheDocument();
+    expect(screen.getByText('Search Strings')).toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
 
@@ -200,7 +200,7 @@ describe('JobCommandCenterRoom', () => {
 
   it('keeps the live AI suggestion action in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Run AI Suggestions')).toBeInTheDocument();
+    expect(screen.getAllByText('Show AI Suggestions').length).toBeGreaterThan(0);
   });
 
   it('renders application pipeline kanban board', () => {

@@ -82,10 +82,10 @@ export function buildExtractTermsSystemPrompt(): string {
 
 Return ONLY a valid JSON object with these fields:
 - skills: array of up to 15 specific technical/functional skills (e.g. "P&L management", "supply chain optimization", "SaaS")
-- titles: array of up to 10 relevant job titles the candidate could hold or target (e.g. "VP Operations", "Director Supply Chain")
+- titles: array of up to 40 relevant job titles the candidate could realistically hold or target (e.g. "VP Operations", "Director Supply Chain", "Chief Operating Officer")
 - industries: array of up to 5 industries the candidate has experience in (e.g. "manufacturing", "logistics", "retail")
 
-Be specific and professional. No generic terms like "leadership" or "communication".`;
+Be specific and professional. Prefer job-search-ready titles and adjacent seniority variants over vague labels. No generic terms like "leadership" or "communication".`;
 }
 
 /**
@@ -125,7 +125,7 @@ async function extractTermsFromResume(resumeText: string): Promise<ExtractedTerm
 
   return {
     skills: parsed.skills.filter((s): s is string => typeof s === 'string').slice(0, 15),
-    titles: parsed.titles.filter((t): t is string => typeof t === 'string').slice(0, 10),
+    titles: parsed.titles.filter((t): t is string => typeof t === 'string').slice(0, 40),
     industries: parsed.industries.filter((i): i is string => typeof i === 'string').slice(0, 5),
   };
 }
@@ -145,94 +145,34 @@ function orGroup(terms: string[]): string {
  * Build a LinkedIn boolean search string.
  * Format: (title OR title) AND (skill OR skill) AND (industry OR industry) -negative
  */
-function buildLinkedinString(
-  titles: string[],
-  skills: string[],
-  industries: string[],
-  extraTitles: string[],
-): string {
-  const allTitles = [...new Set([...extraTitles, ...titles])].slice(0, 8);
-  const topSkills = skills.slice(0, 6);
-  const topIndustries = industries.slice(0, 3);
+function normalizeTitle(title: string): string {
+  return title.trim().replace(/\s+/g, ' ');
+}
 
-  const parts: string[] = [];
-
-  if (allTitles.length > 0) {
-    parts.push(`(${orGroup(allTitles)})`);
-  }
-
-  if (topSkills.length > 0) {
-    parts.push(`(${orGroup(topSkills)})`);
-  }
-
-  if (topIndustries.length > 0) {
-    parts.push(`(${orGroup(topIndustries)})`);
-  }
-
-  const base = parts.join(' AND ');
-
-  // Common negative terms to filter noise
-  const negatives = '-intern -entry -junior -"entry level"';
-
-  return base ? `${base} ${negatives}` : negatives;
+function buildLinkedinString(titles: string[]): string {
+  const allTitles = [...new Set(titles.map(normalizeTitle).filter(Boolean))].slice(0, 40);
+  if (allTitles.length === 0) return '("executive")';
+  return `(${orGroup(allTitles)})`;
 }
 
 /**
  * Build an Indeed search string.
  * Indeed uses simpler boolean: quoted phrases with OR, plus title: prefix.
  */
-function buildIndeedString(
-  titles: string[],
-  skills: string[],
-  extraTitles: string[],
-): string {
-  const allTitles = [...new Set([...extraTitles, ...titles])].slice(0, 5);
-  const topSkills = skills.slice(0, 4);
-
-  const titlePart = allTitles.length > 0
-    ? `title:(${allTitles.map((t) => `"${t}"`).join(' OR ')})`
-    : '';
-
-  const skillPart = topSkills.length > 0
-    ? topSkills.map((s) => `"${s}"`).join(' OR ')
-    : '';
-
-  const parts = [titlePart, skillPart].filter(Boolean);
-  return parts.join(' ') || '"executive" "management"';
+function buildIndeedString(titles: string[]): string {
+  const allTitles = [...new Set(titles.map(normalizeTitle).filter(Boolean))].slice(0, 40);
+  if (allTitles.length === 0) return 'title:("executive")';
+  return `title:(${allTitles.map((title) => `"${title}"`).join(' OR ')})`;
 }
 
 /**
  * Build a Google site search string targeting job boards and LinkedIn.
  * Format: site:linkedin.com/jobs OR site:indeed.com "title" "skill"
  */
-function buildGoogleString(
-  titles: string[],
-  skills: string[],
-  industries: string[],
-  extraTitles: string[],
-): string {
-  const allTitles = [...new Set([...extraTitles, ...titles])].slice(0, 4);
-  const topSkills = skills.slice(0, 3);
-  const topIndustries = industries.slice(0, 2);
-
+function buildGoogleString(titles: string[]): string {
+  const allTitles = [...new Set(titles.map(normalizeTitle).filter(Boolean))].slice(0, 20);
   const sites = '(site:linkedin.com/jobs OR site:indeed.com OR site:glassdoor.com)';
-
-  const termParts: string[] = [];
-
-  if (allTitles.length > 0) {
-    termParts.push(`(${orGroup(allTitles)})`);
-  }
-
-  if (topSkills.length > 0) {
-    termParts.push(`(${orGroup(topSkills)})`);
-  }
-
-  if (topIndustries.length > 0) {
-    termParts.push(`(${orGroup(topIndustries)})`);
-  }
-
-  const termString = termParts.join(' AND ');
-  return termString ? `${sites} ${termString}` : sites;
+  return allTitles.length > 0 ? `${sites} (${orGroup(allTitles)})` : `${sites} ("executive")`;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -261,12 +201,13 @@ export async function generateBooleanSearch(
   const { skills, titles, industries } = extractedTerms;
 
   // Merge extracted titles with caller-supplied target titles (deduplicated)
-  const allTitles = [...new Set([...targetTitles, ...titles])];
+  const allTitles = [...new Set([...targetTitles.map(normalizeTitle), ...titles.map(normalizeTitle)].filter(Boolean))].slice(0, 40);
 
   const result: BooleanSearchResult = {
-    linkedin: buildLinkedinString(allTitles, skills, industries, targetTitles),
-    indeed: buildIndeedString(allTitles, skills, targetTitles),
-    google: buildGoogleString(allTitles, skills, industries, targetTitles),
+    linkedin: buildLinkedinString(allTitles),
+    indeed: buildIndeedString(allTitles),
+    google: buildGoogleString(allTitles),
+    recommendedTitles: allTitles,
     extractedTerms: { skills, titles, industries },
     generatedAt: new Date().toISOString(),
   };
@@ -289,4 +230,3 @@ export async function generateBooleanSearch(
 export function getBooleanSearch(id: string): BooleanSearchResult | null {
   return searchStore.get(id) ?? null;
 }
-
