@@ -498,6 +498,20 @@ const MOCK_JOB_FINDER_MATCHES = [
   },
 ] as const;
 
+const MOCK_BOOLEAN_SEARCH_RESULT = {
+  id: 'mock-boolean-search-id',
+  linkedin: '"VP Operations" OR "Chief Operating Officer" OR "COO" OR "Chief of Staff, Operations"',
+  indeed: '"VP Operations" OR "Chief Operating Officer" OR "COO" OR "Chief of Staff, Operations"',
+  google: '"VP Operations" OR "Chief Operating Officer" OR "COO" OR "Chief of Staff, Operations"',
+  recommendedTitles: ['VP Operations', 'Chief Operating Officer', 'COO', 'Chief of Staff, Operations'],
+  extractedTerms: {
+    skills: ['operating cadence', 'cross-functional leadership'],
+    titles: ['VP Operations', 'COO'],
+    industries: ['SaaS'],
+  },
+  generatedAt: new Date().toISOString(),
+} as const;
+
 const MOCK_RADAR_JOBS = [
   {
     external_id: 'radar-1',
@@ -1290,6 +1304,11 @@ async function fulfillApiRoute(
       sources_queried: ['LinkedIn', 'Indeed'],
       execution_time_ms: 420,
     }));
+    return;
+  }
+
+  if (path === '/api/ni/boolean-search/generate' && method === 'POST') {
+    await route.fulfill(buildJsonResponse(MOCK_BOOLEAN_SEARCH_RESULT));
     return;
   }
 
