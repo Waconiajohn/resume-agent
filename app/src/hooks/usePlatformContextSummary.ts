@@ -35,20 +35,32 @@ export function usePlatformContextSummary() {
 
   useEffect(() => {
     mounted.current = true;
-
-    // If already cached in this session, skip the network call
     const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) return;
 
     let cancelled = false;
-    setLoading(true);
+    const clearCachedSummary = () => {
+      sessionStorage.removeItem(CACHE_KEY);
+      if (mounted.current && !cancelled) {
+        setItems([]);
+      }
+    };
+
+    if (!cached) {
+      setLoading(true);
+    }
 
     void (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         if (!token || cancelled) {
-          if (mounted.current) setLoading(false);
+          clearCachedSummary();
+          if (mounted.current && !cancelled) setLoading(false);
+          return;
+        }
+
+        if (cached) {
+          if (mounted.current && !cancelled) setLoading(false);
           return;
         }
 
@@ -61,7 +73,11 @@ export function usePlatformContextSummary() {
           return;
         }
 
-        const data = (await res.json()) as { types?: ContextSummaryItem[] };
+        const data = (await res.json()) as { types?: ContextSummaryItem[]; feature_disabled?: boolean };
+        if (data.feature_disabled) {
+          clearCachedSummary();
+          return;
+        }
         const types = data?.types ?? [];
 
         if (!mounted.current || cancelled) return;

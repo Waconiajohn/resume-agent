@@ -66,4 +66,41 @@ describe('usePriorResult', () => {
       headers: { Authorization: 'Bearer token-123' },
     });
   });
+
+  it('clears a cached prior result when auth is missing', async () => {
+    sessionStorage.setItem(
+      'prior_result_thank-you-note_latest',
+      JSON.stringify({ report_markdown: 'cached report' }),
+    );
+    getSessionMock.mockResolvedValue({ data: { session: null } });
+
+    const { result } = renderHook(() =>
+      usePriorResult<{ report_markdown: string }>({ productSlug: 'thank-you-note' }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.priorResult).toBeNull();
+    });
+
+    expect(sessionStorage.getItem('prior_result_thank-you-note_latest')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('clears cached prior results when the product is feature-disabled', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feature_disabled: true }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() =>
+      usePriorResult<{ report_markdown: string }>({ productSlug: 'thank-you-note' }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.priorResult).toBeNull();
+    });
+
+    expect(sessionStorage.getItem('prior_result_thank-you-note_latest')).toBeNull();
+  });
 });

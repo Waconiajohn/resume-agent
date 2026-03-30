@@ -29,6 +29,13 @@ export function usePriorResult<T = Record<string, unknown>>({
   useEffect(() => {
     mounted.current = true;
 
+    const clearCachedResult = () => {
+      sessionStorage.removeItem(cacheKey);
+      if (mounted.current) {
+        setPriorResult(null);
+      }
+    };
+
     if (skip) {
       setLoading(false);
       return () => {
@@ -47,6 +54,12 @@ export function usePriorResult<T = Record<string, unknown>>({
     setPriorResult(cached);
     if (cached) {
       setLoading(false);
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted.current) return;
+        if (!session?.access_token) {
+          clearCachedResult();
+        }
+      });
       return () => {
         mounted.current = false;
       };
@@ -57,34 +70,49 @@ export function usePriorResult<T = Record<string, unknown>>({
       : `/api/${productSlug}/reports/latest`;
 
     setLoading(true);
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+    void (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token ?? '';
-        return fetch(endpoint, {
+        if (!token) {
+          if (!mounted.current) return;
+          clearCachedResult();
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
-      })
-      .then(async (response) => {
-        if (response.status === 404) return null;
-        if (!response.ok) return null;
-        const json = await response.json() as { report?: T; feature_disabled?: boolean } | null;
-        if (json && 'feature_disabled' in json) return null;
-        return json as { report: T } | null;
-      })
-      .then((data) => {
+
         if (!mounted.current) return;
-        const report = (data as { report?: T } | null)?.report ?? null;
+        if (response.status === 404 || !response.ok) {
+          clearCachedResult();
+          setLoading(false);
+          return;
+        }
+
+        const json = await response.json() as { report?: T; feature_disabled?: boolean } | null;
+        if (json && 'feature_disabled' in json) {
+          clearCachedResult();
+          setLoading(false);
+          return;
+        }
+
+        const report = (json as { report?: T } | null)?.report ?? null;
         setPriorResult(report);
         if (report) {
           sessionStorage.setItem(cacheKey, JSON.stringify(report));
+        } else {
+          sessionStorage.removeItem(cacheKey);
         }
         setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         if (mounted.current) {
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       mounted.current = false;
