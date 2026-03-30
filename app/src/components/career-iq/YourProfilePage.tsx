@@ -2,11 +2,11 @@
  * YourProfilePage
  *
  * Unified "Your Profile" page consolidating all "who you are" data:
- *   Section A — Master Resume (upload or compact summary)
- *   Section B — Why Me Story (WhyMeEngine or WhyMeStoryCard)
- *   Section C — LinkedIn Profile (headline + about)
- *   Section D — Evidence Library (aggregated read-only + manual entry)
- *   Section E — Brand & Proof Assets (bio + case studies)
+ *   Section A — Why Me Story (positioning backbone)
+ *   Section B — Master Resume (source of truth)
+ *   Section C — Brand & Benchmark Assets (bio + case studies)
+ *   Section D — LinkedIn Profile (public-facing summary)
+ *   Section E — Proof Library (aggregated read-only + manual entry)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -94,6 +94,51 @@ function SectionHeader({
   );
 }
 
+function ProfileBackboneCard() {
+  return (
+    <GlassCard className="p-5">
+      <div>
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          Profile backbone
+        </div>
+        <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+          Build the page around Why Me, your master resume, and your benchmark proof.
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
+          Those three pillars should stay in sync. LinkedIn and the proof library support them, but they should not outrank them.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="rounded-xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] p-4">
+          <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/75">
+            Why Me
+          </div>
+          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+            Set the positioning story every tool should follow.
+          </div>
+        </div>
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+            Master Resume
+          </div>
+          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+            Keep the facts, chronology, and real proof grounded.
+          </div>
+        </div>
+        <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.06] p-4">
+          <div className="text-[12px] font-medium uppercase tracking-widest text-[#b5dec2]">
+            Brand & Benchmark
+          </div>
+          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+            Turn the story into reusable assets and deeper proof.
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
 // ─── Section A — Master Resume ────────────────────────────────────────────────
 
 interface ResumeSectionProps {
@@ -161,7 +206,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Section A" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
           <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
           Loading your master resume...
@@ -174,7 +219,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
     // Empty state — drag-drop zone
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Section A" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
           Your master resume is the source of truth for every tool in the workspace. Upload it once
           and every session starts with full context.
@@ -289,7 +334,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={FileText} label="Section A" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
         <div className="flex items-center gap-2 shrink-0">
           {onNavigateResume && (
             <GlassButton variant="ghost" size="sm" onClick={onNavigateResume}>
@@ -417,10 +462,10 @@ function LinkedInSection() {
 
   return (
     <GlassCard className="p-6">
-      <SectionHeader icon={Linkedin} label="Section C" title="LinkedIn Profile" />
+      <SectionHeader icon={Linkedin} label="Section D" title="LinkedIn Profile" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        Your LinkedIn headline and About section are used by LinkedIn Studio to generate optimized
-        copy and by the AI coach to understand how you currently present yourself.
+        Your headline and About section should read like the public version of your Why Me Story.
+        LinkedIn Studio uses this as supporting context, not as a separate identity.
       </p>
 
       {loading ? (
@@ -540,7 +585,7 @@ function EvidenceLibrarySection({
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={BookOpen} label="Section D" title="Evidence Library" />
+        <SectionHeader icon={BookOpen} label="Section E" title="Proof Library" />
         <button
           type="button"
           onClick={() => setShowAddForm((v) => !v)}
@@ -553,7 +598,7 @@ function EvidenceLibrarySection({
       </div>
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
         Everything the AI knows about your accomplishments and positioning, aggregated from all
-        your profile sources. This library grows as you complete more sessions.
+        your profile sources. Use this as the supporting proof base behind your Why Me Story and benchmark assets.
       </p>
 
       {showAddForm && (
@@ -664,7 +709,7 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
       <GlassCard className="p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <SectionHeader icon={BookOpen} label="Section E" title="Brand & Proof Assets" />
+            <SectionHeader icon={BookOpen} label="Section C" title="Brand & Benchmark Assets" />
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
               This is where your short narrative assets and deeper proof stories stay aligned with
               your Why Me Story, your benchmark positioning, and your master resume.
@@ -805,18 +850,14 @@ export function YourProfilePage({
       <div>
         <h1 className="text-xl font-semibold text-[var(--text-strong)]">Your Profile</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-soft)]">
-          Everything that defines who you are professionally — in one place. Every tool in the
-          workspace draws from this page.
+          Everything that defines who you are professionally lives here. Every workspace tool should
+          be drawing from the same positioning story, the same master resume, and the same proof base.
         </p>
       </div>
 
-      {/* Section A — Master Resume */}
-      <ResumeSection
-        onGetDefaultResume={onGetDefaultResume}
-        onNavigateResume={onNavigateResume}
-      />
+      <ProfileBackboneCard />
 
-      {/* Section B — Why Me Story */}
+      {/* Section A — Why Me Story */}
       {hasStarted ? (
         // WhyMeStoryCard renders its own GlassCard
         <div>
@@ -825,9 +866,7 @@ export function YourProfilePage({
               <BookOpen size={16} className="text-[#98b3ff]" />
             </div>
             <div>
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Section B
-              </div>
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Section A</div>
               <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
                 Your Why Me Story
               </h2>
@@ -837,7 +876,7 @@ export function YourProfilePage({
         </div>
       ) : (
         <GlassCard className="p-6">
-          <SectionHeader icon={BookOpen} label="Section B" title="Your Why Me Story" />
+          <SectionHeader icon={BookOpen} label="Section A" title="Your Why Me Story" />
           <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
             Three answers that define how Resume Builder, LinkedIn, Interview Prep, and every other
             tool frames your positioning. This is the most important section on this page.
@@ -848,17 +887,23 @@ export function YourProfilePage({
         </GlassCard>
       )}
 
-      {/* Section C — LinkedIn Profile */}
+      {/* Section B — Master Resume */}
+      <ResumeSection
+        onGetDefaultResume={onGetDefaultResume}
+        onNavigateResume={onNavigateResume}
+      />
+
+      {/* Section C — Brand & Benchmark Assets */}
+      <BrandProofAssetsSection initialFocus={initialFocus} />
+
+      {/* Section D — LinkedIn Profile */}
       <LinkedInSection />
 
-      {/* Section D — Evidence Library */}
+      {/* Section E — Proof Library */}
       <EvidenceLibrarySection
         onGetDefaultResume={onGetDefaultResume}
         careerProfile={careerProfile}
       />
-
-      {/* Section E — Brand & Proof Assets */}
-      <BrandProofAssetsSection initialFocus={initialFocus} />
     </div>
   );
 }
