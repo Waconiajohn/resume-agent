@@ -190,7 +190,17 @@ describe('JobCommandCenterRoom', () => {
 
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input]) => typeof input === 'string' && (
+            input.includes('/applications')
+            || input.includes('/watchlist')
+            || input.includes('/applications/due-actions')
+          ),
+        ),
+      ).toBe(true),
+    );
     expect(
       fetchMock.mock.calls.some(
         ([input]) => typeof input === 'string' && input.includes('/job-search/scans/latest'),
@@ -207,6 +217,17 @@ describe('JobCommandCenterRoom', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Pipeline$/i));
     expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
+  });
+
+  it('opens directly into Pipeline when pipeline focus is provided', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="pipeline" />);
+    expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
+  });
+
+  it('opens directly into Shortlist when shortlist focus is provided', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="shortlist" />);
+    expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Shortlist' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('does not show synthetic pipeline counts when no real pipeline data exists', async () => {

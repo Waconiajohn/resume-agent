@@ -40,6 +40,7 @@ import type { CareerIQRoom } from './Sidebar';
 interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
+  initialFocus?: string | null;
 }
 
 // --- SmartMatches ---
@@ -286,8 +287,9 @@ const JCC_TABS: Array<{
 export function JobCommandCenterRoom({
   onNavigate,
   onNavigateRoom,
+  initialFocus = null,
 }: JobCommandCenterRoomProps) {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const { resumeText: masterResumeText, loading: loadingMasterResume } = useLatestMasterResumeText();
   const jobFinder = useJobFinder();
   const pipeline = useApplicationPipeline();
@@ -302,13 +304,46 @@ export function JobCommandCenterRoom({
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
 
-  // Load initial data on mount
   useEffect(() => {
-    pipeline.fetchApplications();
-    pipeline.fetchDueActions();
-    watchlist.fetchCompanies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (initialFocus === 'pipeline' || initialFocus === 'needs-attention') {
+      setActiveTab('pipeline');
+      return;
+    }
+    if (initialFocus === 'shortlist') {
+      setActiveTab('pipeline');
+      setStageFilter('saved');
+      return;
+    }
+    if (initialFocus === 'board' || initialFocus === 'job-board') {
+      setActiveTab('board');
+      setStageFilter('all');
+    }
+  }, [initialFocus]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!session?.access_token) {
+      pipeline.clear();
+      watchlist.clear();
+      radar.reset();
+      jobFinder.reset();
+      setShowAiSuggestions(false);
+      return;
+    }
+
+    void pipeline.refresh();
+    void watchlist.refresh();
+  }, [
+    authLoading,
+    jobFinder.reset,
+    pipeline.clear,
+    pipeline.refresh,
+    radar.reset,
+    session?.access_token,
+    watchlist.clear,
+    watchlist.refresh,
+  ]);
 
   useEffect(() => {
     if (

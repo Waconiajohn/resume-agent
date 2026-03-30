@@ -408,6 +408,16 @@ export function useApplicationPipeline() {
     await Promise.all([fetchApplications(), fetchDueActions()]);
   }, [fetchApplications, fetchDueActions]);
 
+  const clear = useCallback((): void => {
+    if (!mountedRef.current) return;
+    setState({
+      applications: [],
+      dueActions: [],
+      loading: false,
+      error: null,
+    });
+  }, []);
+
   return {
     ...state,
     fetchApplications,
@@ -417,5 +427,6 @@ export function useApplicationPipeline() {
     moveToStage,
     deleteApplication,
     refresh,
+    clear,
   };
 }

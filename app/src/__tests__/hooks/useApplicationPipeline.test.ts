@@ -68,6 +68,51 @@ describe('useApplicationPipeline', () => {
     expect(typeof result.current.moveToStage).toBe('function');
     expect(typeof result.current.deleteApplication).toBe('function');
     expect(typeof result.current.refresh).toBe('function');
+    expect(typeof result.current.clear).toBe('function');
+  });
+
+  it('clear resets applications, due actions, loading, and error', async () => {
+    const apps = [makeApplication()];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ applications: apps }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              actions: [
+                {
+                  id: 'due-1',
+                  role_title: 'VP Operations',
+                  company_name: 'Acme Corp',
+                  next_action: 'Send follow-up',
+                  next_action_due: '2026-03-25',
+                  stage: 'interviewing',
+                },
+              ],
+            }),
+        }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    await act(async () => {
+      await result.current.fetchApplications();
+      await result.current.fetchDueActions();
+    });
+
+    act(() => {
+      result.current.clear();
+    });
+
+    expect(result.current.applications).toEqual([]);
+    expect(result.current.dueActions).toEqual([]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
   });
 
   it('fetchApplications sets loading then resolves with data', async () => {

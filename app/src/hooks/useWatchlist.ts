@@ -267,6 +267,13 @@ export function useWatchlist() {
     await fetchCompanies();
   }, [fetchCompanies]);
 
+  const clear = useCallback((): void => {
+    if (!mountedRef.current) return;
+    setCompanies([]);
+    setLoading(false);
+    setError(null);
+  }, []);
+
   return {
     companies,
     loading,
@@ -276,5 +283,6 @@ export function useWatchlist() {
     updateCompany,
     removeCompany,
     refresh,
+    clear,
   };
 }

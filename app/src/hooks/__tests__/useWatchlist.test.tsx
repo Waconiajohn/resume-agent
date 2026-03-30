@@ -210,4 +210,44 @@ describe('useWatchlist', () => {
     expect(result.current.companies).toEqual([]);
     expect(result.current.error).toBeNull();
   });
+
+  it('clear resets companies, loading, and error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            companies: [
+              {
+                id: 'c-1',
+                name: 'Acme Corp',
+                industry: 'Software',
+                website: 'https://acme.test',
+                careers_url: null,
+                priority: 3,
+                source: 'manual',
+                notes: null,
+                created_at: '2026-03-01T00:00:00Z',
+                updated_at: '2026-03-02T00:00:00Z',
+              },
+            ],
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() => useWatchlist());
+
+    await act(async () => {
+      await result.current.fetchCompanies();
+    });
+
+    act(() => {
+      result.current.clear();
+    });
+
+    expect(result.current.companies).toEqual([]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
 });

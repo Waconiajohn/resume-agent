@@ -263,7 +263,11 @@ export function useRadarSearch() {
         const authHeader = await getAuthHeader();
         if (!authHeader) {
           if (mountedRef.current) {
-            setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
+            setState({
+              jobs: [],
+              loading: false,
+              error: 'Not authenticated',
+            });
           }
           return;
         }
@@ -325,10 +329,20 @@ export function useRadarSearch() {
     return job;
   }, []);
 
+  const reset = useCallback((): void => {
+    if (!mountedRef.current) return;
+    setState({
+      jobs: [],
+      loading: false,
+      error: null,
+    });
+  }, []);
+
   return {
     ...state,
     search,
     dismissJob,
     promoteJob,
+    reset,
   };
 }

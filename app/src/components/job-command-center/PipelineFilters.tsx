@@ -46,6 +46,7 @@ export function PipelineFilters({
             key={key}
             type="button"
             onClick={() => onStageFilterChange(key)}
+            aria-pressed={activeStageFilter === key}
             className={cn(
               'rounded-md px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors',
               activeStageFilter === key

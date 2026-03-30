@@ -173,6 +173,7 @@ describe('useRadarSearch — search()', () => {
     });
 
     expect(result.current.error).toBe('Not authenticated');
+    expect(result.current.jobs).toEqual([]);
   });
 
   it('sanitizes malformed search results before storing jobs', async () => {
@@ -284,5 +285,29 @@ describe('useRadarSearch — promoteJob()', () => {
 
     expect(promoted).toEqual(job);
     expect(promoted.external_id).toBe('jsearch_j1');
+  });
+});
+
+describe('useRadarSearch — reset()', () => {
+  it('clears jobs, loading, and error', async () => {
+    const jobs = [makeJob('j1')];
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeSearchResponse(jobs),
+    }) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useRadarSearch());
+
+    await act(async () => {
+      await result.current.search('CTO', 'NYC');
+    });
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.jobs).toEqual([]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
   });
 });

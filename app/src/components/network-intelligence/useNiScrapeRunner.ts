@@ -50,6 +50,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previousTokenRef = useRef<string | null>(accessToken);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current !== null) {
@@ -88,11 +89,23 @@ export function useNiScrapeRunner(accessToken: string | null) {
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   useEffect(() => {
-    if (accessToken || !running) return;
+    const previousToken = previousTokenRef.current;
+    if (previousToken === accessToken) return;
+    previousTokenRef.current = accessToken;
+
     stopPolling();
+    setScrapeLogId(null);
+    setScrapeStatus(null);
+    setResult(null);
     setRunning(false);
-    setError((current) => current ?? 'Sign in again to continue scanning.');
-  }, [accessToken, running, stopPolling]);
+
+    if (accessToken) {
+      setError(null);
+      return;
+    }
+
+    setError(previousToken ? 'Sign in again to continue scanning.' : null);
+  }, [accessToken, stopPolling]);
 
   const startScan = useCallback(async ({
     companyIds,
@@ -153,6 +166,15 @@ export function useNiScrapeRunner(accessToken: string | null) {
     }
   }, [accessToken, pollStatus, stopPolling]);
 
+  const reset = useCallback(() => {
+    stopPolling();
+    setScrapeLogId(null);
+    setScrapeStatus(null);
+    setResult(null);
+    setRunning(false);
+    setError(null);
+  }, [stopPolling]);
+
   return {
     scrapeLogId,
     scrapeStatus,
@@ -160,6 +182,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
     running,
     error,
     startScan,
+    reset,
     currentScanned: scrapeStatus?.output_summary.companies_scanned ?? 0,
   };
 }
