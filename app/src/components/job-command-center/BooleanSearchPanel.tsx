@@ -117,7 +117,7 @@ export function BooleanSearchPanel({
         </GlassButton>
         {onShowAiSuggestions && (
           <GlassButton variant="ghost" onClick={onShowAiSuggestions}>
-            Show AI Suggestions
+            Show More Suggestions
           </GlassButton>
         )}
       </div>

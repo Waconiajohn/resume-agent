@@ -71,7 +71,7 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle size={18} className="text-red-400/70" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions Error</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Suggestion Search Error</h3>
         </div>
         <p className="text-[12px] text-red-400/60 mb-4">{error}</p>
         <GlassButton onClick={onReset} className="w-full">
@@ -116,11 +116,11 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#f0d99f]" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review AI Suggestions</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review More Suggestions</h3>
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">Action required</span>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
-          The AI pass is finished. Save the strong suggestions to your shortlist if they are worth working next.
+          The suggestion pass is finished. Save the strong ones to your shortlist if they are worth working next.
         </p>
         <div className="flex gap-2">
           <GlassButton
@@ -144,13 +144,13 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">More Role Ideas</h3>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
-          Optional: let AI surface a few extra roles that look strong against your profile, then decide whether they belong in your shortlist.
+          Optional: surface a few extra roles that look strong against your profile, then decide whether they belong in your shortlist.
         </p>
         <GlassButton onClick={onRunFinder} className="w-full">
-          <Sparkles size={14} /> Get AI Suggestions
+          <Sparkles size={14} /> Get More Suggestions
         </GlassButton>
       </GlassCard>
     );
@@ -160,7 +160,7 @@ function SmartMatches({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Star size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">More Role Ideas</h3>
         <span className="ml-auto text-[13px] text-[var(--text-soft)]">{matches.length} suggestions</span>
         <button
           type="button"
@@ -612,7 +612,7 @@ export function JobCommandCenterRoom({
               {jobFinder.status === 'idle' && jobFinder.matches.length === 0 && !jobFinder.error && (
                 <div className="flex justify-end">
                   <GlassButton variant="ghost" size="sm" onClick={() => setShowAiSuggestions(false)}>
-                    Hide AI Suggestions
+                    Hide Suggestions
                   </GlassButton>
                 </div>
               )}

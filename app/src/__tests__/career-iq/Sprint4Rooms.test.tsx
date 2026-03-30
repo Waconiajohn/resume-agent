@@ -164,7 +164,7 @@ describe('JobCommandCenterRoom', () => {
   it('renders the boolean-search generator by default', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText('Generate Search Strings')).toBeInTheDocument();
-    expect(screen.getAllByText('Show AI Suggestions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Show More Suggestions').length).toBeGreaterThan(0);
   });
 
   it('keeps the board focused on search first and boolean strings second', () => {
@@ -173,10 +173,10 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText(/Generate OR-only job-title strings from your master resume/i)).toBeInTheDocument();
   });
 
-  it('reveals the full AI suggestions panel when requested', () => {
+  it('reveals the full extra-suggestions panel when requested', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(screen.getAllByText('Show AI Suggestions')[0]);
-    expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('Show More Suggestions')[0]);
+    expect(screen.getByText('More Role Ideas')).toBeInTheDocument();
   });
 
   it('does not surface the removed advanced-search controls in the board', () => {
@@ -210,9 +210,9 @@ describe('JobCommandCenterRoom', () => {
     ).toBe(false);
   });
 
-  it('keeps the live AI suggestion action in the board', () => {
+  it('keeps the live extra-suggestions action in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getAllByText('Show AI Suggestions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Show More Suggestions').length).toBeGreaterThan(0);
   });
 
   it('renders application pipeline kanban board', () => {

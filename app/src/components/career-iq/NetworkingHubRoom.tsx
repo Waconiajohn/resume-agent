@@ -409,7 +409,7 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
   );
 }
 
-// --- GeneratedMessages (shows last AI-generated outreach sequence) ---
+// --- GeneratedMessages (shows last generated outreach sequence) ---
 
 interface GeneratedMessagesProps {
   report: string | null;
@@ -652,7 +652,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
   );
 }
 
-// --- Outreach Generator (AI-powered) ---
+// --- Outreach Generator ---
 
 interface OutreachGeneratorProps {
   prefill?: OutreachPrefill | null;
@@ -758,7 +758,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Outreach Generator</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Outreach Generator</h3>
         {outreach.status !== 'idle' && outreach.status !== 'connecting' && (
           <button
             type="button"
@@ -770,7 +770,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
         )}
       </div>
       <p className="text-[12px] text-[var(--text-soft)] mb-4">
-        Generate a personalized LinkedIn outreach sequence for any target contact. Powered by your
+        Generate a personalized LinkedIn outreach sequence for any target contact. Built from your
         resume and positioning.
       </p>
 
@@ -1123,7 +1123,7 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
         />
       )}
 
-      {/* AI Outreach Generator — full width */}
+      {/* Outreach Generator — full width */}
       <div id="outreach-generator">
         <OutreachGenerator
           prefill={outreachPrefill}

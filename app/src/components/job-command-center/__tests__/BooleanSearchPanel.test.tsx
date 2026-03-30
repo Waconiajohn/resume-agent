@@ -118,7 +118,7 @@ describe('BooleanSearchPanel', () => {
     });
   });
 
-  it('shows the optional AI button when requested', () => {
+  it('shows the optional extra-suggestions button when requested', () => {
     const onShowAiSuggestions = vi.fn();
     render(
       <BooleanSearchPanel
@@ -129,7 +129,7 @@ describe('BooleanSearchPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Show AI Suggestions'));
+    fireEvent.click(screen.getByText('Show More Suggestions'));
 
     expect(onShowAiSuggestions).toHaveBeenCalledOnce();
   });

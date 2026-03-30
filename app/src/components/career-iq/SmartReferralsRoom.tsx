@@ -33,7 +33,7 @@ const TABS: TabDef[] = [
   { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
   { id: 'bonus-search', label: 'Bonus Search', icon: Coins, description: 'Search high-referral-bonus companies even without a connection' },
   { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
-  { id: 'contacts', label: 'Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and AI outreach' },
+  { id: 'contacts', label: 'Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and outreach drafts' },
 ];
 
 const TAB_MAP = Object.fromEntries(TABS.map((tab) => [tab.id, tab])) as Record<SmartReferralsTab, TabDef>;
