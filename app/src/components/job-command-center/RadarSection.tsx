@@ -16,6 +16,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import { ReferralBadge, getBestBonusDisplay } from '@/components/job-command-center/ReferralBadge';
 import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
+import { formatJobAgeLabel } from './job-age';
 
 interface RadarSectionProps {
   jobs: RadarJob[];
@@ -34,22 +35,6 @@ function formatSalary(min: number | null, max: number | null): string | null {
   if (min != null) return `${fmt(min)}+`;
   if (max != null) return `Up to ${fmt(max)}`;
   return null;
-}
-
-function formatPostedDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
 }
 
 function NetworkBadge({ count }: { count: number }) {
@@ -117,11 +102,15 @@ export function RadarSection({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Radar Search</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Job Board</h3>
         {jobs.length > 0 && (
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">{jobs.length} results</span>
         )}
       </div>
+
+      <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
+        Search public jobs, check how old each role is, and save the best 5 or 6 to your shortlist before you start building resumes.
+      </p>
 
       {/* Search bar */}
       <div className="flex gap-2 mb-3">
@@ -206,7 +195,7 @@ export function RadarSection({
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
-            Search for jobs to see results here. Enter a title and location above.
+            Search public jobs here. You can start with a title, a keyword, or click a target company above.
           </p>
         </div>
       )}
@@ -216,6 +205,7 @@ export function RadarSection({
         <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
           {jobs.map((job) => {
             const salary = formatSalary(job.salary_min, job.salary_max);
+            const ageLabel = formatJobAgeLabel(job.posted_date);
             return (
               <div
                 key={job.external_id}
@@ -256,7 +246,11 @@ export function RadarSection({
                     </div>
 
                     <div className="flex items-center gap-2 mt-1 text-[13px] text-[var(--text-soft)] flex-wrap">
-                      <span>{formatPostedDate(job.posted_date)}</span>
+                      {ageLabel && (
+                        <span className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
+                          {ageLabel}
+                        </span>
+                      )}
                       {job.source && (
                         <>
                           <span className="text-[var(--text-soft)]">·</span>
@@ -304,7 +298,7 @@ export function RadarSection({
                       className="flex items-center gap-1 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-2.5 py-1.5 text-[13px] text-[#b5dec2]/60 hover:text-[#b5dec2]/90 hover:bg-[#b5dec2]/[0.08] transition-colors"
                     >
                       <Plus size={11} />
-                      Promote
+                      Save
                     </button>
                     <button
                       type="button"

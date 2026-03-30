@@ -151,30 +151,27 @@ describe('JobCommandCenterRoom', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
   });
 
-  it('renders smart matches section', () => {
+  it('renders the simplified job board surface', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Job workflow')).toBeInTheDocument();
-    expect(screen.getByText('Current focus')).toBeInTheDocument();
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Smart Matches')).toBeInTheDocument();
+    expect(screen.getByText('How this works')).toBeInTheDocument();
+    expect(screen.getByText('Working numbers')).toBeInTheDocument();
+    expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
+    expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
   });
 
-  it('renders "Run Job Finder" button when no matches exist', () => {
+  it('renders "Get AI Suggestions" button when no matches exist', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
+    expect(screen.getByText('Get AI Suggestions')).toBeInTheDocument();
   });
 
-  it('keeps Discover focused on radar and smart matches', () => {
+  it('keeps the board focused on search plus AI suggestions', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Radar Search')).toBeInTheDocument();
-    expect(screen.getByText('Smart Matches')).toBeInTheDocument();
+    expect(screen.getByText(/Search public roles, check how old they are/i)).toBeInTheDocument();
+    expect(screen.getByText('AI Suggestions')).toBeInTheDocument();
   });
 
-  it('does not surface the removed advanced-search controls in Discover', () => {
+  it('does not surface the removed advanced-search controls in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
     expect(screen.queryByText('Advanced search')).not.toBeInTheDocument();
     expect(screen.queryByText('Search Strings')).not.toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
@@ -194,10 +191,9 @@ describe('JobCommandCenterRoom', () => {
     ).toBe(false);
   });
 
-  it('keeps the live job-finder action in Discover', () => {
+  it('keeps the live AI suggestion action in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Discover$/i));
-    expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
+    expect(screen.getByText('Get AI Suggestions')).toBeInTheDocument();
   });
 
   it('renders application pipeline kanban board', () => {
@@ -213,7 +209,7 @@ describe('JobCommandCenterRoom', () => {
     await waitFor(() => expect(screen.getByText('0 active')).toBeInTheDocument());
     expect(screen.queryByText('8 active')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/No active applications yet\. Save strong roles from Discover/i),
+      screen.getByText(/No active applications yet\. Save strong roles from the Job Board/i),
     ).toBeInTheDocument();
   });
 
@@ -221,21 +217,23 @@ describe('JobCommandCenterRoom', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Pipeline$/i));
     // Use getAllByText because stage names appear in multiple places (kanban + PipelineSummary)
-    expect(screen.getAllByText('Saved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Shortlist').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Offer').length).toBeGreaterThan(0);
   });
 
-  it('renders the Today section', () => {
+  it('renders the pipeline attention section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(getJobTabButton(/^Today$/i)).toBeInTheDocument();
-    expect(screen.getByText('Daily Ops')).toBeInTheDocument();
+    expect(getJobTabButton(/^Pipeline$/i)).toBeInTheDocument();
+    fireEvent.click(getJobTabButton(/^Pipeline$/i));
+    expect(screen.getByText('Needs Attention')).toBeInTheDocument();
   });
 
-  it('keeps Today focused on daily ops instead of a second tracker workflow', () => {
+  it('keeps pipeline attention focused on active work instead of a second discovery workflow', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Daily Ops')).toBeInTheDocument();
+    fireEvent.click(getJobTabButton(/^Pipeline$/i));
+    expect(screen.getByText('Needs Attention')).toBeInTheDocument();
     expect(screen.queryByText('Application Tracker')).not.toBeInTheDocument();
     expect(screen.queryByText('Top Matches')).not.toBeInTheDocument();
   });

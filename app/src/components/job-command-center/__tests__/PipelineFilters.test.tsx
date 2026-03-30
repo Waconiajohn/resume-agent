@@ -61,7 +61,7 @@ describe('PipelineFilters — search input', () => {
 describe('PipelineFilters — stage filter pills', () => {
   it('renders all expected stage filter pills', () => {
     renderFilters();
-    const expectedLabels = ['All', 'Saved', 'Researching', 'Applied', 'Screening', 'Interviewing', 'Offer'];
+    const expectedLabels = ['All', 'Shortlist', 'Researching', 'Applied', 'Screening', 'Interviewing', 'Offer'];
     for (const label of expectedLabels) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }

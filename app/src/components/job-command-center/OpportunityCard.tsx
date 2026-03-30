@@ -7,7 +7,7 @@ import { ScoreBadge } from './ScoreBadge';
 import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const ALL_STAGES: { key: PipelineStage; label: string }[] = [
-  { key: 'saved', label: 'Saved' },
+  { key: 'saved', label: 'Shortlist' },
   { key: 'researching', label: 'Researching' },
   { key: 'applied', label: 'Applied' },
   { key: 'screening', label: 'Screening' },

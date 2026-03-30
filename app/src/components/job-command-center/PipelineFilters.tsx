@@ -4,7 +4,7 @@ import type { PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const FILTER_STAGES: { key: PipelineStage | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'saved', label: 'Saved' },
+  { key: 'saved', label: 'Shortlist' },
   { key: 'researching', label: 'Researching' },
   { key: 'applied', label: 'Applied' },
   { key: 'screening', label: 'Screening' },

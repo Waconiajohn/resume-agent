@@ -141,7 +141,7 @@ describe('RadarSection — job result cards', () => {
   it('renders a Promote button for each job', () => {
     const jobs = [makeJob('j1'), makeJob('j2')];
     render(<RadarSection {...defaultProps({ jobs })} />);
-    const promoteButtons = screen.getAllByRole('button', { name: /promote/i });
+    const promoteButtons = screen.getAllByRole('button', { name: /^save$/i });
     expect(promoteButtons).toHaveLength(2);
   });
 
@@ -173,7 +173,7 @@ describe('RadarSection — empty state', () => {
   it('shows the empty state message when no jobs and not loading', () => {
     render(<RadarSection {...defaultProps()} />);
     expect(
-      screen.getByText(/search for jobs to see results here/i),
+      screen.getByText(/search public jobs here/i),
     ).toBeInTheDocument();
   });
 });
@@ -184,7 +184,7 @@ describe('RadarSection — button callbacks', () => {
     const job = makeJob('j1');
     render(<RadarSection {...defaultProps({ jobs: [job], onPromote })} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /promote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect(onPromote).toHaveBeenCalledOnce();
     expect(onPromote).toHaveBeenCalledWith(job);

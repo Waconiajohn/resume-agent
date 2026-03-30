@@ -5,6 +5,8 @@ import type { DailyOpsData } from '@/hooks/useDailyOps';
 
 interface DailyOpsSectionProps {
   data: DailyOpsData;
+  title?: string;
+  subtitle?: string;
 }
 
 function urgencyClass(dueDateStr: string): string {
@@ -19,6 +21,8 @@ function urgencyClass(dueDateStr: string): string {
 
 export function DailyOpsSection({
   data,
+  title = 'Daily Ops',
+  subtitle,
 }: DailyOpsSectionProps) {
   const { dueActions, staleApplications, activeCount, interviewCount, offerCount } =
     data;
@@ -27,8 +31,12 @@ export function DailyOpsSection({
     <GlassCard className="p-6 space-y-6">
       <div className="flex items-center gap-2">
         <Clock size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Daily Ops</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">{title}</h3>
       </div>
+
+      {subtitle && (
+        <p className="-mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">{subtitle}</p>
+      )}
 
       <div className="grid gap-3 md:grid-cols-4">
         <StatMetric label="Active" value={activeCount} />

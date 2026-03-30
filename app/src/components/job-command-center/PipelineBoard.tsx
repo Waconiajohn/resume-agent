@@ -12,7 +12,7 @@ import { OpportunityCard } from './OpportunityCard';
 import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
-  { key: 'saved', label: 'Saved', color: 'text-[var(--text-soft)]' },
+  { key: 'saved', label: 'Shortlist', color: 'text-[var(--text-soft)]' },
   { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
   { key: 'applied', label: 'Applied', color: 'text-[#f0d99f]' },
   { key: 'screening', label: 'Screening', color: 'text-[#f0d99f]' },

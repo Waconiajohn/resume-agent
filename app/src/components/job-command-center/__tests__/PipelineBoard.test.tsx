@@ -77,7 +77,7 @@ describe('PipelineBoard — column rendering', () => {
       />,
     );
     // Labels use CSS `uppercase` class — DOM text is the raw prop value (title-case)
-    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.getByText('Shortlist')).toBeInTheDocument();
     expect(screen.getByText('Researching')).toBeInTheDocument();
     expect(screen.getByText('Applied')).toBeInTheDocument();
     expect(screen.getByText('Screening')).toBeInTheDocument();

@@ -3,11 +3,11 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const STAGES = ['Discovered', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
+const STAGES = ['Shortlist', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
 
 const STAGE_DB_MAP: Record<string, string> = {
-  saved: 'Discovered',
-  discovered: 'Discovered',
+  saved: 'Shortlist',
+  discovered: 'Shortlist',
   applied: 'Applied',
   phone_screen: 'Interviewing',
   interviewing: 'Interviewing',
@@ -19,7 +19,7 @@ const STAGE_DB_MAP: Record<string, string> = {
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  Discovered: 'bg-[var(--line-strong)]',
+  Shortlist: 'bg-[var(--line-strong)]',
   Applied: 'bg-[#98b3ff]/50',
   Interviewing: 'bg-[#f0d99f]/50',
   Offer: 'bg-[#b5dec2]/50',
@@ -116,7 +116,7 @@ export function PipelineSummary() {
 
       {!loading && totalActive === 0 && (
         <p className="mb-3 text-[12px] text-[var(--text-soft)]">
-          No active applications yet. Save strong roles from Discover to start building the pipeline.
+          No active applications yet. Save strong roles from the Job Board to start building the pipeline.
         </p>
       )}
 

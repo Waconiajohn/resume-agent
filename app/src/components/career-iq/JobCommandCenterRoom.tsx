@@ -2,11 +2,10 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
   Search,
+  Star,
   MapPin,
   Building2,
   DollarSign,
-  Star,
-  FileText,
   Loader2,
   AlertCircle,
   RotateCcw,
@@ -14,7 +13,6 @@ import {
   CheckCircle2,
   XCircle,
   Briefcase,
-  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
@@ -31,6 +29,7 @@ import { RadarSection } from '@/components/job-command-center/RadarSection';
 import { WatchlistBar } from '@/components/job-command-center/WatchlistBar';
 import { WatchlistManager } from '@/components/job-command-center/WatchlistManager';
 import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
+import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
 
 import { PipelineSummary } from './PipelineSummary';
 import type { CareerIQRoom } from './Sidebar';
@@ -68,7 +67,7 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle size={18} className="text-red-400/70" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Job Finder Error</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions Error</h3>
         </div>
         <p className="text-[12px] text-red-400/60 mb-4">{error}</p>
         <GlassButton onClick={onReset} className="w-full">
@@ -84,7 +83,7 @@ function SmartMatches({
         <div className="flex items-center gap-2 mb-4">
           <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
-            {status === 'connecting' ? 'Connecting...' : 'Finding Matches'}
+            {status === 'connecting' ? 'Connecting...' : 'Finding Suggestions'}
           </h3>
         </div>
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
@@ -113,18 +112,18 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#f0d99f]" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review Matches</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review AI Suggestions</h3>
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">Action required</span>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
-          The Job Finder has finished. Save these matches if they are worth working from Today and Pipeline.
+          The AI pass is finished. Save the strong suggestions to your shortlist if they are worth working next.
         </p>
         <div className="flex gap-2">
           <GlassButton
             onClick={() => onRespondGate({ approved: true })}
             className="flex-1"
           >
-            <CheckCircle2 size={14} className="text-[#b5dec2]" /> Save Matches
+            <CheckCircle2 size={14} className="text-[#b5dec2]" /> Save Suggestions
           </GlassButton>
           <GlassButton
             onClick={() => onRespondGate({ approved: false })}
@@ -141,14 +140,13 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Smart Matches</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions</h3>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
-          AI-curated roles matched to your Career Profile. Run the Job Finder to discover your best
-          opportunities.
+          Optional: let AI surface a few extra roles that look strong against your profile, then decide whether they belong in your shortlist.
         </p>
         <GlassButton onClick={onRunFinder} className="w-full">
-          <Sparkles size={14} /> Run Job Finder
+          <Sparkles size={14} /> Get AI Suggestions
         </GlassButton>
       </GlassCard>
     );
@@ -158,8 +156,8 @@ function SmartMatches({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Star size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Smart Matches</h3>
-        <span className="ml-auto text-[13px] text-[var(--text-soft)]">{matches.length} roles found</span>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">AI Suggestions</h3>
+        <span className="ml-auto text-[13px] text-[var(--text-soft)]">{matches.length} suggestions</span>
         <button
           type="button"
           onClick={onReset}
@@ -233,7 +231,7 @@ function SmartMatches({
                 </div>
                 {(job.posted_date || job.work_type) && (
                   <div className="flex items-center gap-2 mt-1 text-[13px] text-[var(--text-soft)]">
-                    {job.posted_date && <span>{job.posted_date}</span>}
+                    {job.posted_date && <span>{formatJobAgeLabel(job.posted_date) ?? job.posted_date}</span>}
                     {job.posted_date && job.work_type && <span>·</span>}
                     {job.work_type && <span className="capitalize">{job.work_type}</span>}
                   </div>
@@ -241,6 +239,9 @@ function SmartMatches({
                 <div className="mt-2 text-[12px] text-[#98b3ff]/50 italic leading-relaxed">
                   <Sparkles size={10} className="inline mr-1 -mt-0.5" />
                   {job.why_match}
+                </div>
+                <div className="mt-2 text-[12px] text-[var(--text-soft)]">
+                  Save the worthwhile ones to your shortlist, then come back to build resumes for them.
                 </div>
               </div>
 
@@ -251,8 +252,7 @@ function SmartMatches({
                   onClick={() => onNavigate(RESUME_BUILDER_SESSION_ROUTE)}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
-                  <FileText size={11} />
-                  Resume + Letter
+                  Build Resume
                 </button>
               </div>
             </div>
@@ -267,61 +267,16 @@ function SmartMatches({
 
 // --- Tab types ---
 
-type JCCTab = 'pipeline' | 'radar' | 'daily-ops';
+type JCCTab = 'board' | 'pipeline';
 
-type JCCStageConfig = {
+const JCC_TABS: Array<{
+  id: JCCTab;
   label: string;
   icon: React.ComponentType<{ size: number; className?: string }>;
-  workflowLabel: string;
-  focusTitle: string;
-  focusSummary: string;
-  next: {
-    tab: JCCTab;
-    label: string;
-    description: string;
-  };
-};
-
-const JCC_STAGE_CONFIG: Record<JCCTab, JCCStageConfig> = {
-  'daily-ops': {
-    label: 'Today',
-    icon: Clock,
-    workflowLabel: 'Today',
-    focusTitle: 'Work the active list first',
-    focusSummary: 'Use Today for follow-ups, urgent actions, and the small set of roles that actually need your attention right now.',
-    next: {
-      tab: 'radar',
-      label: 'Discover',
-      description: 'Open Discover when you want fresh roles or search support instead of more follow-up work.',
-    },
-  },
-  radar: {
-    label: 'Discover',
-    icon: Search,
-    workflowLabel: 'Discover',
-    focusTitle: 'Find new roles worth working',
-    focusSummary: 'Use Radar and Smart Matches when you need net-new options worth promoting into the pipeline.',
-    next: {
-      tab: 'pipeline',
-      label: 'Pipeline',
-      description: 'Move the strong roles into Pipeline once they are worth tracking and advancing.',
-    },
-  },
-  pipeline: {
-    label: 'Pipeline',
-    icon: Briefcase,
-    workflowLabel: 'Pipeline',
-    focusTitle: 'Review the full application portfolio',
-    focusSummary: 'Use Pipeline when you want the complete board, stage movement, and a broader read on what is moving or getting stuck.',
-    next: {
-      tab: 'daily-ops',
-      label: 'Back to Today',
-      description: 'Return to Today when you are ready to work the next concrete actions on the active list.',
-    },
-  },
-};
-
-const JCC_WORKFLOW_ORDER: JCCTab[] = ['daily-ops', 'radar', 'pipeline'];
+}> = [
+  { id: 'board', label: 'Job Board', icon: Search },
+  { id: 'pipeline', label: 'Pipeline', icon: Briefcase },
+];
 
 // --- Main component ---
 
@@ -335,13 +290,11 @@ export function JobCommandCenterRoom({
   const watchlist = useWatchlist();
   const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, pipeline.loading);
 
-  const [activeTab, setActiveTab] = useState<JCCTab>('daily-ops');
+  const [activeTab, setActiveTab] = useState<JCCTab>('board');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
-  const activeStage = JCC_STAGE_CONFIG[activeTab];
-  const ActiveStageIcon = activeStage.icon;
 
   // Load initial data on mount
   useEffect(() => {
@@ -419,90 +372,76 @@ export function JobCommandCenterRoom({
     return apps;
   }, [pipeline.applications, stageFilter, searchText]);
 
+  const shortlistCount = useMemo(
+    () => pipeline.applications.filter((application) => application.stage === 'saved').length,
+    [pipeline.applications],
+  );
+
+  const dueCount = dailyOps.dueActions.length;
+
+  const handleOpenShortlist = useCallback(() => {
+    setStageFilter('saved');
+    setActiveTab('pipeline');
+  }, []);
+
   return (
     <div className="room-shell">
       <div className="room-header">
         <div className="room-header-copy">
           <div className="eyebrow-label">Job Search</div>
-          <h1 className="room-title">Run the search from one working surface</h1>
+          <h1 className="room-title">One job board, one shortlist, one pipeline</h1>
           <p className="room-subtitle">
-            Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
+            Search public jobs here, save the best few to your shortlist, and work the real opportunities in Pipeline. The first-degree-connection company scans stay separate in Smart Referrals.
           </p>
         </div>
       </div>
 
       <GlassCard className="p-5">
-        <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.6fr,1fr]">
           <div>
-            <div className="eyebrow-label">Job workflow</div>
+            <div className="eyebrow-label">How this works</div>
             <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
-              Stay on daily work, open discovery when you need new options, and use the pipeline for the full board.
+              Use the board to find roles, keep a tight shortlist, and move only real opportunities into the pipeline.
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              This room works best when Today stays the home base, Discover stays focused on new opportunities, and Pipeline stays focused on stage movement and full-list review.
+              This room is no longer trying to be four different search systems. The job board is for finding roles. The pipeline is for tracking and moving them once they are worth serious work.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {JCC_WORKFLOW_ORDER.map((tab, index) => {
-                const stage = JCC_STAGE_CONFIG[tab];
-                return (
-                  <span
-                    key={tab}
-                    className={cn(
-                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
-                      activeTab === tab
-                        ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.08] text-[#98b3ff]'
-                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
-                    )}
-                  >
-                    <span className="tabular-nums opacity-80">{index + 1}</span>
-                    {stage.workflowLabel}
-                  </span>
-                );
-              })}
-            </div>
           </div>
 
           <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Current focus
+              Working numbers
             </div>
-            <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
-              <ActiveStageIcon size={15} className="text-[#98b3ff]" />
-              {activeStage.focusTitle}
-            </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              {activeStage.focusSummary}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3 text-[12px] text-[var(--text-soft)]">
-              <span>Watchlist: <strong className="text-[var(--text-muted)]">{watchlist.companies.length}</strong></span>
-              <span>Pipeline: <strong className="text-[var(--text-muted)]">{pipeline.applications.length}</strong></span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Next best move
-            </div>
-            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
-              {activeStage.next.label}
-            </div>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              {activeStage.next.description}
-            </p>
-            {activeTab !== activeStage.next.tab && (
-              <div className="mt-4">
-                <GlassButton variant="ghost" onClick={() => setActiveTab(activeStage.next.tab)}>
-                  {activeStage.next.label}
-                </GlassButton>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <div>
+                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
+                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Shortlist</div>
               </div>
-            )}
+              <div>
+                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
+                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Pipeline roles</div>
+              </div>
+              <div>
+                <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
+                <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Due actions</div>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <GlassButton variant="ghost" onClick={handleOpenShortlist}>
+                Open Shortlist
+              </GlassButton>
+              {activeTab !== 'board' && (
+                <GlassButton variant="ghost" onClick={() => setActiveTab('board')}>
+                  Back to Job Board
+                </GlassButton>
+              )}
+            </div>
           </div>
         </div>
       </GlassCard>
 
       <div className="rail-tabs">
-        {JCC_WORKFLOW_ORDER.map((id) => {
-          const { label, icon: Icon } = JCC_STAGE_CONFIG[id];
+        {JCC_TABS.map(({ id, label, icon: Icon }) => {
           return (
           <button
             key={id}
@@ -521,10 +460,10 @@ export function JobCommandCenterRoom({
       {/* Pipeline tab — display:none preserves state */}
       <div style={{ display: activeTab === 'pipeline' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
-          <WatchlistBar
-            companies={watchlist.companies}
-            onSearchCompany={handleSearchCompany}
-            onManage={() => setShowWatchlistManager(true)}
+          <DailyOpsSection
+            data={dailyOps}
+            title="Needs Attention"
+            subtitle="Work follow-ups, stale opportunities, and anything else that already belongs inside your live pipeline."
           />
 
           <PipelineFilters
@@ -557,13 +496,44 @@ export function JobCommandCenterRoom({
         </div>
       </div>
 
-      {/* Radar tab — display:none preserves state */}
-      <div style={{ display: activeTab === 'radar' ? undefined : 'none' }}>
+      {/* Job Board tab — display:none preserves state */}
+      <div style={{ display: activeTab === 'board' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
+          <GlassCard className="p-5">
+            <div className="grid gap-4 lg:grid-cols-[1.4fr,1fr] lg:items-start">
+              <div>
+                <div className="eyebrow-label">Job Board</div>
+                <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
+                  Search public roles, check how old they are, and save only the worthwhile ones.
+                </h2>
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                  The first-degree-connection company-site scraper is separate in Smart Referrals. This board is the simpler public job search surface.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                  Shortlist guidance
+                </div>
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                  Try to keep the shortlist to about 5 or 6 roles. That gives you a manageable set to revisit for resumes and cover letters.
+                </p>
+                <div className="mt-3 text-[14px] font-semibold text-[var(--text-strong)]">
+                  {shortlistCount} role{shortlistCount === 1 ? '' : 's'} saved
+                </div>
+                <div className="mt-4">
+                  <GlassButton variant="ghost" onClick={handleOpenShortlist}>
+                    Open Shortlist
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
           <WatchlistBar
             companies={watchlist.companies}
             onSearchCompany={handleSearchCompany}
             onManage={() => setShowWatchlistManager(true)}
+            description="Click a company to search public jobs from the board."
           />
 
           <RadarSection
@@ -586,13 +556,6 @@ export function JobCommandCenterRoom({
             onRespondGate={jobFinder.respondToGate}
             onReset={jobFinder.reset}
           />
-        </div>
-      </div>
-
-      {/* Daily Ops tab — display:none preserves state */}
-      <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
-        <div className="flex flex-col gap-6">
-          <DailyOpsSection data={dailyOps} />
         </div>
       </div>
 
