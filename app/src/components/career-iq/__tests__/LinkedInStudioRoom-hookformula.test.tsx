@@ -177,6 +177,11 @@ function makeSignals(overrides: Partial<WhyMeSignals> = {}): WhyMeSignals {
   };
 }
 
+function renderWriteTab(signals: WhyMeSignals = makeSignals()) {
+  render(<LinkedInStudioRoom signals={signals} />);
+  fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
+}
+
 /** Put the content hook into post_review state with the given hook fields. */
 function setPostReviewState(overrides: {
   hookScore?: number | null;
@@ -240,13 +245,13 @@ afterEach(() => {
 describe('LinkedInStudioRoom — hook score badge visibility', () => {
   it('renders the hook score badge when hookScore is available in post_review', () => {
     setPostReviewState({ hookScore: 75 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.getByText('Hook 75')).toBeInTheDocument();
   });
 
   it('does not render a hook score badge when hookScore is null', () => {
     setPostReviewState({ hookScore: null });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.queryByText(/Hook \d+/i)).not.toBeInTheDocument();
   });
 
@@ -258,7 +263,7 @@ describe('LinkedInStudioRoom — hook score badge visibility', () => {
 
   it('renders the hook score badge alongside authenticity and engagement scores', () => {
     setPostReviewState({ hookScore: 82 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.getByText('Hook 82')).toBeInTheDocument();
     expect(screen.getByText('Auth 85')).toBeInTheDocument();
     expect(screen.getByText('Engage 78')).toBeInTheDocument();
@@ -278,28 +283,28 @@ describe('LinkedInStudioRoom — hook score badge color coding', () => {
 
   it('hook score badge has green class when score is 60 (boundary)', () => {
     setPostReviewState({ hookScore: 60 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     const badge = screen.getByText('Hook 60');
     expect(badge.className).toContain('text-[#b5dec2]');
   });
 
   it('hook score badge has green class when score is above 60', () => {
     setPostReviewState({ hookScore: 85 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     const badge = screen.getByText('Hook 85');
     expect(badge.className).toContain('text-[#b5dec2]');
   });
 
   it('hook score badge has yellow class when score is below 60', () => {
     setPostReviewState({ hookScore: 59 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     const badge = screen.getByText('Hook 59');
     expect(badge.className).toContain('text-[#f0d99f]');
   });
 
   it('hook score badge has yellow class when score is 0', () => {
     setPostReviewState({ hookScore: 0 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     const badge = screen.getByText('Hook 0');
     expect(badge.className).toContain('text-[#f0d99f]');
   });
@@ -313,32 +318,32 @@ describe('LinkedInStudioRoom — hook coaching nudge display', () => {
       hookScore: 45,
       hookAssessment: 'Consider a more provocative opening statement.',
     });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.getByText('Consider a more provocative opening statement.')).toBeInTheDocument();
   });
 
   it('shows the "Your opening could be stronger." heading in the nudge block', () => {
     setPostReviewState({ hookScore: 30 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.getByText(/Your opening could be stronger\./i)).toBeInTheDocument();
   });
 
   it('does not show the coaching nudge when hookScore is exactly 60', () => {
     setPostReviewState({ hookScore: 60 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     // The nudge heading only appears when score < 60
     expect(screen.queryByText(/Your opening could be stronger\./i)).not.toBeInTheDocument();
   });
 
   it('does not show the coaching nudge when hookScore is above 60', () => {
     setPostReviewState({ hookScore: 80 });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.queryByText(/Your opening could be stronger\./i)).not.toBeInTheDocument();
   });
 
   it('does not show the coaching nudge when hookScore is null', () => {
     setPostReviewState({ hookScore: null });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.queryByText(/Your opening could be stronger\./i)).not.toBeInTheDocument();
   });
 });
@@ -351,7 +356,7 @@ describe('LinkedInStudioRoom — hookAssessment text in coaching block', () => {
       hookScore: 40,
       hookAssessment: 'Lead with a bold claim or counterintuitive insight.',
     });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(
       screen.getByText('Lead with a bold claim or counterintuitive insight.'),
     ).toBeInTheDocument();
@@ -359,7 +364,7 @@ describe('LinkedInStudioRoom — hookAssessment text in coaching block', () => {
 
   it('falls back to the default first-210-chars message when hookAssessment is null and score < 60', () => {
     setPostReviewState({ hookScore: 20, hookAssessment: null });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(
       screen.getByText(/The first 210 characters need to earn the click/i),
     ).toBeInTheDocument();
@@ -370,7 +375,7 @@ describe('LinkedInStudioRoom — hookAssessment text in coaching block', () => {
       hookScore: 65,
       hookAssessment: 'This text should not appear.',
     });
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(screen.queryByText('This text should not appear.')).not.toBeInTheDocument();
   });
 });
@@ -398,7 +403,7 @@ describe('LinkedInStudioRoom — hookType field in content state', () => {
   it('hookType persists through re-renders without causing an error', () => {
     setPostReviewState({ hookType: 'statistic' });
     // Should render without throwing
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    renderWriteTab();
     expect(document.body).toBeTruthy();
   });
 });

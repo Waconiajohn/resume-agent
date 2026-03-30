@@ -182,7 +182,8 @@ describe('LinkedInStudioRoom — tab rendering', () => {
 
   it('renders the embedded Content Plan launcher', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByRole('button', { name: /Open Content Plan/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    expect(screen.getByRole('button', { name: /Plan posts/i })).toBeInTheDocument();
   });
 
   it('renders Results tab button', () => {
@@ -192,22 +193,24 @@ describe('LinkedInStudioRoom — tab rendering', () => {
 
   it('renders the embedded Library launcher', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByRole('button', { name: /Open Library/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    expect(screen.getByRole('button', { name: /Reuse drafts/i })).toBeInTheDocument();
   });
 });
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
 
 describe('LinkedInStudioRoom — tab switching', () => {
-  it('defaults to composer tab (shows "Write a LinkedIn Post")', () => {
+  it('defaults to profile tab', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Write a LinkedIn Post')).toBeInTheDocument();
-    expect(screen.getByText('Draft a post in your own voice')).toBeInTheDocument();
+    expect(screen.getByText('Optimize Your LinkedIn Profile')).toBeInTheDocument();
+    expect(screen.getByText('Sharpen the profile people land on')).toBeInTheDocument();
   });
 
   it('opens Content Plan from the embedded launcher', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
     await waitFor(() => {
       expect(screen.getByText('Plan the next stretch of posts')).toBeInTheDocument();
     });
@@ -215,7 +218,8 @@ describe('LinkedInStudioRoom — tab switching', () => {
 
   it('opens Library from the embedded launcher', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
     await waitFor(() => {
       const libContent = screen.queryByText(/Keep your best LinkedIn work in one place/i) ||
         screen.queryByText(/posts/i) ||
@@ -252,11 +256,13 @@ describe('LinkedInStudioRoom — tab switching', () => {
 describe('LinkedInStudioRoom — Composer tab (idle)', () => {
   it('renders "Write a Post" button', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
     expect(screen.getByText('Write a Post')).toBeInTheDocument();
   });
 
   it('shows clarity warning when signals.clarity is not green', () => {
     render(<LinkedInStudioRoom signals={makeSignals({ clarity: 'yellow' })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
     expect(
       screen.getByText(/Strengthen your Clarity signal first/),
     ).toBeInTheDocument();
@@ -264,6 +270,7 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 
   it('does not show clarity warning when signals.clarity is green', () => {
     render(<LinkedInStudioRoom signals={makeSignals({ clarity: 'green' })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
     expect(
       screen.queryByText(/Strengthen your Clarity signal first/),
     ).not.toBeInTheDocument();
@@ -271,6 +278,7 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 
   it('renders the post description text', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
     expect(screen.getByText(/Once the profile direction feels strong enough/)).toBeInTheDocument();
   });
 });
@@ -280,7 +288,8 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 describe('LinkedInStudioRoom — Library tab', () => {
   it('library tab loads without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
     await waitFor(() => {
       expect(screen.getByText(/Keep your best LinkedIn work in one place/i)).toBeInTheDocument();
     });
@@ -288,7 +297,8 @@ describe('LinkedInStudioRoom — Library tab', () => {
 
   it('library uses useContentPosts hook (posts = [])', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
     await waitFor(() => {
       const el = screen.queryByText(/Keep your best LinkedIn work in one place/i) || screen.queryByText(/Write your first post/i) || screen.queryByText(/no posts/i);
       expect(el).toBeTruthy();
@@ -301,7 +311,8 @@ describe('LinkedInStudioRoom — Library tab', () => {
 describe('LinkedInStudioRoom — Content Plan tab', () => {
   it('content plan tab renders without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
     await waitFor(() => {
       expect(document.body).toBeTruthy();
     });

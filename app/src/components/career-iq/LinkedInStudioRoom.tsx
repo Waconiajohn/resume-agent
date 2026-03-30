@@ -100,9 +100,9 @@ const STUDIO_STAGE_CONFIG: Record<StudioTab, StudioStageMeta> = {
     focusTitle: 'Review how strong the profile looks on paper',
     focusSummary: 'Use the score, rewritten sections, and weak spots to decide what should be tightened next.',
     next: {
-      tab: 'calendar',
-      label: 'Plan Content',
-      description: 'Map the next stretch of posts once the profile and writing direction look solid.',
+      tab: 'composer',
+      label: 'Write Again',
+      description: 'Use the results to decide whether to tighten the profile or draft the next post with a cleaner signal.',
     },
   },
   calendar: {
@@ -1526,39 +1526,24 @@ function LinkedInSupportWorkspaces({
   onOpenLibrary: () => void;
 }) {
   return (
-    <GlassCard className="p-5">
-      <div className="grid gap-3 lg:grid-cols-2">
-        <button
-          type="button"
-          onClick={onOpenCalendar}
-          className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
-        >
+    <GlassCard className="p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-            Support workspace
+            Support tools
           </div>
-          <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
-            Open Content Plan
-          </div>
-          <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-            Map themes, sequence ideas, and build a usable posting rhythm without turning planning into a top-level tab.
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            Keep planning and saved drafts nearby, but let the main room stay centered on profile, writing, and results.
           </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenLibrary}
-          className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
-        >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-            Support workspace
-          </div>
-          <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
-            Open Library
-          </div>
-          <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-            Pull saved drafts and past work back into the main writing flow when you need a faster starting point.
-          </p>
-        </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <GlassButton variant="ghost" size="sm" onClick={onOpenCalendar}>
+            Plan posts
+          </GlassButton>
+          <GlassButton variant="ghost" size="sm" onClick={onOpenLibrary}>
+            Reuse drafts
+          </GlassButton>
+        </div>
       </div>
     </GlassCard>
   );
@@ -1597,7 +1582,7 @@ function parseReportSections(report: string): {
 
 export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
-  const [activeTab, setActiveTab] = useState<StudioTab>('composer');
+  const [activeTab, setActiveTab] = useState<StudioTab>('editor');
   const [inputError, setInputError] = useState<string | null>(null);
 
   const handleWritePostFromCalendar = useCallback(() => {
@@ -1849,10 +1834,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             {isOptimizerRunning && (
               <ActivityFeed messages={optimizer.activityMessages} label="Optimization in progress..." />
             )}
-            <LinkedInSupportWorkspaces
-              onOpenCalendar={handleOpenCalendar}
-              onOpenLibrary={handleOpenLibrary}
-            />
           </div>
         )}
       </div>

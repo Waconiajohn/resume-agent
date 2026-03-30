@@ -97,13 +97,15 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Profile$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Results$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Open Content Plan/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Open Library/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
+    expect(screen.getByRole('button', { name: /Plan posts/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reuse drafts/i })).toBeInTheDocument();
   });
 
   it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
     // ContentCalendar in idle state renders "Build Content Plan"
     expect(screen.getByText('Build Content Plan')).toBeInTheDocument();
   });
@@ -122,10 +124,10 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 
-  it('renders the Write tab by default', () => {
+  it('renders the Profile tab by default', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    // Write shows a start button when idle
-    expect(screen.getByText(/Write a Post/i)).toBeInTheDocument();
+    expect(screen.getByText(/Optimize Your LinkedIn Profile/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sharpen the profile people land on/i)).toBeInTheDocument();
   });
 
   it('renders the Profile tab content when clicked', () => {
