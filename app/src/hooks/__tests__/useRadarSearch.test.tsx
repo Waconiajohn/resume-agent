@@ -79,19 +79,9 @@ describe('useRadarSearch — initial state', () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it('scoring is false on mount', () => {
-    const { result } = renderHook(() => useRadarSearch());
-    expect(result.current.scoring).toBe(false);
-  });
-
   it('error is null on mount', () => {
     const { result } = renderHook(() => useRadarSearch());
     expect(result.current.error).toBeNull();
-  });
-
-  it('lastScanId is null on mount', () => {
-    const { result } = renderHook(() => useRadarSearch());
-    expect(result.current.lastScanId).toBeNull();
   });
 
   it('exposes search as a function', () => {
@@ -126,21 +116,6 @@ describe('useRadarSearch — search()', () => {
 
     expect(result.current.jobs).toHaveLength(2);
     expect(result.current.jobs[0].external_id).toBe('jsearch_j1');
-  });
-
-  it('stores scan_id after successful search', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => makeSearchResponse([]),
-    }) as unknown as typeof fetch;
-
-    const { result } = renderHook(() => useRadarSearch());
-
-    await act(async () => {
-      await result.current.search('CTO', 'Remote');
-    });
-
-    expect(result.current.lastScanId).toBe('scan-test-001');
   });
 
   it('sets loading to false after search completes', async () => {
@@ -242,7 +217,6 @@ describe('useRadarSearch — search()', () => {
       await result.current.search('Operations', 'Remote');
     });
 
-    expect(result.current.lastScanId).toBe('42');
     expect(result.current.jobs).toHaveLength(1);
     expect(result.current.jobs[0]).toMatchObject({
       external_id: 'jsearch_good',
@@ -255,102 +229,6 @@ describe('useRadarSearch — search()', () => {
     expect(result.current.jobs[0].network_contacts).toEqual([
       { id: 'c1', name: 'Pat Doe', title: 'VP Ops', company: 'Acme Corp' },
     ]);
-  });
-});
-
-describe('useRadarSearch — scoreResults()', () => {
-  it('updates match scores on existing jobs', async () => {
-    const jobs = [makeJob('j1'), makeJob('j2')];
-
-    // Call sequence: search → enrichment (NI contacts) → score
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => makeSearchResponse(jobs),
-      })
-      // Enrichment call (NI contacts) — return empty
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ scan_id: 'scan-test-001', results: [] }),
-      })
-      // Score call
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          jobs: [
-            { external_id: 'jsearch_j1', match_score: 90 },
-            { external_id: 'jsearch_j2', match_score: 72 },
-          ],
-        }),
-      }) as unknown as typeof fetch;
-
-    const { result } = renderHook(() => useRadarSearch());
-
-    // Search first to populate lastScanId
-    await act(async () => {
-      await result.current.search('VP Engineering', 'SF');
-    });
-
-    // Score the results
-    await act(async () => {
-      await result.current.scoreResults();
-    });
-
-    expect(result.current.jobs[0].match_score).toBe(90);
-    expect(result.current.jobs[1].match_score).toBe(72);
-    expect(result.current.scoring).toBe(false);
-  });
-
-  it('does nothing when lastScanId is null', async () => {
-    const fetchSpy = vi.fn();
-    global.fetch = fetchSpy as unknown as typeof fetch;
-
-    const { result } = renderHook(() => useRadarSearch());
-
-    await act(async () => {
-      await result.current.scoreResults();
-    });
-
-    // fetch should not have been called (no scan to score)
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(result.current.scoring).toBe(false);
-  });
-
-  it('ignores malformed score entries and normalizes numeric strings', async () => {
-    const jobs = [makeJob('j1'), makeJob('j2')];
-
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => makeSearchResponse(jobs),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ scan_id: 'scan-test-001', results: [] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          jobs: [
-            { external_id: 'jsearch_j1', match_score: '88' },
-            { external_id: '', match_score: 40 },
-            { external_id: 'jsearch_j2', match_score: null },
-          ],
-        }),
-      }) as unknown as typeof fetch;
-
-    const { result } = renderHook(() => useRadarSearch());
-
-    await act(async () => {
-      await result.current.search('VP Engineering', 'SF');
-    });
-
-    await act(async () => {
-      await result.current.scoreResults();
-    });
-
-    expect(result.current.jobs[0].match_score).toBe(88);
-    expect(result.current.jobs[1].match_score).toBeNull();
   });
 });
 

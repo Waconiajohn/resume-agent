@@ -20,11 +20,8 @@ import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
 interface RadarSectionProps {
   jobs: RadarJob[];
   loading: boolean;
-  scoring: boolean;
   error: string | null;
-  lastScanId: string | null;
   onSearch: (query: string, location: string, filters?: RadarSearchFilters) => void;
-  onScoreResults: () => void;
   onDismiss: (externalId: string) => void;
   onPromote: (job: RadarJob) => void;
 }
@@ -93,11 +90,8 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
 export function RadarSection({
   jobs,
   loading,
-  scoring,
   error,
-  lastScanId,
   onSearch,
-  onScoreResults,
   onDismiss,
   onPromote,
 }: RadarSectionProps) {
@@ -185,21 +179,7 @@ export function RadarSection({
           <option value="hybrid">Hybrid</option>
           <option value="onsite">On-site</option>
         </select>
-
         <div className="flex gap-2 ml-auto">
-          {lastScanId && jobs.length > 0 && (
-            <GlassButton onClick={onScoreResults} disabled={scoring} size="sm">
-              {scoring ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Scoring...
-                </>
-              ) : (
-                <>
-                  <Star size={13} /> Score Matches
-                </>
-              )}
-            </GlassButton>
-          )}
           <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} size="sm">
             {loading ? (
               <>

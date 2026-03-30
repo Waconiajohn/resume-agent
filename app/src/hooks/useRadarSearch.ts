@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
+import { safeString, safeStringArray } from '@/lib/safe-cast';
 
 export interface NetworkContact {
   id: string;
@@ -50,15 +50,10 @@ export interface RadarSearchFilters {
 interface RadarSearchState {
   jobs: RadarJob[];
   loading: boolean;
-  scoring: boolean;
   error: string | null;
-  lastScanId: string | null;
 }
 
-interface SearchResponse {
-  scan_id: string;
-  jobs: RadarJob[];
-}
+interface SearchResponse { jobs: RadarJob[]; scan_id?: string | null; }
 
 interface EnrichedResult {
   job_listings: {
@@ -72,10 +67,6 @@ interface EnrichedResult {
 interface EnrichedResponse {
   scan_id: string;
   results: EnrichedResult[];
-}
-
-interface ScoreResponse {
-  jobs: Array<{ external_id: string; match_score: number | null }>;
 }
 
 function safeNullableString(value: unknown): string | null {
@@ -251,9 +242,7 @@ export function useRadarSearch() {
   const [state, setState] = useState<RadarSearchState>({
     jobs: [],
     loading: false,
-    scoring: false,
     error: null,
-    lastScanId: null,
   });
 
   const mountedRef = useRef(true);
@@ -312,7 +301,6 @@ export function useRadarSearch() {
             ...prev,
             jobs: enrichedJobs,
             loading: false,
-            lastScanId: scanId,
           }));
         }
       } catch (err) {
@@ -324,72 +312,6 @@ export function useRadarSearch() {
     },
     [],
   );
-
-  const scoreResults = useCallback(async (): Promise<void> => {
-    if (!mountedRef.current) return;
-
-    const scanId = state.lastScanId;
-    if (!scanId) return;
-
-    setState((prev) => ({ ...prev, scoring: true, error: null }));
-
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) {
-        if (mountedRef.current) {
-          setState((prev) => ({ ...prev, scoring: false, error: 'Not authenticated' }));
-        }
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/job-search/score`, {
-        method: 'POST',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scan_id: scanId }),
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        if (mountedRef.current) {
-          setState((prev) => ({
-            ...prev,
-            scoring: false,
-            error: `Scoring failed (${res.status}): ${body}`,
-          }));
-        }
-        return;
-      }
-
-      const data = (await res.json()) as ScoreResponse;
-      if (mountedRef.current) {
-        setState((prev) => {
-          const scoreMap = new Map<string, number | null>();
-          for (const item of data.jobs ?? []) {
-            const externalId = safeString(item.external_id).trim();
-            if (!externalId) continue;
-            scoreMap.set(
-              externalId,
-              safeNullableNumber(item.match_score),
-            );
-          }
-          return {
-            ...prev,
-            scoring: false,
-            jobs: prev.jobs.map((job) =>
-              scoreMap.has(job.external_id)
-                ? { ...job, match_score: scoreMap.get(job.external_id) }
-                : job,
-            ),
-          };
-        });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (mountedRef.current) {
-        setState((prev) => ({ ...prev, scoring: false, error: message }));
-      }
-    }
-  }, [state.lastScanId]);
 
   const dismissJob = useCallback((externalId: string): void => {
     if (!mountedRef.current) return;
@@ -406,7 +328,6 @@ export function useRadarSearch() {
   return {
     ...state,
     search,
-    scoreResults,
     dismissJob,
     promoteJob,
   };

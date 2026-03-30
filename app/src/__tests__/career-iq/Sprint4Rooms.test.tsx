@@ -231,6 +231,7 @@ describe('JobCommandCenterRoom', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText('Daily Ops')).toBeInTheDocument();
     expect(screen.queryByText('Application Tracker')).not.toBeInTheDocument();
+    expect(screen.queryByText('Top Matches')).not.toBeInTheDocument();
   });
 });
 

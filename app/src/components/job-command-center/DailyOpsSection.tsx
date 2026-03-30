@@ -1,15 +1,10 @@
-import { Clock, Building2, Star, AlertTriangle } from 'lucide-react';
+import { Clock, Building2, AlertTriangle } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
-import { TopMatchCard } from '@/components/job-command-center/TopMatchCard';
 import { cn } from '@/lib/utils';
 import type { DailyOpsData } from '@/hooks/useDailyOps';
-import type { RadarJob } from '@/hooks/useRadarSearch';
 
 interface DailyOpsSectionProps {
   data: DailyOpsData;
-  onPromoteJob: (job: RadarJob) => void;
-  onDismissJob: (externalId: string) => void;
-  onSelectJob?: (job: RadarJob) => void;
 }
 
 function urgencyClass(dueDateStr: string): string {
@@ -24,11 +19,8 @@ function urgencyClass(dueDateStr: string): string {
 
 export function DailyOpsSection({
   data,
-  onPromoteJob,
-  onDismissJob,
-  onSelectJob,
 }: DailyOpsSectionProps) {
-  const { topMatches, dueActions, staleApplications, activeCount, interviewCount, offerCount } =
+  const { dueActions, staleApplications, activeCount, interviewCount, offerCount } =
     data;
 
   return (
@@ -44,44 +36,6 @@ export function DailyOpsSection({
         <StatMetric label="Offers" value={offerCount} highlight={offerCount > 0} accent="green" />
         <StatMetric label="Due" value={dueActions.length} highlight={dueActions.length > 0} accent="amber" />
       </div>
-
-      {/* Top radar matches */}
-      {topMatches.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Star size={14} className="text-[#98b3ff]" />
-            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
-              Top Matches
-            </span>
-            <span className="ml-auto text-[13px] text-[var(--text-soft)]">{topMatches.length} scored</span>
-          </div>
-          <div className="space-y-2">
-            {topMatches.map((job) => (
-              <TopMatchCard
-                key={job.external_id}
-                job={job}
-                onPromote={onPromoteJob}
-                onDismiss={onDismissJob}
-                onSelect={onSelectJob}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {topMatches.length === 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Star size={14} className="text-[#98b3ff]" />
-            <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
-              Top Matches
-            </span>
-          </div>
-          <p className="text-[12px] text-[var(--text-soft)] py-2">
-            No scored matches yet. Run a Radar search to surface opportunities.
-          </p>
-        </div>
-      )}
 
       {/* Due actions */}
       <div>

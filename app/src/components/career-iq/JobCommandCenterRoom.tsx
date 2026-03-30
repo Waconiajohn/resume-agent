@@ -333,7 +333,7 @@ export function JobCommandCenterRoom({
   const pipeline = useApplicationPipeline();
   const radar = useRadarSearch();
   const watchlist = useWatchlist();
-  const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, radar.jobs, pipeline.loading);
+  const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, pipeline.loading);
 
   const [activeTab, setActiveTab] = useState<JCCTab>('daily-ops');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -569,11 +569,8 @@ export function JobCommandCenterRoom({
           <RadarSection
             jobs={radar.jobs}
             loading={radar.loading}
-            scoring={radar.scoring}
             error={radar.error}
-            lastScanId={radar.lastScanId}
             onSearch={radar.search}
-            onScoreResults={radar.scoreResults}
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
           />
@@ -595,11 +592,7 @@ export function JobCommandCenterRoom({
       {/* Daily Ops tab — display:none preserves state */}
       <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
-          <DailyOpsSection
-            data={dailyOps}
-            onPromoteJob={handlePromoteRadarJob}
-            onDismissJob={radar.dismissJob}
-          />
+          <DailyOpsSection data={dailyOps} />
         </div>
       </div>
 

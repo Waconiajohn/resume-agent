@@ -76,11 +76,8 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof RadarSectio
   return {
     jobs: [],
     loading: false,
-    scoring: false,
     error: null,
-    lastScanId: null,
     onSearch: vi.fn(),
-    onScoreResults: vi.fn(),
     onDismiss: vi.fn(),
     onPromote: vi.fn(),
     ...overrides,
