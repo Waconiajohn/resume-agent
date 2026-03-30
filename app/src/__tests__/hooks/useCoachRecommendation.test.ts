@@ -75,19 +75,22 @@ describe('useCoachRecommendation', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns cached data from sessionStorage on mount without fetching', async () => {
+  it('returns cached data immediately on mount before background refresh completes', async () => {
     // Pre-populate cache
     sessionStorageMock.getItem.mockReturnValue(JSON.stringify(MOCK_RECOMMENDATION));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(MOCK_RECOMMENDATION),
+    }));
 
     const { result } = renderHook(() => useCoachRecommendation());
 
-    // Cache hit → loading starts as false, recommendation is already set
     expect(result.current.recommendation).not.toBeNull();
     expect(result.current.recommendation?.action).toBe('Complete your resume summary section.');
     expect(result.current.loading).toBe(false);
 
-    // fetch should not have been called for a cache hit
-    await waitFor(() => expect(fetch).not.toHaveBeenCalled());
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   });
 
   it('fetches from API when no cache exists and stores the result', async () => {
@@ -152,6 +155,39 @@ describe('useCoachRecommendation', () => {
 
     expect(result.current.recommendation).toBeNull();
     expect(result.current.error).toMatch(/500/);
+  });
+
+  it('clears cached recommendation when auth is missing', async () => {
+    sessionStorageMock.getItem.mockReturnValue(JSON.stringify(MOCK_RECOMMENDATION));
+
+    const { supabase } = await import('@/lib/supabase');
+    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    const { result } = renderHook(() => useCoachRecommendation());
+
+    await waitFor(() => expect(result.current.recommendation).toBeNull());
+
+    expect(result.current.error).toBeNull();
+    expect(sessionStorageMock.removeItem).toHaveBeenCalledWith(CACHE_KEY);
+  });
+
+  it('clears cached recommendation when feature_disabled is returned', async () => {
+    sessionStorageMock.getItem.mockReturnValue(JSON.stringify(MOCK_RECOMMENDATION));
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ feature_disabled: true }),
+    }));
+
+    const { result } = renderHook(() => useCoachRecommendation());
+
+    await waitFor(() => expect(result.current.recommendation).toBeNull());
+
+    expect(result.current.error).toBeNull();
+    expect(sessionStorageMock.removeItem).toHaveBeenCalledWith(CACHE_KEY);
   });
 
   it('clearCoachRecommendationCache removes the sessionStorage entry', () => {

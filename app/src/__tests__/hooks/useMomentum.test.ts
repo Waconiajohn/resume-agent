@@ -226,6 +226,59 @@ describe('useMomentum', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.error).toBe('Not authenticated');
+    expect(result.current.summary).toBeNull();
+    expect(result.current.nudges).toEqual([]);
+  });
+
+  it('clears stale summary and nudges when auth is lost on refresh', async () => {
+    const { supabase } = await import('@/lib/supabase');
+    const fetchMock = makeFetchSuccess(MOCK_SUMMARY, MOCK_NUDGES);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useMomentum());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.summary?.current_streak).toBe(5);
+    expect(result.current.nudges).toHaveLength(2);
+
+    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.error).toBe('Not authenticated');
+    expect(result.current.summary).toBeNull();
+    expect(result.current.nudges).toEqual([]);
+  });
+
+  it('clears stale summary and nudges when the feature is disabled', async () => {
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_SUMMARY), text: () => Promise.resolve('') }))
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve({ nudges: MOCK_NUDGES }), text: () => Promise.resolve('') }))
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve({ feature_disabled: true }), text: () => Promise.resolve('') }))
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve({ nudges: MOCK_NUDGES }), text: () => Promise.resolve('') }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useMomentum());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.summary).not.toBeNull();
+    expect(result.current.nudges).toHaveLength(2);
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.summary).toBeNull();
+    expect(result.current.nudges).toEqual([]);
   });
 
   it('checkStalls POSTs to /momentum/check-stalls', async () => {

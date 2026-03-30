@@ -64,6 +64,14 @@ export function useMomentum(): UseMomentumReturn {
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
+  const clearMomentumState = useCallback((nextError: string | null) => {
+    if (mountedRef.current) {
+      setSummary(null);
+      setNudges([]);
+      setError(nextError);
+      setLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!mountedRef.current) return;
@@ -73,10 +81,7 @@ export function useMomentum(): UseMomentumReturn {
     try {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
-        if (mountedRef.current) {
-          setError('Not authenticated');
-          setLoading(false);
-        }
+        clearMomentumState('Not authenticated');
         return;
       }
 
@@ -92,6 +97,8 @@ export function useMomentum(): UseMomentumReturn {
           if (mountedRef.current) {
             setError(`Failed to fetch momentum summary (${summaryRes.status}): ${body}`);
           }
+        } else {
+          clearMomentumState(null);
         }
         if (mountedRef.current) setLoading(false);
         return;
@@ -104,6 +111,8 @@ export function useMomentum(): UseMomentumReturn {
           if (mountedRef.current) {
             setError(`Failed to fetch nudges (${nudgesRes.status}): ${body}`);
           }
+        } else {
+          clearMomentumState(null);
         }
         if (mountedRef.current) setLoading(false);
         return;
@@ -111,13 +120,13 @@ export function useMomentum(): UseMomentumReturn {
 
       const summaryJson = await summaryRes.json() as Record<string, unknown>;
       if ('feature_disabled' in summaryJson) {
-        if (mountedRef.current) setLoading(false);
+        clearMomentumState(null);
         return;
       }
       const summaryData = summaryJson as unknown as MomentumSummary;
       const nudgesJson = await nudgesRes.json() as Record<string, unknown>;
       if ('feature_disabled' in nudgesJson) {
-        if (mountedRef.current) setLoading(false);
+        clearMomentumState(null);
         return;
       }
       const nudgesData = ((nudgesJson as { nudges?: CoachingNudge[] }).nudges) ?? [];
@@ -134,7 +143,7 @@ export function useMomentum(): UseMomentumReturn {
         setLoading(false);
       }
     }
-  }, []);
+  }, [clearMomentumState]);
 
   useEffect(() => {
     mountedRef.current = true;

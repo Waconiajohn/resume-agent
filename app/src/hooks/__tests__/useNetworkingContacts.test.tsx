@@ -197,6 +197,7 @@ describe('useNetworkingContacts — fetchContacts', () => {
     });
 
     expect(result.current.error).toBe('Not authenticated');
+    expect(result.current.contacts).toEqual([]);
   });
 
   it('sends Authorization header', async () => {
@@ -228,6 +229,56 @@ describe('useNetworkingContacts — fetchContacts', () => {
 
     expect(result.current.contacts).toHaveLength(1);
     expect(result.current.contacts[0].name).toBe('Jane Smith');
+  });
+
+  it('clears stale contacts when auth is lost on refetch', async () => {
+    const contacts = [makeContact()];
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ contacts, count: 1 }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useNetworkingContacts());
+
+    await act(async () => {
+      await result.current.fetchContacts();
+    });
+
+    expect(result.current.contacts).toHaveLength(1);
+
+    mockGetSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+
+    await act(async () => {
+      await result.current.fetchContacts();
+    });
+
+    expect(result.current.error).toBe('Not authenticated');
+    expect(result.current.contacts).toEqual([]);
+  });
+
+  it('clears stale contacts when networking contacts are feature-disabled', async () => {
+    const contacts = [makeContact()];
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ contacts, count: 1 }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ feature_disabled: true }), { status: 200 }),
+      );
+
+    const { result } = renderHook(() => useNetworkingContacts());
+
+    await act(async () => {
+      await result.current.fetchContacts();
+    });
+
+    expect(result.current.contacts).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.fetchContacts();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.contacts).toEqual([]);
   });
 });
 

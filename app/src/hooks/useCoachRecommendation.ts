@@ -57,14 +57,20 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
     return () => { mountedRef.current = false; };
   }, []);
 
+  const clearRecommendationState = useCallback(() => {
+    clearCoachRecommendationCache();
+    if (mountedRef.current) {
+      setLoading(false);
+      setRecommendation(null);
+      setError(null);
+    }
+  }, []);
+
   const fetchRecommendation = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) {
-      if (mountedRef.current) {
-        setLoading(false);
-        setRecommendation(null);
-      }
+      clearRecommendationState();
       return;
     }
 
@@ -78,7 +84,7 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
       if (!res.ok) {
         // Feature flag off returns 404 — graceful fallback
         if (res.status === 404) {
-          if (mountedRef.current) { setLoading(false); setRecommendation(null); }
+          clearRecommendationState();
           return;
         }
         throw new Error(`Recommend failed (${res.status})`);
@@ -86,7 +92,7 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
 
       const data = await res.json() as Record<string, unknown>;
       if ('feature_disabled' in data) {
-        if (mountedRef.current) { setLoading(false); setRecommendation(null); }
+        clearRecommendationState();
         return;
       }
       saveCache(data as unknown as CoachRecommendation);
@@ -101,7 +107,7 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
         setLoading(false);
       }
     }
-  }, []);
+  }, [clearRecommendationState]);
 
   // Fetch on mount (if no cache)
   useEffect(() => {

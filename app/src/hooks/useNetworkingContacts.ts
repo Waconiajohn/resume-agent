@@ -92,7 +92,12 @@ export function useNetworkingContacts() {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
         if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
+          setState((prev) => ({
+            ...prev,
+            contacts: [],
+            loading: false,
+            error: 'Not authenticated',
+          }));
         }
         return;
       }
@@ -120,9 +125,24 @@ export function useNetworkingContacts() {
         return;
       }
 
-      const data = (await res.json()) as { contacts: NetworkingContact[]; count: number };
+      const data = (await res.json()) as {
+        contacts?: NetworkingContact[];
+        count?: number;
+        feature_disabled?: boolean;
+      };
+      if (data.feature_disabled) {
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            contacts: [],
+            loading: false,
+            error: null,
+          }));
+        }
+        return;
+      }
       if (mountedRef.current) {
-        setState((prev) => ({ ...prev, contacts: data.contacts, loading: false }));
+        setState((prev) => ({ ...prev, contacts: data.contacts ?? [], loading: false }));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
