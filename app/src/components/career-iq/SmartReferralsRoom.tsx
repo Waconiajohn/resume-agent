@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
 type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts';
+type ReferralPath = 'network' | 'bonus';
 
 interface TabDef {
   id: SmartReferralsTab;
@@ -33,8 +34,40 @@ const TABS: TabDef[] = [
   { id: 'contacts', label: 'Contacts & Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and AI outreach' },
 ];
 
-// Tabs accessible without connections
-const ALWAYS_UNLOCKED: SmartReferralsTab[] = ['import', 'job-scan', 'bonus-search', 'referrals', 'contacts'];
+const TAB_MAP = Object.fromEntries(TABS.map((tab) => [tab.id, tab])) as Record<SmartReferralsTab, TabDef>;
+
+const PATH_TABS: Record<ReferralPath, SmartReferralsTab[]> = {
+  network: ['import', 'connections', 'targets', 'job-scan', 'job-matches', 'contacts'],
+  bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
+};
+
+const ALWAYS_UNLOCKED: Record<ReferralPath, SmartReferralsTab[]> = {
+  network: ['import', 'contacts'],
+  bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
+};
+
+const PATH_COPY: Record<ReferralPath, {
+  eyebrow: string;
+  title: string;
+  description: string;
+  helper: string;
+  accentClass: string;
+}> = {
+  network: {
+    eyebrow: 'Best first path',
+    title: 'Use your existing connections first',
+    description: 'Import first-degree connections, scan their company job pages, review the roles, and move straight into outreach.',
+    helper: 'This is the strongest path when someone is already there.',
+    accentClass: 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.05]',
+  },
+  bonus: {
+    eyebrow: 'Second visible path',
+    title: 'Chase strong referral bonuses separately',
+    description: 'Search known high-bonus companies even without a connection, review those roles, and keep growing the bonus-company database as matches appear.',
+    helper: 'Coverage is still limited to the bonus programs we have identified so far.',
+    accentClass: 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.05]',
+  },
+};
 
 interface OutreachPrefill {
   name: string;
@@ -64,9 +97,20 @@ function resolveFocusTab(focus: string | null | undefined): SmartReferralsTab | 
   return FOCUS_TO_TAB[focus] ?? null;
 }
 
+function getPathForTab(tab: SmartReferralsTab | null): ReferralPath {
+  if (tab === 'bonus-search' || tab === 'referrals') return 'bonus';
+  return 'network';
+}
+
+function getDefaultTab(path: ReferralPath, hasConnections: boolean): SmartReferralsTab {
+  if (path === 'bonus') return 'bonus-search';
+  return hasConnections ? 'connections' : 'import';
+}
+
 export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
   const { user, session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
+  const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
   const [hasConnections, setHasConnections] = useState(false);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
   const accessToken = session?.access_token ?? null;
@@ -77,12 +121,9 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
   useEffect(() => {
     if (!requestedTab) return;
 
-    setActiveTab((prev) => {
-      if (requestedTab === 'import') return 'import';
-      if (!hasConnections && !ALWAYS_UNLOCKED.includes(requestedTab)) return 'import';
-      return prev === requestedTab ? prev : requestedTab;
-    });
-  }, [hasConnections, requestedTab]);
+    setSelectedPath(getPathForTab(requestedTab));
+    setActiveTab(requestedTab);
+  }, [requestedTab]);
 
   useEffect(() => {
     const previousAccessToken = previousAccessTokenRef.current;
@@ -93,16 +134,17 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
 
     if (!accessToken) {
       setHasConnections(false);
-      setActiveTab('import');
+      setActiveTab(getDefaultTab(selectedPath, false));
       return;
     }
 
     setHasConnections(false);
     setActiveTab((prev) => {
-      if (requestedTab && ALWAYS_UNLOCKED.includes(requestedTab)) return requestedTab;
-      return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+      const unlockedTabs = ALWAYS_UNLOCKED[selectedPath];
+      if (requestedTab && unlockedTabs.includes(requestedTab)) return requestedTab;
+      return unlockedTabs.includes(prev) ? prev : getDefaultTab(selectedPath, false);
     });
-  }, [accessToken, requestedTab]);
+  }, [accessToken, requestedTab, selectedPath]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -125,13 +167,16 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           setHasConnections(has);
           setActiveTab((prev) => {
             if (requestedTab) {
-              if (!has && !ALWAYS_UNLOCKED.includes(requestedTab)) return 'import';
+              if (getPathForTab(requestedTab) !== selectedPath) {
+                return getDefaultTab(selectedPath, has);
+              }
+              if (!has && !ALWAYS_UNLOCKED[selectedPath].includes(requestedTab)) return getDefaultTab(selectedPath, has);
               return requestedTab;
             }
-            if (has) {
-              return prev === 'import' ? 'connections' : prev;
-            }
-            return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+            if (!PATH_TABS[selectedPath].includes(prev)) return getDefaultTab(selectedPath, has);
+            if (!has && !ALWAYS_UNLOCKED[selectedPath].includes(prev)) return getDefaultTab(selectedPath, has);
+            if (has && selectedPath === 'network' && prev === 'import') return 'connections';
+            return prev;
           });
         }
       } catch {
@@ -139,28 +184,38 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           if (requestId !== connectionsRequestIdRef.current) return;
           setHasConnections(false);
           setActiveTab((prev) => {
-            if (requestedTab && ALWAYS_UNLOCKED.includes(requestedTab)) return requestedTab;
-            return ALWAYS_UNLOCKED.includes(prev) ? prev : 'import';
+            if (requestedTab && ALWAYS_UNLOCKED[selectedPath].includes(requestedTab)) return requestedTab;
+            return ALWAYS_UNLOCKED[selectedPath].includes(prev) ? prev : getDefaultTab(selectedPath, false);
           });
         }
       }
     }
     checkConnections();
     return () => { cancelled = true; };
-  }, [accessToken, requestedTab]);
+  }, [accessToken, requestedTab, selectedPath]);
 
   const handleUploadComplete = useCallback(() => {
     setHasConnections(true);
+    setSelectedPath('network');
     setActiveTab('connections');
   }, []);
 
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
     setOutreachPrefill(prefill);
+    setSelectedPath(prefill.referralContext ? 'bonus' : 'network');
     setActiveTab('contacts');
   }, []);
 
-  const isTabLocked = (tabId: SmartReferralsTab) =>
-    !hasConnections && !ALWAYS_UNLOCKED.includes(tabId);
+  const visibleTabs = PATH_TABS[selectedPath];
+
+  const isTabLocked = useCallback((tabId: SmartReferralsTab) =>
+    !hasConnections && !ALWAYS_UNLOCKED[selectedPath].includes(tabId),
+  [hasConnections, selectedPath]);
+
+  const effectiveActiveTab =
+    visibleTabs.includes(activeTab) && !isTabLocked(activeTab)
+      ? activeTab
+      : getDefaultTab(selectedPath, hasConnections);
 
   const renderTabContent = () => {
     if (authLoading) {
@@ -182,7 +237,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
       );
     }
 
-    switch (activeTab) {
+    switch (effectiveActiveTab) {
       case 'import':
         return (
           <CsvUploader
@@ -196,7 +251,18 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
       case 'targets':
         return <TargetTitlesManager accessToken={accessToken} />;
       case 'job-matches':
-        return <JobMatchesList accessToken={accessToken} />;
+        return (
+          <JobMatchesList
+            accessToken={accessToken}
+            initialFilter={selectedPath === 'bonus' ? 'bonus_search' : 'network_connections'}
+            title={selectedPath === 'bonus' ? 'Bonus Matches' : 'Network Matches'}
+            description={
+              selectedPath === 'bonus'
+                ? 'Review the roles coming from the bonus-company path. Use this lane when the payout is worth chasing even without a first-degree connection.'
+                : 'Review the roles found at companies where you already know someone, then move straight into outreach or your main job pipeline.'
+            }
+          />
+        );
       case 'job-scan':
         return <ScrapeJobsPanel accessToken={accessToken} />;
       case 'bonus-search':
@@ -210,46 +276,91 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     }
   };
 
+  const handlePathSelect = useCallback((path: ReferralPath) => {
+    setSelectedPath(path);
+    setActiveTab(getDefaultTab(path, hasConnections));
+  }, [hasConnections]);
+
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
         <p className="text-sm text-[var(--text-soft)] mt-1">
-          Import connections, find jobs at their companies, scan high-bonus companies separately, and run contact plus outreach work from one place
+          Work this in two clear ways: start with companies where you already know someone, or run a separate bonus-first search when the payout is worth chasing.
         </p>
       </div>
 
       <GlassCard className="p-5">
-        <div className="grid gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">Your Network</p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-              Import first-level connections, run <span className="text-[var(--text-strong)]">Job Scan</span>, and surface roles at companies where you already know someone.
+        <div className="grid gap-3 lg:grid-cols-2">
+          {(['network', 'bonus'] as const).map((path) => {
+            const copy = PATH_COPY[path];
+            const isActive = selectedPath === path;
+            return (
+              <button
+                key={path}
+                type="button"
+                onClick={() => handlePathSelect(path)}
+                aria-pressed={isActive}
+                className={cn(
+                  'rounded-xl border p-4 text-left transition-all',
+                  copy.accentClass,
+                  isActive ? 'ring-1 ring-offset-0 ring-[var(--surface-1)]' : 'hover:bg-[var(--surface-1)]/70',
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className={cn(
+                    'text-[11px] font-semibold uppercase tracking-[0.18em]',
+                    path === 'network' ? 'text-[#afc4ff]' : 'text-[#f0d99f]',
+                  )}>
+                    {copy.eyebrow}
+                  </p>
+                  {isActive && (
+                    <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{copy.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{copy.description}</p>
+                <p className="mt-3 text-xs text-[var(--text-soft)]">{copy.helper}</p>
+              </button>
+            );
+          })}
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
+              {selectedPath === 'network' ? 'Connection path' : 'Bonus path'}
+            </p>
+            <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+              {selectedPath === 'network'
+                ? 'Use your network first, then move into outreach'
+                : 'Search strong bonus companies, then work the worthwhile ones'}
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
+              {selectedPath === 'network'
+                ? 'This path is built for the strongest odds: someone already works there. Import your connections, scan those companies, review the matches, and then work the contact and outreach flow.'
+                : 'This path stays visible on purpose. Use it when no one is already there but the company is known to pay a meaningful referral bonus. Coverage is still limited to the bonus programs we have identified so far.'}
             </p>
           </div>
-          <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">Bonus Search</p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-              Search high-referral-bonus companies even without a connection. These results still land in <span className="text-[var(--text-strong)]">Job Matches</span>.
-            </p>
-          </div>
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">Referral Bonus</p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-              Treat this as a bonus overlay, not a separate search engine. It only highlights matches where a referral program is known.
-            </p>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] lg:max-w-sm">
+            {selectedPath === 'network'
+              ? 'Best path when you already have a first-degree connection at the company.'
+              : 'Separate path for known bonus companies. We keep expanding that database as new matches are found.'}
           </div>
         </div>
       </GlassCard>
 
-      {/* Tab bar */}
       <GlassCard className="p-1">
         <div className="flex gap-1 overflow-x-auto">
-          {TABS.map((tab) => {
+          {visibleTabs.map((tabId) => {
+            const tab = TAB_MAP[tabId];
             const Icon = tab.icon;
             const locked = isTabLocked(tab.id);
-            const isActive = activeTab === tab.id;
+            const isActive = effectiveActiveTab === tab.id;
             return (
               <button
                 key={tab.id}

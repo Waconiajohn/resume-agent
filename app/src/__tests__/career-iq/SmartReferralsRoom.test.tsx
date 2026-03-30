@@ -75,8 +75,8 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom />);
 
     expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
-    expect(screen.getByText('Your Network')).toBeInTheDocument();
-    expect(screen.getAllByText('Bonus Search').length).toBeGreaterThan(0);
+    expect(screen.getByText('Use your existing connections first')).toBeInTheDocument();
+    expect(screen.getByText('Chase strong referral bonuses separately')).toBeInTheDocument();
     expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
   });
 
@@ -95,9 +95,9 @@ describe('SmartReferralsRoom', () => {
     expect(await screen.findByTestId('csv-uploader')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Job Matches' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Job Scan' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Bonus Search' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Contacts & Outreach' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Job Scan' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Bonus Search' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Outreach' })).not.toBeInTheDocument();
   });
 
@@ -132,7 +132,9 @@ describe('SmartReferralsRoom', () => {
 
     await screen.findByTestId('csv-uploader');
 
-    screen.getByRole('button', { name: 'Referral Bonus' }).click();
+    screen.getByRole('button', { name: /Second visible path.*Chase strong referral bonuses separately/i }).click();
+    const referralBonusButton = await screen.findByRole('button', { name: 'Referral Bonus' });
+    referralBonusButton.click();
     await screen.findByTestId('referral-opportunities-panel');
 
     screen.getByRole('button', { name: 'Generate outreach' }).click();
@@ -219,6 +221,7 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom initialFocus="bonus-search" />);
 
     expect(await screen.findByTestId('bonus-search-panel')).toBeInTheDocument();
+    expect(screen.getAllByText(/coverage is still limited to the bonus programs/i).length).toBeGreaterThan(0);
   });
 
   it('falls back to Import when a locked focus is requested without connections', async () => {

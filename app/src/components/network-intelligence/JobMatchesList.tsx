@@ -4,8 +4,13 @@ import { cn } from '@/lib/utils';
 import type { JobMatch, JobMatchSearchContext, JobMatchStatus } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 
+type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
+
 export interface JobMatchesListProps {
   accessToken: string | null;
+  initialFilter?: MatchFilter;
+  title?: string;
+  description?: string;
 }
 
 const STATUS_OPTIONS: JobMatchStatus[] = ['new', 'applied', 'referred', 'interviewing', 'rejected', 'archived'];
@@ -28,8 +33,6 @@ const SEARCH_CONTEXT_LABELS: Record<NonNullable<JobMatch['searchContext']>, stri
   network_connections: 'Your Network',
   bonus_search: 'Bonus Search',
 };
-
-type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
 
 const FILTER_LABELS: Record<MatchFilter, string> = {
   all: 'All Matches',
@@ -64,10 +67,19 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
   };
 }
 
-export function JobMatchesList({ accessToken }: JobMatchesListProps) {
+export function JobMatchesList({
+  accessToken,
+  initialFilter = 'all',
+  title = 'Job Matches',
+  description = 'Review one combined result stream, then narrow it by source or by known referral bonus.',
+}: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<MatchFilter>('all');
+  const [activeFilter, setActiveFilter] = useState<MatchFilter>(initialFilter);
+
+  useEffect(() => {
+    setActiveFilter(initialFilter);
+  }, [initialFilter]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -161,9 +173,9 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
     <div className="space-y-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text-muted)]">Job Matches</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-muted)]">{title}</h3>
           <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-            Review one combined result stream, then narrow it by source or by known referral bonus.
+            {description}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

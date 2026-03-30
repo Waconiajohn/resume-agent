@@ -114,6 +114,52 @@ describe('network intelligence panels', () => {
     expect(screen.queryByText('VP Operations')).not.toBeInTheDocument();
   });
 
+  it('starts on the requested match filter when a path-specific filter is provided', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          matches: [
+            {
+              id: 'match-1',
+              company_id: 'company-1',
+              title: 'VP Operations',
+              match_score: 82,
+              referral_available: false,
+              connection_count: 2,
+              status: 'new',
+              created_at: '2026-03-21T12:00:00Z',
+              metadata: { search_context: 'network_connections' },
+            },
+            {
+              id: 'match-2',
+              company_id: 'company-2',
+              title: 'Chief Revenue Officer',
+              match_score: 79,
+              referral_available: true,
+              connection_count: 0,
+              status: 'new',
+              created_at: '2026-03-21T12:00:00Z',
+              metadata: { search_context: 'bonus_search' },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    render(
+      <JobMatchesList
+        accessToken="test-token"
+        initialFilter="bonus_search"
+        title="Bonus Matches"
+      />,
+    );
+
+    expect(await screen.findByText('Chief Revenue Officer')).toBeInTheDocument();
+    expect(screen.queryByText('VP Operations')).not.toBeInTheDocument();
+    expect(screen.getByText('Bonus Matches')).toBeInTheDocument();
+  });
+
   it('loads company connections when a company card is expanded', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(
