@@ -14,6 +14,7 @@ Required env:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_REF` (or an already-linked local Supabase CLI context)
+- `SUPABASE_DB_PASSWORD` for linked database drift checks against remote Postgres
 
 Optional readiness probe:
 
@@ -55,6 +56,10 @@ Recommended branch protection:
 - Require `Production Gates / App Verify`
 - Require `Production Gates / Server Verify`
 - Require `Production Gates / Migration Drift Gate`
+
+Current note:
+
+- the linked environment currently has known migration-history drift, so the gate is still valuable but should be interpreted alongside [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md) until reconciliation is complete
 
 ## Resume Preservation QA
 

@@ -93,7 +93,7 @@ This sprint exists to reassert the intended operating model before more implemen
 - The next production sweep after Resume V2 should prioritize Smart Referrals, then the dashboard/workspace shell, then Interview Prep and LinkedIn Studio. See `docs/PRODUCTION_SWEEP_PLAN.md`.
 - The current release-hardening stack for the core hiring loop is captured in `docs/PRODUCTION_HARDENING_PLAN.md`: Job Search + Pipeline, Smart Referrals, Resume V2, cross-cutting auth/persistence, then LinkedIn Studio before release-candidate QA.
 - The next post-hardening phase should now shift from broad cleanup into launch readiness, instrumentation, pilot user testing, production observability, and monetization design. See `docs/NEXT_PHASE_PLAN.md`.
-- Product telemetry ingestion, the admin funnel view, and the pilot-session script are now in place. The remaining rollout blocker from this environment is the linked database password; see `docs/PRODUCT_TELEMETRY_ROLLOUT.md`.
+- Product telemetry ingestion, the admin funnel view, and the pilot-session script are now in place, and the telemetry table is live. The remaining database-ops follow-up is migration-history reconciliation; see `docs/PRODUCT_TELEMETRY_ROLLOUT.md` and `docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md`.
 - Smart Referrals and the first two workspace-shell sweeps are now landed.
 - Interview Prep is now underway with shared master-resume context loading across the interview follow-up rooms.
 - `InterviewLabRoom` focus/view routing is now being centralized so prep, follow-up documents, and negotiation handoffs resolve from one canonical room-state model.

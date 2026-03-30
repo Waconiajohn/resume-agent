@@ -11,53 +11,37 @@ The product telemetry pipeline is implemented in code:
 - admin funnel summary
 - pilot-session script
 
-The only rollout blocker from this environment is:
+The telemetry migration is now live in Supabase.
 
-- `SUPABASE_DB_PASSWORD` is not set in [server/.env](/Users/johnschrup/Documents/New%20project/resume-agent/server/.env)
+Current operational state:
 
-Without that value, the Supabase CLI can authenticate the project reference but cannot diff or apply migrations against the linked database.
+- `SUPABASE_DB_PASSWORD` is now working from [server/.env](/Users/johnschrup/Documents/New%20project/resume-agent/server/.env)
+- the `product_telemetry_events` table was applied through a fallback migration path
+- the admin `Funnel` view is ready to read real events
+- the broader Supabase migration history is still out of sync and should be treated as a separate reconciliation task
 
-## What To Run Once The DB Password Is Available
+This means product telemetry is usable now, but migration drift is not yet resolved globally.
+
+Drift follow-up plan:
+
+- [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
+
+## What To Run From This Environment
 
 From [server](/Users/johnschrup/Documents/New%20project/resume-agent/server):
 
 ```bash
 set -a
 source .env
-export SUPABASE_DB_PASSWORD='...'
 set +a
 npm run check:migrations
 ```
 
-Expected result before apply:
+Current expected result:
 
-- the new local migration should show as local-only:
-  - `20260330130000_product_telemetry_events`
-
-Then apply it from the repo root:
-
-```bash
-set -a
-source server/.env
-export SUPABASE_DB_PASSWORD='...'
-set +a
-supabase db push --linked --workdir /Users/johnschrup/Documents/New\ project/resume-agent
-```
-
-Then verify:
-
-```bash
-set -a
-source .env
-export SUPABASE_DB_PASSWORD='...'
-set +a
-npm run check:migrations
-```
-
-Expected result after apply:
-
-- no local-only migrations
-- no remote-only migrations
+- the telemetry table is already live
+- the check still reports broader migration drift across the repo
+- the telemetry migration should no longer be treated as a blocked apply task
 
 ## Fallback If CLI Access Is Still Blocked
 
@@ -66,6 +50,8 @@ Apply the SQL directly in the Supabase SQL editor using:
 - [20260330130000_product_telemetry_events.sql](/Users/johnschrup/Documents/New%20project/resume-agent/supabase/migrations/20260330130000_product_telemetry_events.sql)
 
 That is less ideal than the CLI path, but it is acceptable for getting the telemetry sink live.
+
+That fallback path is what was used to get the telemetry table live before the DB password was corrected in this environment.
 
 ## Validation After Migration
 
@@ -117,6 +103,17 @@ Expected:
 - non-zero event counts after interacting with the app
 - funnel steps populated
 - `watch_metrics` included in the response
+
+## Migration History Note
+
+Running `npm run check:migrations` now confirms two separate truths:
+
+1. the telemetry table is live and usable
+2. the repository still has pre-existing local/remote migration drift
+
+Do not treat that drift as part of the telemetry rollout anymore. It should be handled through the dedicated reconciliation plan:
+
+- [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
 
 ## First Things To Watch Daily
 
