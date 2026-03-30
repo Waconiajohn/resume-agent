@@ -4,8 +4,22 @@
 
 - Date: 2026-03-30
 - Active Codex repo: `/Users/johnschrup/Documents/New project/resume-agent`
-- Current commit: `bfde482d33877b46cf77c8087e0cbbb8dfffa4bd`
+- Base product commit before this handoff note: `bfde482d33877b46cf77c8087e0cbbb8dfffa4bd`
 - Repo state: clean except intentionally untouched `review-bundles/`
+
+## Git Health Warning
+
+`git fsck --no-progress` on this local clone reports:
+
+- invalid reflog entries referencing missing commit `a440bb711a2cc50dac4982f39409c4a2687cdbd1`
+- multiple missing blobs/trees from older history
+
+Important:
+
+- the latest work **did push successfully** to `origin/main`
+- treat the remote GitHub repo as the current source of truth
+- be cautious about doing aggressive local git maintenance on this clone before comparing with the remote
+- if git problems keep showing up after restart, recloning this working tree is the safest cleanup path
 
 ## Very Short Status
 
@@ -145,4 +159,10 @@ If the new session is about database work, also read:
 
 ## Safe Shutdown Check
 
-It is safe to shut down once this handoff file is committed and pushed.
+It is safe to shut down because the latest work is pushed.
+
+On restart:
+
+1. treat `origin/main` as the source of truth
+2. read this handoff file first
+3. if git corruption blocks normal work, reclone before doing deeper git operations
