@@ -89,6 +89,7 @@ export function useWatchlist() {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
         if (mountedRef.current) {
+          setCompanies([]);
           setLoading(false);
           setError('Not authenticated');
         }
@@ -108,7 +109,11 @@ export function useWatchlist() {
 
       const json = await res.json() as { companies?: WatchlistCompany[]; feature_disabled?: boolean };
       if (json.feature_disabled) {
-        if (mountedRef.current) { setCompanies([]); setLoading(false); }
+        if (mountedRef.current) {
+          setCompanies([]);
+          setLoading(false);
+          setError(null);
+        }
         return;
       }
       const data = sanitizeWatchlistCompanies(json.companies);

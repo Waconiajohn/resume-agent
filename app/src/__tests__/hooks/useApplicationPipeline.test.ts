@@ -145,6 +145,56 @@ describe('useApplicationPipeline', () => {
     expect(result.current.error).toContain('authenticated');
   });
 
+  it('fetchApplications clears stale applications and due actions when auth is lost', async () => {
+    const { supabase } = await import('@/lib/supabase');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ applications: [makeApplication()] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              actions: [
+                {
+                  id: 'due-1',
+                  role_title: 'VP Operations',
+                  company_name: 'Acme Corp',
+                  next_action: 'Send follow-up',
+                  next_action_due: '2026-03-25',
+                  stage: 'interviewing',
+                },
+              ],
+            }),
+        }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    await act(async () => {
+      await result.current.fetchApplications();
+      await result.current.fetchDueActions();
+    });
+
+    expect(result.current.applications).toHaveLength(1);
+    expect(result.current.dueActions).toHaveLength(1);
+
+    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await act(async () => {
+      await result.current.fetchApplications();
+    });
+
+    expect(result.current.applications).toEqual([]);
+    expect(result.current.dueActions).toEqual([]);
+    expect(result.current.error).toContain('authenticated');
+  });
+
   it('fetchApplications sanitizes malformed application payloads', async () => {
     vi.stubGlobal(
       'fetch',
@@ -444,6 +494,47 @@ describe('useApplicationPipeline', () => {
         stage: 'interviewing',
       },
     ]);
+  });
+
+  it('fetchDueActions clears stale due actions when auth is lost', async () => {
+    const { supabase } = await import('@/lib/supabase');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            actions: [
+              {
+                id: 'due-1',
+                role_title: 'VP Operations',
+                company_name: 'Acme Corp',
+                next_action: 'Send follow-up',
+                next_action_due: '2026-03-25',
+                stage: 'interviewing',
+              },
+            ],
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    await act(async () => {
+      await result.current.fetchDueActions();
+    });
+
+    expect(result.current.dueActions).toHaveLength(1);
+
+    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await act(async () => {
+      await result.current.fetchDueActions();
+    });
+
+    expect(result.current.dueActions).toEqual([]);
   });
 
   it('all PipelineStage values are valid', () => {

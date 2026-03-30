@@ -185,7 +185,13 @@ export function useApplicationPipeline() {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
         if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
+          setState((prev) => ({
+            ...prev,
+            applications: [],
+            dueActions: [],
+            loading: false,
+            error: 'Not authenticated',
+          }));
         }
         return;
       }
@@ -210,7 +216,15 @@ export function useApplicationPipeline() {
 
       const json = await res.json() as { applications?: Application[]; feature_disabled?: boolean };
       if (json.feature_disabled) {
-        if (mountedRef.current) setState((prev) => ({ ...prev, applications: [], loading: false }));
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            applications: [],
+            dueActions: [],
+            loading: false,
+            error: null,
+          }));
+        }
         return;
       }
       const data = sanitizeApplications(json.applications);
@@ -230,22 +244,39 @@ export function useApplicationPipeline() {
 
     try {
       const authHeader = await getAuthHeader();
-      if (!authHeader) return;
+      if (!authHeader) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, dueActions: [] }));
+        }
+        return;
+      }
 
       const res = await fetch(`${API_BASE}/applications/due-actions?days=${days}`, {
         headers: authHeader,
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, dueActions: [] }));
+        }
+        return;
+      }
 
       const json = await res.json() as { actions?: DueAction[]; feature_disabled?: boolean };
-      if (json.feature_disabled) return;
+      if (json.feature_disabled) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, dueActions: [] }));
+        }
+        return;
+      }
       const data = sanitizeDueActions(json.actions);
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, dueActions: data }));
       }
     } catch {
-      // Due actions are non-critical — fail silently
+      if (mountedRef.current) {
+        setState((prev) => ({ ...prev, dueActions: [] }));
+      }
     }
   }, []);
 

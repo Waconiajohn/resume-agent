@@ -117,4 +117,97 @@ describe('useWatchlist', () => {
     expect(updated).toBeNull();
     expect(result.current.companies).toEqual([]);
   });
+
+  it('fetchCompanies clears stale companies when auth is lost', async () => {
+    const { supabase } = await import('@/lib/supabase');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            companies: [
+              {
+                id: 'c-1',
+                name: 'Acme Corp',
+                industry: 'Software',
+                website: 'https://acme.test',
+                careers_url: null,
+                priority: 3,
+                source: 'manual',
+                notes: null,
+                created_at: '2026-03-01T00:00:00Z',
+                updated_at: '2026-03-02T00:00:00Z',
+              },
+            ],
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() => useWatchlist());
+
+    await act(async () => {
+      await result.current.fetchCompanies();
+    });
+
+    expect(result.current.companies).toHaveLength(1);
+
+    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await act(async () => {
+      await result.current.fetchCompanies();
+    });
+
+    expect(result.current.companies).toEqual([]);
+    expect(result.current.error).toBe('Not authenticated');
+  });
+
+  it('fetchCompanies clears stale companies when the feature is disabled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              companies: [
+                {
+                  id: 'c-1',
+                  name: 'Acme Corp',
+                  industry: 'Software',
+                  website: 'https://acme.test',
+                  careers_url: null,
+                  priority: 3,
+                  source: 'manual',
+                  notes: null,
+                  created_at: '2026-03-01T00:00:00Z',
+                  updated_at: '2026-03-02T00:00:00Z',
+                },
+              ],
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ feature_disabled: true }),
+        }),
+    );
+
+    const { result } = renderHook(() => useWatchlist());
+
+    await act(async () => {
+      await result.current.fetchCompanies();
+    });
+
+    expect(result.current.companies).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.fetchCompanies();
+    });
+
+    expect(result.current.companies).toEqual([]);
+    expect(result.current.error).toBeNull();
+  });
 });
