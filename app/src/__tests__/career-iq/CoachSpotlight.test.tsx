@@ -86,7 +86,7 @@ describe('CoachSpotlight', () => {
     expect(onOpenCoach).toHaveBeenCalledTimes(1);
   });
 
-  it('routes hidden room recommendations back to the coach instead of opening weak products', () => {
+  it('routes folded legacy room recommendations into the stronger live room', () => {
     const onNavigateRoom = vi.fn();
     const onOpenCoach = vi.fn();
 
@@ -100,9 +100,10 @@ describe('CoachSpotlight', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Talk to coach'));
-    expect(onNavigateRoom).not.toHaveBeenCalled();
-    expect(onOpenCoach).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByText('Go there'));
+    expect(onNavigateRoom).toHaveBeenCalledTimes(1);
+    expect(onNavigateRoom).toHaveBeenCalledWith('career-profile');
+    expect(onOpenCoach).not.toHaveBeenCalled();
   });
 
   it('"Why?" button toggles rationale visibility', () => {

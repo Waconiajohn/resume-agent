@@ -132,7 +132,6 @@ const STUDIO_STAGE_CONFIG: Record<StudioTab, StudioStageMeta> = {
 };
 
 const PRIMARY_STUDIO_TABS: StudioTab[] = ['editor', 'composer', 'analytics'];
-const SUPPORT_STUDIO_TABS: StudioTab[] = ['calendar', 'library'];
 const LINKEDIN_WORKFLOW_ORDER: StudioTab[] = ['editor', 'composer', 'analytics'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────
@@ -1519,6 +1518,52 @@ function KeywordMultiplierNudge() {
   );
 }
 
+function LinkedInSupportWorkspaces({
+  onOpenCalendar,
+  onOpenLibrary,
+}: {
+  onOpenCalendar: () => void;
+  onOpenLibrary: () => void;
+}) {
+  return (
+    <GlassCard className="p-5">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <button
+          type="button"
+          onClick={onOpenCalendar}
+          className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+            Support workspace
+          </div>
+          <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+            Open Content Plan
+          </div>
+          <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            Map themes, sequence ideas, and build a usable posting rhythm without turning planning into a top-level tab.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenLibrary}
+          className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+            Support workspace
+          </div>
+          <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
+            Open Library
+          </div>
+          <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            Pull saved drafts and past work back into the main writing flow when you need a faster starting point.
+          </p>
+        </button>
+      </div>
+    </GlassCard>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function parseReportSections(report: string): {
@@ -1559,6 +1604,14 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
     setActiveTab('composer');
   }, []);
 
+  const handleOpenCalendar = useCallback(() => {
+    setActiveTab('calendar');
+  }, []);
+
+  const handleOpenLibrary = useCallback(() => {
+    setActiveTab('library');
+  }, []);
+
   const handleOptimize = useCallback(async () => {
     setInputError(null);
 
@@ -1594,11 +1647,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
     label: STUDIO_STAGE_CONFIG[id].label,
     icon: STUDIO_STAGE_CONFIG[id].icon,
   }));
-  const utilityActions = SUPPORT_STUDIO_TABS.map((id) => ({
-    id,
-    label: STUDIO_STAGE_CONFIG[id].label,
-    icon: STUDIO_STAGE_CONFIG[id].icon,
-  }));
 
   return (
     <div className="room-shell">
@@ -1607,7 +1655,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           <div className="eyebrow-label">LinkedIn</div>
           <h1 className="room-title">Build a stronger profile and publish with intent</h1>
           <p className="room-subtitle">
-            Strengthen the profile people land on, publish in your own voice, and keep planning tools close without letting them take over the room.
+            Strengthen the profile people land on, publish in your own voice, and keep planning support tucked inside the main workflow instead of turning it into separate rooms.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
@@ -1620,21 +1668,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
-          {utilityActions.map((action) => {
-            const Icon = action.icon;
-            const isActive = activeTab === action.id;
-            return (
-              <GlassButton
-                key={action.id}
-                variant={isActive ? 'secondary' : 'ghost'}
-                onClick={() => setActiveTab(action.id)}
-                className="flex items-center gap-1.5"
-              >
-                <Icon size={13} />
-                {action.label}
-              </GlassButton>
-            );
-          })}
           <GlassButton
             onClick={handleOptimize}
             disabled={isOptimizerRunning}
@@ -1672,7 +1705,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               Sharpen the profile, write with intent, then review what is landing.
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              Content Plan and Library stay available as support workspaces, but the main flow stays centered on profile strength, writing, and results.
+              Content planning and saved drafts still stay close, but the main room now stays centered on profile strength, writing, and results.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {LINKEDIN_WORKFLOW_ORDER.map((tab, index) => {
@@ -1722,6 +1755,29 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         </div>
       </GlassCard>
 
+      {(activeTab === 'calendar' || activeTab === 'library') && (
+        <GlassCard className="p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                Support workspace
+              </div>
+              <div className="mt-1 text-[14px] font-semibold text-[var(--text-strong)]">
+                {activeTab === 'calendar' ? 'Content Plan' : 'Library'}
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
+                {activeTab === 'calendar'
+                  ? 'Use this when you want to map a stronger posting rhythm, then step back into Write.'
+                  : 'Use this when you want to reuse saved work, then step back into Write.'}
+              </p>
+            </div>
+            <GlassButton variant="ghost" onClick={() => setActiveTab('composer')}>
+              Back to Write
+            </GlassButton>
+          </div>
+        </GlassCard>
+      )}
+
       {/* Keyword multiplier coaching nudge */}
       {(activeTab === 'composer' || activeTab === 'calendar') && (
         <KeywordMultiplierNudge />
@@ -1750,6 +1806,12 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       {/* Tab content */}
       <div>
         {activeTab === 'composer' && <PostComposer signals={signals} />}
+        {activeTab === 'composer' && (
+          <LinkedInSupportWorkspaces
+            onOpenCalendar={handleOpenCalendar}
+            onOpenLibrary={handleOpenLibrary}
+          />
+        )}
         {activeTab === 'editor' && (
           <div className="flex flex-col gap-6">
             <ProfileEditor signals={signals} />
@@ -1787,6 +1849,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             {isOptimizerRunning && (
               <ActivityFeed messages={optimizer.activityMessages} label="Optimization in progress..." />
             )}
+            <LinkedInSupportWorkspaces
+              onOpenCalendar={handleOpenCalendar}
+              onOpenLibrary={handleOpenLibrary}
+            />
           </div>
         )}
       </div>

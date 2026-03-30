@@ -26,7 +26,6 @@ const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((modul
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
-const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
 const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
@@ -37,8 +36,7 @@ const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   jobs: 'Job Search',
   networking: 'Network Job Search',
   interview: 'Interview Prep',
-  'executive-bio': 'Executive Documents',
-  financial: 'Financial Wellness',
+  financial: 'Retirement Bridge',
 };
 
 interface CoverLetterSession {
@@ -323,6 +321,7 @@ export function CareerIQScreen({
           onGetDefaultResume={onGetDefaultResume}
           onNavigateResume={() => handleRoomNavigate('resume')}
           careerProfile={profile}
+          initialFocus={normalizedWorkspaceFocus}
         />
       );
     }
@@ -396,16 +395,6 @@ export function CareerIQScreen({
 
     if (activeRoom === 'networking') {
       return <SmartReferralsRoom />;
-    }
-
-    if (activeRoom === 'executive-bio') {
-      return (
-        <ExecutiveDocumentsRoom
-          careerProfileSummary={summary}
-          onOpenCareerProfile={openCareerProfile}
-          initialFocus={normalizedWorkspaceFocus}
-        />
-      );
     }
 
     const unhandledRoom: never = activeRoom;

@@ -3,8 +3,8 @@
  * LinkedInStudioRoom component — unit tests.
  *
  * Sprint 60 — LinkedIn.
- * Tests: tab rendering (write, profile, content plan, results, library),
- * tab switching, library tab loading content posts, 50 Groups Guide presence.
+ * Tests: main workflow rendering, embedded support workspace launchers,
+ * support workspace loading, and 50 Groups Guide presence.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -180,9 +180,9 @@ describe('LinkedInStudioRoom — tab rendering', () => {
     expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
   });
 
-  it('renders Content Plan button', () => {
+  it('renders the embedded Content Plan launcher', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Content Plan')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Content Plan/i })).toBeInTheDocument();
   });
 
   it('renders Results tab button', () => {
@@ -190,9 +190,9 @@ describe('LinkedInStudioRoom — tab rendering', () => {
     expect(screen.getByRole('button', { name: 'Results' })).toBeInTheDocument();
   });
 
-  it('renders Library tab button', () => {
+  it('renders the embedded Library launcher', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('Library')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Library/i })).toBeInTheDocument();
   });
 });
 
@@ -205,17 +205,17 @@ describe('LinkedInStudioRoom — tab switching', () => {
     expect(screen.getByText('Draft a post in your own voice')).toBeInTheDocument();
   });
 
-  it('switches to Content Plan on click', async () => {
+  it('opens Content Plan from the embedded launcher', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Content Plan' }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
     await waitFor(() => {
       expect(screen.getByText('Plan the next stretch of posts')).toBeInTheDocument();
     });
   });
 
-  it('switches to Library tab on click', async () => {
+  it('opens Library from the embedded launcher', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Library' }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
     await waitFor(() => {
       const libContent = screen.queryByText(/Keep your best LinkedIn work in one place/i) ||
         screen.queryByText(/posts/i) ||
@@ -280,7 +280,7 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 describe('LinkedInStudioRoom — Library tab', () => {
   it('library tab loads without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Library' }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
     await waitFor(() => {
       expect(screen.getByText(/Keep your best LinkedIn work in one place/i)).toBeInTheDocument();
     });
@@ -288,7 +288,7 @@ describe('LinkedInStudioRoom — Library tab', () => {
 
   it('library uses useContentPosts hook (posts = [])', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Library' }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Library/i }));
     await waitFor(() => {
       const el = screen.queryByText(/Keep your best LinkedIn work in one place/i) || screen.queryByText(/Write your first post/i) || screen.queryByText(/no posts/i);
       expect(el).toBeTruthy();
@@ -301,7 +301,7 @@ describe('LinkedInStudioRoom — Library tab', () => {
 describe('LinkedInStudioRoom — Content Plan tab', () => {
   it('content plan tab renders without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Content Plan' }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
     await waitFor(() => {
       expect(document.body).toBeTruthy();
     });

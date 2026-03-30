@@ -458,7 +458,7 @@ describe('RuleOfFourSection — expanded group contacts', () => {
     // The handler calls setOutreachPrefill — no error should be thrown and the
     // component should remain mounted.
     await waitFor(() => {
-      expect(screen.getByText('Networking Hub')).toBeInTheDocument();
+      expect(screen.getByText('Contacts & Outreach')).toBeInTheDocument();
     });
   });
 });

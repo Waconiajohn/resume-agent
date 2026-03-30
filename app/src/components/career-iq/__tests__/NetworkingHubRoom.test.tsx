@@ -201,10 +201,10 @@ describe('NetworkingHubRoom — rendering', () => {
     expect(screen.getByText('Add Contact')).toBeInTheDocument();
   });
 
-  it('renders Networking Hub heading or title', () => {
+  it('renders Contacts & Outreach heading or title', () => {
     render(<NetworkingHubRoom />);
-    const heading = screen.queryByText(/Networking Hub/i) ||
-      screen.queryByText(/networking/i);
+    const heading = screen.queryByText(/Contacts & Outreach/i) ||
+      screen.queryByText(/Smart Referrals turns your network into real outreach/i);
     expect(heading).toBeTruthy();
   });
 });

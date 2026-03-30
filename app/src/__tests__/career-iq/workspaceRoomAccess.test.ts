@@ -11,13 +11,13 @@ describe('workspaceRoomAccess', () => {
     expect(toExposedWorkspaceRoom('personal-brand')).toBe('career-profile');
     expect(toExposedWorkspaceRoom('thank-you-note')).toBe('interview');
     expect(resolveWorkspaceRoom('network-intelligence')).toBe('networking');
-    expect(resolveWorkspaceRoom('case-study')).toBe('executive-bio');
+    expect(resolveWorkspaceRoom('case-study')).toBe('career-profile');
+    expect(resolveWorkspaceRoom('executive-bio')).toBe('career-profile');
   });
 
   it('keeps hidden rooms routable while hiding them from main nav', () => {
-    expect(resolveWorkspaceRoom('executive-bio')).toBe('executive-bio');
     expect(resolveWorkspaceRoom('financial')).toBe('financial');
-    expect(toExposedWorkspaceRoom('executive-bio')).toBe('dashboard');
+    expect(toExposedWorkspaceRoom('executive-bio')).toBe('career-profile');
     expect(toExposedWorkspaceRoom('networking')).toBe('networking');
     expect(toExposedWorkspaceRoom('financial')).toBe('dashboard');
   });

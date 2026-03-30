@@ -6,6 +6,7 @@
  *   Section B — Why Me Story (WhyMeEngine or WhyMeStoryCard)
  *   Section C — LinkedIn Profile (headline + about)
  *   Section D — Evidence Library (aggregated read-only + manual entry)
+ *   Section E — Brand & Proof Assets (bio + case studies)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,6 +31,8 @@ import { WhyMeEngine } from './WhyMeEngine';
 import { useWhyMeStory } from './useWhyMeStory';
 import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
 import { useEvidenceLibrary } from '@/hooks/useEvidenceLibrary';
+import { ExecutiveBioRoom } from './ExecutiveBioRoom';
+import { CaseStudyRoom } from './CaseStudyRoom';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import type { MasterResume } from '@/types/resume';
 import type { CareerProfileV2 } from '@/types/career-profile';
@@ -636,18 +639,163 @@ function EvidenceLibrarySection({
   );
 }
 
+// ─── Section E — Brand & Proof Assets ────────────────────────────────────────
+
+type BrandAssetFocus = 'overview' | 'bio' | 'case-study';
+
+function getBrandAssetFocus(initialFocus?: string): BrandAssetFocus {
+  if (initialFocus === 'bio') return 'bio';
+  if (initialFocus === 'case-study') return 'case-study';
+  return 'overview';
+}
+
+function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
+  const [activeAsset, setActiveAsset] = useState<BrandAssetFocus>(getBrandAssetFocus(initialFocus));
+
+  useEffect(() => {
+    setActiveAsset(getBrandAssetFocus(initialFocus));
+  }, [initialFocus]);
+
+  const showBio = activeAsset === 'bio';
+  const showCaseStudy = activeAsset === 'case-study';
+
+  return (
+    <div className="space-y-4">
+      <GlassCard className="p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <SectionHeader icon={BookOpen} label="Section E" title="Brand & Proof Assets" />
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+              This is where your short narrative assets and deeper proof stories stay aligned with
+              your Why Me Story, your benchmark positioning, and your master resume.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <GlassButton
+              variant={activeAsset === 'overview' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveAsset('overview')}
+            >
+              Overview
+            </GlassButton>
+            <GlassButton
+              variant={showBio ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveAsset('bio')}
+            >
+              Bio Builder
+            </GlassButton>
+            <GlassButton
+              variant={showCaseStudy ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveAsset('case-study')}
+            >
+              Case Studies
+            </GlassButton>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+              Short-form brand story
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+              Use the bio builder for speaker, board, advisory, and LinkedIn-ready summaries.
+            </div>
+          </div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+              Proof library
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+              Use case studies to turn your strongest wins into reusable benchmark-grade proof.
+            </div>
+          </div>
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+              Best use
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+              Keep the brand story, the evidence, and the resume all telling the same story.
+            </div>
+          </div>
+        </div>
+
+        {activeAsset === 'overview' ? (
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setActiveAsset('bio')}
+              className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
+            >
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                Start here
+              </div>
+              <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+                Build the bio version of your story
+              </div>
+              <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+                Create the concise narrative people reuse most often across introductions, boards,
+                speaking, and LinkedIn.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveAsset('case-study')}
+              className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
+            >
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                Next best move
+              </div>
+              <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+                Turn your strongest wins into deeper proof
+              </div>
+              <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+                Build longer proof narratives once the identity story is clear enough to anchor
+                them.
+              </p>
+            </button>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+              Current focus
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
+              {showBio ? 'Bio Builder' : 'Case Studies'}
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+              {showBio
+                ? 'Keep this aligned with your Why Me Story and LinkedIn so people get the same operator every time they encounter you.'
+                : 'Use this to deepen the proof behind your benchmark story, not to create a separate persona.'}
+            </p>
+          </div>
+        )}
+      </GlassCard>
+
+      {showBio ? <ExecutiveBioRoom /> : null}
+      {showCaseStudy ? <CaseStudyRoom /> : null}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 interface YourProfilePageProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
   onNavigateResume?: () => void;
   careerProfile?: CareerProfileV2 | null;
+  initialFocus?: string;
 }
 
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
   careerProfile = null,
+  initialFocus,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted } = useWhyMeStory();
 
@@ -708,6 +856,9 @@ export function YourProfilePage({
         onGetDefaultResume={onGetDefaultResume}
         careerProfile={careerProfile}
       />
+
+      {/* Section E — Brand & Proof Assets */}
+      <BrandProofAssetsSection initialFocus={initialFocus} />
     </div>
   );
 }

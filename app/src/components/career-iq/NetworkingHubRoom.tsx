@@ -1064,10 +1064,10 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-[var(--text-strong)]">Networking Hub</h1>
+          <h1 className="text-lg font-semibold text-[var(--text-strong)]">Contacts &amp; Outreach</h1>
           <p className="text-[13px] text-[var(--text-soft)]">
-            Networking is your sales force. For every application, the Rule of Four gets you past
-            the queue and in front of decision-makers.
+            Smart Referrals turns your network into real outreach. For every application, the Rule
+            of Four helps you get past the queue and in front of decision-makers.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'evidence_item']}

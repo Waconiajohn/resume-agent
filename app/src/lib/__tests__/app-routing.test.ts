@@ -39,7 +39,7 @@ describe('app-routing', () => {
     expect(getNormalizedWorkspaceRedirect('?room=salary-negotiation')).toBe('/workspace?room=interview&focus=negotiation');
     expect(getNormalizedWorkspaceRedirect('?room=personal-brand&job=123')).toBe('/workspace?room=career-profile&job=123');
     expect(getNormalizedWorkspaceRedirect('?room=network-intelligence')).toBe('/workspace?room=networking');
-    expect(getNormalizedWorkspaceRedirect('?room=case-study')).toBe('/workspace?room=executive-bio&focus=case-study');
+    expect(getNormalizedWorkspaceRedirect('?room=case-study')).toBe('/workspace?room=career-profile&focus=case-study');
     expect(getNormalizedWorkspaceRedirect('?room=resume')).toBeNull();
     expect(resolveNavigationTarget('workspace')).toBe('/workspace');
     expect(resolveNavigationTarget('tools')).toBe('/workspace');

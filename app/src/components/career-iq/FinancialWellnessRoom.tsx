@@ -800,7 +800,7 @@ export function FinancialWellnessRoom({
           description="Retirement Bridge is intentionally different from the rest of the platform. It uses your transition context to ask better questions, while keeping financial guidance deferred to a fiduciary planner."
           usagePoints={[
             'The assessment uses your transition context and emotional baseline to frame better questions.',
-            'Financial Wellness still relies more on client profile signals than resume positioning.',
+            'Retirement Bridge still relies more on client profile signals than resume positioning.',
             'This tool prepares a planner conversation. It does not turn career context into financial advice.',
           ]}
           onOpenProfile={onOpenCareerProfile}
@@ -811,7 +811,7 @@ export function FinancialWellnessRoom({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-              Financial Wellness
+              Retirement Bridge
             </div>
             <h1 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Retirement Bridge</h1>
             <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">

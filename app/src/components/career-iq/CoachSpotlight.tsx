@@ -11,7 +11,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CareerIQRoom } from './Sidebar';
-import { isExposedWorkspaceRoom } from './workspaceRoomAccess';
+import { isExposedWorkspaceRoom, toExposedWorkspaceRoom } from './workspaceRoomAccess';
 
 interface CoachSpotlightProps {
   userName: string;
@@ -47,9 +47,14 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
 
   if (!recommendation) return null;
 
+  const resolvedRoom = recommendation.room ? toExposedWorkspaceRoom(recommendation.room) : null;
+  const canNavigate =
+    !!recommendation.room &&
+    (isExposedWorkspaceRoom(recommendation.room) || resolvedRoom !== 'dashboard');
+
   const handleCTA = () => {
-    if (isExposedWorkspaceRoom(recommendation.room)) {
-      onNavigateRoom?.(recommendation.room);
+    if (canNavigate && resolvedRoom) {
+      onNavigateRoom?.(resolvedRoom as CareerIQRoom);
     } else {
       onOpenCoach?.();
     }
@@ -85,9 +90,9 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
               type="button"
               onClick={handleCTA}
               className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-300 hover:text-indigo-200 transition-colors"
-              aria-label={isExposedWorkspaceRoom(recommendation.room) ? `Go to ${recommendation.room.replace(/-/g, ' ')}` : 'Open AI Coach'}
+              aria-label={canNavigate && resolvedRoom ? `Go to ${resolvedRoom.replace(/-/g, ' ')}` : 'Open AI Coach'}
             >
-              {isExposedWorkspaceRoom(recommendation.room) ? 'Go there' : 'Talk to coach'}
+              {canNavigate ? 'Go there' : 'Talk to coach'}
               <ArrowRight size={13} />
             </button>
             <button

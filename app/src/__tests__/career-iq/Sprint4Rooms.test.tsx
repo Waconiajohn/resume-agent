@@ -69,7 +69,6 @@ import { LinkedInStudioRoom } from '@/components/career-iq/LinkedInStudioRoom';
 import { JobCommandCenterRoom } from '@/components/career-iq/JobCommandCenterRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
-import { ExecutiveDocumentsRoom } from '@/components/career-iq/ExecutiveDocumentsRoom';
 import type { WhyMeSignals } from '@/components/career-iq/useWhyMeStory';
 
 afterEach(() => {
@@ -91,13 +90,13 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Profile$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Results$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Content Plan$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Library$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Content Plan/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Library/i })).toBeInTheDocument();
   });
 
   it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Content Plan$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Open Content Plan/i }));
     // ContentCalendar in idle state renders "Build Content Plan"
     expect(screen.getByText('Build Content Plan')).toBeInTheDocument();
   });
@@ -359,14 +358,14 @@ describe('NetworkingHubRoom', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the Networking Hub heading', () => {
+  it('renders the Contacts & Outreach heading', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText('Networking Hub')).toBeInTheDocument();
+    expect(screen.getByText('Contacts & Outreach')).toBeInTheDocument();
   });
 
   it('renders the Rule of Four tagline', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText(/Networking is your sales force/)).toBeInTheDocument();
+    expect(screen.getByText(/Smart Referrals turns your network into real outreach/)).toBeInTheDocument();
   });
 
   it('renders the Add Contact button', () => {
@@ -401,24 +400,5 @@ describe('NetworkingHubRoom', () => {
       screen.queryByText(/no contacts/i) ||
       screen.queryByText(/Add Contact/i);
     expect(el).toBeTruthy();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ExecutiveDocumentsRoom
-// ---------------------------------------------------------------------------
-
-describe('ExecutiveDocumentsRoom', () => {
-  it('renders the document workflow guidance on the default landing state', () => {
-    render(<ExecutiveDocumentsRoom />);
-    expect(screen.getByText('Document workflow')).toBeInTheDocument();
-    expect(screen.getByText('Current focus')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Case Studies/i }).length).toBeGreaterThan(0);
-    expect(screen.getByText('Executive Bio Workspace')).toBeInTheDocument();
-  });
-
-  it('opens directly into case studies when case-study focus is provided', () => {
-    render(<ExecutiveDocumentsRoom initialFocus="case-study" />);
-    expect(screen.getByText('Case Study Workspace')).toBeInTheDocument();
   });
 });
