@@ -226,6 +226,49 @@ describe('useContentPosts — fetchPosts', () => {
     expect(result.current.error).toBe('Not authenticated');
   });
 
+  it('clears stale posts when auth is lost on a later fetch', async () => {
+    const posts = [makePost()];
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ posts }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useContentPosts());
+    await waitFor(() => expect(result.current.posts).toHaveLength(1));
+
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+
+    await act(async () => {
+      await result.current.fetchPosts();
+    });
+
+    expect(result.current.posts).toEqual([]);
+    expect(result.current.error).toBe('Not authenticated');
+  });
+
+  it('clears stale posts when the feature is disabled', async () => {
+    const posts = [makePost()];
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ posts }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useContentPosts());
+    await waitFor(() => expect(result.current.posts).toHaveLength(1));
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feature_disabled: true }), { status: 200 }),
+    );
+
+    await act(async () => {
+      await result.current.fetchPosts();
+    });
+
+    expect(result.current.posts).toEqual([]);
+    expect(result.current.error).toBeNull();
+  });
+
   it('sends Authorization header with token', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ posts: [] }), { status: 200 }),

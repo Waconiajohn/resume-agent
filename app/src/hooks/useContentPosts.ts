@@ -123,7 +123,12 @@ export function useContentPosts() {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
         if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
+          setState((prev) => ({
+            ...prev,
+            posts: [],
+            loading: false,
+            error: 'Not authenticated',
+          }));
         }
         return;
       }
@@ -146,7 +151,18 @@ export function useContentPosts() {
         return;
       }
 
-      const data = (await res.json()) as { posts?: unknown };
+      const data = (await res.json()) as { posts?: unknown; feature_disabled?: boolean };
+      if (data.feature_disabled) {
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            posts: [],
+            loading: false,
+            error: null,
+          }));
+        }
+        return;
+      }
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, posts: normalizeContentPosts(data.posts), loading: false }));
       }

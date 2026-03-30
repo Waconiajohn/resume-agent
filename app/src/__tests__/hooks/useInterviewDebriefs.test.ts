@@ -318,4 +318,28 @@ describe('useInterviewDebriefs', () => {
 
     expect(result.current.error).toBe('Not authenticated');
   });
+
+  it('clears stale debriefs when auth is lost on refresh', async () => {
+    const { supabase: mockSupabase } = await import('@/lib/supabase');
+    vi.stubGlobal('fetch', makeFetchOk([MOCK_DEBRIEF]));
+
+    const { result } = renderHook(() => useInterviewDebriefs());
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.debriefs).toHaveLength(1);
+
+    vi.mocked(mockSupabase.auth.getSession).mockResolvedValueOnce({
+      data: { session: null },
+    } as never);
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.debriefs).toEqual([]);
+    expect(result.current.error).toBe('Not authenticated');
+  });
 });

@@ -151,7 +151,12 @@ export function useInterviewDebriefs() {
       const authHeader = await getAuthHeader();
       if (!authHeader) {
         if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false, error: 'Not authenticated' }));
+          setState((prev) => ({
+            ...prev,
+            debriefs: [],
+            loading: false,
+            error: 'Not authenticated',
+          }));
         }
         return;
       }
