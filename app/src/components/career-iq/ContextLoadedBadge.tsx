@@ -1,15 +1,15 @@
 /**
  * ContextLoadedBadge
  *
- * A subtle badge shown in room headers to indicate which AI-generated platform
- * context is powering the current room. Helps users understand that their
- * positioning strategy, evidence items, and other context from prior sessions
- * are being used — without surfacing raw data or cluttering the UI.
+ * A subtle badge shown in room headers to indicate which saved materials are
+ * helping power the current room. Helps users understand that prior profile,
+ * positioning, and evidence work is being reused without surfacing raw data or
+ * cluttering the UI.
  *
  * Renders nothing if:
  *   - Context is still loading
  *   - No relevant context exists for this room
- *   - The user has no platform context at all
+ *   - The user has no saved context for this room
  */
 
 import { usePlatformContextSummary } from '@/hooks/usePlatformContextSummary';
@@ -98,7 +98,7 @@ export function ContextLoadedBadge({ contextTypes, className }: ContextLoadedBad
         />
       </svg>
       <span>
-        Using your {label} from {dateStr}
+        Using saved {label} from {dateStr}
         {otherCount > 0 && ` + ${otherCount} more`}
       </span>
     </div>

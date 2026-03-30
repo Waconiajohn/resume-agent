@@ -299,7 +299,7 @@ export function WhyMeStoryCard() {
 
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--text-soft)]">
-                This narrative was generated during a Resume Builder session. To update it, run a new resume session — the narrative will reflect your positioning for that specific role.
+                This narrative was saved from a Resume Builder session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.
               </p>
             </div>
           </div>
@@ -312,7 +312,7 @@ export function WhyMeStoryCard() {
               <div>
                 <div className="text-sm font-medium text-[var(--text-soft)]">No pipeline narrative yet</div>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                  Run your first Resume Builder session to unlock your full positioning narrative — branded title, elevator pitch, and the single most powerful line to reuse across every tool.
+                  Run your first Resume Builder session to save a positioning narrative here — branded title, elevator pitch, and the strongest line to reuse across your tools.
                 </p>
               </div>
             </div>

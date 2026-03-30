@@ -1109,7 +1109,7 @@ export function handleContextLoaded(
 ): void {
   const message = typeof data.message === 'string' && data.message.trim().length > 0
     ? data.message
-    : 'Coach loaded your platform context.';
+    : 'Coach loaded your saved profile and positioning materials.';
   pushActivityMessage(state, message, 'context_loaded');
   state.setMessages((prev) => [
     ...prev,
