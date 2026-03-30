@@ -126,7 +126,7 @@ export function WritingAnalyzer() {
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Writing Analyzer</h3>
         </div>
         <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
-          Paste any LinkedIn text to get an instant analysis of tone, readability, engagement potential, and AI-detection risk.
+          Paste any LinkedIn text to get an instant analysis of tone, readability, engagement potential, and detection risk.
         </p>
 
         <div className="flex flex-col gap-3">
@@ -233,7 +233,7 @@ export function WritingAnalyzer() {
               {result.readability_level.replace(/_/g, ' ')}
             </span>
             <span className={cn('text-[12px] font-medium px-2 py-0.5 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)]', AI_RISK_COLORS[result.ai_detection_risk] ?? 'text-[var(--text-soft)]')}>
-              AI risk: {result.ai_detection_risk.replace(/_/g, ' ')}
+              Detection risk: {result.ai_detection_risk.replace(/_/g, ' ')}
             </span>
           </div>
 

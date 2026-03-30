@@ -509,7 +509,7 @@ function LinkedInSection() {
               id="linkedin-about"
               value={profile.about}
               onChange={(e) => updateField('about', e.target.value)}
-              placeholder="Paste your full LinkedIn About section here. This gives the AI the same first impression a recruiter gets before your resume."
+              placeholder="Paste your full LinkedIn About section here. This is often the first profile summary a recruiter reads before your resume."
               rows={8}
               className={cn(
                 'mt-2 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3',
@@ -597,8 +597,8 @@ function EvidenceLibrarySection({
         </button>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        Everything the AI knows about your accomplishments and positioning, aggregated from all
-        your profile sources. Use this as the supporting proof base behind your Why Me Story and benchmark assets.
+        Everything we have gathered from your accomplishments, positioning, and profile sources in one proof base.
+        Use this to support your Why Me Story and benchmark assets.
       </p>
 
       {showAddForm && (

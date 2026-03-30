@@ -20,7 +20,7 @@ export function ToolsPanel() {
     {
       id: 'writing_analyzer',
       label: 'Writing Analyzer',
-      description: 'Get instant feedback on tone, hooks, and AI risk',
+      description: 'Get instant feedback on tone, hooks, and detection risk',
       icon: Eye,
     },
   ];
