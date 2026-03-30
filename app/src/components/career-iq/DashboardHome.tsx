@@ -80,29 +80,29 @@ function HomeGuideCard({
 
   return (
     <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
-      <div className="p-5 sm:p-6">
+      <div className="p-4 sm:p-5">
         <div className="text-[13px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
           {guidance.eyebrow}
         </div>
-        <h1 className="mt-3 max-w-3xl text-[1.75rem] font-semibold leading-tight text-[var(--text-strong)] sm:text-[1.9rem]">
+        <h1 className="mt-2.5 max-w-3xl text-[1.55rem] font-semibold leading-tight text-[var(--text-strong)] sm:text-[1.75rem]">
           {guidance.title}
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-soft)] sm:text-[15px]">
+        <p className="mt-2.5 max-w-xl text-sm leading-6 text-[var(--text-soft)]">
           {guidance.description}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-[12px] text-[var(--text-soft)]">
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--text-soft)]">
           {signalSummary.map((item) => (
-            <span key={item} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 uppercase tracking-[0.08em]">
+            <span key={item} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 uppercase tracking-[0.08em]">
               {item}
             </span>
           ))}
         </div>
         {guidance.coachLine && (
-          <p className="mt-4 text-xs leading-relaxed text-[var(--text-soft)]">
-            Coach says: {guidance.coachLine}
+          <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-soft)]">
+            Coach note: {guidance.coachLine}
           </p>
         )}
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(guidance.primary.room))}
@@ -122,30 +122,30 @@ function HomeGuideCard({
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.1fr_0.85fr_0.85fr]">
+      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.05fr_0.85fr_0.85fr]">
         <StepCard
           icon={Target}
-          title="Career Profile backbone"
-          description="Sharpen the shared story every other tool reads."
-          actionLabel="Review Career Profile"
+          title="Career story"
+          description="Tighten the positioning story every other tool reads."
+          actionLabel="Review story"
           onClick={onRefineWhyMe}
           className="border-[#98b3ff]/18 bg-[#98b3ff]/[0.08]"
         />
         <StepCard
           icon={FileText}
-          title="Resume Builder"
+          title="Resume work"
           description={hasResumeSessions
             ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
             : 'Start a tailored resume and keep the best additions for future use.'}
-          actionLabel={hasResumeSessions ? 'Open saved work' : 'Start a tailored resume'}
+          actionLabel={hasResumeSessions ? 'Open resumes' : 'Start resume'}
           onClick={() => onNavigateRoom?.('resume')}
           className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
         />
         <StepCard
           icon={Search}
-          title="Job Search"
-          description="Track live roles and keep your next moves moving."
-          actionLabel="Open Job Board"
+          title="Job board"
+          description="Search roles, save the best ones, and keep applications moving."
+          actionLabel="Open jobs"
           onClick={() => onNavigateRoom?.('jobs')}
           className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
         />
@@ -177,7 +177,7 @@ function StepCard({
         </div>
         <div className="text-sm font-semibold text-[var(--text-strong)]">{title}</div>
       </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
+      <div className="mt-2 space-y-2">
         <p className="text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
         <button
           type="button"

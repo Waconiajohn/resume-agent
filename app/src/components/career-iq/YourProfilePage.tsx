@@ -96,21 +96,21 @@ function SectionHeader({
 
 function ProfileBackboneCard() {
   return (
-    <GlassCard className="p-5">
+    <GlassCard className="p-4">
       <div>
         <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           Profile backbone
         </div>
         <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-          Build the page around Why Me, your master resume, and your benchmark proof.
+          Keep your story, source resume, and benchmark proof aligned.
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-          Those three pillars should stay in sync. LinkedIn and the proof library support them, but they should not outrank them.
+        <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-soft)]">
+          Everything else on this page should support these three assets, not outrank them.
         </p>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] p-4">
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        <div className="rounded-xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] p-3.5">
           <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/75">
             Why Me
           </div>
@@ -118,7 +118,7 @@ function ProfileBackboneCard() {
             Set the positioning story every tool should follow.
           </div>
         </div>
-        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
           <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
             Master Resume
           </div>
@@ -126,7 +126,7 @@ function ProfileBackboneCard() {
             Keep the facts, chronology, and real proof grounded.
           </div>
         </div>
-        <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.06] p-4">
+        <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.06] p-3.5">
           <div className="text-[12px] font-medium uppercase tracking-widest text-[#b5dec2]">
             Brand & Benchmark
           </div>
@@ -711,8 +711,8 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
           <div className="max-w-3xl">
             <SectionHeader icon={BookOpen} label="Section C" title="Brand & Benchmark Assets" />
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-              This is where your short narrative assets and deeper proof stories stay aligned with
-              your Why Me Story, your benchmark positioning, and your master resume.
+              Turn your core story into reusable bios and deeper proof without drifting away from
+              your Why Me Story or master resume.
             </p>
           </div>
 
@@ -741,32 +741,28 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Short-form brand story
+              Bio Builder
             </div>
             <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              Use the bio builder for speaker, board, advisory, and LinkedIn-ready summaries.
+              Build the short narrative version people reuse in intros, boards, and LinkedIn.
             </div>
           </div>
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Proof library
+              Case Studies
             </div>
             <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              Use case studies to turn your strongest wins into reusable benchmark-grade proof.
-            </div>
-          </div>
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Best use
-            </div>
-            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              Keep the brand story, the evidence, and the resume all telling the same story.
+              Turn your strongest wins into deeper proof that supports the same benchmark story.
             </div>
           </div>
         </div>
+
+        <p className="mt-4 text-xs leading-relaxed text-[var(--text-soft)]">
+          Start with the short-form bio, then deepen the proof once the core story is stable.
+        </p>
 
         {activeAsset === 'overview' ? (
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
@@ -776,14 +772,13 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
               <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Start here
+                Open first
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
                 Build the bio version of your story
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                Create the concise narrative people reuse most often across introductions, boards,
-                speaking, and LinkedIn.
+                Create the concise narrative people reuse most often across introductions and public-facing materials.
               </p>
             </button>
 
@@ -793,14 +788,13 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
               <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Next best move
+                Then build
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
                 Turn your strongest wins into deeper proof
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                Build longer proof narratives once the identity story is clear enough to anchor
-                them.
+                Add longer proof narratives once the identity story is clear enough to anchor them.
               </p>
             </button>
           </div>
@@ -850,8 +844,8 @@ export function YourProfilePage({
       <div>
         <h1 className="text-xl font-semibold text-[var(--text-strong)]">Your Profile</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-soft)]">
-          Everything that defines who you are professionally lives here. Every workspace tool should
-          be drawing from the same positioning story, the same master resume, and the same proof base.
+          Keep your positioning story, master resume, and proof base aligned here so every other
+          workspace tool starts from the same foundation.
         </p>
       </div>
 
