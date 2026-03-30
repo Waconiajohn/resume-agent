@@ -145,7 +145,7 @@ function HomeGuideCard({
           icon={Search}
           title="Job Search"
           description="Track active roles, discover new ones, and keep your next moves moving in one place."
-          actionLabel="Open Job Search"
+          actionLabel="Open Job Board"
           onClick={() => onNavigateRoom?.('jobs')}
           className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
         />

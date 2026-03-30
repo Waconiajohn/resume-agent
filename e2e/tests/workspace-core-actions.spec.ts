@@ -169,6 +169,29 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('button', { name: 'Atlas Systems', exact: true })).toBeVisible();
   });
 
+  test('Smart Referrals keeps network matches and bonus search in one room', async ({ page }) => {
+    await page.goto('/workspace?room=networking', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Smart Referrals', exact: true })).toBeVisible();
+    await expect(page.getByText('Your Network', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bonus Search', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Referral Bonus', exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Connections', exact: true }).click();
+    await expect(page.getByPlaceholder('Search companies...')).toBeVisible();
+    await expect(page.getByText('Northstar SaaS', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Job Matches', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Job Matches', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Your Network \(1\)/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Bonus Search \(1\)/i })).toBeVisible();
+    await expect(page.getByText('VP Operations', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Bonus Search', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'High-Bonus Company Search', exact: true })).toBeVisible();
+    await expect(page.getByText('Atlas Systems', { exact: true })).toBeVisible();
+  });
+
   test('Interview Prep section switching keeps practice, leave-behinds, and follow-up reachable', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 

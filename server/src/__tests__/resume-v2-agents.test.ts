@@ -2533,6 +2533,89 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(bullet?.confidence).toBe('strong');
     });
 
+    it('force-restores missing source bullets when same-count rewrites drift away from role proof', async () => {
+      const rewrittenDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        professional_experience: [
+          {
+            company: 'Acme Startup',
+            title: 'VP of Engineering',
+            start_date: 'Jan 2020',
+            end_date: 'Present',
+            scope_statement: 'Led platform engineering',
+            scope_statement_source: 'original',
+            scope_statement_confidence: 'strong',
+            scope_statement_evidence_found: 'Led platform engineering',
+            bullets: [
+              {
+                text: 'Accelerated release velocity by modernizing engineering workflows and automation practices.',
+                is_new: false,
+                addresses_requirements: ['Cloud Infrastructure'],
+                source: 'enhanced',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Faster release velocity',
+              },
+              {
+                text: 'Built platform strategy to support broader product expansion.',
+                is_new: false,
+                addresses_requirements: ['Cloud Infrastructure'],
+                source: 'enhanced',
+                confidence: 'strong',
+                requirement_source: 'job_description',
+                evidence_found: 'Platform strategy',
+              },
+            ],
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+
+      const outlineBackedInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP of Engineering',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: [
+                'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                'Implemented Rockerbox attribution platform reducing wasted spend by $3.2M annually',
+              ],
+            },
+          ],
+          source_resume_outline: {
+            parse_mode: 'structured',
+            total_bullets: 2,
+            positions: [
+              {
+                company: 'Acme Startup',
+                title: 'VP of Engineering',
+                start_date: 'Jan 2020',
+                end_date: 'Present',
+                bullets: [
+                  'Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization',
+                  'Implemented Rockerbox attribution platform reducing wasted spend by $3.2M annually',
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const result = await runResumeWriter(outlineBackedInput);
+      const bullets = result.professional_experience[0]?.bullets.map((bullet) => bullet.text) ?? [];
+
+      expect(bullets).toContain('Reduced deployment time from 45 minutes to 8 minutes through pipeline optimization');
+      expect(bullets).toContain('Implemented Rockerbox attribution platform reducing wasted spend by $3.2M annually');
+      expect(result.professional_experience[0]?.bullets.every((bullet) => bullet.source === 'original')).toBe(true);
+    });
+
     it('overrides stale drafted metadata when a bullet is identical to original resume proof', async () => {
       const rewrittenDraft: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,

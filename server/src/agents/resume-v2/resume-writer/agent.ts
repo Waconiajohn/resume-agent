@@ -1237,6 +1237,40 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
         'Replaced unmatched draft bullets with missing source proof to preserve full role coverage',
       );
     }
+
+    const residualCoverage = findResidualCoverageGaps(originalExp.bullets, draftBullets, input);
+    let residualRestored = 0;
+
+    for (const [slot, replacementIndex] of residualCoverage.unmatchedDraftIndexes.entries()) {
+      const sourceBulletText = residualCoverage.uncoveredSourceBullets[slot];
+      if (!sourceBulletText) break;
+
+      draftBullets[replacementIndex] = {
+        text: sourceBulletText,
+        is_new: false,
+        addresses_requirements: [],
+        source: 'original',
+        confidence: 'strong',
+        review_state: 'supported',
+        evidence_found: sourceBulletText,
+        requirement_source: 'job_description',
+        content_origin: 'verbatim_resume',
+        support_origin: 'original_resume',
+      };
+      residualRestored += 1;
+    }
+
+    if (residualRestored > 0) {
+      logger.warn(
+        {
+          company: draftExp.company,
+          originalCount: originalBulletCount,
+          residualCoverageGaps: residualCoverage.uncoveredSourceBullets.length,
+          residualRestored,
+        },
+        'Force-restored missing source proof after same-count rewrite drift',
+      );
+    }
   }
 
   return draft;
@@ -1436,6 +1470,46 @@ function findUncoveredSourceBulletsAndUnusedDraftIndexes(
     unusedDraftIndexes: draftBullets
       .map((_, index) => index)
       .filter((index) => !assignedDraftIndexes.has(index)),
+  };
+}
+
+function findResidualCoverageGaps(
+  sourceBullets: string[],
+  draftBullets: ResumeBullet[],
+  input: ResumeWriterInput,
+): { uncoveredSourceBullets: string[]; unmatchedDraftIndexes: number[] } {
+  const uncoveredSourceBullets = sourceBullets.filter((sourceBulletText) => {
+    const sourceImportance = scoreSourceBulletImportance(sourceBulletText, input);
+    return !draftBullets.some((draftBullet) => (
+      bulletPreservesProofDensity(draftBullet.text, sourceBulletText)
+      && !bulletOverCompressesImportantSourceProof(draftBullet.text, sourceBulletText, sourceImportance)
+    ));
+  });
+
+  const unmatchedDraftIndexes = draftBullets
+    .map((draftBullet, index) => ({
+      index,
+      preservesAny: sourceBullets.some((sourceBulletText) => {
+        const sourceImportance = scoreSourceBulletImportance(sourceBulletText, input);
+        return bulletPreservesProofDensity(draftBullet.text, sourceBulletText)
+          && !bulletOverCompressesImportantSourceProof(draftBullet.text, sourceBulletText, sourceImportance);
+      }),
+      isOriginal: draftBullet.source === 'original',
+      bestOverlap: sourceBullets.reduce(
+        (best, sourceBulletText) => Math.max(best, calculateTokenOverlap(draftBullet.text, sourceBulletText)),
+        0,
+      ),
+    }))
+    .filter((entry) => !entry.preservesAny)
+    .sort((left, right) => {
+      if (left.isOriginal !== right.isOriginal) return left.isOriginal ? 1 : -1;
+      return left.bestOverlap - right.bestOverlap;
+    })
+    .map((entry) => entry.index);
+
+  return {
+    uncoveredSourceBullets,
+    unmatchedDraftIndexes,
   };
 }
 

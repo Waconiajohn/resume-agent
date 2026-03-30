@@ -550,6 +550,112 @@ const MOCK_RADAR_SCORE_RESULTS = [
   { external_id: 'radar-2', match_score: 84 },
 ] as const;
 
+const MOCK_NI_COMPANIES = [
+  {
+    companyRaw: 'Northstar SaaS',
+    companyDisplayName: 'Northstar SaaS',
+    companyId: 'ni-company-1',
+    connectionCount: 2,
+    topPositions: ['VP Product', 'Director of Operations'],
+  },
+  {
+    companyRaw: 'ScaleCo',
+    companyDisplayName: 'ScaleCo',
+    companyId: 'ni-company-2',
+    connectionCount: 1,
+    topPositions: ['Chief of Staff'],
+  },
+] as const;
+
+const MOCK_NI_CONNECTIONS = [
+  {
+    id: 'ni-conn-1',
+    first_name: 'Jane',
+    last_name: 'Doe',
+    email: 'jane@example.com',
+    company_raw: 'Northstar SaaS',
+    company_display_name: 'Northstar SaaS',
+    position: 'VP Product',
+    connected_on: '2025-09-10',
+  },
+  {
+    id: 'ni-conn-2',
+    first_name: 'Marcus',
+    last_name: 'Lee',
+    email: 'marcus@example.com',
+    company_raw: 'Northstar SaaS',
+    company_display_name: 'Northstar SaaS',
+    position: 'Director of Operations',
+    connected_on: '2025-12-01',
+  },
+  {
+    id: 'ni-conn-3',
+    first_name: 'Priya',
+    last_name: 'Shah',
+    email: 'priya@example.com',
+    company_raw: 'ScaleCo',
+    company_display_name: 'ScaleCo',
+    position: 'Chief of Staff',
+    connected_on: '2026-01-14',
+  },
+] as const;
+
+const MOCK_NI_TARGET_TITLES = [
+  { id: 'title-1', title: 'VP Operations', priority: 1, created_at: '2026-03-01T10:00:00.000Z' },
+  { id: 'title-2', title: 'Chief Operating Officer', priority: 2, created_at: '2026-03-01T10:05:00.000Z' },
+] as const;
+
+const MOCK_NI_MATCHES = [
+  {
+    id: 'ni-match-1',
+    company_id: 'ni-company-1',
+    title: 'VP Operations',
+    url: 'https://example.com/jobs/northstar-network-role',
+    location: 'Remote',
+    salary_range: '$250k-$290k',
+    description_snippet: 'Executive operator to lead cadence and cross-functional alignment.',
+    match_score: 91,
+    referral_available: true,
+    connection_count: 2,
+    metadata: { search_context: 'network_connections' },
+    status: 'new',
+    scraped_at: '2026-03-20T09:00:00.000Z',
+    created_at: '2026-03-20T09:00:00.000Z',
+  },
+  {
+    id: 'ni-match-2',
+    company_id: 'ni-company-3',
+    title: 'Chief Operating Officer',
+    url: 'https://example.com/jobs/atlas-bonus-role',
+    location: 'Chicago, IL',
+    salary_range: '$280k-$320k',
+    description_snippet: 'Lead operations at a company with a strong referral bonus program.',
+    match_score: 86,
+    referral_available: false,
+    connection_count: 0,
+    metadata: { search_context: 'bonus_search' },
+    status: 'new',
+    scraped_at: '2026-03-21T11:00:00.000Z',
+    created_at: '2026-03-21T11:00:00.000Z',
+  },
+] as const;
+
+const MOCK_NI_BONUS_COMPANIES = [
+  {
+    company_id: 'ni-company-3',
+    company_name: 'Atlas Systems',
+    domain: 'atlas.example.com',
+    headquarters: 'Chicago, IL',
+    industry: 'Enterprise Software',
+    bonus_display: '$5,000',
+    bonus_currency: 'USD',
+    bonus_amount_min: 5000,
+    bonus_amount_max: 5000,
+    confidence: 'high',
+    program_url: 'https://atlas.example.com/referrals',
+  },
+] as const;
+
 const MOCK_INTERVIEW_PREP_REPORT = `# Interview Prep
 
 ## Top Story
@@ -1309,6 +1415,41 @@ async function fulfillApiRoute(
 
   if (path === '/api/ni/boolean-search/generate' && method === 'POST') {
     await route.fulfill(buildJsonResponse(MOCK_BOOLEAN_SEARCH_RESULT));
+    return;
+  }
+
+  if (path === '/api/ni/connections/count' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ count: MOCK_NI_CONNECTIONS.length }));
+    return;
+  }
+
+  if (path === '/api/ni/connections/companies' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ companies: MOCK_NI_COMPANIES }));
+    return;
+  }
+
+  if (path.startsWith('/api/ni/connections') && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ connections: MOCK_NI_CONNECTIONS }));
+    return;
+  }
+
+  if (path === '/api/ni/target-titles' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ titles: MOCK_NI_TARGET_TITLES }));
+    return;
+  }
+
+  if (path.startsWith('/api/ni/bonus-companies') && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ companies: MOCK_NI_BONUS_COMPANIES }));
+    return;
+  }
+
+  if (path === '/api/ni/matches' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ matches: MOCK_NI_MATCHES }));
+    return;
+  }
+
+  if (/^\/api\/ni\/matches\/[^/]+\/status$/.test(path) && method === 'PATCH') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
     return;
   }
 
