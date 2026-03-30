@@ -447,39 +447,40 @@ export function JobCommandCenterRoom({
         </div>
       </div>
 
-      <GlassCard className="p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <div className="eyebrow-label">How this works</div>
-            <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
-              Use the board to find roles, keep a tight shortlist, and move only real opportunities into the pipeline.
-            </h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              This room is no longer trying to be four different search systems. The job board is for finding roles. The pipeline is for tracking and moving them once they are worth serious work.
+      <GlassCard className="p-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="eyebrow-label">At a glance</div>
+            <p className="text-[14px] font-medium leading-relaxed text-[var(--text-strong)]">
+              Search public jobs, save only the best 5 or 6, and move real opportunities into the pipeline.
+            </p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--text-soft)]">
+              Smart Referrals stays separate for company-site scans where you already have a first-degree connection.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 xl:min-w-[360px]">
-            <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                Working numbers
+          <div className="flex flex-col gap-3 xl:min-w-[420px]">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                  Shortlist
+                </div>
+                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
               </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div>
-                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
-                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Shortlist</div>
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                  Pipeline
                 </div>
-                <div>
-                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
-                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Pipeline roles</div>
+                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                  Due now
                 </div>
-                <div>
-                  <div className="text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
-                  <div className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Due actions</div>
-                </div>
+                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 xl:justify-end">
               <GlassButton variant="ghost" onClick={handleOpenShortlist}>
                 Open Shortlist
               </GlassButton>
@@ -559,9 +560,6 @@ export function JobCommandCenterRoom({
                 <div className="eyebrow-label">Job Board</div>
                 <p className="mt-1 text-[14px] font-medium leading-relaxed text-[var(--text-strong)]">
                   Search public roles, check how old they are, and save only the worthwhile ones before you build resumes.
-                </p>
-                <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                  The first-degree-connection company-site scraper is separate in Smart Referrals. This board is the simpler public job search surface.
                 </p>
               </div>
               <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 lg:min-w-[300px]">

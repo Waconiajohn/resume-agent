@@ -21,7 +21,7 @@ async function main() {
     await mockWorkspaceApp(page);
 
     await page.goto(`${baseUrl}/workspace`, { waitUntil: 'domcontentloaded' });
-    await page.getByText('Career Profile backbone').first().waitFor();
+    await page.getByText('Career story').first().waitFor();
     await capture(page, 'workspace-home.png');
 
     await page.goto(`${baseUrl}/workspace?room=career-profile`, { waitUntil: 'domcontentloaded' });

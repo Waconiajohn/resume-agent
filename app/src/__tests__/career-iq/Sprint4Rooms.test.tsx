@@ -155,8 +155,8 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders the simplified job board surface', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('How this works')).toBeInTheDocument();
-    expect(screen.getByText('Working numbers')).toBeInTheDocument();
+    expect(screen.getByText('At a glance')).toBeInTheDocument();
+    expect(screen.getByText('Due now')).toBeInTheDocument();
     expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
     expect(screen.getByText('Search Strings')).toBeInTheDocument();
   });

@@ -397,32 +397,32 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
                   )}
                 </div>
                 <p className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{copy.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{copy.description}</p>
-                <p className="mt-3 text-xs text-[var(--text-soft)]">{copy.helper}</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-muted)]">{copy.description}</p>
+                <p className="mt-2 text-[11px] text-[var(--text-soft)]">{copy.helper}</p>
               </button>
             );
           })}
         </div>
       </GlassCard>
 
-      <GlassCard className="p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <GlassCard className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
               {selectedPath === 'network' ? 'Connection path' : 'Bonus path'}
             </p>
-            <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+            <h3 className="mt-1.5 text-base font-semibold text-[var(--text-strong)]">
               {selectedPath === 'network'
                 ? 'Use your network first, then move into outreach'
                 : 'Search strong bonus companies, then work the worthwhile ones'}
             </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
+            <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-[var(--text-soft)]">
               {selectedPath === 'network'
-                ? 'This path is built for the strongest odds: someone already works there. Import your connections, scan those companies, review the matches, and then work the contact and outreach flow.'
-                : 'This path stays visible on purpose. Use it when no one is already there but the company is known to pay a meaningful referral bonus. Coverage is still limited to the bonus programs we have identified so far.'}
+                ? 'Import your connections, review the companies where someone already works, check the matches, and then move into outreach.'
+                : 'Use this when no one is already there but the company is known to pay a meaningful referral bonus.'}
             </p>
           </div>
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] lg:max-w-sm">
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-soft)] lg:max-w-sm">
             {selectedPath === 'network'
               ? 'Best path when you already have a first-degree connection at the company.'
               : 'Separate path for known bonus companies. We keep expanding that database as new matches are found.'}
