@@ -5,36 +5,47 @@ import { WORKFLOW_NODES } from '@/types/workflow';
 import type { WorkflowNodeKey, WorkflowNodeStatus, WorkspaceNodeSnapshot } from '@/types/workflow';
 import type { WorkflowReplanUpdate } from '@/types/session';
 import type { PanelData } from '@/types/panels';
+import {
+  buildAuthScopedStorageKey,
+  readJsonFromLocalStorage,
+  removeLocalStorageKey,
+  writeJsonToLocalStorage,
+} from '@/lib/auth-scoped-storage';
 
 export type SnapshotMap = Partial<Record<WorkflowNodeKey, WorkspaceNodeSnapshot>>;
 
 export const MAX_SNAPSHOT_SESSIONS = 20;
-export const SNAPSHOT_KEY_PREFIX = 'resume-agent:workspace-snapshots:';
+export const SNAPSHOT_STORAGE_NAMESPACE = 'resume-agent:workspace-snapshots';
+export const SNAPSHOT_KEY_PREFIX = `${SNAPSHOT_STORAGE_NAMESPACE}:`;
 
-export function snapshotsStorageKey(sessionId: string): string {
-  return `resume-agent:workspace-snapshots:${sessionId}`;
+export function snapshotsStorageKey(sessionId: string, userId: string | null | undefined): string {
+  return buildAuthScopedStorageKey(SNAPSHOT_STORAGE_NAMESPACE, userId, sessionId);
 }
 
-export function loadSnapshotMap(sessionId: string): SnapshotMap {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(snapshotsStorageKey(sessionId));
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as SnapshotMap;
-    if (!parsed || typeof parsed !== 'object') return {};
-    return parsed;
-  } catch {
-    return {};
-  }
+function legacySnapshotsStorageKey(sessionId: string): string {
+  return `${SNAPSHOT_KEY_PREFIX}${sessionId}`;
 }
 
-export function pruneSnapshotStorage(): void {
+export function loadSnapshotMap(sessionId: string, userId: string | null | undefined): SnapshotMap {
+  const scoped = readJsonFromLocalStorage<SnapshotMap>(snapshotsStorageKey(sessionId, userId));
+  if (scoped && typeof scoped === 'object') return scoped;
+
+  // Only anonymous browsing is allowed to fall back to the old shared key.
+  if (userId) return {};
+
+  const legacy = readJsonFromLocalStorage<SnapshotMap>(legacySnapshotsStorageKey(sessionId));
+  if (legacy && typeof legacy === 'object') return legacy;
+  return {};
+}
+
+export function pruneSnapshotStorage(userId: string | null | undefined): void {
   if (typeof window === 'undefined') return;
   try {
+    const scopedPrefix = `${buildAuthScopedStorageKey(SNAPSHOT_STORAGE_NAMESPACE, userId)}:`;
     const keys: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(SNAPSHOT_KEY_PREFIX)) {
+      if (key?.startsWith(scopedPrefix)) {
         keys.push(key);
       }
     }
@@ -48,11 +59,16 @@ export function pruneSnapshotStorage(): void {
   }
 }
 
-export function persistSnapshotMap(sessionId: string, map: SnapshotMap): void {
+export function persistSnapshotMap(
+  sessionId: string,
+  userId: string | null | undefined,
+  map: SnapshotMap,
+): void {
   if (typeof window === 'undefined') return;
   try {
-    pruneSnapshotStorage();
-    window.localStorage.setItem(snapshotsStorageKey(sessionId), JSON.stringify(map));
+    pruneSnapshotStorage(userId);
+    writeJsonToLocalStorage(snapshotsStorageKey(sessionId, userId), map);
+    removeLocalStorageKey(legacySnapshotsStorageKey(sessionId));
   } catch {
     // Best effort
   }

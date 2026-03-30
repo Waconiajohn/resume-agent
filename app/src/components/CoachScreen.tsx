@@ -48,6 +48,7 @@ import {
   computeNodeStatuses,
   renderNodeContentPlaceholder,
 } from '@/lib/coach-screen-utils';
+import { decodeUserIdFromAccessToken } from '@/lib/auth-scoped-storage';
 
 // Stable default prop references to avoid unnecessary re-renders
 const EMPTY_APPROVED: Record<string, string> = {};
@@ -128,6 +129,7 @@ export function CoachScreen({
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevPanelDataRef = useRef<PanelData | null>(null);
   const { addToast } = useToast();
+  const storageUserId = useMemo(() => decodeUserIdFromAccessToken(accessToken), [accessToken]);
 
   // Stable ref for onReconnectStream so toast action buttons aren't stale
   const reconnectRef = useRef(onReconnectStream);
@@ -216,13 +218,13 @@ export function CoachScreen({
       setLocalSnapshots({});
       return;
     }
-    setLocalSnapshots(loadSnapshotMap(sessionId));
-  }, [sessionId]);
+    setLocalSnapshots(loadSnapshotMap(sessionId, storageUserId));
+  }, [sessionId, storageUserId]);
 
   useEffect(() => {
     if (!sessionId) return;
-    persistSnapshotMap(sessionId, localSnapshots);
-  }, [sessionId, localSnapshots]);
+    persistSnapshotMap(sessionId, storageUserId, localSnapshots);
+  }, [sessionId, storageUserId, localSnapshots]);
 
   // Capture the latest panel as a node snapshot so users can jump back.
   useEffect(() => {

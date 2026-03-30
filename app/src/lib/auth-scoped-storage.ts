@@ -52,6 +52,20 @@ export function removeLocalStorageKey(key: string): void {
   }
 }
 
+export function removeLocalStorageKeysWithPrefix(prefix: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(prefix)) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Best effort only
+  }
+}
+
 export function readJsonFromSessionStorage<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
   try {
