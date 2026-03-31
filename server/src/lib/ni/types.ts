@@ -61,6 +61,8 @@ export interface CsvUploadResponse {
 
 // ─── Database Row Types ───────────────────────────────────────────────────────
 
+export type ATSPlatform = 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'icims';
+
 export interface CompanyDirectoryRow {
   id: string;
   name_normalized: string;
@@ -71,6 +73,9 @@ export interface CompanyDirectoryRow {
   employee_count: string | null;
   headquarters: string | null;
   description: string | null;
+  ats_platform: ATSPlatform | null;
+  ats_slug: string | null;
+  ats_url: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -222,9 +227,20 @@ export interface CompanyInfo {
   id: string;
   name: string;
   domain: string | null;
+  ats_platform?: ATSPlatform | null;
+  ats_slug?: string | null;
 }
 
-export type ScrapeSource = 'firecrawl_scrape' | 'firecrawl_search';
+export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'serper' | 'firecrawl_scrape' | 'firecrawl_search';
+
+export interface ATSJob {
+  title: string;
+  url: string | null;
+  location: string | null;
+  salaryRange: string | null;
+  descriptionSnippet: string | null;
+  source: ScrapeSource;
+}
 
 export interface ScrapeResult {
   companiesScanned: number;

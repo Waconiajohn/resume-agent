@@ -1,13 +1,12 @@
 /**
  * Unit tests for server/src/lib/ni/career-scraper.ts
  *
- * Tests:
- *   - scrapeCareerPages: orchestration, rate limiting, result accumulation
- *   - Markdown job parsing: link extraction, title filtering
+ * Tests the three-tier ATS-native job scanning strategy:
+ *   - Tier 1: ATS API dispatch (Lever, Greenhouse, Workday, Ashby)
+ *   - Tier 3: Serper Google Jobs search fallback
  *   - Title matching: keyword overlap scoring
- *   - Referral bonus lookup
- *   - Firecrawl scrape and search fallback
- *   - Error handling: network failures, missing domains
+ *   - Referral bonus detection
+ *   - Error handling
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
@@ -21,7 +20,7 @@ const mockSupabase = vi.hoisted(() => {
     chain.eq = vi.fn().mockReturnValue(chain);
     chain.in = vi.fn().mockReturnValue(chain);
     chain.limit = vi.fn().mockReturnValue(chain);
-    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
+    chain.single = vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
     chain.insert = vi.fn().mockReturnValue(chain);
     chain.update = vi.fn().mockReturnValue(chain);
     chain.order = vi.fn().mockReturnValue(chain);
@@ -35,23 +34,19 @@ const mockSupabase = vi.hoisted(() => {
   };
 });
 
-const mockFirecrawlScrape = vi.hoisted(() => vi.fn());
-const mockFirecrawlSearch = vi.hoisted(() => vi.fn());
-const mockFirecrawlConstructor = vi.hoisted(() =>
-  vi.fn(function MockFirecrawlApp() {
-    return {
-      scrape: mockFirecrawlScrape,
-      search: mockFirecrawlSearch,
-    };
-  }),
-);
+const mockFetchFromATS = vi.hoisted(() => vi.fn());
+const mockSearchViaSerper = vi.hoisted(() => vi.fn());
 
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: mockSupabase,
 }));
 
-vi.mock('@mendable/firecrawl-js', () => ({
-  default: mockFirecrawlConstructor,
+vi.mock('../lib/ni/ats-clients.js', () => ({
+  fetchFromATS: mockFetchFromATS,
+}));
+
+vi.mock('../lib/ni/serper-job-search.js', () => ({
+  searchJobsViaSerper: mockSearchViaSerper,
 }));
 
 vi.mock('../lib/ni/job-matches-store.js', () => ({
@@ -69,47 +64,25 @@ vi.mock('../lib/logger.js', () => ({
 
 // ─── Module under test ─────────────────────────────────────────────────────────
 
-import { scrapeCareerPages, searchJobsByCompany } from '../lib/ni/career-scraper.js';
+import { scrapeCareerPages, searchJobsByCompany, computeMatchScore, titleMatchesTargets } from '../lib/ni/career-scraper.js';
 import { insertJobMatch } from '../lib/ni/job-matches-store.js';
+import type { ATSJob } from '../lib/ni/types.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-const COMPANY_WITH_DOMAIN = { id: 'c1', name: 'Acme Corp', domain: 'acme.com' };
-const COMPANY_NO_DOMAIN = { id: 'c2', name: 'Mystery Inc', domain: null };
+const COMPANY_WITH_ATS = { id: 'c1', name: 'Acme Corp', domain: 'acme.com', ats_platform: 'greenhouse' as const, ats_slug: 'acme' };
+const COMPANY_NO_ATS = { id: 'c2', name: 'Mystery Inc', domain: 'mystery.com', ats_platform: null, ats_slug: null };
+const COMPANY_NO_DOMAIN = { id: 'c3', name: 'Unknown Co', domain: null };
 
-/** Build a Firecrawl scrape response containing markdown with job links. */
-function makeFirecrawlScrapeResponse(jobs: Array<{ title: string; url: string }>): object {
-  const markdown = jobs.map((j) => `- [${j.title}](${j.url})`).join('\n');
-  return {
-    success: true,
-    data: { markdown: `# Careers\n\n${markdown}` },
-  };
-}
-
-/** Build a Firecrawl search response. */
-function makeFirecrawlSearchResponse(results: Array<{ title: string; url: string }>): object {
-  return {
-    success: true,
-    data: results.map((r) => ({ title: r.title, url: r.url, description: '' })),
-  };
-}
-
-function mockFetchForFirecrawlScrape(jobs: Array<{ title: string; url: string }>): void {
-  const responseBody = makeFirecrawlScrapeResponse(jobs) as { data?: { markdown?: string } };
-  mockFirecrawlScrape.mockResolvedValue({
-    markdown: responseBody.data?.markdown ?? null,
-  });
-  mockFirecrawlSearch.mockResolvedValue({ web: [] });
-}
-
-function mockFetchFailure(): void {
-  mockFirecrawlScrape.mockRejectedValue(new Error('Network error'));
-  mockFirecrawlSearch.mockResolvedValue({ web: [] });
-}
-
-function mockFetchNotFound(): void {
-  mockFirecrawlScrape.mockResolvedValue({ markdown: null });
-  mockFirecrawlSearch.mockResolvedValue({ web: [] });
+function makeATSJobs(titles: string[], source: ATSJob['source'] = 'greenhouse'): ATSJob[] {
+  return titles.map((title) => ({
+    title,
+    url: `https://example.com/jobs/${title.toLowerCase().replace(/\s/g, '-')}`,
+    location: 'San Francisco, CA',
+    salaryRange: null,
+    descriptionSnippet: null,
+    source,
+  }));
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -117,7 +90,8 @@ function mockFetchNotFound(): void {
 describe('scrapeCareerPages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.FIRECRAWL_API_KEY = 'test-firecrawl-key';
+    mockFetchFromATS.mockResolvedValue([]);
+    mockSearchViaSerper.mockResolvedValue([]);
     // Default: no referral program
     const chainFn = () => {
       const chain: Record<string, unknown> = {};
@@ -129,56 +103,59 @@ describe('scrapeCareerPages', () => {
       return chain;
     };
     mockSupabase.from.mockImplementation(chainFn);
-    mockFirecrawlScrape.mockResolvedValue({ markdown: null });
-    mockFirecrawlSearch.mockResolvedValue({ web: [] });
   });
 
-  afterEach(() => {
-    delete process.env.FIRECRAWL_API_KEY;
-  });
+  it('uses ATS API when company has ats_platform and ats_slug', async () => {
+    mockFetchFromATS.mockResolvedValue(makeATSJobs(['Director of Operations']));
 
-  it('returns zero counts when company has no domain', async () => {
-    const result = await scrapeCareerPages([COMPANY_NO_DOMAIN], [], 'user-1');
-    expect(result.companiesScanned).toBe(1);
-    expect(result.jobsFound).toBe(0);
-    expect(result.matchingJobs).toBe(0);
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0].error).toContain('No domain');
-  });
+    const result = await scrapeCareerPages([COMPANY_WITH_ATS], ['Director'], 'user-1');
 
-  it('returns zero counts when fetch fails', async () => {
-    mockFetchFailure();
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], [], 'user-1');
-    expect(result.jobsFound).toBe(0);
-  });
-
-  it('returns zero counts when all paths return non-OK', async () => {
-    mockFetchNotFound();
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], [], 'user-1');
-    expect(result.jobsFound).toBe(0);
-  });
-
-  it('finds and stores jobs when Firecrawl scrape returns markdown with matching roles', async () => {
-    mockFetchForFirecrawlScrape([
-      { title: 'Director of Operations', url: '/jobs/director-operations' },
-      { title: 'VP Supply Chain Manager', url: '/jobs/vp-supply-chain' },
-      { title: 'Engineering Manager', url: '/jobs/eng-manager' },
-    ]);
-
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director', 'VP'], 'user-1');
-
+    expect(mockFetchFromATS).toHaveBeenCalledWith('greenhouse', 'acme');
     expect(result.companiesScanned).toBe(1);
     expect(result.jobsFound).toBeGreaterThan(0);
     expect(insertJobMatch).toHaveBeenCalled();
   });
 
-  it('does not call insertJobMatch when no matching jobs found', async () => {
-    mockFirecrawlScrape.mockResolvedValue({
-      markdown: '# About Us\n\nWe are a great company.',
-    });
+  it('falls back to Serper when company has no ATS info', async () => {
+    mockSearchViaSerper.mockResolvedValue(makeATSJobs(['VP of Engineering'], 'serper'));
 
-    await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['VP Operations'], 'user-1');
-    expect(insertJobMatch).not.toHaveBeenCalled();
+    const result = await scrapeCareerPages([COMPANY_NO_ATS], ['VP'], 'user-1');
+
+    expect(mockFetchFromATS).not.toHaveBeenCalled();
+    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP']);
+    expect(result.jobsFound).toBeGreaterThan(0);
+  });
+
+  it('falls back to Serper when ATS API returns zero jobs', async () => {
+    mockFetchFromATS.mockResolvedValue([]);
+    mockSearchViaSerper.mockResolvedValue(makeATSJobs(['Director of Finance'], 'serper'));
+
+    const result = await scrapeCareerPages([COMPANY_WITH_ATS], ['Director'], 'user-1');
+
+    expect(mockFetchFromATS).toHaveBeenCalled();
+    expect(mockSearchViaSerper).toHaveBeenCalled();
+    expect(result.jobsFound).toBeGreaterThan(0);
+  });
+
+  it('returns zero counts when both tiers find nothing', async () => {
+    const result = await scrapeCareerPages([COMPANY_NO_DOMAIN], ['Director'], 'user-1');
+
+    expect(result.companiesScanned).toBe(1);
+    expect(result.jobsFound).toBe(0);
+    expect(result.matchingJobs).toBe(0);
+  });
+
+  it('filters jobs by target title match', async () => {
+    mockFetchFromATS.mockResolvedValue(makeATSJobs([
+      'Director of Operations',
+      'Software Engineer',
+      'Supply Chain Manager',
+    ]));
+
+    const result = await scrapeCareerPages([COMPANY_WITH_ATS], ['Director of Operations', 'Supply Chain Manager'], 'user-1');
+
+    // Director + Supply Chain match, Software Engineer does not
+    expect(result.matchingJobs).toBe(2);
   });
 
   it('marks referral_available=true when company has referral program', async () => {
@@ -192,12 +169,9 @@ describe('scrapeCareerPages', () => {
       return chain;
     };
     mockSupabase.from.mockImplementation(chainWithReferral);
+    mockFetchFromATS.mockResolvedValue(makeATSJobs(['Vice President of Engineering']));
 
-    mockFetchForFirecrawlScrape([
-      { title: 'Vice President of Engineering', url: '/jobs/vp-eng' },
-    ]);
-
-    await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['VP', 'Vice President'], 'user-1');
+    await scrapeCareerPages([COMPANY_WITH_ATS], ['VP', 'Vice President'], 'user-1');
 
     expect(insertJobMatch).toHaveBeenCalledWith(
       'user-1',
@@ -206,133 +180,100 @@ describe('scrapeCareerPages', () => {
   });
 
   it('accumulates results across multiple companies', async () => {
-    mockFetchForFirecrawlScrape([{ title: 'Director of Finance', url: '/jobs/dir-finance' }]);
+    mockFetchFromATS.mockResolvedValue(makeATSJobs(['Director of Finance']));
 
     const companies = [
-      { id: 'c1', name: 'Corp A', domain: 'corpa.com' },
-      { id: 'c2', name: 'Corp B', domain: 'corpb.com' },
+      { ...COMPANY_WITH_ATS, id: 'c1', name: 'Corp A' },
+      { ...COMPANY_WITH_ATS, id: 'c2', name: 'Corp B', ats_slug: 'corpb' },
     ];
 
     const result = await scrapeCareerPages(companies, ['Director'], 'user-1');
     expect(result.companiesScanned).toBe(2);
   });
 
-  it('continues processing remaining companies when one fails', async () => {
+  it('continues processing remaining companies when one ATS call fails', async () => {
     let callCount = 0;
-    mockFirecrawlScrape.mockImplementation(() => {
+    mockFetchFromATS.mockImplementation(() => {
       callCount++;
-      if (callCount <= 5) return Promise.reject(new Error('Timeout'));
-      const response = makeFirecrawlScrapeResponse([{ title: 'Chief Operating Officer', url: '/jobs/coo' }]) as {
-        data?: { markdown?: string };
-      };
-      return Promise.resolve({
-        markdown: response.data?.markdown ?? null,
-      });
+      if (callCount === 1) throw new Error('Network error');
+      return Promise.resolve(makeATSJobs(['Director of Ops']));
     });
-    mockFirecrawlSearch.mockResolvedValue({ web: [] });
 
     const companies = [
-      { id: 'c1', name: 'Corp A', domain: 'corpa.com' },
-      { id: 'c2', name: 'Corp B', domain: 'corpb.com' },
+      { ...COMPANY_WITH_ATS, id: 'c1', name: 'Corp A' },
+      { ...COMPANY_WITH_ATS, id: 'c2', name: 'Corp B', ats_slug: 'corpb' },
     ];
 
-    const result = await scrapeCareerPages(companies, [], 'user-1');
+    const result = await scrapeCareerPages(companies, ['Director'], 'user-1');
+    // Both companies scanned — first one falls through to Serper after ATS error
     expect(result.companiesScanned).toBe(2);
+    // Second company found jobs via ATS
+    expect(result.matchingJobs).toBeGreaterThan(0);
   });
 
-  it('resolves relative job URLs to absolute URLs', async () => {
-    mockFetchForFirecrawlScrape([
-      { title: 'Chief Marketing Officer', url: '/jobs/cmo-2024' },
-    ]);
+  it('includes source in sourceBreakdown', async () => {
+    mockFetchFromATS.mockResolvedValue(makeATSJobs(['Director of Engineering']));
 
-    await scrapeCareerPages([COMPANY_WITH_DOMAIN], [], 'user-1');
-
-    const calls = (insertJobMatch as Mock).mock.calls;
-    if (calls.length > 0) {
-      const insertedUrl: string = calls[0][1].url ?? '';
-      expect(insertedUrl).toMatch(/^https?:\/\//);
-    }
-  });
-
-  it('includes sourceBreakdown with firecrawl_scrape count when scraping succeeds', async () => {
-    mockFetchForFirecrawlScrape([
-      { title: 'Director of Engineering', url: '/jobs/dir-eng' },
-    ]);
-
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1');
+    const result = await scrapeCareerPages([COMPANY_WITH_ATS], ['Director'], 'user-1');
 
     expect(result.sourceBreakdown).toBeDefined();
-    expect(typeof result.sourceBreakdown.firecrawl_scrape).toBe('number');
-    expect(typeof result.sourceBreakdown.firecrawl_search).toBe('number');
-    expect(result.sourceBreakdown.firecrawl_search).toBe(0);
-  });
-
-  it('falls back to Firecrawl search when scraping finds nothing', async () => {
-    mockFirecrawlScrape.mockResolvedValue({
-      markdown: '# Careers\n\nNo open positions.',
-    });
-    mockFirecrawlSearch.mockResolvedValue({
-      web: [
-        { title: 'Director of Operations at Acme', url: 'https://example.com/jobs/123' },
-      ],
-    });
-
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', true);
-
-    expect(result.jobsFound).toBeGreaterThan(0);
-    expect(result.sourceBreakdown.firecrawl_search).toBeGreaterThan(0);
-    expect(result.sourceBreakdown.firecrawl_scrape).toBe(0);
-    expect(insertJobMatch).toHaveBeenCalledWith(
-      'user-1',
-      expect.objectContaining({
-        metadata: {
-          source: 'firecrawl_search',
-          search_context: 'network_connections',
-        },
-      }),
-    );
-  });
-
-  it('skips search fallback when useApiFallback=false', async () => {
-    mockFetchNotFound();
-
-    const result = await scrapeCareerPages([COMPANY_WITH_DOMAIN], ['Director'], 'user-1', false);
-
-    expect(result.jobsFound).toBe(0);
-    expect(result.sourceBreakdown.firecrawl_search).toBe(0);
+    expect(result.sourceBreakdown.greenhouse).toBeGreaterThan(0);
   });
 });
 
-// ─── searchJobsByCompany (public export) ──────────────────────────────────────
+// ─── Title matching ─────────────────────────────────────────────────────────
+
+describe('title matching', () => {
+  it('returns 50 when no target titles provided', () => {
+    expect(computeMatchScore('Director of Operations', [])).toBe(50);
+  });
+
+  it('scores exact match at 100', () => {
+    expect(computeMatchScore('Director of Operations', ['Director of Operations'])).toBe(100);
+  });
+
+  it('scores partial overlap', () => {
+    // "operations" overlaps, "strategy" does not — 1/2 target words = 50%
+    const score = computeMatchScore('VP of Operations and Strategy', ['VP Operations Manager']);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThan(100);
+  });
+
+  it('scores zero when no overlap', () => {
+    expect(computeMatchScore('Software Engineer', ['VP Operations'])).toBe(0);
+  });
+
+  it('titleMatchesTargets returns true at 40% threshold', () => {
+    expect(titleMatchesTargets('Director of Operations', ['Director'])).toBe(true);
+  });
+
+  it('titleMatchesTargets returns true with empty targets', () => {
+    expect(titleMatchesTargets('Anything', [])).toBe(true);
+  });
+});
+
+// ─── searchJobsByCompany ─────────────────────────────────────────────────────
 
 describe('searchJobsByCompany', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns empty ScrapeResult when FIRECRAWL_API_KEY is not set', async () => {
-    delete process.env.FIRECRAWL_API_KEY;
+  it('returns empty result when Serper finds nothing', async () => {
+    mockSearchViaSerper.mockResolvedValue([]);
 
     const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
 
     expect(result.companiesScanned).toBe(1);
     expect(result.jobsFound).toBe(0);
-    expect(result.matchingJobs).toBe(0);
-    expect(result.errors).toHaveLength(0);
   });
 
-  it('returns Firecrawl search results when available', async () => {
-    process.env.FIRECRAWL_API_KEY = 'test-key';
-
-    mockFirecrawlSearch.mockResolvedValue({
-      web: [{ title: 'Director of Finance', url: 'https://example.com/jobs/1' }],
-    });
+  it('returns matching results from Serper', async () => {
+    mockSearchViaSerper.mockResolvedValue(makeATSJobs(['Director of Finance'], 'serper'));
 
     const result = await searchJobsByCompany('Acme Corp', ['Director'], 'user-1');
 
     expect(result.jobsFound).toBeGreaterThan(0);
-    expect(result.sourceBreakdown.firecrawl_search).toBeGreaterThan(0);
-
-    delete process.env.FIRECRAWL_API_KEY;
+    expect(result.sourceBreakdown.serper).toBeGreaterThan(0);
   });
 });

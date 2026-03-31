@@ -133,7 +133,7 @@ export async function runCareerScrape(
   try {
     const { data: companies, error } = await supabaseAdmin
       .from('company_directory')
-      .select('id, name_display, domain')
+      .select('id, name_display, domain, ats_platform, ats_slug')
       .in('id', companyIds);
 
     if (error || !companies) {
@@ -142,10 +142,12 @@ export async function runCareerScrape(
     }
 
     const companyInfos = companies.map(
-      (row: { id: string; name_display: string; domain: string | null }) => ({
+      (row: { id: string; name_display: string; domain: string | null; ats_platform: string | null; ats_slug: string | null }) => ({
         id: row.id,
         name: row.name_display,
         domain: row.domain,
+        ats_platform: row.ats_platform as import('./types.js').ATSPlatform | null,
+        ats_slug: row.ats_slug,
       }),
     );
 
