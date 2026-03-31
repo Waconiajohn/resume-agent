@@ -1,3 +1,9 @@
+/**
+ * @deprecated Legacy gap analysis panel for v1 pipeline data shapes.
+ * New code should use GapAnalysisReportPanel from resume-v2/panels/.
+ * The canonical classification scheme is GapClassification ('strong' | 'partial' | 'missing')
+ * defined in types/resume-v2.ts. This panel uses 'gap' for display purposes.
+ */
 import { useState } from 'react';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
@@ -11,8 +17,9 @@ interface GapAnalysisPanelProps {
 
 /**
  * Map agent status strings to classification buckets.
- * classify_fit emits: "strong" | "partial" | "gap"
- * Agent update_right_panel emits: "strong_match" | "exceptional_match" | "needs_strengthening" | "partial_match" | "meets_minimum" | "gap" | "missing"
+ * Normalizes both v1 agent outputs and v2 GapClassification values into
+ * the legacy display scheme ('strong' | 'partial' | 'gap').
+ * 'missing' (v2 canonical) maps to 'gap' (legacy display).
  */
 function mapStatus(status: string): 'strong' | 'partial' | 'gap' {
   switch (status.toLowerCase()) {

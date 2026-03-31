@@ -164,6 +164,13 @@ export interface GapAnalysis {
 }
 
 // ─── Gap Questions (gate emitted before writing, requires user responses) ──
+// NOTE: GapQuestion.importance uses a simplified UI-facing scale:
+//   'critical' | 'important' | 'supporting'
+// This maps from the canonical requirement importance scale:
+//   'must_have' → 'critical', 'important' → 'important', 'nice_to_have' → 'supporting'
+// The simplification is intentional — user-facing gap questions use plain language.
+// GapQuestion.classification uses a subset of GapClassification (only 'partial' | 'missing',
+// since 'strong' requirements don't generate questions).
 
 export interface GapQuestion {
   id: string;
@@ -228,6 +235,12 @@ export interface PreScores {
 }
 
 // ─── Positioning Assessment ──────────────────────────────────────
+// NOTE: PositioningAssessmentEntry.status uses a DIFFERENT scheme from GapClassification.
+// GapClassification ('strong' | 'partial' | 'missing') is the pre-pipeline gap classification.
+// PositioningAssessment status ('strong' | 'repositioned' | 'gap') is the post-pipeline result:
+//   - 'repositioned' means a gap/partial was successfully addressed via a positioning strategy
+//   - 'gap' means it remained unaddressed after the full pipeline ran
+// These are intentionally different domains — do not unify them.
 
 export interface PositioningAssessmentEntry {
   requirement: string;

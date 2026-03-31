@@ -24,6 +24,9 @@ import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { ScoringReport, ScoringReportDetailsDisclosure } from './ScoringReport';
 import { GapOverviewCard } from './cards/GapOverviewCard';
+import { PipelineProgressCard } from './cards/PipelineProgressCard';
+import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
+import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
@@ -152,7 +155,7 @@ function getAttentionStatusMeta(
 
   if (resolvedReviewState === 'code_red') {
     return {
-      label: 'Code Red',
+      label: REVIEW_STATE_DISPLAY.code_red.label,
       className: 'resume-attention-status resume-attention-status--code-red',
       priority: 0,
     };
@@ -160,7 +163,7 @@ function getAttentionStatusMeta(
 
   if (resolvedReviewState === 'confirm_fit') {
     return {
-      label: 'Confirm Fit',
+      label: REVIEW_STATE_DISPLAY.confirm_fit.label,
       className: 'resume-attention-status resume-attention-status--benchmark',
       priority: 1,
     };
@@ -168,7 +171,7 @@ function getAttentionStatusMeta(
 
   if (resolvedReviewState === 'strengthen') {
     return {
-      label: 'Strengthen',
+      label: REVIEW_STATE_DISPLAY.strengthen.label,
       className: 'resume-attention-status resume-attention-status--partial',
       priority: 2,
     };
@@ -512,60 +515,6 @@ function OriginalScoresCard({ preScores, collapsible = false }: OriginalScoresCa
   );
 }
 
-// ─── LivePipelineCard ─────────────────────────────────────────────────────────
-// Minimal processing state shown before the resume canvas is ready.
-
-function LivePipelineCard({ data, isComplete }: { data: V2PipelineData; isComplete: boolean }) {
-  const progress = isComplete ? 100 : getStageProgressPercent(data.stage);
-  const stageLabel = getStageStatusLabel(data.stage, isComplete);
-  const companyAndRole = data.jobIntelligence
-    ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}`
-    : null;
-
-  return (
-    <div
-      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6"
-      role="status"
-      aria-live="polite"
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
-        Building Your Tailored Resume
-      </p>
-
-      <div className="space-y-3">
-        <div>
-          <p className="text-[18px] font-semibold text-neutral-800">
-            We are rebuilding the resume now.
-          </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
-            The full work happens on the resume itself. We will bring that draft in as soon as it is ready.
-          </p>
-          {companyAndRole && (
-            <p className="mt-2 text-[12px] text-neutral-400">{companyAndRole}</p>
-          )}
-        </div>
-
-        <div
-          className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden"
-          role="progressbar"
-          aria-valuenow={progress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className="h-full rounded-full bg-blue-400 transition-[width] duration-700 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
-          <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
-          {stageLabel}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -682,6 +631,14 @@ export function V2StreamingDisplay({
   // Don't show it while re-running — the old assembly data persists and would be stale.
   const canShowResumeDocument = hasResume && !isRerunning;
 
+  // Beat 2 gate — user must click through the "Resume Is Ready" screen before editing
+  const [hasPassedReadyGate, setHasPassedReadyGate] = useState(false);
+
+  // Reset gate when re-running
+  useEffect(() => {
+    if (isRerunning) setHasPassedReadyGate(false);
+  }, [isRerunning]);
+
   const jobBreakdown = data.gapAnalysis?.score_breakdown?.job_description ?? {
     addressed: 0,
     total: 0,
@@ -741,30 +698,27 @@ export function V2StreamingDisplay({
   ]);
   const compactAttentionSummary = useMemo(() => {
     if (attentionItems.length === 0) {
-      return `Your resume is ready for final review${compactReviewStatusLabel ? `, and final review is ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+      return `Your Resume Is Complete \u2014 all lines verified.`;
     }
 
-    const proofCount = attentionItems.filter((item) => item.statusLabel === 'Code Red').length;
-    const validateCount = attentionItems.filter((item) => item.statusLabel === 'Confirm Fit').length;
-    const strengthenCount = attentionItems.filter((item) => item.statusLabel === 'Strengthen').length;
+    const proofCount = attentionItems.filter((item) => item.priority === 0).length;
+    const validateCount = attentionItems.filter((item) => item.priority === 1).length;
+    const strengthenCount = attentionItems.filter((item) => item.priority === 2).length;
 
     if (proofCount > 0) {
       const remainder = validateCount + strengthenCount;
-      return `${proofCount} code-red line${proofCount === 1 ? '' : 's'} still ${proofCount === 1 ? 'needs' : 'need'} proof${remainder > 0 ? `, and ${remainder} more still need attention` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+      return `${proofCount} line${proofCount === 1 ? '' : 's'} still ${proofCount === 1 ? 'needs' : 'need'} your story${remainder > 0 ? `, and ${remainder} more still need attention` : ''}.`;
     }
 
     if (validateCount > 0) {
-      return `${validateCount} line${validateCount === 1 ? '' : 's'} still ${validateCount === 1 ? 'needs' : 'need'} fit validation${strengthenCount > 0 ? `, and ${strengthenCount} more still need stronger detail` : ''}${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
+      return `${validateCount} line${validateCount === 1 ? '' : 's'} still ${validateCount === 1 ? 'needs' : 'need'} a fit check${strengthenCount > 0 ? `, and ${strengthenCount} more could be stronger` : ''}.`;
     }
 
-    return `${strengthenCount} line${strengthenCount === 1 ? '' : 's'} still ${strengthenCount === 1 ? 'needs' : 'need'} stronger detail${compactReviewStatusLabel ? ` before final review is truly ${compactReviewStatusLabel.toLowerCase()}` : ''}.`;
-  }, [attentionItems, compactReviewStatusLabel]);
+    return `Your resume is looking good \u2014 ${strengthenCount} line${strengthenCount === 1 ? '' : 's'} could still be stronger.`;
+  }, [attentionItems]);
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
-    if (topItem.statusLabel === 'Code Red') {
-      return `Start with the code-red line in ${topItem.locationLabel}.`;
-    }
     return `Start with the ${topItem.statusLabel.toLowerCase()} line in ${topItem.locationLabel}.`;
   }, [attentionItems]);
 
@@ -772,7 +726,7 @@ export function V2StreamingDisplay({
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto relative">
       {/* Gap Overview — "Your Resume vs. This Role" — persists across all phases */}
-      {!canShowResumeDocument && data.gapAnalysis && data.preScores && (
+      {!canShowResumeDocument && isComplete && data.gapAnalysis && data.preScores && (
         <div className="mx-auto max-w-[900px] px-6 pt-8">
           <GapOverviewCard
             gapAnalysis={data.gapAnalysis}
@@ -801,7 +755,7 @@ export function V2StreamingDisplay({
         </div>
       )}
 
-      {canShowResumeDocument ? (
+      {canShowResumeDocument && hasPassedReadyGate ? (
         <>
           {/* Undo/redo bar */}
           {canShowUndoBar && (
@@ -895,6 +849,9 @@ export function V2StreamingDisplay({
                     onAcceptEdit={handleAcceptEdit}
                     onRejectEdit={onRejectEdit}
                     onRequestEdit={canEdit ? onRequestEdit : undefined}
+                    gapChat={gapChat ?? undefined}
+                    buildChatContext={buildChatContext}
+                    onBulletConversationClose={() => setActiveBullet(null)}
                   />
                 </div>
               </AnimatedCard>
@@ -967,6 +924,19 @@ export function V2StreamingDisplay({
           </div>
 
         </>
+      ) : canShowResumeDocument && !hasPassedReadyGate ? (
+        /* Beat 2 — "Your Resume Is Ready" gate screen */
+        <div className="mx-auto max-w-[720px] px-6 py-8">
+          <ResumeReadyScreen
+            jobMatchPercent={jobBreakdown.coverage_score}
+            benchmarkMatchPercent={benchmarkBreakdown.coverage_score}
+            strengthSummary={data.gapAnalysis?.strength_summary ?? ''}
+            flaggedBulletCount={attentionItems.length}
+            companyName={data.jobIntelligence?.company_name}
+            roleTitle={data.jobIntelligence?.role_title}
+            onStartEditing={() => setHasPassedReadyGate(true)}
+          />
+        </div>
       ) : (
         /* Processing layout (pipeline running, no resume yet) */
         <div className="mx-auto max-w-[720px] px-6 py-8">
@@ -985,9 +955,11 @@ export function V2StreamingDisplay({
             </div>
           )}
 
-          {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
-
-          <LivePipelineCard data={data} isComplete={isComplete} />
+          <PipelineProgressCard
+            stage={data.stage}
+            isComplete={isComplete}
+            companyAndRole={data.jobIntelligence ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}` : null}
+          />
         </div>
       )}
     </div>
@@ -1007,34 +979,6 @@ function getStageMessage(stage: V2Stage): string {
   }
 }
 
-/** One-line status label shown in the processing status bar */
-function getStageStatusLabel(stage: V2Stage, isComplete: boolean): string {
-  if (isComplete) return 'Ready — review and refine your resume below';
-  switch (stage) {
-    case 'intake':
-    case 'analysis': return 'Reading your resume...';
-    case 'strategy': return 'Building your positioning strategy...';
-    case 'writing': return 'Drafting your resume...';
-    case 'verification': return 'Running quality checks...';
-    case 'assembly': return 'Preparing your working resume...';
-    case 'complete': return 'Ready — review and refine your resume below';
-    default: return 'Working on it...';
-  }
-}
-
-/** 0–100 progress value for the processing status bar progress track */
-function getStageProgressPercent(stage: V2Stage): number {
-  switch (stage) {
-    case 'intake': return 8;
-    case 'analysis': return 25;
-    case 'strategy': return 50;
-    case 'writing': return 70;
-    case 'verification': return 87;
-    case 'assembly': return 95;
-    case 'complete': return 100;
-    default: return 0;
-  }
-}
 
 // ─── PipelineAnalysisSummary ──────────────────────────────────────────────────
 // Displays the detailed pipeline analysis data between the scores and resume.

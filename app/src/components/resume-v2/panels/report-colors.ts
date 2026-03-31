@@ -3,7 +3,13 @@
  *
  * Tier-specific accents: green (strong), blue (partial), red (gap).
  * Matches the streaming view palette.
+ *
+ * Tier is a UI-only display type. The canonical data classification is
+ * GapClassification ('strong' | 'partial' | 'missing') in resume-v2.ts.
+ * Use classificationToTier() to convert at the render boundary.
  */
+
+import type { GapClassification } from '@/types/resume-v2';
 
 export const REPORT_COLORS = {
   // Tier accents — green/blue/red matching streaming view
@@ -18,7 +24,16 @@ export const REPORT_COLORS = {
   tertiary: 'rgba(255,255,255,0.38)',
 } as const;
 
+/** UI display tier. Maps 1:1 from GapClassification via classificationToTier(). */
 export type Tier = 'strong' | 'partial' | 'gap';
+
+/**
+ * Convert canonical GapClassification → UI Tier at the render boundary.
+ * 'missing' → 'gap' because "Not Addressed" reads better than "Missing" in the UI.
+ */
+export function classificationToTier(c: GapClassification): Tier {
+  return c === 'missing' ? 'gap' : c;
+}
 
 export function tierColor(tier: Tier): string {
   return REPORT_COLORS[tier];

@@ -38,7 +38,7 @@ import {
   findBenchmarkContext,
 } from '../utils/coaching-actions';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
-import { REPORT_COLORS, tierColor, tierBg, tierBorder, type Tier } from './report-colors';
+import { REPORT_COLORS, tierColor, tierBg, tierBorder, classificationToTier as baseClassificationToTier, type Tier } from './report-colors';
 import { StatusBadge, importanceStyle, importanceLabel } from '../cards/shared-badges';
 import { GapChatThread } from './GapChatThread';
 import type { GapChatHook } from '@/hooks/useGapChat';
@@ -128,12 +128,12 @@ function fuzzyLookup<T>(key: string, map: Map<string, T>): T | undefined {
 }
 
 function classificationToTier(classification: string, assessmentStatus?: string): Tier {
+  // PositioningAssessment status takes priority when present (post-pipeline context)
   if (assessmentStatus === 'strong') return 'strong';
   if (assessmentStatus === 'repositioned') return 'partial';
   if (assessmentStatus === 'gap') return 'gap';
-  if (classification === 'strong') return 'strong';
-  if (classification === 'partial') return 'partial';
-  return 'gap';
+  // Fall back to canonical GapClassification → Tier mapping
+  return baseClassificationToTier(classification as 'strong' | 'partial' | 'missing');
 }
 
 function tierStatusLabel(tier: Tier): 'strong' | 'repositioned' | 'gap' {

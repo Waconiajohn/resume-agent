@@ -13,6 +13,7 @@ import type {
   ResumeContentOrigin,
   ResumeSupportOrigin,
 } from '@/types/resume-v2';
+import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -288,14 +289,14 @@ function getProofStateTone(
 
   if (requirementSource === 'benchmark') {
     return {
-      label: 'Confirm Fit',
+      label: REVIEW_STATE_DISPLAY.confirm_fit.label,
       message: 'This line may fit the role. Connect it to real background you can honestly stand behind before you keep it.',
       className: 'border-slate-200 bg-slate-50 text-slate-700',
     };
   }
 
   return {
-    label: 'Code Red',
+    label: REVIEW_STATE_DISPLAY.code_red.label,
     message: 'We could not prove this line directly from the resume yet. Look for adjacent experience, tools, scope, or strong working knowledge you can honestly bring forward before export.',
     className: 'border-[#d8c4c4] bg-white text-[#8f2d2d]',
   };

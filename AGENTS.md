@@ -29,12 +29,13 @@ The platform must preserve agent creativity and reasoning freedom inside strong 
 ## Order of Authority
 
 1. `AGENTS.md`
-2. `/docs/CURRENT_SPRINT.md`
-3. `/docs/AI_OPERATING_MODEL.md`
-4. `/docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
-5. `/docs/SHARED_CONTEXT_CONTRACT.md`
-6. `/docs/SHARED_EVIDENCE_CONTRACT.md`
-7. all other docs are reference unless explicitly promoted
+2. `CLAUDE.md` — Agent Integrity Mandate, agent roster, model routing, development framework
+3. `/docs/CURRENT_SPRINT.md`
+4. `/docs/AI_OPERATING_MODEL.md`
+5. `/docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
+6. `/docs/SHARED_CONTEXT_CONTRACT.md`
+7. `/docs/SHARED_EVIDENCE_CONTRACT.md`
+8. all other docs are reference unless explicitly promoted
 
 If a lower-order document conflicts with a higher-order document, follow the higher-order document.
 
@@ -43,12 +44,13 @@ If a lower-order document conflicts with a higher-order document, follow the hig
 Before changing application behavior, AI prompts, workflow structure, shared utilities, room UX, or data contracts, read in this order:
 
 1. `AGENTS.md`
-2. `docs/CURRENT_SPRINT.md`
-3. `docs/AI_OPERATING_MODEL.md`
-4. `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
-5. `docs/SHARED_CONTEXT_CONTRACT.md`
-6. `docs/SHARED_EVIDENCE_CONTRACT.md`
-7. relevant feature or architecture docs for the exact room being changed
+2. `CLAUDE.md` — especially the Agent Integrity Mandate and agent roster
+3. `docs/CURRENT_SPRINT.md`
+4. `docs/AI_OPERATING_MODEL.md`
+5. `docs/CODEX_IMPLEMENTATION_GUARDRAILS.md`
+6. `docs/SHARED_CONTEXT_CONTRACT.md`
+7. `docs/SHARED_EVIDENCE_CONTRACT.md`
+8. relevant feature or architecture docs for the exact room being changed
 
 If the task is clearly local and does not affect shared contracts, still read the first four documents.
 
@@ -64,6 +66,11 @@ If the task is clearly local and does not affect shared contracts, still read th
 8. Maintain typed contracts and predictable interfaces.
 9. Optimize for user-task clarity over internal pipeline visibility.
 10. Use hardening as a safety net, not as the primary architecture.
+11. Obey the **Agent Integrity Mandate** in `CLAUDE.md`. The four hard anti-patterns are:
+    - Numbered tool-call sequences in `buildAgentMessage` (agents receive context, not procedure)
+    - Hard throws in `validateAfterAgent` for non-critical fields (safety net, not completeness gate)
+    - Coordinator bloat that moves decisions out of agents (coordinator sequences; agents reason)
+    - Multi-LLM-call `execute()` in a single tool (split into multiple tools; let the agent loop sequence them)
 
 ## Anti-Drift Sentinel
 

@@ -251,7 +251,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--partial');
-    expect(screen.getByText('Strengthen')).toBeInTheDocument();
+    expect(screen.getByText('Strengthen this')).toBeInTheDocument();
   });
 
   it('renders highlighted red treatment for needs_validation confidence bullets from JD', () => {
@@ -264,7 +264,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--code-red');
-    expect(screen.getByText('Code Red')).toBeInTheDocument();
+    expect(screen.getByText('We need your story')).toBeInTheDocument();
   });
 
   it('renders highlighted orange treatment for needs_validation + benchmark source', () => {
@@ -278,16 +278,16 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--benchmark');
     expect(bullet!.className).not.toContain('resume-proof-line--code-red');
-    expect(screen.getByText('Confirm Fit')).toBeInTheDocument();
+    expect(screen.getByText('Double-check this fits you')).toBeInTheDocument();
   });
 
   it('keeps strong bullets visually quiet without an extra pill', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'strong' });
     render(<ResumeDocumentCard resume={resume} />);
 
-    expect(screen.queryByText('Strengthen')).not.toBeInTheDocument();
-    expect(screen.queryByText('Code Red')).not.toBeInTheDocument();
-    expect(screen.queryByText('Confirm Fit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Strengthen this')).not.toBeInTheDocument();
+    expect(screen.queryByText('We need your story')).not.toBeInTheDocument();
+    expect(screen.queryByText('Double-check this fits you')).not.toBeInTheDocument();
   });
 
   it('renders explicit line-level proof treatment on reviewable bullets', () => {
@@ -436,7 +436,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('Code Red')).toBeInTheDocument();
+    expect(screen.getByText('We need your story')).toBeInTheDocument();
     expect(screen.getByText(/we could not prove this line directly from the resume yet/i)).toBeInTheDocument();
     expect(screen.getByText(/strong working knowledge you can honestly bring forward/i)).toBeInTheDocument();
     expect(screen.getByText(/pull in adjacent proof, relevant scope, or strong working knowledge/i)).toBeInTheDocument();
@@ -453,7 +453,7 @@ describe('BulletEditPopover — evidence display', () => {
       />,
     );
 
-    expect(screen.getByText('Confirm Fit')).toBeInTheDocument();
+    expect(screen.getByText('Double-check this fits you')).toBeInTheDocument();
     expect(screen.getByText(/connect it to real background you can honestly stand behind/i)).toBeInTheDocument();
   });
 

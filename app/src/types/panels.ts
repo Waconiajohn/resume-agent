@@ -91,6 +91,15 @@ export interface ResearchDashboardData {
 }
 
 // --- Gap Analysis ---
+// Legacy display types for the v1 GapAnalysisPanel.
+// The canonical classification scheme is GapClassification ('strong' | 'partial' | 'missing')
+// in resume-v2.ts. These types use 'gap' instead of 'missing' for UI display purposes.
+// New code should use RequirementGap and GapAnalysis from resume-v2.ts.
+// See: Backlog story "Unify Gap Analysis Types" (2026-03-30) for full retirement plan.
+
+import type { GapClassification } from './resume-v2';
+
+/** @deprecated Use RequirementGap from resume-v2.ts for new code. */
 export interface RequirementFitItem {
   requirement: string;
   classification: 'strong' | 'partial' | 'gap';
@@ -98,6 +107,7 @@ export interface RequirementFitItem {
   strategy?: string;
 }
 
+/** @deprecated Use GapAnalysis from resume-v2.ts for new code. */
 export interface GapAnalysisData {
   requirements: RequirementFitItem[];
   strong_count: number;
@@ -105,6 +115,14 @@ export interface GapAnalysisData {
   gap_count: number;
   total: number;
   addressed: number;
+}
+
+/**
+ * Maps canonical GapClassification to legacy panel display values.
+ * 'missing' → 'gap' for user-facing display ("Not Addressed" reads better than "Missing").
+ */
+export function classificationToLegacy(c: GapClassification): 'strong' | 'partial' | 'gap' {
+  return c === 'missing' ? 'gap' : c;
 }
 
 // --- Design Options ---

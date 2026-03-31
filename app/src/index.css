@@ -967,6 +967,12 @@
     color: #8f2d2d;
   }
 
+  .resume-attention-status--supported {
+    border-color: rgba(107, 114, 128, 0.18);
+    background: rgba(107, 114, 128, 0.06);
+    color: #6b7280;
+  }
+
   .right-panel-shell {
     height: 100%;
     background: linear-gradient(180deg, var(--right-panel-bg-a), var(--right-panel-bg-b));

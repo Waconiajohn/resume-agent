@@ -77,6 +77,15 @@ Shared `lib/workflow-persistence.ts` created. Both `event-middleware.ts` and `ro
 ### ~~Story: Fix `resumes-edit.test.ts` TypeScript Error~~ COMPLETE (Sprint 15, Story 1)
 Fixed null-to-Record cast at line 292. `tsc --noEmit` clean.
 
+### ~~Story: Unify Gap Analysis Types and Classification Scheme~~ COMPLETE (2026-03-30)
+~~Canonical `GapClassification` (`strong|partial|missing`) confirmed in resume-v2.ts. Legacy `RequirementFitItem`/`GapAnalysisData` in panels.ts marked @deprecated with mapper `classificationToLegacy()`. `report-colors.ts` gets `classificationToTier()` mapper. `GapAnalysisReportPanel` wired to canonical mapper. Legacy `GapAnalysisPanel` annotated as deprecated. `PositioningAssessment.status` and `GapQuestion.importance` documented as intentionally different domains. 105/105 gap tests pass.~~
+
+### ~~Story: Update ARCHITECTURE-V2.md to Reflect Live Pipeline~~ COMPLETE (2026-03-30)
+~~Full rewrite: 7-agent sequential spec replaced with live 10-agent, 5-stage pipeline. All agent descriptions, model routing, SSE events, pipeline state, file layout, and design principles updated to match production code. Last-updated date and authority note added.~~
+
+### ~~Story: Add Agent Integrity Mandate Cross-Reference to AGENTS.md~~ COMPLETE (2026-03-30)
+~~AGENTS.md updated: CLAUDE.md added to Order of Authority (#2) and Mandatory Startup Reads (#2). Core Operating Rule #11 added referencing the Agent Integrity Mandate by name with all 4 anti-patterns listed.~~
+
 ---
 
 ## Epic: Cover Letter Product

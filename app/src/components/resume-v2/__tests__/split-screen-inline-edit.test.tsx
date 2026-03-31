@@ -128,6 +128,23 @@ vi.mock('../cards/BulletEditPopover', () => ({
   BulletEditPopover: () => <div data-testid="bullet-edit-popover" />,
 }));
 
+// Auto-dismiss the "Resume Is Ready" gate so tests can reach the resume editor
+vi.mock('../cards/ResumeReadyScreen', () => ({
+  ResumeReadyScreen: ({ onStartEditing }: { onStartEditing: () => void }) => {
+    // Auto-click through the gate on mount
+    onStartEditing();
+    return null;
+  },
+}));
+
+vi.mock('../cards/PipelineProgressCard', () => ({
+  PipelineProgressCard: () => <div data-testid="pipeline-progress-card" />,
+}));
+
+vi.mock('../cards/BulletConversationEditor', () => ({
+  BulletConversationEditor: () => <div data-testid="bullet-conversation-editor" />,
+}));
+
 // jsdom does not implement scrollIntoView or scrollTo — stub them globally
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -709,7 +726,7 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    expect(screen.getAllByText('Confirm Fit').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Double-check this fits you').length).toBeGreaterThan(0);
     expect(screen.getByText(/ultimate-resume draft for this role/i)).toBeInTheDocument();
     expect(screen.getByText('Not directly confirmed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect to my background' })).toBeInTheDocument();
@@ -999,8 +1016,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     render(<V2StreamingDisplay {...props} />);
 
-    expect(screen.getByText('Building Your Tailored Resume')).toBeInTheDocument();
-    expect(screen.getByText('We are rebuilding the resume now.')).toBeInTheDocument();
+    expect(screen.getByTestId('pipeline-progress-card')).toBeInTheDocument();
   });
 
   it('shows final review on the main resume canvas when review is available', () => {
@@ -1110,11 +1126,11 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(strip).toBeInTheDocument();
     expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
-    expect(screen.getByText(/1 code-red line still needs proof, and 1 more still need attention/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 line still needs your story, and 1 more still need attention/i)).toBeInTheDocument();
     expect(screen.getByText('Do this next')).toBeInTheDocument();
-    expect(screen.getByText('Start with the strengthen line in Selected Accomplishments.')).toBeInTheDocument();
-    expect(within(strip).getByText(/Next best action: Start with the strengthen line in Selected Accomplishments\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Strengthen')).toBeInTheDocument();
+    expect(screen.getAllByText(/Start with the strengthen this line in Selected Accomplishments\./i).length).toBeGreaterThan(0);
+    expect(within(strip).getByText(/Next best action: Start with the strengthen this line in Selected Accomplishments\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('Strengthen this')).toBeInTheDocument();
     expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });
@@ -1223,15 +1239,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(within(strip).queryByText(/release KPIs and deployment scorecards/i)).not.toBeInTheDocument();
   });
 
-  it('shows the correct status text for each pipeline stage', () => {
-    const stageLabels: Array<{ stage: string; label: string }> = [
-      { stage: 'strategy', label: 'Building your positioning strategy...' },
-      { stage: 'writing', label: 'Drafting your resume...' },
-      { stage: 'verification', label: 'Running quality checks...' },
-      { stage: 'assembly', label: 'Preparing your working resume...' },
-    ];
+  it('shows the PipelineProgressCard for each pipeline stage', () => {
+    const stages = ['strategy', 'writing', 'verification', 'assembly'] as const;
 
-    for (const { stage, label } of stageLabels) {
+    for (const stage of stages) {
       cleanup();
       const props = makeDisplayProps({
         isComplete: false,
@@ -1243,9 +1254,7 @@ describe('V2StreamingDisplay — layout modes', () => {
         }),
       });
       render(<V2StreamingDisplay {...props} />);
-      // ProcessingStatusBar renders the stage-specific status label (may appear more than once in feed)
-      const matches = screen.getAllByText(label);
-      expect(matches.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('pipeline-progress-card')).toBeInTheDocument();
     }
   });
 

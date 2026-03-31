@@ -10,8 +10,12 @@ import type {
 } from '@/types/resume-v2';
 import { scrollToAndHighlight } from '../useStrategyThread';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
+import type { GapChatHook } from '@/hooks/useGapChat';
+import type { GapChatContext } from '@/types/resume-v2';
 import { BulletEditPopover } from './BulletEditPopover';
+import { BulletConversationEditor } from './BulletConversationEditor';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
+import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -30,6 +34,10 @@ interface ResumeDocumentCardProps {
   onAcceptEdit?: (text: string) => void;
   onRejectEdit?: () => void;
   onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
+  /** Gap chat infrastructure for BulletConversationEditor */
+  gapChat?: GapChatHook;
+  buildChatContext?: (requirement: string) => GapChatContext;
+  onBulletConversationClose?: () => void;
 }
 
 export function ResumeDocumentCard({
@@ -44,6 +52,9 @@ export function ResumeDocumentCard({
   onAcceptEdit,
   onRejectEdit,
   onRequestEdit,
+  gapChat,
+  buildChatContext,
+  onBulletConversationClose,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
@@ -179,7 +190,21 @@ export function ResumeDocumentCard({
                       />
                     )}
                   </>
-                  {isActive && onRequestEdit && (
+                  {isActive && gapChat && buildChatContext && !isResolvedReviewState(resolveReviewState(a.review_state, a.confidence, a.requirement_source)) ? (
+                    <BulletConversationEditor
+                      bulletText={a.content}
+                      section="selected_accomplishments"
+                      bulletIndex={i}
+                      requirements={accomplishmentDisplayTargets}
+                      reviewState={resolveReviewState(a.review_state, a.confidence, a.requirement_source)}
+                      requirementSource={a.requirement_source}
+                      evidenceFound={a.evidence_found}
+                      gapChat={gapChat}
+                      chatContext={buildChatContext(accomplishmentDisplayTargets[0] ?? a.content)}
+                      onApplyToResume={(section, index, newText) => onBulletEdit?.(section, index, newText)}
+                      onClose={() => onBulletConversationClose?.()}
+                    />
+                  ) : isActive && onRequestEdit ? (
                     <InlineEditPanel
                       bulletText={a.content}
                       section="selected_accomplishments"
@@ -199,7 +224,7 @@ export function ResumeDocumentCard({
                       onAcceptEdit={onAcceptEdit}
                       onRejectEdit={onRejectEdit}
                     />
-                  )}
+                  ) : null}
                 </li>
               );
             })}
@@ -296,7 +321,21 @@ export function ResumeDocumentCard({
                             />
                           )}
                         </>
-                        {isActive && onRequestEdit && (
+                        {isActive && gapChat && buildChatContext && !isResolvedReviewState(resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source)) ? (
+                          <BulletConversationEditor
+                            bulletText={bullet.text}
+                            section="professional_experience"
+                            bulletIndex={bulletIndex}
+                            requirements={bulletDisplayTargets}
+                            reviewState={resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source)}
+                            requirementSource={bullet.requirement_source}
+                            evidenceFound={bullet.evidence_found}
+                            gapChat={gapChat}
+                            chatContext={buildChatContext(bulletDisplayTargets[0] ?? bullet.text)}
+                            onApplyToResume={(section, index, newText) => onBulletEdit?.(section, index, newText)}
+                            onClose={() => onBulletConversationClose?.()}
+                          />
+                        ) : isActive && onRequestEdit ? (
                           <InlineEditPanel
                             bulletText={bullet.text}
                             section="professional_experience"
@@ -316,7 +355,7 @@ export function ResumeDocumentCard({
                             onAcceptEdit={onAcceptEdit}
                             onRejectEdit={onRejectEdit}
                           />
-                        )}
+                        ) : null}
                       </li>
                     );
                   })}
@@ -1001,7 +1040,7 @@ function getConfidencePill(
 ): { label: string; className: string } | null {
   if (reviewState === 'strengthen') {
     return {
-      label: 'Strengthen',
+      label: REVIEW_STATE_DISPLAY.strengthen.label,
       className:
         'resume-proof-meta-label resume-proof-meta-label--partial',
     };
@@ -1009,7 +1048,7 @@ function getConfidencePill(
 
   if (reviewState === 'confirm_fit' || (reviewState === 'code_red' && requirementSource === 'benchmark')) {
     return {
-      label: 'Confirm Fit',
+      label: REVIEW_STATE_DISPLAY.confirm_fit.label,
       className:
         'resume-proof-meta-label resume-proof-meta-label--benchmark',
     };
@@ -1017,7 +1056,7 @@ function getConfidencePill(
 
   if (reviewState === 'code_red') {
     return {
-      label: 'Code Red',
+      label: REVIEW_STATE_DISPLAY.code_red.label,
       className:
         'resume-proof-meta-label resume-proof-meta-label--code-red',
     };
