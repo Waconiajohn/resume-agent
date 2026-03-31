@@ -41,12 +41,12 @@ const TABS: TabDef[] = [
 const TAB_MAP = Object.fromEntries(TABS.map((tab) => [tab.id, tab])) as Record<SmartReferralsTab, TabDef>;
 
 const PATH_TABS: Record<ReferralPath, SmartReferralsTab[]> = {
-  network: ['import', 'connections', 'job-matches', 'contacts'],
+  network: ['import', 'connections', 'targets', 'job-scan', 'job-matches', 'contacts'],
   bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
 };
 
 const ALWAYS_UNLOCKED: Record<ReferralPath, SmartReferralsTab[]> = {
-  network: ['import', 'contacts'],
+  network: ['import', 'targets', 'contacts'],
   bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
 };
 
@@ -338,7 +338,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           />
         );
       case 'targets':
-        return null;
+        return <TargetTitlesManager accessToken={accessToken} />;
       case 'job-matches':
         return (
           <JobMatchesList
@@ -353,7 +353,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
           />
         );
       case 'job-scan':
-        return null;
+        return <ScrapeJobsPanel accessToken={accessToken} />;
       case 'bonus-search':
         return <BonusSearchPanel accessToken={accessToken} />;
       case 'referrals':

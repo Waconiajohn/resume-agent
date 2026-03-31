@@ -37,16 +37,16 @@ const ROOM_GROUPS: RoomGroup[] = [
     rooms: [
       { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
       { id: 'career-profile', label: 'Your Profile', icon: User, description: 'Your resume, story, and evidence in one place', gated: false },
-      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save tailored resumes', gated: true },
+      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save tailored resumes', gated: false },
     ],
   },
   {
     label: 'Active Search',
     rooms: [
-      { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: true },
-      { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: true },
-      { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: true },
-      { id: 'networking', label: 'Network Job Search', icon: Users, description: 'Leverage your connections to find jobs', gated: true },
+      { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: false },
+      { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
+      { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: false },
+      { id: 'networking', label: 'Network Job Search', icon: Users, description: 'Leverage your connections to find jobs', gated: false },
     ],
   },
 ];

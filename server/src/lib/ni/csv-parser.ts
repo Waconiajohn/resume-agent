@@ -13,12 +13,12 @@ import type { ParsedConnection, CsvParseResult, CsvParseError } from './types.js
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const HEADER_ALIASES: Record<string, string[]> = {
-  'first name': ['first name', 'firstname', 'first_name'],
-  'last name': ['last name', 'lastname', 'last_name'],
-  'email address': ['email address', 'email', 'email_address'],
-  'company': ['company', 'company name', 'current company', 'company_name'],
-  'position': ['position', 'title', 'job title', 'job_title'],
-  'connected on': ['connected on', 'connected_on', 'connected date', 'connection date'],
+  'first name': ['first name', 'firstname', 'first_name', 'fname'],
+  'last name': ['last name', 'lastname', 'last_name', 'lname'],
+  'email address': ['email address', 'email', 'email_address', 'e-mail'],
+  'company': ['company', 'company name', 'current company', 'company_name', 'organization'],
+  'position': ['position', 'title', 'job title', 'job_title', 'role'],
+  'connected on': ['connected on', 'connected_on', 'connected date', 'connection date', 'date connected'],
 };
 
 const MONTH_MAP: Record<string, number> = {
@@ -151,11 +151,24 @@ export function parseCsv(csvText: string): CsvParseResult {
     return { connections: [], totalRows: 0, validRows: 0, skippedRows: 0, duplicatesRemoved: 0, uniqueCompanies: 0, errors: [] };
   }
 
-  // Parse header row
-  const headerFields = parseCSVLine(lines[0]);
-  const headerMap = matchHeaders(headerFields);
+  // LinkedIn sometimes puts metadata rows before the actual header.
+  // Scan the first 5 lines to find the one that matches expected headers.
+  let headerMap: Map<string, number> | null = null;
+  let headerLineIndex = -1;
 
-  if (!headerMap) {
+  const scanLimit = Math.min(lines.length, 5);
+  for (let attempt = 0; attempt < scanLimit; attempt++) {
+    const candidateFields = parseCSVLine(lines[attempt]);
+    const candidateMap = matchHeaders(candidateFields);
+    if (candidateMap) {
+      headerMap = candidateMap;
+      headerLineIndex = attempt;
+      break;
+    }
+  }
+
+  if (!headerMap || headerLineIndex === -1) {
+    const actualHeaders = parseCSVLine(lines[0]).map(h => h.trim()).filter(Boolean).join(', ');
     return {
       connections: [],
       totalRows: 0,
@@ -163,15 +176,19 @@ export function parseCsv(csvText: string): CsvParseResult {
       skippedRows: 0,
       duplicatesRemoved: 0,
       uniqueCompanies: 0,
-      errors: [{ row: 1, message: 'Missing required headers: First Name, Last Name, Company' }],
+      errors: [{
+        row: 1,
+        message: `Missing required headers: First Name, Last Name, Company. Found: ${actualHeaders || '(empty)'}`,
+      }],
     };
   }
 
   const seenKeys = new Set<string>();
   let duplicatesRemoved = 0;
-  const totalRows = lines.length - 1; // Exclude header
+  const dataStartLine = headerLineIndex + 1;
+  const totalRows = lines.length - dataStartLine;
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = dataStartLine; i < lines.length; i++) {
     const line = lines[i];
     const rowNum = i + 1; // 1-based row numbers
 

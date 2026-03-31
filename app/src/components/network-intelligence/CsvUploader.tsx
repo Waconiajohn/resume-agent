@@ -63,7 +63,10 @@ export function CsvUploader({ accessToken, authLoading = false, onUploadComplete
 
       if (!res.ok) {
         setState('error');
-        setErrorMessage(data.error ?? `Upload failed (${res.status})`);
+        const detail = data.errors?.length
+          ? `: ${data.errors.map((e: { message: string }) => e.message).join('; ')}`
+          : '';
+        setErrorMessage(data.error ?? `Upload failed (${res.status})${detail}`);
         return;
       }
 
