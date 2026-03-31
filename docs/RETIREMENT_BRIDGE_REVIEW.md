@@ -9,7 +9,7 @@ Retirement Bridge should remain a distinct product. It is not just another caree
 - it produces a planner-facing handoff artifact rather than a marketing asset
 - it belongs under Financial Wellness, not under the general Career Profile execution path
 
-The current backend route in [server/src/routes/retirement-bridge.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/retirement-bridge.ts) loads:
+The current backend route in [server/src/routes/retirement-bridge.ts](/Users/johnschrup/resume-agent/server/src/routes/retirement-bridge.ts) loads:
 
 - `client_profile`
 - `positioning_strategy`

@@ -5,10 +5,10 @@ Use this checklist when reviewing `resume-v2` against real resumes and real job 
 ## Recommended Test Data
 
 - Resume/browser quality fixtures:
-  - [e2e/fixtures/real-resume-data.ts](/Users/johnschrup/Documents/New%20project/resume-agent/e2e/fixtures/real-resume-data.ts)
-  - [e2e/fixtures/quality-validation-data.ts](/Users/johnschrup/Documents/New%20project/resume-agent/e2e/fixtures/quality-validation-data.ts)
+  - [e2e/fixtures/real-resume-data.ts](/Users/johnschrup/resume-agent/e2e/fixtures/real-resume-data.ts)
+  - [e2e/fixtures/quality-validation-data.ts](/Users/johnschrup/resume-agent/e2e/fixtures/quality-validation-data.ts)
 - Browser validation spec:
-  - [e2e/tests/quality-validation.spec.ts](/Users/johnschrup/Documents/New%20project/resume-agent/e2e/tests/quality-validation.spec.ts)
+  - [e2e/tests/quality-validation.spec.ts](/Users/johnschrup/resume-agent/e2e/tests/quality-validation.spec.ts)
 
 When possible, also run this checklist against 3-5 real user resumes and JDs from different functions and seniority levels.
 
@@ -38,8 +38,8 @@ REAL_QA_SESSION_IDS=id-1,id-2,id-3 npm run qa:real
 
 Artifacts written:
 
-- [summary.json](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality/summary.json)
-- [summary.md](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality/summary.md)
+- [summary.json](/Users/johnschrup/resume-agent/test-results/real-session-quality/summary.json)
+- [summary.md](/Users/johnschrup/resume-agent/test-results/real-session-quality/summary.md)
 
 The script now exposes preservation-gate results directly:
 

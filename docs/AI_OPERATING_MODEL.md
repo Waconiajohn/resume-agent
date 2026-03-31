@@ -6,8 +6,8 @@ Define the product-wide AI operating model for this application so that all acti
 
 This document works together with:
 
-- [SHARED_CONTEXT_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_CONTEXT_CONTRACT.md)
-- [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md)
+- [SHARED_CONTEXT_CONTRACT.md](/Users/johnschrup/resume-agent/docs/SHARED_CONTEXT_CONTRACT.md)
+- [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md)
 
 ## Product Philosophy
 
@@ -187,7 +187,7 @@ All AI-assisted content should move through the same user-facing model:
 
 AI should help inside that loop, not in a detached helper layer.
 
-Evidence eligibility inside review and apply must stay consistent with [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md):
+Evidence eligibility inside review and apply must stay consistent with [SHARED_EVIDENCE_CONTRACT.md](/Users/johnschrup/resume-agent/docs/SHARED_EVIDENCE_CONTRACT.md):
 
 - `DirectProof` may flow into final artifact copy.
 - `StrongAdjacentProof` may flow into final artifact copy only when the wording remains faithful to what the evidence actually proves and any required confirmation has happened.

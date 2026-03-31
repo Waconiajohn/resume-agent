@@ -1,10 +1,10 @@
 # Supabase Migration Drift — Phase 1.5 Pre-Repair Analysis
 
 **Date:** 2026-03-27
-**Repo:** `/Users/johnschrup/resume-agent` (the "Claude repo")
+**Repo:** `/Users/johnschrup/resume-agent` (canonical local repo)
 **Remote:** Supabase project `pvmfgfnbtqlipnnoeixu` (shared)
 
-> **Scope:** This report covers ONLY the Claude repo compared against the shared remote Supabase project. Another local clone exists at `/Users/johnschrup/Documents/New project/resume-agent` and is intentionally out of scope. Do not synchronize files across clones.
+> **Scope:** This report covers ONLY the canonical local repo at `/Users/johnschrup/resume-agent` compared against the shared remote Supabase project. The older duplicate clone under `/Users/johnschrup/Documents/New project/resume-agent` has been deleted and is no longer part of the workflow.
 
 ---
 

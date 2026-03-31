@@ -189,28 +189,28 @@ The product should not promote:
 
 ### Keep And Reframe
 
-- [V2ResumeScreen.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/V2ResumeScreen.tsx)
+- [V2ResumeScreen.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/V2ResumeScreen.tsx)
   - keep as the screen shell and state owner
   - make it drive a single document-first journey
-- [V2StreamingDisplay.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/V2StreamingDisplay.tsx)
+- [V2StreamingDisplay.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/V2StreamingDisplay.tsx)
   - keep as the main display coordinator
   - simplify around one resume canvas, one rail, one supporting analysis layer
-- [ScoringReport.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/ScoringReport.tsx)
+- [ScoringReport.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/ScoringReport.tsx)
   - keep for before and after reporting
   - do not let it become a workspace
-- [ResumeWorkspaceRail.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/ResumeWorkspaceRail.tsx)
+- [ResumeWorkspaceRail.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/ResumeWorkspaceRail.tsx)
   - keep as stage guidance and final-review status
   - not as a second analysis/report area
 
 ### Demote From Primary To Supporting
 
-- [GapQuestionFlow.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/GapQuestionFlow.tsx)
+- [GapQuestionFlow.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/GapQuestionFlow.tsx)
   - no longer the main work path
   - repurpose into targeted validation for risky resume lines
-- [GapAnalysisReportPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/panels/GapAnalysisReportPanel.tsx)
+- [GapAnalysisReportPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/panels/GapAnalysisReportPanel.tsx)
   - keep as read-only explanation
   - never as the place where editing work happens
-- [UnifiedGapAnalysisCard.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/cards/UnifiedGapAnalysisCard.tsx)
+- [UnifiedGapAnalysisCard.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/cards/UnifiedGapAnalysisCard.tsx)
   - same rule: explain, do not become the main work surface
 
 ## Required Contract Changes

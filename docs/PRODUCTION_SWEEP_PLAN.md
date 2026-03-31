@@ -48,10 +48,10 @@ What is now true:
 What is still worth tightening before calling those areas fully done:
 
 1. Workspace Home guidance should never let the coach recommend `dashboard` while already on Home.
-   - [workspaceHomeGuidance.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/workspaceHomeGuidance.ts) still treats any exposed room other than `career-profile` and `resume` as a valid lead target. If the recommendation service ever returns `dashboard`, the CTA becomes a no-op loop.
+   - [workspaceHomeGuidance.ts](/Users/johnschrup/resume-agent/app/src/components/career-iq/workspaceHomeGuidance.ts) still treats any exposed room other than `career-profile` and `resume` as a valid lead target. If the recommendation service ever returns `dashboard`, the CTA becomes a no-op loop.
 
 2. Smart Referrals scan polling should stop more deliberately when auth disappears or polling becomes impossible.
-   - [useNiScrapeRunner.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/useNiScrapeRunner.ts) keeps polling on transient failures by design, which is fine, but it also returns early on missing `accessToken` without resetting `running` or clearing the interval. That is a small but real lifecycle hole.
+   - [useNiScrapeRunner.ts](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/useNiScrapeRunner.ts) keeps polling on transient failures by design, which is fine, but it also returns early on missing `accessToken` without resetting `running` or clearing the interval. That is a small but real lifecycle hole.
 
 These are follow-up hardening items, not reasons to reopen the broader shell/NI architecture.
 
@@ -97,12 +97,12 @@ That is enough moving parts that overlapping surfaces will hurt badly if we do n
 ### Findings from the audit
 
 1. There are still two different entry surfaces for the same domain.
-   - [SmartReferralsRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/SmartReferralsRoom.tsx) is the active modern room.
-   - [NetworkIntelligenceTab.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) is an older, narrower surface with overlapping responsibility.
+   - [SmartReferralsRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/SmartReferralsRoom.tsx) is the active modern room.
+   - [NetworkIntelligenceTab.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) is an older, narrower surface with overlapping responsibility.
 
 2. Scan behavior is duplicated.
-   - [ScrapeJobsPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/ScrapeJobsPanel.tsx)
-   - [BonusSearchPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/BonusSearchPanel.tsx)
+   - [ScrapeJobsPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/ScrapeJobsPanel.tsx)
+   - [BonusSearchPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/BonusSearchPanel.tsx)
    Both run very similar scrape-state logic with slightly different company sources.
 
 3. The product model is clearer than before, but still not self-explanatory enough.
@@ -113,7 +113,7 @@ That is enough moving parts that overlapping surfaces will hurt badly if we do n
    are conceptually valid, but still close enough to confuse users if the page copy, statuses, and source labels are not extremely disciplined.
 
 4. The backend route model is solid enough to build on.
-   - [ni.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/ni.ts) already has a reasonable split between import, titles, matches, scrape, referral opportunities, and bonus company lookup.
+   - [ni.ts](/Users/johnschrup/resume-agent/server/src/routes/ni.ts) already has a reasonable split between import, titles, matches, scrape, referral opportunities, and bonus company lookup.
    - This is not a backend architecture rescue. It is a product-surface and workflow cleanup.
 
 ### Canonical workflow
@@ -133,7 +133,7 @@ The canonical Smart Referrals flow should be:
 
 ### Cleanup targets
 
-1. Retire or isolate [NetworkIntelligenceTab.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) from the live path.
+1. Retire or isolate [NetworkIntelligenceTab.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) from the live path.
 2. Extract shared scrape-state behavior from `ScrapeJobsPanel` and `BonusSearchPanel`.
 3. Make the source model obvious in `Job Matches`:
    - from your network
@@ -159,11 +159,11 @@ This is the biggest leverage point in the product after Resume V2. If the shell,
 ### Findings from the audit
 
 1. There are still parallel navigation ideas coexisting.
-   - [CareerIQScreen.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/CareerIQScreen.tsx) is the main room shell.
-   - [WorkspaceShell.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/workspace/WorkspaceShell.tsx) is still the specialized multi-node shell for older workspace flows.
+   - [CareerIQScreen.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/CareerIQScreen.tsx) is the main room shell.
+   - [WorkspaceShell.tsx](/Users/johnschrup/resume-agent/app/src/components/workspace/WorkspaceShell.tsx) is still the specialized multi-node shell for older workspace flows.
 
 2. The job workspace is valuable but dense.
-   - [JobWorkspaceView.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/dashboard/JobWorkspaceView.tsx) tries to be:
+   - [JobWorkspaceView.tsx](/Users/johnschrup/resume-agent/app/src/components/dashboard/JobWorkspaceView.tsx) tries to be:
      - stage controller
      - asset hub
      - cross-product launcher
@@ -210,7 +210,7 @@ Interview Prep is useful and fairly rich, but it is less dangerous than Smart Re
 
 ### Findings from the audit
 
-1. [InterviewLabRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/InterviewLabRoom.tsx) is large and multi-purpose.
+1. [InterviewLabRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/InterviewLabRoom.tsx) is large and multi-purpose.
    It currently carries:
    - core prep
    - saved assets
@@ -220,7 +220,7 @@ Interview Prep is useful and fairly rich, but it is less dangerous than Smart Re
    - negotiation handoff
 
 2. The route/backend side is fairly sane.
-   - [interview-prep.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/interview-prep.ts) is not the problem.
+   - [interview-prep.ts](/Users/johnschrup/resume-agent/server/src/routes/interview-prep.ts) is not the problem.
    - The bigger risk is product-surface sprawl in the room itself.
 
 3. Some logic still lives locally that should probably be standardized.
@@ -229,13 +229,13 @@ Interview Prep is useful and fairly rich, but it is less dangerous than Smart Re
    - multiple follow-up modes in one room
 
 4. Resume loading is duplicated across the interview-family follow-up rooms.
-   - [ThankYouNoteRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/ThankYouNoteRoom.tsx)
-   - [SalaryNegotiationRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/SalaryNegotiationRoom.tsx)
+   - [ThankYouNoteRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/ThankYouNoteRoom.tsx)
+   - [SalaryNegotiationRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/SalaryNegotiationRoom.tsx)
    Both independently fetch the latest master resume on mount. That is the same pattern we just cleaned up elsewhere: repeated context loading that should become one shared room-family helper.
 
 5. Focus/view routing is still too local to `InterviewLabRoom`.
-   - [InterviewLabRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/InterviewLabRoom.tsx) owns the `initialFocus` to section/view mapping itself.
-   - [InterviewLabDocumentsPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/interview-lab/InterviewLabDocumentsPanel.tsx) then embeds sub-rooms directly.
+   - [InterviewLabRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/InterviewLabRoom.tsx) owns the `initialFocus` to section/view mapping itself.
+   - [InterviewLabDocumentsPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/interview-lab/InterviewLabDocumentsPanel.tsx) then embeds sub-rooms directly.
    That is workable, but it is also exactly how shell drift starts: routing intent, view selection, and embedded tool ownership all living in different places.
 
 ### Canonical workflow
@@ -305,7 +305,7 @@ LinkedIn Studio looks more like a successful aggregation room than a broken one,
 
 ### Findings from the audit
 
-1. [LinkedInStudioRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/LinkedInStudioRoom.tsx) still acts as a large composite shell over several different modes:
+1. [LinkedInStudioRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/LinkedInStudioRoom.tsx) still acts as a large composite shell over several different modes:
    - post composer
    - profile editor
    - calendar
@@ -313,7 +313,7 @@ LinkedIn Studio looks more like a successful aggregation room than a broken one,
    - library
 
 2. Backend routes are relatively healthy.
-   - [linkedin-optimizer.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/linkedin-optimizer.ts)
+   - [linkedin-optimizer.ts](/Users/johnschrup/resume-agent/server/src/routes/linkedin-optimizer.ts)
    - related LinkedIn routes already fit the shared-context direction reasonably well.
 
 3. The main risk is UX sprawl, not broken contracts.
@@ -388,8 +388,8 @@ Start with Smart Referrals.
 
 Specific first implementation pass:
 
-1. classify [NetworkIntelligenceTab.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) as legacy and remove it from active flows or isolate it
-2. extract shared scrape-state behavior used by [ScrapeJobsPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/ScrapeJobsPanel.tsx) and [BonusSearchPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/network-intelligence/BonusSearchPanel.tsx)
+1. classify [NetworkIntelligenceTab.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/NetworkIntelligenceTab.tsx) as legacy and remove it from active flows or isolate it
+2. extract shared scrape-state behavior used by [ScrapeJobsPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/ScrapeJobsPanel.tsx) and [BonusSearchPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/network-intelligence/BonusSearchPanel.tsx)
 3. simplify the room so search mode, results source, and referral overlay are unmistakable
 4. validate with a real end-to-end import -> scan -> results -> outreach flow
 

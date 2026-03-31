@@ -3,9 +3,9 @@
 ## Snapshot
 
 - Date: 2026-03-30
-- Active Codex repo: `/Users/johnschrup/Documents/New project/resume-agent`
+- Active Codex repo: `/Users/johnschrup/resume-agent`
 - Base product commit before this handoff note: `bfde482d33877b46cf77c8087e0cbbb8dfffa4bd`
-- Repo state: clean except intentionally untouched `review-bundles/`
+- Repo state: clean
 
 ## Git Health Warning
 
@@ -36,22 +36,17 @@ The biggest finished areas are:
 - product telemetry ingestion + admin funnel
 - pilot-user session packet
 
-## Two-Repo Reality
+## Canonical Repo Reality
 
-There are two local repos connected to the same remote Supabase project:
+There is now one canonical local repo for this project:
 
-1. Codex repo:
-   - `/Users/johnschrup/Documents/New project/resume-agent`
-2. Claude repo:
-   - `/Users/johnschrup/resume-agent`
+- `/Users/johnschrup/resume-agent`
 
 Important:
 
-- They are **not** the same local migration tree.
-- Claude did the recent database reconciliation work in the Claude repo.
-- The shared remote Supabase database is healthier now, but this Codex repo has **not** been migration-synced to Claude’s repo.
-
-Do not assume local migration history in this repo matches Claude’s repo.
+- the older duplicate repo under `/Users/johnschrup/Documents/New project/resume-agent` has been deleted
+- historical notes in this handoff may still refer to a separate "Claude repo" because that was the clone used during earlier database reconciliation work
+- going forward, do all local work from `/Users/johnschrup/resume-agent` only
 
 ## Current Product State In This Repo
 
@@ -68,25 +63,25 @@ Implemented here:
 
 Key docs:
 
-- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
-- [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
-- [NEXT_PHASE_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/NEXT_PHASE_PLAN.md)
+- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
+- [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
+- [NEXT_PHASE_PLAN.md](/Users/johnschrup/resume-agent/docs/NEXT_PHASE_PLAN.md)
 
 ### Pilot-user packet
 
 Freshly added in this repo:
 
-- [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
-- [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
-- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
-- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
-- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+- [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
+- [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
+- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
+- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
 
 This is the current recommended next workstream.
 
 ## Shared Remote Database Status
 
-Claude’s repo completed the latest database work against the shared remote.
+The repo lineage that became the canonical local repo completed the latest database work against the shared remote.
 
 What changed remotely:
 
@@ -100,17 +95,17 @@ What changed remotely:
   - `watchlist_companies`
 - aligned a large number of timestamp-shifted pairs in Claude’s repo
 
-Claude’s reported stop point:
+Reported stop point from that reconciliation pass:
 
 - 71 matched
 - 3 remote-only
 - 11 local-only
 
-That stop point applies to the Claude repo, not automatically to this repo.
+That stop point is historical context from the reconciliation pass that fed into this canonical repo.
 
 ## Database Work Status For This Repo
 
-In this Codex repo:
+In this repo:
 
 - telemetry rollout docs are current
 - migration drift is documented
@@ -118,9 +113,9 @@ In this Codex repo:
 
 Relevant docs in this repo:
 
-- [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
-- [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
-- [server/PRODUCTION_GATES.md](/Users/johnschrup/Documents/New%20project/resume-agent/server/PRODUCTION_GATES.md)
+- [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
+- [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
+- [server/PRODUCTION_GATES.md](/Users/johnschrup/resume-agent/server/PRODUCTION_GATES.md)
 
 Recommended stance:
 
@@ -131,25 +126,25 @@ Recommended stance:
 
 Recommended next work in this repo:
 
-1. recruit 5 pilot users using [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
+1. recruit 5 pilot users using [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
 2. run the 5 sessions using:
-   - [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
-   - [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
-3. synthesize results in [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
+   - [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+   - [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+3. synthesize results in [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
 4. compare participant behavior against the admin `Funnel` tab telemetry
 
 ## If Reopening Fresh
 
 Read these first, in order:
 
-1. [CODEX_HANDOFF.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CODEX_HANDOFF.md)
-2. [NEXT_PHASE_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/NEXT_PHASE_PLAN.md)
-3. [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
-4. [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
+1. [CODEX_HANDOFF.md](/Users/johnschrup/resume-agent/docs/CODEX_HANDOFF.md)
+2. [NEXT_PHASE_PLAN.md](/Users/johnschrup/resume-agent/docs/NEXT_PHASE_PLAN.md)
+3. [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
+4. [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
 
 If the new session is about database work, also read:
 
-5. [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
+5. [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
 
 ## Last Commits Worth Knowing
 

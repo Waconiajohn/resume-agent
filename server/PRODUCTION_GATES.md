@@ -59,7 +59,7 @@ Recommended branch protection:
 
 Current note:
 
-- the linked environment currently has known migration-history drift, so the gate is still valuable but should be interpreted alongside [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md) until reconciliation is complete
+- the linked environment currently has known migration-history drift, so the gate is still valuable but should be interpreted alongside [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md) until reconciliation is complete
 
 ## Resume Preservation QA
 
@@ -83,7 +83,7 @@ Outputs:
 
 - GitHub step summary with preservation status, bullet-density ratio, and any gate alerts
 - Uploaded artifact: `resume-preservation-qa`
-- Local artifact shape mirrored under [test-results/real-session-quality](/Users/johnschrup/Documents/New%20project/resume-agent/test-results/real-session-quality)
+- Local artifact shape mirrored under [test-results/real-session-quality](/Users/johnschrup/resume-agent/test-results/real-session-quality)
 
 Default behavior:
 

@@ -21,7 +21,7 @@ This is not the final analytics architecture. It is the first trustworthy schema
 - `career_profile_stalled`
 
 Owner:
-- [CareerProfileContext.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/CareerProfileContext.tsx)
+- [CareerProfileContext.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/CareerProfileContext.tsx)
 
 ### Resume V2
 
@@ -35,9 +35,9 @@ Owner:
 - `export_attempted`
 
 Owners:
-- [App.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/App.tsx)
-- [V2ResumeScreen.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/V2ResumeScreen.tsx)
-- [ExportBar.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/resume-v2/ExportBar.tsx)
+- [App.tsx](/Users/johnschrup/resume-agent/app/src/App.tsx)
+- [V2ResumeScreen.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/V2ResumeScreen.tsx)
+- [ExportBar.tsx](/Users/johnschrup/resume-agent/app/src/components/resume-v2/ExportBar.tsx)
 
 ### Job Search
 
@@ -50,9 +50,9 @@ Owners:
 - `more_role_suggestions_requested`
 
 Owners:
-- [RadarSection.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/job-command-center/RadarSection.tsx)
-- [JobCommandCenterRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/JobCommandCenterRoom.tsx)
-- [BooleanSearchPanel.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/job-command-center/BooleanSearchPanel.tsx)
+- [RadarSection.tsx](/Users/johnschrup/resume-agent/app/src/components/job-command-center/RadarSection.tsx)
+- [JobCommandCenterRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/JobCommandCenterRoom.tsx)
+- [BooleanSearchPanel.tsx](/Users/johnschrup/resume-agent/app/src/components/job-command-center/BooleanSearchPanel.tsx)
 
 ### Smart Referrals
 
@@ -62,7 +62,7 @@ Owners:
 - `smart_referrals_outreach_opened`
 
 Owner:
-- [SmartReferralsRoom.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/career-iq/SmartReferralsRoom.tsx)
+- [SmartReferralsRoom.tsx](/Users/johnschrup/resume-agent/app/src/components/career-iq/SmartReferralsRoom.tsx)
 
 ## Why These Events First
 
@@ -122,17 +122,17 @@ Those are the cleanest signals for whether the product is helping people move th
 Events now flow through two layers:
 
 1. local browser buffer
-   - [product-telemetry.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/lib/product-telemetry.ts)
+   - [product-telemetry.ts](/Users/johnschrup/resume-agent/app/src/lib/product-telemetry.ts)
 2. batched server ingestion
-   - [product-telemetry-sync.ts](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/lib/product-telemetry-sync.ts)
-   - [product-telemetry.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/product-telemetry.ts)
-   - [20260330130000_product_telemetry_events.sql](/Users/johnschrup/Documents/New%20project/resume-agent/supabase/migrations/20260330130000_product_telemetry_events.sql)
+   - [product-telemetry-sync.ts](/Users/johnschrup/resume-agent/app/src/lib/product-telemetry-sync.ts)
+   - [product-telemetry.ts](/Users/johnschrup/resume-agent/server/src/routes/product-telemetry.ts)
+   - [20260330130000_product_telemetry_events.sql](/Users/johnschrup/resume-agent/supabase/migrations/20260330130000_product_telemetry_events.sql)
 
 The internal funnel readout is currently available through:
 
-- [admin.ts](/Users/johnschrup/Documents/New%20project/resume-agent/server/src/routes/admin.ts) at `/api/admin/product-funnel`
-- [AdminDashboard.tsx](/Users/johnschrup/Documents/New%20project/resume-agent/app/src/components/admin/AdminDashboard.tsx) in the `Funnel` tab
-- rollout checklist: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
+- [admin.ts](/Users/johnschrup/resume-agent/server/src/routes/admin.ts) at `/api/admin/product-funnel`
+- [AdminDashboard.tsx](/Users/johnschrup/resume-agent/app/src/components/admin/AdminDashboard.tsx) in the `Funnel` tab
+- rollout checklist: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
 
 This is enough for launch-readiness measurement and pilot sessions.
 

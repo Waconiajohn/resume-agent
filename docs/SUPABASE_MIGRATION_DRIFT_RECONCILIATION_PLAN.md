@@ -8,7 +8,7 @@ This is an operations and source-of-truth cleanup task, not a product-feature ta
 
 ## Current State
 
-As of March 30, 2026, `npm run check:migrations` from [server](/Users/johnschrup/Documents/New%20project/resume-agent/server) reports:
+As of March 30, 2026, `npm run check:migrations` from [server](/Users/johnschrup/resume-agent/server) reports:
 
 - `53` remote-only migrations
 - `63` local-only migrations
@@ -49,7 +49,7 @@ Build one trustworthy picture of:
 
 ### Actions
 
-1. Export the full local migration list from [supabase/migrations](/Users/johnschrup/Documents/New%20project/resume-agent/supabase/migrations).
+1. Export the full local migration list from [supabase/migrations](/Users/johnschrup/resume-agent/supabase/migrations).
 2. Export the remote migration history seen by the Supabase CLI.
 3. Snapshot the remote schema for the important live tables before any repair work.
 4. Record the current drift output in an artifact or working note.
@@ -142,7 +142,7 @@ Prove that repair work fixed metadata without breaking schema reality.
 1. `npm run check:migrations`
 2. targeted schema spot checks on affected tables
 3. key server tests if reconciliation added any new migration files
-4. confirm [server/PRODUCTION_GATES.md](/Users/johnschrup/Documents/New%20project/resume-agent/server/PRODUCTION_GATES.md) is now realistic again
+4. confirm [server/PRODUCTION_GATES.md](/Users/johnschrup/resume-agent/server/PRODUCTION_GATES.md) is now realistic again
 
 ## Immediate Next Step
 

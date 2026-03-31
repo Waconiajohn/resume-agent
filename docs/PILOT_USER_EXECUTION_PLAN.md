@@ -10,8 +10,8 @@ Run the first 5 observed user sessions in a way that produces:
 
 This is the execution layer for:
 
-- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
-- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
+- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
 
 ## What Success Looks Like
 
@@ -63,8 +63,8 @@ Use 5 participants with different search styles:
 3. Open the current admin funnel tab before the session and note the baseline counts
 4. Confirm screen recording if you are recording
 5. Open these docs side by side:
-   - [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
-   - [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+   - [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+   - [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
 
 ## During Each Session
 
@@ -93,7 +93,7 @@ Use the script. Do not improvise the task order unless the participant naturally
 
 Within 15 minutes of ending the session:
 
-1. Complete [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+1. Complete [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
 2. Record the participant's top 3 friction points
 3. Capture the telemetry delta from the admin funnel
 4. Mark whether the participant:
@@ -130,7 +130,7 @@ Use the admin funnel to answer:
 
 After all 5 sessions:
 
-1. Combine all notes into [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
+1. Combine all notes into [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
 2. Group friction by room:
    - Career Profile
    - Resume V2
@@ -165,6 +165,6 @@ Escalate something into the next build wave if any of these are true:
 
 Use these docs for the first pilot round:
 
-- [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
-- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
-- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
+- [PILOT_USER_RECRUITING_BRIEF.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_RECRUITING_BRIEF.md)
+- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)

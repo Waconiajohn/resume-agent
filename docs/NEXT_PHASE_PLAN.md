@@ -134,7 +134,7 @@ Measure the real hiring loop end to end instead of relying on internal intuition
 
 Current schema reference:
 
-- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
+- [CORE_FUNNEL_EVENT_SCHEMA.md](/Users/johnschrup/resume-agent/docs/CORE_FUNNEL_EVENT_SCHEMA.md)
 
 ### Exit criteria
 
@@ -182,10 +182,10 @@ Each session should produce:
 
 Pilot session reference:
 
-- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
-- [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
-- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
-- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
+- [PILOT_USER_SESSION_SCRIPT.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_SESSION_SCRIPT.md)
+- [PILOT_USER_EXECUTION_PLAN.md](/Users/johnschrup/resume-agent/docs/PILOT_USER_EXECUTION_PLAN.md)
+- [PILOT_SESSION_NOTES_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_NOTES_TEMPLATE.md)
+- [PILOT_SESSION_SYNTHESIS_TEMPLATE.md](/Users/johnschrup/resume-agent/docs/PILOT_SESSION_SYNTHESIS_TEMPLATE.md)
 
 ### Exit criteria
 
@@ -326,9 +326,9 @@ Current status:
 - event schema: in place
 - capture model: hybrid client buffer + server ingestion
 - internal readout: basic admin funnel summary in place
-- rollout runbook: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
+- rollout runbook: [PRODUCT_TELEMETRY_ROLLOUT.md](/Users/johnschrup/resume-agent/docs/PRODUCT_TELEMETRY_ROLLOUT.md)
 - telemetry migration: live in Supabase
-- separate database-ops follow-up: [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/Documents/New%20project/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
+- separate database-ops follow-up: [SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md](/Users/johnschrup/resume-agent/docs/SUPABASE_MIGRATION_DRIFT_RECONCILIATION_PLAN.md)
 
 ## Suggested Order For The Next Working Block
 
