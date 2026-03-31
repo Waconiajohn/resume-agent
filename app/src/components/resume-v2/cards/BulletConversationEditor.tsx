@@ -34,29 +34,58 @@ interface BulletConversationEditorProps {
 
 // ─── State-specific opening messages ─────────────────────────────────────────
 
-function getOpeningMessage(reviewState: ResumeReviewState, requirements: string[]): string {
-  const req = requirements[0] ?? 'this requirement';
+function getOpeningMessage(
+  reviewState: ResumeReviewState,
+  requirements: string[],
+  evidenceFound: string,
+  bulletText: string,
+): string {
+  const reqLabel = requirements[0] ?? 'this requirement';
+  const trimmedEvidence = evidenceFound.trim();
+  const trimmedBulletText = bulletText.trim();
   switch (reviewState) {
     case 'code_red':
+      if (trimmedEvidence) {
+        return (
+          `I wrote this bullet to address ${reqLabel}, but I couldn't find direct proof for it yet. ` +
+          `Here's what I did find in your resume that's related: ${trimmedEvidence}.\n\n` +
+          `A few ways we could get there:\n` +
+          `- We could frame this as strong working knowledge based on your experience with ${trimmedEvidence}\n` +
+          `- If there's a specific project or outcome behind this, tell me and I'll rewrite it accurately\n` +
+          `- Or we remove this line if it truly doesn't fit\n\n` +
+          `What's closest to the truth?`
+        );
+      }
       return (
-        `I wrote this bullet to address "${req}" but I couldn\u2019t find the real experience ` +
-        `behind it in your resume. Before we decide what to do with it, tell me \u2014 have you ` +
-        `actually done this? Even in a different context or a different role?`
+        `I wrote this bullet to address ${reqLabel} but couldn't find supporting experience in your resume.\n\n` +
+        `Before we remove it - have you done this in any context, even in a different role or on a smaller scale? ` +
+        `Sometimes the proof is there under a different label.\n\n` +
+        `Tell me what you've actually done in this area, or say remove it and we'll move on.`
       );
     case 'confirm_fit':
-      return (
-        `This line comes from what the ideal candidate for this role looks like \u2014 not ` +
-        `directly from your background. Does this honestly describe you? Tell me where it ` +
-        `fits or where it doesn\u2019t.`
-      );
+      return trimmedEvidence
+        ? (
+            `This line comes from the benchmark for this role - not directly from your background. ` +
+            `We did find this in your resume that's related: ${trimmedEvidence}. ` +
+            `Does this honestly describe you? Tell me where it fits or where it doesn't.`
+          )
+        : (
+            `This line comes from the benchmark for this role - not directly from your background. ` +
+            `Does this honestly describe you? Tell me where it fits or where it doesn't.`
+          );
     case 'strengthen':
       return (
-        `You have real experience here \u2014 I can see it. But this bullet isn\u2019t making ` +
-        `the connection obvious enough to a hiring manager. Here\u2019s what I think would land ` +
-        `harder. What do you think \u2014 does this feel true to what you did?`
+        `This bullet needs to prove ${reqLabel}. Here's what we found in your resume to support it: ${trimmedEvidence}.\n\n` +
+        `That's real - but the connection to the role isn't obvious enough yet. A few ways to make it land harder:\n` +
+        `- Can you quantify the outcome? Even an estimate works (reduced by ~X%, saved roughly $X, team of ~X)\n` +
+        `- Was there a scope or scale that made this notable?\n` +
+        `- Is there a more specific result you remember from ${trimmedEvidence}?\n\n` +
+        `What can you add to make this concrete and defensible?`
       );
     default:
-      return 'How would you like to improve this bullet?';
+      return trimmedBulletText
+        ? `How would you like to improve this bullet?\n\n${trimmedBulletText}`
+        : 'How would you like to improve this bullet?';
   }
 }
 
@@ -100,7 +129,7 @@ export function BulletConversationEditor({
   const classification: 'missing' | 'partial' | 'strong' =
     reviewState === 'code_red' ? 'missing' : 'partial';
 
-  const openingMessage = getOpeningMessage(reviewState, requirements);
+  const openingMessage = getOpeningMessage(reviewState, requirements, evidenceFound, bulletText);
 
   // Find the latest AI-suggested rewrite
   const latestRewrite = [...messages]
