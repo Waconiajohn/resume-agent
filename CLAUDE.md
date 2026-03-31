@@ -1,3 +1,5 @@
+Project root: /Users/johnschrup/resume-agent
+
 # CLAUDE.md — CareerIQ Platform Development Framework
 
 > **This file is the single source of truth for all development on this project.**

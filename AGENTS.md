@@ -1,3 +1,5 @@
+Project root: /Users/johnschrup/resume-agent
+
 # AGENTS.md
 
 ## Purpose
