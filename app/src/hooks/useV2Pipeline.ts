@@ -205,11 +205,12 @@ export function useV2Pipeline(accessToken: string | null) {
     // making duplicate submissions impossible through the normal UX flow.
     if (isStarting) return;
 
-    // Reset state but preserve scoring data so the ScoringReport stays visible during reruns
+    // Reset state but preserve baseline scoring data so ScoringReport can show before/after.
+    // Do NOT preserve assembly — its final_resume satisfies hasResume and would skip
+    // the progress screen. Fresh assembly arrives when the new pipeline completes.
     setData((prev) => ({
       ...INITIAL_DATA,
       preScores: prev.preScores,
-      assembly: prev.assembly,
       verificationDetail: prev.verificationDetail,
       gapAnalysis: prev.gapAnalysis,
     }));
