@@ -79,7 +79,7 @@ function getOpeningMessage(
         `That's real - but the connection to the role isn't obvious enough yet. A few ways to make it land harder:\n` +
         `- Can you quantify the outcome? Even an estimate works (reduced by ~X%, saved roughly $X, team of ~X)\n` +
         `- Was there a scope or scale that made this notable?\n` +
-        `- Is there a more specific result you remember from ${trimmedEvidence}?\n\n` +
+        `- Is there a more specific result or outcome you remember from that work?\n\n` +
         `What can you add to make this concrete and defensible?`
       );
     default:
@@ -223,15 +223,6 @@ export function BulletConversationEditor({
         <div className="text-[14px] leading-relaxed text-neutral-800">
           {openingMessage}
         </div>
-
-        {/* Strengthen: show suggested rewrite immediately if no conversation yet */}
-        {reviewState === 'strengthen' && messages.length === 0 && !latestRewrite && (
-          <div className="rounded-md border border-amber-200 bg-amber-50/50 px-4 py-3">
-            <p className="text-[13px] leading-relaxed text-neutral-700">
-              {chatContext.currentStrategy || 'A stronger version of this bullet would connect your experience more directly to what this employer needs.'}
-            </p>
-          </div>
-        )}
 
         {/* Conversation turns */}
         {messages.map((msg, i) => (
