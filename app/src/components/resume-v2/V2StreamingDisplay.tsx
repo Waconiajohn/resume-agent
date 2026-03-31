@@ -934,6 +934,7 @@ export function V2StreamingDisplay({
             flaggedBulletCount={attentionItems.length}
             companyName={data.jobIntelligence?.company_name}
             roleTitle={data.jobIntelligence?.role_title}
+            hasScoreData={!!data.gapAnalysis?.score_breakdown}
             onStartEditing={() => setHasPassedReadyGate(true)}
           />
         </div>

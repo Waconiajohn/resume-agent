@@ -8,10 +8,36 @@ interface ResumeReadyScreenProps {
   flaggedBulletCount: number;
   companyName?: string;
   roleTitle?: string;
+  /** True when score_breakdown was present in gap analysis. Distinguishes genuine 0% from missing data. */
+  hasScoreData?: boolean;
   onStartEditing: () => void;
 }
 
 const LEGEND_STATES = ['code_red', 'confirm_fit', 'strengthen', 'supported'] as const;
+
+/** Placeholder ring shown when score data is absent — neutral "—" with "Calculating..." label. */
+function PendingScoreRing({ label }: { label: string }) {
+  const circumference = 2 * Math.PI * 28;
+  return (
+    <div className="flex flex-col items-center gap-1.5" role="img" aria-label={`${label}: Calculating`}>
+      <div className="relative h-16 w-16">
+        <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-neutral-200" />
+          <circle
+            cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3"
+            strokeDasharray={circumference} strokeLinecap="round"
+            className="text-neutral-300"
+            style={{ strokeDashoffset: circumference * 0.75 }}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-neutral-400">
+          —
+        </span>
+      </div>
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-neutral-400">Calculating\u2026</span>
+    </div>
+  );
+}
 
 export function ResumeReadyScreen({
   jobMatchPercent,
@@ -20,6 +46,7 @@ export function ResumeReadyScreen({
   flaggedBulletCount,
   companyName,
   roleTitle,
+  hasScoreData = true,
   onStartEditing,
 }: ResumeReadyScreenProps) {
   return (
@@ -35,18 +62,26 @@ export function ResumeReadyScreen({
       {/* Section A: Scores */}
       <div className="space-y-4">
         <div className="flex justify-center gap-10">
-          <ScoreRing
-            score={Math.round(jobMatchPercent)}
-            max={100}
-            label="Job Match"
-            color="text-blue-500"
-          />
-          <ScoreRing
-            score={Math.round(benchmarkMatchPercent)}
-            max={100}
-            label="Benchmark Match"
-            color="text-emerald-500"
-          />
+          {hasScoreData ? (
+            <ScoreRing
+              score={Math.round(jobMatchPercent)}
+              max={100}
+              label="Job Match"
+              color="text-blue-500"
+            />
+          ) : (
+            <PendingScoreRing label="Job Match" />
+          )}
+          {hasScoreData ? (
+            <ScoreRing
+              score={Math.round(benchmarkMatchPercent)}
+              max={100}
+              label="Benchmark Match"
+              color="text-emerald-500"
+            />
+          ) : (
+            <PendingScoreRing label="Benchmark Match" />
+          )}
         </div>
         {strengthSummary && (
           <p className="text-[14px] leading-relaxed text-neutral-600 text-center max-w-[520px] mx-auto">
