@@ -34,8 +34,8 @@ function getOpeningMessage(reviewState: ResumeReviewState, requirements: string[
     case 'code_red':
       return (
         `I wrote this bullet to address "${reqLabel}", but I couldn\u2019t find direct proof ` +
-        `for it in your original resume. Two options: tell me the real experience behind this ` +
-        `claim and I\u2019ll rewrite it accurately, or we remove it. What actually happened here?`
+        `for it in your original resume. You can tell me the real story behind this claim, ` +
+        `I can draft something from adjacent experience, or we remove it. What actually happened here?`
       );
     case 'confirm_fit':
       return (
@@ -72,6 +72,7 @@ function getQuickReplies(reviewState: ResumeReviewState): QuickReply[] {
     case 'confirm_fit':
       return [
         { label: 'Yes, this fits me', message: 'Yes, this accurately describes my background. Keep it.' },
+        { label: 'Adjust it to fit my real experience', message: 'This is close but not quite right. Let me tell you what I actually did so you can adjust it.' },
         { label: 'No, this isn\u2019t really me', message: 'This doesn\u2019t honestly describe my experience. What\u2019s closer to the truth is:' },
       ];
     case 'strengthen':
@@ -279,8 +280,8 @@ export function BulletConversationEditor({
         </div>
       )}
 
-      {/* Quick replies (shown when no messages yet or after initial exchange) */}
-      {messages.length === 0 && !isLoading && (
+      {/* Quick replies — visible until the user sends their first message */}
+      {!isLoading && messages.every(m => m.role === 'assistant') && (
         <div className="px-4 py-2 border-t border-neutral-100 flex flex-wrap gap-2">
           {quickReplies.map((qr) => (
             <button
