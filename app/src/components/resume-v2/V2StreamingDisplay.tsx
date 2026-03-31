@@ -844,11 +844,6 @@ export function V2StreamingDisplay({
                     onBulletClick={canEdit ? handleBulletClick : undefined}
                     onBulletEdit={canEdit ? onBulletEdit : undefined}
                     onBulletRemove={canEdit ? onBulletRemove : undefined}
-                    pendingEdit={pendingEdit}
-                    isEditing={isEditing}
-                    onAcceptEdit={handleAcceptEdit}
-                    onRejectEdit={onRejectEdit}
-                    onRequestEdit={canEdit ? onRequestEdit : undefined}
                     gapChat={gapChat ?? undefined}
                     buildChatContext={buildChatContext}
                     onBulletConversationClose={() => setActiveBullet(null)}

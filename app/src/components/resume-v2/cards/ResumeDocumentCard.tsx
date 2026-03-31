@@ -1,18 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Lightbulb, Loader2, AlertTriangle } from 'lucide-react';
 import type {
   ResumeDraft,
   BulletConfidence,
   RequirementSource,
-  ResumeContentOrigin,
   ResumeReviewState,
-  ResumeSupportOrigin,
 } from '@/types/resume-v2';
-import { scrollToAndHighlight } from '../useStrategyThread';
-import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { GapChatContext } from '@/types/resume-v2';
-import { BulletEditPopover } from './BulletEditPopover';
 import { BulletConversationEditor } from './BulletConversationEditor';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
@@ -28,12 +21,6 @@ interface ResumeDocumentCardProps {
   onBulletEdit?: (section: string, index: number, newText: string) => void;
   /** Remove a bullet from the resume */
   onBulletRemove?: (section: string, index: number) => void;
-  /** The pending AI suggestion for the active bullet */
-  pendingEdit?: PendingEdit | null;
-  isEditing?: boolean;
-  onAcceptEdit?: (text: string) => void;
-  onRejectEdit?: () => void;
-  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
   /** Gap chat infrastructure for BulletConversationEditor */
   gapChat?: GapChatHook;
   buildChatContext?: (requirement: string) => GapChatContext;
@@ -47,11 +34,6 @@ export function ResumeDocumentCard({
   onBulletClick,
   onBulletEdit,
   onBulletRemove,
-  pendingEdit = null,
-  isEditing = false,
-  onAcceptEdit,
-  onRejectEdit,
-  onRequestEdit,
   gapChat,
   buildChatContext,
   onBulletConversationClose,
@@ -62,9 +44,6 @@ export function ResumeDocumentCard({
   const earlierCareer = Array.isArray(resume.earlier_career) ? resume.earlier_career : [];
   const education = Array.isArray(resume.education) ? resume.education : [];
   const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
-
-  // Track which suggestion popover is open (by suggestion id or bullet key)
-  const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
 
   return (
     <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
@@ -140,10 +119,10 @@ export function ResumeDocumentCard({
               );
               const accomplishmentDisplayTargets = accomplishmentPrimaryTarget ? [accomplishmentPrimaryTarget] : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
+              const resolvedState = resolveReviewState(a.review_state, a.confidence, a.requirement_source);
+              const isGreen = isResolvedReviewState(resolvedState);
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
-              const popoverKey = `sa-${i}`;
-              const isPopoverOpen = openPopoverId === popoverKey;
-              
+
               return (
                 <li
                   key={i}
@@ -156,75 +135,32 @@ export function ResumeDocumentCard({
                     ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
                     : {})}
                 >
-                  <>
-                    <BulletLineContent
-                      text={a.content}
-                      confidence={a.confidence}
-                      reviewState={a.review_state}
-                      requirementSource={a.requirement_source}
-                      section="selected_accomplishments"
-                      bulletIndex={i}
-                      requirements={accomplishmentDisplayTargets}
-                      onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                      onBulletClick={onBulletClick}
-                    />
-                    {isPopoverOpen && (
-                      <BulletEditPopover
-                        text={a.content}
-                        confidence={a.confidence}
-                        evidenceFound={a.evidence_found}
-                        requirementSource={a.requirement_source}
-                        addressesRequirements={accomplishmentDisplayTargets}
-                        contentOrigin={a.content_origin}
-                        supportOrigin={a.support_origin}
-                        onSave={(newText) => {
-                          onBulletEdit?.('selected_accomplishments', i, newText);
-                          setOpenPopoverId(null);
-                        }}
-                        onRemove={() => {
-                          onBulletRemove?.('selected_accomplishments', i);
-                          setOpenPopoverId(null);
-                        }}
-                        onClose={() => setOpenPopoverId(null)}
-                        onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'selected_accomplishments', action) : undefined}
-                      />
-                    )}
-                  </>
-                  {isActive && gapChat && buildChatContext && !isResolvedReviewState(resolveReviewState(a.review_state, a.confidence, a.requirement_source)) ? (
+                  <BulletLineContent
+                    text={a.content}
+                    confidence={a.confidence}
+                    reviewState={a.review_state}
+                    requirementSource={a.requirement_source}
+                    section="selected_accomplishments"
+                    bulletIndex={i}
+                    requirements={accomplishmentDisplayTargets}
+                    onBulletClick={isGreen ? undefined : onBulletClick}
+                  />
+                  {isActive && !isGreen && gapChat && buildChatContext && (
                     <BulletConversationEditor
                       bulletText={a.content}
                       section="selected_accomplishments"
                       bulletIndex={i}
                       requirements={accomplishmentDisplayTargets}
-                      reviewState={resolveReviewState(a.review_state, a.confidence, a.requirement_source)}
+                      reviewState={resolvedState}
                       requirementSource={a.requirement_source}
                       evidenceFound={a.evidence_found}
                       gapChat={gapChat}
                       chatContext={buildChatContext(accomplishmentDisplayTargets[0] ?? a.content)}
-                      onApplyToResume={(section, index, newText) => onBulletEdit?.(section, index, newText)}
+                      onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
+                      onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                       onClose={() => onBulletConversationClose?.()}
                     />
-                  ) : isActive && onRequestEdit ? (
-                    <InlineEditPanel
-                      bulletText={a.content}
-                      section="selected_accomplishments"
-                      bulletIndex={i}
-                      requirements={accomplishmentDisplayTargets}
-                      pendingEdit={pendingEdit}
-                      isEditing={isEditing}
-                      confidence={a.confidence}
-                      reviewState={a.review_state}
-                      requirementSource={a.requirement_source}
-                      evidenceFound={a.evidence_found}
-                      targetEvidence={a.target_evidence}
-                      contentOrigin={a.content_origin}
-                      supportOrigin={a.support_origin}
-                      onRequestEdit={onRequestEdit}
-                      onBulletEdit={onBulletEdit}
-                      onAcceptEdit={onAcceptEdit}
-                      onRejectEdit={onRejectEdit}
-                    />
-                  ) : null}
+                  )}
                 </li>
               );
             })}
@@ -271,10 +207,10 @@ export function ResumeDocumentCard({
                     const bulletDisplayTargets = bulletPrimaryTarget ? [bulletPrimaryTarget] : [];
                     const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
+                    const resolvedState = resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source);
+                    const isGreen = isResolvedReviewState(resolvedState);
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
-                    const popoverKey = `pe-${bulletIndex}`;
-                    const isPopoverOpen = openPopoverId === popoverKey;
-                    
+
                     return (
                       <li
                         key={j}
@@ -287,75 +223,32 @@ export function ResumeDocumentCard({
                           ? { 'data-addresses': JSON.stringify(bulletRequirements) }
                           : {})}
                       >
-                        <>
-                          <BulletLineContent
-                            text={bullet.text}
-                            confidence={bullet.confidence}
-                            reviewState={bullet.review_state}
-                            requirementSource={bullet.requirement_source}
-                            section="professional_experience"
-                            bulletIndex={bulletIndex}
-                            requirements={bulletDisplayTargets}
-                            onToggle={() => setOpenPopoverId(isPopoverOpen ? null : popoverKey)}
-                            onBulletClick={onBulletClick}
-                          />
-                          {isPopoverOpen && (
-                            <BulletEditPopover
-                              text={bullet.text}
-                              confidence={bullet.confidence}
-                              evidenceFound={bullet.evidence_found}
-                              requirementSource={bullet.requirement_source}
-                              addressesRequirements={bulletDisplayTargets}
-                              contentOrigin={bullet.content_origin}
-                              supportOrigin={bullet.support_origin}
-                              onSave={(newText) => {
-                                onBulletEdit?.('professional_experience', bulletIndex, newText);
-                                setOpenPopoverId(null);
-                              }}
-                              onRemove={() => {
-                                onBulletRemove?.('professional_experience', bulletIndex);
-                                setOpenPopoverId(null);
-                              }}
-                              onClose={() => setOpenPopoverId(null)}
-                              onRequestAiEdit={onRequestEdit ? (text, action) => onRequestEdit(text, 'professional_experience', action) : undefined}
-                            />
-                          )}
-                        </>
-                        {isActive && gapChat && buildChatContext && !isResolvedReviewState(resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source)) ? (
+                        <BulletLineContent
+                          text={bullet.text}
+                          confidence={bullet.confidence}
+                          reviewState={bullet.review_state}
+                          requirementSource={bullet.requirement_source}
+                          section="professional_experience"
+                          bulletIndex={bulletIndex}
+                          requirements={bulletDisplayTargets}
+                          onBulletClick={isGreen ? undefined : onBulletClick}
+                        />
+                        {isActive && !isGreen && gapChat && buildChatContext && (
                           <BulletConversationEditor
                             bulletText={bullet.text}
                             section="professional_experience"
                             bulletIndex={bulletIndex}
                             requirements={bulletDisplayTargets}
-                            reviewState={resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source)}
+                            reviewState={resolvedState}
                             requirementSource={bullet.requirement_source}
                             evidenceFound={bullet.evidence_found}
                             gapChat={gapChat}
                             chatContext={buildChatContext(bulletDisplayTargets[0] ?? bullet.text)}
-                            onApplyToResume={(section, index, newText) => onBulletEdit?.(section, index, newText)}
+                            onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
+                            onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                             onClose={() => onBulletConversationClose?.()}
                           />
-                        ) : isActive && onRequestEdit ? (
-                          <InlineEditPanel
-                            bulletText={bullet.text}
-                            section="professional_experience"
-                            bulletIndex={bulletIndex}
-                            requirements={bulletDisplayTargets}
-                            pendingEdit={pendingEdit}
-                            isEditing={isEditing}
-                            confidence={bullet.confidence}
-                            reviewState={bullet.review_state}
-                            requirementSource={bullet.requirement_source}
-                            evidenceFound={bullet.evidence_found}
-                            targetEvidence={bullet.target_evidence}
-                            contentOrigin={bullet.content_origin}
-                            supportOrigin={bullet.support_origin}
-                            onRequestEdit={onRequestEdit}
-                            onBulletEdit={onBulletEdit}
-                            onAcceptEdit={onAcceptEdit}
-                            onRejectEdit={onRejectEdit}
-                          />
-                        ) : null}
+                        )}
                       </li>
                     );
                   })}
@@ -422,7 +315,7 @@ interface BulletLineContentProps {
   section: string;
   bulletIndex: number;
   requirements: string[];
-  onToggle: () => void;
+  /** Click handler for non-green bullets — opens conversation editor. Undefined for green bullets. */
   onBulletClick?: (bulletText: string, section: string, bulletIndex: number, requirements: string[]) => void;
 }
 
@@ -434,18 +327,18 @@ function BulletLineContent({
   section,
   bulletIndex,
   requirements,
-  onToggle,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
   const statusMeta = getConfidencePill(resolvedReviewState, requirementSource);
   const sourceLabel = getConfidenceSourceLabel(resolvedReviewState, requirementSource);
+  const isGreen = isResolvedReviewState(resolvedReviewState);
+  const isClickable = !isGreen && !!onBulletClick;
+
   const handleActivate = () => {
-    if (!isResolvedReviewState(resolvedReviewState) && onBulletClick) {
-      onBulletClick?.(text, section, bulletIndex, requirements);
-      return;
+    if (isClickable) {
+      onBulletClick!(text, section, bulletIndex, requirements);
     }
-    onToggle();
   };
 
   return (
@@ -463,532 +356,28 @@ function BulletLineContent({
           ) : null}
         </span>
       ) : null}
-      <span
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleActivate();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
+      {isClickable ? (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
             e.stopPropagation();
             handleActivate();
-          }
-        }}
-        className={`resume-bullet-interactive block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none ${
-          isResolvedReviewState(resolvedReviewState)
-            ? 'resume-bullet-interactive--strong font-normal text-gray-800 hover:bg-gray-50/90'
-            : 'resume-bullet-interactive--flagged font-medium text-gray-900 hover:bg-slate-50/70'
-        }`}
-      >
-        {text}
-      </span>
-    </span>
-  );
-}
-
-// ─── InlineEditPanel ─────────────────────────────────────────────────────────
-
-interface InlineEditPanelProps {
-  bulletText: string;
-  section: string;
-  bulletIndex: number;
-  requirements: string[];
-  pendingEdit: PendingEdit | null;
-  isEditing: boolean;
-  confidence: BulletConfidence;
-  reviewState?: ResumeReviewState;
-  requirementSource: RequirementSource;
-  evidenceFound: string;
-  targetEvidence?: string;
-  contentOrigin?: ResumeContentOrigin;
-  supportOrigin?: ResumeSupportOrigin;
-  onRequestEdit: (text: string, section: string, action: EditAction, instruction?: string) => void;
-  onBulletEdit?: (section: string, index: number, newText: string) => void;
-  onAcceptEdit?: (text: string) => void;
-  onRejectEdit?: () => void;
-}
-
-function InlineEditPanel({
-  bulletText,
-  section,
-  bulletIndex,
-  requirements,
-  pendingEdit,
-  isEditing,
-  confidence,
-  reviewState,
-  requirementSource,
-  evidenceFound,
-  targetEvidence,
-  contentOrigin,
-  supportOrigin,
-  onRequestEdit,
-  onBulletEdit,
-  onAcceptEdit,
-  onRejectEdit,
-}: InlineEditPanelProps) {
-  const [draftValue, setDraftValue] = useState('');
-  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState('');
-  const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
-  const isBenchmarkValidation = resolvedReviewState === 'confirm_fit';
-  const isCodeRed = resolvedReviewState === 'code_red';
-  const displayEvidence = typeof targetEvidence === 'string' && targetEvidence.trim().length > 0
-    ? targetEvidence.trim()
-    : '';
-  const nearbyEvidence = displayEvidence.length === 0 && typeof evidenceFound === 'string' && evidenceFound.trim().length > 0
-    ? evidenceFound.trim()
-    : '';
-  const hasDirectEvidence = displayEvidence.length > 0;
-  const hasNearbyEvidence = nearbyEvidence.length > 0;
-  const targetSummary = requirements[0]
-    ? requirements[0]
-    : requirementSource === 'benchmark'
-      ? 'The benchmark signal this line is trying to prove still needs review.'
-      : 'The job need this line is trying to prove still needs review.';
-
-  useEffect(() => {
-    if (
-      pendingEdit
-      && pendingEdit.section === section
-      && pendingEdit.originalText === bulletText
-    ) {
-      setDraftValue(pendingEdit.replacement);
-      return;
-    }
-    setDraftValue(bulletText);
-    setShowCustomPrompt(false);
-    setCustomPrompt('');
-  }, [bulletText, pendingEdit, section]);
-
-  const matchesPendingEdit = Boolean(
-    pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText,
-  );
-  const trimmedDraft = draftValue.trim();
-  const hasManualChanges = trimmedDraft.length > 0 && trimmedDraft !== bulletText.trim();
-  const canApplyDraft = trimmedDraft.length > 0 && (matchesPendingEdit || hasManualChanges);
-  const resetTarget = matchesPendingEdit && pendingEdit ? pendingEdit.replacement : bulletText;
-  const aiInstruction = trimmedDraft || bulletText.trim();
-  const actionToneByType: Record<EditAction, 'primary' | 'secondary' | 'tertiary'> = isBenchmarkValidation
-    ? {
-        strengthen: 'primary',
-        add_metrics: 'secondary',
-        add_keywords: 'tertiary',
-        shorten: 'tertiary',
-        rewrite: 'primary',
-        custom: 'secondary',
-        not_my_voice: 'secondary',
-      }
-    : isCodeRed
-      ? {
-          strengthen: 'primary',
-          add_metrics: 'primary',
-          add_keywords: 'secondary',
-          shorten: 'tertiary',
-          rewrite: 'secondary',
-          custom: 'secondary',
-          not_my_voice: 'tertiary',
-        }
-      : {
-          strengthen: 'primary',
-          add_metrics: 'primary',
-          add_keywords: 'secondary',
-          shorten: 'tertiary',
-          rewrite: 'secondary',
-          custom: 'secondary',
-          not_my_voice: 'tertiary',
-        };
-  const aiActions: Array<{ action: EditAction; label: string; tone: 'primary' | 'secondary' | 'tertiary' }> = isBenchmarkValidation
-    ? [
-        { action: 'strengthen', label: 'Connect to my background', tone: actionToneByType.strengthen },
-        { action: 'rewrite', label: 'Rewrite to match my background', tone: actionToneByType.rewrite },
-        { action: 'add_metrics', label: 'Add direct support', tone: actionToneByType.add_metrics },
-        { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
-        { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
-        { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
-        { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
-      ]
-    : isCodeRed
-      ? [
-          { action: 'strengthen', label: 'Connect adjacent proof', tone: actionToneByType.strengthen },
-          { action: 'add_metrics', label: 'Add working knowledge', tone: actionToneByType.add_metrics },
-          { action: 'rewrite', label: 'Rewrite safely', tone: actionToneByType.rewrite },
-          { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
-          { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
-          { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
-          { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
-        ]
-      : [
-          { action: 'strengthen', label: 'Strengthen wording', tone: actionToneByType.strengthen },
-          { action: 'add_metrics', label: 'Add proof', tone: actionToneByType.add_metrics },
-          { action: 'rewrite', label: 'Rewrite safely', tone: actionToneByType.rewrite },
-          { action: 'custom', label: 'Custom', tone: actionToneByType.custom },
-          { action: 'add_keywords', label: 'Add keywords', tone: actionToneByType.add_keywords },
-          { action: 'shorten', label: 'Shorten', tone: actionToneByType.shorten },
-          { action: 'not_my_voice', label: 'Not my voice', tone: actionToneByType.not_my_voice },
-        ];
-  const recommendedAiActions = aiActions.filter((action) => action.tone === 'primary');
-  const followOnAiActions = aiActions.filter((action) => action.tone === 'secondary');
-  const polishAiActions = aiActions.filter((action) => action.tone === 'tertiary');
-  const applyHelperText = isEditing
-    ? 'A replacement draft is loading now.'
-    : canApplyDraft
-      ? matchesPendingEdit
-        ? 'Apply will replace the current line with the loaded draft.'
-        : 'Apply will replace the current line with your working draft.'
-      : 'Edit the draft or run another rewrite to enable Apply to Resume.';
-  const panelIntro = getInlinePanelIntro(resolvedReviewState, requirementSource);
-  const flagReason = getInlinePanelFlagReason(resolvedReviewState, requirementSource);
-
-  return (
-    <div className="resume-inline-panel mt-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
-      <div className="resume-inline-panel__surface">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            Resolve This Line
-          </p>
-          <p className="mt-1 text-sm leading-6 text-gray-700">
-            {panelIntro}
-          </p>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Current line
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-800">
-              {bulletText}
-            </p>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
-            <div className="resume-inline-panel__target-card rounded-xl px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {requirementSource === 'benchmark' ? "Benchmark signal we're covering" : "Job need we're covering"}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-800">
-                {targetSummary}
-              </p>
-            </div>
-
-            <div className={`resume-inline-panel__status ${getInlinePanelTone(resolvedReviewState, requirementSource)}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">
-                Why it&apos;s flagged
-              </p>
-              <p className="mt-2 text-[13px] leading-6">
-                {flagReason}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.82fr)]">
-            <div className="resume-inline-panel__support-card rounded-xl px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {hasDirectEvidence ? 'Supporting evidence' : hasNearbyEvidence ? 'Nearby proof we can use' : 'Supporting evidence'}
-              </p>
-              {hasDirectEvidence ? (
-                <p className="mt-2 text-sm italic leading-6 text-slate-600">
-                  &ldquo;{displayEvidence}&rdquo;
-                </p>
-              ) : hasNearbyEvidence ? (
-                <>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">
-                    This does not directly prove the target yet, but it gives us real resume proof to build from.
-                  </p>
-                  <p className="mt-2 text-sm italic leading-6 text-slate-600">
-                    &ldquo;{nearbyEvidence}&rdquo;
-                  </p>
-                </>
-              ) : (
-                <div className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#8f2d2d]">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>No target-specific resume support found yet.</span>
-                </div>
-              )}
-            </div>
-
-            <div className="resume-inline-panel__context-card rounded-xl px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Line context</p>
-              <dl className="mt-3 grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm leading-6 text-slate-700">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Built from</dt>
-                <dd className="min-w-0 break-words">{getContentOriginLabel(contentOrigin)}</dd>
-
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Support</dt>
-                <dd className="min-w-0 break-words">{getSupportOriginLabel(supportOrigin, hasDirectEvidence, hasNearbyEvidence, requirementSource)}</dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Working draft
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                {isBenchmarkValidation
-                  ? 'Use the nearby proof to ground this benchmark signal in background you can honestly stand behind.'
-                  : isCodeRed
-                    ? 'Reconnect this line to real adjacent experience or honest working knowledge.'
-                    : hasNearbyEvidence
-                      ? 'Use the nearby proof to tighten this line so it directly supports the target.'
-                      : 'Tighten this line with clearer proof, scope, or outcome.'}
-              </p>
-            </div>
-            {matchesPendingEdit && (
-              <span className="resume-proof-meta-label text-slate-600">
-                Draft loaded
-              </span>
-            )}
-          </div>
-
-          <textarea
-            value={draftValue}
-            onChange={(event) => setDraftValue(event.target.value)}
-            rows={4}
-            aria-label="Working draft for this resume line"
-            className="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors focus:border-slate-500 focus:bg-white"
-          />
-
-          <div className="mt-3 space-y-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Recommended first moves
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {recommendedAiActions.map(({ action, label }) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (action === 'custom') {
-                        setShowCustomPrompt((previous) => !previous);
-                        return;
-                      }
-                      onRequestEdit(bulletText, section, action, aiInstruction);
-                    }}
-                    disabled={isEditing}
-                    className="resume-inline-panel__action resume-inline-panel__action--primary"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {(followOnAiActions.length > 0 || polishAiActions.length > 0) && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Other edits
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {followOnAiActions.map(({ action, label }) => (
-                    <button
-                      key={action}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (action === 'custom') {
-                          setShowCustomPrompt((previous) => !previous);
-                          return;
-                        }
-                        onRequestEdit(bulletText, section, action, aiInstruction);
-                      }}
-                      disabled={isEditing}
-                      className="resume-inline-panel__action resume-inline-panel__action--secondary"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  {polishAiActions.map(({ action, label }) => (
-                    <button
-                      key={action}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (action === 'custom') {
-                          setShowCustomPrompt((previous) => !previous);
-                          return;
-                        }
-                        onRequestEdit(bulletText, section, action, aiInstruction);
-                      }}
-                      disabled={isEditing}
-                      className="resume-inline-panel__action resume-inline-panel__action--tertiary"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {showCustomPrompt && (
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Custom instruction
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Tell us exactly how to revise this line. It will replace the current working draft, not append to it.
-              </p>
-              <div className="mt-3 flex flex-wrap items-start gap-2">
-                <input
-                  type="text"
-                  value={customPrompt}
-                  onChange={(event) => setCustomPrompt(event.target.value)}
-                  placeholder="Example: keep the metric but make this sound more executive."
-                  maxLength={500}
-                  className="min-w-[260px] flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-slate-500"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!customPrompt.trim()) return;
-                    onRequestEdit(bulletText, section, 'custom', customPrompt.trim());
-                  }}
-                  disabled={isEditing || !customPrompt.trim()}
-                  className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 transition-colors"
-                >
-                  Run custom edit
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!trimmedDraft) return;
-                if (matchesPendingEdit) {
-                  onAcceptEdit?.(trimmedDraft);
-                  return;
-                }
-                onBulletEdit?.(section, bulletIndex, trimmedDraft);
-              }}
-              disabled={!canApplyDraft}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Apply to Resume
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDraftValue(resetTarget);
-              }}
-              disabled={draftValue === resetTarget}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
-            >
-              Reset Draft
-            </button>
-            {matchesPendingEdit && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDraftValue(bulletText);
-                  onRejectEdit?.();
-                }}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Discard Draft
-              </button>
-            )}
-          </div>
-
-          <p className="mt-2 text-xs leading-5 text-slate-500">
-            {applyHelperText}
-          </p>
-
-          {isEditing && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Generating a reviewable draft...
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StrategyTooltip({ requirements }: { requirements: string[] }) {
-  const [show, setShow] = useState(false);
-
-  function handleClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (requirements.length > 0) {
-      // A3: Scroll to GapAnalysisReportPanel card for this requirement
-      scrollToAndHighlight(`[data-requirement="${CSS.escape(requirements[0])}"]`);
-    }
-  }
-
-  return (
-    <span
-      className="relative inline-flex items-center ml-1.5 align-middle"
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-      onFocus={() => setShow(true)}
-      onBlur={() => setShow(false)}
-    >
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label={`View gap analysis for: ${requirements[0] ?? 'requirement'}`}
-        className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 rounded-md"
-      >
-        <Lightbulb
-          className={`h-3 w-3 transition-colors duration-150 ${
-            show ? 'text-[#afc4ff]/80' : 'text-[#afc4ff]/40'
-          } hover:text-[#afc4ff]/80`}
-        />
-      </button>
-
-      {show && (
-        <span
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-max max-w-[280px] bg-[#0f141e]/95 backdrop-blur-md border border-[var(--line-strong)] rounded-lg shadow-xl pointer-events-none"
-          role="tooltip"
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              handleActivate();
+            }
+          }}
+          className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-slate-50/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
         >
-          {/* Tooltip header */}
-          <span className="block px-3 pt-2 pb-1.5 border-b border-[var(--line-soft)]">
-            <span className="flex items-center gap-1.5">
-              <Lightbulb className="h-2.5 w-2.5 text-[#afc4ff]/60 shrink-0" aria-hidden="true" />
-              <span className="text-[12px] uppercase tracking-wider font-semibold text-[#afc4ff]/70">
-                Strategy Applied
-              </span>
-            </span>
-          </span>
-
-          {/* Requirements list */}
-          <span className="block px-3 pt-2 pb-2.5 space-y-1.5">
-            <span className="block text-[12px] uppercase tracking-wider text-[var(--text-soft)] mb-1">
-              Addresses:
-            </span>
-            {requirements.map((req, i) => (
-              <span
-                key={i}
-                className="flex items-start gap-1.5"
-              >
-                <span
-                  className="mt-[3px] h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50 shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="text-[13px] text-[var(--text-muted)] leading-snug">{req}</span>
-              </span>
-            ))}
-            <span className="block mt-2 pt-2 border-t border-[var(--line-soft)] text-[12px] text-[var(--text-soft)] italic">
-              Click to highlight in gap analysis report
-            </span>
-          </span>
+          {text}
+        </span>
+      ) : (
+        <span className="block font-normal text-gray-800">
+          {text}
         </span>
       )}
     </span>
@@ -1205,76 +594,6 @@ function resolvePrimaryDisplayRequirement(
   );
 
   return resolved[0] ?? null;
-}
-
-function getContentOriginLabel(
-  contentOrigin: ResumeContentOrigin | undefined,
-): string {
-  if (contentOrigin === 'verbatim_resume') return 'Direct resume line';
-  if (contentOrigin === 'resume_rewrite') return 'Resume rewrite';
-  if (contentOrigin === 'multi_source_synthesis') return 'Resume-backed synthesis';
-  return 'Gap-closing draft';
-}
-
-function getSupportOriginLabel(
-  supportOrigin: ResumeSupportOrigin | undefined,
-  hasDirectEvidence: boolean,
-  hasNearbyEvidence: boolean,
-  requirementSource?: RequirementSource,
-): string {
-  if (supportOrigin === 'user_confirmed_context') return 'User-confirmed context';
-  if (supportOrigin === 'adjacent_resume_inference') {
-    return hasDirectEvidence ? 'Adjacent proof connected' : 'Adjacent resume proof';
-  }
-  if (hasDirectEvidence) return 'Direct support found';
-  if (supportOrigin === 'original_resume' || hasNearbyEvidence) return 'Nearby resume proof';
-  if (requirementSource === 'benchmark') return 'Not directly confirmed';
-  return 'No direct resume proof yet';
-}
-
-function getInlinePanelTone(
-  reviewState: ResumeReviewState,
-  requirementSource: RequirementSource,
-): string {
-  if (isResolvedReviewState(reviewState)) {
-    return 'resume-inline-panel__status--supported';
-  }
-  if (reviewState === 'strengthen') {
-    return 'resume-inline-panel__status--partial';
-  }
-  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
-    return 'resume-inline-panel__status--benchmark';
-  }
-  return 'resume-inline-panel__status--code-red';
-}
-
-function getInlinePanelIntro(
-  reviewState: ResumeReviewState,
-  requirementSource: RequirementSource,
-): string {
-  if (reviewState === 'strengthen') {
-    return 'This line is headed in the right direction, but the current resume proof does not directly support this exact target yet.';
-  }
-  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
-    return 'This is the ultimate-resume draft for this role. The line is aimed at a benchmark signal, and now we need to anchor that signal in background you can honestly stand behind.';
-  }
-  return 'This is the ultimate-resume draft for this role. The line is aimed at a real job need, and now we need to anchor it in proof you can honestly support.';
-}
-
-function getInlinePanelFlagReason(
-  reviewState: ResumeReviewState,
-  requirementSource: RequirementSource,
-): string {
-  if (isResolvedReviewState(reviewState)) {
-    return 'The supporting proof is already present.';
-  }
-  if (reviewState === 'strengthen') {
-    return 'The line may be valid, but the proof we have nearby still needs to be connected more directly to this job need.';
-  }
-  if (reviewState === 'confirm_fit' || requirementSource === 'benchmark') {
-    return 'This may be the right kind of benchmark claim, but the current proof still needs to be tied more clearly to your actual background.';
-  }
-  return 'We do not yet have direct resume proof for this exact claim.';
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

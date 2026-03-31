@@ -1,13 +1,18 @@
 /**
- * BulletConversationEditor — Focused conversation panel for resolving colored bullets.
+ * BulletConversationEditor — Coaching conversation for resolving colored bullets.
  *
- * Opens inline below a bullet in the resume document.
- * One question per state, per-state quick-reply options, chat interface.
- * Reuses useGapChat infrastructure for conversation state.
+ * Opens inline below a bullet in the resume document. The AI coaches the
+ * executive through surfacing their real story, then produces a rewrite
+ * grounded in truth. Uses useGapChat for the conversation engine.
+ *
+ * Three states, three conversations:
+ *   code_red   — "We need your story" — surface proof or remove
+ *   confirm_fit — "Does this honestly describe you?" — verify or rewrite
+ *   strengthen — "Here's a stronger version" — refine or accept
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, X, Sparkles } from 'lucide-react';
+import { Send, Loader2, X, Sparkles, Trash2 } from 'lucide-react';
 import type { ResumeReviewState, GapChatMessage, GapChatContext, RequirementSource } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
@@ -23,107 +28,47 @@ interface BulletConversationEditorProps {
   gapChat: GapChatHook;
   chatContext: GapChatContext;
   onApplyToResume: (section: string, index: number, newText: string) => void;
+  onRemoveBullet: (section: string, index: number) => void;
   onClose: () => void;
 }
 
-// ─── Opening messages per state ──────────────────────────────────────────────
+// ─── State-specific opening messages ─────────────────────────────────────────
 
 function getOpeningMessage(reviewState: ResumeReviewState, requirements: string[]): string {
-  const reqLabel = requirements[0] ?? 'this requirement';
+  const req = requirements[0] ?? 'this requirement';
   switch (reviewState) {
     case 'code_red':
       return (
-        `I wrote this bullet to address "${reqLabel}", but I couldn\u2019t find direct proof ` +
-        `for it in your original resume. You can tell me the real story behind this claim, ` +
-        `I can draft something from adjacent experience, or we remove it. What actually happened here?`
+        `I wrote this bullet to address "${req}" but I couldn\u2019t find the real experience ` +
+        `behind it in your resume. Before we decide what to do with it, tell me \u2014 have you ` +
+        `actually done this? Even in a different context or a different role?`
       );
     case 'confirm_fit':
       return (
-        `This bullet comes from the benchmark profile for this type of role \u2014 it\u2019s what ` +
-        `a strong candidate typically looks like. Does this actually describe your background? ` +
-        `Answer honestly and I\u2019ll either keep it, adjust it to fit your real experience, or remove it.`
+        `This line comes from what the ideal candidate for this role looks like \u2014 not ` +
+        `directly from your background. Does this honestly describe you? Tell me where it ` +
+        `fits or where it doesn\u2019t.`
       );
     case 'strengthen':
       return (
-        `You have real experience here \u2014 I can see it in your resume. But this bullet ` +
-        `isn\u2019t connecting it clearly enough to what this employer needs. Can you add a ` +
-        `specific metric, scope, or outcome to make it more concrete?`
+        `You have real experience here \u2014 I can see it. But this bullet isn\u2019t making ` +
+        `the connection obvious enough to a hiring manager. Here\u2019s what I think would land ` +
+        `harder. What do you think \u2014 does this feel true to what you did?`
       );
     default:
       return 'How would you like to improve this bullet?';
   }
 }
 
-// ─── Quick-reply configs per state ───────────────────────────────────────────
+// ─── Border color per state ──────────────────────────────────────────────────
 
-interface QuickReply {
-  label: string;
-  message: string;
-}
-
-function getQuickReplies(reviewState: ResumeReviewState): QuickReply[] {
+function stateBorderClass(reviewState: ResumeReviewState): string {
   switch (reviewState) {
-    case 'code_red':
-      return [
-        { label: 'I have the real story', message: 'Let me tell you what actually happened here.' },
-        { label: 'Draft from adjacent experience', message: 'I have related experience. Draft something from what you can see in my resume and I\u2019ll refine it.' },
-        { label: 'Remove this line', message: 'Remove this bullet \u2014 I don\u2019t have direct experience to back it up.' },
-      ];
-    case 'confirm_fit':
-      return [
-        { label: 'Yes, this fits me', message: 'Yes, this accurately describes my background. Keep it.' },
-        { label: 'Adjust it to fit my real experience', message: 'This is close but not quite right. Let me tell you what I actually did so you can adjust it.' },
-        { label: 'No, this isn\u2019t really me', message: 'This doesn\u2019t honestly describe my experience. What\u2019s closer to the truth is:' },
-      ];
-    case 'strengthen':
-      return [
-        { label: 'Add a metric', message: 'Help me add a concrete metric or measurable outcome to this bullet.' },
-        { label: 'Make it more specific', message: 'Make this more specific \u2014 here\u2019s more context about what I actually did.' },
-        { label: 'Draft a stronger version', message: 'Draft the strongest truthful version of this bullet from what you know.' },
-      ];
-    default:
-      return [];
+    case 'code_red': return 'border-l-[#8f2d2d]';
+    case 'confirm_fit': return 'border-l-[#2563eb]';
+    case 'strengthen': return 'border-l-[#b45309]';
+    default: return 'border-l-neutral-300';
   }
-}
-
-// ─── Bubble components (light theme for resume context) ──────────────────────
-
-function UserBubble({ content }: { content: string }) {
-  return (
-    <div className="flex justify-end">
-      <div className="rounded-xl px-4 py-2.5 max-w-[85%] bg-blue-50 border border-blue-100">
-        <p className="text-[14px] leading-relaxed text-neutral-700">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-function AssistantBubble({ content }: { content: string }) {
-  return (
-    <div className="flex justify-start">
-      <div className="rounded-xl px-4 py-2.5 max-w-[90%] bg-neutral-50 border border-neutral-200">
-        <p className="text-[14px] leading-relaxed text-neutral-700">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-function LoadingDots() {
-  return (
-    <div className="flex justify-start">
-      <div className="rounded-xl px-4 py-3 bg-neutral-50 border border-neutral-200">
-        <div className="flex items-center gap-1.5" role="status" aria-label="Thinking">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
-              style={{ animationDelay: `${i * 0.16}s` }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -138,26 +83,39 @@ export function BulletConversationEditor({
   gapChat,
   chatContext,
   onApplyToResume,
+  onRemoveBullet,
   onClose,
 }: BulletConversationEditorProps) {
   const [inputValue, setInputValue] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [applyDraft, setApplyDraft] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const lastSentRef = useRef('');
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const chatKey = requirements[0] ?? bulletText;
   const itemState = gapChat.getItemState(chatKey);
   const messages = itemState?.messages ?? [];
   const isLoading = itemState?.isLoading ?? false;
-  const resolvedLanguage = itemState?.resolvedLanguage ?? null;
 
-  const display = REVIEW_STATE_DISPLAY[reviewState];
+  const classification: 'missing' | 'partial' | 'strong' =
+    reviewState === 'code_red' ? 'missing' : 'partial';
+
   const openingMessage = getOpeningMessage(reviewState, requirements);
-  const quickReplies = getQuickReplies(reviewState);
+
+  // Find the latest AI-suggested rewrite
+  const latestRewrite = [...messages]
+    .reverse()
+    .find(m => m.role === 'assistant' && m.suggestedLanguage?.trim())
+    ?.suggestedLanguage ?? null;
+
+  // Sync apply draft when a new rewrite arrives
+  useEffect(() => {
+    if (latestRewrite) setApplyDraft(latestRewrite);
+  }, [latestRewrite]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, isLoading]);
 
   // Focus input on mount
@@ -165,69 +123,61 @@ export function BulletConversationEditor({
     inputRef.current?.focus();
   }, []);
 
-  const handleSend = useCallback(() => {
-    const trimmed = inputValue.trim();
-    if (!trimmed || isLoading) return;
-    lastSentRef.current = trimmed;
-    setInputValue('');
-    gapChat.sendMessage(
-      chatKey,
-      trimmed,
-      chatContext,
-      reviewState === 'code_red' ? 'missing' : reviewState === 'confirm_fit' ? 'partial' : 'partial',
-    );
-  }, [inputValue, isLoading, chatKey, chatContext, reviewState, gapChat]);
-
-  const handleQuickReply = useCallback((message: string) => {
-    if (isLoading) return;
-    lastSentRef.current = message;
-    gapChat.sendMessage(
-      chatKey,
-      message,
-      chatContext,
-      reviewState === 'code_red' ? 'missing' : 'partial',
-    );
-  }, [isLoading, chatKey, chatContext, reviewState, gapChat]);
-
-  // Suggested language handling
-  const latestSuggestedLanguage = [...messages]
-    .reverse()
-    .find((m) => m.role === 'assistant' && m.suggestedLanguage?.trim())
-    ?.suggestedLanguage;
-
-  const [draftValue, setDraftValue] = useState('');
+  // Close on Escape
   useEffect(() => {
-    if (latestSuggestedLanguage) setDraftValue(latestSuggestedLanguage);
-  }, [latestSuggestedLanguage]);
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (editorRef.current && !editorRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const sendMessage = useCallback((text: string) => {
+    if (!text.trim() || isLoading) return;
+    setInputValue('');
+    gapChat.sendMessage(chatKey, text.trim(), chatContext, classification);
+  }, [isLoading, chatKey, chatContext, classification, gapChat]);
+
+  const handleSubmit = useCallback(() => {
+    sendMessage(inputValue);
+  }, [inputValue, sendMessage]);
 
   const handleApply = useCallback(() => {
-    const text = draftValue.trim() || latestSuggestedLanguage?.trim();
+    const text = applyDraft.trim() || latestRewrite?.trim();
     if (!text) return;
     onApplyToResume(section, bulletIndex, text);
     onClose();
-  }, [draftValue, latestSuggestedLanguage, section, bulletIndex, onApplyToResume, onClose]);
+  }, [applyDraft, latestRewrite, section, bulletIndex, onApplyToResume, onClose]);
+
+  const handleRemove = useCallback(() => {
+    onRemoveBullet(section, bulletIndex);
+    onClose();
+  }, [section, bulletIndex, onRemoveBullet, onClose]);
 
   return (
     <div
-      className="mt-3 rounded-lg border border-neutral-200 bg-white shadow-lg overflow-hidden"
-      role="dialog"
-      aria-label="Edit bullet conversation"
+      ref={editorRef}
+      className={`mt-3 rounded-lg border border-l-4 ${stateBorderClass(reviewState)} border-neutral-200 bg-white shadow-lg overflow-hidden`}
     >
-      {/* Header: bullet text + close */}
-      <div className="flex items-start gap-3 px-4 py-3 border-b border-neutral-100 bg-neutral-50">
-        <div className="flex-1 min-w-0">
-          <span
-            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider mb-1.5"
-            style={{
-              color: display.colorHex,
-              backgroundColor: `${display.colorHex}11`,
-              border: `1px solid ${display.colorHex}33`,
-            }}
-          >
-            {display.label}
-          </span>
-          <p className="text-[13px] leading-relaxed text-neutral-700 line-clamp-2">{bulletText}</p>
-        </div>
+      {/* Bullet text header */}
+      <div className="flex items-start gap-3 px-5 pt-4 pb-3">
+        <p className="flex-1 text-[13px] leading-relaxed text-neutral-600 italic">
+          &ldquo;{bulletText}&rdquo;
+        </p>
         <button
           type="button"
           onClick={onClose}
@@ -238,87 +188,111 @@ export function BulletConversationEditor({
         </button>
       </div>
 
-      {/* Chat messages */}
-      <div className="max-h-[360px] overflow-y-auto px-4 py-3 space-y-3">
-        {/* Opening message (always first) */}
-        <AssistantBubble content={openingMessage} />
+      {/* Conversation */}
+      <div className="max-h-[400px] overflow-y-auto px-5 pb-3 space-y-4">
+        {/* AI opening */}
+        <div className="text-[14px] leading-relaxed text-neutral-800">
+          {openingMessage}
+        </div>
 
-        {/* Conversation messages */}
+        {/* Strengthen: show suggested rewrite immediately if no conversation yet */}
+        {reviewState === 'strengthen' && messages.length === 0 && !latestRewrite && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 px-4 py-3">
+            <p className="text-[13px] leading-relaxed text-neutral-700">
+              {chatContext.currentStrategy || 'A stronger version of this bullet would connect your experience more directly to what this employer needs.'}
+            </p>
+          </div>
+        )}
+
+        {/* Conversation turns */}
         {messages.map((msg, i) => (
-          msg.role === 'user'
-            ? <UserBubble key={i} content={msg.content} />
-            : <AssistantBubble key={i} content={msg.content} />
+          <div key={i} className={msg.role === 'user' ? 'pl-6' : ''}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              {msg.role === 'user' ? 'You' : 'Coach'}
+            </p>
+            <p className="text-[14px] leading-relaxed text-neutral-800">
+              {msg.content}
+            </p>
+          </div>
         ))}
 
-        {isLoading && <LoadingDots />}
-        <div ref={messagesEndRef} />
+        {isLoading && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Coach
+            </p>
+            <div className="flex items-center gap-1.5" role="status" aria-label="Thinking">
+              {[0, 1, 2].map(i => (
+                <span
+                  key={i}
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+                  style={{ animationDelay: `${i * 0.16}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rewrite card — shown when AI produces a suggested rewrite */}
+        {latestRewrite && (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50/50 px-4 py-3 space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+              Rewritten bullet
+            </p>
+            <textarea
+              value={applyDraft}
+              onChange={e => setApplyDraft(e.target.value)}
+              rows={3}
+              aria-label="Edit rewritten bullet"
+              className="w-full resize-y rounded-md border border-emerald-200 bg-white px-3 py-2 text-[13px] leading-relaxed text-neutral-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleApply}
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Apply to Resume
+              </button>
+              <button
+                type="button"
+                onClick={() => sendMessage("That's not quite right. Let me tell you more.")}
+                className="rounded-md border border-neutral-200 px-3 py-1.5 text-[13px] font-medium text-neutral-600 hover:bg-neutral-50 transition-colors"
+              >
+                Keep talking
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div ref={scrollRef} />
       </div>
 
-      {/* Suggested language block */}
-      {latestSuggestedLanguage && !resolvedLanguage && (
-        <div className="px-4 py-3 border-t border-neutral-100 bg-emerald-50/50">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-            Updated bullet ready to review
-          </span>
-          <textarea
-            value={draftValue}
-            onChange={(e) => setDraftValue(e.target.value)}
-            rows={3}
-            aria-label="Edit suggested bullet text"
-            className="mt-2 w-full resize-y rounded-md border border-emerald-200 bg-white px-3 py-2 text-[13px] leading-relaxed text-neutral-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
-          />
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleApply}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-emerald-700 transition-colors"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Apply to Resume
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Quick replies — visible until the user sends their first message */}
-      {!isLoading && messages.every(m => m.role === 'assistant') && (
-        <div className="px-4 py-2 border-t border-neutral-100 flex flex-wrap gap-2">
-          {quickReplies.map((qr) => (
-            <button
-              key={qr.label}
-              type="button"
-              onClick={() => handleQuickReply(qr.message)}
-              className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
-            >
-              {qr.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Input bar */}
-      {!resolvedLanguage && (
-        <div className="flex items-end gap-2 px-4 py-3 border-t border-neutral-100 bg-neutral-50">
+      {/* Input area + action buttons */}
+      <div className="border-t border-neutral-100 bg-neutral-50 px-5 py-3 space-y-3">
+        {/* Text input */}
+        <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={e => setInputValue(e.target.value)}
+            onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSend();
+                handleSubmit();
               }
             }}
-            placeholder="Type your response..."
-            rows={1}
+            placeholder="Tell me what actually happened..."
+            rows={2}
             className="flex-1 resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-[13px] text-neutral-700 placeholder:text-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
           />
           <button
             type="button"
-            onClick={handleSend}
+            onClick={handleSubmit}
             disabled={!inputValue.trim() || isLoading}
-            className="shrink-0 rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            aria-label="Send message"
+            className="shrink-0 rounded-md bg-neutral-800 p-2 text-white hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="Send"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -327,7 +301,19 @@ export function BulletConversationEditor({
             )}
           </button>
         </div>
-      )}
+
+        {/* Remove bullet — always available */}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium text-neutral-400 hover:text-[#8f2d2d] hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+            Remove this bullet
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
