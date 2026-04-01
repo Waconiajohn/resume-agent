@@ -74,9 +74,9 @@ export async function searchJobsViaSerper(
 
 function buildQuery(companyName: string, targetTitle: string | null): string {
   const company = `"${companyName}"`;
-  const title = targetTitle ? `"${targetTitle}"` : '';
-  const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com';
-  return `${company} ${title} careers (${atsSites})`.trim();
+  const title = targetTitle ? ` "${targetTitle}"` : '';
+  const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com';
+  return `${company}${title} (${atsSites})`;
 }
 
 // ─── Serper Response Parsing ────────────────────────────────────────────────

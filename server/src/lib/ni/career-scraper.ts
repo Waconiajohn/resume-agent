@@ -1,12 +1,12 @@
 /**
  * Career Page Scanner — Network Intelligence
  *
- * Three-tier ATS-native job scanning strategy:
- *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby) — free, structured JSON
+ * Two-tier ATS-native job scanning strategy:
+ *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) — free, structured data
  *   2. Serper Google Jobs search fallback — for companies without known ATS
- *   3. Title matching + referral bonus detection on all results
+ *   Plus: title matching + referral bonus detection on all results
  *
- * Replaces the original Firecrawl-based scraper which returned 0% hit rate
+ * Replaces the original scraper which returned 0% hit rate
  * on modern client-side-rendered ATS platforms.
  */
 
@@ -135,7 +135,7 @@ async function scanCompany(
     }
   }
 
-  // Tier 3: Serper Google Jobs search fallback
+  // Tier 2: Serper Google Jobs search fallback
   if (allJobs.length === 0) {
     try {
       allJobs = await searchJobsViaSerper(company.name, targetTitles);
@@ -202,7 +202,6 @@ export async function searchJobsByCompany(
 
   const initBreakdown: Record<ScrapeSource, number> = {
     lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, serper: 0,
-    firecrawl_scrape: 0, firecrawl_search: 0,
   };
 
   if (jobs.length === 0) {
@@ -224,8 +223,8 @@ export async function searchJobsByCompany(
 // ─── Public API: scrapeCareerPages ──────────────────────────────────────────
 
 /**
- * Scan job listings for the given companies using the three-tier strategy:
- *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby) when ats_platform is known
+ * Scan job listings for the given companies using a two-tier strategy:
+ *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) when ats_platform is known
  *   2. Serper Google Jobs search for the rest
  *
  * Matches against target titles and stores results via insertJobMatch().
@@ -235,7 +234,6 @@ export async function scrapeCareerPages(
   companies: CompanyInfo[],
   targetTitles: string[],
   userId: string,
-  _useApiFallback = true,
   searchContext: NiSearchContext = 'network_connections',
 ): Promise<ScrapeResult> {
   const limited = companies.slice(0, MAX_COMPANIES);
@@ -247,7 +245,6 @@ export async function scrapeCareerPages(
   let referralAvailable = 0;
   const sourceBreakdown: Record<ScrapeSource, number> = {
     lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, serper: 0,
-    firecrawl_scrape: 0, firecrawl_search: 0,
   };
 
   for (let i = 0; i < limited.length; i++) {

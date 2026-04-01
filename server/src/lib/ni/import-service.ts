@@ -14,6 +14,7 @@ import {
   completeScrapeLogEntry,
 } from './connections-store.js';
 import { normalizeCompanyBatch } from './company-normalizer.js';
+import { runBulkEnrichment } from './ats-enrichment.js';
 import { scrapeCareerPages } from './career-scraper.js';
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
@@ -72,14 +73,17 @@ export async function runCsvImportPipeline(
       'CSV import completed',
     );
 
-    // Fire-and-forget: normalize company names in background
+    // Fire-and-forget: normalize company names, then enrich ATS slugs.
+    // Enrichment runs after normalization so company_directory records exist.
     const uniqueCompanyNames = [...new Set(result.connections.map((c) => c.companyRaw))];
-    void normalizeCompanyBatch(userId, uniqueCompanyNames).catch((normErr) => {
-      logger.error(
-        { error: normErr instanceof Error ? normErr.message : String(normErr), userId },
-        'Background company normalization failed',
-      );
-    });
+    void normalizeCompanyBatch(userId, uniqueCompanyNames)
+      .then(() => runBulkEnrichment(userId))
+      .catch((bgErr) => {
+        logger.error(
+          { error: bgErr instanceof Error ? bgErr.message : String(bgErr), userId },
+          'Background normalization or ATS enrichment failed',
+        );
+      });
 
     return {
       success: true,
@@ -113,10 +117,8 @@ export async function runCsvImportPipeline(
 
 /**
  * Fetch company records from the database then scrape their career pages.
- * Updates the scrape log entry on completion or failure.
- *
- * When useApiFallback=true (default), companies that return zero regex results
- * will be retried via Firecrawl search.
+ * Scans company career pages using three-tier strategy: ATS API -> Serper fallback.
+ * Results are stored in job_matches and reflected in the scrape log.
  *
  * This is designed to be called as a background task. The caller (route handler)
  * should fire-and-forget: `void runCareerScrape(userId, logId, companyIds, targetTitles)`.
@@ -127,7 +129,6 @@ export async function runCareerScrape(
   scrapeLogId: string,
   companyIds: string[],
   targetTitles: string[],
-  useApiFallback = true,
   searchContext: NiSearchContext = 'network_connections',
 ): Promise<void> {
   try {
@@ -151,7 +152,7 @@ export async function runCareerScrape(
       }),
     );
 
-    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, useApiFallback, searchContext);
+    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, searchContext);
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {
       companies_scanned: result.companiesScanned,

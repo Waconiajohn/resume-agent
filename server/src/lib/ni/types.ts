@@ -231,7 +231,7 @@ export interface CompanyInfo {
   ats_slug?: string | null;
 }
 
-export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'serper' | 'firecrawl_scrape' | 'firecrawl_search';
+export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'serper';
 
 export interface ATSJob {
   title: string;
@@ -250,4 +250,30 @@ export interface ScrapeResult {
   errors: { company: string; error: string }[];
   /** Per-company breakdown of which source found jobs. */
   sourceBreakdown: Record<ScrapeSource, number>;
+}
+
+/**
+ * Career Page Scraper Interface — pluggable scraper for raw URL -> jobs extraction.
+ *
+ * Tier 3 of the scanning strategy. Not implemented yet — this interface
+ * defines the contract so a Firecrawl (or Playwright, or Puppeteer) adapter
+ * can be plugged in later without changing the career scraper orchestration.
+ */
+export interface CareerPageScraper {
+  /** Unique identifier for this scraper implementation */
+  readonly name: string;
+
+  /**
+   * Scrape a company's career page URL and extract job listings.
+   * @param careerPageUrl - The URL to scrape (e.g., "https://acme.com/careers")
+   * @param targetTitles - Optional title filters to apply during extraction
+   * @returns Normalized job listings found on the page
+   */
+  scrapeCareerPage(
+    careerPageUrl: string,
+    targetTitles?: string[],
+  ): Promise<ATSJob[]>;
+
+  /** Check if this scraper can handle the given URL. */
+  canHandle(url: string): boolean;
 }

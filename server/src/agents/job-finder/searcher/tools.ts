@@ -9,14 +9,21 @@
  * - emit_transparency: Live progress updates
  */
 
-import FirecrawlApp from '@mendable/firecrawl-js';
 import type { JobFinderTool, DiscoveredJob } from '../types.js';
 import { scrapeCareerPages } from '../../../lib/ni/career-scraper.js';
 import { getJobMatchesByUser } from '../../../lib/ni/job-matches-store.js';
 import { getCompanySummary } from '../../../lib/ni/connections-store.js';
 import { supabaseAdmin } from '../../../lib/supabase.js';
+import logger from '../../../lib/logger.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../types.js';
+import type { ATSPlatform } from '../../../lib/ni/types.js';
+
+const SERPER_API_URL = 'https://google.serper.dev/search';
+const SERPER_TIMEOUT_MS = 10_000;
+
+/** Known ATS source labels written by the career scraper. */
+const ATS_SOURCE_LABELS = new Set(['lever', 'greenhouse', 'workday', 'ashby', 'icims', 'serper']);
 
 // ─── Tool: search_career_pages ──────────────────────────────────────
 
@@ -65,7 +72,7 @@ const searchCareerPagesTool: JobFinderTool = {
     }
 
     // ─── Load companies to scrape ─────────────────────────────────
-    let companiesToScrape: Array<{ id: string; name: string; domain: string | null }> = [];
+    let companiesToScrape: Array<{ id: string; name: string; domain: string | null; ats_platform?: ATSPlatform | null; ats_slug?: string | null }> = [];
     const requestedIds = Array.isArray(input.company_ids)
       ? (input.company_ids as string[])
       : [];
@@ -73,7 +80,7 @@ const searchCareerPagesTool: JobFinderTool = {
     try {
       let query = supabaseAdmin
         .from('company_directory')
-        .select('id, name_display, domain')
+        .select('id, name_display, domain, ats_platform, ats_slug')
         .not('domain', 'is', null)
         .limit(50);
 
@@ -94,10 +101,12 @@ const searchCareerPagesTool: JobFinderTool = {
 
       const { data: companies } = await query;
       if (companies) {
-        companiesToScrape = (companies as Array<{ id: string; name_display: string; domain: string | null }>).map((c) => ({
+        companiesToScrape = (companies as Array<{ id: string; name_display: string; domain: string | null; ats_platform: string | null; ats_slug: string | null }>).map((c) => ({
           id: c.id,
           name: c.name_display,
           domain: c.domain,
+          ats_platform: c.ats_platform as ATSPlatform | null,
+          ats_slug: c.ats_slug,
         }));
       }
     } catch {
@@ -128,7 +137,7 @@ const searchCareerPagesTool: JobFinderTool = {
     const careerPageJobs: DiscoveredJob[] = jobMatches
       .filter((m) => {
         const src = (m.metadata as Record<string, unknown>)?.source;
-        return src === 'firecrawl_scrape' || src === 'firecrawl_search' || src === 'career_page_scraper';
+        return typeof src === 'string' && ATS_SOURCE_LABELS.has(src);
       })
       .map((m) => {
         const companyInfo = companiesToScrape.find((c) => c.id === m.company_id);
@@ -175,8 +184,8 @@ const searchCareerPagesTool: JobFinderTool = {
 const generateSearchQueriesTool: JobFinderTool = {
   name: 'generate_search_queries',
   description:
-    'Search the web for job openings matching the candidate\'s target titles and location via Firecrawl. ' +
-    'Stores discovered jobs in scratchpad as firecrawl_search_results.',
+    'Search the web for job openings matching the candidate\'s target titles and location via Serper. ' +
+    'Stores discovered jobs in scratchpad as web_search_results.',
   model_tier: 'light',
   input_schema: {
     type: 'object',
@@ -194,15 +203,15 @@ const generateSearchQueriesTool: JobFinderTool = {
       return JSON.stringify({ success: false, error: 'resume_text too short to extract search terms' });
     }
 
-    const apiKey = process.env.FIRECRAWL_API_KEY;
+    const apiKey = process.env.SERPER_API_KEY;
     if (!apiKey) {
-      return JSON.stringify({ success: false, error: 'FIRECRAWL_API_KEY not configured' });
+      return JSON.stringify({ success: false, error: 'SERPER_API_KEY not configured' });
     }
 
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: 'Searching the web for matching job openings via Firecrawl...',
+      message: 'Searching the web for matching job openings via Serper...',
     });
 
     const state = ctx.getState();
@@ -242,18 +251,30 @@ const generateSearchQueriesTool: JobFinderTool = {
     const location = (sharedTargetRole as Record<string, unknown> | undefined)?.location;
     const locationStr = typeof location === 'string' ? location : '';
 
-    const fc = new FirecrawlApp({ apiKey });
     const allJobs: DiscoveredJob[] = [];
     const seen = new Set<string>();
 
     for (const title of targetTitles.slice(0, 5)) {
       const query = locationStr ? `${title} jobs ${locationStr}` : `${title} jobs`;
       try {
-        const result = await fc.search(query, { limit: 10 });
-        const webResults = (result.web ?? []) as Array<{ url?: string; title?: string; description?: string }>;
+        const res = await fetch(SERPER_API_URL, {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ q: query, num: 10 }),
+          signal: AbortSignal.timeout(SERPER_TIMEOUT_MS),
+        });
 
-        for (const item of webResults) {
-          if (!item.title || !item.url) continue;
+        if (!res.ok) {
+          logger.debug({ status: res.status, query }, 'Serper web search returned non-OK');
+          continue;
+        }
+
+        const data = (await res.json()) as { organic?: Array<{ title?: string; link?: string; snippet?: string }> };
+        for (const item of data.organic ?? []) {
+          if (!item.title || !item.link) continue;
           const key = item.title.toLowerCase();
           if (seen.has(key)) continue;
           seen.add(key);
@@ -261,9 +282,9 @@ const generateSearchQueriesTool: JobFinderTool = {
           allJobs.push({
             title: item.title,
             company: 'Unknown',
-            url: item.url,
-            source: 'firecrawl_search' as DiscoveredJob['source'],
-            description_snippet: item.description ?? undefined,
+            url: item.link,
+            source: 'serper' as const,
+            description_snippet: item.snippet ?? undefined,
           });
         }
       } catch {
@@ -271,12 +292,12 @@ const generateSearchQueriesTool: JobFinderTool = {
       }
     }
 
-    ctx.scratchpad.firecrawl_search_results = allJobs;
+    ctx.scratchpad.web_search_results = allJobs;
 
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: `Firecrawl web search complete — ${allJobs.length} job pages found for ${targetTitles.length} target titles`,
+      message: `Web search complete — ${allJobs.length} job pages found for ${targetTitles.length} target titles`,
     });
 
     return JSON.stringify({
@@ -394,10 +415,10 @@ const deduplicateResultsTool: JobFinderTool = {
   async execute(_input, ctx) {
     const careerPageResults = (ctx.scratchpad.career_page_results as DiscoveredJob[] | undefined) ?? [];
     const networkResults = (ctx.scratchpad.network_results as DiscoveredJob[] | undefined) ?? [];
-    const firecrawlSearchResults = (ctx.scratchpad.firecrawl_search_results as DiscoveredJob[] | undefined) ?? [];
+    const webSearchResults = (ctx.scratchpad.web_search_results as DiscoveredJob[] | undefined) ?? [];
 
     // Combine all sources
-    const allJobs = [...careerPageResults, ...networkResults, ...firecrawlSearchResults];
+    const allJobs = [...careerPageResults, ...networkResults, ...webSearchResults];
 
     // Deduplicate by title+company (case-insensitive)
     const seen = new Set<string>();
@@ -430,7 +451,7 @@ const deduplicateResultsTool: JobFinderTool = {
       by_source: {
         career_page: careerPageResults.length,
         network: networkResults.length,
-        firecrawl_search: firecrawlSearchResults.length,
+        web_search: webSearchResults.length,
       },
     });
   },

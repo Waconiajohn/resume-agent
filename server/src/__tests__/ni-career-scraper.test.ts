@@ -71,6 +71,7 @@ import type { ATSJob } from '../lib/ni/types.js';
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 const COMPANY_WITH_ATS = { id: 'c1', name: 'Acme Corp', domain: 'acme.com', ats_platform: 'greenhouse' as const, ats_slug: 'acme' };
+const COMPANY_ICIMS = { id: 'c4', name: 'Big Healthcare', domain: 'bighealthcare.com', ats_platform: 'icims' as const, ats_slug: 'bighealthcare' };
 const COMPANY_NO_ATS = { id: 'c2', name: 'Mystery Inc', domain: 'mystery.com', ats_platform: null, ats_slug: null };
 const COMPANY_NO_DOMAIN = { id: 'c3', name: 'Unknown Co', domain: null };
 
@@ -114,6 +115,27 @@ describe('scrapeCareerPages', () => {
     expect(result.companiesScanned).toBe(1);
     expect(result.jobsFound).toBeGreaterThan(0);
     expect(insertJobMatch).toHaveBeenCalled();
+  });
+
+  it('dispatches to iCIMS when company has ats_platform=icims', async () => {
+    mockFetchFromATS.mockResolvedValue(makeATSJobs(['Clinical Director'], 'icims'));
+
+    const result = await scrapeCareerPages([COMPANY_ICIMS], ['Clinical Director'], 'user-1');
+
+    expect(mockFetchFromATS).toHaveBeenCalledWith('icims', 'bighealthcare');
+    expect(result.companiesScanned).toBe(1);
+    expect(result.jobsFound).toBeGreaterThan(0);
+  });
+
+  it('falls back to Serper when iCIMS returns zero jobs', async () => {
+    mockFetchFromATS.mockResolvedValue([]);
+    mockSearchViaSerper.mockResolvedValue(makeATSJobs(['Nurse Manager'], 'serper'));
+
+    const result = await scrapeCareerPages([COMPANY_ICIMS], ['Nurse Manager'], 'user-1');
+
+    expect(mockFetchFromATS).toHaveBeenCalledWith('icims', 'bighealthcare');
+    expect(mockSearchViaSerper).toHaveBeenCalled();
+    expect(result.jobsFound).toBeGreaterThan(0);
   });
 
   it('falls back to Serper when company has no ATS info', async () => {

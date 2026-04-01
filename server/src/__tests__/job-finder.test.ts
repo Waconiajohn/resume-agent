@@ -10,16 +10,9 @@
  *  5. Route schema: startSchema validates session_id (uuid required)
  */
 
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-const mockFirecrawlSearch = vi.hoisted(() => vi.fn());
-const mockFirecrawlConstructor = vi.hoisted(() =>
-  vi.fn(function MockFirecrawlApp() {
-    return {
-      search: mockFirecrawlSearch,
-    };
-  }),
-);
+const mockSerperFetch = vi.hoisted(() => vi.fn());
 
 // ─── Module mocks (hoisted before imports) ──────────────────────────────────
 
@@ -87,8 +80,8 @@ vi.mock('../lib/ni/career-scraper.js', () => ({
   }),
 }));
 
-vi.mock('@mendable/firecrawl-js', () => ({
-  default: mockFirecrawlConstructor,
+vi.mock('../lib/logger.js', () => ({
+  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 vi.mock('../lib/ni/job-matches-store.js', () => ({
@@ -204,26 +197,35 @@ describe('JobFinderState type shape', () => {
 
 describe('Searcher: generate_search_queries', () => {
   const tool = searcherTools.find((t) => t.name === 'generate_search_queries')!;
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.FIRECRAWL_API_KEY = 'test-firecrawl-key';
-    mockFirecrawlSearch.mockResolvedValue({
-      web: [
-        { title: 'VP Operations - Acme', url: 'https://example.com/jobs/1', description: 'Lead operations' },
-        { title: 'COO - Beta', url: 'https://example.com/jobs/2', description: 'Scale manufacturing' },
-      ],
+    process.env.SERPER_API_KEY = 'test-serper-key';
+    globalThis.fetch = mockSerperFetch;
+    mockSerperFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          { title: 'VP Operations - Acme', link: 'https://example.com/jobs/1', snippet: 'Lead operations' },
+          { title: 'COO - Beta', link: 'https://example.com/jobs/2', snippet: 'Scale manufacturing' },
+        ],
+      }),
     });
   });
 
-  it('returns success with Firecrawl search results', async () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('returns success with Serper search results', async () => {
     const ctx = makeCtx();
     const result = await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
     expect(parsed.jobs_found).toBe(2);
     expect(parsed.target_titles_searched).toContain('executive');
-    expect(ctx.scratchpad.firecrawl_search_results).toHaveLength(2);
+    expect(ctx.scratchpad.web_search_results).toHaveLength(2);
   });
 
   it('returns error for short resume text', async () => {
@@ -241,17 +243,17 @@ describe('Searcher: generate_search_queries', () => {
     );
   });
 
-  it('prefers shared target role when deriving boolean search titles', async () => {
+  it('prefers shared target role when deriving search titles', async () => {
     const sharedContext = createEmptySharedContext();
     sharedContext.targetRole.roleTitle = 'Chief Operating Officer';
 
     const ctx = makeCtx({ shared_context: sharedContext });
     await tool.execute({ resume_text: 'VP Operations with 15 years experience in supply chain management and logistics optimization at Fortune 500 companies' }, ctx);
 
-    expect(mockFirecrawlSearch).toHaveBeenCalledWith(
-      expect.stringContaining('Chief Operating Officer jobs'),
-      expect.objectContaining({ limit: 10 }),
-    );
+    // Verify Serper was called with the shared target role title
+    expect(mockSerperFetch).toHaveBeenCalled();
+    const callBody = JSON.parse((mockSerperFetch.mock.calls[0][1] as { body: string }).body);
+    expect(callBody.q).toContain('Chief Operating Officer jobs');
   });
 });
 

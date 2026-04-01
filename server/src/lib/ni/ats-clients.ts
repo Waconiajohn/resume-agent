@@ -161,6 +161,150 @@ export async function fetchWorkdayJobs(slug: string): Promise<ATSJob[]> {
   return [];
 }
 
+// ─── iCIMS ─────────────────────────────────────────────────────────────────
+//
+// iCIMS has no public JSON API. Portal pages are HTML-rendered at
+// careers-{slug}.icims.com. We fetch the HTML and extract job data from
+// embedded JSON-LD (Schema.org JobPosting) or structured HTML elements.
+// This is best-effort — returns [] when parsing fails. Serper catches the rest.
+
+/** URL patterns to try for iCIMS portals (slug = subdomain prefix). */
+const ICIMS_URL_PATTERNS = [
+  (slug: string) => `https://careers-${slug}.icims.com/jobs/search`,
+  (slug: string) => `https://jobs-${slug}.icims.com/jobs/search`,
+  (slug: string) => `https://${slug}.icims.com/jobs/search`,
+];
+
+export async function fetchICIMSJobs(slug: string): Promise<ATSJob[]> {
+  for (const buildUrl of ICIMS_URL_PATTERNS) {
+    const url = buildUrl(slug);
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml',
+          'User-Agent': 'Mozilla/5.0 (compatible; CareerIQ/1.0)',
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      if (!res.ok) continue;
+
+      const html = await res.text();
+      if (!html || html.length < 200) continue;
+
+      // Strategy 1: Extract JSON-LD structured data (most reliable)
+      const jsonLdJobs = extractJsonLdJobs(html, url);
+      if (jsonLdJobs.length > 0) return jsonLdJobs;
+
+      // Strategy 2: Parse job links from HTML (fallback)
+      const htmlJobs = extractJobLinksFromHtml(html, url);
+      if (htmlJobs.length > 0) return htmlJobs;
+    } catch {
+      continue;
+    }
+  }
+
+  logger.debug({ slug }, 'iCIMS: no jobs extracted from any URL pattern');
+  return [];
+}
+
+/** Extract jobs from JSON-LD `<script type="application/ld+json">` blocks. */
+function extractJsonLdJobs(html: string, baseUrl: string): ATSJob[] {
+  const jobs: ATSJob[] = [];
+  const jsonLdPattern = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = jsonLdPattern.exec(html)) !== null) {
+    try {
+      const data: unknown = JSON.parse(match[1]);
+      const items = extractJobPostings(data);
+      for (const item of items) {
+        const title = typeof item.title === 'string' ? item.title : null;
+        if (!title) continue;
+
+        const jobUrl = typeof item.url === 'string' ? item.url : null;
+        const location = extractJsonLdLocation(item);
+
+        jobs.push({
+          title,
+          url: jobUrl ?? baseUrl,
+          location,
+          salaryRange: null,
+          descriptionSnippet: typeof item.description === 'string'
+            ? stripHtml(item.description).slice(0, 300)
+            : null,
+          source: 'icims',
+        });
+      }
+    } catch {
+      // Malformed JSON-LD — skip this block
+    }
+  }
+
+  return jobs;
+}
+
+/** Unwrap JSON-LD: handles single JobPosting, arrays, and ItemList wrappers. */
+function extractJobPostings(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) {
+    return data.filter((d) => d && typeof d === 'object' && (d as Record<string, unknown>)['@type'] === 'JobPosting') as Record<string, unknown>[];
+  }
+  if (!data || typeof data !== 'object') return [];
+  const obj = data as Record<string, unknown>;
+  if (obj['@type'] === 'JobPosting') return [obj];
+  // ItemList with itemListElement array
+  if (obj['@type'] === 'ItemList' && Array.isArray(obj.itemListElement)) {
+    return (obj.itemListElement as Record<string, unknown>[])
+      .map((el) => (el.item ?? el) as Record<string, unknown>)
+      .filter((el) => el['@type'] === 'JobPosting');
+  }
+  return [];
+}
+
+function extractJsonLdLocation(item: Record<string, unknown>): string | null {
+  const loc = item.jobLocation as Record<string, unknown> | undefined;
+  if (!loc) return null;
+  const address = loc.address as Record<string, unknown> | undefined;
+  if (!address) return typeof loc.name === 'string' ? loc.name : null;
+  const parts = [address.addressLocality, address.addressRegion].filter((p) => typeof p === 'string');
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+/** Fallback: extract job titles and URLs from iCIMS HTML structure. */
+function extractJobLinksFromHtml(html: string, baseUrl: string): ATSJob[] {
+  const jobs: ATSJob[] = [];
+  const seen = new Set<string>();
+  const baseOrigin = new URL(baseUrl).origin;
+
+  // iCIMS job links typically follow pattern: /jobs/{id}/job or /jobs/{id}/{title-slug}
+  const linkPattern = /<a[^>]+href=["']([^"']*\/jobs\/\d+[^"']*)["'][^>]*>([^<]+)<\/a>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkPattern.exec(html)) !== null) {
+    const href = match[1];
+    const title = match[2].trim();
+    if (!title || title.length < 3) continue;
+
+    // Skip navigation/filter links
+    if (/search|filter|category|page|sort/i.test(title)) continue;
+
+    const fullUrl = href.startsWith('http') ? href : `${baseOrigin}${href}`;
+    const key = fullUrl.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    jobs.push({
+      title,
+      url: fullUrl,
+      location: null,
+      salaryRange: null,
+      descriptionSnippet: null,
+      source: 'icims',
+    });
+  }
+
+  return jobs;
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 
 export async function fetchFromATS(platform: ATSPlatform, slug: string): Promise<ATSJob[]> {
@@ -169,6 +313,7 @@ export async function fetchFromATS(platform: ATSPlatform, slug: string): Promise
     case 'greenhouse': return fetchGreenhouseJobs(slug);
     case 'ashby': return fetchAshbyJobs(slug);
     case 'workday': return fetchWorkdayJobs(slug);
+    case 'icims': return fetchICIMSJobs(slug);
     default: return [];
   }
 }

@@ -1,0 +1,139 @@
+/**
+ * Unit tests for server/src/lib/ni/serper-job-search.ts
+ *
+ * Verifies Serper query construction and result parsing.
+ */
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../lib/logger.js', () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+import { searchJobsViaSerper } from '../lib/ni/serper-job-search.js';
+
+describe('searchJobsViaSerper', () => {
+  const originalFetch = globalThis.fetch;
+  const originalEnv = process.env.SERPER_API_KEY;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.SERPER_API_KEY = 'test-key';
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) {
+      process.env.SERPER_API_KEY = originalEnv;
+    } else {
+      delete process.env.SERPER_API_KEY;
+    }
+  });
+
+  it('builds query with icims.com in site clause', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['Director']);
+
+    expect(capturedBody).toBeDefined();
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).toContain('site:icims.com');
+  });
+
+  it('does not include the word "careers" in the query', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP Engineering']);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).not.toMatch(/\bcareers\b/i);
+  });
+
+  it('does not produce double spaces when no target title', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('TestCo', []);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).not.toContain('  ');
+  });
+
+  it('includes all five ATS site clauses', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('TestCo', []);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).toContain('site:boards.greenhouse.io');
+    expect(parsed.q).toContain('site:jobs.lever.co');
+    expect(parsed.q).toContain('site:myworkdayjobs.com');
+    expect(parsed.q).toContain('site:jobs.ashbyhq.com');
+    expect(parsed.q).toContain('site:icims.com');
+  });
+
+  it('quotes company name and target title', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP of Engineering']);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).toContain('"Acme Corp"');
+    expect(parsed.q).toContain('"VP of Engineering"');
+  });
+
+  it('filters results to known ATS domains only', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          { title: 'Director at Acme - Greenhouse', link: 'https://boards.greenhouse.io/acme/jobs/123', snippet: 'Great role' },
+          { title: 'Director at Acme - Blog', link: 'https://blog.acme.com/hiring', snippet: 'We are hiring' },
+          { title: 'Nurse Manager - iCIMS', link: 'https://careers-acme.icims.com/jobs/456/nurse-manager/job', snippet: 'Healthcare role' },
+        ],
+      }),
+    });
+
+    const jobs = await searchJobsViaSerper('Acme Corp', ['Director']);
+
+    // Blog link should be filtered out, Greenhouse and iCIMS links kept
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0].source).toBe('serper');
+    expect(jobs[0].url).toContain('greenhouse.io');
+    expect(jobs[1].url).toContain('icims.com');
+  });
+
+  it('returns empty array when SERPER_API_KEY is not set', async () => {
+    delete process.env.SERPER_API_KEY;
+    globalThis.fetch = vi.fn();
+
+    const jobs = await searchJobsViaSerper('Acme', ['Director']);
+
+    expect(jobs).toEqual([]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
