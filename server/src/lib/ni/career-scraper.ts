@@ -83,6 +83,53 @@ export function detectReferralBonusInText(
   return { detected: true };
 }
 
+// ─── Referral bonus upsert ────────────────────────────────────────────────────
+
+async function upsertDiscoveredBonus(
+  companyId: string,
+  amount: string | undefined,
+  dataSource: string,
+  programUrl?: string,
+): Promise<boolean> {
+  try {
+    // Check if a program already exists
+    const { data: existing } = await supabaseAdmin
+      .from('referral_bonus_programs')
+      .select('id, confidence')
+      .eq('company_id', companyId)
+      .limit(1)
+      .maybeSingle();
+
+    // Never overwrite high or medium confidence data
+    if (existing && existing.confidence !== 'low') return false;
+
+    // If existing low-confidence row and no new amount info, skip
+    if (existing && !amount) return false;
+
+    const row: Record<string, unknown> = {
+      company_id: companyId,
+      bonus_amount: amount ?? 'Available',
+      bonus_currency: 'USD',
+      confidence: 'low',
+      data_source: dataSource,
+      last_verified_at: new Date().toISOString(),
+    };
+    if (programUrl) row.program_url = programUrl;
+
+    const { error } = await supabaseAdmin
+      .from('referral_bonus_programs')
+      .upsert(row, { onConflict: 'company_id' });
+
+    if (error) {
+      logger.debug({ error: error.message, companyId }, 'upsertDiscoveredBonus: failed');
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Referral bonus lookup ────────────────────────────────────────────────────
 
 async function hasReferralProgram(companyId: string): Promise<boolean> {
@@ -178,6 +225,29 @@ async function scanCompany(
 
   if (allJobs.length === 0) {
     return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
+  }
+
+  // Passive referral bonus detection — scan job descriptions for bonus mentions
+  if (!(await hasReferralProgram(company.id))) {
+    for (const job of allJobs.slice(0, 10)) { // Check first 10 jobs max
+      if (!job.descriptionSnippet) continue;
+      const bonusResult = detectReferralBonusInText(job.descriptionSnippet);
+      if (bonusResult.detected) {
+        const inserted = await upsertDiscoveredBonus(
+          company.id,
+          bonusResult.amount,
+          'job_posting_scan',
+          job.url ?? undefined,
+        );
+        if (inserted) {
+          logger.info(
+            { companyId: company.id, companyName: company.name, amount: bonusResult.amount },
+            'job-scanner: discovered referral bonus from job posting',
+          );
+        }
+        break; // One detection per company is enough
+      }
+    }
   }
 
   // Filter to matching jobs and store

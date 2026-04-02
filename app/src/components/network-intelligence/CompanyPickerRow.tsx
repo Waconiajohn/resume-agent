@@ -133,12 +133,12 @@ export function CompanyPickerRow({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[#afc4ff]/80 hover:text-[#afc4ff] hover:underline"
+                      className="text-[var(--link)] hover:text-[var(--link-hover)] hover:underline"
                     >
                       {conn.firstName} {conn.lastName}
                     </a>
                     {conn.position && (
-                      <span className="truncate text-[var(--text-soft)]/60">{conn.position}</span>
+                      <span className="truncate text-[var(--text-muted)]">{conn.position}</span>
                     )}
                   </li>
                 );

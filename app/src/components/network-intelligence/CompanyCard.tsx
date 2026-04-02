@@ -66,11 +66,6 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-medium text-[var(--text-strong)]">{displayName}</h3>
-          {company.topPositions.length > 0 && (
-            <p className="mt-0.5 truncate text-xs text-[var(--text-soft)]">
-              {company.topPositions.slice(0, 2).join(', ')}
-            </p>
-          )}
         </div>
         <span className="shrink-0 rounded-md bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
           {company.connectionCount}
@@ -97,12 +92,12 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[#afc4ff]/80 hover:text-[#afc4ff] hover:underline"
+                      className="text-[var(--link)] hover:text-[var(--link-hover)] hover:underline"
                     >
                       {conn.firstName} {conn.lastName}
                     </a>
                     {conn.position && (
-                      <span className="truncate pl-2 text-[var(--text-soft)]">{conn.position}</span>
+                      <span className="truncate pl-2 text-[var(--text-muted)]">{conn.position}</span>
                     )}
                   </li>
                 );
