@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
 import type { JobMatchSearchContext } from '@/types/ni';
 
+const SCAN_TIMEOUT_MS = 5 * 60_000; // 5 minutes
+const STALE_THRESHOLD_MS = 10 * 60_000; // 10 minutes
+
 export interface NiScrapeStatus {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
@@ -42,6 +45,11 @@ function buildResult(log: NiScrapeStatus): NiScrapeResult {
   };
 }
 
+function isStale(startedAt?: string): boolean {
+  if (!startedAt) return false;
+  return Date.now() - new Date(startedAt).getTime() > STALE_THRESHOLD_MS;
+}
+
 export function useNiScrapeRunner(accessToken: string | null) {
   const [scrapeLogId, setScrapeLogId] = useState<string | null>(null);
   const [scrapeStatus, setScrapeStatus] = useState<NiScrapeStatus | null>(null);
@@ -50,12 +58,17 @@ export function useNiScrapeRunner(accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousTokenRef = useRef<string | null>(accessToken);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current !== null) {
       clearInterval(pollRef.current);
       pollRef.current = null;
+    }
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   }, []);
 
@@ -80,6 +93,10 @@ export function useNiScrapeRunner(accessToken: string | null) {
         stopPolling();
         setRunning(false);
         setError(log.error_message ?? 'Scan failed. Please try again.');
+      } else if (log.status === 'running' && isStale(log.started_at)) {
+        stopPolling();
+        setRunning(false);
+        setError('Scan appears stuck. Please try again.');
       }
     } catch {
       // Keep polling on transient failures.
@@ -106,6 +123,14 @@ export function useNiScrapeRunner(accessToken: string | null) {
 
     setError(previousToken ? 'Sign in again to continue scanning.' : null);
   }, [accessToken, stopPolling]);
+
+  const cancel = useCallback(() => {
+    stopPolling();
+    setRunning(false);
+    setError(null);
+    setScrapeStatus(null);
+    setScrapeLogId(null);
+  }, [stopPolling]);
 
   const startScan = useCallback(async ({
     companyIds,
@@ -158,6 +183,14 @@ export function useNiScrapeRunner(accessToken: string | null) {
 
       void pollStatus(logId);
       pollRef.current = setInterval(() => void pollStatus(logId), 3_000);
+
+      // Safety timeout — don't spin forever
+      timeoutRef.current = setTimeout(() => {
+        stopPolling();
+        setRunning(false);
+        setError('Scan timed out. Results may still be processing — try refreshing the page.');
+      }, SCAN_TIMEOUT_MS);
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start scan. Please try again.');
@@ -183,6 +216,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
     error,
     startScan,
     reset,
+    cancel,
     currentScanned: scrapeStatus?.output_summary.companies_scanned ?? 0,
   };
 }

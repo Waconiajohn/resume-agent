@@ -55,6 +55,8 @@ interface V2ResumeScreenProps {
   accessToken: string | null;
   onBack: () => void;
   initialResumeText?: string;
+  initialJobUrl?: string;
+  onLoadMasterResume?: () => Promise<string | null>;
   /** Load a completed V2 session from history */
   initialSessionId?: string;
   onSyncToMasterResume?: (
@@ -129,7 +131,7 @@ function extractResumeExcerptForSection(resume: ResumeDraft, section: string | u
   return resumeToPlainText(resume);
 }
 
-export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
+export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
   const storageUserId = useMemo(() => decodeUserIdFromAccessToken(accessToken), [accessToken]);
@@ -1248,6 +1250,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         loading={isStarting}
         error={sessionLoadError ?? error}
         initialResumeText={initialResumeText}
+        initialJobUrl={initialJobUrl}
+        onLoadMasterResume={onLoadMasterResume}
       />
     );
   }

@@ -15,7 +15,9 @@ import {
   getEnrichedConnectionsByUser,
   getConnectionCount,
   getCompanySummary,
+  getConnectionsByCompanyRaw,
   createScrapeLogEntry,
+  completeScrapeLogEntry,
 } from '../lib/ni/connections-store.js';
 import {
   insertTargetTitle,
@@ -140,6 +142,18 @@ ni.get('/connections/companies', rateLimitMiddleware(60, 60_000), async (c) => {
   return c.json({ companies });
 });
 
+ni.get('/connections/by-company', rateLimitMiddleware(60, 60_000), async (c) => {
+  const userId = c.get('user').id;
+  const companyRaw = c.req.query('company_raw');
+
+  if (!companyRaw || companyRaw.trim().length === 0) {
+    return c.json({ error: 'company_raw query parameter is required' }, 400);
+  }
+
+  const connections = await getConnectionsByCompanyRaw(userId, companyRaw);
+  return c.json({ connections });
+});
+
 // ─── Target Titles ───────────────────────────────────────────────────────────
 
 ni.get('/target-titles', rateLimitMiddleware(60, 60_000), async (c) => {
@@ -188,7 +202,13 @@ ni.get('/matches', rateLimitMiddleware(60, 60_000), async (c) => {
   const offset = parseInt(c.req.query('offset') ?? '0', 10) || 0;
 
   const matches = await getJobMatchesByUser(userId, { status, limit, offset });
-  return c.json({ matches });
+  const enriched = matches.map((m) => {
+    const rec = m as unknown as Record<string, unknown>;
+    const company = rec.company_directory as { name_display: string } | null;
+    const { company_directory: _cd, ...rest } = rec;
+    return { ...rest, company_name: company?.name_display ?? null };
+  });
+  return c.json({ matches: enriched });
 });
 
 ni.post('/matches', rateLimitMiddleware(30, 60_000), async (c) => {
@@ -347,6 +367,16 @@ ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
 
   if (error || !data) {
     return c.json({ error: 'Scrape log not found' }, 404);
+  }
+
+  // Auto-recover stale scans (e.g., server restarted mid-scan)
+  const log = data as Record<string, unknown>;
+  if (log.status === 'running' && log.started_at) {
+    const age = Date.now() - new Date(log.started_at as string).getTime();
+    if (age > 10 * 60_000) {
+      await completeScrapeLogEntry(logId, 'failed', log.output_summary as Record<string, unknown> ?? {}, 'Scan timed out');
+      return c.json({ log: { ...log, status: 'failed', error_message: 'Scan timed out' } });
+    }
   }
 
   return c.json({ log: data });

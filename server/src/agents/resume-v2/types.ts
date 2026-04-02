@@ -188,6 +188,11 @@ export interface GapStrategy {
     /** What kind of answer would help (guides the user) */
     looking_for: string;
   }>;
+  /** 2-3 alternative resume bullet phrasings grounded in the candidate's real experience */
+  alternative_bullets?: Array<{
+    text: string;
+    angle: 'metric' | 'scope' | 'impact';
+  }>;
   coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
@@ -623,6 +628,15 @@ export interface GapCoachingCard {
     question: string;
     rationale: string;
     looking_for: string;
+  }>;
+  /** JD excerpt or benchmark rationale that created this requirement */
+  source_evidence?: string;
+  /** Whether this requirement came from the job description or the benchmark profile */
+  source?: 'job_description' | 'benchmark';
+  /** AI-drafted alternative bullet phrasings for this gap */
+  alternative_bullets?: Array<{
+    text: string;
+    angle: 'metric' | 'scope' | 'impact';
   }>;
   coaching_policy?: RequirementCoachingPolicySnapshot;
 }

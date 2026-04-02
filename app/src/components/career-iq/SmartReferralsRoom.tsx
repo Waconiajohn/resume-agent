@@ -82,6 +82,7 @@ interface OutreachPrefill {
 
 interface SmartReferralsRoomProps {
   initialFocus?: string | null;
+  onNavigate?: (route: string) => void;
 }
 
 const FOCUS_TO_TAB: Partial<Record<string, SmartReferralsTab>> = {
@@ -119,10 +120,14 @@ function NetworkSetupPanel({
   accessToken,
   supportView,
   onToggleSupportView,
+  onViewMatches,
+  onScanComplete,
 }: {
   accessToken: string;
   supportView: NetworkSupportView;
   onToggleSupportView: (view: Exclude<NetworkSupportView, null>) => void;
+  onViewMatches?: () => void;
+  onScanComplete?: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -158,18 +163,29 @@ function NetworkSetupPanel({
       </GlassCard>
 
       {supportView === 'targets' && <TargetTitlesManager accessToken={accessToken} />}
-      {supportView === 'job-scan' && <ScrapeJobsPanel accessToken={accessToken} />}
+      {supportView === 'job-scan' && (
+        <ScrapeJobsPanel
+          accessToken={accessToken}
+          onViewMatches={onViewMatches}
+          onScanComplete={onScanComplete}
+        />
+      )}
     </div>
   );
 }
 
-export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
+export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartReferralsRoomProps) {
   const { user, session, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
   const [networkSupportView, setNetworkSupportView] = useState<NetworkSupportView>(null);
   const [hasConnections, setHasConnections] = useState(false);
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
+  const [matchRefreshKey, setMatchRefreshKey] = useState(0);
+
+  const handleScanComplete = useCallback(() => {
+    setMatchRefreshKey(k => k + 1);
+  }, []);
   const accessToken = session?.access_token ?? null;
   const requestedTab = resolveFocusTab(initialFocus);
   const previousAccessTokenRef = useRef<string | null>(accessToken);
@@ -274,6 +290,10 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
     setNetworkSupportView(null);
   }, []);
 
+  const handleApplyWithResume = useCallback((jobUrl: string) => {
+    onNavigate?.(`/resume-builder/session?jobUrl=${encodeURIComponent(jobUrl)}`);
+  }, [onNavigate]);
+
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
     trackProductEvent('smart_referrals_outreach_opened', {
       path: prefill.referralContext ? 'bonus' : 'network',
@@ -335,6 +355,8 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
               setActiveTab('connections');
               setNetworkSupportView((current) => (current === view ? null : view));
             }}
+            onViewMatches={() => setActiveTab('job-matches')}
+            onScanComplete={handleScanComplete}
           />
         );
       case 'targets':
@@ -350,10 +372,18 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
                 ? 'Review the roles coming from the bonus-company path. Use this lane when the payout is worth chasing even without a first-degree connection.'
                 : 'Review the roles found at companies where you already know someone, then move straight into outreach or your main job pipeline.'
             }
+            onApplyWithResume={onNavigate ? handleApplyWithResume : undefined}
+            refreshKey={matchRefreshKey}
           />
         );
       case 'job-scan':
-        return <ScrapeJobsPanel accessToken={accessToken} />;
+        return (
+          <ScrapeJobsPanel
+            accessToken={accessToken}
+            onViewMatches={() => setActiveTab('job-matches')}
+            onScanComplete={handleScanComplete}
+          />
+        );
       case 'bonus-search':
         return <BonusSearchPanel accessToken={accessToken} />;
       case 'referrals':

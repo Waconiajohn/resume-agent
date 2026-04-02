@@ -25,6 +25,9 @@ interface CardState {
   action: GapCoachingAction | null;
   contextText: string;
   showContextInput: boolean;
+  selectedAlternativeIndex: number | null;
+  editMode: 'none' | 'edit-alternative' | 'write-own';
+  editedText: string;
 }
 
 // ─── Props ───────────────────────────────────────────────────────────
@@ -153,6 +156,16 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         </div>
       </div>
 
+      {/* JD context — what requirement this addresses and why */}
+      {card.source_evidence && (
+        <div className="mx-4 mb-3 rounded-[12px] border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3.5 py-2.5">
+          <div className="text-[12px] font-bold text-[var(--text-soft)] uppercase tracking-widest mb-1">
+            {card.source === 'benchmark' ? 'From the benchmark profile' : 'From the job description'}
+          </div>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed italic">&ldquo;{card.source_evidence}&rdquo;</p>
+        </div>
+      )}
+
       {/* Coach reasoning bubble */}
       <div className="mx-4 mb-3 flex gap-3">
         {/* Avatar */}
@@ -233,6 +246,68 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
         </div>
       )}
 
+      {/* Alternative bullets picker */}
+      {card.alternative_bullets && card.alternative_bullets.length > 0 && (
+        <div className="mx-4 mb-3">
+          <div className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-2">
+            Alternative phrasings
+          </div>
+          <div className="space-y-1.5">
+            {card.alternative_bullets.map((alt, altIdx) => (
+              <button
+                key={altIdx}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange({
+                  selectedAlternativeIndex: state.selectedAlternativeIndex === altIdx ? null : altIdx,
+                  editMode: 'none',
+                  editedText: '',
+                })}
+                className={cn(
+                  'w-full text-left rounded-[10px] border px-3 py-2 transition-colors',
+                  state.selectedAlternativeIndex === altIdx
+                    ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10'
+                    : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--line-strong)]',
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <div className={cn(
+                    'mt-1 h-3 w-3 shrink-0 rounded-full border-2 transition-colors',
+                    state.selectedAlternativeIndex === altIdx
+                      ? 'border-[#afc4ff] bg-[#afc4ff]'
+                      : 'border-[var(--text-soft)]',
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
+                      {alt.angle}
+                    </span>
+                    <p className="text-sm text-[var(--text-muted)] leading-relaxed mt-0.5">{alt.text}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Edit textarea (shown when editing an alternative or writing own) */}
+      <div
+        className={cn(
+          'mx-4 overflow-hidden transition-all duration-300',
+          state.editMode !== 'none' ? 'max-h-40 mb-3 opacity-100' : 'max-h-0 mb-0 opacity-0',
+        )}
+      >
+        <textarea
+          value={state.editedText}
+          onChange={e => onChange({ editedText: e.target.value })}
+          disabled={disabled}
+          placeholder={state.editMode === 'write-own' ? 'Write your own bullet…' : 'Edit the selected alternative…'}
+          rows={3}
+          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+          aria-label={`Edit bullet for: ${card.requirement}`}
+        />
+      </div>
+
       {/* Context textarea (shown when "I have more context" is active) */}
       <div
         className={cn(
@@ -253,19 +328,91 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
       {/* Action buttons */}
       <div className="px-4 pb-4 flex items-center gap-2 flex-wrap">
-        {/* Approve */}
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange({ action: 'approve', showContextInput: false })}
-          className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label={`Approve strategy for: ${card.requirement}`}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Use this strategy
-        </button>
+        {/* Use selected alternative */}
+        {state.selectedAlternativeIndex !== null && state.editMode === 'none' && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              const alt = card.alternative_bullets?.[state.selectedAlternativeIndex!];
+              onChange({ action: 'approve', contextText: alt?.text ?? '', showContextInput: false });
+            }}
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25 hover:bg-[#b5dec2]/25 hover:border-[#b5dec2]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label={`Use selected alternative for: ${card.requirement}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Use this one
+          </button>
+        )}
 
-        {/* Context toggle / submit */}
+        {/* Edit selected alternative */}
+        {state.selectedAlternativeIndex !== null && state.editMode === 'none' && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              const alt = card.alternative_bullets?.[state.selectedAlternativeIndex!];
+              onChange({ editMode: 'edit-alternative', editedText: alt?.text ?? '' });
+            }}
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--surface-1)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:bg-[var(--surface-2)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Edit
+          </button>
+        )}
+
+        {/* Submit edited text */}
+        {state.editMode !== 'none' && (
+          <>
+            <button
+              type="button"
+              disabled={disabled || !state.editedText.trim()}
+              onClick={() => onChange({ action: 'approve', contextText: state.editedText.trim(), showContextInput: false })}
+              className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {state.editedText.trim() ? 'Use this' : 'Type above…'}
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange({ editMode: 'none', editedText: '' })}
+              className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors px-1"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+
+        {/* Approve proposed strategy (when no alternatives or none selected) */}
+        {!card.alternative_bullets?.length && state.selectedAlternativeIndex === null && state.editMode === 'none' && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange({ action: 'approve', showContextInput: false })}
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label={`Approve strategy for: ${card.requirement}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Use this strategy
+          </button>
+        )}
+
+        {/* Write my own */}
+        {state.editMode === 'none' && !state.showContextInput && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange({ editMode: 'write-own', editedText: '', selectedAlternativeIndex: null })}
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--surface-1)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:bg-[var(--surface-2)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Write my own
+          </button>
+        )}
+
+        {/* Legacy: Context toggle / submit (kept for cards without alternatives) */}
+        {!card.alternative_bullets?.length && state.editMode === 'none' && (
+        <>
         <button
           type="button"
           disabled={disabled}
@@ -311,6 +458,8 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             Cancel
           </button>
         )}
+        </>
+        )}
 
         {/* Skip */}
         <button
@@ -345,7 +494,14 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
 export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapCoachingCardProps) {
   const [cardStates, setCardStates] = useState<CardState[]>(() =>
-    cards.map(() => ({ action: null, contextText: '', showContextInput: false }))
+    cards.map(() => ({
+      action: null,
+      contextText: '',
+      showContextInput: false,
+      selectedAlternativeIndex: null,
+      editMode: 'none' as const,
+      editedText: '',
+    }))
   );
 
   const allResponded = cardStates.every(s => s.action !== null);
@@ -366,8 +522,12 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
         requirement: card.requirement,
         action: s.action ?? 'skip',
       };
-      if (s.action === 'context' && s.contextText.trim()) {
+      if (s.action === 'approve' && s.contextText.trim()) {
+        // User selected an alternative bullet — pass the text
         resp.user_context = s.contextText.trim();
+      } else if (s.action === 'context') {
+        // User edited or wrote their own — pass the edited text or context
+        resp.user_context = (s.editedText.trim() || s.contextText.trim()) || undefined;
       }
       return resp;
     });

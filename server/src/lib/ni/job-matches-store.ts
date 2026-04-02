@@ -22,6 +22,7 @@ export interface InsertJobMatch {
   referral_available?: boolean;
   connection_count?: number;
   status?: JobMatchRow['status'];
+  posted_on?: string;
   scraped_at?: string;
   metadata?: Record<string, unknown>;
 }
@@ -45,6 +46,7 @@ export async function insertJobMatch(
         referral_available: match.referral_available ?? false,
         connection_count: match.connection_count ?? 0,
         status: match.status ?? 'new',
+        posted_on: match.posted_on ?? null,
         scraped_at: match.scraped_at ?? null,
         metadata: match.metadata ?? {},
       })
@@ -84,7 +86,7 @@ export async function getJobMatchesByUser(
 
     let query = supabaseAdmin
       .from('job_matches')
-      .select('*')
+      .select('*, company_directory(name_display)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);

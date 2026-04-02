@@ -36,6 +36,7 @@ export async function insertConnections(
       position: c.position,
       connected_on: c.connectedOn ? c.connectedOn.toISOString() : null,
       import_batch: importBatch ?? null,
+      linkedin_url: c.linkedinUrl ?? null,
     }));
 
     try {
@@ -190,6 +191,44 @@ export async function getConnectionCount(userId: string): Promise<number> {
   }
 }
 
+// ─── Connections by Company ──────────────────────────────────────────────────
+
+export interface CompanyConnectionRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  position: string | null;
+  linkedin_url: string | null;
+}
+
+export async function getConnectionsByCompanyRaw(
+  userId: string,
+  companyRaw: string,
+): Promise<CompanyConnectionRow[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('client_connections')
+      .select('id, first_name, last_name, position, linkedin_url')
+      .eq('user_id', userId)
+      .eq('company_raw', companyRaw)
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true });
+
+    if (error) {
+      logger.error({ error: error.message, userId, companyRaw }, 'getConnectionsByCompanyRaw: query failed');
+      return [];
+    }
+
+    return (data ?? []) as CompanyConnectionRow[];
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err), userId },
+      'getConnectionsByCompanyRaw: unexpected error',
+    );
+    return [];
+  }
+}
+
 // ─── Company Summary ─────────────────────────────────────────────────────────
 
 /**
@@ -296,6 +335,27 @@ export async function createScrapeLogEntry(
       'createScrapeLogEntry: unexpected error',
     );
     return null;
+  }
+}
+
+/**
+ * Update scrape log progress mid-scan (non-blocking).
+ */
+export async function updateScrapeLogProgress(
+  logId: string,
+  outputSummary: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin
+      .from('scrape_log')
+      .update({ output_summary: outputSummary })
+      .eq('id', logId);
+
+    if (error) {
+      logger.debug({ error: error.message, logId }, 'updateScrapeLogProgress: failed');
+    }
+  } catch {
+    // Non-blocking — progress update failures should not interrupt scanning
   }
 }
 

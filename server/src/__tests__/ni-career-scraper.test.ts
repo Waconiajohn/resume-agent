@@ -82,6 +82,7 @@ function makeATSJobs(titles: string[], source: ATSJob['source'] = 'greenhouse'):
     location: 'San Francisco, CA',
     salaryRange: null,
     descriptionSnippet: null,
+    postedOn: null,
     source,
   }));
 }

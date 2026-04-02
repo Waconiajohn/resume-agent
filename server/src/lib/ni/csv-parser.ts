@@ -15,6 +15,7 @@ import type { ParsedConnection, CsvParseResult, CsvParseError } from './types.js
 const HEADER_ALIASES: Record<string, string[]> = {
   'first name': ['first name', 'firstname', 'first_name', 'fname'],
   'last name': ['last name', 'lastname', 'last_name', 'lname'],
+  'url': ['url', 'profile url', 'linkedin url', 'linkedin_url', 'profile_url'],
   'email address': ['email address', 'email', 'email_address', 'e-mail'],
   'company': ['company', 'company name', 'current company', 'company_name', 'organization'],
   'position': ['position', 'title', 'job title', 'job_title', 'role'],
@@ -213,10 +214,12 @@ export function parseCsv(csvText: string): CsvParseResult {
       }
       seenKeys.add(dedupKey);
 
+      const urlIdx = headerMap.get('url');
       const emailIdx = headerMap.get('email address');
       const positionIdx = headerMap.get('position');
       const connectedOnIdx = headerMap.get('connected on');
 
+      const linkedinUrl = urlIdx !== undefined ? (fields[urlIdx] ?? '').trim() || null : null;
       const email = emailIdx !== undefined ? (fields[emailIdx] ?? '').trim() || null : null;
       const position = positionIdx !== undefined ? (fields[positionIdx] ?? '').trim() || null : null;
       const connectedOnRaw = connectedOnIdx !== undefined ? (fields[connectedOnIdx] ?? '').trim() : '';
@@ -229,6 +232,7 @@ export function parseCsv(csvText: string): CsvParseResult {
         companyRaw: stripCompanySuffix(company),
         position,
         connectedOn,
+        linkedinUrl,
       });
     } catch {
       errors.push({ row: rowNum, message: 'Failed to parse row' });

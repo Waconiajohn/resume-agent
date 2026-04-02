@@ -260,6 +260,9 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
           evidence_found: req?.evidence ?? [],
           previously_approved: !!previouslyApproved,
           interview_questions: ps.strategy.interview_questions,
+          source_evidence: req?.source_evidence,
+          source: req?.source,
+          alternative_bullets: ps.strategy.alternative_bullets,
           coaching_policy: ps.strategy.coaching_policy ?? getRequirementCoachingPolicySnapshot(ps.requirement),
         };
       });
@@ -479,8 +482,13 @@ function buildApprovedStrategies(
     if (!ps) continue;
 
     if (response.action === 'approve') {
+      // If user selected an alternative bullet, substitute the positioning text
+      const strategy = response.user_context
+        ? { ...ps.strategy, positioning: response.user_context }
+        : ps.strategy;
       approved.push({
         ...ps,
+        strategy,
         target_section: response.target_section,
         target_company: response.target_company,
       });

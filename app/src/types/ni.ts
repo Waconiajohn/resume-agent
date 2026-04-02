@@ -20,6 +20,7 @@ export interface ConnectionItem {
   companyNormalized: string | null;
   position: string | null;
   connectedOn: string | null;
+  linkedinUrl: string | null;
 }
 
 export interface CompanySummary {
@@ -28,6 +29,14 @@ export interface CompanySummary {
   companyId: string | null;
   connectionCount: number;
   topPositions: string[];
+}
+
+export interface CompanyConnectionName {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string | null;
+  linkedinUrl: string | null;
 }
 
 export interface TargetTitle {
@@ -58,6 +67,7 @@ export type JobMatchStatus = 'new' | 'applied' | 'referred' | 'interviewing' | '
 export interface JobMatch {
   id: string;
   companyId: string;
+  companyName: string | null;
   title: string;
   url: string | null;
   location: string | null;
@@ -68,6 +78,7 @@ export interface JobMatch {
   connectionCount: number;
   searchContext: JobMatchSearchContext | null;
   status: JobMatchStatus;
+  postedOn: string | null;
   scrapedAt: string | null;
   createdAt: string;
 }

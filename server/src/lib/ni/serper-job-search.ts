@@ -139,6 +139,7 @@ function parseSerperResults(data: SerperResponse, companyName: string): ATSJob[]
       location: extractLocationFromSnippet(result.snippet),
       salaryRange: null,
       descriptionSnippet: result.snippet?.slice(0, 300) ?? null,
+      postedOn: null,
       source: 'serper',
     });
   }

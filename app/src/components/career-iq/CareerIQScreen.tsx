@@ -392,7 +392,7 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'networking') {
-      return <SmartReferralsRoom initialFocus={normalizedWorkspaceFocus} />;
+      return <SmartReferralsRoom initialFocus={normalizedWorkspaceFocus} onNavigate={onNavigate} />;
     }
 
     const unhandledRoom: never = activeRoom;

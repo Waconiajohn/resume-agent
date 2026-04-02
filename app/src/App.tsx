@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
@@ -168,6 +168,11 @@ export default function App() {
     setV2SessionId(currentSession.id);
     navigate(RESUME_BUILDER_SESSION_ROUTE, { replace: true });
   }, [currentSession, location.pathname, navigate]);
+
+  const intakeInitialJobUrl = useMemo(() => {
+    if (location.pathname !== RESUME_BUILDER_SESSION_ROUTE) return '';
+    return new URLSearchParams(location.search).get('jobUrl')?.trim() ?? '';
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!accessToken) return undefined;
@@ -615,6 +620,11 @@ export default function App() {
                     accessToken={accessToken}
                     onBack={() => navigate(buildResumeWorkspaceRoute())}
                     initialResumeText={intakeInitialResumeText}
+                    initialJobUrl={intakeInitialJobUrl}
+                    onLoadMasterResume={async () => {
+                      const resume = await getDefaultResume();
+                      return resume?.raw_text?.trim() || null;
+                    }}
                     initialSessionId={v2SessionId ?? undefined}
                     onSyncToMasterResume={handleSyncV2ResumeToMaster}
                   />

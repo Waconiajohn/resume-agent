@@ -82,6 +82,11 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
             "rationale": "The JD requires P&L ownership — if they managed a team of 40+, the implied payroll budget alone could demonstrate budget accountability.",
             "looking_for": "Team size, budget figures, geographic span, or any P&L-adjacent responsibility"
           }
+        ],
+        "alternative_bullets": [
+          { "text": "A metric-focused version of the positioning bullet", "angle": "metric" },
+          { "text": "A scope/breadth-focused version", "angle": "scope" },
+          { "text": "A business-impact-focused version", "angle": "impact" }
         ]
       }
     }
@@ -122,6 +127,11 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
             "rationale": "why this question could surface useful evidence",
             "looking_for": "what kind of answer would strengthen the positioning"
           }
+        ],
+        "alternative_bullets": [
+          { "text": "metric-focused phrasing grounded in candidate's real experience", "angle": "metric" },
+          { "text": "scope/breadth-focused phrasing", "angle": "scope" },
+          { "text": "business-impact-focused phrasing", "angle": "impact" }
         ]
       }
     }
@@ -167,6 +177,11 @@ RULES:
 - SPECIFICITY TEST: Before writing positioning, check: does this sentence contain at least ONE of [specific metric, company/project name, team size, tool/methodology, geographic scope, timeframe]? If not, rewrite it until it does.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
+- alternative_bullets: REQUIRED for every strategy. Generate EXACTLY 3 alternative resume bullet phrasings, each taking a different angle:
+  - "metric": quantified outcome (numbers, percentages, dollar amounts grounded in their real experience)
+  - "scope": scale and breadth (team size, geographic reach, systems/tools, organizational scope)
+  - "impact": business result (revenue, efficiency, reputation, growth, risk reduction)
+  Each alternative must be grounded in the candidate's actual resume evidence — no fabrication. Each must be ready to use as-is on a resume. Each must follow the same SPECIFICITY TEST and PRESERVATION RULE as the main positioning bullet.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
 - critical_gaps must contain only unresolved formal credential requirement strings (degrees, certifications, licenses, work authorization, years-of-experience minimums), not skills, competencies, explanations, evidence snippets, or serialized JSON.
 - Be honest about critical_gaps — but NEVER include skills, soft skills, or operational competencies. Those belong in pending_strategies as coaching opportunities.
@@ -1407,6 +1422,23 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
   if (questions.length > 0) {
     normalized.interview_questions = questions;
   }
+
+  // Sanitize alternative bullets
+  const validAngles = new Set<string>(['metric', 'scope', 'impact']);
+  if (Array.isArray(strategy.alternative_bullets)) {
+    const alts = (strategy.alternative_bullets as Array<unknown>)
+      .filter((item) =>
+        Boolean(item && typeof (item as { text?: unknown }).text === 'string' && typeof (item as { angle?: unknown }).angle === 'string' && validAngles.has((item as { angle: string }).angle)),
+      )
+      .map((item) => item as { text: string; angle: string })
+      .filter((item) => item.text.trim().length > 20)
+      .map((item) => ({ text: item.text.trim(), angle: item.angle as 'metric' | 'scope' | 'impact' }))
+      .slice(0, 3);
+    if (alts.length > 0) {
+      normalized.alternative_bullets = alts;
+    }
+  }
+
   normalized.coaching_policy = getRequirementCoachingPolicySnapshot(requirement);
 
   return normalized;

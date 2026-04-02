@@ -170,6 +170,7 @@ async function scanCompany(
       description_snippet: job.descriptionSnippet || undefined,
       match_score: score,
       referral_available: referral,
+      posted_on: job.postedOn || undefined,
       scraped_at: new Date().toISOString(),
       metadata: {
         source: job.source,
@@ -230,11 +231,19 @@ export async function searchJobsByCompany(
  * Matches against target titles and stores results via insertJobMatch().
  * Max 50 companies per run, 500ms delay between companies.
  */
+export type ScrapeProgressCallback = (progress: {
+  companies_scanned: number;
+  jobs_found: number;
+  matching_jobs: number;
+  referral_available: number;
+}) => void | Promise<void>;
+
 export async function scrapeCareerPages(
   companies: CompanyInfo[],
   targetTitles: string[],
   userId: string,
   searchContext: NiSearchContext = 'network_connections',
+  onProgress?: ScrapeProgressCallback,
 ): Promise<ScrapeResult> {
   const limited = companies.slice(0, MAX_COMPANIES);
   const errors: { company: string; error: string }[] = [];
@@ -271,6 +280,7 @@ export async function scrapeCareerPages(
       if (result.error) {
         errors.push({ company: company.name, error: result.error });
       }
+      await onProgress?.({ companies_scanned: companiesScanned, jobs_found: jobsFound, matching_jobs: matchingJobs, referral_available: referralAvailable });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logger.error({ error: msg, companyId: company.id, userId }, 'job-scanner: company scan threw');

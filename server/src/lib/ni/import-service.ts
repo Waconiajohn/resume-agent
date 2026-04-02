@@ -12,6 +12,7 @@ import {
   insertConnections,
   createScrapeLogEntry,
   completeScrapeLogEntry,
+  updateScrapeLogProgress,
 } from './connections-store.js';
 import { normalizeCompanyBatch } from './company-normalizer.js';
 import { runBulkEnrichment } from './ats-enrichment.js';
@@ -152,7 +153,9 @@ export async function runCareerScrape(
       }),
     );
 
-    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, searchContext);
+    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, searchContext, (progress) =>
+      updateScrapeLogProgress(scrapeLogId, progress),
+    );
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {
       companies_scanned: result.companiesScanned,

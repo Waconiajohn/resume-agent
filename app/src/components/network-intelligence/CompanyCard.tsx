@@ -11,7 +11,7 @@ export interface CompanyCardProps {
 
 export function CompanyCard({ company, accessToken }: CompanyCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [connections, setConnections] = useState<ConnectionItem[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   const displayName = company.companyDisplayName ?? company.companyRaw;
@@ -24,37 +24,38 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
 
     setExpanded(true);
 
-    if (connections.length > 0) return;
+    if (connections !== null) return;
     if (!accessToken) return;
 
     setLoading(true);
     try {
       const res = await fetch(
-        `${API_BASE}/ni/connections?limit=500`,
+        `${API_BASE}/ni/connections/by-company?company_raw=${encodeURIComponent(company.companyRaw)}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       if (res.ok) {
         const data = await res.json();
-        const filtered = (data.connections ?? [])
-          .filter((c: Record<string, unknown>) => c.company_raw === company.companyRaw)
-          .map((c: Record<string, unknown>) => ({
+        const mapped = ((data.connections ?? []) as Array<Record<string, unknown>>).map(
+          (c) => ({
             id: c.id as string,
             firstName: c.first_name as string,
             lastName: c.last_name as string,
-            email: (c.email as string) ?? null,
-            companyRaw: c.company_raw as string,
-            companyNormalized: (c.company_display_name as string) ?? null,
+            email: null,
+            companyRaw: company.companyRaw,
+            companyNormalized: company.companyDisplayName,
             position: (c.position as string) ?? null,
-            connectedOn: (c.connected_on as string) ?? null,
-          }));
-        setConnections(filtered);
+            connectedOn: null,
+            linkedinUrl: (c.linkedin_url as string) ?? null,
+          }),
+        );
+        setConnections(mapped);
       }
     } catch {
       // Silently fail — card still shows summary
     } finally {
       setLoading(false);
     }
-  }, [expanded, connections.length, accessToken, company.companyRaw]);
+  }, [expanded, connections, accessToken, company.companyRaw]);
 
   return (
     <GlassCard
@@ -84,18 +85,28 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
                 <div key={i} className="h-4 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
               ))}
             </div>
-          ) : connections.length > 0 ? (
+          ) : connections && connections.length > 0 ? (
             <ul className="space-y-1.5">
-              {connections.map((conn) => (
-                <li key={conn.id} className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--text-muted)]">
-                    {conn.firstName} {conn.lastName}
-                  </span>
-                  {conn.position && (
-                    <span className="truncate pl-2 text-[var(--text-soft)]">{conn.position}</span>
-                  )}
-                </li>
-              ))}
+              {connections.map((conn) => {
+                const linkedInUrl = conn.linkedinUrl
+                  ?? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${conn.firstName} ${conn.lastName} ${company.companyDisplayName ?? company.companyRaw}`)}`;
+                return (
+                  <li key={conn.id} className="flex items-center justify-between text-xs">
+                    <a
+                      href={linkedInUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[#afc4ff]/80 hover:text-[#afc4ff] hover:underline"
+                    >
+                      {conn.firstName} {conn.lastName}
+                    </a>
+                    {conn.position && (
+                      <span className="truncate pl-2 text-[var(--text-soft)]">{conn.position}</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-xs text-[var(--text-soft)]">No connection details available</p>

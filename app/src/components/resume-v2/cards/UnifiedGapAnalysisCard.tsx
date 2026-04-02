@@ -51,6 +51,12 @@ interface CoachingState {
   target_section: GapPlacementTarget;
   /** For 'experience' placement — which company */
   target_company: string;
+  /** Index of the selected alternative bullet, or null if none selected */
+  selectedAlternativeIndex: number | null;
+  /** Edit mode for alternative bullets */
+  editMode: 'none' | 'edit-alternative' | 'write-own';
+  /** Edited text when in edit mode */
+  editedText: string;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────
@@ -281,7 +287,7 @@ function RequirementRow({
       <div
         className={cn(
           'overflow-hidden transition-all duration-300',
-          expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0',
+          expanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0',
         )}
       >
         <div className="px-4 pb-4">
@@ -357,6 +363,78 @@ function RequirementRow({
             </div>
           </div>
 
+          {/* JD / benchmark source evidence — shown when coaching card has it */}
+          {hasCoaching && coaching.source_evidence && (
+            <div className="mt-3 rounded-[12px] border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3.5 py-2.5">
+              <div className="text-[12px] font-bold text-[var(--text-soft)] uppercase tracking-widest mb-1">
+                {req.source === 'benchmark' ? 'From the benchmark profile' : req.source === 'job_description' ? 'From the job description' : 'Why this matters'}
+              </div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed italic">&ldquo;{coaching.source_evidence}&rdquo;</p>
+            </div>
+          )}
+
+          {/* Alternative bullet phrasing picker */}
+          {hasCoaching && coaching.alternative_bullets && coaching.alternative_bullets.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-2">
+                Alternative phrasings
+              </div>
+              <div className="space-y-1.5">
+                {coaching.alternative_bullets.map((alt, altIdx) => (
+                  <button
+                    key={altIdx}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onCoachingChange({
+                      selectedAlternativeIndex: coachingState.selectedAlternativeIndex === altIdx ? null : altIdx,
+                      editMode: 'none',
+                      editedText: '',
+                    })}
+                    className={cn(
+                      'w-full text-left rounded-[10px] border px-3 py-2 transition-colors',
+                      coachingState.selectedAlternativeIndex === altIdx
+                        ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10'
+                        : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--line-strong)]',
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={cn(
+                        'mt-1 h-3 w-3 shrink-0 rounded-full border-2 transition-colors',
+                        coachingState.selectedAlternativeIndex === altIdx
+                          ? 'border-[#afc4ff] bg-[#afc4ff]'
+                          : 'border-[var(--text-soft)]',
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
+                          {alt.angle}
+                        </span>
+                        <p className="text-sm text-[var(--text-muted)] leading-relaxed mt-0.5">{alt.text}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Edit textarea for selected alternative */}
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-300',
+                  coachingState.editMode !== 'none' ? 'max-h-40 mt-2 opacity-100' : 'max-h-0 mt-0 opacity-0',
+                )}
+              >
+                <textarea
+                  value={coachingState.editedText}
+                  onChange={e => onCoachingChange({ editedText: e.target.value })}
+                  disabled={disabled}
+                  placeholder={coachingState.editMode === 'write-own' ? 'Write your own bullet…' : 'Edit the selected alternative…'}
+                  rows={3}
+                  className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+                  aria-label={`Edit bullet for: ${req.requirement}`}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Coaching context: structured questions or generic textarea */}
           {hasCoaching && coachingState.showContextInput && (
             <div className="mt-3 space-y-3">
@@ -421,6 +499,61 @@ function RequirementRow({
             {/* Coaching action buttons (partial/missing items) */}
             {hasCoaching && !isResponded && (
               <>
+                {/* Use selected alternative */}
+                {coachingState.selectedAlternativeIndex !== null && coachingState.editMode === 'none' && !coachingState.showPlacementPicker && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      const alt = coaching.alternative_bullets?.[coachingState.selectedAlternativeIndex!];
+                      onCoachingChange({ action: 'approve', editedText: alt?.text ?? '', showContextInput: false, showPlacementPicker: false });
+                    }}
+                    className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25 hover:bg-[#b5dec2]/25 hover:border-[#b5dec2]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label={`Use selected alternative for: ${req.requirement}`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Use this one
+                  </button>
+                )}
+
+                {/* Edit selected alternative */}
+                {coachingState.selectedAlternativeIndex !== null && coachingState.editMode === 'none' && !coachingState.showPlacementPicker && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      const alt = coaching.alternative_bullets?.[coachingState.selectedAlternativeIndex!];
+                      onCoachingChange({ editMode: 'edit-alternative', editedText: alt?.text ?? '' });
+                    }}
+                    className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--surface-1)] text-[var(--text-soft)] border border-[var(--line-soft)] hover:bg-[var(--surface-2)] hover:text-[var(--text-muted)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Edit
+                  </button>
+                )}
+
+                {/* Submit edited text */}
+                {coachingState.editMode !== 'none' && !coachingState.showPlacementPicker && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={disabled || !coachingState.editedText.trim()}
+                      onClick={() => onCoachingChange({ action: 'approve', showContextInput: false, showPlacementPicker: false })}
+                      className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {coachingState.editedText.trim() ? 'Use this' : 'Type above…'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onCoachingChange({ editMode: 'none', editedText: '' })}
+                      className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors px-1"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+
                 {/* Placement picker — shown after clicking "Use this draft" */}
                 {coachingState.showPlacementPicker && (
                   <div className="w-full mb-2 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2.5 space-y-2">
@@ -795,6 +928,9 @@ export function UnifiedGapAnalysisCard({
         showPlacementPicker: false,
         target_section: 'auto' as GapPlacementTarget,
         target_company: '',
+        selectedAlternativeIndex: null,
+        editMode: 'none' as const,
+        editedText: '',
       })),
   );
 
@@ -818,7 +954,21 @@ export function UnifiedGapAnalysisCard({
         requirement: card.requirement,
         action: s.action ?? 'skip',
       };
-      if (s.action === 'context') {
+      if (s.action === 'approve') {
+        // If user selected or edited an alternative bullet, pass the text as user_context
+        if (s.editMode !== 'none' && s.editedText.trim()) {
+          resp.user_context = s.editedText.trim();
+        } else if (s.selectedAlternativeIndex !== null) {
+          const alt = card.alternative_bullets?.[s.selectedAlternativeIndex];
+          if (alt?.text) resp.user_context = alt.text;
+        }
+        if (s.target_section && s.target_section !== 'auto') {
+          resp.target_section = s.target_section;
+          if (s.target_section === 'experience' && s.target_company) {
+            resp.target_company = s.target_company;
+          }
+        }
+      } else if (s.action === 'context') {
         // Build context from structured Q&A pairs when available
         const questions = coachingQuestions(card);
         const qaParts: string[] = [];
@@ -832,12 +982,6 @@ export function UnifiedGapAnalysisCard({
           resp.user_context = qaParts.join('\n\n');
         } else if (s.contextText.trim()) {
           resp.user_context = s.contextText.trim();
-        }
-      }
-      if (s.action === 'approve' && s.target_section && s.target_section !== 'auto') {
-        resp.target_section = s.target_section;
-        if (s.target_section === 'experience' && s.target_company) {
-          resp.target_company = s.target_company;
         }
       }
       return resp;

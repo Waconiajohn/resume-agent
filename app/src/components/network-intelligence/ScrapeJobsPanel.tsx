@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { API_BASE } from '@/lib/api';
 import type { CompanySummary, TargetTitle } from '@/types/ni';
 import { useNiScrapeRunner } from './useNiScrapeRunner';
+import { useCompanySelection } from './useCompanySelection';
+import { CompanyPickerList } from './CompanyPickerList';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -61,9 +63,12 @@ function ProgressBar({ scanned, total }: ProgressBarProps) {
 
 export interface ScrapeJobsPanelProps {
   accessToken: string | null;
+  onViewMatches?: () => void;
+  /** Called once when a scan result first appears (i.e. the scan just completed) */
+  onScanComplete?: () => void;
 }
 
-export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
+export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: ScrapeJobsPanelProps) {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [titles, setTitles] = useState<TargetTitle[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -76,7 +81,10 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
     error,
     currentScanned,
     startScan,
+    cancel,
   } = useNiScrapeRunner(accessToken);
+
+  const selection = useCompanySelection(companies);
 
   // ─── Load companies + titles ───────────────────────────────────────────────
 
@@ -159,20 +167,27 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
     };
   }, [accessToken, loadPanelData, normalizationPending, running]);
 
+  // ─── Notify parent when scan result first appears ─────────────────────────
+
+  const prevResultRef = useRef<typeof result>(null);
+  useEffect(() => {
+    if (result && !prevResultRef.current) {
+      onScanComplete?.();
+    }
+    prevResultRef.current = result;
+  }, [result, onScanComplete]);
+
   // ─── Start scrape ──────────────────────────────────────────────────────────
 
   const handleScan = useCallback(async () => {
-    const companyIds = companies
-      .filter((c) => c.companyId !== null)
-      .map((c) => c.companyId as string)
-      .slice(0, 50);
+    const companyIds = selection.getSelectedCompanyIds();
     await startScan({
       companyIds,
       targetTitles: titles.map((t) => t.title),
       searchContext: 'network_connections',
-      emptyMessage: 'No companies with recognized IDs found. Import connections and wait for normalization to complete.',
+      emptyMessage: 'Select at least one company to scan.',
     });
-  }, [companies, startScan, titles]);
+  }, [selection, startScan, titles]);
 
   // ─── Loading skeleton ──────────────────────────────────────────────────────
 
@@ -199,8 +214,8 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
             <h3 className="text-base font-semibold text-[var(--text-strong)]">Scan for Job Openings</h3>
             <p className="text-sm text-[var(--text-soft)]">
               Search career pages at{' '}
-              <span className="text-[var(--text-muted)]">{eligibleCompanyCount}</span>{' '}
-              of your connected companies
+              <span className="text-[var(--text-muted)]">{selection.selectedCount} selected</span>{' '}
+              of {eligibleCompanyCount} eligible companies
               {titles.length > 0 && (
                 <>
                   {' '}matching{' '}
@@ -222,7 +237,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
           <GlassButton
             onClick={() => void handleScan()}
-            disabled={running || eligibleCompanyCount === 0}
+            disabled={running || selection.selectedCount === 0}
             loading={running}
             className="shrink-0"
           >
@@ -233,7 +248,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
         {/* Active progress */}
         {running && scrapeLogId && (
           <div className="mt-5 space-y-3">
-            <ProgressBar scanned={currentScanned} total={eligibleCompanyCount} />
+            <ProgressBar scanned={currentScanned} total={selection.selectedCount} />
 
             {scrapeStatus && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -255,6 +270,16 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
             {!scrapeStatus && (
               <p className="text-center text-xs text-[var(--text-soft)]">Starting scan...</p>
             )}
+
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={cancel}
+                className="text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -265,6 +290,22 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
           </div>
         )}
       </GlassCard>
+
+      {/* Company picker */}
+      {eligibleCompanyCount > 0 && (
+        <CompanyPickerList
+          companies={companies}
+          selectedRaws={selection.selectedRaws}
+          selectedCount={selection.selectedCount}
+          maxSelection={selection.maxSelection}
+          isAtLimit={selection.isAtLimit}
+          onToggle={selection.toggleCompany}
+          onSelectAll={selection.selectAll}
+          onClear={selection.clearAll}
+          accessToken={accessToken}
+          disabled={running}
+        />
+      )}
 
       {/* Result summary card */}
       {result && !running && (
@@ -296,19 +337,27 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
           </div>
 
           {result.matchingJobs > 0 ? (
-            <p className="mt-4 text-center text-sm text-[var(--text-soft)]">
-              Found{' '}
-              <span className="font-medium text-[#afc4ff]/80">{result.matchingJobs}</span>{' '}
-              matching job{result.matchingJobs !== 1 ? 's' : ''}.
-              {result.referralAvailable > 0 && (
-                <>
-                  {' '}
-                  <span className="font-medium text-[#57CDA4]">{result.referralAvailable}</span>{' '}
-                  ha{result.referralAvailable !== 1 ? 've' : 's'} a referral bonus available.
-                </>
+            <div className="mt-4 space-y-3">
+              <p className="text-center text-sm text-[var(--text-soft)]">
+                Found{' '}
+                <span className="font-medium text-[#afc4ff]/80">{result.matchingJobs}</span>{' '}
+                matching job{result.matchingJobs !== 1 ? 's' : ''}.
+                {result.referralAvailable > 0 && (
+                  <>
+                    {' '}
+                    <span className="font-medium text-[#57CDA4]">{result.referralAvailable}</span>{' '}
+                    ha{result.referralAvailable !== 1 ? 've' : 's'} a referral bonus available.
+                  </>
+                )}
+              </p>
+              {onViewMatches && (
+                <div className="flex justify-center">
+                  <GlassButton onClick={onViewMatches}>
+                    View Matches
+                  </GlassButton>
+                </div>
               )}
-              {' '}View results in the Job Matches tab.
-            </p>
+            </div>
           ) : (
             <p className="mt-4 text-center text-sm text-[var(--text-soft)]">
               No matching jobs found this time. Try adjusting your target titles or scan again later.

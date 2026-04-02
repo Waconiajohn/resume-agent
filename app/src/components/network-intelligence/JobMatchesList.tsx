@@ -1,16 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import type { JobMatch, JobMatchSearchContext, JobMatchStatus } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 
 type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
 
+function formatAge(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(ms / 86_400_000);
+  if (days < 0) return null;
+  if (days === 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? '1 month ago' : `${months} months ago`;
+}
+
 export interface JobMatchesListProps {
   accessToken: string | null;
   initialFilter?: MatchFilter;
   title?: string;
   description?: string;
+  onApplyWithResume?: (jobUrl: string) => void;
+  /** Increment this key to trigger a re-fetch of matches (e.g. after a scan completes) */
+  refreshKey?: number;
 }
 
 const STATUS_OPTIONS: JobMatchStatus[] = ['new', 'applied', 'referred', 'interviewing', 'rejected', 'archived'];
@@ -52,6 +68,7 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
   return {
     id: m.id as string,
     companyId: m.company_id as string,
+    companyName: (m.company_name as string) ?? null,
     title: m.title as string,
     url: (m.url as string) ?? null,
     location: (m.location as string) ?? null,
@@ -62,6 +79,7 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
     connectionCount: m.connection_count as number,
     searchContext,
     status: m.status as JobMatchStatus,
+    postedOn: (m.posted_on as string) ?? null,
     scrapedAt: (m.scraped_at as string) ?? null,
     createdAt: m.created_at as string,
   };
@@ -72,6 +90,8 @@ export function JobMatchesList({
   initialFilter = 'all',
   title = 'Job Matches',
   description = 'Review one combined result stream, then narrow it by source or by known referral bonus.',
+  onApplyWithResume,
+  refreshKey,
 }: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +124,7 @@ export function JobMatchesList({
 
     void load();
     return () => { cancelled = true; };
-  }, [accessToken]);
+  }, [accessToken, refreshKey]);
 
   const filteredMatches = matches.filter((match) => {
     if (activeFilter === 'all') return true;
@@ -210,7 +230,18 @@ export function JobMatchesList({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="truncate text-sm font-medium text-[var(--text-strong)]">{match.title}</h4>
+                {match.url ? (
+                  <a
+                    href={match.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-sm font-medium text-[#afc4ff]/80 hover:text-[#afc4ff] hover:underline"
+                  >
+                    {match.title}
+                  </a>
+                ) : (
+                  <h4 className="truncate text-sm font-medium text-[var(--text-strong)]">{match.title}</h4>
+                )}
                 {match.searchContext && (
                   <span className={cn(
                     'shrink-0 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
@@ -226,11 +257,33 @@ export function JobMatchesList({
                 )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-soft)]">
+              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--text-soft)]">
+                {match.companyName && (
+                  <span className="text-[var(--text-muted)]">{match.companyName}</span>
+                )}
+                {match.companyName && (match.location || formatAge(match.postedOn) || formatAge(match.scrapedAt)) && (
+                  <span className="text-[var(--line-strong)]">&middot;</span>
+                )}
                 {match.location && <span>{match.location}</span>}
-                {match.salaryRange && <span>{match.salaryRange}</span>}
+                {match.location && (formatAge(match.postedOn) || formatAge(match.scrapedAt)) && (
+                  <span className="text-[var(--line-strong)]">&middot;</span>
+                )}
+                {formatAge(match.postedOn) ? (
+                  <span>Posted {formatAge(match.postedOn)}</span>
+                ) : formatAge(match.scrapedAt) ? (
+                  <span>Found {formatAge(match.scrapedAt)}</span>
+                ) : null}
+                {match.salaryRange && (
+                  <>
+                    <span className="text-[var(--line-strong)]">&middot;</span>
+                    <span>{match.salaryRange}</span>
+                  </>
+                )}
                 {match.connectionCount > 0 && (
-                  <span>{match.connectionCount} connection{match.connectionCount !== 1 ? 's' : ''}</span>
+                  <>
+                    <span className="text-[var(--line-strong)]">&middot;</span>
+                    <span>{match.connectionCount} connection{match.connectionCount !== 1 ? 's' : ''}</span>
+                  </>
                 )}
               </div>
 
@@ -242,25 +295,36 @@ export function JobMatchesList({
                       style={{ width: `${Math.min(match.matchScore, 100)}%` }}
                     />
                   </div>
-                  <span className="text-[12px] text-[var(--text-soft)]">{match.matchScore}%</span>
+                  <span className="text-[12px] text-[var(--text-soft)]">{match.matchScore}% title match</span>
                 </div>
               )}
             </div>
 
-            <select
-              value={match.status}
-              onChange={(e) => void handleStatusChange(match.id, e.target.value as JobMatchStatus)}
-              className={cn(
-                'shrink-0 rounded-md border-0 px-2 py-1 text-[12px] font-medium outline-none',
-                STATUS_COLORS[match.status],
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <select
+                value={match.status}
+                onChange={(e) => void handleStatusChange(match.id, e.target.value as JobMatchStatus)}
+                className={cn(
+                  'rounded-md border-0 px-2 py-1 text-[12px] font-medium outline-none',
+                  STATUS_COLORS[match.status],
+                )}
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s} className="bg-gray-900 text-white">
+                    {s}
+                  </option>
+                ))}
+              </select>
+              {match.url && onApplyWithResume && (
+                <GlassButton
+                  variant="ghost"
+                  className="!px-3 !py-1.5 text-[11px]"
+                  onClick={() => onApplyWithResume(match.url!)}
+                >
+                  Tailor Resume
+                </GlassButton>
               )}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s} className="bg-gray-900 text-white">
-                  {s}
-                </option>
-              ))}
-            </select>
+            </div>
           </div>
         </GlassCard>
       ))}

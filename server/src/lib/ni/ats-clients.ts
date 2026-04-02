@@ -18,6 +18,7 @@ interface LeverPosting {
   hostedUrl?: string;
   categories?: { location?: string; team?: string; commitment?: string };
   descriptionPlain?: string;
+  createdAt?: number;
 }
 
 export async function fetchLeverJobs(slug: string): Promise<ATSJob[]> {
@@ -34,6 +35,7 @@ export async function fetchLeverJobs(slug: string): Promise<ATSJob[]> {
       location: p.categories?.location ?? null,
       salaryRange: null,
       descriptionSnippet: p.descriptionPlain?.slice(0, 300) ?? null,
+      postedOn: p.createdAt ? new Date(p.createdAt).toISOString() : null,
       source: 'lever' as const,
     }));
   } catch (err) {
@@ -49,6 +51,7 @@ interface GreenhouseJob {
   absolute_url?: string;
   location?: { name?: string };
   content?: string;
+  updated_at?: string;
 }
 
 export async function fetchGreenhouseJobs(slug: string): Promise<ATSJob[]> {
@@ -65,6 +68,7 @@ export async function fetchGreenhouseJobs(slug: string): Promise<ATSJob[]> {
       location: j.location?.name ?? null,
       salaryRange: null,
       descriptionSnippet: j.content ? stripHtml(j.content).slice(0, 300) : null,
+      postedOn: j.updated_at ?? null,
       source: 'greenhouse' as const,
     }));
   } catch (err) {
@@ -99,6 +103,7 @@ export async function fetchAshbyJobs(slug: string): Promise<ATSJob[]> {
       location: j.location ?? null,
       salaryRange: null,
       descriptionSnippet: null,
+      postedOn: null,
       source: 'ashby' as const,
     }));
   } catch (err) {
@@ -150,6 +155,7 @@ export async function fetchWorkdayJobs(slug: string): Promise<ATSJob[]> {
         location: j.locationsText ?? null,
         salaryRange: null,
         descriptionSnippet: j.bulletFields?.join(' ').slice(0, 300) ?? null,
+        postedOn: j.postedOn ?? null,
         source: 'workday' as const,
       }));
     } catch {
@@ -232,6 +238,7 @@ function extractJsonLdJobs(html: string, baseUrl: string): ATSJob[] {
           descriptionSnippet: typeof item.description === 'string'
             ? stripHtml(item.description).slice(0, 300)
             : null,
+          postedOn: typeof item.datePosted === 'string' ? item.datePosted : null,
           source: 'icims',
         });
       }
@@ -298,6 +305,7 @@ function extractJobLinksFromHtml(html: string, baseUrl: string): ATSJob[] {
       location: null,
       salaryRange: null,
       descriptionSnippet: null,
+      postedOn: null,
       source: 'icims',
     });
   }

@@ -14,6 +14,7 @@ export interface ParsedConnection {
   companyRaw: string;
   position: string | null;
   connectedOn: Date | null;
+  linkedinUrl: string | null;
 }
 
 export interface CsvParseError {
@@ -114,6 +115,7 @@ export interface ClientConnectionRow {
   company_id: string | null;
   position: string | null;
   connected_on: string | null;
+  linkedin_url: string | null;
   import_batch: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -155,6 +157,7 @@ export interface JobMatchRow {
   connection_count: number;
   status: 'new' | 'applied' | 'referred' | 'interviewing' | 'rejected' | 'archived';
   scraped_at: string | null;
+  posted_on: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -239,6 +242,7 @@ export interface ATSJob {
   location: string | null;
   salaryRange: string | null;
   descriptionSnippet: string | null;
+  postedOn: string | null;
   source: ScrapeSource;
 }
 

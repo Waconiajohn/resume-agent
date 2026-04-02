@@ -13,6 +13,8 @@ interface V2IntakeFormProps {
   loading?: boolean;
   error?: string | null;
   initialResumeText?: string;
+  initialJobUrl?: string;
+  onLoadMasterResume?: () => Promise<string | null>;
 }
 
 const MIN_CHARS = 50;
@@ -405,10 +407,11 @@ interface JdSectionProps {
   jobDescription: string;
   onJobDescriptionChange: (text: string) => void;
   loading: boolean;
+  initialJobUrl?: string;
 }
 
-function JdSection({ jobDescription, onJobDescriptionChange, loading }: JdSectionProps) {
-  const [jdUrl, setJdUrl] = useState('');
+function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJobUrl }: JdSectionProps) {
+  const [jdUrl, setJdUrl] = useState(initialJobUrl ?? '');
   const [jdFileName, setJdFileName] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const urlId = useId();
@@ -532,9 +535,21 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading }: JdSectio
 
 // ---- Main Form ----
 
-export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initialResumeText }: V2IntakeFormProps) {
+export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initialResumeText, initialJobUrl, onLoadMasterResume }: V2IntakeFormProps) {
   const [resumeText, setResumeText] = useState(initialResumeText ?? '');
-  const [jobDescription, setJobDescription] = useState('');
+  const [jobDescription, setJobDescription] = useState(initialJobUrl ?? '');
+  const [masterResumeLoading, setMasterResumeLoading] = useState(false);
+
+  const handleLoadMasterResume = useCallback(async () => {
+    if (!onLoadMasterResume) return;
+    setMasterResumeLoading(true);
+    try {
+      const text = await onLoadMasterResume();
+      if (text) setResumeText(text);
+    } finally {
+      setMasterResumeLoading(false);
+    }
+  }, [onLoadMasterResume]);
 
   const isValid = resumeText.trim().length >= MIN_CHARS && jobDescription.trim().length >= MIN_CHARS;
 
@@ -586,9 +601,21 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
           <form onSubmit={handleSubmit} className="space-y-8" noValidate>
             {/* Resume */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[var(--text-strong)]">
-                Your Resume
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-[var(--text-strong)]">
+                  Your Resume
+                </label>
+                {onLoadMasterResume && (
+                  <button
+                    type="button"
+                    onClick={() => void handleLoadMasterResume()}
+                    disabled={masterResumeLoading || loading}
+                    className="text-xs text-[#afc4ff]/70 transition-colors hover:text-[#afc4ff] disabled:opacity-40"
+                  >
+                    {masterResumeLoading ? 'Loading...' : 'Use Master Resume'}
+                  </button>
+                )}
+              </div>
               <ResumeDropZone
                 resumeText={resumeText}
                 onResumeTextChange={setResumeText}
@@ -606,6 +633,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
                 jobDescription={jobDescription}
                 onJobDescriptionChange={setJobDescription}
                 loading={loading}
+                initialJobUrl={initialJobUrl}
               />
             </div>
 
