@@ -75,7 +75,7 @@ export async function searchJobsViaSerper(
 function buildQuery(companyName: string, targetTitle: string | null): string {
   const company = `"${companyName}"`;
   const title = targetTitle ? ` "${targetTitle}"` : '';
-  const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com';
+  const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
   return `${company}${title} (${atsSites})`;
 }
 
@@ -104,6 +104,10 @@ const ATS_DOMAINS = [
   'greenhouse.io',
   'lever.co',
   'ashbyhq.com',
+  'recruitee.com',
+  'workable.com',
+  'personio.de',
+  'personio.com',
 ];
 
 function isATSDomain(url: string): boolean {

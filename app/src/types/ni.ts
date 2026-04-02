@@ -77,6 +77,7 @@ export interface JobMatch {
   referralAvailable: boolean;
   connectionCount: number;
   searchContext: JobMatchSearchContext | null;
+  source: string | null;
   status: JobMatchStatus;
   postedOn: string | null;
   scrapedAt: string | null;

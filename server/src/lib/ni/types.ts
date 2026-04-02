@@ -62,7 +62,7 @@ export interface CsvUploadResponse {
 
 // ─── Database Row Types ───────────────────────────────────────────────────────
 
-export type ATSPlatform = 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'icims';
+export type ATSPlatform = 'greenhouse' | 'lever' | 'workday' | 'ashby' | 'icims' | 'recruitee' | 'workable' | 'personio';
 
 export interface CompanyDirectoryRow {
   id: string;
@@ -234,7 +234,7 @@ export interface CompanyInfo {
   ats_slug?: string | null;
 }
 
-export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'serper';
+export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'recruitee' | 'workable' | 'personio' | 'jsonld' | 'serper';
 
 export interface ATSJob {
   title: string;

@@ -32,17 +32,17 @@ export interface JobMatchesListProps {
 const STATUS_OPTIONS: JobMatchStatus[] = ['new', 'applied', 'referred', 'interviewing', 'rejected', 'archived'];
 
 const STATUS_COLORS: Record<JobMatchStatus, string> = {
-  new: 'bg-[#afc4ff]/20 text-[#afc4ff]/80',
-  applied: 'bg-purple-400/20 text-purple-300/80',
-  referred: 'bg-[#b5dec2]/20 text-[#b5dec2]/80',
-  interviewing: 'bg-[#f0d99f]/20 text-[#f0d99f]/80',
-  rejected: 'bg-[#f0b8b8]/20 text-[#f0b8b8]/80',
+  new: 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]',
+  applied: 'bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]',
+  referred: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
+  interviewing: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
+  rejected: 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]',
   archived: 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
 };
 
 const SEARCH_CONTEXT_BADGES: Record<NonNullable<JobMatch['searchContext']>, string> = {
-  network_connections: 'bg-[#afc4ff]/15 text-[#afc4ff]/80',
-  bonus_search: 'bg-[#f0d99f]/15 text-[#f0d99f]/80',
+  network_connections: 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]',
+  bonus_search: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
 };
 
 const SEARCH_CONTEXT_LABELS: Record<NonNullable<JobMatch['searchContext']>, string> = {
@@ -55,6 +55,19 @@ const FILTER_LABELS: Record<MatchFilter, string> = {
   network_connections: 'Your Network',
   bonus_search: 'Bonus Search',
   referral_bonus: 'Referral Bonus',
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  lever: 'Lever',
+  greenhouse: 'Greenhouse',
+  workday: 'Workday',
+  ashby: 'Ashby',
+  icims: 'iCIMS',
+  recruitee: 'Recruitee',
+  workable: 'Workable',
+  personio: 'Personio',
+  jsonld: 'Career Page',
+  serper: 'Google Jobs',
 };
 
 function mapJobMatch(m: Record<string, unknown>): JobMatch {
@@ -78,6 +91,7 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
     referralAvailable: m.referral_available as boolean,
     connectionCount: m.connection_count as number,
     searchContext,
+    source: (metadata.source as string) ?? null,
     status: m.status as JobMatchStatus,
     postedOn: (m.posted_on as string) ?? null,
     scrapedAt: (m.scraped_at as string) ?? null,
@@ -235,7 +249,7 @@ export function JobMatchesList({
                     href={match.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="truncate text-sm font-medium text-[#afc4ff]/80 hover:text-[#afc4ff] hover:underline"
+                    className="truncate text-sm font-medium text-[var(--link)] hover:text-[var(--link-hover)] hover:underline"
                   >
                     {match.title}
                   </a>
@@ -285,13 +299,19 @@ export function JobMatchesList({
                     <span>{match.connectionCount} connection{match.connectionCount !== 1 ? 's' : ''}</span>
                   </>
                 )}
+                {match.source && SOURCE_LABELS[match.source] && (
+                  <>
+                    <span className="text-[var(--line-strong)]">&middot;</span>
+                    <span>via {SOURCE_LABELS[match.source]}</span>
+                  </>
+                )}
               </div>
 
               {match.matchScore !== null && (
                 <div className="mt-2 flex items-center gap-2">
                   <div className="h-1 flex-1 bg-[var(--line-soft)]">
                     <div
-                      className="h-full bg-[#afc4ff]/60"
+                      className="h-full bg-[var(--bar-fill)]"
                       style={{ width: `${Math.min(match.matchScore, 100)}%` }}
                     />
                   </div>

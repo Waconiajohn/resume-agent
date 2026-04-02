@@ -13,6 +13,7 @@
 import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import { fetchFromATS } from './ats-clients.js';
+import { extractJobsFromCareerPage } from './json-ld-extractor.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
 import logger from '../logger.js';
 import type { ATSJob, CompanyInfo, NiSearchContext, ScrapeResult, ScrapeSource } from './types.js';
@@ -135,6 +136,30 @@ async function scanCompany(
     }
   }
 
+  // Tier 1.5: JSON-LD extraction from known career page URLs (if domain known)
+  if (allJobs.length === 0 && company.domain) {
+    try {
+      const careerUrls = [
+        `https://${company.domain}/careers`,
+        `https://careers.${company.domain}`,
+        `https://${company.domain}/jobs`,
+      ];
+      for (const careerUrl of careerUrls) {
+        allJobs = await extractJobsFromCareerPage(careerUrl);
+        if (allJobs.length > 0) {
+          source = 'jsonld';
+          logger.info(
+            { companyId: company.id, companyName: company.name, jobCount: allJobs.length, careerUrl },
+            'job-scanner: JSON-LD extraction found jobs',
+          );
+          break;
+        }
+      }
+    } catch (err) {
+      logger.debug({ err, companyId: company.id }, 'job-scanner: JSON-LD extraction failed');
+    }
+  }
+
   // Tier 2: Serper Google Jobs search fallback
   if (allJobs.length === 0) {
     try {
@@ -202,7 +227,7 @@ export async function searchJobsByCompany(
   const jobs = await searchJobsViaSerper(companyName, targetTitles);
 
   const initBreakdown: Record<ScrapeSource, number> = {
-    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, serper: 0,
+    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serper: 0,
   };
 
   if (jobs.length === 0) {
@@ -253,7 +278,7 @@ export async function scrapeCareerPages(
   let matchingJobs = 0;
   let referralAvailable = 0;
   const sourceBreakdown: Record<ScrapeSource, number> = {
-    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, serper: 0,
+    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serper: 0,
   };
 
   for (let i = 0; i < limited.length; i++) {

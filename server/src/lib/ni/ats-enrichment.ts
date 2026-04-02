@@ -34,7 +34,7 @@ const INTER_COMPANY_DELAY_MS = 500;
 const MAX_COMPANIES_PER_BATCH = 100;
 
 const DISCOVERY_SITE_CLAUSE =
-  'site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com OR site:myworkdayjobs.com OR site:icims.com';
+  'site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com OR site:myworkdayjobs.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
 
 // ─── URL Parsing ─────────────────────────────────────────────────────────────
 
@@ -100,6 +100,27 @@ export function parseATSFromUrl(url: string): { platform: ATSPlatform; slug: str
     // Bare subdomain: {slug}.icims.com
     if (subdomain && subdomain !== 'www') {
       return { platform: 'icims', slug: subdomain };
+    }
+  }
+
+  // Recruitee: {slug}.recruitee.com
+  if (hostname.endsWith('.recruitee.com')) {
+    const slug = hostname.replace('.recruitee.com', '');
+    if (slug && slug !== 'www') {
+      return { platform: 'recruitee', slug };
+    }
+  }
+
+  // Workable: apply.workable.com/{slug}
+  if (hostname === 'apply.workable.com' && pathSegments.length > 0) {
+    return { platform: 'workable', slug: pathSegments[0] };
+  }
+
+  // Personio: {slug}.jobs.personio.de or {slug}.jobs.personio.com
+  if (hostname.endsWith('.jobs.personio.de') || hostname.endsWith('.jobs.personio.com')) {
+    const slug = hostname.split('.')[0];
+    if (slug) {
+      return { platform: 'personio', slug };
     }
   }
 

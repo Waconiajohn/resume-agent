@@ -34,6 +34,24 @@
     --accent-ink: #0d1319;
     --accent-muted: rgba(213, 222, 233, 0.14);
     --focus-ring: rgba(232, 240, 248, 0.34);
+    /* Semantic accent colors */
+    --link: #afc4ff;
+    --link-hover: #c5d6ff;
+    --badge-blue-bg: rgba(175, 196, 255, 0.15);
+    --badge-blue-text: rgba(175, 196, 255, 0.8);
+    --badge-green-bg: rgba(181, 222, 194, 0.15);
+    --badge-green-text: rgba(181, 222, 194, 0.8);
+    --badge-amber-bg: rgba(240, 217, 159, 0.15);
+    --badge-amber-text: rgba(240, 217, 159, 0.8);
+    --badge-red-bg: rgba(240, 184, 184, 0.15);
+    --badge-red-text: rgba(240, 184, 184, 0.8);
+    --badge-purple-bg: rgba(192, 132, 252, 0.15);
+    --badge-purple-text: rgba(192, 132, 252, 0.8);
+    --bar-fill: rgba(175, 196, 255, 0.6);
+    --btn-primary-bg: rgba(175, 196, 255, 0.2);
+    --btn-primary-border: rgba(175, 196, 255, 0.3);
+    --btn-primary-hover: rgba(175, 196, 255, 0.3);
+    --btn-primary-text: #afc4ff;
     --shadow-low: 0 18px 40px -30px rgba(0, 0, 0, 0.82);
     --shadow-mid: 0 28px 80px -42px rgba(0, 0, 0, 0.92);
     /* Body background vars */
@@ -107,6 +125,24 @@
     --accent-ink: #f8fafc;
     --accent-muted: rgba(51, 65, 85, 0.1);
     --focus-ring: rgba(51, 65, 85, 0.3);
+    /* Semantic accent colors */
+    --link: #2563eb;
+    --link-hover: #1d4ed8;
+    --badge-blue-bg: rgba(59, 130, 246, 0.12);
+    --badge-blue-text: #2563eb;
+    --badge-green-bg: rgba(22, 163, 74, 0.12);
+    --badge-green-text: #16a34a;
+    --badge-amber-bg: rgba(217, 119, 6, 0.12);
+    --badge-amber-text: #b45309;
+    --badge-red-bg: rgba(220, 38, 38, 0.12);
+    --badge-red-text: #dc2626;
+    --badge-purple-bg: rgba(147, 51, 234, 0.12);
+    --badge-purple-text: #7c3aed;
+    --bar-fill: rgba(59, 130, 246, 0.5);
+    --btn-primary-bg: #2563eb;
+    --btn-primary-border: #2563eb;
+    --btn-primary-hover: #1d4ed8;
+    --btn-primary-text: #ffffff;
     --shadow-low: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
     --shadow-mid: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
     /* Body background vars */

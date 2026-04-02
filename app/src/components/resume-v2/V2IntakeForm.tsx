@@ -27,7 +27,7 @@ function CharCounter({ value, label }: { value: string; label: string }) {
     <p
       className={cn(
         'text-[12px] transition-colors duration-200',
-        met ? 'text-[#b5dec2]/60' : 'text-[#f0b8b8]/60',
+        met ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-red-text)]',
       )}
       aria-live="polite"
     >
@@ -643,7 +643,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
                 type="submit"
                 size="lg"
                 disabled={!isValid || loading}
-                className="w-full px-8 py-3 text-base font-medium bg-[#afc4ff]/20 border-[#afc4ff]/30 hover:bg-[#afc4ff]/30 text-[#afc4ff]"
+                className="w-full px-8 py-3 text-base font-medium bg-[var(--btn-primary-bg)] border-[var(--btn-primary-border)] hover:bg-[var(--btn-primary-hover)] text-[var(--btn-primary-text)]"
                 aria-busy={loading}
               >
                 {loading ? (

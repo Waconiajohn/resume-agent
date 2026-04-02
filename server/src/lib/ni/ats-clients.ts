@@ -313,6 +313,115 @@ function extractJobLinksFromHtml(html: string, baseUrl: string): ATSJob[] {
   return jobs;
 }
 
+// ─── Recruitee ──────────────────────────────────────────────────────────────
+
+interface RecruiteeOffer {
+  title?: string;
+  careers_url?: string;
+  city?: string;
+  country?: string;
+  department?: string;
+  created_at?: string;
+  description?: string;
+}
+
+export async function fetchRecruiteeJobs(slug: string): Promise<ATSJob[]> {
+  const url = `https://${encodeURIComponent(slug)}.recruitee.com/api/offers`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { offers?: RecruiteeOffer[] };
+    if (!Array.isArray(data.offers)) return [];
+    return data.offers.map((o) => ({
+      title: o.title ?? 'Unknown',
+      url: o.careers_url ?? `https://${slug}.recruitee.com`,
+      location: [o.city, o.country].filter(Boolean).join(', ') || null,
+      salaryRange: null,
+      descriptionSnippet: o.description ? stripHtml(o.description).slice(0, 300) : null,
+      postedOn: o.created_at ?? null,
+      source: 'recruitee' as const,
+    }));
+  } catch (err) {
+    logger.debug({ err, slug }, 'Recruitee API failed');
+    return [];
+  }
+}
+
+// ─── Workable ────────────────────────────────────────────────────────────────
+
+interface WorkableJob {
+  title?: string;
+  url?: string;
+  city?: string;
+  country?: string;
+  department?: string;
+  created_at?: string;
+  shortdescription?: string;
+}
+
+export async function fetchWorkableJobs(slug: string): Promise<ATSJob[]> {
+  const url = `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(slug)}`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { jobs?: WorkableJob[] };
+    if (!Array.isArray(data.jobs)) return [];
+    return data.jobs.map((j) => ({
+      title: j.title ?? 'Unknown',
+      url: j.url ?? `https://apply.workable.com/${slug}`,
+      location: [j.city, j.country].filter(Boolean).join(', ') || null,
+      salaryRange: null,
+      descriptionSnippet: j.shortdescription ? stripHtml(j.shortdescription).slice(0, 300) : null,
+      postedOn: j.created_at ?? null,
+      source: 'workable' as const,
+    }));
+  } catch (err) {
+    logger.debug({ err, slug }, 'Workable API failed');
+    return [];
+  }
+}
+
+// ─── Personio ────────────────────────────────────────────────────────────────
+
+interface PersonioPosition {
+  name?: string;
+  office?: string;
+  department?: string;
+  employmentType?: string;
+  createdAt?: string;
+  id?: number;
+  jobDescriptions?: Array<{ name?: string; value?: string }>;
+}
+
+export async function fetchPersonioJobs(slug: string): Promise<ATSJob[]> {
+  // Try .de first, then .com — Personio uses both TLDs depending on account region
+  const domains = [`${slug}.jobs.personio.de`, `${slug}.jobs.personio.com`];
+  for (const domain of domains) {
+    const url = `https://${domain}/search.json`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      if (!res.ok) continue;
+      const positions = (await res.json()) as PersonioPosition[];
+      if (!Array.isArray(positions) || positions.length === 0) continue;
+      return positions.map((p) => ({
+        title: p.name ?? 'Unknown',
+        url: p.id ? `https://${domain}/job/${p.id}` : `https://${domain}`,
+        location: p.office ?? null,
+        salaryRange: null,
+        descriptionSnippet: p.jobDescriptions?.[0]?.value
+          ? stripHtml(p.jobDescriptions[0].value).slice(0, 300)
+          : null,
+        postedOn: p.createdAt ?? null,
+        source: 'personio' as const,
+      }));
+    } catch {
+      continue;
+    }
+  }
+  logger.debug({ slug }, 'Personio API failed on all domains');
+  return [];
+}
+
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 
 export async function fetchFromATS(platform: ATSPlatform, slug: string): Promise<ATSJob[]> {
@@ -322,6 +431,9 @@ export async function fetchFromATS(platform: ATSPlatform, slug: string): Promise
     case 'ashby': return fetchAshbyJobs(slug);
     case 'workday': return fetchWorkdayJobs(slug);
     case 'icims': return fetchICIMSJobs(slug);
+    case 'recruitee': return fetchRecruiteeJobs(slug);
+    case 'workable': return fetchWorkableJobs(slug);
+    case 'personio': return fetchPersonioJobs(slug);
     default: return [];
   }
 }
