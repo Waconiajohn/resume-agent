@@ -1016,11 +1016,15 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   const { action, bullet_text, requirement, evidence, job_context } = parsed.data;
   const actionDescription = ACTION_DESCRIPTIONS[action];
 
-  // Read narrative context from pipeline state if available
+  // Read enriched context from pipeline state if available
   let narrativeContext = '';
+  let candidateContext = '';
+  let gapContext = '';
+  let jobContext2 = '';
   try {
     const pipelineState = sessionData.pipeline_state as Record<string, unknown> | null;
     if (pipelineState) {
+      // ── Narrative context ──────────────────────────────────────────────
       const narrative = pipelineState.narrative_strategy as Record<string, unknown> | undefined;
       if (narrative?.primary_narrative) {
         narrativeContext = `\nCANDIDATE'S POSITIONING: ${narrative.primary_narrative}`;
@@ -1028,8 +1032,130 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       if (narrative?.why_me_concise) {
         narrativeContext += `\nWHY ME: ${narrative.why_me_concise}`;
       }
+
+      // ── Candidate background ───────────────────────────────────────────
+      const candidate = pipelineState.candidate_intelligence as Record<string, unknown> | undefined;
+      if (candidate) {
+        const careerThemes = Array.isArray(candidate.career_themes)
+          ? (candidate.career_themes as string[]).slice(0, 5).join(', ')
+          : '';
+        const leadershipScope = typeof candidate.leadership_scope === 'string'
+          ? candidate.leadership_scope
+          : '';
+        const operationalScale = typeof candidate.operational_scale === 'string'
+          ? candidate.operational_scale
+          : '';
+        const careerSpan = typeof candidate.career_span_years === 'number'
+          ? `${candidate.career_span_years} years experience`
+          : '';
+        const quantifiedOutcomes = Array.isArray(candidate.quantified_outcomes)
+          ? (candidate.quantified_outcomes as Array<Record<string, unknown>>)
+              .slice(0, 4)
+              .map((o) => `${o.outcome ?? ''}: ${o.value ?? ''}`)
+              .filter((s) => s.trim().length > 2)
+              .join(' | ')
+          : '';
+        const industryDepth = Array.isArray(candidate.industry_depth)
+          ? (candidate.industry_depth as string[]).slice(0, 4).join(', ')
+          : '';
+
+        const candidateParts = [
+          careerSpan,
+          careerThemes ? `Themes: ${careerThemes}` : '',
+          leadershipScope ? `Leadership scope: ${leadershipScope}` : '',
+          operationalScale ? `Scale: ${operationalScale}` : '',
+          industryDepth ? `Industries: ${industryDepth}` : '',
+          quantifiedOutcomes ? `Key outcomes: ${quantifiedOutcomes}` : '',
+        ].filter(Boolean).join('. ');
+
+        if (candidateParts) {
+          candidateContext = `\nCANDIDATE BACKGROUND: ${candidateParts}`;
+        }
+      }
+
+      // ── Gap analysis context ───────────────────────────────────────────
+      const gapAnalysis = pipelineState.gap_analysis as Record<string, unknown> | undefined;
+      if (gapAnalysis) {
+        const strengthSummary = typeof gapAnalysis.strength_summary === 'string'
+          ? gapAnalysis.strength_summary
+          : '';
+
+        // Find the matching requirement to pull its evidence and JD source excerpt
+        let requirementEvidence = '';
+        let jdExcerpt = '';
+        if (Array.isArray(gapAnalysis.requirements)) {
+          const requirementLower = requirement.toLowerCase();
+          const matchedReq = (gapAnalysis.requirements as Array<Record<string, unknown>>).find(
+            (r) => typeof r.requirement === 'string' &&
+              r.requirement.toLowerCase().includes(requirementLower.substring(0, 40)),
+          );
+          if (matchedReq) {
+            if (Array.isArray(matchedReq.evidence)) {
+              requirementEvidence = (matchedReq.evidence as string[]).slice(0, 3).join(' | ');
+            }
+            if (typeof matchedReq.source_evidence === 'string' && matchedReq.source_evidence.length > 0) {
+              jdExcerpt = matchedReq.source_evidence.substring(0, 300);
+            }
+          }
+        }
+
+        const gapParts = [
+          strengthSummary ? `STRENGTH SUMMARY: ${strengthSummary}` : '',
+          requirementEvidence ? `RELATED EVIDENCE: ${requirementEvidence}` : '',
+        ].filter(Boolean).join('\n');
+
+        if (gapParts) {
+          gapContext = `\n${gapParts}`;
+        }
+        if (jdExcerpt) {
+          gapContext += `\nJD EXCERPT FOR THIS REQUIREMENT: ${jdExcerpt}`;
+        }
+      }
+
+      // ── Job intelligence context ───────────────────────────────────────
+      const jobIntelligence = pipelineState.job_intelligence as Record<string, unknown> | undefined;
+      if (jobIntelligence) {
+        const targetRole = typeof jobIntelligence.role_title === 'string'
+          ? jobIntelligence.role_title
+          : '';
+        const companyName = typeof jobIntelligence.company_name === 'string'
+          ? jobIntelligence.company_name
+          : '';
+        const industry = typeof jobIntelligence.industry === 'string'
+          ? jobIntelligence.industry
+          : '';
+
+        const mustHaveCompetencies = Array.isArray(jobIntelligence.core_competencies)
+          ? (jobIntelligence.core_competencies as Array<Record<string, unknown>>)
+              .filter((c) => c.importance === 'must_have')
+              .slice(0, 5)
+              .map((c) => String(c.competency ?? ''))
+              .filter(Boolean)
+              .join(', ')
+          : '';
+
+        const businessProblems = Array.isArray(jobIntelligence.business_problems)
+          ? (jobIntelligence.business_problems as string[]).slice(0, 3).join('; ')
+          : '';
+
+        const companyContext = [
+          companyName ? `Company: ${companyName}` : '',
+          industry ? `Industry: ${industry}` : '',
+          businessProblems ? `Business problems: ${businessProblems}` : '',
+        ].filter(Boolean).join('. ');
+
+        const jobParts = [
+          targetRole ? `TARGET ROLE: ${targetRole}` : '',
+          mustHaveCompetencies ? `JOB REQUIREMENTS (must-have): ${mustHaveCompetencies}` : '',
+          companyContext ? `COMPANY CONTEXT: ${companyContext}` : '',
+        ].filter(Boolean).join('\n');
+
+        if (jobParts) {
+          jobContext2 = `\n${jobParts}`;
+        }
+      }
     }
-  } catch { /* pipeline state may not have narrative */ }
+  } catch { /* pipeline state may not have all fields */ }
 
   logger.info({ session_id: sessionId, action, bulletSnippet: bullet_text.substring(0, 60) }, 'Bullet enhance request');
 
@@ -1038,9 +1164,12 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     ``,
     `BULLET: "${bullet_text}"`,
     `REQUIREMENT IT ADDRESSES: "${requirement}"`,
+    gapContext || '',
     evidence ? `EVIDENCE FROM RESUME: "${evidence}"` : '',
-    job_context ? `JOB CONTEXT: "${job_context}"` : '',
     narrativeContext || '',
+    candidateContext || '',
+    jobContext2 || '',
+    job_context ? `JOB CONTEXT: "${job_context}"` : '',
     ``,
     `Action: ${actionDescription}`,
     ``,
