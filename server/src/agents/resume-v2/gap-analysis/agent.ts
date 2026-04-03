@@ -84,9 +84,9 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
           }
         ],
         "alternative_bullets": [
-          { "text": "A metric-focused version of the positioning bullet", "angle": "metric" },
-          { "text": "A scope/breadth-focused version", "angle": "scope" },
-          { "text": "A business-impact-focused version", "angle": "impact" }
+          { "text": "Managed $3.4M payroll budget across 40-person operations team, driving 18% cost reduction through optimized scheduling and vendor renegotiation", "angle": "metric" },
+          { "text": "Directed multi-site operations spanning 3 regions and 40+ team members, standardizing processes across the Delaware Basin and Eagle Ford Shale", "angle": "scope" },
+          { "text": "Transformed field operations efficiency, reducing equipment downtime by 22% and enabling on-time project delivery for 95% of well completions", "angle": "impact" }
         ]
       }
     }
@@ -129,9 +129,9 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
           }
         ],
         "alternative_bullets": [
-          { "text": "metric-focused phrasing grounded in candidate's real experience", "angle": "metric" },
-          { "text": "scope/breadth-focused phrasing", "angle": "scope" },
-          { "text": "business-impact-focused phrasing", "angle": "impact" }
+          { "text": "Reduced BHA failures from 2.0 to 1.6 per lateral through insulated drill pipe implementation, saving $3M+ annually across 12 active rigs", "angle": "metric" },
+          { "text": "Led cross-functional drilling optimization program spanning 8 rigs and 3 basins, coordinating with 6 service company partners", "angle": "scope" },
+          { "text": "Drove $2.1M annual cost savings by redesigning drilling fluid program, eliminating non-productive time and improving well delivery timelines by 30%", "angle": "impact" }
         ]
       }
     }

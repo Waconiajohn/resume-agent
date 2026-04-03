@@ -1313,3 +1313,8 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Score ring donut chart animation ── */
+@keyframes score-ring-draw {
+  to { stroke-dashoffset: var(--offset); }
+}
