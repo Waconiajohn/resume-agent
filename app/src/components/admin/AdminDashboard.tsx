@@ -507,10 +507,10 @@ export function AdminDashboard() {
                     className={cn(
                       'font-medium',
                       metric.status === 'healthy'
-                        ? 'text-[#b5dec2]'
+                        ? 'text-[var(--badge-green-text)]'
                         : metric.status === 'watch'
-                          ? 'text-[#f0d99f]'
-                          : 'text-[#f0a0a0]',
+                          ? 'text-[var(--badge-amber-text)]'
+                          : 'text-[var(--badge-red-text)]',
                     )}
                   >
                     {formatRate(metric.rate_pct)}
@@ -601,10 +601,10 @@ export function AdminDashboard() {
 
   // ─── Sessions tab ──────────────────────────────────────────────────────────
   const STATUS_COLORS: Record<string, string> = {
-    complete: 'text-[#b5dec2]',
-    error: 'text-[#f0a0a0]',
-    active: 'text-[#afc4ff]',
-    processing: 'text-[#f0d99f]',
+    complete: 'text-[var(--badge-green-text)]',
+    error: 'text-[var(--badge-red-text)]',
+    active: 'text-[var(--link)]',
+    processing: 'text-[var(--badge-amber-text)]',
     pending: 'text-[var(--text-soft)]',
   };
 

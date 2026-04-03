@@ -106,24 +106,24 @@ export function ChatPanel({
                 : (connected ? (pipelinePhaseActive ? 'Ready' : 'Connected') : 'Reconnecting');
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'bg-[#f0b8b8]'
+      ? 'bg-[var(--badge-red-text)]'
       : runtimeState === 'processing'
-        ? 'bg-[#afc4ff]'
+        ? 'bg-[var(--link)]'
         : runtimeState === 'waiting_for_input'
-          ? 'bg-[#f0d99f]'
+          ? 'bg-[var(--badge-amber-text)]'
           : runtimeState === 'complete'
-            ? 'bg-[#b5dec2]'
-            : (connected ? 'bg-[#b5dec2]' : 'bg-white/40');
+            ? 'bg-[var(--badge-green-text)]'
+            : (connected ? 'bg-[var(--badge-green-text)]' : 'bg-white/40');
   const statusTextColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'text-[#f0b8b8]/90'
+      ? 'text-[var(--badge-red-text)]/90'
       : runtimeState === 'processing'
-        ? 'text-[#afc4ff]/90'
+        ? 'text-[var(--link)]/90'
         : runtimeState === 'waiting_for_input'
-          ? 'text-[#f0d99f]/90'
+          ? 'text-[var(--badge-amber-text)]/90'
           : runtimeState === 'complete'
-            ? 'text-[#b5dec2]/90'
-            : (connected ? 'text-[#b5dec2]/90' : 'text-[var(--text-muted)]');
+            ? 'text-[var(--badge-green-text)]/90'
+            : (connected ? 'text-[var(--badge-green-text)]/90' : 'text-[var(--text-muted)]');
   const lastActivityText = (() => {
     if (!lastBackendActivityAt) return null;
     const ms = Date.now() - new Date(lastBackendActivityAt).getTime();

@@ -25,7 +25,7 @@ export function ChatMessage({ role, content, animate = true }: ChatMessageProps)
         )}
       >
         {role === 'user' ? (
-          <User className="h-4 w-4 text-[#afc4ff]" />
+          <User className="h-4 w-4 text-[var(--link)]" />
         ) : (
           <Bot className="h-4 w-4 text-[var(--text-soft)]" />
         )}

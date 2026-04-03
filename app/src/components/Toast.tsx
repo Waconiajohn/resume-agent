@@ -42,10 +42,10 @@ const DEFAULT_DURATIONS: Record<Toast['type'], number> = {
 // ---------------------------------------------------------------------------
 
 const ACCENT_STYLES: Record<Toast['type'], { border: string; text: string }> = {
-  error:   { border: 'border-[#f0b8b8]/30',  text: 'text-[#f0b8b8]'  },
-  warning: { border: 'border-[#f0d99f]/30',  text: 'text-[#f0d99f]'  },
-  info:    { border: 'border-[#afc4ff]/30',  text: 'text-[#afc4ff]'  },
-  success: { border: 'border-[#b5dec2]/30',  text: 'text-[#b5dec2]'  },
+  error:   { border: 'border-[var(--badge-red-text)]/30',   text: 'text-[var(--badge-red-text)]'   },
+  warning: { border: 'border-[var(--badge-amber-text)]/30', text: 'text-[var(--badge-amber-text)]' },
+  info:    { border: 'border-[var(--link)]/30',             text: 'text-[var(--link)]'             },
+  success: { border: 'border-[var(--badge-green-text)]/30', text: 'text-[var(--badge-green-text)]' },
 };
 
 // ---------------------------------------------------------------------------

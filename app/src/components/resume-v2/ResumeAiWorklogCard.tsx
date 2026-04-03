@@ -18,9 +18,9 @@ interface WorklogStep {
 
 function WorklogRow({ step }: { step: WorklogStep }) {
   const tone = step.status === 'done'
-    ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]'
+    ? 'border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
     : step.status === 'active'
-      ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04] text-[#afc4ff]'
+      ? 'border-[var(--link)]/18 bg-[var(--badge-blue-bg)] text-[var(--link)]'
       : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
 
   return (
@@ -126,13 +126,13 @@ export function ResumeAiWorklogCard({
           <p className="eyebrow-label text-[#c9d7ff]/72">Live review</p>
           <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">What's happening right now</p>
         </div>
-        <div className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] px-3 py-1.5 text-[12px] uppercase tracking-[0.18em] text-[#c9d7ff]/78">
+        <div className="rounded-md border border-[var(--link)]/18 bg-[var(--badge-blue-bg)] px-3 py-1.5 text-[12px] uppercase tracking-[0.18em] text-[var(--link)]/78">
           Updates as the review moves
         </div>
       </div>
 
-      <div className="support-callout border-[#afc4ff]/16 bg-[#afc4ff]/[0.06] px-4 py-3">
-        <p className="text-[13px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Right now</p>
+      <div className="support-callout border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-4 py-3">
+        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--link)]/72">Right now</p>
         <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{activeStepLabel}</p>
       </div>
 

@@ -42,7 +42,7 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
   return (
     <div
       className="h-1.5 w-full rounded-full overflow-hidden"
-      style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+      style={{ backgroundColor: 'var(--ring-track)' }}
       role="presentation"
     >
       <div

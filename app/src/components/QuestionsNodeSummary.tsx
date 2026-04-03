@@ -97,14 +97,14 @@ export function QuestionsNodeSummary({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className={`rounded-full border px-1.5 py-0.5 text-[12px] ${
                       item.priority === 'must_have'
-                        ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
+                        ? 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/85'
                         : item.priority === 'implicit'
-                          ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
+                          ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/85'
                           : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                     }`}>
                       {item.priority === 'must_have' ? 'Must-have' : item.priority === 'implicit' ? 'Implicit' : 'Nice-to-have'}
                     </span>
-                    <span className={item.classification === 'gap' ? 'text-[#f0b8b8]/80' : 'text-[#f0d99f]/80'}>
+                    <span className={item.classification === 'gap' ? 'text-[var(--badge-red-text)]/80' : 'text-[var(--badge-amber-text)]/80'}>
                       {item.classification === 'gap' ? 'Gap' : 'Partial'}
                     </span>
                   </div>
@@ -145,18 +145,18 @@ export function QuestionsNodeSummary({
                       <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.impact_tag === 'high'
-                            ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
+                            ? 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/85'
                             : item.impact_tag === 'medium'
-                              ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/85'
+                              ? 'border-[var(--badge-blue-text)]/20 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]/85'
                               : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                         }`}>
                           {item.impact_tag ? `${item.impact_tag} impact` : 'untagged'}
                         </span>
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.status === 'answered'
-                            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.08] text-[#b5dec2]/85'
+                            ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/85'
                             : item.status === 'deferred'
-                              ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
+                              ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/85'
                               : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                         }`}>
                           {item.status}
@@ -203,7 +203,7 @@ export function QuestionsNodeSummary({
                         <span className="rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] px-1.5 py-0.5 text-[var(--text-soft)]">
                           {item.stage === 'positioning' ? 'Positioning' : 'Gap Analysis'}
                         </span>
-                        <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-1.5 py-0.5 text-[#afc4ff]/85">
+                        <span className="rounded-full border border-[var(--badge-blue-text)]/20 bg-[var(--badge-blue-bg)] px-1.5 py-0.5 text-[var(--badge-blue-text)]/85">
                           Reused {item.skipped_count}
                         </span>
                         <span className="text-[var(--text-soft)]">

@@ -107,10 +107,10 @@ function formatPrice(cents: number): string {
 
 function StatusBadge({ status }: { status: string }) {
   const classes: Record<string, string> = {
-    active: 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]',
-    trialing: 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]',
-    past_due: 'border-[#f0d99f]/30 bg-[#f0d99f]/10 text-[#f0d99f]',
-    cancelled: 'border-[#f0b8b8]/30 bg-[#f0b8b8]/10 text-[#f0b8b8]/80',
+    active: 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
+    trialing: 'border-[var(--badge-blue-text)]/30 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]',
+    past_due: 'border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
+    cancelled: 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]',
   };
 
   const label: Record<string, string> = {
@@ -344,7 +344,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         {/* Progress bar */}
         <div className="mt-3 h-1.5 w-full overflow-hidden bg-[var(--accent-muted)]">
           <div
-            className={`h-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#f0b8b8]' : usagePercent >= 70 ? 'bg-[#f0d99f]' : 'bg-[#9eb8ff]'}`}
+            className={`h-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[var(--badge-red-text)]' : usagePercent >= 70 ? 'bg-[var(--badge-amber-text)]' : 'bg-[var(--bar-fill)]'}`}
             style={{ width: `${usagePercent}%` }}
           />
         </div>

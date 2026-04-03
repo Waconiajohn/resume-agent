@@ -60,29 +60,29 @@ function parseSectionsFromLetter(text: string): LetterSection[] {
       type: 'opening_hook',
       label: 'Opening Hook',
       icon: Sparkles,
-      color: 'text-[#afc4ff]',
-      borderColor: 'border-[#afc4ff]/15',
+      color: 'text-[var(--link)]',
+      borderColor: 'border-[var(--badge-blue-text)]/15',
     },
     {
       type: 'why_company',
       label: 'Why This Company',
       icon: Building2,
-      color: 'text-[#b5dec2]',
-      borderColor: 'border-[#b5dec2]/15',
+      color: 'text-[var(--badge-green-text)]',
+      borderColor: 'border-[var(--badge-green-text)]/15',
     },
     {
       type: 'value_proposition',
       label: 'Value Proposition',
       icon: Target,
-      color: 'text-[#f0d99f]',
-      borderColor: 'border-[#f0d99f]/15',
+      color: 'text-[var(--badge-amber-text)]',
+      borderColor: 'border-[var(--badge-amber-text)]/15',
     },
     {
       type: 'call_to_action',
       label: 'Call to Action',
       icon: ArrowRight,
-      color: 'text-[#afc4ff]',
-      borderColor: 'border-[#afc4ff]/15',
+      color: 'text-[var(--link)]',
+      borderColor: 'border-[var(--badge-blue-text)]/15',
     },
   ];
 
@@ -149,17 +149,17 @@ function LetterOutput({
 
   const toneLabel = tone === 'bold' ? 'Bold' : tone === 'conversational' ? 'Conversational' : 'Formal';
   const toneBg = tone === 'bold'
-    ? 'bg-[#f0d99f]/10 text-[#f0d99f] border-[#f0d99f]/15'
+    ? 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/15'
     : tone === 'conversational'
-    ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/15'
-    : 'bg-[#afc4ff]/10 text-[#afc4ff] border-[#afc4ff]/15';
+    ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-text)]/15'
+    : 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] border-[var(--badge-blue-text)]/15';
 
   return (
     <div className="space-y-4">
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
+          <CheckCircle className="h-4 w-4 text-[var(--badge-green-text)]" />
           <span className="text-sm font-medium text-[var(--text-strong)]">Cover Letter Draft</span>
           {companyName && (
             <span className="text-xs text-[var(--text-soft)]">for {companyName}</span>
@@ -184,10 +184,10 @@ function LetterOutput({
               className={cn(
                 'rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
                 qualityScore >= 80
-                  ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/15'
+                  ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-text)]/15'
                   : qualityScore >= 60
-                    ? 'bg-[#f0d99f]/10 text-[#f0d99f] border-[#f0d99f]/15'
-                    : 'bg-[#f0b8b8]/10 text-[#f0b8b8] border-[#f0b8b8]/15',
+                    ? 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/15'
+                    : 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] border-[var(--badge-red-text)]/15',
               )}
             >
               Draft Score {qualityScore}/100
@@ -203,7 +203,7 @@ function LetterOutput({
             <span className="text-[13px] text-[var(--text-soft)]">Draft Score</span>
             <span className={cn(
               'text-[13px] font-semibold',
-              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+              qualityScore >= 80 ? 'text-[var(--badge-green-text)]' : qualityScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
             </span>
@@ -212,7 +212,7 @@ function LetterOutput({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+                qualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : qualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
               )}
               style={{ width: `${qualityScore}%` }}
             />
@@ -255,7 +255,7 @@ function LetterOutput({
       <div className="flex justify-end">
         <GlassButton variant="ghost" onClick={onCopy} size="sm">
           {copied ? (
-            <><Check className="mr-1.5 h-3 w-3 text-[#b5dec2]" />Copied</>
+            <><Check className="mr-1.5 h-3 w-3 text-[var(--badge-green-text)]" />Copied</>
           ) : (
             <><Copy className="mr-1.5 h-3 w-3" />Copy Full Letter</>
           )}
@@ -433,7 +433,7 @@ export function CoverLetterScreen({
         {effectivePhase === 'running' && (
           <GlassCard className="mb-6 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#afc4ff]" />
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[var(--link)]" />
               <span className="text-sm font-medium text-[var(--text-strong)]">
                 {currentStage
                   ? currentStage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -459,17 +459,17 @@ export function CoverLetterScreen({
             )}
             {/* Progress bar */}
             <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-[var(--accent-muted)]">
-              <div className="h-full motion-safe:animate-pulse rounded-full bg-[#afc4ff]/40" style={{ width: '60%' }} />
+              <div className="h-full motion-safe:animate-pulse rounded-full bg-[var(--link)]/40" style={{ width: '60%' }} />
             </div>
           </GlassCard>
         )}
 
         {/* Error Phase */}
         {effectivePhase === 'error' && (
-          <GlassCard className="mb-6 border-[#f0b8b8]/20 p-5">
+          <GlassCard className="mb-6 border-[var(--badge-red-text)]/20 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-[#f0b8b8]" />
-              <span className="text-sm font-medium text-[#f0b8b8]">Something went wrong</span>
+              <AlertCircle className="h-4 w-4 text-[var(--badge-red-text)]" />
+              <span className="text-sm font-medium text-[var(--badge-red-text)]">Something went wrong</span>
             </div>
             <p className="mb-4 text-xs text-[var(--text-soft)]">
               {pipelineError ?? 'An unexpected error occurred.'}

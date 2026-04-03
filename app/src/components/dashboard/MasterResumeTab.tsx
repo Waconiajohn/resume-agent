@@ -10,9 +10,9 @@ import type { MasterResume, MasterResumeListItem, MasterResumeExperience, Master
 import type { CoachSession } from '@/types/session';
 
 const SOURCE_BADGE: Record<MasterResumeEvidenceItem['source'], { label: string; classes: string }> = {
-  crafted: { label: 'Crafted', classes: 'bg-[#afc4ff]/20 text-[#afc4ff] border-[#afc4ff]/30' },
-  upgraded: { label: 'Upgraded', classes: 'bg-[#b5dec2]/20 text-[#b5dec2] border-[#b5dec2]/30' },
-  interview: { label: 'Interview', classes: 'bg-[#f0d99f]/20 text-[#f0d99f] border-[#f0d99f]/30' },
+  crafted: { label: 'Crafted', classes: 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] border-[var(--badge-blue-text)]/30' },
+  upgraded: { label: 'Upgraded', classes: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-text)]/30' },
+  interview: { label: 'Interview', classes: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/30' },
 };
 
 function timeAgo(dateStr: string): string {

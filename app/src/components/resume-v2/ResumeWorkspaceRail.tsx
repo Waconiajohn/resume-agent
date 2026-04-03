@@ -69,8 +69,8 @@ export function ResumeFinalReviewPanel({
       <div
         className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-[13px] ${
           hiringManagerResult && !isFinalReviewStale
-            ? 'border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
-            : 'border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
+            ? 'border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90'
+            : 'border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90'
         }`}
         role="status"
       >
