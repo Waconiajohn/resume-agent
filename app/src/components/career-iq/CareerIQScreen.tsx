@@ -250,10 +250,6 @@ export function CareerIQScreen({
   const handleRoomNavigate = (room: WorkspaceRoom | CareerIQRoom) => {
     const resolvedRoom = resolveWorkspaceRoom(room);
     refreshCoachRec();
-    if (resolvedRoom === 'resume') {
-      onNavigate('/resume-builder/session');
-      return;
-    }
     setActiveRoom(resolvedRoom);
     onNavigate(resolvedRoom === 'dashboard' ? '/workspace' : `/workspace?room=${resolvedRoom}`);
   };
