@@ -275,16 +275,16 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
           ) : (
             <div className="space-y-1.5">
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[var(--link)]/70 font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
+                <span className="text-[var(--link)] font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[var(--link)]/70 font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
+                <span className="text-[var(--link)] font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[var(--link)]/70 font-medium">A</span>ction: <span className="text-[var(--badge-amber-text)]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
+                <span className="text-[var(--link)] font-medium">A</span>ction: <span className="text-[var(--badge-amber-text)]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[var(--link)]/70 font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
+                <span className="text-[var(--link)] font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
               </p>
               {questionText && (
                 <div className="mt-2 pt-2 border-t border-[var(--line-soft)]">
@@ -643,7 +643,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
             <ClipboardList size={12} />
             Add Debrief
             {debriefCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-[var(--link)]/15 px-1.5 py-0.5 text-[12px] text-[var(--link)]/70">
+              <span className="ml-0.5 rounded-full bg-[var(--link)]/15 px-1.5 py-0.5 text-[12px] text-[var(--link)]">
                 {debriefCount}
               </span>
             )}
@@ -1645,7 +1645,7 @@ export function InterviewLabRoom({
                     : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
                 )}
               >
-                <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+                <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]">
                   Step {index + 1}
                 </div>
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -1666,7 +1666,7 @@ export function InterviewLabRoom({
       <GlassCard className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]">
               Right now
             </div>
             <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -1676,7 +1676,7 @@ export function InterviewLabRoom({
               {LAB_SECTION_COPY[activeSection].description}
             </p>
           </div>
-          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
+          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-3.5">
             <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
               Then
             </div>
@@ -1744,7 +1744,7 @@ export function InterviewLabRoom({
 
           <GlassCard className="p-5">
             <div className="mb-3">
-              <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70 mb-1">Practice Mode</div>
+              <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)] mb-1">Practice Mode</div>
               <p className="text-[13px] leading-5 text-[var(--text-soft)]">
                 Practice one targeted question — choose a type and get immediate STAR-framework feedback.
               </p>
@@ -1834,7 +1834,7 @@ export function InterviewLabRoom({
                   const Icon = tool.icon;
                   return (
                     <div key={tool.view} className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+                      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                         {tool.label}
                       </div>
                       <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">

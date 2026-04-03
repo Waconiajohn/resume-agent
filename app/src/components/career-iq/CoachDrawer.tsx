@@ -103,7 +103,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[32rem] w-96 flex-col rounded-xl border border-[var(--line-soft)] bg-[var(--bg-1)]/95 shadow-2xl shadow-black/40">
+    <div className="fixed bottom-6 right-6 z-50 flex h-[32rem] w-96 flex-col rounded-xl border border-[var(--line-soft)] bg-[var(--bg-1)] shadow-2xl shadow-black/40">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line-soft)]">
         <div className="flex items-center gap-2">

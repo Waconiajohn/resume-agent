@@ -116,7 +116,7 @@ export function AccessibilitySettings({ isOpen, onClose }: AccessibilitySettings
         aria-modal="true"
         aria-label="Accessibility settings"
         className={[
-          'fixed right-0 top-0 z-50 flex h-full w-80 flex-col',
+          'fixed right-0 top-0 z-50 flex h-full w-80 max-w-[calc(100vw-1rem)] flex-col',
           'border-l border-[var(--line-soft)]',
           'bg-[var(--surface-3)] shadow-[var(--shadow-mid)]',
         ].join(' ')}

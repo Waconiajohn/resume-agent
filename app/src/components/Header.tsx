@@ -202,7 +202,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
           {/* Theme toggle — visible at all breakpoints */}
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             data-tour="theme-toggle"

@@ -268,10 +268,10 @@ applicationPipelineRoutes.delete(
   },
 );
 
-// ─── GET /applications/actions/due — Upcoming actions (Daily Ops) ─────────────
+// ─── GET /applications/due-actions — Upcoming actions (Daily Ops) ─────────────
 
 applicationPipelineRoutes.get(
-  '/actions/due',
+  '/due-actions',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
     const user = c.get('user');

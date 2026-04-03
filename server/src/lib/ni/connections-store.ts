@@ -280,7 +280,13 @@ export async function getCompanySummary(userId: string): Promise<CompanySummaryR
       }
     }
 
-    return Array.from(grouped.values())
+    // Filter out non-company entries from LinkedIn imports
+    const invalidCompanyPatterns = /^(retired|self-employed|seeking|currently seeking|freelance|unemployed|confidential|looking for|open to|career break|between|--)/i;
+    const filtered = Array.from(grouped.values()).filter(
+      (g) => g.companyRaw.length >= 2 && !invalidCompanyPatterns.test(g.companyRaw.trim()),
+    );
+
+    return filtered
       .sort((a, b) => b.count - a.count)
       .map((g) => ({
         companyRaw: g.companyRaw,

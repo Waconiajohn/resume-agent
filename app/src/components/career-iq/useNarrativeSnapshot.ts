@@ -84,10 +84,10 @@ export function useNarrativeSnapshot(): UseNarrativeSnapshotResult {
 
         // Query the most recent completed resume v2 session
         const { data, error } = await supabase
-          .from('resume_pipeline_sessions')
-          .select('pipeline_data')
+          .from('coach_sessions')
+          .select('tailored_sections')
           .eq('user_id', user.id)
-          .eq('status', 'complete')
+          .eq('pipeline_status', 'complete')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -95,13 +95,15 @@ export function useNarrativeSnapshot(): UseNarrativeSnapshotResult {
         if (cancelled) return;
 
         if (error || !data) {
-          // Table may not exist or no completed sessions — fall through to 'none'
           setSnapshot(null);
           setStatus('none');
           return;
         }
 
-        const found = extractNarrativeFromPipelineData(data.pipeline_data);
+        // Pipeline data is nested: tailored_sections.pipeline_data.narrativeStrategy
+        const stored = data.tailored_sections as Record<string, unknown> | null;
+        const pipelineData = stored?.pipeline_data ?? stored;
+        const found = extractNarrativeFromPipelineData(pipelineData);
         if (!cancelled) {
           setSnapshot(found);
           setStatus(found ? 'ready' : 'none');
