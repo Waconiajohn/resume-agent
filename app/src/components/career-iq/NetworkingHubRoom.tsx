@@ -949,6 +949,8 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
 
   const [followUps, setFollowUps] = useState<NetworkingContact[]>([]);
   const [contactsError, setContactsError] = useState<string | null>(null);
+  const [niImportStatus, setNiImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [niImportMessage, setNiImportMessage] = useState<string | null>(null);
 
   // Story 62-1: prefill state for outreach generator + expose messages for GeneratedMessages
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(initialPrefill ?? null);
@@ -1008,6 +1010,27 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
     setContactModalTitle('Add Contact');
     setShowContactModal(true);
   }, []);
+
+  // NH1-3: Import contacts from Network Intelligence
+  const handleNIImport = useCallback(async () => {
+    setNiImportStatus('loading');
+    setNiImportMessage(null);
+    const result = await networkingContacts.importFromNI();
+    if (!result) {
+      setNiImportStatus('error');
+      setNiImportMessage('Import failed. Please try again.');
+    } else {
+      setNiImportStatus('success');
+      setNiImportMessage(result.message);
+      // Refresh rule of four groups so new contacts appear
+      await ruleOfFour.refresh();
+    }
+    // Auto-clear message after 8 seconds
+    setTimeout(() => {
+      setNiImportStatus('idle');
+      setNiImportMessage(null);
+    }, 8000);
+  }, [networkingContacts.importFromNI, ruleOfFour.refresh]);
 
   const handleSaveContact = useCallback(
     async (data: CreateContactData): Promise<void> => {
@@ -1075,12 +1098,39 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
           />
         </div>
         <div className="flex items-center gap-2">
+          <GlassButton
+            variant="ghost"
+            onClick={handleNIImport}
+            disabled={niImportStatus === 'loading'}
+          >
+            {niImportStatus === 'loading' ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Users size={14} />
+            )}
+            Import from NI
+          </GlassButton>
           <GlassButton onClick={handleAddGenericContact}>
             <Plus size={14} />
             Add Contact
           </GlassButton>
         </div>
       </div>
+
+      {/* NI import status message */}
+      {niImportMessage && (
+        <div
+          className={cn(
+            'text-[12px] flex items-center gap-2 px-3 py-2 rounded-lg border',
+            niImportStatus === 'success'
+              ? 'text-[#b5dec2] border-[#b5dec2]/20 bg-[#b5dec2]/[0.05]'
+              : 'text-red-400 border-red-400/20 bg-red-400/[0.05]',
+          )}
+        >
+          <AlertCircle size={12} />
+          {niImportMessage}
+        </div>
+      )}
 
       {/* Contacts load error */}
       {contactsError && (

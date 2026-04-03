@@ -1,5 +1,45 @@
 # Changelog — Resume Agent
 
+## 2026-04-01 — Session 92
+**Sprint:** NH1 | **Story:** Networking Hub Stories 2-5
+**Summary:** Audited all four stories. Most of the implementation is already built. Added the two missing pieces: `fetchOverdue` and `importFromNI` to `useNetworkingContacts`, and wired NI Import into `NetworkingHubRoom` with status feedback.
+
+### Changes Made
+- `app/src/hooks/useNetworkingContacts.ts` — Added `fetchOverdue()` (calls `GET /api/networking/overdue`) and `importFromNI()` (calls `POST /api/networking/ni-import`, deduplicates on email + ni_connection_id, auto-refreshes contacts list after successful import). Both are exposed from the hook return value.
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — Added "Import from NI" button to the header action bar. Wires `handleNIImport` callback through `importFromNI` with loading/success/error state. Shows inline status message after import. Auto-clears after 8 seconds. Refreshes rule-of-four groups on success.
+
+### Decisions Made
+- NH1-2 (Message Generators): No new endpoint needed. The existing outreach agent pipeline (`POST /api/networking-outreach/start` + SSE stream) is architecturally correct and fully wired into `NetworkingHubRoom` via `OutreachGenerator`. The `POST /api/networking/contacts/:contactId/prepare-outreach` endpoint provides the CRM-to-agent bridge. Creating a separate `/api/networking/generate` endpoint would duplicate agent functionality in a procedural wrapper.
+- NH1-3 (NI + CRM Integration): Server-side `POST /api/networking/ni-import` was already built with full dedup. Added missing frontend `importFromNI` hook method and UI trigger.
+- NH1-4 (Rule of Four): Fully built in prior sessions. `useRuleOfFour`, `RuleOfFourCoachingBar`, `RuleOfFourSection` all exist and are wired. `application_id` column exists on `networking_contacts`. No changes needed.
+- NH1-5 (Follow-Up Cadence): Core logic fully built. `GET /api/networking/follow-ups` and `GET /api/networking/overdue` endpoints exist. `networking-crm-service.ts` has Four-Touch business logic. `FollowUpBar` renders in `NetworkingHubRoom`. Added `fetchOverdue` to the hook to expose the dedicated overdue endpoint for consumers that need just the overdue subset (e.g., Daily Ops badge counts).
+
+### Known Issues
+- 50 pre-existing test failures in unrelated rooms (resume-v2, CareerIQ sidebar, CaseStudy, ExecutiveBio, NinetyDayPlan). None in networking files.
+
+### Next Steps
+- Networking stories are fully verified. Consider adding a `fetchOverdue` call in Daily Ops view for a badge count showing overdue networking contacts.
+
+## 2026-04-01 — Session 91
+**Sprint:** LS1 | **Story:** LinkedIn Studio — Unified Workspace (all four stories)
+**Summary:** Audited all four LinkedIn Studio sprint stories. Every requested component, agent, route, hook, and UI sub-panel is already fully built and passing tests. No new code was required.
+
+### Changes Made
+- No files modified. This was a verification-only session.
+
+### Decisions Made
+- LS1-1 (Post Generator): `server/src/agents/linkedin-content/` (strategist + writer agents), `server/src/routes/linkedin-content.ts` (mounted at `/api/linkedin-content`), `app/src/hooks/useLinkedInContent.ts`, and the `PostComposer` component inside `LinkedInStudioRoom.tsx` are all fully implemented and wired. Feature flag `FF_LINKEDIN_CONTENT` defaults true.
+- LS1-2 (Series Management): `server/src/agents/content-calendar/` (strategist + writer agents), `server/src/routes/content-calendar.ts`, `app/src/hooks/useContentCalendar.ts`, `app/src/components/career-iq/linkedin-studio/SeriesPlanner.tsx`, and the `ContentCalendar` sub-component in `LinkedInStudioRoom.tsx` are all fully implemented. No `useSeriesManagement` hook was needed — `useContentCalendar` already owns the series state via `calendar.posts`.
+- LS1-3 (LinkedIn Tools): `server/src/routes/linkedin-tools.ts` provides `/recruiter-sim` and `/writing-analyzer` endpoints (mounted at `/api/linkedin-tools`). `app/src/components/career-iq/linkedin-studio/RecruiterSimulator.tsx` and `WritingAnalyzer.tsx` are fully built, wired inside `ToolsPanel.tsx`, and rendered in the Library workspace. Feature flag `FF_LINKEDIN_TOOLS` defaults true.
+- LS1-4 (Unified Studio Shell): `app/src/components/career-iq/LinkedInStudioRoom.tsx` (1,842 lines) is the fully unified workspace with five tabs (Profile/editor, Write/composer, Results/analytics, Content Plan/calendar, Library/library), all sub-components connected, workflow guidance strip, keyword multiplier nudge, and support workspace back-navigation.
+- 50 pre-existing test failures confirmed as unrelated to LinkedIn Studio (resume-v2, CaseStudy, ExecutiveBio, NinetyDayPlan, Sidebar). All 50 LinkedIn-related tests pass.
+
+### Known Issues
+- 50 pre-existing test failures in non-LinkedIn files — not introduced by this session.
+
+### Next Steps
+- LinkedIn Studio is complete and verified. Next sprint work can target the remaining pre-existing test failures or move to the next sprint priority per `CURRENT_SPRINT.md`.
+
 ## 2026-04-01 — Session 90
 **Sprint:** NH1 | **Story:** Networking CRM Foundation — Fix pre-existing test failures
 **Summary:** Audited Sprint NH1 story. Found the Networking CRM is already fully built (DB, backend routes, frontend components, hooks). Fixed 36 pre-existing test failures in two NetworkingHubRoom test files caused by an incomplete supabase mock missing `onAuthStateChange`.

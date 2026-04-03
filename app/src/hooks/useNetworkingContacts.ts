@@ -300,6 +300,62 @@ export function useNetworkingContacts() {
     }
   }, []);
 
+  /**
+   * Fetch contacts whose next_followup_at is in the past (overdue).
+   * Calls GET /api/networking/overdue.
+   */
+  const fetchOverdue = useCallback(async (): Promise<NetworkingContact[]> => {
+    try {
+      const authHeader = await getAuthHeader();
+      if (!authHeader) return [];
+
+      const res = await fetch(`${API_BASE}/networking/overdue`, {
+        headers: authHeader,
+      });
+
+      if (!res.ok) return [];
+
+      const data = (await res.json()) as { contacts: NetworkingContact[]; count: number };
+      return data.contacts;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  /**
+   * Import contacts from Network Intelligence (client_connections) into the CRM.
+   * Deduplicates on email and ni_connection_id.
+   * Calls POST /api/networking/ni-import.
+   *
+   * Returns a summary of how many contacts were imported/skipped, or null on error.
+   */
+  const importFromNI = useCallback(async (): Promise<{
+    imported: number;
+    skipped: number;
+    message: string;
+  } | null> => {
+    try {
+      const authHeader = await getAuthHeader();
+      if (!authHeader) return null;
+
+      const res = await fetch(`${API_BASE}/networking/ni-import`, {
+        method: 'POST',
+        headers: authHeader,
+      });
+
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as { imported: number; skipped: number; message: string };
+      // If contacts were imported, refresh the local list
+      if (data.imported > 0 && mountedRef.current) {
+        await fetchContacts();
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, [fetchContacts]);
+
   return {
     ...state,
     fetchContacts,
@@ -309,5 +365,7 @@ export function useNetworkingContacts() {
     logTouchpoint,
     fetchFollowUps,
     fetchTouchpoints,
+    fetchOverdue,
+    importFromNI,
   };
 }
