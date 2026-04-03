@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useId } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { ArrowLeft, FileText, Link, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
@@ -417,6 +417,14 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
   const urlId = useId();
   const pasteId = useId();
 
+  // Sync when initialJobUrl changes (e.g., user clicks a different "Tailor Resume")
+  useEffect(() => {
+    if (initialJobUrl) {
+      setJdUrl(initialJobUrl);
+      onJobDescriptionChange(initialJobUrl);
+    }
+  }, [initialJobUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFileLoaded = useCallback((text: string, name: string) => {
     onJobDescriptionChange(text);
     setJdFileName(name);
@@ -539,6 +547,13 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
   const [resumeText, setResumeText] = useState(initialResumeText ?? '');
   const [jobDescription, setJobDescription] = useState(initialJobUrl ?? '');
   const [masterResumeLoading, setMasterResumeLoading] = useState(false);
+
+  // Sync when initialJobUrl changes (navigating from a different "Tailor Resume")
+  useEffect(() => {
+    if (initialJobUrl) {
+      setJobDescription(initialJobUrl);
+    }
+  }, [initialJobUrl]);
 
   const handleLoadMasterResume = useCallback(async () => {
     if (!onLoadMasterResume) return;
