@@ -575,7 +575,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
   }, [isValid, loading, onSubmit, resumeText, jobDescription]);
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] overflow-y-auto">
+    <div className="relative h-[calc(100vh-3.5rem)] overflow-y-auto">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
 
       {onBack && (

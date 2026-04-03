@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, FileText, Search, Target } from 'lucide-react';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
-import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
@@ -202,8 +201,6 @@ export function DashboardHome({
   onNegotiationPrepClick,
 }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
-  const firstMomentumNudge = nudges.length > 0 ? nudges[0] : null;
-  const showMomentumNudge = Boolean(firstMomentumNudge && !dismissed[firstMomentumNudge.id]);
   const handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
     setDismissed(updated);
@@ -222,15 +219,7 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
       />
 
-      {showMomentumNudge && firstMomentumNudge ? (
-        <CoachingNudgeBar
-          nudges={[firstMomentumNudge]}
-          onDismiss={(nudgeId) => {
-            handleDismiss(nudgeId);
-            onDismissNudge?.(nudgeId);
-          }}
-        />
-      ) : null}
+      {/* CoachingNudgeBar removed — momentum nudges are not ready for production */}
 
       <ZoneYourPipeline
         onNavigateRoom={onNavigateRoom}
