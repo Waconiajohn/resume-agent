@@ -824,6 +824,34 @@ Bible: Ch 8
 
 ---
 
+## Sprint RQ1: Resume Quality — Bullet Enhance Full Context
+
+**Goal:** Give the bullet-enhance endpoint access to the candidate's full background so rewrites are contextually rich, not isolated.
+**Stories:** 2 | **Est. Size:** Medium
+
+### Story RQ1-1: Pass Full Candidate Summary to Bullet-Enhance [MEDIUM]
+- **As a** user
+- **I want to** get AI bullet rewrites that draw from my ENTIRE background
+- **So that** if I mentioned mentoring engineers in one role, the AI can reference it when strengthening a bullet in a different role
+- **Acceptance Criteria:**
+  - [ ] `bullet-enhance` endpoint reads full candidate summary from pipeline state (not just tagged evidence)
+  - [ ] Candidate's original resume text summary included in LLM prompt
+  - [ ] Gap analysis output included for cross-referencing evidence
+  - [ ] `cd server && npx tsc --noEmit` passes
+- **Dependencies:** Pipeline state stored in coach_sessions (already exists)
+
+### Story RQ1-2: Pass Full JD Context to Bullet-Enhance [SMALL]
+- **As a** user
+- **I want to** get rewrites that use the hiring company's specific language
+- **So that** the "Connect to Role" button produces bullets that sound like they were written FOR this company
+- **Acceptance Criteria:**
+  - [ ] Job intelligence output (key requirements, company context) included in LLM prompt
+  - [ ] JD excerpt for the specific requirement included alongside the full JD context
+  - [ ] `cd server && npx tsc --noEmit` passes
+- **Dependencies:** RQ1-1
+
+---
+
 ## Sprint PX1: Platform Infrastructure
 
 **Goal:** Production hardening — distributed bus, admin monitoring, auth improvements, DB-driven catalog.
