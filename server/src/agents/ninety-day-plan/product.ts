@@ -201,6 +201,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
       }
 
       if (agentName === 'planner') {
+        const sharedContext = state.shared_context;
         const stakeholderSummary = state.stakeholder_map.length > 0
           ? state.stakeholder_map.map((s, i) => `${i + 1}. ${s.name_or_role} (${s.relationship_type}, ${s.priority})`).join('\n')
           : '(no stakeholders mapped)';
@@ -224,6 +225,32 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           '',
           '## Learning Priorities',
           learningSummary,
+        ];
+
+        // Positioning context — informs how to frame the executive's strengths in each phase narrative
+        if (hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
+          }));
+        }
+
+        parts.push(
           '',
           'Write the plan in order:',
           '1. Call write_30_day_plan for Phase 1: Listen & Learn',
@@ -232,7 +259,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           '4. Call assemble_strategic_plan to produce the final plan document',
           '',
           'Do NOT skip any phase.',
-        ];
+        );
 
         // If the user corrected the stakeholder map at the review gate, acknowledge changes
         if (state.revision_feedback) {

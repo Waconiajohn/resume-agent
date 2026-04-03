@@ -250,12 +250,42 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
       }
 
       if (agentName === 'strategist') {
+        const sharedContext = state.shared_context;
         const parts = [
           'Design a comprehensive negotiation strategy and build the full preparation package.',
           '',
           '## Objective',
           'Use the research already gathered to create one coherent negotiation package: an overall strategy, evidence-backed talking points, scenarios for the initial offer response, counter-offer, and final negotiation, written counter language, and one assembled prep report. Cover each scenario type before you finish.',
         ];
+
+        // Positioning context — informs which leverage points to emphasize and how to frame the candidate's value
+        if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+            legacyCareerProfile: state.platform_context?.career_profile,
+          }));
+        }
+
+        if (hasMeaningfulSharedValue(sharedContext?.careerNarrative)) {
+          parts.push(...renderCareerNarrativeSection({
+            heading: '## Career Narrative Signals',
+            sharedNarrative: sharedContext?.careerNarrative,
+          }));
+        } else if (state.platform_context?.why_me_story) {
+          parts.push(...renderWhyMeStorySection({
+            heading: '## Career Narrative Signals',
+            legacyWhyMeStory: state.platform_context?.why_me_story,
+          }));
+        }
+
+        if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: state.platform_context?.positioning_strategy,
+          }));
+        }
 
         // If the user requested revisions at the strategy review gate, include feedback
         if (state.revision_feedback) {

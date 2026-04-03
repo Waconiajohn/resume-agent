@@ -19,8 +19,10 @@ import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
   renderCareerProfileSection,
+  renderPositioningStrategySection,
   renderTargetingSummaryLines,
 } from '../../contracts/shared-context-prompt.js';
+import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
 // FF_JOB_FINDER is used by the route — imported from feature-flags.ts directly there.
 
@@ -154,6 +156,8 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
 
       if (agentName === 'ranker') {
         const jobCount = state.search_results.length;
+        const sharedContext = state.shared_context;
+        const platformCtx = state.platform_context;
 
         const parts = [
           `Score and rank ${jobCount} discovered job opportunities against this candidate's positioning.`,
@@ -166,6 +170,23 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
 
         if (state.search_results.length > 20) {
           parts.push(`... and ${state.search_results.length - 20} more`);
+        }
+
+        // Positioning context — required for accurate fit scoring
+        if (platformCtx?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
+          parts.push(...renderCareerProfileSection({
+            heading: '## Career Profile',
+            sharedContext,
+            legacyCareerProfile: platformCtx?.career_profile,
+          }));
+        }
+
+        if (platformCtx?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+          parts.push(...renderPositioningStrategySection({
+            heading: '## Positioning Strategy',
+            sharedStrategy: sharedContext?.positioningStrategy,
+            legacyStrategy: platformCtx?.positioning_strategy,
+          }));
         }
 
         parts.push('', 'Call score_job_fit, then rank_and_narrate (max_results: 10), then present_results.');

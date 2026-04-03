@@ -1,5 +1,25 @@
 # Changelog — Resume Agent
 
+## 2026-04-01 — Session 95
+**Sprint:** Active sprint (shared context audit) | **Story:** Enrich all agents with full platform context
+**Summary:** Audited all 15 active agent products for shared context coverage. 12 products were already fully enriched via `shared_context` + `platform_context`. Fixed the 3 agents whose second-stage agents were missing positioning context.
+
+### Changes Made
+- `server/src/agents/job-finder/product.ts` — Added `renderCareerProfileSection` + `renderPositioningStrategySection` to the `ranker` agent's `buildAgentMessage`. The ranker was scoring jobs without any knowledge of the candidate's positioning strategy. Added imports for `renderPositioningStrategySection` and `hasMeaningfulSharedValue`.
+- `server/src/agents/salary-negotiation/product.ts` — Added `renderCareerProfileSection`, `renderCareerNarrativeSection`, `renderWhyMeStorySection`, and `renderPositioningStrategySection` to the `strategist` agent's `buildAgentMessage`. The strategist was designing negotiation strategy without the candidate's career profile or positioning context — all four render helpers were already imported.
+- `server/src/agents/ninety-day-plan/product.ts` — Added `renderCareerProfileSection`, `renderCareerNarrativeSection`, and `renderPositioningStrategySection` to the `planner` agent's `buildAgentMessage`. The planner was writing the 90-day plan without positioning context — all render helpers were already imported.
+
+### Decisions Made
+- 12 of 15 products were already well-implemented: cover-letter, executive-bio, thank-you-note, case-study, linkedin-optimizer, linkedin-editor, linkedin-content, job-tracker, networking-outreach, interview-prep, salary-negotiation (researcher), and content-calendar.
+- The `personal-brand` agent does not exist as a directory — it is either not yet built or was renamed. No action taken.
+- Pattern applied: second-stage agents (ranker, strategist, planner) now receive the same positioning context as first-stage agents, enabling them to use the candidate's career profile, narrative, and positioning strategy throughout the full pipeline.
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Verify the personal-brand agent status — it appears in the CLAUDE.md agent roster but has no directory in `server/src/agents/`
+
 ## 2026-04-01 — Session 94
 **Sprint:** SN1 | **Story:** Salary Negotiation Enhancement — SN1-1 (Counter-Offer Simulation) + SN1-2 (Kanban Trigger)
 **Summary:** SN1-2 was already fully built end-to-end. Built SN1-1 from scratch: a gate-based interactive Employer simulation agent that presents authentic negotiation positions, pauses for candidate responses, scores each round, and delivers coaching feedback.

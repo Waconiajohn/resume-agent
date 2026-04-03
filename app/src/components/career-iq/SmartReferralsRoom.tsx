@@ -50,28 +50,6 @@ const ALWAYS_UNLOCKED: Record<ReferralPath, SmartReferralsTab[]> = {
   bonus: ['bonus-search', 'job-matches', 'referrals', 'contacts'],
 };
 
-const PATH_COPY: Record<ReferralPath, {
-  eyebrow: string;
-  title: string;
-  description: string;
-  helper: string;
-  accentClass: string;
-}> = {
-  network: {
-    eyebrow: 'Best first path',
-    title: 'Use your existing connections first',
-    description: 'Import first-degree connections, scan their company job pages, review the roles, and move straight into outreach.',
-    helper: 'This is the strongest path when someone is already there.',
-    accentClass: 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.05]',
-  },
-  bonus: {
-    eyebrow: 'Second visible path',
-    title: 'Chase strong referral bonuses separately',
-    description: 'Search known high-bonus companies even without a connection, review those roles, and keep growing the bonus-company database as matches appear.',
-    helper: 'Coverage is still limited to the bonus programs we have identified so far.',
-    accentClass: 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.05]',
-  },
-};
 
 interface OutreachPrefill {
   name: string;
@@ -133,32 +111,25 @@ function NetworkSetupPanel({
     <div className="space-y-4">
       <ConnectionsBrowser accessToken={accessToken} />
 
-      <GlassCard className="p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Support tools
-            </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
-              Keep target titles and company-page scans close to the connection workflow without turning them into first-class tabs.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <GlassButton
-              variant={supportView === 'targets' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => onToggleSupportView('targets')}
-            >
-              Target titles
-            </GlassButton>
-            <GlassButton
-              variant={supportView === 'job-scan' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => onToggleSupportView('job-scan')}
-            >
-              Scan company pages
-            </GlassButton>
-          </div>
+      <GlassCard className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+            Tools
+          </span>
+          <GlassButton
+            variant={supportView === 'targets' ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => onToggleSupportView('targets')}
+          >
+            Target titles
+          </GlassButton>
+          <GlassButton
+            variant={supportView === 'job-scan' ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => onToggleSupportView('job-scan')}
+          >
+            Scan company pages
+          </GlassButton>
         </div>
       </GlassCard>
 
@@ -407,77 +378,38 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
   }, [hasConnections]);
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
+    <div className="p-6 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
-        <p className="text-sm text-[var(--text-soft)] mt-1">
-          Work this in two clear ways: start with companies where you already know someone, or run a separate bonus-first search when the payout is worth chasing.
-        </p>
+        <div className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1">
+          <button
+            type="button"
+            onClick={() => handlePathSelect('network')}
+            aria-pressed={selectedPath === 'network'}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all',
+              selectedPath === 'network'
+                ? 'bg-[var(--surface-1)] text-[#afc4ff]'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
+            )}
+          >
+            Network path
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePathSelect('bonus')}
+            aria-pressed={selectedPath === 'bonus'}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all',
+              selectedPath === 'bonus'
+                ? 'bg-[var(--surface-1)] text-[#f0d99f]'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
+            )}
+          >
+            Bonus path
+          </button>
+        </div>
       </div>
-
-      <GlassCard className="p-5">
-        <div className="grid gap-3 lg:grid-cols-2">
-          {(['network', 'bonus'] as const).map((path) => {
-            const copy = PATH_COPY[path];
-            const isActive = selectedPath === path;
-            return (
-              <button
-                key={path}
-                type="button"
-                onClick={() => handlePathSelect(path)}
-                aria-pressed={isActive}
-                className={cn(
-                  'rounded-xl border p-4 text-left transition-all',
-                  copy.accentClass,
-                  isActive ? 'ring-1 ring-offset-0 ring-[var(--surface-1)]' : 'hover:bg-[var(--surface-1)]/70',
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className={cn(
-                    'text-[11px] font-semibold uppercase tracking-[0.18em]',
-                    path === 'network' ? 'text-[#afc4ff]' : 'text-[#f0d99f]',
-                  )}>
-                    {copy.eyebrow}
-                  </p>
-                  {isActive && (
-                    <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{copy.title}</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-muted)]">{copy.description}</p>
-                <p className="mt-2 text-[11px] text-[var(--text-soft)]">{copy.helper}</p>
-              </button>
-            );
-          })}
-        </div>
-      </GlassCard>
-
-      <GlassCard className="p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
-              {selectedPath === 'network' ? 'Connection path' : 'Bonus path'}
-            </p>
-            <h3 className="mt-1.5 text-base font-semibold text-[var(--text-strong)]">
-              {selectedPath === 'network'
-                ? 'Use your network first, then move into outreach'
-                : 'Search strong bonus companies, then work the worthwhile ones'}
-            </h3>
-            <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-[var(--text-soft)]">
-              {selectedPath === 'network'
-                ? 'Import your connections, review the companies where someone already works, check the matches, and then move into outreach.'
-                : 'Use this when no one is already there but the company is known to pay a meaningful referral bonus.'}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-soft)] lg:max-w-sm">
-            {selectedPath === 'network'
-              ? 'Best path when you already have a first-degree connection at the company.'
-              : 'Separate path for known bonus companies. We keep expanding that database as new matches are found.'}
-          </div>
-        </div>
-      </GlassCard>
 
       <GlassCard className="p-1">
         <div className="flex gap-1 overflow-x-auto">
