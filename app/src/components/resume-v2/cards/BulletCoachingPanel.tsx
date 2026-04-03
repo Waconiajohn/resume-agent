@@ -419,8 +419,8 @@ export function BulletCoachingPanel({
       >
         {/* Left: primary actions */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Apply to Resume — only shown when suggestion is selected AND no custom edit open (Fix 3) */}
-          {primarySuggestion && !showCustomEdit && selectedSuggestion === null && (
+          {/* Apply to Resume — shown whenever there is a suggestion and no custom edit open */}
+          {primarySuggestion && !showCustomEdit && (
             <button
               type="button"
               onClick={() => handleAcceptSuggestion(primarySuggestion)}

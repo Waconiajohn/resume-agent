@@ -1027,15 +1027,17 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     ``,
     `Action: ${actionDescription}`,
     ``,
-    `Return JSON:`,
+    `Return a JSON object with this exact structure:`,
     `{`,
-    `  "enhanced_bullet": "the primary rewrite",`,
+    `  "enhanced_bullet": "<your primary rewrite of the bullet>",`,
     `  "alternatives": [`,
-    `    {"text": "metric-focused version", "angle": "metric"},`,
-    `    {"text": "scope-focused version", "angle": "scope"},`,
-    `    {"text": "impact-focused version", "angle": "impact"}`,
+    `    {"text": "<a version emphasizing quantified metrics and numbers>", "angle": "metric"},`,
+    `    {"text": "<a version emphasizing scope, scale, and breadth of responsibility>", "angle": "scope"},`,
+    `    {"text": "<a version emphasizing business impact and outcomes>", "angle": "impact"}`,
     `  ]`,
     `}`,
+    ``,
+    `Each "text" value must be a complete, ready-to-use resume bullet — NOT a label or description.`,
     ``,
     `Rules:`,
     `- Every bullet MUST be grounded in the evidence provided`,
@@ -1058,6 +1060,30 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     if (!repaired || typeof repaired.enhanced_bullet !== 'string') {
       logger.warn({ session_id: sessionId, action, rawSnippet: response.text.substring(0, 200) }, 'Bullet enhance: JSON parse failed');
       return c.json({ error: 'Enhancement failed — could not parse LLM response' }, 500);
+    }
+
+    // Reject placeholder/template text that the LLM echoed from the prompt
+    const PLACEHOLDER_PATTERNS = [
+      /^(the\s+)?primary\s+rewrite/i,
+      /^metric[- ]focused\s+(version|phrasing)/i,
+      /^scope[- ]focused\s+(version|phrasing)/i,
+      /^impact[- ]focused\s+(version|phrasing)/i,
+      /^(a\s+)?version\s+emphasizing/i,
+      /^your\s+(primary\s+)?rewrite/i,
+    ];
+
+    const isPlaceholder = (text: string) => PLACEHOLDER_PATTERNS.some(p => p.test(text.trim()));
+
+    if (isPlaceholder(repaired.enhanced_bullet)) {
+      logger.warn({ session_id: sessionId, action, enhancedBulletSnippet: repaired.enhanced_bullet.substring(0, 100) }, 'Bullet enhance: placeholder text detected in enhanced_bullet');
+      return c.json({ error: 'Enhancement produced generic text. Please try with more specific evidence.' }, 500);
+    }
+
+    // Filter placeholder alternatives
+    if (Array.isArray(repaired.alternatives)) {
+      repaired.alternatives = repaired.alternatives.filter(
+        (alt: { text?: string }) => typeof alt.text === 'string' && !isPlaceholder(alt.text),
+      );
     }
 
     return c.json({

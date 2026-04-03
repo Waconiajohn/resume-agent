@@ -1425,13 +1425,23 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
 
   // Sanitize alternative bullets
   const validAngles = new Set<string>(['metric', 'scope', 'impact']);
+  const PLACEHOLDER_PATTERNS = [
+    /^(the\s+)?primary\s+rewrite/i,
+    /^metric[- ]focused/i,
+    /^scope[- ]focused/i,
+    /^impact[- ]focused/i,
+    /^(a\s+)?version\s+emphasizing/i,
+    /^(a\s+)?(metric|scope|impact|business)[- ]focused\s+(version|phrasing)/i,
+  ];
+  const isPlaceholderBullet = (text: string) => PLACEHOLDER_PATTERNS.some(p => p.test(text.trim()));
+
   if (Array.isArray(strategy.alternative_bullets)) {
     const alts = (strategy.alternative_bullets as Array<unknown>)
       .filter((item) =>
         Boolean(item && typeof (item as { text?: unknown }).text === 'string' && typeof (item as { angle?: unknown }).angle === 'string' && validAngles.has((item as { angle: string }).angle)),
       )
       .map((item) => item as { text: string; angle: string })
-      .filter((item) => item.text.trim().length > 20)
+      .filter((item) => item.text.trim().length > 20 && !isPlaceholderBullet(item.text))
       .map((item) => ({ text: item.text.trim(), angle: item.angle as 'metric' | 'scope' | 'impact' }))
       .slice(0, 3);
     if (alts.length > 0) {

@@ -1316,5 +1316,6 @@ body {
 
 /* ── Score ring donut chart animation ── */
 @keyframes score-ring-draw {
+  from { stroke-dashoffset: var(--circumference); }
   to { stroke-dashoffset: var(--offset); }
 }
