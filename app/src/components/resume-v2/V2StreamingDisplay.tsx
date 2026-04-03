@@ -599,7 +599,10 @@ export function V2StreamingDisplay({
     setActiveBullet(null);
   }, [onAcceptEdit]);
 
-  const canEdit = isComplete && displayResume !== null && displayResume !== undefined;
+  // Bullet clicking and direct editing: available as soon as the resume is visible
+  const canInteract = displayResume !== null && displayResume !== undefined;
+  // Full coaching features (undo bar, gap coaching panel): gated on pipeline completion
+  const canEdit = isComplete && canInteract;
 
   const canShowUndoBar = canEdit && (undoCount > 0 || redoCount > 0);
 
@@ -849,9 +852,9 @@ export function V2StreamingDisplay({
                     resume={displayResume}
                     requirementCatalog={data.gapAnalysis?.requirements ?? []}
                     activeBullet={activeBullet}
-                    onBulletClick={canEdit ? handleBulletClick : undefined}
-                    onBulletEdit={canEdit ? onBulletEdit : undefined}
-                    onBulletRemove={canEdit ? onBulletRemove : undefined}
+                    onBulletClick={canInteract ? handleBulletClick : undefined}
+                    onBulletEdit={canInteract ? onBulletEdit : undefined}
+                    onBulletRemove={canInteract ? onBulletRemove : undefined}
                     gapChat={gapChat ?? undefined}
                     buildChatContext={buildChatContext}
                     onBulletConversationClose={() => setActiveBullet(null)}
