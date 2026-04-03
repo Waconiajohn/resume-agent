@@ -184,7 +184,7 @@ export function WatchlistManager({
                     <button
                       type="button"
                       onClick={() => commitEdit(company.id)}
-                      className="text-[#b5dec2]/60 hover:text-[#b5dec2] transition-colors"
+                      className="text-[var(--badge-green-text)]/60 hover:text-[var(--badge-green-text)] transition-colors"
                     >
                       <Check size={14} />
                     </button>

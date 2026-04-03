@@ -67,18 +67,18 @@ function AssistantBubble({
   return (
     <div className="flex justify-start">
       <div className="max-w-[92%] space-y-2">
-        <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <p className="text-sm leading-6 text-[var(--text-muted)]">{message.content}</p>
           {visibleQuestion && (
-            <p className="mt-2 text-xs italic text-[#f0d99f]/85">
+            <p className="mt-2 text-xs italic text-[var(--badge-amber-text)]/85">
               Next question: {visibleQuestion}
             </p>
           )}
         </div>
 
         {message.suggestedLanguage && (
-          <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
-            <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
+          <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-4 py-3">
+            <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--badge-green-text)]">
               Suggested Resume Language
             </span>
             <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
@@ -104,7 +104,7 @@ function AssistantBubble({
                   }
                 }}
                 disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 {isEditing ? 'Sending to Review...' : 'Send to Review'}
@@ -128,12 +128,12 @@ function AssistantBubble({
 function LoadingDots() {
   return (
     <div className="flex justify-start">
-      <div className="rounded-md border border-[#afc4ff]/10 bg-[#afc4ff]/[0.05] px-4 py-3">
+      <div className="rounded-md border border-[var(--link)]/10 bg-[var(--badge-blue-bg)] px-4 py-3">
         <div className="flex items-center gap-1.5" role="status" aria-label="Thinking">
           {[0, 1, 2].map((dot) => (
             <span
               key={dot}
-              className="inline-block h-1.5 w-1.5 rounded-full bg-[#afc4ff]/60 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--link)]/60 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
               style={{ animationDelay: `${dot * 0.16}s` }}
             />
           ))}
@@ -241,10 +241,10 @@ export function FinalReviewConcernThread({
 
   if (resolvedLanguage) {
     return (
-      <div className="support-callout mt-2 border-[#b5dec2]/15 bg-[#b5dec2]/[0.05] px-4 py-3">
+      <div className="support-callout mt-2 border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-[#b5dec2]" />
-          <span className="text-sm font-medium text-[#b5dec2]">Accepted Final Review edit</span>
+          <Sparkles className="h-3.5 w-3.5 text-[var(--badge-green-text)]" />
+          <span className="text-sm font-medium text-[var(--badge-green-text)]">Accepted Final Review edit</span>
         </div>
         <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">&ldquo;{resolvedLanguage}&rdquo;</p>
       </div>
@@ -252,7 +252,7 @@ export function FinalReviewConcernThread({
   }
 
   return (
-    <div className="room-shell mt-3 overflow-hidden border-[#afc4ff]/12 bg-black/15" data-testid="final-review-thread">
+    <div className="room-shell mt-3 overflow-hidden border-[var(--link)]/12 bg-black/15" data-testid="final-review-thread">
       {messages.length === 0 && (
         <div className="space-y-3 border-b border-[var(--line-soft)] px-4 py-4">
           <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
@@ -264,8 +264,8 @@ export function FinalReviewConcernThread({
             </p>
           </div>
 
-          <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#afc4ff]">
+          <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-4 py-3">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--link)]">
               Best next detail to add
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
@@ -274,8 +274,8 @@ export function FinalReviewConcernThread({
           </div>
 
           {context.suggestedResumeEdit && (
-            <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
+            <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-4 py-3">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--badge-green-text)]">
                 Suggested rewrite to start from
               </p>
               <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
@@ -293,7 +293,7 @@ export function FinalReviewConcernThread({
                   type="button"
                   onClick={handleStarterApply}
                   disabled={isEditing || !starterDraftValue.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   {isEditing ? 'Sending to Review...' : 'Send to Review'}
@@ -332,7 +332,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
+            className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--link)] transition-colors hover:bg-[var(--link)]/10 disabled:opacity-40"
           >
             Ask What Detail Is Missing
           </button>
@@ -340,7 +340,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestDraft}
             disabled={isLoading}
-            className="rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:opacity-40"
+            className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:opacity-40"
           >
             Draft Stronger Version
           </button>
@@ -367,7 +367,7 @@ export function FinalReviewConcernThread({
       )}
 
       {error && (
-        <div className="flex items-center gap-2 px-4 py-2 text-xs text-[#f0b8b8]">
+        <div className="flex items-center gap-2 px-4 py-2 text-xs text-[var(--badge-red-text)]">
           <AlertCircle className="h-3 w-3 shrink-0" />
           <span className="flex-1">{error}</span>
           {lastSentRef.current && (
@@ -375,7 +375,7 @@ export function FinalReviewConcernThread({
               type="button"
               onClick={handleRetry}
               disabled={isLoading}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[#afc4ff] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[var(--link)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-30"
             >
               <RotateCcw className="h-3 w-3" />
               Retry
@@ -406,10 +406,10 @@ export function FinalReviewConcernThread({
           type="button"
           onClick={handleSend}
           disabled={!inputValue.trim() || isLoading}
-          className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] p-2.5 transition-colors hover:bg-[#afc4ff]/[0.10] disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] p-2.5 transition-colors hover:bg-[var(--link)]/10 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Send message"
         >
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-[#afc4ff]" /> : <Send className="h-4 w-4 text-[#afc4ff]" />}
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-[var(--link)]" /> : <Send className="h-4 w-4 text-[var(--link)]" />}
         </button>
       </div>
     </div>

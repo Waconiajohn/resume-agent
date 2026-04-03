@@ -80,24 +80,24 @@ interface UnifiedGapAnalysisCardProps {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function classificationIcon(c: GapClassification) {
-  if (c === 'strong') return <CheckCircle2 className="h-3.5 w-3.5 text-[#b5dec2] shrink-0" />;
-  if (c === 'partial') return <AlertTriangle className="h-3.5 w-3.5 text-[#f0d99f] shrink-0" />;
-  return <XCircle className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />;
+  if (c === 'strong') return <CheckCircle2 className="h-3.5 w-3.5 text-[var(--badge-green-text)] shrink-0" />;
+  if (c === 'partial') return <AlertTriangle className="h-3.5 w-3.5 text-[var(--badge-amber-text)] shrink-0" />;
+  return <XCircle className="h-3.5 w-3.5 text-[var(--badge-red-text)] shrink-0" />;
 }
 
 const SECTION_CONFIG = {
   strong: {
-    accent: '#b5dec2',
+    accent: 'var(--badge-green-text)',
     label: 'Already covered',
     icon: CheckCircle2,
   },
   partial: {
-    accent: '#afc4ff',
+    accent: 'var(--link)',
     label: 'Needs stronger proof',
     icon: AlertTriangle,
   },
   missing: {
-    accent: '#f0b8b8',
+    accent: 'var(--badge-red-text)',
     label: 'Not yet covered',
     icon: XCircle,
   },
@@ -218,8 +218,8 @@ function RequirementRow({
   // Collapsed responded state for coaching items
   if (hasCoaching && isResponded) {
     const statusConfig = {
-      approve: { dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />, label: 'Draft queued', color: 'text-[#b5dec2]' },
-      context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'More context added', color: 'text-[#afc4ff]' },
+      approve: { dot: <span className="h-2 w-2 bg-[var(--badge-green-text)] shrink-0" />, label: 'Draft queued', color: 'text-[var(--badge-green-text)]' },
+      context: { dot: <MessageSquare className="h-3 w-3 text-[var(--link)] shrink-0" />, label: 'More context added', color: 'text-[var(--link)]' },
       skip: { dot: <Minus className="h-3 w-3 text-[var(--text-soft)] shrink-0" />, label: 'Left as-is', color: 'text-[var(--text-soft)]' },
     }[coachingState!.action!];
 
@@ -276,7 +276,7 @@ function RequirementRow({
           {importanceLabel(req.importance)}
         </span>
         {coaching?.previously_approved && (
-          <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
+          <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/30 shrink-0">
             <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
             Previously approved
           </span>
@@ -329,18 +329,24 @@ function RequirementRow({
 
               {req.strategy && (
                 <div
-                  className="relative overflow-hidden rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.04] pl-4 pr-4 py-4"
-                  style={{ borderColor: `${accentColor}22` }}
+                  className="relative overflow-hidden rounded-lg border pl-4 pr-4 py-4"
+                  style={{
+                    borderColor: `color-mix(in srgb, ${accentColor} 13%, transparent)`,
+                    backgroundColor: `color-mix(in srgb, ${accentColor} 4%, transparent)`,
+                  }}
                 >
                   <div
                     className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg"
                     style={{ background: `linear-gradient(to bottom, ${accentColor}, transparent)` }}
                   />
                   <div className="flex items-center gap-1.5">
-                    <Lightbulb className="h-3.5 w-3.5 shrink-0" style={{ color: `${accentColor}C0` }} />
+                    <Lightbulb
+                      className="h-3.5 w-3.5 shrink-0"
+                      style={{ color: `color-mix(in srgb, ${accentColor} 75%, transparent)` }}
+                    />
                     <span
                       className="text-xs font-semibold uppercase tracking-[0.14em]"
-                      style={{ color: `${accentColor}C0` }}
+                      style={{ color: `color-mix(in srgb, ${accentColor} 75%, transparent)` }}
                     >
                       Draft to start from
                     </span>
@@ -349,9 +355,9 @@ function RequirementRow({
 
                   {req.strategy.inferred_metric && (
                     <div className="mt-3 flex items-start gap-1.5 border-t border-[var(--line-soft)] pt-3">
-                      <Ruler className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#f0d99f]/70" />
+                      <Ruler className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--badge-amber-text)]/70" />
                       <div className="text-sm leading-6">
-                        <span className="text-[#f0d99f]/84">{req.strategy.inferred_metric}</span>
+                        <span className="text-[var(--badge-amber-text)]/84">{req.strategy.inferred_metric}</span>
                         {req.strategy.inference_rationale && (
                           <span className="ml-1.5 text-[var(--text-soft)]">— {req.strategy.inference_rationale}</span>
                         )}
@@ -393,7 +399,7 @@ function RequirementRow({
                     className={cn(
                       'w-full text-left rounded-[10px] border px-3 py-2 transition-colors',
                       coachingState.selectedAlternativeIndex === altIdx
-                        ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10'
+                        ? 'border-[var(--link)]/40 bg-[var(--badge-blue-bg)]'
                         : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--line-strong)]',
                     )}
                   >
@@ -401,7 +407,7 @@ function RequirementRow({
                       <div className={cn(
                         'mt-1 h-3 w-3 shrink-0 rounded-full border-2 transition-colors',
                         coachingState.selectedAlternativeIndex === altIdx
-                          ? 'border-[#afc4ff] bg-[#afc4ff]'
+                          ? 'border-[var(--link)] bg-[var(--link)]'
                           : 'border-[var(--text-soft)]',
                       )} />
                       <div className="flex-1 min-w-0">
@@ -428,7 +434,7 @@ function RequirementRow({
                   disabled={disabled}
                   placeholder={coachingState.editMode === 'write-own' ? 'Write your own bullet…' : 'Edit the selected alternative…'}
                   rows={3}
-                  className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+                  className="w-full rounded-[12px] border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors"
                   aria-label={`Edit bullet for: ${req.requirement}`}
                 />
               </div>
@@ -441,7 +447,7 @@ function RequirementRow({
               {questions.length > 0 ? (
                 /* Structured interview questions */
                 questions.map((q, qi) => (
-                  <div key={qi} className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] px-3 py-2.5">
+                  <div key={qi} className="rounded-lg border border-[var(--link)]/15 bg-[var(--badge-blue-bg)] px-3 py-2.5">
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-1.5">{q.question}</p>
                     <p className="text-[12px] text-[var(--text-soft)] mb-2 italic">{q.looking_for}</p>
                     <textarea
@@ -452,7 +458,7 @@ function RequirementRow({
                       disabled={disabled}
                       placeholder="Your answer..."
                       rows={2}
-                      className="w-full rounded-md border border-[#afc4ff]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full rounded-md border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label={`Answer for: ${q.question}`}
                     />
                   </div>
@@ -465,7 +471,7 @@ function RequirementRow({
                   disabled={disabled}
                   placeholder={coachingPrompt ?? "Share any relevant experience, projects, or context that wasn't in your resume..."}
                   rows={3}
-                  className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={`Additional context for: ${req.requirement}`}
                 />
               )}
@@ -480,7 +486,7 @@ function RequirementRow({
                 <button
                   type="button"
                   onClick={handleStrengthen}
-                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/20 hover:border-[var(--badge-green-text)]/40 transition-colors"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Strengthen
@@ -488,7 +494,7 @@ function RequirementRow({
                 <button
                   type="button"
                   onClick={handleAddMetrics}
-                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border border-[var(--badge-amber-text)]/20 hover:border-[var(--badge-amber-text)]/40 transition-colors"
                 >
                   <Ruler className="h-3.5 w-3.5" />
                   Add Metrics
@@ -508,7 +514,7 @@ function RequirementRow({
                       const alt = coaching.alternative_bullets?.[coachingState.selectedAlternativeIndex!];
                       onCoachingChange({ action: 'approve', editedText: alt?.text ?? '', showContextInput: false, showPlacementPicker: false });
                     }}
-                    className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25 hover:bg-[#b5dec2]/25 hover:border-[#b5dec2]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/25 hover:border-[var(--badge-green-text)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={`Use selected alternative for: ${req.requirement}`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -538,7 +544,7 @@ function RequirementRow({
                       type="button"
                       disabled={disabled || !coachingState.editedText.trim()}
                       onClick={() => onCoachingChange({ action: 'approve', showContextInput: false, showPlacementPicker: false })}
-                      className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/30 hover:bg-[var(--link)]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       {coachingState.editedText.trim() ? 'Use this' : 'Type above…'}
@@ -556,10 +562,10 @@ function RequirementRow({
 
                 {/* Placement picker — shown after clicking "Use this draft" */}
                 {coachingState.showPlacementPicker && (
-                  <div className="w-full mb-2 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2.5 space-y-2">
+                  <div className="w-full mb-2 rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2.5 space-y-2">
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-[#afc4ff]/70 shrink-0" />
-                      <span className="text-[12px] font-semibold text-[#afc4ff]/70 uppercase tracking-wider">
+                      <MapPin className="h-3 w-3 text-[var(--link)]/70 shrink-0" />
+                      <span className="text-[12px] font-semibold text-[var(--link)]/70 uppercase tracking-wider">
                         Where should this appear?
                       </span>
                     </div>
@@ -576,7 +582,7 @@ function RequirementRow({
                         }
                       }}
                       disabled={disabled}
-                      className="w-full rounded-md border border-[#afc4ff]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full rounded-md border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] focus:outline-none focus:border-[var(--link)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label="Choose placement section"
                     >
                       <option value="auto">Auto (recommended)</option>
@@ -597,7 +603,7 @@ function RequirementRow({
                         type="button"
                         disabled={disabled}
                         onClick={() => onCoachingChange({ action: 'approve', showPlacementPicker: false, showContextInput: false })}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/30 hover:bg-[var(--link)]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label={`Confirm strategy placement for: ${req.requirement}`}
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -622,7 +628,7 @@ function RequirementRow({
                     type="button"
                     disabled={disabled}
                     onClick={() => onCoachingChange({ showPlacementPicker: true, showContextInput: false })}
-                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/20 hover:bg-[var(--link)]/20 hover:border-[var(--link)]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={`Approve strategy for: ${req.requirement}`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -650,7 +656,7 @@ function RequirementRow({
                     className={cn(
                       'flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                       coachingState.showContextInput
-                        ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
+                        ? 'bg-[var(--badge-blue-bg)] text-[var(--link)] border-[var(--link)]/30 hover:bg-[var(--link)]/25'
                         : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                     )}
                     aria-label={
@@ -708,7 +714,7 @@ function RequirementRow({
               <button
                 type="button"
                 onClick={handleApplyToResume}
-                className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+                className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/20 hover:bg-[var(--link)]/20 transition-colors"
               >
                 <Lightbulb className="h-3.5 w-3.5" />
                 Use this draft
@@ -803,10 +809,10 @@ function RequirementInventory({
                         className={cn(
                           'rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                           item.classification === 'strong'
-                            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
+                            ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/85'
                             : item.classification === 'partial'
-                              ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/88'
-                              : 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/88',
+                              ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/88'
+                              : 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/88',
                         )}
                       >
                         {requirementStatusLabel(item.classification)}
@@ -1014,19 +1020,19 @@ export function UnifiedGapAnalysisCard({
           <div className="h-2.5 w-full overflow-hidden flex bg-[var(--surface-1)]">
             {strong.length > 0 && (
               <div
-                className="h-full bg-[#b5dec2] transition-all duration-700"
+                className="h-full bg-[var(--badge-green-text)] transition-all duration-700"
                 style={{ width: `${(strong.length / gapAnalysis.requirements.length) * 100}%` }}
               />
             )}
             {partial.length > 0 && (
               <div
-                className="h-full bg-[#afc4ff] transition-all duration-700"
+                className="h-full bg-[var(--link)] transition-all duration-700"
                 style={{ width: `${(partial.length / gapAnalysis.requirements.length) * 100}%` }}
               />
             )}
             {missing.length > 0 && (
               <div
-                className="h-full bg-[#f0b8b8] transition-all duration-700"
+                className="h-full bg-[var(--badge-red-text)] transition-all duration-700"
                 style={{ width: `${(missing.length / gapAnalysis.requirements.length) * 100}%` }}
               />
             )}
@@ -1035,9 +1041,9 @@ export function UnifiedGapAnalysisCard({
 
         {/* Legend */}
         <div className="room-meta-strip mt-2 gap-3 text-xs">
-          <span className="flex items-center gap-1 text-[#b5dec2]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong match{strong.length !== 1 ? 'es' : ''}</span>
-          <span className="flex items-center gap-1 text-[#afc4ff]"><AlertTriangle className="h-3 w-3" /> {partial.length} to strengthen</span>
-          <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gap{missing.length !== 1 ? 's' : ''}</span>
+          <span className="flex items-center gap-1 text-[var(--badge-green-text)]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong match{strong.length !== 1 ? 'es' : ''}</span>
+          <span className="flex items-center gap-1 text-[var(--link)]"><AlertTriangle className="h-3 w-3" /> {partial.length} to strengthen</span>
+          <span className="flex items-center gap-1 text-[var(--badge-red-text)]"><XCircle className="h-3 w-3" /> {missing.length} gap{missing.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
@@ -1056,7 +1062,7 @@ export function UnifiedGapAnalysisCard({
           </div>
           <div className="h-1 w-full overflow-hidden bg-[var(--surface-1)]">
             <div
-              className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
+              className="h-full bg-gradient-to-r from-[var(--link)] to-[var(--badge-green-text)] transition-all duration-500"
               style={{ width: gapCoachingCards!.length > 0 ? `${(respondedCount / gapCoachingCards!.length) * 100}%` : '0%' }}
             />
           </div>
@@ -1112,8 +1118,8 @@ export function UnifiedGapAnalysisCard({
       {gapAnalysis.critical_gaps.length > 0 && (
         <div className="space-y-3">
           <div className="room-meta-strip">
-            <Shield className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />
-            <span className="text-[12px] font-semibold text-[#f0b8b8] uppercase tracking-[0.16em]">
+            <Shield className="h-3.5 w-3.5 text-[var(--badge-red-text)] shrink-0" />
+            <span className="text-[12px] font-semibold text-[var(--badge-red-text)] uppercase tracking-[0.16em]">
               Critical Gaps
             </span>
             <span className="text-[12px] text-[var(--text-soft)] ml-1">({gapAnalysis.critical_gaps.length})</span>
@@ -1122,7 +1128,7 @@ export function UnifiedGapAnalysisCard({
             {gapAnalysis.critical_gaps.map((gap, i) => (
               <div
                 key={i}
-                className="support-callout border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2.5 text-sm text-[var(--text-soft)]"
+                className="support-callout border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] px-3 py-2.5 text-sm text-[var(--text-soft)]"
               >
                 {gap}
               </div>
@@ -1141,7 +1147,7 @@ export function UnifiedGapAnalysisCard({
             className={cn(
               'w-full flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] transition-all disabled:opacity-30 disabled:cursor-not-allowed',
               allResponded && !disabled
-                ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
+                ? 'bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/20 hover:bg-[var(--link)]/20 hover:border-[var(--link)]/35'
                 : 'border border-[var(--line-soft)] text-[var(--text-soft)]',
             )}
             aria-disabled={!allResponded || disabled}

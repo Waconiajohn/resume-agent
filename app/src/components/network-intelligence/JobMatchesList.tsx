@@ -221,7 +221,7 @@ export function JobMatchesList({
               className={cn(
                 'rounded-md border px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] transition-colors',
                 activeFilter === filter
-                  ? 'border-[#afc4ff]/20 bg-[#afc4ff]/10 text-[#afc4ff]/80'
+                  ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/80'
                   : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-1)]',
               )}
             >
@@ -265,7 +265,7 @@ export function JobMatchesList({
                   </span>
                 )}
                 {match.referralAvailable && (
-                  <span className="shrink-0 rounded-md bg-[#b5dec2]/15 px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b5dec2]/80">
+                  <span className="shrink-0 rounded-md bg-[var(--badge-green-bg)] px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--badge-green-text)]/80">
                     Referral
                   </span>
                 )}

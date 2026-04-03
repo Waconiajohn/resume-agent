@@ -56,7 +56,7 @@ export function CompanyPickerList({
             type="button"
             onClick={() => onSelectAll(filtered)}
             disabled={disabled}
-            className="text-[#afc4ff]/70 transition-colors hover:text-[#afc4ff] disabled:opacity-40"
+            className="text-[var(--link)]/70 transition-colors hover:text-[var(--link)] disabled:opacity-40"
           >
             Top 50
           </button>
@@ -111,7 +111,7 @@ export function CompanyPickerList({
 
       {/* At-limit hint */}
       {isAtLimit && !disabled && (
-        <p className="mt-2 text-center text-[11px] text-[#f0d99f]/60">
+        <p className="mt-2 text-center text-[11px] text-[var(--badge-amber-text)]/60">
           Maximum {maxSelection} companies per scan. Deselect one to add another.
         </p>
       )}

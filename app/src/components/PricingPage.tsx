@@ -170,7 +170,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
           Every plan includes the full 3-agent workflow — strategy, writing, and quality review.
         </p>
         {referralCode && (
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#b5dec2]">
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] px-3 py-1 text-xs font-medium text-[var(--badge-green-text)]">
             <Gift className="h-3.5 w-3.5" />
             Referred by a friend
           </div>
@@ -178,7 +178,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
       </div>
 
       {errorMessage && (
-        <div className="w-full max-w-md rounded-xl border border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
+        <div className="w-full max-w-md rounded-xl border border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/70">
           {errorMessage}
         </div>
       )}
@@ -215,7 +215,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               <ul className="flex flex-col gap-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm text-white/70">
-                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#b5dec2]" />
+                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--badge-green-text)]" />
                     {feature}
                   </li>
                 ))}
@@ -283,8 +283,8 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
             className={cn(
               'w-full rounded-xl border px-4 py-3 text-sm',
               promoResult.valid
-                ? 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]'
-                : 'border-[#f0b8b8]/30 bg-[#f0b8b8]/10 text-[#f0b8b8]/70',
+                ? 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
+                : 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/70',
             )}
           >
             {promoResult.valid

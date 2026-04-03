@@ -4,11 +4,11 @@ import type { PipelineStage } from '@/hooks/useApplicationPipeline';
 const STAGE_COLORS: Record<PipelineStage, string> = {
   saved: 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
   researching: 'bg-[#98b3ff]/10 text-[#98b3ff]',
-  applied: 'bg-[#f0d99f]/10 text-[#f0d99f]',
-  screening: 'bg-[#f0d99f]/15 text-[#f0d99f]',
-  interviewing: 'bg-[#b5dec2]/10 text-[#b5dec2]',
-  offer: 'bg-[#b5dec2]/15 text-[#b5dec2]',
-  closed_won: 'bg-[#b5dec2]/20 text-[#b5dec2]',
+  applied: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
+  screening: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
+  interviewing: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
+  offer: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
+  closed_won: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
   closed_lost: 'bg-red-400/10 text-red-400/60',
 };
 

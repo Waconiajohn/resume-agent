@@ -22,8 +22,8 @@ export function ReferralBadge({ bonusAmount, confidence }: ReferralBadgeProps) {
         'inline-flex flex-shrink-0 items-center gap-1 rounded-md border px-2.5 py-1',
         'text-[12px] font-semibold uppercase tracking-[0.12em]',
         isLowConfidence
-          ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] text-[#b5dec2]/50'
-          : 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/70',
+          ? 'border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/50'
+          : 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/70',
       )}
       title={`Referral bonus: ${bonusAmount}${isLowConfidence ? ' (estimated)' : ''}`}
     >

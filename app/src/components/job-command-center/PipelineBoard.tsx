@@ -14,11 +14,11 @@ import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline'
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
   { key: 'saved', label: 'Shortlist', color: 'text-[var(--text-soft)]' },
   { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
-  { key: 'applied', label: 'Applied', color: 'text-[#f0d99f]' },
-  { key: 'screening', label: 'Screening', color: 'text-[#f0d99f]' },
-  { key: 'interviewing', label: 'Interviewing', color: 'text-[#b5dec2]' },
-  { key: 'offer', label: 'Offer', color: 'text-[#b5dec2]' },
-  { key: 'closed_won', label: 'Won', color: 'text-[#b5dec2]' },
+  { key: 'applied', label: 'Applied', color: 'text-[var(--badge-amber-text)]' },
+  { key: 'screening', label: 'Screening', color: 'text-[var(--badge-amber-text)]' },
+  { key: 'interviewing', label: 'Interviewing', color: 'text-[var(--badge-green-text)]' },
+  { key: 'offer', label: 'Offer', color: 'text-[var(--badge-green-text)]' },
+  { key: 'closed_won', label: 'Won', color: 'text-[var(--badge-green-text)]' },
   { key: 'closed_lost', label: 'Lost', color: 'text-red-400/60' },
 ];
 

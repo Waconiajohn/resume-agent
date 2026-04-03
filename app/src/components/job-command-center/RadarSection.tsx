@@ -58,7 +58,7 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
   if (score == null) return null;
   const colorClass =
     score >= 80
-      ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+      ? 'bg-[var(--badge-green-bg)] border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
       : score >= 60
         ? 'bg-[#98b3ff]/10 border-[#98b3ff]/20 text-[#98b3ff]'
         : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)]';
@@ -307,7 +307,7 @@ export function RadarSection({
                     <button
                       type="button"
                       onClick={() => onPromote(job)}
-                      className="flex items-center gap-1 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-2.5 py-1.5 text-[13px] text-[#b5dec2]/60 hover:text-[#b5dec2]/90 hover:bg-[#b5dec2]/[0.08] transition-colors"
+                      className="flex items-center gap-1 rounded-lg border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-2.5 py-1.5 text-[13px] text-[var(--badge-green-text)]/60 hover:text-[var(--badge-green-text)]/90 transition-colors"
                     >
                       <Plus size={11} />
                       Save

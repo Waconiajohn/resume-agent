@@ -20,8 +20,8 @@ export function NarrativeStrategyCard({
   return (
     <div className="room-shell space-y-5">
       <div className="flex items-center gap-2">
-        <div className="rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/10 p-2.5">
-          <Compass className="h-4 w-4 text-[#afc4ff]" />
+        <div className="rounded-lg border border-[var(--link)]/18 bg-[var(--badge-blue-bg)] p-2.5">
+          <Compass className="h-4 w-4 text-[var(--link)]" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow-label">Resume positioning</p>
@@ -36,9 +36,9 @@ export function NarrativeStrategyCard({
       </div>
 
       {/* Branded title */}
-      <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] px-4 py-4 text-center">
+      <div className="support-callout border border-[var(--link)]/15 bg-[var(--badge-blue-bg)] px-4 py-4 text-center">
         <div className="text-lg font-semibold text-[var(--text-strong)]">{data.branded_title}</div>
-        <div className="mt-1 text-sm text-[#afc4ff]/70">{data.primary_narrative}</div>
+        <div className="mt-1 text-sm text-[var(--link)]/70">{data.primary_narrative}</div>
       </div>
 
       {/* Supporting themes */}
@@ -54,7 +54,7 @@ export function NarrativeStrategyCard({
       {/* Why Me story — pull-quote treatment */}
       <div>
         <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Core positioning</h4>
-        <p className="text-lg leading-relaxed text-[var(--text-strong)] italic border-l-[3px] border-[#afc4ff]/40 pl-4">
+        <p className="text-lg leading-relaxed text-[var(--text-strong)] italic border-l-[3px] border-[var(--link)]/40 pl-4">
           {data.why_me_concise}
         </p>
         {!isLive && data.why_me_story && (
@@ -66,18 +66,18 @@ export function NarrativeStrategyCard({
       </div>
 
       {/* Best line — premium quote box */}
-      <div className="support-callout bg-[#b5dec2]/[0.04] border border-[#b5dec2]/15 p-4 relative overflow-hidden">
-        <div className="absolute top-2 left-3 text-4xl leading-none text-[#b5dec2]/10 font-serif select-none" aria-hidden="true">
+      <div className="support-callout bg-[var(--badge-green-bg)] border border-[var(--badge-green-text)]/15 p-4 relative overflow-hidden">
+        <div className="absolute top-2 left-3 text-4xl leading-none text-[var(--badge-green-text)]/10 font-serif select-none" aria-hidden="true">
           &ldquo;
         </div>
-        <div className="text-xs font-medium text-[#b5dec2]/70 mb-2 relative z-10">Best line to reuse</div>
+        <div className="text-xs font-medium text-[var(--badge-green-text)]/70 mb-2 relative z-10">Best line to reuse</div>
         <p className="text-sm text-[var(--text-strong)] italic relative z-10 pl-2">{data.why_me_best_line}</p>
       </div>
 
       {/* Narrative Rationale */}
       {!isLive && data.narrative_angle_rationale && (
         <div className="support-callout px-4 py-3 flex gap-3">
-          <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#f0d99f]/60" />
+          <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[var(--badge-amber-text)]/60" />
           <p className="text-xs text-[var(--text-soft)] leading-relaxed">{data.narrative_angle_rationale}</p>
         </div>
       )}
@@ -90,7 +90,7 @@ export function NarrativeStrategyCard({
             {visibleDifferentiators.map((diff, i) => (
               <span
                 key={i}
-                className="flex items-center gap-1.5 bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-3 py-1.5 rounded-md text-xs uppercase tracking-[0.08em] text-[#afc4ff]/80"
+                className="flex items-center gap-1.5 bg-[var(--badge-blue-bg)] border border-[var(--link)]/20 px-3 py-1.5 rounded-md text-xs uppercase tracking-[0.08em] text-[var(--link)]/80"
               >
                 <Sparkles className="h-3 w-3 shrink-0" />
                 {diff}
@@ -212,7 +212,7 @@ function TalkingPoint({ index, point }: { index: number; point: string }) {
         className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--text-soft)] hover:text-[var(--text-muted)]"
       >
         {copied
-          ? <Check className="h-3 w-3 text-[#b5dec2]" />
+          ? <Check className="h-3 w-3 text-[var(--badge-green-text)]" />
           : <Clipboard className="h-3 w-3" />
         }
       </button>

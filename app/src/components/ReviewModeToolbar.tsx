@@ -49,9 +49,9 @@ export function ReviewModeToolbar({
               <div
                 className={`h-2 w-2 rounded-full transition-all ${
                   isApproved
-                    ? 'bg-[#a8d7b8]'
+                    ? 'bg-[var(--badge-green-text)]'
                     : isActive
-                      ? 'bg-[#afc4ff] ring-2 ring-[#afc4ff]/30 dot-current'
+                      ? 'bg-[var(--link)] ring-2 ring-[var(--link)]/30 dot-current'
                       : 'border border-[var(--text-soft)] bg-transparent'
                 }`}
                 role="img"
@@ -60,9 +60,9 @@ export function ReviewModeToolbar({
               <span
                 className={`hidden text-[13px] font-medium sm:inline ${
                   isApproved
-                    ? 'text-[#a8d7b8]/80'
+                    ? 'text-[var(--badge-green-text)]/80'
                     : isActive
-                      ? 'text-[#afc4ff]'
+                      ? 'text-[var(--link)]'
                       : 'text-[var(--text-soft)]'
                 }`}
               >

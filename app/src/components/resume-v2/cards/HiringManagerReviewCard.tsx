@@ -45,55 +45,55 @@ export interface HiringManagerReviewCardProps {
 const VERDICT_CONFIG = {
   strong_interview_candidate: {
     label: 'Strong Interview Candidate',
-    color: '#b5dec2',
-    bg: 'rgba(181,222,194,0.10)',
-    border: 'rgba(181,222,194,0.25)',
+    color: 'var(--badge-green-text)',
+    bg: 'var(--badge-green-bg)',
+    border: 'color-mix(in srgb, var(--badge-green-text) 25%, transparent)',
   },
   possible_interview: {
     label: 'Possible Interview',
-    color: '#afc4ff',
-    bg: 'rgba(175,196,255,0.10)',
-    border: 'rgba(175,196,255,0.25)',
+    color: 'var(--link)',
+    bg: 'var(--badge-blue-bg)',
+    border: 'color-mix(in srgb, var(--link) 25%, transparent)',
   },
   needs_improvement: {
     label: 'Needs Improvement',
-    color: '#f0d99f',
-    bg: 'rgba(240,217,159,0.10)',
-    border: 'rgba(240,217,159,0.25)',
+    color: 'var(--badge-amber-text)',
+    bg: 'var(--badge-amber-bg)',
+    border: 'color-mix(in srgb, var(--badge-amber-text) 25%, transparent)',
   },
   likely_rejected: {
     label: 'Likely Rejected',
-    color: '#f0b8b8',
-    bg: 'rgba(240,184,184,0.10)',
-    border: 'rgba(240,184,184,0.25)',
+    color: 'var(--badge-red-text)',
+    bg: 'var(--badge-red-bg)',
+    border: 'color-mix(in srgb, var(--badge-red-text) 25%, transparent)',
   },
 } as const;
 
 const SCAN_CONFIG = {
   continue_reading: {
     label: 'Keep Reading',
-    color: '#b5dec2',
-    bg: 'rgba(181,222,194,0.10)',
-    border: 'rgba(181,222,194,0.25)',
+    color: 'var(--badge-green-text)',
+    bg: 'var(--badge-green-bg)',
+    border: 'color-mix(in srgb, var(--badge-green-text) 25%, transparent)',
   },
   skip: {
     label: 'At Risk of Skip',
-    color: '#f0b8b8',
-    bg: 'rgba(240,184,184,0.10)',
-    border: 'rgba(240,184,184,0.25)',
+    color: 'var(--badge-red-text)',
+    bg: 'var(--badge-red-bg)',
+    border: 'color-mix(in srgb, var(--badge-red-text) 25%, transparent)',
   },
 } as const;
 
 const SEVERITY_CONFIG = {
-  critical: { color: '#f0b8b8', bg: 'rgba(240,184,184,0.12)', border: 'rgba(240,184,184,0.25)' },
-  moderate: { color: '#f0d99f', bg: 'rgba(240,217,159,0.12)', border: 'rgba(240,217,159,0.25)' },
-  minor: { color: '#afc4ff', bg: 'rgba(175,196,255,0.12)', border: 'rgba(175,196,255,0.25)' },
+  critical: { color: 'var(--badge-red-text)', bg: 'var(--badge-red-bg)', border: 'color-mix(in srgb, var(--badge-red-text) 25%, transparent)' },
+  moderate: { color: 'var(--badge-amber-text)', bg: 'var(--badge-amber-bg)', border: 'color-mix(in srgb, var(--badge-amber-text) 25%, transparent)' },
+  minor: { color: 'var(--link)', bg: 'var(--badge-blue-bg)', border: 'color-mix(in srgb, var(--link) 25%, transparent)' },
 } as const;
 
 const ASSESSMENT_CONFIG = {
-  strong: { label: 'Strong', color: '#b5dec2', bg: 'rgba(181,222,194,0.10)', border: 'rgba(181,222,194,0.25)' },
-  moderate: { label: 'Moderate', color: '#f0d99f', bg: 'rgba(240,217,159,0.10)', border: 'rgba(240,217,159,0.25)' },
-  weak: { label: 'Weak', color: '#f0b8b8', bg: 'rgba(240,184,184,0.10)', border: 'rgba(240,184,184,0.25)' },
+  strong: { label: 'Strong', color: 'var(--badge-green-text)', bg: 'var(--badge-green-bg)', border: 'color-mix(in srgb, var(--badge-green-text) 25%, transparent)' },
+  moderate: { label: 'Moderate', color: 'var(--badge-amber-text)', bg: 'var(--badge-amber-bg)', border: 'color-mix(in srgb, var(--badge-amber-text) 25%, transparent)' },
+  weak: { label: 'Weak', color: 'var(--badge-red-text)', bg: 'var(--badge-red-bg)', border: 'color-mix(in srgb, var(--badge-red-text) 25%, transparent)' },
 } as const;
 
 const CONCERN_LABELS: Record<HiringManagerConcern['type'], string> = {
@@ -226,9 +226,9 @@ function TextList({
   tone?: 'neutral' | 'good' | 'warning';
 }) {
   const toneClass = tone === 'good'
-    ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]'
+    ? 'border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)]'
     : tone === 'warning'
-      ? 'border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]'
+      ? 'border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)]'
       : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
 
   return (
@@ -269,7 +269,7 @@ export function HiringManagerReviewCard({
     return (
       <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
         <div className="flex items-start gap-3">
-          <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#afc4ff]" />
+          <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-[var(--link)]" />
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h3>
             <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
@@ -285,7 +285,7 @@ export function HiringManagerReviewCard({
             <button
               type="button"
               onClick={onRequestReview}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/10 px-4 py-2.5 text-sm font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/20"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-4 py-2.5 text-sm font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/20"
             >
               <UserCheck className="h-4 w-4" />
               Run Final Review
@@ -300,7 +300,7 @@ export function HiringManagerReviewCard({
     return (
       <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 text-[#afc4ff] motion-safe:animate-spin" />
+          <Loader2 className="h-5 w-5 text-[var(--link)] motion-safe:animate-spin" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-strong)]">Running Final Review...</h3>
             <p className="mt-0.5 text-xs text-[var(--text-soft)]">
@@ -315,14 +315,14 @@ export function HiringManagerReviewCard({
   if (error) {
     return (
       <GlassCard className="p-5">
-        <div className="flex items-center gap-2 text-sm text-[#f0b8b8]/80">
+        <div className="flex items-center gap-2 text-sm text-[var(--badge-red-text)]/80">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
         <button
           type="button"
           onClick={onRequestReview}
-          className="mt-3 text-xs text-[#afc4ff] transition-colors hover:text-[#afc4ff]/80"
+          className="mt-3 text-xs text-[var(--link)] transition-colors hover:text-[var(--link)]/80"
         >
           Try again
         </button>
@@ -344,7 +344,7 @@ export function HiringManagerReviewCard({
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 shrink-0 text-[#afc4ff]" />
+            <UserCheck className="h-4 w-4 shrink-0 text-[var(--link)]" />
             <h2 className="text-sm font-semibold text-[var(--text-strong)]">Final Review</h2>
           </div>
           <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
@@ -375,8 +375,8 @@ export function HiringManagerReviewCard({
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
               <ReviewCallout
                 title="Signals Seen"
-                titleClassName="text-[#b5dec2]"
-                className="border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]"
+                titleClassName="text-[var(--badge-green-text)]"
+                className="border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)]"
               >
                 <div className="space-y-3">
                   {result.six_second_scan.top_signals_seen.length > 0 ? (
@@ -400,8 +400,8 @@ export function HiringManagerReviewCard({
 
               <ReviewCallout
                 title="Still Missing"
-                titleClassName="text-[#f0d99f]"
-                className="border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]"
+                titleClassName="text-[var(--badge-amber-text)]"
+                className="border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)]"
               >
                 <div className="space-y-3">
                   {result.six_second_scan.important_signals_missing.length > 0 ? (
@@ -459,7 +459,7 @@ export function HiringManagerReviewCard({
                   </div>
                   <p className="mt-2.5 text-[13px] leading-5 text-[var(--text-muted)]">{win.why_powerful}</p>
                   {!win.prominent_enough && (
-                    <div className="support-callout mt-2.5 border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
+                    <div className="support-callout mt-2.5 border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)] px-3 py-2">
                       <p className="text-[12px] leading-5 text-[var(--text-muted)]">{win.repositioning_recommendation}</p>
                     </div>
                   )}
@@ -556,8 +556,8 @@ export function HiringManagerReviewCard({
                           {resolvedTarget && (
                             <ReviewCallout
                               title="Resume line to edit"
-                              titleClassName="text-[#afc4ff]"
-                              className="border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04]"
+                              titleClassName="text-[var(--link)]"
+                              className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
                             >
                               <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
                                 {resolvedTarget.section}
@@ -570,8 +570,8 @@ export function HiringManagerReviewCard({
 
                           <ReviewCallout
                             title="What to change"
-                            titleClassName="text-[#afc4ff]"
-                            className="border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04]"
+                            titleClassName="text-[var(--link)]"
+                            className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
                           >
                             {concern.fix_strategy}
                           </ReviewCallout>
@@ -580,8 +580,8 @@ export function HiringManagerReviewCard({
                         {concern.suggested_resume_edit && (
                           <ReviewCallout
                             title="Suggested wording"
-                            titleClassName="text-[#b5dec2]"
-                            className="border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]"
+                            titleClassName="text-[var(--badge-green-text)]"
+                            className="border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)]"
                           >
                             {concern.suggested_resume_edit}
                           </ReviewCallout>
@@ -590,15 +590,15 @@ export function HiringManagerReviewCard({
                         {concern.clarifying_question && (
                           <ReviewCallout
                             title="Question to answer"
-                            titleClassName="text-[#f0d99f]"
-                            className="border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]"
+                            titleClassName="text-[var(--badge-amber-text)]"
+                            className="border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)]"
                           >
                             {concern.clarifying_question}
                           </ReviewCallout>
                         )}
 
                         {isResolved && (
-                          <div className="support-callout final-review-status-note border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-[var(--text-muted)]">
+                          <div className="support-callout final-review-status-note border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)] px-3 py-2 text-xs text-[var(--text-muted)]">
                             This concern already has an accepted resume edit. If you undo that change, it will show up as unresolved again.
                           </div>
                         )}
@@ -608,7 +608,7 @@ export function HiringManagerReviewCard({
                             <button
                               type="button"
                               onClick={() => onPreviewConcernTarget(concern)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/10 px-3 py-2 text-[13px] font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/20"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/20"
                             >
                               <Target className="h-3 w-3" />
                               Show on Resume
@@ -705,8 +705,8 @@ export function HiringManagerReviewCard({
             description="These signals do not override solid job fit, but they do show where the resume may still look less competitive against stronger peers."
           />
           <div className="grid gap-3 lg:grid-cols-3">
-            <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3.5">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+            <div className="support-callout border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)] p-3.5">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[var(--badge-green-text)]">
                 Advantages
               </p>
               {result.benchmark_comparison.advantages_vs_benchmark.length > 0 ? (
@@ -718,8 +718,8 @@ export function HiringManagerReviewCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3.5">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+            <div className="rounded-xl border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)] p-3.5">
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[var(--badge-amber-text)]">
                 Competitive Gaps
               </p>
               {result.benchmark_comparison.gaps_vs_benchmark.length > 0 ? (

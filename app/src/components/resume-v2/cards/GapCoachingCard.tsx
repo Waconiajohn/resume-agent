@@ -41,22 +41,22 @@ interface GapCoachingCardProps {
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function classificationIcon(c: GapClassification) {
-  if (c === 'strong') return <CheckCircle2 className="h-3.5 w-3.5 text-[#b5dec2] shrink-0" />;
-  if (c === 'partial') return <AlertTriangle className="h-3.5 w-3.5 text-[#f0d99f] shrink-0" />;
-  return <XCircle className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />;
+  if (c === 'strong') return <CheckCircle2 className="h-3.5 w-3.5 text-[var(--badge-green-text)] shrink-0" />;
+  if (c === 'partial') return <AlertTriangle className="h-3.5 w-3.5 text-[var(--badge-amber-text)] shrink-0" />;
+  return <XCircle className="h-3.5 w-3.5 text-[var(--badge-red-text)] shrink-0" />;
 }
 
 function importanceBadge(importance: GapCoachingCard['importance']) {
   if (importance === 'must_have') {
     return (
-      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] border border-[var(--badge-red-text)]/30">
         Must Have
       </span>
     );
   }
   if (importance === 'important') {
     return (
-      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[#f0d99f]/20 text-[#f0d99f] border border-[#f0d99f]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border border-[var(--badge-amber-text)]/30">
         Important
       </span>
     );
@@ -78,18 +78,18 @@ function collapsedStatus(action: GapCoachingAction): {
 } {
   if (action === 'approve') {
     return {
-      dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />,
+      dot: <span className="h-2 w-2 bg-[var(--badge-green-text)] shrink-0" />,
       label: 'Approved',
-      wrapperClass: 'bg-[#b5dec2]/[0.04] border-[#b5dec2]/[0.10]',
-      labelClass: 'text-[#b5dec2]',
+      wrapperClass: 'bg-[var(--badge-green-bg)] border-[var(--badge-green-text)]/10',
+      labelClass: 'text-[var(--badge-green-text)]',
     };
   }
   if (action === 'context') {
     return {
-      dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />,
+      dot: <MessageSquare className="h-3 w-3 text-[var(--link)] shrink-0" />,
       label: 'Context added',
-      wrapperClass: 'bg-[#afc4ff]/[0.04] border-[#afc4ff]/[0.10]',
-      labelClass: 'text-[#afc4ff]',
+      wrapperClass: 'bg-[var(--badge-blue-bg)] border-[var(--link)]/10',
+      labelClass: 'text-[var(--link)]',
     };
   }
   return {
@@ -146,7 +146,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             <div className="flex items-center gap-1.5 flex-wrap">
               {importanceBadge(card.importance)}
               {card.previously_approved && (
-                <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30">
+                <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold tracking-[0.12em] uppercase bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/30">
                   <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
                   Previously approved
                 </span>
@@ -170,11 +170,11 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
       <div className="mx-4 mb-3 flex gap-3">
         {/* Avatar */}
         <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#afc4ff]/30 bg-[#afc4ff]/15">
-            <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[var(--link)]/30 bg-[var(--link)]/15">
+            <MessageSquare className="h-3.5 w-3.5 text-[var(--link)]" />
           </div>
           {/* Connector line */}
-          <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
+          <div className="w-px flex-1 bg-[var(--link)]/10 min-h-[8px]" />
         </div>
 
         {/* Speech bubble */}
@@ -185,11 +185,11 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             style={{
               borderTop: '5px solid transparent',
               borderBottom: '5px solid transparent',
-              borderRight: '7px solid rgba(175,196,255,0.08)',
+              borderRight: '7px solid color-mix(in srgb, var(--link) 8%, transparent)',
             }}
           />
-          <div className="support-callout border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
-            <div className="text-[12px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
+          <div className="support-callout border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-3.5 py-3">
+            <div className="text-[12px] font-bold text-[var(--link)]/50 uppercase tracking-widest mb-1.5">
               Coach note
             </div>
             <p className="text-[14px] text-[var(--text-muted)] leading-[1.7]">{card.ai_reasoning}</p>
@@ -199,13 +199,13 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
       {/* Proposed Strategy — gradient left border */}
       <div className="mx-4 mb-3">
-        <div className="relative overflow-hidden rounded-[12px] border border-[#b5dec2]/[0.15] bg-[#b5dec2]/[0.04] pl-4 pr-3 py-2.5">
+        <div className="relative overflow-hidden rounded-[12px] border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)] pl-4 pr-3 py-2.5">
           {/* Gradient left border accent */}
-          <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg bg-gradient-to-b from-[#afc4ff] via-[#b5dec2]/60 to-transparent" />
+          <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg bg-gradient-to-b from-[var(--link)] via-[var(--badge-green-text)]/60 to-transparent" />
 
           <div className="flex items-center gap-1.5 mb-1.5">
-            <Lightbulb className="h-3 w-3 text-[#b5dec2]/70 shrink-0" />
-            <span className="text-[12px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">
+            <Lightbulb className="h-3 w-3 text-[var(--badge-green-text)]/70 shrink-0" />
+            <span className="text-[12px] font-semibold text-[var(--badge-green-text)]/70 uppercase tracking-wider">
               Proposed strategy
             </span>
           </div>
@@ -214,9 +214,9 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           {/* Inferred metric */}
           {card.inferred_metric && (
             <div className="mt-2 pt-2 border-t border-[var(--line-soft)] flex items-start gap-1.5">
-              <Ruler className="h-3 w-3 text-[#f0d99f]/60 shrink-0 mt-0.5" />
+              <Ruler className="h-3 w-3 text-[var(--badge-amber-text)]/60 shrink-0 mt-0.5" />
               <div>
-                <span className="text-xs text-[#f0d99f]/80">{card.inferred_metric}</span>
+                <span className="text-xs text-[var(--badge-amber-text)]/80">{card.inferred_metric}</span>
                 {card.inference_rationale && (
                   <span className="text-xs text-[var(--text-soft)] ml-1.5">— {card.inference_rationale}</span>
                 )}
@@ -238,7 +238,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
                 key={i}
                 className="inline-flex items-center gap-1 rounded-[10px] px-2.5 py-1 text-xs text-[var(--text-soft)] bg-[var(--surface-1)] border border-[var(--line-soft)] hover:border-[var(--line-strong)] transition-colors"
               >
-                <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
+                <CheckCircle2 className="h-2.5 w-2.5 text-[var(--badge-green-text)]/60 shrink-0" />
                 {e}
               </span>
             ))}
@@ -266,7 +266,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
                 className={cn(
                   'w-full text-left rounded-[10px] border px-3 py-2 transition-colors',
                   state.selectedAlternativeIndex === altIdx
-                    ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10'
+                    ? 'border-[var(--link)]/40 bg-[var(--badge-blue-bg)]'
                     : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--line-strong)]',
                 )}
               >
@@ -274,7 +274,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
                   <div className={cn(
                     'mt-1 h-3 w-3 shrink-0 rounded-full border-2 transition-colors',
                     state.selectedAlternativeIndex === altIdx
-                      ? 'border-[#afc4ff] bg-[#afc4ff]'
+                      ? 'border-[var(--link)] bg-[var(--link)]'
                       : 'border-[var(--text-soft)]',
                   )} />
                   <div className="flex-1 min-w-0">
@@ -303,7 +303,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           disabled={disabled}
           placeholder={state.editMode === 'write-own' ? 'Write your own bullet…' : 'Edit the selected alternative…'}
           rows={3}
-          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+          className="w-full rounded-[12px] border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors"
           aria-label={`Edit bullet for: ${card.requirement}`}
         />
       </div>
@@ -321,7 +321,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           disabled={disabled}
           placeholder="Share any relevant experience, projects, or context that wasn't in your resume…"
           rows={3}
-          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+          className="w-full rounded-[12px] border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors"
           aria-label={`Additional context for: ${card.requirement}`}
         />
       </div>
@@ -337,7 +337,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
               const alt = card.alternative_bullets?.[state.selectedAlternativeIndex!];
               onChange({ action: 'approve', contextText: alt?.text ?? '', showContextInput: false });
             }}
-            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25 hover:bg-[#b5dec2]/25 hover:border-[#b5dec2]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/25 hover:border-[var(--badge-green-text)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={`Use selected alternative for: ${card.requirement}`}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -367,7 +367,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
               type="button"
               disabled={disabled || !state.editedText.trim()}
               onClick={() => onChange({ action: 'approve', contextText: state.editedText.trim(), showContextInput: false })}
-              className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/30 hover:bg-[#afc4ff]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/30 hover:bg-[var(--link)]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               {state.editedText.trim() ? 'Use this' : 'Type above…'}
@@ -389,7 +389,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             type="button"
             disabled={disabled}
             onClick={() => onChange({ action: 'approve', showContextInput: false })}
-            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/20 hover:bg-[var(--link)]/20 hover:border-[var(--link)]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={`Approve strategy for: ${card.requirement}`}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -428,7 +428,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           className={cn(
             'flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
             state.showContextInput
-              ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
+              ? 'bg-[var(--badge-blue-bg)] text-[var(--link)] border-[var(--link)]/30 hover:bg-[var(--link)]/25'
               : 'bg-[var(--surface-1)] text-[var(--text-soft)] border-[var(--line-soft)] hover:bg-[var(--surface-2)] hover:text-[var(--text-muted)]',
           )}
           aria-label={
@@ -538,7 +538,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
     <div className="space-y-4">
       {/* Section header */}
       <div className="flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-[#afc4ff]" />
+        <MessageSquare className="h-4 w-4 text-[var(--link)]" />
         <h3 className="text-sm font-semibold text-[var(--text-strong)]">Gap Coaching</h3>
         <span className="ml-auto text-xs text-[var(--text-soft)]">
           {respondedCount} / {cards.length} reviewed
@@ -548,7 +548,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
       {/* Progress bar */}
       <div className="h-1 w-full overflow-hidden bg-[var(--surface-1)]">
         <div
-          className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
+          className="h-full bg-gradient-to-r from-[var(--link)] to-[var(--badge-green-text)] transition-all duration-500"
           style={{ width: cards.length > 0 ? `${(respondedCount / cards.length) * 100}%` : '0%' }}
         />
       </div>
@@ -576,7 +576,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
           className={cn(
             'w-full flex items-center justify-center gap-2 rounded-[12px] px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
             allResponded && !disabled
-              ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
+              ? 'bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/20 hover:bg-[var(--link)]/20 hover:border-[var(--link)]/35'
               : 'border border-[var(--line-soft)] text-[var(--text-soft)]',
           )}
           aria-disabled={!allResponded || disabled}

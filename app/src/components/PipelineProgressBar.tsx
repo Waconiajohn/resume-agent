@@ -32,7 +32,7 @@ export function PipelineProgressBar({ pipelineStage, isProcessing, sessionComple
       <div className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/10">
         <div
           className={cn(
-            'h-full bg-gradient-to-r from-[#7b9cff] via-[#afc4ff] to-[#d5e1ff] transition-[width] duration-500',
+            'h-full bg-gradient-to-r from-[var(--link)]/70 via-[var(--link)] to-[var(--link)]/60 transition-[width] duration-500',
             isProcessing && !sessionComplete && 'relative overflow-hidden',
           )}
           style={{ width: `${widthPct}%` }}

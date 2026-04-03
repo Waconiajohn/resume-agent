@@ -51,7 +51,7 @@ function ProgressBar({ scanned, total }: ProgressBarProps) {
       </div>
       <div className="h-1.5 w-full overflow-hidden bg-[var(--line-soft)]">
         <div
-          className="h-full bg-[#afc4ff]/60 transition-all duration-500"
+          className="h-full bg-[var(--link)]/60 transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -227,7 +227,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             </p>
 
             {eligibleCompanyCount === 0 && !running && (
-              <p className="mt-2 text-xs text-[#f0d99f]/70">
+              <p className="mt-2 text-xs text-[var(--badge-amber-text)]/70">
                 {normalizationPending
                   ? 'Connections imported — company matching is still normalizing before we can scan career pages. This updates automatically.'
                   : 'Import LinkedIn connections first — companies need to be normalized before scanning.'}
@@ -257,7 +257,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
                 <StatCard
                   label="Matching"
                   value={scrapeStatus.output_summary.matching_jobs ?? 0}
-                  accent="text-[#afc4ff]/90"
+                  accent="text-[var(--link)]/90"
                 />
                 <StatCard
                   label="Referral"
@@ -340,7 +340,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             <div className="mt-4 space-y-3">
               <p className="text-center text-sm text-[var(--text-soft)]">
                 Found{' '}
-                <span className="font-medium text-[#afc4ff]/80">{result.matchingJobs}</span>{' '}
+                <span className="font-medium text-[var(--link)]/80">{result.matchingJobs}</span>{' '}
                 matching job{result.matchingJobs !== 1 ? 's' : ''}.
                 {result.referralAvailable > 0 && (
                   <>

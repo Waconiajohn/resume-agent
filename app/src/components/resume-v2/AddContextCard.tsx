@@ -44,7 +44,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] hover:border-[#afc4ff]/30 hover:text-[var(--text-muted)] transition-colors w-full text-left"
+          className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)] hover:border-[var(--link)]/30 hover:text-[var(--text-muted)] transition-colors w-full text-left"
         >
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
           Tell us what we missed — add context not visible in your resume
@@ -57,9 +57,9 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
           isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
         }`}
       >
-        <GlassCard className="p-4 border-[#afc4ff]/15">
+        <GlassCard className="p-4 border-[var(--link)]/15">
           <div className="flex items-center gap-2 mb-3">
-            <MessageSquarePlus className="h-4 w-4 text-[#afc4ff]" />
+            <MessageSquarePlus className="h-4 w-4 text-[var(--link)]" />
             <h4 className="text-sm font-medium text-[var(--text-strong)]">Add Context</h4>
           </div>
 
@@ -88,7 +88,7 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
             placeholder="Be specific — mention job titles, team sizes, budget amounts, or project outcomes..."
             rows={4}
             disabled={loading}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-1"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none focus:border-[var(--link)]/40 disabled:opacity-50 resize-y mb-1"
           />
           <p className="text-xs text-[var(--text-soft)] mb-2">
             {context.trim().length < 20 && context.length > 0

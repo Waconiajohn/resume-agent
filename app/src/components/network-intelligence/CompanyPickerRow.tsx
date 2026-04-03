@@ -83,7 +83,7 @@ export function CompanyPickerRow({
         {/* Selection indicator */}
         <div className="shrink-0">
           {selected ? (
-            <CheckCircle2 className="h-4 w-4 text-[#afc4ff]/80" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--link)]/80" />
           ) : (
             <Circle className={cn('h-4 w-4', eligible ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]/40')} />
           )}
@@ -104,8 +104,8 @@ export function CompanyPickerRow({
           className={cn(
             'shrink-0 rounded-md px-2 py-0.5 text-[12px] font-semibold tabular-nums transition-colors',
             expanded
-              ? 'bg-[#afc4ff]/20 text-[#afc4ff]/90'
-              : 'bg-[var(--accent-muted)] text-[var(--text-soft)] hover:bg-[#afc4ff]/15 hover:text-[#afc4ff]/70',
+              ? 'bg-[var(--badge-blue-bg)] text-[var(--link)]/90'
+              : 'bg-[var(--accent-muted)] text-[var(--text-soft)] hover:bg-[var(--badge-blue-bg)] hover:text-[var(--link)]/70',
           )}
         >
           {company.connectionCount}

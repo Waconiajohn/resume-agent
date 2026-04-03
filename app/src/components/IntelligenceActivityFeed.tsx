@@ -161,7 +161,7 @@ export function IntelligenceActivityFeed({
                   'flex min-w-0 items-baseline gap-2 px-3 py-0.5 text-xs',
                   opacityClass,
                   msg.isSummary && !isMostRecent && 'border-l-2 border-[var(--line-soft)] pl-2',
-                  msg.isSummary && isMostRecent && 'border-l-2 border-[#afc4ff]/40 pl-2',
+                  msg.isSummary && isMostRecent && 'border-l-2 border-[var(--link)]/40 pl-2',
                 )}
               >
                 <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">

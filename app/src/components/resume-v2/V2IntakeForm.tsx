@@ -583,7 +583,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)] hover:bg-[var(--surface-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40"
+            className="inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)] hover:bg-[var(--surface-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             aria-label="Back to workspace"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -605,11 +605,11 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
           {/* Error display */}
           {error && (
             <div
-              className="mb-6 flex items-start gap-2 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/10 p-3"
+              className="mb-6 flex items-start gap-2 rounded-lg border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] p-3"
               role="alert"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0b8b8]" />
-              <p className="text-sm text-[#f0b8b8]/90">{error}</p>
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--badge-red-text)]" />
+              <p className="text-sm text-[var(--badge-red-text)]/90">{error}</p>
             </div>
           )}
 
@@ -625,7 +625,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
                     type="button"
                     onClick={() => void handleLoadMasterResume()}
                     disabled={masterResumeLoading || loading}
-                    className="text-xs text-[#afc4ff]/70 transition-colors hover:text-[#afc4ff] disabled:opacity-40"
+                    className="text-xs text-[var(--link)]/70 transition-colors hover:text-[var(--link)] disabled:opacity-40"
                   >
                     {masterResumeLoading ? 'Loading...' : 'Use Master Resume'}
                   </button>

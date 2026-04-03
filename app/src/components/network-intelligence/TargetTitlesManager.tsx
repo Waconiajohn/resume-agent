@@ -141,7 +141,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
               <span className="text-xs text-[var(--text-muted)]">{t.title}</span>
               <button
                 onClick={() => void handleDelete(t.id)}
-                className="ml-2 text-xs text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]/70"
+                className="ml-2 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--badge-red-text)]/70"
                 aria-label={`Remove ${t.title}`}
               >
                 x

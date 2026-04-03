@@ -29,7 +29,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
   const actionLabel = ACTION_LABELS[edit.action] ?? 'Edited';
 
   return (
-    <GlassCard className="p-4 border-[#afc4ff]/20 animate-[card-enter_300ms_ease-out_forwards] opacity-0">
+    <GlassCard className="p-4 border-[var(--link)]/20 animate-[card-enter_300ms_ease-out_forwards] opacity-0">
       {/* Section context label */}
       <div className="mb-1.5 text-xs text-[var(--text-soft)]">
         {actionLabel}: {edit.section}
@@ -37,15 +37,15 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
 
       {/* Edit context — shows what requirement this addresses */}
       {edit.editContext?.requirement && (
-        <div className="mb-3 rounded-lg border border-[#afc4ff]/10 bg-[#afc4ff]/[0.03] px-3 py-2 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-[#afc4ff]/80">
+        <div className="mb-3 rounded-lg border border-[var(--link)]/10 bg-[var(--badge-blue-bg)] px-3 py-2 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--link)]/80">
             <Target className="h-3 w-3 shrink-0" />
             <span className="font-medium">Addresses:</span>
             <span className="text-[var(--text-soft)]">{edit.editContext.requirement}</span>
           </div>
           {edit.editContext.evidence && edit.editContext.evidence.length > 0 && (
             <div className="flex items-start gap-1.5 text-xs">
-              <Briefcase className="h-3 w-3 text-[#b5dec2]/60 shrink-0 mt-0.5" />
+              <Briefcase className="h-3 w-3 text-[var(--badge-green-text)]/60 shrink-0 mt-0.5" />
               <span className="text-[var(--text-soft)]">Your experience: {edit.editContext.evidence.join('; ')}</span>
             </div>
           )}
@@ -53,12 +53,12 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-[#afc4ff]">{actionLabel}</span>
+        <span className="text-xs font-medium text-[var(--link)]">{actionLabel}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onReject}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[#f0b8b8] transition-colors"
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--badge-red-text)] transition-colors"
             aria-label="Reject edit"
           >
             <X className="h-3 w-3" />
@@ -67,7 +67,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           <button
             type="button"
             onClick={() => onAccept(editedText)}
-            className="flex items-center gap-1 rounded-lg bg-[#b5dec2]/15 px-2.5 py-1 text-xs font-medium text-[#b5dec2] hover:bg-[#b5dec2]/25 transition-colors"
+            className="flex items-center gap-1 rounded-lg bg-[var(--badge-green-bg)] px-2.5 py-1 text-xs font-medium text-[var(--badge-green-text)] hover:border-[var(--badge-green-text)]/25 transition-colors"
             aria-label="Accept edit"
           >
             <Check className="h-3 w-3" />
@@ -80,16 +80,16 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
         {/* Original */}
         <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
           <div className="mb-1.5 text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Original</div>
-          <p className="text-sm text-[var(--text-soft)] leading-relaxed line-through decoration-[#f0b8b8]/30">{edit.originalText}</p>
+          <p className="text-sm text-[var(--text-soft)] leading-relaxed line-through decoration-[var(--badge-red-text)]/30">{edit.originalText}</p>
         </div>
 
         {/* Replacement */}
-        <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
+        <div className="rounded-lg border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)] p-3">
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[12px] font-medium text-[#b5dec2]/60 uppercase tracking-wider">Replacement</span>
+            <span className="text-[12px] font-medium text-[var(--badge-green-text)]/60 uppercase tracking-wider">Replacement</span>
             {editedText !== edit.replacement && (
               <>
-                <span className="text-[12px] text-[#afc4ff]/70">(edited)</span>
+                <span className="text-[12px] text-[var(--link)]/70">(edited)</span>
                 <button
                   type="button"
                   onClick={() => setEditedText(edit.replacement)}

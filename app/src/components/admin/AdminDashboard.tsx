@@ -135,11 +135,11 @@ function StatCard({
 }) {
   const accentClass =
     accent === 'green'
-      ? 'text-[#b5dec2]'
+      ? 'text-[var(--badge-green-text)]'
       : accent === 'red'
-      ? 'text-[#f0a0a0]'
+      ? 'text-[var(--badge-red-text)]'
       : accent === 'blue'
-      ? 'text-[#afc4ff]'
+      ? 'text-[var(--link)]'
       : 'text-white';
 
   return (
@@ -288,7 +288,7 @@ export function AdminDashboard() {
           <div className="flex flex-col gap-3">
             <input
               type="password"
-              className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-sm px-3 py-2.5 outline-none focus:border-[#afc4ff]/50 placeholder-[var(--text-soft)]"
+              className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-sm px-3 py-2.5 outline-none focus:border-[var(--link)]/50 placeholder-[var(--text-soft)]"
               placeholder="Admin API key"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
@@ -303,7 +303,7 @@ export function AdminDashboard() {
             <button
               type="button"
               onClick={() => { if (keyInput.trim()) void authenticate(keyInput.trim()); }}
-              className="rounded-lg bg-[#afc4ff]/20 border border-[#afc4ff]/30 text-[#afc4ff] text-sm px-4 py-2.5 hover:bg-[#afc4ff]/30 transition-colors"
+              className="rounded-lg bg-[var(--badge-blue-bg)] border border-[var(--link)]/30 text-[var(--link)] text-sm px-4 py-2.5 hover:bg-[var(--link)]/30 transition-colors"
             >
               Authenticate
             </button>
@@ -382,7 +382,7 @@ export function AdminDashboard() {
               {Object.entries(p.completions_by_domain).map(([domain, count]) => (
                 <div key={domain} className="flex items-center justify-between text-sm">
                   <span className="text-[var(--text-muted)]">{domain}</span>
-                  <span className="text-[#b5dec2] font-medium">{count}</span>
+                  <span className="text-[var(--badge-green-text)] font-medium">{count}</span>
                 </div>
               ))}
             </div>
@@ -446,7 +446,7 @@ export function AdminDashboard() {
               <GlassCard key={row.session_id} className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-mono text-[#afc4ff] truncate">{row.session_id}</p>
+                    <p className="text-xs font-mono text-[var(--link)] truncate">{row.session_id}</p>
                     <p className="text-xs text-[var(--text-soft)] mt-0.5">
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
@@ -657,7 +657,7 @@ export function AdminDashboard() {
               <GlassCard key={row.id} className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-mono text-[#afc4ff] truncate">{row.id}</p>
+                    <p className="text-xs font-mono text-[var(--link)] truncate">{row.id}</p>
                     <p className="text-xs text-[var(--text-soft)] mt-0.5">
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
@@ -722,7 +722,7 @@ export function AdminDashboard() {
               className={cn(
                 'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
                 activeTab === tab.id
-                  ? 'border-[#afc4ff] text-[#afc4ff]'
+                  ? 'border-[var(--link)] text-[var(--link)]'
                   : 'border-transparent text-[var(--text-soft)] hover:text-[var(--text-muted)]',
               )}
             >
@@ -746,7 +746,7 @@ export function AdminDashboard() {
         {/* Content */}
         {loading && (
           <div className="flex items-center justify-center py-16">
-            <div className="h-6 w-6 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
+            <div className="h-6 w-6 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[var(--link)]" />
           </div>
         )}
 

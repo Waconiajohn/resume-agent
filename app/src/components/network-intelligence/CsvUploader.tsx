@@ -137,9 +137,9 @@ export function CsvUploader({ accessToken, authLoading = false, onUploadComplete
     <GlassCard
       className={cn(
         'relative cursor-pointer border-2 border-dashed p-8 text-center transition-colors',
-        state === 'dragging' && 'border-[#afc4ff]/50 bg-[#afc4ff]/[0.05]',
-        state === 'error' && 'border-[#f0b8b8]/30',
-        state === 'complete' && 'border-[#b5dec2]/30',
+        state === 'dragging' && 'border-[var(--link)]/50 bg-[var(--badge-blue-bg)]',
+        state === 'error' && 'border-[var(--badge-red-text)]/30',
+        state === 'complete' && 'border-[var(--badge-green-text)]/30',
         !isInteractive && 'cursor-default opacity-80',
         state !== 'dragging' && state !== 'error' && state !== 'complete' && 'border-[var(--line-soft)]',
       )}
@@ -193,13 +193,13 @@ export function CsvUploader({ accessToken, authLoading = false, onUploadComplete
       )}
 
       {state === 'dragging' && (
-        <p className="text-sm font-medium text-[#afc4ff]/80">Drop to upload</p>
+        <p className="text-sm font-medium text-[var(--link)]/80">Drop to upload</p>
       )}
 
       {state === 'uploading' && (
         <div className="space-y-2">
           <div className="mx-auto h-1 w-32 overflow-hidden rounded-full bg-[var(--line-soft)]">
-            <div className="h-full motion-safe:animate-pulse rounded-full bg-[#afc4ff]/60" style={{ width: '60%' }} />
+            <div className="h-full motion-safe:animate-pulse rounded-full bg-[var(--link)]/60" style={{ width: '60%' }} />
           </div>
           <p className="text-sm text-[var(--text-soft)]">
             Uploading {fileName}...
@@ -209,7 +209,7 @@ export function CsvUploader({ accessToken, authLoading = false, onUploadComplete
 
       {state === 'complete' && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-[#b5dec2]/80">Upload complete</p>
+          <p className="text-sm font-medium text-[var(--badge-green-text)]/80">Upload complete</p>
           <GlassButton
             variant="ghost"
             className="text-xs"
@@ -222,7 +222,7 @@ export function CsvUploader({ accessToken, authLoading = false, onUploadComplete
 
       {state === 'error' && (
         <div className="space-y-2">
-          <p className="text-sm text-[#f0b8b8]/80">{errorMessage}</p>
+          <p className="text-sm text-[var(--badge-red-text)]/80">{errorMessage}</p>
           <GlassButton
             variant="ghost"
             className="text-xs"
