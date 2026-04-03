@@ -50,10 +50,23 @@ function getStateConfig(reviewState: ResumeReviewState) {
   }
 }
 
+function getIntroLabel(reviewState: ResumeReviewState): string {
+  switch (reviewState) {
+    case 'strengthen':
+      return 'This addresses:';
+    case 'confirm_fit':
+      return 'This was written to show:';
+    case 'code_red':
+      return 'We need evidence for:';
+    default:
+      return 'This addresses:';
+  }
+}
+
 function getSourceLabel(source?: RequirementSource): string {
-  if (source === 'benchmark') return 'Benchmark';
-  if (source === 'job_description') return 'Job Description';
-  return 'Role Requirement';
+  if (source === 'benchmark') return 'from our analysis';
+  if (source === 'job_description') return 'from the JD';
+  return 'from the JD';
 }
 
 export function BulletContextHeader({
@@ -65,6 +78,7 @@ export function BulletContextHeader({
   if (!requirement) return null;
 
   const { borderVar, bgVar, colorVar, Icon } = getStateConfig(reviewState);
+  const introLabel = getIntroLabel(reviewState);
   const sourceLabel = getSourceLabel(requirementSource);
   const trimmedEvidence = evidenceFound?.trim();
 
@@ -85,15 +99,15 @@ export function BulletContextHeader({
         />
         <p className="text-[12px] leading-snug">
           <span
-            className="font-semibold"
-            style={{ color: 'var(--text-strong)' }}
+            className="font-medium"
+            style={{ color: 'var(--text-muted)' }}
           >
-            This bullet proves:&nbsp;
+            {introLabel}&nbsp;
           </span>
-          <span style={{ color: 'var(--text-muted)' }}>{requirement}</span>
+          <span style={{ color: 'var(--text-strong)' }}>{requirement}</span>
           <span
             className={cn(
-              'ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+              'ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-normal',
             )}
             style={{
               background: 'var(--badge-blue-bg)',

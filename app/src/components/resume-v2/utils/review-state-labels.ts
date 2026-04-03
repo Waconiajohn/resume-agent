@@ -16,7 +16,7 @@ export const REVIEW_STATE_DISPLAY: Record<
   }
 > = {
   code_red: {
-    label: 'We need your story',
+    label: 'We need your input',
     meaning:
       'We wrote this bullet but couldn\u2019t find proof in your resume. You need to tell us the real experience behind it, or we\u2019ll remove it.',
     colorHex: '#8f2d2d',
@@ -24,7 +24,7 @@ export const REVIEW_STATE_DISPLAY: Record<
     priority: 0,
   },
   confirm_fit: {
-    label: 'Double-check this fits you',
+    label: 'Worth a double-check',
     meaning:
       'This comes from the benchmark for this role. Make sure it honestly describes your background.',
     colorHex: '#2563eb',
@@ -32,10 +32,10 @@ export const REVIEW_STATE_DISPLAY: Record<
     priority: 1,
   },
   strengthen: {
-    label: 'Strengthen this',
+    label: 'We think this can be stronger',
     meaning:
       'You have real experience here, but the bullet isn\u2019t landing hard enough. We\u2019ll help you sharpen it.',
-    colorHex: '#b45309',
+    colorHex: '#6b7280',
     cssModifier: 'partial',
     priority: 2,
   },
