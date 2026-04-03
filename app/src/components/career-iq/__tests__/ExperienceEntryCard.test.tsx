@@ -30,6 +30,15 @@ function makeEntry(overrides?: Partial<ExperienceEntry>): ExperienceEntry {
   };
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getExpandButton(container: HTMLElement = document.body): HTMLButtonElement {
+  // The expand/collapse button has aria-expanded attribute
+  const btn = container.querySelector('button[aria-expanded]');
+  if (!btn) throw new Error('Expand button not found');
+  return btn as HTMLButtonElement;
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 afterEach(() => {
@@ -38,7 +47,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('ExperienceEntryCard — header content', () => {
+// ─── Header content (always visible) ─────────────────────────────────────────
+
+describe('ExperienceEntryCard — header content (collapsed state)', () => {
   it('renders the job title', () => {
     render(<ExperienceEntryCard entry={makeEntry()} />);
     expect(screen.getByText('VP of Engineering')).toBeInTheDocument();
@@ -56,52 +67,102 @@ describe('ExperienceEntryCard — header content', () => {
 
   it('omits the duration separator when duration is empty string', () => {
     render(<ExperienceEntryCard entry={makeEntry({ duration: '' })} />);
-    // The middle-dot separator should not appear
     expect(screen.queryByText(/·/)).not.toBeInTheDocument();
   });
-});
 
-describe('ExperienceEntryCard — optimized content', () => {
-  it('renders the optimized text', () => {
+  it('starts collapsed — optimized content is not visible', () => {
     const entry = makeEntry();
     render(<ExperienceEntryCard entry={entry} />);
-    expect(screen.getByText(entry.optimized)).toBeInTheDocument();
-  });
-
-  it('renders empty content area when optimized is an empty string', () => {
-    render(<ExperienceEntryCard entry={makeEntry({ optimized: '' })} />);
-    // The <pre> element should exist and be empty
+    // The <pre> with optimized content should not be in the DOM
     const pre = document.querySelector('pre');
-    expect(pre).toBeInTheDocument();
-    expect(pre?.textContent).toBe('');
-  });
-});
-
-describe('ExperienceEntryCard — quality score badges', () => {
-  it('renders all four score badge labels', () => {
-    render(<ExperienceEntryCard entry={makeEntry()} />);
-    expect(screen.getByText(/Impact/)).toBeInTheDocument();
-    expect(screen.getByText(/Metrics/)).toBeInTheDocument();
-    expect(screen.getByText(/Context/)).toBeInTheDocument();
-    expect(screen.getByText(/Keywords/)).toBeInTheDocument();
+    expect(pre).not.toBeInTheDocument();
   });
 
-  it('renders the numeric score next to each label', () => {
+  it('shows compact score numbers in the collapsed header', () => {
     const entry = makeEntry({
       quality_scores: { impact: 85, metrics: 90, context: 78, keywords: 72 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    // Compact badges show score numbers only (no labels) in collapsed state
+    expect(screen.getByText('85')).toBeInTheDocument();
+    expect(screen.getByText('90')).toBeInTheDocument();
+    expect(screen.getByText('78')).toBeInTheDocument();
+    expect(screen.getByText('72')).toBeInTheDocument();
+  });
+
+  it('header button has aria-expanded="false" when collapsed', () => {
+    render(<ExperienceEntryCard entry={makeEntry()} />);
+    const btn = getExpandButton();
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+// ─── Expand / collapse ────────────────────────────────────────────────────────
+
+describe('ExperienceEntryCard — expand / collapse', () => {
+  it('expands when header is clicked', () => {
+    const entry = makeEntry();
+    render(<ExperienceEntryCard entry={entry} />);
+    const btn = getExpandButton();
+
+    fireEvent.click(btn);
+
+    const pre = document.querySelector('pre');
+    expect(pre).toBeInTheDocument();
+  });
+
+  it('shows optimized content after expanding', () => {
+    const entry = makeEntry();
+    render(<ExperienceEntryCard entry={entry} />);
+
+    fireEvent.click(getExpandButton());
+
+    expect(screen.getByText(entry.optimized)).toBeInTheDocument();
+  });
+
+  it('collapses again when header is clicked a second time', () => {
+    render(<ExperienceEntryCard entry={makeEntry()} />);
+    const btn = getExpandButton();
+
+    fireEvent.click(btn); // expand
+    expect(document.querySelector('pre')).toBeInTheDocument();
+
+    fireEvent.click(btn); // collapse
+    expect(document.querySelector('pre')).not.toBeInTheDocument();
+  });
+
+  it('aria-expanded toggles between false and true', () => {
+    render(<ExperienceEntryCard entry={makeEntry()} />);
+    const btn = getExpandButton();
+
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('shows labeled score badges in expanded body', () => {
+    render(<ExperienceEntryCard entry={makeEntry()} />);
+    fireEvent.click(getExpandButton());
+
     expect(screen.getByText(/Impact 85/)).toBeInTheDocument();
     expect(screen.getByText(/Metrics 90/)).toBeInTheDocument();
     expect(screen.getByText(/Context 78/)).toBeInTheDocument();
     expect(screen.getByText(/Keywords 72/)).toBeInTheDocument();
   });
+});
 
+// ─── Quality score badges (expanded) ─────────────────────────────────────────
+
+describe('ExperienceEntryCard — quality score badges (expanded)', () => {
   it('applies green color class for scores >= 80', () => {
     const entry = makeEntry({
       quality_scores: { impact: 80, metrics: 95, context: 82, keywords: 100 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const impactBadge = screen.getByText(/Impact 80/);
     expect(impactBadge.className).toContain('text-[#b5dec2]');
     expect(impactBadge.className).toContain('bg-[#b5dec2]/10');
@@ -112,6 +173,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 60, metrics: 79, context: 65, keywords: 70 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const impactBadge = screen.getByText(/Impact 60/);
     expect(impactBadge.className).toContain('text-[#f0d99f]');
     expect(impactBadge.className).toContain('bg-[#f0d99f]/10');
@@ -122,6 +185,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 59, metrics: 0, context: 45, keywords: 30 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const impactBadge = screen.getByText(/Impact 59/);
     expect(impactBadge.className).toContain('text-red-400');
     expect(impactBadge.className).toContain('bg-red-400/10');
@@ -132,6 +197,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 80, metrics: 80, context: 80, keywords: 80 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const badge = screen.getByText(/Impact 80/);
     expect(badge.className).toContain('text-[#b5dec2]');
   });
@@ -141,6 +208,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 60, metrics: 60, context: 60, keywords: 60 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const badge = screen.getByText(/Impact 60/);
     expect(badge.className).toContain('text-[#f0d99f]');
   });
@@ -150,6 +219,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 59, metrics: 59, context: 59, keywords: 59 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     const badge = screen.getByText(/Impact 59/);
     expect(badge.className).toContain('text-red-400');
   });
@@ -159,6 +230,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
       quality_scores: { impact: 90, metrics: 70, context: 40, keywords: 80 },
     });
     render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
     expect(screen.getByText(/Impact 90/).className).toContain('text-[#b5dec2]');
     expect(screen.getByText(/Metrics 70/).className).toContain('text-[#f0d99f]');
     expect(screen.getByText(/Context 40/).className).toContain('text-red-400');
@@ -166,7 +239,100 @@ describe('ExperienceEntryCard — quality score badges', () => {
   });
 });
 
-describe('ExperienceEntryCard — copy button', () => {
+// ─── Before/after toggle ──────────────────────────────────────────────────────
+
+describe('ExperienceEntryCard — before/after toggle', () => {
+  it('shows Optimized and Original toggle buttons when original is non-empty', () => {
+    const entry = makeEntry({ original: 'Led a team of engineers.' });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    expect(screen.getByRole('button', { name: 'Optimized' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Original' })).toBeInTheDocument();
+  });
+
+  it('does not show toggle buttons when original is empty string', () => {
+    const entry = makeEntry({ original: '' });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    expect(screen.queryByRole('button', { name: 'Optimized' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Original' })).not.toBeInTheDocument();
+  });
+
+  it('does not show toggle buttons when original is whitespace only', () => {
+    const entry = makeEntry({ original: '   ' });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    expect(screen.queryByRole('button', { name: 'Optimized' })).not.toBeInTheDocument();
+  });
+
+  it('shows optimized content by default after expanding', () => {
+    const entry = makeEntry({
+      original: 'Old bullets.',
+      optimized: 'New better bullets.',
+    });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    const pre = document.querySelector('pre');
+    expect(pre?.textContent).toBe('New better bullets.');
+  });
+
+  it('switches to original content when Original button is clicked', () => {
+    const entry = makeEntry({
+      original: 'Old bullets.',
+      optimized: 'New better bullets.',
+    });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Original' }));
+
+    const pre = document.querySelector('pre');
+    expect(pre?.textContent).toBe('Old bullets.');
+  });
+
+  it('switches back to optimized content when Optimized button is clicked', () => {
+    const entry = makeEntry({
+      original: 'Old bullets.',
+      optimized: 'New better bullets.',
+    });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+    fireEvent.click(screen.getByRole('button', { name: 'Original' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Optimized' }));
+
+    const pre = document.querySelector('pre');
+    expect(pre?.textContent).toBe('New better bullets.');
+  });
+});
+
+// ─── Optimized content (expanded, no original) ────────────────────────────────
+
+describe('ExperienceEntryCard — optimized content (expanded)', () => {
+  it('renders the optimized text after expanding', () => {
+    const entry = makeEntry({ original: '' });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    expect(screen.getByText(entry.optimized)).toBeInTheDocument();
+  });
+
+  it('renders empty content area when optimized is an empty string', () => {
+    render(<ExperienceEntryCard entry={makeEntry({ optimized: '', original: '' })} />);
+    fireEvent.click(getExpandButton());
+
+    const pre = document.querySelector('pre');
+    expect(pre).toBeInTheDocument();
+    expect(pre?.textContent).toBe('');
+  });
+});
+
+// ─── Copy button ──────────────────────────────────────────────────────────────
+
+describe('ExperienceEntryCard — copy button (expanded)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     Object.defineProperty(navigator, 'clipboard', {
@@ -177,17 +343,18 @@ describe('ExperienceEntryCard — copy button', () => {
 
   it('shows "Copy" text before the button is clicked', () => {
     render(<ExperienceEntryCard entry={makeEntry()} />);
-    // Button title is "Copy optimized content"; accessible name comes from text children = "Copy"
-    const button = screen.getByTitle('Copy optimized content');
-    expect(button).toBeInTheDocument();
+    fireEvent.click(getExpandButton());
+
+    expect(screen.getByTitle('Copy optimized content')).toBeInTheDocument();
     expect(screen.getByText('Copy')).toBeInTheDocument();
   });
 
   it('calls navigator.clipboard.writeText with the optimized text when clicked', async () => {
     const entry = makeEntry();
     render(<ExperienceEntryCard entry={entry} />);
-    const button = screen.getByTitle('Copy optimized content');
+    fireEvent.click(getExpandButton());
 
+    const button = screen.getByTitle('Copy optimized content');
     await act(async () => {
       fireEvent.click(button);
     });
@@ -198,8 +365,9 @@ describe('ExperienceEntryCard — copy button', () => {
 
   it('shows "Copied" feedback immediately after click', async () => {
     render(<ExperienceEntryCard entry={makeEntry()} />);
-    const button = screen.getByTitle('Copy optimized content');
+    fireEvent.click(getExpandButton());
 
+    const button = screen.getByTitle('Copy optimized content');
     await act(async () => {
       fireEvent.click(button);
     });
@@ -210,20 +378,19 @@ describe('ExperienceEntryCard — copy button', () => {
 
   it('reverts "Copied" back to "Copy" after 2 seconds', async () => {
     render(<ExperienceEntryCard entry={makeEntry()} />);
-    const button = screen.getByTitle('Copy optimized content');
+    fireEvent.click(getExpandButton());
 
+    const button = screen.getByTitle('Copy optimized content');
     await act(async () => {
       fireEvent.click(button);
     });
 
     expect(screen.getByText('Copied')).toBeInTheDocument();
 
-    // Advance fake timers past the 2-second reset threshold
     act(() => {
       vi.advanceTimersByTime(2001);
     });
 
-    // State update from setTimeout has now been flushed by act
     expect(screen.getByText('Copy')).toBeInTheDocument();
     expect(screen.queryByText('Copied')).not.toBeInTheDocument();
   });
@@ -233,13 +400,34 @@ describe('ExperienceEntryCard — copy button', () => {
       new Error('Clipboard unavailable'),
     );
     render(<ExperienceEntryCard entry={makeEntry()} />);
-    const button = screen.getByTitle('Copy optimized content');
+    fireEvent.click(getExpandButton());
 
+    const button = screen.getByTitle('Copy optimized content');
     await act(async () => {
       fireEvent.click(button);
     });
 
     // Component is still rendered — clipboard failure is swallowed
     expect(screen.getByTitle('Copy optimized content')).toBeInTheDocument();
+  });
+
+  it('always copies the optimized text regardless of whether Original view is active', async () => {
+    const entry = makeEntry({
+      original: 'Old bullets.',
+      optimized: 'New better bullets.',
+    });
+    render(<ExperienceEntryCard entry={entry} />);
+    fireEvent.click(getExpandButton());
+
+    // Switch to original view
+    fireEvent.click(screen.getByRole('button', { name: 'Original' }));
+
+    const button = screen.getByTitle('Copy optimized content');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // Should still copy the optimized text, not the original
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(entry.optimized);
   });
 });
