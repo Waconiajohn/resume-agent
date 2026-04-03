@@ -455,6 +455,10 @@ export interface GapChatContext {
   jobDescriptionExcerpt: string;
   candidateExperienceSummary: string;
   coachingPolicy?: RequirementCoachingPolicySnapshot;
+  alternativeBullets?: Array<{ text: string; angle: 'metric' | 'scope' | 'impact' }>;
+  primaryRequirement?: string;
+  requirementSource?: 'job_description' | 'benchmark';
+  sourceEvidence?: string;
 }
 
 export interface FinalReviewChatContext {

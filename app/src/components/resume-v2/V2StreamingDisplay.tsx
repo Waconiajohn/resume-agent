@@ -112,6 +112,13 @@ interface V2StreamingDisplayProps {
     index: number;
     requirements: string[];
   } | null;
+  /** AI enhancement handler threaded down to BulletCoachingPanel */
+  onBulletEnhance?: (
+    action: string,
+    bulletText: string,
+    requirement: string,
+    evidence?: string,
+  ) => Promise<import('@/hooks/useBulletEnhance').EnhanceResult | null>;
 }
 
 interface AttentionReviewItem {
@@ -541,6 +548,7 @@ export function V2StreamingDisplay({
   onClearMasterPromotionItems,
   onGapAssist,
   initialActiveBullet = null,
+  onBulletEnhance,
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -847,6 +855,7 @@ export function V2StreamingDisplay({
                     gapChat={gapChat ?? undefined}
                     buildChatContext={buildChatContext}
                     onBulletConversationClose={() => setActiveBullet(null)}
+                    onBulletEnhance={onBulletEnhance}
                   />
                 </div>
               </AnimatedCard>

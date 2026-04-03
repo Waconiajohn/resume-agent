@@ -137,8 +137,9 @@ vi.mock('../cards/PipelineProgressCard', () => ({
   PipelineProgressCard: () => <div data-testid="pipeline-progress-card" />,
 }));
 
-vi.mock('../cards/BulletConversationEditor', () => ({
-  BulletConversationEditor: () => <div data-testid="bullet-conversation-editor" />,
+vi.mock('../cards/BulletCoachingPanel', () => ({
+  BulletCoachingPanel: () => <div data-testid="bullet-coaching-panel" />,
+  BulletConversationEditor: () => <div data-testid="bullet-coaching-panel" />,
 }));
 
 // jsdom does not implement scrollIntoView or scrollTo — stub them globally

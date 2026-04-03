@@ -7,7 +7,7 @@ export function ScoreRing({ score, max, label, color }: { score: number; max: nu
     <div className="flex flex-col items-center gap-1.5" role="img" aria-label={`${label}: ${pct}%`}>
       <div className="relative h-16 w-16">
         <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-[var(--line-soft)]" />
+          <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-[var(--ring-track)]" />
           <circle
             cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3"
             strokeDasharray={circumference} strokeLinecap="round"

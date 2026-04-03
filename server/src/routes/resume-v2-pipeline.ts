@@ -8,6 +8,7 @@
  * The user sees results accumulate via SSE, then edits inline afterward.
  */
 
+import { z } from 'zod';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { supabaseAdmin } from '../lib/supabase.js';
@@ -968,6 +969,105 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, requirement, error: message }, 'Gap chat failed');
     return c.json({ error: 'Chat failed', message }, 500);
+  }
+});
+
+// ─── POST /:sessionId/bullet-enhance ─────────────────────────────
+
+const bulletEnhanceSchema = z.object({
+  action: z.enum(['add_metrics', 'strengthen_impact', 'be_specific']),
+  bullet_text: z.string().min(10).max(1000),
+  requirement: z.string().max(1000),
+  evidence: z.string().max(3000).optional(),
+  job_context: z.string().max(2000).optional(),
+});
+
+const ACTION_DESCRIPTIONS: Record<string, string> = {
+  add_metrics: 'Rewrite this resume bullet with quantified outcomes. Infer numbers conservatively from the evidence provided. Return exactly 3 versions: one metric-focused, one scope-focused, one impact-focused.',
+  strengthen_impact: 'Rewrite this resume bullet with stronger action verbs and a clear business outcome. Keep all facts accurate. Return exactly 3 versions with different angles.',
+  be_specific: 'Rewrite this resume bullet adding concrete details: specific tools, team sizes, geographic scope, timeframes. Return exactly 3 versions.',
+};
+
+resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 10_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = bulletEnhanceSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { action, bullet_text, requirement, evidence, job_context } = parsed.data;
+  const actionDescription = ACTION_DESCRIPTIONS[action];
+
+  logger.info({ session_id: sessionId, action, bulletSnippet: bullet_text.substring(0, 60) }, 'Bullet enhance request');
+
+  const prompt = [
+    `You are a senior resume coach. Rewrite this bullet for a resume.`,
+    ``,
+    `BULLET: "${bullet_text}"`,
+    `REQUIREMENT IT ADDRESSES: "${requirement}"`,
+    evidence ? `EVIDENCE FROM RESUME: "${evidence}"` : '',
+    job_context ? `JOB CONTEXT: "${job_context}"` : '',
+    ``,
+    `Action: ${actionDescription}`,
+    ``,
+    `Return JSON:`,
+    `{`,
+    `  "enhanced_bullet": "the primary rewrite",`,
+    `  "alternatives": [`,
+    `    {"text": "metric-focused version", "angle": "metric"},`,
+    `    {"text": "scope-focused version", "angle": "scope"},`,
+    `    {"text": "impact-focused version", "angle": "impact"}`,
+    `  ]`,
+    `}`,
+    ``,
+    `Rules:`,
+    `- Every bullet MUST be grounded in the evidence provided`,
+    `- Never fabricate experience, credentials, or outcomes`,
+    `- Use conservative estimates if inferring numbers (back off 10-20%)`,
+    `- Each alternative should take a genuinely different angle`,
+    `- Each bullet should be 1-2 lines, start with a strong action verb`,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
+      model: MODEL_MID,
+      system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1024,
+    }));
+
+    const repaired = repairJSON<{ enhanced_bullet?: string; alternatives?: Array<{ text: string; angle: string }> }>(response.text);
+
+    if (!repaired || typeof repaired.enhanced_bullet !== 'string') {
+      logger.warn({ session_id: sessionId, action, rawSnippet: response.text.substring(0, 200) }, 'Bullet enhance: JSON parse failed');
+      return c.json({ error: 'Enhancement failed — could not parse LLM response' }, 500);
+    }
+
+    return c.json({
+      enhanced_bullet: repaired.enhanced_bullet,
+      alternatives: Array.isArray(repaired.alternatives) ? repaired.alternatives : [],
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, action, error: message }, 'Bullet enhance failed');
+    return c.json({ error: 'Enhancement failed', message }, 500);
   }
 });
 

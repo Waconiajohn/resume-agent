@@ -14,6 +14,7 @@ import { useLiveScoring } from '@/hooks/useLiveScoring';
 import { useGapChat } from '@/hooks/useGapChat';
 import { useFinalReviewChat } from '@/hooks/useFinalReviewChat';
 import { usePostReviewPolish } from '@/hooks/usePostReviewPolish';
+import { useBulletEnhance } from '@/hooks/useBulletEnhance';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
@@ -196,6 +197,23 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     hydrateState: hydratePostReviewPolish,
     reset: resetPostReviewPolish,
   } = usePostReviewPolish(accessToken, data.sessionId);
+
+  // Bullet AI enhancement (add_metrics / strengthen_impact / be_specific)
+  const { enhance: bulletEnhance } = useBulletEnhance(accessToken, data.sessionId || null);
+  const handleBulletEnhance = useCallback(async (
+    action: string,
+    bulletText: string,
+    requirement: string,
+    evidence?: string,
+  ) => {
+    return bulletEnhance(
+      action as 'add_metrics' | 'strengthen_impact' | 'be_specific',
+      bulletText,
+      requirement,
+      evidence,
+    );
+  }, [bulletEnhance]);
+
   const [resolvedFinalReviewConcernIds, setResolvedFinalReviewConcernIds] = useState<string[]>([]);
   const [finalReviewWarningsAcknowledged, setFinalReviewWarningsAcknowledged] = useState(false);
   const [isFinalReviewStale, setIsFinalReviewStale] = useState(false);
@@ -264,6 +282,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       candidateExperienceSummary: ci
         ? `${ci.career_themes.join(', ')}. ${ci.leadership_scope}. Scale: ${ci.operational_scale}.`
         : '',
+      alternativeBullets: coachingCard?.alternative_bullets ?? [],
+      primaryRequirement: requirement,
+      requirementSource: gapReq?.source ?? coachingCard?.source,
+      sourceEvidence: coachingCard?.source_evidence ?? gapReq?.source_evidence,
     };
   }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards]);
 
@@ -1288,13 +1310,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
           <div className="ml-auto flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1">
               {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
-              <span className="text-[#afc4ff]">Match: {displayAtsScore}%</span>
+              <span className="text-[var(--badge-blue-text)]">Match: {displayAtsScore}%</span>
             </div>
             {displayTruthScore !== null && (
-              <span className="text-[#b5dec2]">Accuracy: {displayTruthScore}%</span>
+              <span className="text-[var(--badge-green-text)]">Accuracy: {displayTruthScore}%</span>
             )}
             {displayToneScore !== null && (
-              <span className="text-[#f0d99f]">Tone: {displayToneScore}%</span>
+              <span className="text-[var(--badge-amber-text)]">Tone: {displayToneScore}%</span>
             )}
           </div>
         )}
@@ -1358,6 +1380,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onSelectAllMasterPromotionItems={handleSelectAllMasterPromotionItems}
         onClearMasterPromotionItems={handleClearMasterPromotionItems}
         onGapAssist={handleGapAssist}
+        onBulletEnhance={handleBulletEnhance}
       />
     </div>
   );

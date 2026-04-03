@@ -48,10 +48,23 @@
     --badge-purple-bg: rgba(192, 132, 252, 0.15);
     --badge-purple-text: rgba(192, 132, 252, 0.8);
     --bar-fill: rgba(175, 196, 255, 0.6);
-    --btn-primary-bg: rgba(175, 196, 255, 0.2);
-    --btn-primary-border: rgba(175, 196, 255, 0.3);
-    --btn-primary-hover: rgba(175, 196, 255, 0.3);
-    --btn-primary-text: #afc4ff;
+    --btn-primary-bg: rgba(37, 99, 235, 0.85);
+    --btn-primary-border: rgba(37, 99, 235, 0.9);
+    --btn-primary-hover: rgba(29, 78, 216, 0.9);
+    --btn-primary-text: #ffffff;
+    /* Score ring */
+    --ring-track: rgba(189, 208, 235, 0.18);
+    /* Bullet coaching colors */
+    --bullet-strengthen: #f0d99f;
+    --bullet-strengthen-bg: rgba(240, 217, 159, 0.08);
+    --bullet-strengthen-border: rgba(240, 217, 159, 0.22);
+    --bullet-confirm: #afc4ff;
+    --bullet-confirm-bg: rgba(175, 196, 255, 0.08);
+    --bullet-confirm-border: rgba(175, 196, 255, 0.2);
+    --bullet-code-red: #f0b8b8;
+    --bullet-code-red-bg: rgba(240, 184, 184, 0.08);
+    --bullet-code-red-border: rgba(240, 184, 184, 0.2);
+    --bullet-supported: var(--badge-green-text);
     --shadow-low: 0 18px 40px -30px rgba(0, 0, 0, 0.82);
     --shadow-mid: 0 28px 80px -42px rgba(0, 0, 0, 0.92);
     /* Body background vars */
@@ -143,6 +156,19 @@
     --btn-primary-border: #2563eb;
     --btn-primary-hover: #1d4ed8;
     --btn-primary-text: #ffffff;
+    /* Score ring */
+    --ring-track: rgba(0, 0, 0, 0.12);
+    /* Bullet coaching colors */
+    --bullet-strengthen: #b45309;
+    --bullet-strengthen-bg: rgba(245, 158, 11, 0.09);
+    --bullet-strengthen-border: rgba(180, 83, 9, 0.22);
+    --bullet-confirm: #2563eb;
+    --bullet-confirm-bg: rgba(59, 130, 246, 0.08);
+    --bullet-confirm-border: rgba(37, 99, 235, 0.2);
+    --bullet-code-red: #991b1b;
+    --bullet-code-red-bg: rgba(254, 226, 226, 0.5);
+    --bullet-code-red-border: rgba(153, 27, 27, 0.2);
+    --bullet-supported: var(--badge-green-text);
     --shadow-low: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
     --shadow-mid: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
     /* Body background vars */
@@ -1280,4 +1306,10 @@ body {
 @keyframes processing-bar-shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
+}
+
+/* ── Bullet coaching panel enter animation ── */
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }

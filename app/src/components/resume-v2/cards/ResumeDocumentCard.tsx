@@ -6,7 +6,8 @@ import type {
 } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { GapChatContext } from '@/types/resume-v2';
-import { BulletConversationEditor } from './BulletConversationEditor';
+import { BulletCoachingPanel } from './BulletCoachingPanel';
+import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
@@ -21,10 +22,17 @@ interface ResumeDocumentCardProps {
   onBulletEdit?: (section: string, index: number, newText: string) => void;
   /** Remove a bullet from the resume */
   onBulletRemove?: (section: string, index: number) => void;
-  /** Gap chat infrastructure for BulletConversationEditor */
+  /** Gap chat infrastructure for BulletCoachingPanel */
   gapChat?: GapChatHook;
   buildChatContext?: (requirement: string) => GapChatContext;
   onBulletConversationClose?: () => void;
+  /** AI enhancement handler for the bullet coaching panel */
+  onBulletEnhance?: (
+    action: string,
+    bulletText: string,
+    requirement: string,
+    evidence?: string,
+  ) => Promise<EnhanceResult | null>;
 }
 
 export function ResumeDocumentCard({
@@ -37,6 +45,7 @@ export function ResumeDocumentCard({
   gapChat,
   buildChatContext,
   onBulletConversationClose,
+  onBulletEnhance,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
@@ -146,7 +155,7 @@ export function ResumeDocumentCard({
                     onBulletClick={isGreen ? undefined : onBulletClick}
                   />
                   {isActive && !isGreen && gapChat && buildChatContext && (
-                    <BulletConversationEditor
+                    <BulletCoachingPanel
                       bulletText={a.content}
                       section="selected_accomplishments"
                       bulletIndex={i}
@@ -159,6 +168,7 @@ export function ResumeDocumentCard({
                       onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
                       onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                       onClose={() => onBulletConversationClose?.()}
+                      onBulletEnhance={onBulletEnhance}
                     />
                   )}
                 </li>
@@ -234,7 +244,7 @@ export function ResumeDocumentCard({
                           onBulletClick={isGreen ? undefined : onBulletClick}
                         />
                         {isActive && !isGreen && gapChat && buildChatContext && (
-                          <BulletConversationEditor
+                          <BulletCoachingPanel
                             bulletText={bullet.text}
                             section="professional_experience"
                             bulletIndex={bulletIndex}
@@ -247,6 +257,7 @@ export function ResumeDocumentCard({
                             onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
                             onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                             onClose={() => onBulletConversationClose?.()}
+                            onBulletEnhance={onBulletEnhance}
                           />
                         )}
                       </li>
