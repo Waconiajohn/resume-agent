@@ -198,7 +198,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     reset: resetPostReviewPolish,
   } = usePostReviewPolish(accessToken, data.sessionId);
 
-  // Bullet AI enhancement (add_metrics / strengthen_impact / be_specific)
+  // Bullet AI enhancement (show_transformation / demonstrate_leadership / connect_to_role / show_accountability)
   const { enhance: bulletEnhance } = useBulletEnhance(accessToken, data.sessionId || null);
   const handleBulletEnhance = useCallback(async (
     action: string,
@@ -207,7 +207,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     evidence?: string,
   ) => {
     return bulletEnhance(
-      action as 'add_metrics' | 'strengthen_impact' | 'be_specific',
+      action as 'show_transformation' | 'demonstrate_leadership' | 'connect_to_role' | 'show_accountability',
       bulletText,
       requirement,
       evidence,

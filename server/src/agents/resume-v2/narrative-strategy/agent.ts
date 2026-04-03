@@ -127,6 +127,21 @@ The Why Me story is not a bullet list in paragraph form. It is a narrative. Appl
 
 ---
 
+## CASCADING THE NARRATIVE TO INDIVIDUAL BULLETS
+
+The Why Me story is the frame. Every bullet in the resume must feel like it was written by the person IN that story. If the narrative says "transformation leader who builds teams from the ground up," then every experience bullet should echo that identity — not just state accomplishments in a vacuum.
+
+For each role in the experience section, provide section_guidance that includes:
+- The specific narrative thread this role proves
+- Which Layer (1-5) this role primarily serves
+- The emotional register: what was this person feeling and caring about during this period?
+- The growth arc: what did they learn here that they didn't know before?
+- How this role connects to the NEXT role — the progression logic
+
+This guidance flows to the Resume Writer so individual bullets are written in the voice of the narrative, not in generic professional language. The resume should read like one coherent story, not a collection of job descriptions.
+
+---
+
 ## NARRATIVE ANGLE SELECTION
 
 You are not just writing the narrative — you are choosing the BEST ANGLE for this specific role. Different roles demand different positioning emphasis. Use the gap analysis and JD to select the right angle:

@@ -103,7 +103,34 @@ BULLET COUNT — JD-relevance governs, not minimums:
 - If an older role directly supports the top job needs, benchmark differentiators, or the candidate's current positioning, keep it in Professional Experience with bullets
 
 Strong action verbs: Drove, Championed, Orchestrated, Spearheaded, Transformed, Architected, Scaled, Delivered, Directed, Built, Negotiated, Launched
-BANNED bullet openers: "Responsible for," "Helped," "Assisted," "Supported," "Participated in," "Worked on"`,
+BANNED bullet openers: "Responsible for," "Helped," "Assisted," "Supported," "Participated in," "Worked on"
+
+BULLET ARCHETYPES — use a mix across each role, not just impact bullets:
+
+1. TRANSFORMATION BULLET (before → action → after):
+   "Inherited [broken state]. [What you did and HOW — through people/process/creativity]. [What became possible — metric + human impact]."
+   Example: "Inherited operations division with 23% annual turnover and no succession plan. Built structured mentorship program pairing senior managers with high-potential ICs. Within 18 months, turnover dropped to 9%, promoted 5 internal candidates to management, and eliminated $340K in external recruiting spend."
+
+2. EMPOWERMENT BULLET (leadership through growing others):
+   "Built/developed/mentored [who]. [How you empowered them]. [What they accomplished as a result]."
+   Example: "Developed 8-person engineering leadership pipeline through quarterly stretch assignments and executive shadowing. Five promoted to team leads within 3 years; three later led independent product teams generating $12M combined revenue."
+
+3. ACCOUNTABILITY BULLET (standards and follow-through):
+   "Set [standard/target]. [How you tracked and enforced it]. [Result — including what happened when things missed]."
+   Example: "Established weekly OKR reviews with 100% participation requirement. Every miss triggered 48-hour root cause analysis. Maintained 89% quarterly attainment against 67% historical baseline while building a culture where misses were learning opportunities, not blame events."
+
+4. RECOVERY BULLET (setback, diagnosis, course correction):
+   "When [what went wrong]. [How fast you diagnosed — data-driven]. [What you changed]. [Result]."
+   Example: "When Q3 product launch missed adoption targets by 40%, conducted cross-functional post-mortem within one week. Root cause: sales enablement gap. Designed 2-week intensive training program and rebuilt onboarding flow. Q4 adoption exceeded original targets by 15%."
+
+5. PROCESS BULLET (show methodology and preparation):
+   "Conducted [preparation/analysis]. Identified [insight]. Designed [framework/approach]. [Result]."
+   Example: "Conducted 6-week market analysis across 14 competitor offerings before entering enterprise segment. Identified underserved mid-market niche. Designed land-and-expand pricing model that captured 23 logos in first year with 140% net revenue retention."
+
+6. IMPACT BULLET (action → quantified result — the traditional format):
+   Use these but limit to approximately 30% of bullets. The other 70% should use archetypes 1-5 to tell richer stories.
+
+Each role should have a MIX of archetypes. No role should be all impact bullets. The goal: when a hiring manager reads the experience section, they should think "this person builds things, grows people, solves real problems, and holds themselves accountable."`,
 
   technical_skills: `Optional — include only when the role specifically values technical depth.
 Domain-specific tools, platforms, and technologies grouped by category.

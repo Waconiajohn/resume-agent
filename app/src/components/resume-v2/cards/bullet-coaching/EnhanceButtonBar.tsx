@@ -1,18 +1,19 @@
 /**
- * EnhanceButtonBar — Three one-click AI enhancement actions.
+ * EnhanceButtonBar — Four one-click AI enhancement actions.
  *
  * Gives the user a fast path to improving a bullet without needing to type
- * anything. Each button maps to a focused AI transformation: add real numbers,
- * sharpen the business impact, or replace vague language with specifics.
+ * anything. Each button maps to a focused AI transformation: show the full
+ * story behind an accomplishment, demonstrate leadership through people,
+ * connect experience to the target role, or show accountability and resilience.
  *
  * The active button shows a spinner while the enhancement is in progress.
  * All buttons are disabled while any enhancement is running.
  */
 
-import { BarChart3, Zap, Target, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, Users, Target, Shield, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type EnhanceAction = 'add_metrics' | 'strengthen_impact' | 'be_specific';
+export type EnhanceAction = 'show_transformation' | 'demonstrate_leadership' | 'connect_to_role' | 'show_accountability';
 
 export interface EnhanceButtonBarProps {
   onEnhance: (action: EnhanceAction) => void;
@@ -32,28 +33,36 @@ interface EnhanceButtonDef {
 
 const ENHANCE_BUTTONS: EnhanceButtonDef[] = [
   {
-    action: 'add_metrics',
-    label: 'Add Metrics',
-    icon: BarChart3,
+    action: 'show_transformation',
+    label: 'Show Transformation',
+    icon: ArrowRightLeft,
     bgVar: 'var(--badge-amber-bg)',
     textVar: 'var(--badge-amber-text)',
-    ariaLabel: 'Add metrics to this bullet',
+    ariaLabel: 'Rewrite bullet to show before-state, action, and transformation',
   },
   {
-    action: 'strengthen_impact',
-    label: 'Strengthen Impact',
-    icon: Zap,
+    action: 'demonstrate_leadership',
+    label: 'Show Leadership',
+    icon: Users,
     bgVar: 'var(--badge-blue-bg)',
     textVar: 'var(--badge-blue-text)',
-    ariaLabel: 'Strengthen the business impact of this bullet',
+    ariaLabel: 'Rewrite bullet to demonstrate leadership through people',
   },
   {
-    action: 'be_specific',
-    label: 'Be More Specific',
+    action: 'connect_to_role',
+    label: 'Connect to Role',
     icon: Target,
     bgVar: 'var(--badge-green-bg)',
     textVar: 'var(--badge-green-text)',
-    ariaLabel: 'Make this bullet more specific',
+    ariaLabel: 'Rewrite bullet to explicitly connect this experience to the target role',
+  },
+  {
+    action: 'show_accountability',
+    label: 'Show Accountability',
+    icon: Shield,
+    bgVar: 'var(--badge-purple-bg)',
+    textVar: 'var(--badge-purple-text)',
+    ariaLabel: 'Rewrite bullet to show accountability, standards, and resilience',
   },
 ];
 

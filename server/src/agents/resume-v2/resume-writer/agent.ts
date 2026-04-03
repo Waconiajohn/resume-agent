@@ -190,6 +190,55 @@ Run this self-check before finalizing the JSON. Every gate must pass:
 9. SO-WHAT TEST — Zero pure-activity bullets. Every bullet has a result, outcome, or demonstrated impact.
 10. AGE-PROOF TEST — No graduation years for degrees 20+ years old. No "30 years of experience." No obsolete tech. No objective statement.
 
+## THE STORY BEHIND THE METRIC
+
+Every major bullet should answer THREE questions, not just one:
+1. What was broken or challenging? (the before-state)
+2. What did this person do — and HOW? (through people, creativity, process)
+3. What became possible? (not just the metric — the transformation)
+
+BAD: "Reduced manufacturing defects by 34%, saving $2.1M annually"
+GOOD: "Inherited quality-plagued operation averaging 12% defect rate. Diagnosed root cause: technicians didn't understand the economics of their errors. Launched peer-led quality circles where each team member tracked their own defect-to-cost chain. Defect rate dropped to 7.9% within 6 months — $2.1M in annual savings driven by ownership, not mandates."
+
+The metric matters. But the HOW matters more. Show process discipline, not just outcomes.
+
+## LEADERSHIP THROUGH PEOPLE, NOT JUST SCOPE
+
+"Managed a team of 40" tells me nothing. Show me:
+- Who did you develop into leaders? ("Promoted 7 direct reports, 4 to director level")
+- How did you empower people? ("Created decision framework empowering regional managers to approve up to $500K spend — decision time from 8 weeks to 1 week")
+- How did you grow the team's capability? ("Built team from 4 to 18, established career paths yielding 60% internal promotion rate")
+- Did you delegate authority, not just tasks? Show trust.
+
+The best leaders are measured by what their people accomplished, not by team headcount.
+
+## ACCOUNTABILITY AND STANDARDS
+
+Real leaders set standards and hold to them — including themselves.
+- Show how standards were set and enforced, not just results achieved
+- Include at least one controlled setback-and-recovery per resume: "Q2 adoption stalled at 35%. Conducted root cause analysis within 48 hours. Discovered onboarding friction. Redesigned UX flow + launched peer coaching. Adoption reached 72% by Q4."
+- This proves resilience, not perfection. Hiring managers trust people who face failure data calmly and act fast.
+
+## ADAPTABILITY — PROVE YOU'RE NOT STUCK
+
+For candidates with 15+ years of experience, EVERY resume must show at least one moment of deliberate adaptation:
+- Technology shift adopted ("Led migration from on-prem to cloud-native architecture")
+- Methodology evolved ("Transitioned team from waterfall to agile, then to continuous delivery")
+- Strategy pivoted based on data ("Market data showed channel shift; retooled from direct sales to partner-led model, growing channel revenue from 12% to 48% of total")
+
+This directly counters "set in their ways" perception. It proves the candidate learns, adapts, and evolves.
+
+## THE PROCESS — SHOW YOUR WORK
+
+Don't just show what was accomplished. Show the deliberate process:
+- What preparation happened before acting?
+- What methodology was followed?
+- What was the sequence and why?
+
+"Before launching the turnaround, spent 6 weeks auditing expense allocation across 23 cost centers. Identified $4.2M in misclassified spend. Developed zero-based budget framework. Cut overhead 18% sustainably — not through cuts, through clarity."
+
+Hiring managers hire process discipline, not luck. The separation is in the preparation.
+
 CRITICAL is_new RULES:
 1. is_new = true for ANY content you wrote, rephrased, or enhanced beyond the original resume
 2. is_new = false ONLY for content taken verbatim or near-verbatim from the original

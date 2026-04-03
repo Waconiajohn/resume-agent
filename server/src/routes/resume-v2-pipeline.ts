@@ -975,7 +975,7 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
 // ─── POST /:sessionId/bullet-enhance ─────────────────────────────
 
 const bulletEnhanceSchema = z.object({
-  action: z.enum(['add_metrics', 'strengthen_impact', 'be_specific']),
+  action: z.enum(['show_transformation', 'demonstrate_leadership', 'connect_to_role', 'show_accountability']),
   bullet_text: z.string().min(10).max(1000),
   requirement: z.string().max(1000),
   evidence: z.string().max(3000).optional(),
@@ -983,9 +983,10 @@ const bulletEnhanceSchema = z.object({
 });
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
-  add_metrics: 'Rewrite this resume bullet with quantified outcomes. Infer numbers conservatively from the evidence provided. Return exactly 3 versions: one metric-focused, one scope-focused, one impact-focused.',
-  strengthen_impact: 'Rewrite this resume bullet with stronger action verbs and a clear business outcome. Keep all facts accurate. Return exactly 3 versions with different angles.',
-  be_specific: 'Rewrite this resume bullet adding concrete details: specific tools, team sizes, geographic scope, timeframes. Return exactly 3 versions.',
+  show_transformation: 'Rewrite this bullet to show transformation: the before-state (what was broken or challenging), the action taken (HOW — through people, process, creativity, not just what), and the after-state (what became possible, not just the metric). Structure: inherited/faced → did → resulted in. Return 3 versions with different angles.',
+  demonstrate_leadership: 'Rewrite this bullet to demonstrate leadership through people — empowerment, delegation, team development, growing others into leaders. Show who was developed, how they were empowered, what they accomplished as a result. The best leaders are measured by what their people achieved. Return 3 versions.',
+  connect_to_role: 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return 3 versions.',
+  show_accountability: 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return 3 versions.',
 };
 
 resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
@@ -993,14 +994,14 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   const userId = user.id;
   const sessionId = c.req.param('sessionId');
 
-  const { data: session } = await supabaseAdmin
+  const { data: sessionData } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id, user_id')
+    .select('id, user_id, pipeline_state')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .single();
 
-  if (!session) {
+  if (!sessionData) {
     return c.json({ error: 'Session not found' }, 404);
   }
 
@@ -1015,6 +1016,21 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   const { action, bullet_text, requirement, evidence, job_context } = parsed.data;
   const actionDescription = ACTION_DESCRIPTIONS[action];
 
+  // Read narrative context from pipeline state if available
+  let narrativeContext = '';
+  try {
+    const pipelineState = sessionData.pipeline_state as Record<string, unknown> | null;
+    if (pipelineState) {
+      const narrative = pipelineState.narrative_strategy as Record<string, unknown> | undefined;
+      if (narrative?.primary_narrative) {
+        narrativeContext = `\nCANDIDATE'S POSITIONING: ${narrative.primary_narrative}`;
+      }
+      if (narrative?.why_me_concise) {
+        narrativeContext += `\nWHY ME: ${narrative.why_me_concise}`;
+      }
+    }
+  } catch { /* pipeline state may not have narrative */ }
+
   logger.info({ session_id: sessionId, action, bulletSnippet: bullet_text.substring(0, 60) }, 'Bullet enhance request');
 
   const prompt = [
@@ -1024,6 +1040,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `REQUIREMENT IT ADDRESSES: "${requirement}"`,
     evidence ? `EVIDENCE FROM RESUME: "${evidence}"` : '',
     job_context ? `JOB CONTEXT: "${job_context}"` : '',
+    narrativeContext || '',
     ``,
     `Action: ${actionDescription}`,
     ``,

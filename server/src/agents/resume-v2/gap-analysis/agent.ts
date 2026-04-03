@@ -177,10 +177,10 @@ RULES:
 - SPECIFICITY TEST: Before writing positioning, check: does this sentence contain at least ONE of [specific metric, company/project name, team size, tool/methodology, geographic scope, timeframe]? If not, rewrite it until it does.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
-- alternative_bullets: REQUIRED for every strategy. Generate EXACTLY 3 alternative resume bullet phrasings, each taking a different angle:
-  - "metric": quantified outcome (numbers, percentages, dollar amounts grounded in their real experience)
-  - "scope": scale and breadth (team size, geographic reach, systems/tools, organizational scope)
-  - "impact": business result (revenue, efficiency, reputation, growth, risk reduction)
+- alternative_bullets: REQUIRED for every strategy. Generate EXACTLY 3 alternative resume bullet phrasings. Each must tell a STORY, not just state a fact:
+  - "metric": Show the transformation with quantified outcomes — include the before-state, the action taken, and the measured result. Show process discipline.
+  - "scope": Show leadership through people — who was empowered, what team was built, what became possible through delegation, trust, and growing others into leaders.
+  - "impact": Show accountability and adaptability — what standard was set, how it was enforced, what the candidate learned, or how they adapted when things changed. Prove resilience.
   Each alternative must be grounded in the candidate's actual resume evidence — no fabrication. Each must be ready to use as-is on a resume. Each must follow the same SPECIFICITY TEST and PRESERVATION RULE as the main positioning bullet.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
 - critical_gaps must contain only unresolved formal credential requirement strings (degrees, certifications, licenses, work authorization, years-of-experience minimums), not skills, competencies, explanations, evidence snippets, or serialized JSON.

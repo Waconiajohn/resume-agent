@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 
-export type EnhanceAction = 'add_metrics' | 'strengthen_impact' | 'be_specific';
+export type EnhanceAction = 'show_transformation' | 'demonstrate_leadership' | 'connect_to_role' | 'show_accountability';
 
 export interface EnhanceResult {
   enhancedBullet: string;
