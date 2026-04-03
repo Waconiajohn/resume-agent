@@ -82,7 +82,7 @@ export function JobWorkspaceScreen({
     return (
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-6">
         <GlassCard className="p-8">
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Job Workspace</div>
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Job Workspace</div>
           <h1 className="mt-2 text-xl font-semibold text-[var(--text-strong)]">Workspace not found</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-soft)]">
             We could not find saved assets linked to this job yet. Open Resume Builder to review recent tailored work or attach new assets to the application.
@@ -108,7 +108,7 @@ export function JobWorkspaceScreen({
             <ArrowLeft size={14} />
             Back to Resume Builder
           </button>
-          <div className="mt-4 text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Job Workspace</div>
+          <div className="mt-4 text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Job Workspace</div>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--text-strong)]">{record.company}</h1>
           <p className="mt-2 text-sm text-[var(--text-soft)]">
             {record.role}. This view keeps the exact saved assets, stage history, and next moves for a single application in one place.

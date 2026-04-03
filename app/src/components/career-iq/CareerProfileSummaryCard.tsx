@@ -38,7 +38,7 @@ export function CareerProfileSummaryCard({
               <Target size={16} className="text-[var(--link)]" />
             </div>
             <div>
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                 Career Profile
               </div>
               <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">{title}</h2>

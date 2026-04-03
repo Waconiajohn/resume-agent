@@ -261,7 +261,13 @@ export async function getCompanySummary(userId: string): Promise<CompanySummaryR
       const position = row.position as string | null;
       const company = row.company_directory as { name_display: string } | null;
 
-      const existing = grouped.get(companyRaw);
+      // Group by company_id when available so that variant spellings of the
+      // same company (e.g. "AWS" and "Amazon Web Services (AWS)") that were
+      // both matched to the same directory entry are merged into one bucket.
+      // Fall back to company_raw for unmatched rows.
+      const groupKey = companyId ?? companyRaw;
+
+      const existing = grouped.get(groupKey);
       if (existing) {
         existing.count++;
         if (position) {
@@ -270,7 +276,7 @@ export async function getCompanySummary(userId: string): Promise<CompanySummaryR
       } else {
         const positions = new Map<string, number>();
         if (position) positions.set(position, 1);
-        grouped.set(companyRaw, {
+        grouped.set(groupKey, {
           companyRaw,
           companyDisplayName: company?.name_display ?? null,
           companyId,

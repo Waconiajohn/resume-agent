@@ -728,7 +728,7 @@ export function FinancialWellnessRoom({
           <GlassCard className="p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                   Saved Bridge
                 </div>
                 <h3 className="mt-2 text-[16px] font-semibold text-[var(--text-strong)]">
@@ -810,7 +810,7 @@ export function FinancialWellnessRoom({
       <GlassCard className="p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
               Retirement Bridge
             </div>
             <h1 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Retirement Bridge</h1>
@@ -859,7 +859,7 @@ export function FinancialWellnessRoom({
             },
           ].map((item) => (
             <div key={item.step} className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Step {item.step}</div>
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Step {item.step}</div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
               <div className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">{item.copy}</div>
             </div>

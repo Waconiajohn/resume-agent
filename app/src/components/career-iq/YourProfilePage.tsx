@@ -85,7 +85,7 @@ function SectionHeader({
         <Icon size={16} className="text-[var(--link)]" />
       </div>
       <div>
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
           {label}
         </div>
         <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
@@ -98,7 +98,7 @@ function ProfileBackboneCard() {
   return (
     <GlassCard className="p-4">
       <div>
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
           Profile backbone
         </div>
         <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -771,7 +771,7 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               onClick={() => setActiveAsset('bio')}
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                 Open first
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -787,7 +787,7 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               onClick={() => setActiveAsset('case-study')}
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                 Then build
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -860,7 +860,7 @@ export function YourProfilePage({
               <BookOpen size={16} className="text-[var(--link)]" />
             </div>
             <div>
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Section A</div>
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Section A</div>
               <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
                 Your Why Me Story
               </h2>

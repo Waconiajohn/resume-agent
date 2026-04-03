@@ -359,3 +359,214 @@ describe('getCompanySummary', () => {
     expect(result).toEqual([]);
   });
 });
+
+// ─── getCompanySummary — company name filtering ───────────────────────────────
+
+describe('getCompanySummary — company name filtering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    chain.from.mockReturnValue(chain);
+    chain.select.mockReturnValue(chain);
+    chain.order.mockReturnValue(chain);
+    chain.eq.mockResolvedValue({ data: [], error: null });
+    chain.range.mockResolvedValue({ data: [], error: null });
+  });
+
+  // ── Helper: build a minimal summary row ────────────────────────────────────
+  /** Returns a raw DB row with no directory match and an arbitrary position. */
+  function makeRow(companyRaw: string, companyDirectory: { name_display: string } | null = null) {
+    return {
+      company_raw: companyRaw,
+      company_id: companyDirectory ? 'co-matched' : null,
+      position: 'Employee',
+      company_directory: companyDirectory,
+    };
+  }
+
+  // ── 1. Exact invalid entries are filtered out ────────────────────────────────
+
+  it('filters out "Retired" (exact match)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Retired')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters out "Self-Employed" (exact match, hyphenated form)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Self-Employed')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters out "Self Employed" (exact match, space form)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Self Employed')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters out "Freelance" (exact match)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Freelance')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters out "N/A" (exact match)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('N/A')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters out "--" (exact match)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('--')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  // ── 2. Real companies whose names START with a filter keyword are preserved ──
+
+  it('preserves "Seeking Alpha" — starts with "Seeking" but is a real company', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Seeking Alpha')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(1);
+    expect(result[0].companyRaw).toBe('Seeking Alpha');
+  });
+
+  it('preserves "Confidential Computing Inc" — starts with "Confidential" but is a real company', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Confidential Computing Inc')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(1);
+    expect(result[0].companyRaw).toBe('Confidential Computing Inc');
+  });
+
+  // ── 3. companyDisplayName bypasses the filter ────────────────────────────────
+  // If a connection's company was matched in the company_directory, we trust that
+  // match regardless of what the raw string says.
+
+  it('preserves an entry when companyDisplayName exists, even if raw matches an invalid pattern', async () => {
+    // "Retired" would normally be filtered, but a directory match overrides that.
+    const row = makeRow('Retired', { name_display: 'Retired Financial Services LLC' });
+    chain.eq.mockResolvedValueOnce({ data: [row], error: null });
+
+    const result = await getCompanySummary('user-abc');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].companyRaw).toBe('Retired');
+    expect(result[0].companyDisplayName).toBe('Retired Financial Services LLC');
+  });
+
+  it('preserves "Freelancer" when directory match exists', async () => {
+    const row = makeRow('Freelancer', { name_display: 'Freelancer.com' });
+    chain.eq.mockResolvedValueOnce({ data: [row], error: null });
+
+    const result = await getCompanySummary('user-abc');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].companyDisplayName).toBe('Freelancer.com');
+  });
+
+  // ── 4. Case-insensitive filtering ───────────────────────────────────────────
+
+  it('filters "RETIRED" (all-caps)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('RETIRED')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters "retired" (all-lowercase)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('retired')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters "Retired" (title-case)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Retired')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters "FREELANCE" (all-caps)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('FREELANCE')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  // ── 5. Trailing whitespace does not defeat the filter ───────────────────────
+
+  it('filters "Retired  " (trailing spaces)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Retired  ')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters "N/A\\t" (trailing tab)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('N/A\t')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  // ── 6. Real-data example: verbose LinkedIn status line ──────────────────────
+
+  it('filters "Currently seeking exciting new opportunities" (real LinkedIn data pattern)', async () => {
+    chain.eq.mockResolvedValueOnce({
+      data: [makeRow('Currently seeking exciting new opportunities')],
+      error: null,
+    });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters "Currently Seeking" (minimal currently-seeking form)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('Currently Seeking')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  // ── 7. Single-character company names filtered by length check ──────────────
+
+  it('filters a single-character company name "A" (below 2-character minimum)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('A')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters an empty string company name (below 2-character minimum)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(0);
+  });
+
+  it('preserves a two-character company name "3M" (meets minimum length)', async () => {
+    chain.eq.mockResolvedValueOnce({ data: [makeRow('3M')], error: null });
+    const result = await getCompanySummary('user-abc');
+    expect(result).toHaveLength(1);
+    expect(result[0].companyRaw).toBe('3M');
+  });
+
+  // ── 8. Mixed batch: invalid and valid entries together ───────────────────────
+  // Verifies that the filter is selective — real companies survive alongside
+  // filtered entries in the same result set.
+
+  it('filters only invalid entries when mixed with real companies in a single batch', async () => {
+    const rows = [
+      makeRow('Acme Corp'),
+      makeRow('Retired'),
+      makeRow('Google'),
+      makeRow('Freelance'),
+      makeRow('Self-Employed'),
+      makeRow('Beta Industries'),
+      makeRow('N/A'),
+    ];
+    chain.eq.mockResolvedValueOnce({ data: rows, error: null });
+
+    const result = await getCompanySummary('user-abc');
+
+    const companyNames = result.map((r) => r.companyRaw);
+    expect(companyNames).toContain('Acme Corp');
+    expect(companyNames).toContain('Google');
+    expect(companyNames).toContain('Beta Industries');
+    expect(companyNames).not.toContain('Retired');
+    expect(companyNames).not.toContain('Freelance');
+    expect(companyNames).not.toContain('Self-Employed');
+    expect(companyNames).not.toContain('N/A');
+    expect(result).toHaveLength(3);
+  });
+});

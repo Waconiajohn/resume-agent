@@ -1009,7 +1009,7 @@ export function SalaryNegotiationRoom({
                 <DollarSign size={20} className="text-[var(--link)]" />
               </div>
               <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                   Negotiation Prep
                 </div>
                 <h1 className="mt-1 text-xl font-semibold text-[var(--text-strong)]">Build one clear compensation strategy before you respond</h1>

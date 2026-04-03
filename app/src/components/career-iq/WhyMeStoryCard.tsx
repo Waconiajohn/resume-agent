@@ -160,7 +160,7 @@ export function WhyMeStoryCard() {
           <BookOpen size={16} className="text-[var(--link)]" />
         </div>
         <div>
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
             Your Why Me Story
           </div>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
@@ -224,7 +224,7 @@ export function WhyMeStoryCard() {
             {/* Branded title */}
             {snapshot.branded_title && (
               <div className="rounded-xl border border-[var(--link)]/18 bg-[var(--link)]/[0.05] p-4">
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                   Branded Title
                 </div>
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">

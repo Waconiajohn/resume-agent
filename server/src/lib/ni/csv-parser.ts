@@ -29,6 +29,9 @@ const MONTH_MAP: Record<string, number> = {
 
 const SUFFIX_PATTERN = /\s*[,.]?\s*\b(Inc|LLC|Ltd|Corp|Co|PLC|GmbH|SA|BV|Pty|Limited|Incorporated|Corporation|Company)\.?\s*$/i;
 
+/** LinkedIn placeholder entries that are not real company names. Anchored to full string. */
+const INVALID_COMPANY_PATTERN = /^(retired|self-employed|self employed|seeking|seeking new|currently seeking[^,]*|freelance|freelancer|unemployed|confidential|looking for[^,]*|open to[^,]*|career break|between jobs|between opportunities|n\/a|--)\s*$/i;
+
 // ─── CSV Field Parsing ────────────────────────────────────────────────────────
 
 /**
@@ -203,6 +206,11 @@ export function parseCsv(csvText: string): CsvParseResult {
       // Skip rows with missing required fields
       if (!firstName || !lastName || !company) {
         errors.push({ row: rowNum, message: 'Missing required field (first name, last name, or company)' });
+        continue;
+      }
+
+      // Skip placeholder company names from LinkedIn (e.g. "Retired", "Self-employed")
+      if (INVALID_COMPANY_PATTERN.test(company)) {
         continue;
       }
 

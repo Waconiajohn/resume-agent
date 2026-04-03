@@ -72,7 +72,7 @@ export function JobWorkspaceView({
     <GlassCard className="space-y-5 p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
             Job Workspace
           </div>
           <h3 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">{record.company}</h3>

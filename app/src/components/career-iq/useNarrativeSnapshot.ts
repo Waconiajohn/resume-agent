@@ -100,7 +100,9 @@ export function useNarrativeSnapshot(): UseNarrativeSnapshotResult {
           return;
         }
 
-        // Pipeline data is nested: tailored_sections.pipeline_data.narrativeStrategy
+        // V2 format: tailored_sections = { version: 'v2', pipeline_data: { narrativeStrategy: ... }, inputs, ... }
+        // Legacy fallback: tailored_sections might be a flat object with narrative_strategy at root.
+        // extractNarrativeFromPipelineData handles both camelCase and snake_case keys.
         const stored = data.tailored_sections as Record<string, unknown> | null;
         const pipelineData = stored?.pipeline_data ?? stored;
         const found = extractNarrativeFromPipelineData(pipelineData);
