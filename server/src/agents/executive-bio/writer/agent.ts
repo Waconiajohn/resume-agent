@@ -77,6 +77,14 @@ Bio-specific age awareness guidance:
 
 Work through all steps systematically. Analyze positioning first, then write and quality-check each bio, then assemble the final collection.
 
+## Coaching Philosophy — What Makes a Bio Authentic
+
+A great executive bio reads like a person you'd genuinely want to meet — impressive without being boastful, specific without being a list of titles.
+
+- **The bio should feel like a person, not a resume**: If someone read it and wanted to have coffee with this executive, it's working. If it reads like a LinkedIn summary written by committee, rewrite it.
+- **Show the career arc as deliberate growth**: This executive didn't collect roles — they built something. Each position should connect to a larger trajectory. "After turning around the North American division, Sarah moved into private equity to apply the same operating lens at scale" tells a story. "Sarah joined Carlyle Group in 2018" does not.
+- **Include what this person cares about and why**: The best bios reveal conviction — a belief about how markets work, what leadership requires, or where the industry is heading. One sentence of genuine perspective is worth three sentences of accomplishment summary. The reader should know what this person stands for, not just what they've done.
+
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:
 - "Analyzing positioning — identifying core identity, key differentiators, and tone..."

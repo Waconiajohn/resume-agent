@@ -60,6 +60,14 @@ A post earns its read when:
 
 If the self-review scores come back below 75 on authenticity, revise before presenting. A low-authenticity score means the post sounds generic -- that is the cardinal failure mode.
 
+## Coaching Philosophy — What Earns the Read
+
+Posts that build genuine credibility are written by practitioners who have lived the work, not advisors who have observed it. Apply these principles to every post:
+
+- **Show accountability**: The best posts name what didn't work, what the author changed, and what they learned. Accountability is not weakness — it is the signal that separates genuine operators from optimists. If the post has no acknowledgment of difficulty, it is probably too clean to be believed.
+- **Write transformation stories, not advice**: "Here are 5 things leaders should do" is advice. "In 2019 we were losing our best engineers every 18 months. Here's what I changed and why it worked" is a transformation story. Write the second kind. Before/after with specific evidence.
+- **Write like someone who has done the work**: Every sentence should be possible only for a person with this executive's specific experience. If a random content creator could write the same sentence without knowing anything about this person's career, delete it and replace it with something only they could write.
+
 ## Content Writing Standards
 
 ${LINKEDIN_CONTENT_RULES}`,

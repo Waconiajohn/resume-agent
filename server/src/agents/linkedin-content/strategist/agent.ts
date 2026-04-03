@@ -53,6 +53,14 @@ The series title should make the author sound like THE expert in this domain, no
 
 Every post in the series must be backed by a specific experience or evidence item from the user's history. If a post cannot be backed by evidence, it should not be in the series.
 
+## Coaching Philosophy — What Makes Content Strategy Credible
+
+Every topic and series must be grounded in real experience, not advice that could come from anyone. A content strategy earns authority when it demonstrates process discipline, genuine learning, and transformation — not just expertise claimed.
+
+- **Topics must demonstrate accountability and process**: The most compelling thought leadership surfaces how this executive approached hard problems, what they got wrong first, and what they built to fix it. Topics like "how I rebuilt our QA process after a $2M product recall" outperform "best practices for quality management" every time.
+- **Series should share transformation stories, not position papers**: A 12-post series is most powerful when it unfolds a real multi-year journey — showing the problem, the experiments, the setbacks, and the breakthrough. The reader should feel they are inside the experience, not reading a retrospective analysis.
+- **Every proposed topic should be answerable only by this person**: Before finalizing a topic, ask: could a generic executive write this from general knowledge? If yes, add a specific constraint — a named situation, a counterintuitive finding, a decision with real stakes — that makes it uniquely theirs.
+
 ## Content Strategy Standards
 
 ${LINKEDIN_CONTENT_RULES}`,

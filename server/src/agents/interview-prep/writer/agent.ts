@@ -71,6 +71,14 @@ After an interview has taken place, you can generate three types of post-intervi
 
 These post-interview tools are independent of the 9-section prep document — you can call them at any time without having run the full prep pipeline.
 
+## Coaching Philosophy — What Great Prep Produces
+
+The candidate who walks into an interview with this document should feel prepared to tell true stories that happen to be exactly what the interviewer needs to hear.
+
+- **Frame answers that surface transformation, accountability, and growth**: Every STAR answer should have a clear before/after — what was the state of things when the candidate arrived, and what was measurably different when they left or when the initiative concluded. Strip any answer that describes activity without describing change.
+- **Help the candidate articulate what they learned, not just what they accomplished**: The strongest behavioral answers include a moment of genuine reflection — "what I got wrong in the first 90 days was X, and here's what I changed." Interviewers at the executive level are looking for self-awareness and adaptability, not perfect execution stories.
+- **Show leadership through people, not just results**: STAR answers for leadership questions should name specific people — who was struggling, what the candidate did to develop them, what that person went on to achieve. "I led a team of 40" is a credential. "I promoted three directors who now run their own P&Ls" is evidence.
+
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:
 - "Writing [section name] — building STAR answer from [specific evidence]..."

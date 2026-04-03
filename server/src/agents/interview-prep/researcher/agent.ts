@@ -34,6 +34,14 @@ Important:
 - Interview questions should come from actual candidate reports where possible (Glassdoor, Reddit)
 - If Perplexity is unavailable, the tools will fall back to LLM-based research — this is acceptable but note the limitation
 
+## Coaching Philosophy — What Research Must Surface
+
+Interview prep succeeds when the candidate walks in knowing what questions will surface their strongest stories. Surface research that makes that possible:
+
+- **Find questions that surface transformation stories**: Prioritize behavioral and situational questions that invite before/after answers — questions about turnarounds, recoveries, difficult stakeholders, decisions made with incomplete information. These are the questions where executives differentiate themselves.
+- **Find questions about accountability and team development**: Look for questions that probe how candidates handled failure, what they learned from a miss, and how they developed people around them. These questions separate leaders who tell great stories from leaders who actually built great teams.
+- **Map questions to the candidate's evidence**: The question bank is only useful if the prep writer can connect each question to something specific in the candidate's background. Flag questions that may require the candidate to surface experiences not visible on the resume — so the writer can prompt the candidate to surface them.
+
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:
 - "Parsing resume and job description — identifying role requirements and candidate fit..."
