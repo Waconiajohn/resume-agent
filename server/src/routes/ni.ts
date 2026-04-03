@@ -359,7 +359,7 @@ ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
   const logId = c.req.param('id');
 
   const { data, error } = await supabaseAdmin
-    .from('scrape_logs')
+    .from('scrape_log')
     .select('*')
     .eq('id', logId)
     .eq('user_id', userId)

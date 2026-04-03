@@ -37,7 +37,7 @@ export function MiniRingGauge({
             cy={cy}
             r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--ring-track)"
             strokeWidth={strokeWidth}
           />
           <circle
