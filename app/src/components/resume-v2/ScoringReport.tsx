@@ -58,10 +58,10 @@ function DeltaBadge({ before, after }: { before: number; after: number }) {
   const label = delta > 0 ? `+${delta}` : String(delta);
   const style: React.CSSProperties =
     delta > 0
-      ? { color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.12)', border: '1px solid rgba(181,222,194,0.28)' }
+      ? { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' }
       : delta < 0
-        ? { color: '#f0b8b8', backgroundColor: 'rgba(240,184,184,0.12)', border: '1px solid rgba(240,184,184,0.28)' }
-        : { color: 'rgba(255,255,255,0.45)', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' };
+        ? { color: 'var(--badge-red-text)', backgroundColor: 'var(--badge-red-bg)', border: '1px solid color-mix(in srgb, var(--badge-red-text) 28%, transparent)' }
+        : { color: 'var(--text-soft)', backgroundColor: 'var(--accent-muted)', border: '1px solid var(--line-soft)' };
   return (
     <span className="rounded-md px-2.5 py-1 text-xs font-bold tabular-nums" style={style}>
       {label}
@@ -72,8 +72,8 @@ function DeltaBadge({ before, after }: { before: number; after: number }) {
 function KeywordChip({ keyword, variant }: { keyword: string; variant: 'found' | 'missing' }) {
   const style: React.CSSProperties =
     variant === 'found'
-      ? { color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.10)', border: '1px solid rgba(181,222,194,0.22)' }
-      : { color: '#f0b8b8', backgroundColor: 'rgba(240,184,184,0.10)', border: '1px solid rgba(240,184,184,0.22)' };
+      ? { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 22%, transparent)' }
+      : { color: 'var(--badge-red-text)', backgroundColor: 'var(--badge-red-bg)', border: '1px solid color-mix(in srgb, var(--badge-red-text) 22%, transparent)' };
   return (
     <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] leading-5" style={style}>
       {variant === 'found'
@@ -166,26 +166,26 @@ function ScoreSummaryHeader({
         <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 space-y-1.5">
           <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-soft)]">ATS Match</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold tabular-nums" style={{ color: '#b5dec2' }}>{afterAts}%</span>
+            <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--badge-green-text)' }}>{afterAts}%</span>
             <DeltaBadge before={beforeAts} after={afterAts} />
           </div>
-          <ScoreBar value={afterAts} color="#b5dec2" />
+          <ScoreBar value={afterAts} color="var(--badge-green-text)" />
           <p className="text-[10px] text-[var(--text-soft)]">Before: {beforeAts}%</p>
         </div>
 
         {/* Truth */}
         <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 space-y-1.5">
           <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-soft)]">Truth</p>
-          <span className="text-xl font-bold tabular-nums" style={{ color: '#afc4ff' }}>{truth}</span>
-          <ScoreBar value={truth} color="#afc4ff" />
+          <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--link)' }}>{truth}</span>
+          <ScoreBar value={truth} color="var(--link)" />
           <p className="text-[10px] text-[var(--text-soft)]">Claim verification</p>
         </div>
 
         {/* Tone */}
         <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 space-y-1.5">
           <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-soft)]">Tone</p>
-          <span className="text-xl font-bold tabular-nums" style={{ color: '#f0d99f' }}>{tone}</span>
-          <ScoreBar value={tone} color="#f0d99f" />
+          <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--badge-amber-text)' }}>{tone}</span>
+          <ScoreBar value={tone} color="var(--badge-amber-text)" />
           <p className="text-[10px] text-[var(--text-soft)]">Executive voice</p>
         </div>
 
@@ -193,19 +193,19 @@ function ScoreSummaryHeader({
         {scan && (
           <div className={`rounded-lg border px-3 py-3 space-y-1.5 ${
             scan.pass
-              ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.05]'
-              : 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.05]'
+              ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)]'
+              : 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]'
           }`}>
             <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-soft)]">Recruiter Scan</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold tabular-nums" style={{ color: scan.pass ? '#b5dec2' : '#f0d99f' }}>
+              <span className="text-xl font-bold tabular-nums" style={{ color: scan.pass ? 'var(--badge-green-text)' : 'var(--badge-amber-text)' }}>
                 {scan.scan_score}
               </span>
-              <span className={`text-[10px] font-semibold uppercase tracking-wide ${scan.pass ? 'text-[#b5dec2]' : 'text-[#f0d99f]'}`}>
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${scan.pass ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-amber-text)]'}`}>
                 {scan.pass ? 'PASS' : 'REVIEW'}
               </span>
             </div>
-            <ScoreBar value={scan.scan_score} color={scan.pass ? '#b5dec2' : '#f0d99f'} />
+            <ScoreBar value={scan.scan_score} color={scan.pass ? 'var(--badge-green-text)' : 'var(--badge-amber-text)'} />
             {/* HM scan sub-scores */}
             <div className="grid grid-cols-2 gap-1.5 pt-1">
               {[
@@ -237,10 +237,10 @@ function ScoreSummaryHeader({
                 <p className="text-xs font-medium text-[var(--text-strong)]">
                   {jdBreakdown.addressed} of {jdBreakdown.total} addressed
                 </p>
-                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="h-full bg-[#b5dec2]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.strong / jdBreakdown.total) * 100 : 0}%` }} />
-                  <div className="h-full bg-[#f0d99f]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.partial / jdBreakdown.total) * 100 : 0}%` }} />
-                  <div className="h-full bg-[#f0b8b8]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.missing / jdBreakdown.total) * 100 : 0}%` }} />
+                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ring-track)' }}>
+                  <div className="h-full bg-[var(--badge-green-text)]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.strong / jdBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[var(--badge-amber-text)]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.partial / jdBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[var(--badge-red-text)]" style={{ width: `${jdBreakdown.total > 0 ? (jdBreakdown.missing / jdBreakdown.total) * 100 : 0}%` }} />
                 </div>
                 <div className="flex gap-2 text-[9px] text-[var(--text-soft)]">
                   <span>{jdBreakdown.strong} strong</span>
@@ -258,10 +258,10 @@ function ScoreSummaryHeader({
                 <p className="text-xs font-medium text-[var(--text-strong)]">
                   {benchBreakdown.addressed} of {benchBreakdown.total} met
                 </p>
-                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="h-full bg-[#b5dec2]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.strong / benchBreakdown.total) * 100 : 0}%` }} />
-                  <div className="h-full bg-[#f0d99f]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.partial / benchBreakdown.total) * 100 : 0}%` }} />
-                  <div className="h-full bg-[#f0b8b8]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.missing / benchBreakdown.total) * 100 : 0}%` }} />
+                <div className="flex h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ring-track)' }}>
+                  <div className="h-full bg-[var(--badge-green-text)]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.strong / benchBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[var(--badge-amber-text)]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.partial / benchBreakdown.total) * 100 : 0}%` }} />
+                  <div className="h-full bg-[var(--badge-red-text)]" style={{ width: `${benchBreakdown.total > 0 ? (benchBreakdown.missing / benchBreakdown.total) * 100 : 0}%` }} />
                 </div>
                 <div className="flex gap-2 text-[9px] text-[var(--text-soft)]">
                   <span>{benchBreakdown.strong} strong</span>
@@ -422,7 +422,7 @@ function CompactScoreSummaryHeader({
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-[2.25rem] font-semibold tabular-nums tracking-tight" style={{ color: '#b5dec2' }}>{afterSnapshotScore}%</p>
+                <p className="text-[2.25rem] font-semibold tabular-nums tracking-tight" style={{ color: 'var(--badge-green-text)' }}>{afterSnapshotScore}%</p>
                 <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
               </div>
             </div>
