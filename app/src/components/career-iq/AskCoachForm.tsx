@@ -62,11 +62,11 @@ const COACH_TOPICS: Array<{ value: CoachTopic; label: string }> = [
 const URGENCY_CONFIG: Record<CoachUrgency, { label: string; activeClass: string }> = {
   low: {
     label: 'Low',
-    activeClass: 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/20',
+    activeClass: 'bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)] border-[var(--badge-green-text)]/20',
   },
   normal: {
     label: 'Normal',
-    activeClass: 'bg-[#98b3ff]/10 text-[#98b3ff] border-[#98b3ff]/20',
+    activeClass: 'bg-[var(--link)]/10 text-[var(--link)] border-[var(--link)]/20',
   },
   high: {
     label: 'High',
@@ -137,8 +137,8 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
     return (
       <GlassCard className="p-5">
         <div className="flex flex-col items-center gap-3 py-4">
-          <div className="rounded-full bg-[#b5dec2]/10 p-3">
-            <CheckCircle size={24} className="text-[#b5dec2]" />
+          <div className="rounded-full bg-[var(--badge-green-text)]/10 p-3">
+            <CheckCircle size={24} className="text-[var(--badge-green-text)]" />
           </div>
           <div className="text-center">
             <div className="text-[14px] font-medium text-[var(--text-strong)]">Request Submitted</div>
@@ -149,7 +149,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
           <button
             type="button"
             onClick={handleReset}
-            className="text-[12px] text-[#98b3ff] hover:text-[#98b3ff]/80 transition-colors mt-2"
+            className="text-[12px] text-[var(--link)] hover:text-[var(--link)]/80 transition-colors mt-2"
           >
             Submit another request
           </button>
@@ -161,7 +161,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
-        <HelpCircle size={16} className="text-[#f0d99f]" />
+        <HelpCircle size={16} className="text-[var(--badge-amber-text)]" />
         <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Ask a Coach</h3>
       </div>
       <p className="text-[12px] text-[var(--text-soft)] mb-4">
@@ -178,7 +178,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
           <select
             value={topic}
             onChange={(e) => setTopic(e.target.value as CoachTopic)}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 appearance-none"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 appearance-none"
           >
             <option value="" className="bg-[#1a1a2e]">
               Select a topic...
@@ -201,7 +201,7 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what you need help with..."
             rows={3}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-none"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 resize-none"
           />
         </div>
 

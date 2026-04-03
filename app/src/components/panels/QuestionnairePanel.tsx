@@ -273,7 +273,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentVisiblePos === 0 && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+                <span className="rounded-md border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]/90">
                   {batchModeLabel}
                 </span>
                 <span className="text-[13px] text-[var(--text-soft)]">
@@ -294,9 +294,9 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
                   className={cn(
                     'rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em]',
                     currentQuestion.impact_tier === 'high'
-                      ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
+                      ? 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/85'
                       : currentQuestion.impact_tier === 'medium'
-                        ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.07] text-[#afc4ff]/85'
+                        ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/85'
                         : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
                   )}
                 >
@@ -403,7 +403,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               }
             }}
             aria-label="Skip remaining questions and start writing resume"
-            className="gap-1.5 px-3 text-[#f0d99f]/70 hover:text-[#f0d99f]/90"
+            className="gap-1.5 px-3 text-[var(--badge-amber-text)]/70 hover:text-[var(--badge-amber-text)]/90"
           >
             I'm Ready — Start Writing
           </GlassButton>

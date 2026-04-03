@@ -127,7 +127,7 @@ export function WorkbenchContentEditor({
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--line-strong)]" />
                 )}
                 {isActive ? (
-                  <div className="flex-1 border-l-2 border-[#98b3ff] pl-2">
+                  <div className="flex-1 border-l-2 border-[var(--link)] pl-2">
                     <textarea
                       ref={textareaRef}
                       value={editingLineValue}
@@ -153,7 +153,7 @@ export function WorkbenchContentEditor({
       {/* Word count + edit status */}
       <div className="flex items-center justify-between border-t border-[var(--line-soft)] px-5 py-2">
         {hasLocalEdits && (
-          <span className="text-[12px] text-[#98b3ff]/80 font-medium">Unsaved edits</span>
+          <span className="text-[12px] text-[var(--link)]/80 font-medium">Unsaved edits</span>
         )}
         {!hasLocalEdits && <span />}
         <span className="text-[12px] text-[var(--text-soft)]">{wc} words</span>

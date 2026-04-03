@@ -20,7 +20,7 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
   const { tone_score, findings, banned_phrases_found } = tone;
 
   const scoreColor =
-    tone_score >= 80 ? '#b5dec2' : tone_score >= 50 ? '#f0d99f' : '#f0b8b8';
+    tone_score >= 80 ? 'var(--badge-green-text)' : tone_score >= 50 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="space-y-4">
@@ -56,10 +56,10 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
 
       {/* Banned phrases callout */}
       {banned_phrases_found.length > 0 && (
-        <div className="rounded-lg border border-[#f0b8b8]/25 bg-[#f0b8b8]/[0.05] px-4 py-3 space-y-2">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/25 bg-[var(--badge-red-text)]/[0.05] px-4 py-3 space-y-2">
           <div className="flex items-center gap-2">
-            <XCircle className="h-3.5 w-3.5 shrink-0" style={{ color: '#f0b8b8' }} />
-            <p className="text-xs font-semibold" style={{ color: '#f0b8b8' }}>
+            <XCircle className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
+            <p className="text-xs font-semibold" style={{ color: 'var(--badge-red-text)' }}>
               Banned Phrases ({banned_phrases_found.length})
             </p>
           </div>
@@ -69,7 +69,7 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
                 key={i}
                 className="rounded-md px-2 py-0.5 text-[11px] font-medium"
                 style={{
-                  color: '#f0b8b8',
+                  color: 'var(--badge-red-text)',
                   backgroundColor: 'rgba(240,184,184,0.10)',
                   border: '1px solid rgba(240,184,184,0.22)',
                 }}
@@ -90,15 +90,15 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
           {findings.map((f, i) => (
             <div
               key={i}
-              className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2.5 space-y-1.5"
+              className="rounded-lg border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-text)]/[0.04] px-3 py-2.5 space-y-1.5"
             >
               {/* Issue type + section */}
               <div className="flex items-center gap-2 flex-wrap">
-                <AlertTriangle className="h-3 w-3 shrink-0" style={{ color: '#f0d99f' }} />
+                <AlertTriangle className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-amber-text)' }} />
                 <span
                   className="rounded-md px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap"
                   style={{
-                    color: '#f0d99f',
+                    color: 'var(--badge-amber-text)',
                     backgroundColor: 'rgba(240,217,159,0.10)',
                     border: '1px solid rgba(240,217,159,0.22)',
                   }}
@@ -122,7 +122,7 @@ export function ToneAnalysisSection({ tone }: ToneAnalysisSectionProps) {
               {/* Suggestion */}
               {f.suggestion && (
                 <p className="text-xs text-[var(--text-soft)] leading-4">
-                  <span style={{ color: '#b5dec2' }} className="font-medium">
+                  <span style={{ color: 'var(--badge-green-text)' }} className="font-medium">
                     Suggestion:
                   </span>{' '}
                   {f.suggestion}

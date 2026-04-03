@@ -46,7 +46,7 @@ function ConfidenceGauge({ score, size = 80, label }: { score: number; size?: nu
   const cx = size / 2;
   const cy = size / 2;
 
-  const color = score >= 70 ? '#b5dec2' : score >= 45 ? '#f0d99f' : '#f0b8b8';
+  const color = score >= 70 ? 'var(--badge-green-text)' : score >= 45 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
   const strengthLabel = score >= 70 ? 'Strong' : score >= 45 ? 'Moderate' : 'Weak';
 
   return (
@@ -116,12 +116,12 @@ function SalaryRangeBar({
         <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">{label}</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/60" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/60" />
             <span className="text-[12px] text-[var(--text-soft)]">Market P50</span>
           </div>
           {offer !== undefined && (
             <div className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/60" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-amber-text)]/60" />
               <span className="text-[12px] text-[var(--text-soft)]">Your offer</span>
             </div>
           )}
@@ -138,7 +138,7 @@ function SalaryRangeBar({
         <div className="absolute inset-y-0 left-0 right-0 flex items-center">
           <div className="w-full h-2 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#f0b8b8]/20 via-[#afc4ff]/25 to-[#b5dec2]/30"
+              className="h-full rounded-full bg-gradient-to-r from-[var(--badge-red-text)]/20 via-[var(--link)]/25 to-[var(--badge-green-text)]/30"
               style={{ width: '100%' }}
             />
           </div>
@@ -146,14 +146,14 @@ function SalaryRangeBar({
 
         {/* P50 marker */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-0.5 rounded-full bg-[#afc4ff]/50"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-0.5 rounded-full bg-[var(--link)]/50"
           style={{ left: `${positionPct(mid)}%` }}
         />
 
         {/* Offer marker */}
         {offer !== undefined && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-1 rounded-full bg-[#f0d99f]"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-1 rounded-full bg-[var(--badge-amber-text)]"
             style={{ left: `${positionPct(offer)}%` }}
             title={`Your offer: ${formatK(offer)}`}
           />
@@ -162,7 +162,7 @@ function SalaryRangeBar({
         {/* Current comp marker */}
         {current !== undefined && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-0.5 rounded-full bg-[#b5dec2]/50"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-0.5 rounded-full bg-[var(--badge-green-text)]/50"
             style={{ left: `${positionPct(current)}%` }}
             title={`Current: ${formatK(current)}`}
           />
@@ -173,7 +173,7 @@ function SalaryRangeBar({
       <div className="flex items-center justify-between">
         <span className="text-[12px] text-[var(--text-soft)]">{formatK(min)}</span>
         <div className="flex flex-col items-center">
-          <span className="text-[12px] font-medium text-[#afc4ff]/70">{formatK(mid)}</span>
+          <span className="text-[12px] font-medium text-[var(--link)]/70">{formatK(mid)}</span>
           <span className="text-[12px] text-[var(--text-soft)]">P50</span>
         </div>
         <span className="text-[12px] text-[var(--text-soft)]">{formatK(max)}</span>
@@ -184,10 +184,10 @@ function SalaryRangeBar({
         <div className={cn(
           'rounded-lg px-3 py-2 text-[13px] border',
           offer >= mid
-            ? 'bg-[#b5dec2]/[0.04] border-[#b5dec2]/15 text-[#b5dec2]/80'
+            ? 'bg-[var(--badge-green-text)]/[0.04] border-[var(--badge-green-text)]/15 text-[var(--badge-green-text)]/80'
             : offer >= min
-            ? 'bg-[#f0d99f]/[0.04] border-[#f0d99f]/15 text-[#f0d99f]/80'
-            : 'bg-[#f0b8b8]/[0.04] border-[#f0b8b8]/15 text-[#f0b8b8]/80',
+            ? 'bg-[var(--badge-amber-text)]/[0.04] border-[var(--badge-amber-text)]/15 text-[var(--badge-amber-text)]/80'
+            : 'bg-[var(--badge-red-text)]/[0.04] border-[var(--badge-red-text)]/15 text-[var(--badge-red-text)]/80',
         )}>
           {offer >= mid
             ? `Your offer (${formatK(offer)}) is at or above market median — strong starting position.`
@@ -214,9 +214,9 @@ interface LeverCard {
 
 function LeverCardDisplay({ card }: { card: LeverCard }) {
   const flexConfig = {
-    high: { label: 'High flexibility', color: 'text-[#b5dec2]', dot: 'bg-[#b5dec2]' },
-    medium: { label: 'Moderate flexibility', color: 'text-[#f0d99f]', dot: 'bg-[#f0d99f]' },
-    low: { label: 'Low flexibility', color: 'text-[#f0b8b8]', dot: 'bg-[#f0b8b8]' },
+    high: { label: 'High flexibility', color: 'text-[var(--badge-green-text)]', dot: 'bg-[var(--badge-green-text)]' },
+    medium: { label: 'Moderate flexibility', color: 'text-[var(--badge-amber-text)]', dot: 'bg-[var(--badge-amber-text)]' },
+    low: { label: 'Low flexibility', color: 'text-[var(--badge-red-text)]', dot: 'bg-[var(--badge-red-text)]' },
   }[card.flexibility];
 
   return (
@@ -258,9 +258,9 @@ function TalkingPointItem({ point, index }: { point: string; index: number }) {
   }, [point]);
 
   return (
-    <div className="group relative rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 hover:border-[#afc4ff]/20 transition-all">
+    <div className="group relative rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 hover:border-[var(--link)]/20 transition-all">
       <div className="flex items-start gap-3">
-        <span className="flex-shrink-0 h-5 w-5 rounded-full border border-[#afc4ff]/25 bg-[#afc4ff]/[0.08] flex items-center justify-center text-[12px] font-bold text-[#afc4ff]/70 mt-0.5">
+        <span className="flex-shrink-0 h-5 w-5 rounded-full border border-[var(--link)]/25 bg-[var(--link)]/[0.08] flex items-center justify-center text-[12px] font-bold text-[var(--link)]/70 mt-0.5">
           {index + 1}
         </span>
         <p className="flex-1 text-[13px] text-[var(--text-soft)] leading-relaxed italic">{point}</p>
@@ -271,7 +271,7 @@ function TalkingPointItem({ point, index }: { point: string; index: number }) {
           title="Copy to clipboard"
         >
           {copied
-            ? <Check size={13} className="text-[#b5dec2]" />
+            ? <Check size={13} className="text-[var(--badge-green-text)]" />
             : <Copy size={13} className="text-[var(--text-soft)]" />
           }
         </button>
@@ -294,16 +294,16 @@ const RED_LINES = [
 
 function RedLinesSection() {
   return (
-    <GlassCard className="p-5 border-[#f0b8b8]/10">
+    <GlassCard className="p-5 border-[var(--badge-red-text)]/10">
       <div className="flex items-center gap-2 mb-4">
-        <AlertTriangle size={15} className="text-[#f0b8b8]/70" />
+        <AlertTriangle size={15} className="text-[var(--badge-red-text)]/70" />
         <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Red Lines — What NOT to Say</h3>
       </div>
       <div className="space-y-2">
         {RED_LINES.map((line, i) => (
-          <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-[#f0b8b8]/[0.03] border border-[#f0b8b8]/[0.08]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#f0b8b8]/50 mt-1.5 flex-shrink-0" />
-            <span className="text-[12px] text-[#f0b8b8]/70 leading-relaxed">{line}</span>
+          <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-[var(--badge-red-text)]/[0.03] border border-[var(--badge-red-text)]/[0.08]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-red-text)]/50 mt-1.5 flex-shrink-0" />
+            <span className="text-[12px] text-[var(--badge-red-text)]/70 leading-relaxed">{line}</span>
           </div>
         ))}
       </div>
@@ -351,7 +351,7 @@ function CounterScenarioCards() {
               onClick={() => setExpandedIdx(isExpanded ? null : i)}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
             >
-              <MessageSquare size={14} className="text-[#afc4ff]/50 flex-shrink-0" />
+              <MessageSquare size={14} className="text-[var(--link)]/50 flex-shrink-0" />
               <span className="flex-1 text-[13px] font-medium text-[var(--text-muted)]">{sc.scenario}</span>
               {isExpanded
                 ? <ChevronRight size={13} className="text-[var(--text-soft)] rotate-90" />
@@ -365,7 +365,7 @@ function CounterScenarioCards() {
                   <p className="mt-1 text-[12px] text-[var(--text-soft)] leading-relaxed italic">{sc.employer_says}</p>
                 </div>
                 <div>
-                  <span className="text-[12px] font-semibold text-[#afc4ff]/50 uppercase tracking-wider">You say</span>
+                  <span className="text-[12px] font-semibold text-[var(--link)]/50 uppercase tracking-wider">You say</span>
                   <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{sc.recommended_response}</p>
                 </div>
               </div>
@@ -405,7 +405,7 @@ function ActivityFeed({
           const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#afc4ff]' : 'bg-[var(--line-strong)]')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[var(--link)]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -508,8 +508,8 @@ function ReportView({
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/20">
-            <TrendingUp size={18} className="text-[#afc4ff]" />
+          <div className="rounded-xl bg-[var(--link)]/10 p-2.5 border border-[var(--link)]/20">
+            <TrendingUp size={18} className="text-[var(--link)]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Strategy</h2>
@@ -520,13 +520,13 @@ function ReportView({
           <ConfidenceGauge score={confidenceScore} size={72} label="Position Strength" />
           <div className="flex flex-col gap-2">
             {onPractice && (
-              <GlassButton variant="ghost" onClick={onPractice} size="sm" className="text-[#f0b8b8]/80 hover:text-[#f0b8b8]">
+              <GlassButton variant="ghost" onClick={onPractice} size="sm" className="text-[var(--badge-red-text)]/80 hover:text-[var(--badge-red-text)]">
                 <PlayCircle size={14} className="mr-1.5" />
                 Practice Counter-Offer
               </GlassButton>
             )}
             <GlassButton variant="ghost" onClick={handleCopy} size="sm">
-              {copied ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
+              {copied ? <Check size={14} className="mr-1.5 text-[var(--badge-green-text)]" /> : <Copy size={14} className="mr-1.5" />}
               {copied ? 'Copied' : 'Copy'}
             </GlassButton>
             <GlassButton variant="ghost" onClick={onReset} size="sm">
@@ -583,7 +583,7 @@ function ReportView({
           {/* Talking points */}
           <GlassCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <MessageSquare size={15} className="text-[#afc4ff]/60" />
+              <MessageSquare size={15} className="text-[var(--link)]/60" />
               <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Verbatim Talking Points</h3>
               <span className="text-[13px] text-[var(--text-soft)] ml-1">use or adapt these word-for-word</span>
             </div>
@@ -597,7 +597,7 @@ function ReportView({
           {/* Counter-offer scenarios */}
           <GlassCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Swords size={14} className="text-[#f0d99f]/60" />
+              <Swords size={14} className="text-[var(--badge-amber-text)]/60" />
               <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Counter-Offer Scenarios</h3>
             </div>
             <CounterScenarioCards />
@@ -609,13 +609,13 @@ function ReportView({
               className="prose prose-invert prose-sm max-w-none
                 prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
                 prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
-                prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#afc4ff]/90
+                prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[var(--link)]/90
                 prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
                 prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
                 prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
                 prose-strong:text-[var(--text-strong)]
-                prose-em:text-[#f0d99f]/80
-                prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+                prose-em:text-[var(--badge-amber-text)]/80
+                prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[var(--link)]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
                 prose-hr:border-[var(--line-soft)] prose-hr:my-6"
               dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
             />
@@ -697,7 +697,7 @@ function InputField({
           placeholder={placeholder}
           className={cn(
             'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all',
             prefix ? 'pl-7 pr-4' : 'px-4',
           )}
         />
@@ -727,7 +727,7 @@ function TextareaField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all"
+        className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
       />
     </div>
   );
@@ -920,8 +920,8 @@ export function SalaryNegotiationRoom({
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
-                  isActive ? 'bg-[#afc4ff]/15 text-[#afc4ff] border border-[#afc4ff]/25'
-                    : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20'
+                  isActive ? 'bg-[var(--link)]/15 text-[var(--link)] border border-[var(--link)]/25'
+                    : isDone ? 'bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/20'
                     : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
@@ -936,8 +936,8 @@ export function SalaryNegotiationRoom({
 
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div className="flex items-center gap-2 mb-5">
-            <div className="rounded-lg bg-[#afc4ff]/10 p-2">
-              <Loader2 size={16} className="text-[#afc4ff] animate-spin" />
+            <div className="rounded-lg bg-[var(--link)]/10 p-2">
+              <Loader2 size={16} className="text-[var(--link)] animate-spin" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
@@ -967,11 +967,11 @@ export function SalaryNegotiationRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Prep</h1>
         </div>
-        <GlassCard className="p-6 border-[#f0b8b8]/20">
+        <GlassCard className="p-6 border-[var(--badge-red-text)]/20">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f0b8b8] font-medium">Analysis failed</p>
+              <p className="text-[13px] text-[var(--badge-red-text)] font-medium">Analysis failed</p>
               <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
@@ -1005,11 +1005,11 @@ export function SalaryNegotiationRoom({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/20">
-                <DollarSign size={20} className="text-[#afc4ff]" />
+              <div className="rounded-xl bg-[var(--link)]/10 p-2.5 border border-[var(--link)]/20">
+                <DollarSign size={20} className="text-[var(--link)]" />
               </div>
               <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[#afc4ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                   Negotiation Prep
                 </div>
                 <h1 className="mt-1 text-xl font-semibold text-[var(--text-strong)]">Build one clear compensation strategy before you respond</h1>
@@ -1107,7 +1107,7 @@ export function SalaryNegotiationRoom({
             </p>
           </div>
           {resumeText.length > 50 && !resumeLoading && (
-            <div className="rounded-full border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-[#b5dec2]/78">
+            <div className="rounded-full border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.05] px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-[var(--badge-green-text)]/78">
               Resume loaded
             </div>
           )}
@@ -1120,13 +1120,13 @@ export function SalaryNegotiationRoom({
               Loading your resume...
             </div>
           ) : resumeText.length > 50 ? (
-            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
               Resume loaded from Resume Builder / master resume.
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
+              <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
                 <AlertCircle size={12} />
                 No master resume found — paste your resume below
               </div>
@@ -1143,7 +1143,7 @@ export function SalaryNegotiationRoom({
       </GlassCard>
 
       {resumeError && (
-        <div className="flex items-center gap-2 text-[12px] text-[#f0b8b8]">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--badge-red-text)]">
           <AlertCircle size={12} />
           {resumeError}
         </div>
@@ -1153,8 +1153,8 @@ export function SalaryNegotiationRoom({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
-            <div className="rounded-lg bg-[#afc4ff]/10 p-1.5">
-              <Target size={14} className="text-[#afc4ff]" />
+            <div className="rounded-lg bg-[var(--link)]/10 p-1.5">
+              <Target size={14} className="text-[var(--link)]" />
             </div>
             <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">The Offer</h2>
           </div>
@@ -1208,8 +1208,8 @@ export function SalaryNegotiationRoom({
         <div className="flex flex-col gap-5">
           <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
             <div className="flex items-center gap-2 mb-1">
-              <div className="rounded-lg bg-[#b5dec2]/10 p-1.5">
-                <Shield size={14} className="text-[#b5dec2]" />
+              <div className="rounded-lg bg-[var(--badge-green-text)]/10 p-1.5">
+                <Shield size={14} className="text-[var(--badge-green-text)]" />
               </div>
               <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Current Position</h2>
             </div>
@@ -1242,8 +1242,8 @@ export function SalaryNegotiationRoom({
 
           <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
             <div className="flex items-center gap-2 mb-1">
-              <div className="rounded-lg bg-[#f0d99f]/10 p-1.5">
-                <Briefcase size={14} className="text-[#f0d99f]" />
+              <div className="rounded-lg bg-[var(--badge-amber-text)]/10 p-1.5">
+                <Briefcase size={14} className="text-[var(--badge-amber-text)]" />
               </div>
               <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">
                 Target Context <span className="text-[13px] font-normal text-[var(--text-soft)] ml-1">optional</span>
@@ -1277,7 +1277,7 @@ export function SalaryNegotiationRoom({
           disabled={!canSubmit}
           className={cn(
             'px-6 py-3 text-[14px] font-medium rounded-xl',
-            'bg-gradient-to-r from-[#afc4ff]/20 to-[#b5dec2]/10 hover:from-[#afc4ff]/30 hover:to-[#b5dec2]/20',
+            'bg-gradient-to-r from-[var(--link)]/20 to-[var(--badge-green-text)]/10 hover:from-[var(--link)]/30 hover:to-[var(--badge-green-text)]/20',
             !canSubmit && 'opacity-40 cursor-not-allowed',
           )}
         >

@@ -14,8 +14,8 @@ export function CandidateIntelligenceCard({
   return (
     <div className="room-shell animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-5">
       <div className="flex items-center gap-2">
-        <div className="rounded-lg border border-[#b5dec2]/18 bg-[#b5dec2]/10 p-2.5">
-          <User className="h-4 w-4 text-[#b5dec2]" />
+        <div className="rounded-lg border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/10 p-2.5">
+          <User className="h-4 w-4 text-[var(--badge-green-text)]" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow-label">Resume strengths</p>
@@ -47,7 +47,7 @@ export function CandidateIntelligenceCard({
           <div className="grid grid-cols-2 gap-2">
             {visibleOutcomes.map((o, i) => (
               <div key={i} className="support-callout px-3 py-2">
-                <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
+                <div className="text-sm font-medium text-[var(--link)]">{o.value}</div>
                 <div className="text-xs text-[var(--text-soft)] line-clamp-2">{o.outcome}</div>
               </div>
             ))}
@@ -80,7 +80,7 @@ export function CandidateIntelligenceCard({
                   <div className="grid grid-cols-2 gap-2">
                     {hiddenOutcomes.map((o, i) => (
                       <div key={i} className="support-callout px-3 py-2">
-                        <div className="text-sm font-medium text-[#afc4ff]">{o.value}</div>
+                        <div className="text-sm font-medium text-[var(--link)]">{o.value}</div>
                         <div className="text-xs text-[var(--text-soft)] line-clamp-2">{o.outcome}</div>
                       </div>
                     ))}
@@ -90,10 +90,10 @@ export function CandidateIntelligenceCard({
               {data.hidden_accomplishments.length > 0 && (
                 <div>
                   <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
-                  <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
+                  <div className="support-callout border border-dashed border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.02] p-3">
                     <ul className="space-y-1">
                       {data.hidden_accomplishments.map((a, i) => (
-                        <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                        <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[var(--badge-green-text)]/50">{a}</li>
                       ))}
                     </ul>
                   </div>
@@ -105,10 +105,10 @@ export function CandidateIntelligenceCard({
           data.hidden_accomplishments.length > 0 && (
             <div>
               <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">Strengths we can surface more clearly</h4>
-              <div className="support-callout border border-dashed border-[#b5dec2]/20 bg-[#b5dec2]/[0.02] p-3">
+              <div className="support-callout border border-dashed border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.02] p-3">
                 <ul className="space-y-1">
                   {data.hidden_accomplishments.map((a, i) => (
-                    <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+                    <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[var(--badge-green-text)]/50">{a}</li>
                   ))}
                 </ul>
               </div>

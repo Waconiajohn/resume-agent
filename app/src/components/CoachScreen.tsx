@@ -680,7 +680,7 @@ export function CoachScreen({
                 <button
                   type="button"
                   onClick={toggleContextPanel}
-                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-[var(--line-soft)] bg-[var(--bg-1)]/90 p-2.5 text-[var(--text-soft)] shadow-lg backdrop-blur-xl transition-all hover:border-[var(--line-strong)] hover:bg-[var(--bg-1)] hover:text-[var(--text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45"
+                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-[var(--line-soft)] bg-[var(--bg-1)]/90 p-2.5 text-[var(--text-soft)] shadow-lg backdrop-blur-xl transition-all hover:border-[var(--line-strong)] hover:bg-[var(--bg-1)] hover:text-[var(--text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45"
                   aria-label="Open context panel"
                 >
                   <PanelRight className="h-5 w-5" />

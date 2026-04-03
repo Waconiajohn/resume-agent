@@ -389,7 +389,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
             className={cn(
               'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all',
               selectedPath === 'network'
-                ? 'bg-[var(--surface-1)] text-[#afc4ff]'
+                ? 'bg-[var(--surface-1)] text-[var(--link)]'
                 : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
             )}
           >
@@ -402,7 +402,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
             className={cn(
               'rounded-md px-3 py-1.5 text-[13px] font-medium transition-all',
               selectedPath === 'bonus'
-                ? 'bg-[var(--surface-1)] text-[#f0d99f]'
+                ? 'bg-[var(--surface-1)] text-[var(--badge-amber-text)]'
                 : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
             )}
           >
@@ -453,7 +453,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
                 )}
                 title={locked ? 'Upload connections to unlock this tab' : tab.description}
               >
-                <Icon size={16} className={cn(locked ? 'text-[var(--text-soft)]' : isActive ? 'text-[#98b3ff]' : 'text-[var(--text-soft)]')} />
+                <Icon size={16} className={cn(locked ? 'text-[var(--text-soft)]' : isActive ? 'text-[var(--link)]' : 'text-[var(--text-soft)]')} />
                 {tab.label}
               </button>
             );

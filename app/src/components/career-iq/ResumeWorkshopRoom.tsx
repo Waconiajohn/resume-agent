@@ -314,7 +314,7 @@ function ResumeToolCard({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-3">
               <div className="eyebrow-label">{eyebrow}</div>
-              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[#afc4ff]/26 bg-[#afc4ff]/[0.12]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
+              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[var(--link)]/26 bg-[var(--link)]/[0.12]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
                 <Icon size={18} className={accent === 'primary' ? 'text-[#d8e3ff]' : 'text-[var(--text-muted)]'} />
               </div>
             </div>

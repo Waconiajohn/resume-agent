@@ -54,10 +54,10 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
     .filter(([_, value]) => value != null && renderAssumptionValue(value) !== 'Not available')
     .slice(0, 8);
   const researchStatusTone = data.loading_state === 'running'
-    ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
+    ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/90'
     : data.loading_state === 'background_running'
-      ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
-      : 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90';
+      ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90'
+      : 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90';
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -101,7 +101,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Company Card */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Building2 className="h-4 w-4 text-[#afc4ff]" />
+            <Building2 className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Company
             </h3>
@@ -135,7 +135,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* JD Requirements */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="h-4 w-4 text-[#afc4ff]" />
+            <Target className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Job Requirements
             </h3>
@@ -187,7 +187,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Benchmark Profile */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <UserCheck className="h-4 w-4 text-[#afc4ff]" />
+            <UserCheck className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
               Benchmark Profile
             </h3>
@@ -229,7 +229,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                   <textarea
                     value={editedSummary}
                     onChange={(e) => setEditedSummary(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] leading-relaxed resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[var(--line-strong)]"
+                    className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] leading-relaxed resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--line-strong)]"
                     rows={4}
                   />
                   <p className="text-[12px] text-[var(--text-soft)] mt-1">This edit is for your reference — it does not change the pipeline analysis.</p>

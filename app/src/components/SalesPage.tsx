@@ -76,9 +76,9 @@ function Hero() {
 /* ================================================================== */
 
 const PROBLEMS = [
-  { title: 'Generic', desc: 'Same resume, different name', accent: 'bg-[#f0b8b8]' },
-  { title: 'No Strategy', desc: "It writes what you tell it, not what they need to hear", accent: 'bg-[#f0d99f]' },
-  { title: 'Age Blind', desc: "It doesn't know what gets you screened out", accent: 'bg-[#f0b8b8]' },
+  { title: 'Generic', desc: 'Same resume, different name', accent: 'bg-[var(--badge-red-text)]' },
+  { title: 'No Strategy', desc: "It writes what you tell it, not what they need to hear", accent: 'bg-[var(--badge-amber-text)]' },
+  { title: 'Age Blind', desc: "It doesn't know what gets you screened out", accent: 'bg-[var(--badge-red-text)]' },
 ];
 
 function ProblemSection() {
@@ -126,7 +126,7 @@ function CoachingSection() {
               <div
                 className={`rounded-2xl px-5 py-3 ${
                   isRight
-                    ? 'bg-[#afc4ff]/20 border border-[#afc4ff]/20'
+                    ? 'bg-[var(--badge-blue-bg)] border border-[var(--link)]/20'
                     : 'bg-white/[0.06] border border-white/[0.12]'
                 }`}
                 style={{ maxWidth: '75%' }}
@@ -174,7 +174,7 @@ function BlueprintSection() {
             {STEPS.map((s) => (
               <GlassCard key={s.num} className="relative p-6 pt-12">
                 {/* Number circle */}
-                <div className="absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full border border-[#afc4ff]/30 bg-[#afc4ff]/20 text-sm font-bold text-[#afc4ff]">
+                <div className="absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-sm font-bold text-[var(--link)]">
                   {s.num}
                 </div>
                 <h3 className="text-base font-semibold text-white">{s.title}</h3>
@@ -218,14 +218,14 @@ function AgeSmartSection() {
         <div className="mt-14 grid gap-6 md:grid-cols-2">
           {/* Before */}
           <GlassCard className="overflow-hidden">
-            <div className="border-b border-[#f0b8b8]/20 bg-[#f0b8b8]/10 px-6 py-3">
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#f0b8b8]">
+            <div className="border-b border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] px-6 py-3">
+              <span className="text-sm font-semibold uppercase tracking-wider text-[var(--badge-red-text)]">
                 Before
               </span>
             </div>
             <div className="space-y-3 p-6">
               {BEFORE_ITEMS.map((text) => (
-                <p key={text} className="rounded-lg bg-[#f0b8b8]/10 px-3 py-2 text-sm text-[#f0b8b8]/80">
+                <p key={text} className="rounded-lg bg-[var(--badge-red-bg)] px-3 py-2 text-sm text-[var(--badge-red-text)]/80">
                   {text}
                 </p>
               ))}
@@ -234,14 +234,14 @@ function AgeSmartSection() {
 
           {/* After */}
           <GlassCard className="overflow-hidden">
-            <div className="border-b border-[#b5dec2]/20 bg-[#b5dec2]/10 px-6 py-3">
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#b5dec2]">
+            <div className="border-b border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-6 py-3">
+              <span className="text-sm font-semibold uppercase tracking-wider text-[var(--badge-green-text)]">
                 After
               </span>
             </div>
             <div className="space-y-3 p-6">
               {AFTER_ITEMS.map((text) => (
-                <p key={text} className="rounded-lg bg-[#b5dec2]/10 px-3 py-2 text-sm text-[#b5dec2]">
+                <p key={text} className="rounded-lg bg-[var(--badge-green-bg)] px-3 py-2 text-sm text-[var(--badge-green-text)]">
                   {text}
                 </p>
               ))}
@@ -262,9 +262,9 @@ function AgeSmartSection() {
 /* ================================================================== */
 
 const QUALITY_METRICS = [
-  { score: 85, max: 100, label: 'ATS Compliance', color: 'text-[#b5dec2]', desc: 'Passes automated screening systems' },
-  { score: 92, max: 100, label: 'Humanization', color: 'text-[#afc4ff]', desc: 'Reads like you wrote it, not a robot' },
-  { score: 88, max: 100, label: 'Impact Score', color: 'text-[#f0d99f]', desc: 'Every bullet quantified and compelling' },
+  { score: 85, max: 100, label: 'ATS Compliance', color: 'text-[var(--badge-green-text)]', desc: 'Passes automated screening systems' },
+  { score: 92, max: 100, label: 'Humanization', color: 'text-[var(--link)]', desc: 'Reads like you wrote it, not a robot' },
+  { score: 88, max: 100, label: 'Impact Score', color: 'text-[var(--badge-amber-text)]', desc: 'Every bullet quantified and compelling' },
 ];
 
 function QualitySection() {
@@ -307,7 +307,7 @@ function PositioningSection() {
         <div className="mx-auto mt-14 flex max-w-2xl flex-col items-center gap-8 md:flex-row md:justify-center">
           {/* Profile card */}
           <GlassCard className="w-52 shrink-0 p-5">
-            <div className="mb-3 h-10 w-10 rounded-full bg-gradient-to-br from-[#afc4ff] to-[#7b9fef]" />
+            <div className="mb-3 h-10 w-10 rounded-full bg-gradient-to-br from-[var(--link)] to-[var(--link)]/60" />
             <div className="h-3 w-28 rounded bg-white/20" />
             <div className="mt-2 h-2 w-20 rounded bg-white/10" />
             <div className="mt-4 space-y-1.5">
@@ -321,7 +321,7 @@ function PositioningSection() {
           <div className="flex flex-row gap-4 md:flex-col">
             {['Role A', 'Role B', 'Role C'].map((label) => (
               <div key={label} className="flex items-center gap-2">
-                <svg className="hidden h-4 w-6 text-[#afc4ff]/50 md:block" viewBox="0 0 24 16" fill="none">
+                <svg className="hidden h-4 w-6 text-[var(--link)]/50 md:block" viewBox="0 0 24 16" fill="none">
                   <path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <GlassCard className="px-3 py-1.5">

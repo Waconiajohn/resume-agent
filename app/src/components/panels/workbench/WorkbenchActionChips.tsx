@@ -162,7 +162,7 @@ export function WorkbenchActionChips({ section, onAction, disabled }: WorkbenchA
             disabled={disabled}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[13px] font-semibold uppercase tracking-[0.14em] transition-all duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45',
               'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
               !disabled && 'hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] cursor-pointer',
               disabled && 'opacity-50 pointer-events-none cursor-default',

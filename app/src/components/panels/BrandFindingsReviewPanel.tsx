@@ -15,8 +15,8 @@ type Mode = 'review' | 'request_changes';
 const SEVERITY_CONFIG = {
   critical: { label: 'Critical', color: 'text-[#f0a9a9]', bg: 'bg-[#f0a9a9]/10', icon: AlertCircle },
   high: { label: 'High', color: 'text-[#f0c9a9]', bg: 'bg-[#f0c9a9]/10', icon: AlertTriangle },
-  medium: { label: 'Medium', color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10', icon: AlertTriangle },
-  low: { label: 'Low', color: 'text-[#a8d7b8]', bg: 'bg-[#a8d7b8]/10', icon: Info },
+  medium: { label: 'Medium', color: 'text-[var(--badge-amber-text)]', bg: 'bg-[var(--badge-amber-bg)]', icon: AlertTriangle },
+  low: { label: 'Low', color: 'text-[var(--badge-green-text)]', bg: 'bg-[var(--badge-green-bg)]', icon: Info },
 } as const;
 
 export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindingsReviewPanelProps) {
@@ -43,7 +43,7 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-[#afc4ff]" />
+            <Search className="h-4 w-4 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Brand Findings Review</span>
           </div>
           <span className="text-xs text-[var(--text-soft)] tabular-nums">
@@ -80,7 +80,7 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
                   <span
                     className={cn(
                       'text-xs font-semibold tabular-nums',
-                      score >= 80 ? 'text-[#a8d7b8]' : score >= 60 ? 'text-[#f0d99f]' : 'text-[#f0a9a9]',
+                      score >= 80 ? 'text-[var(--badge-green-text)]' : score >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[#f0a9a9]',
                     )}
                   >
                     {score}/100
@@ -130,7 +130,7 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
                       {finding.description}
                     </p>
                     {finding.recommendation && (
-                      <p className="mt-1 text-[13px] text-[#afc4ff]/70 leading-relaxed">
+                      <p className="mt-1 text-[13px] text-[var(--link)]/70 leading-relaxed">
                         Rec: {finding.recommendation}
                       </p>
                     )}
@@ -152,7 +152,7 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. The LinkedIn tone finding is incorrect — I intentionally use informal language on LinkedIn. The messaging inconsistency finding about the bio is accurate..."
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-none"
               aria-label="Feedback on brand findings"
               autoFocus
             />

@@ -41,10 +41,10 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
 };
 
 const MESSAGE_TYPE_ACCENT: Record<string, string> = {
-  connection_request: 'text-[#afc4ff]',
-  follow_up_1: 'text-[#b5dec2]',
-  follow_up_2: 'text-[#b5dec2]',
-  value_offer: 'text-[#f0d99f]',
+  connection_request: 'text-[var(--link)]',
+  follow_up_1: 'text-[var(--badge-green-text)]',
+  follow_up_2: 'text-[var(--badge-green-text)]',
+  value_offer: 'text-[var(--badge-amber-text)]',
   meeting_request: 'text-[var(--text-muted)]',
 };
 
@@ -57,9 +57,9 @@ function MessageCard({ message, index }: { message: OutreachMessagePreview; inde
 
   const scoreColor =
     message.quality_score >= 80
-      ? 'text-[#b5dec2]'
+      ? 'text-[var(--badge-green-text)]'
       : message.quality_score >= 60
-      ? 'text-[#f0d99f]'
+      ? 'text-[var(--badge-amber-text)]'
       : 'text-[var(--text-soft)]';
 
   return (
@@ -115,8 +115,8 @@ function MessageCard({ message, index }: { message: OutreachMessagePreview; inde
 
 function QualityBadge({ score }: { score: number }) {
   const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Needs Review';
-  const colorClass = score >= 80 ? 'text-[#b5dec2]' : score >= 60 ? 'text-[#f0d99f]' : 'text-[var(--text-soft)]';
-  const borderClass = score >= 80 ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06]' : score >= 60 ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
+  const colorClass = score >= 80 ? 'text-[var(--badge-green-text)]' : score >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--text-soft)]';
+  const borderClass = score >= 80 ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)]' : score >= 60 ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
 
   return (
     <div className={cn('flex items-center gap-1.5 rounded-md border px-3 py-1.5', borderClass)}>
@@ -146,7 +146,7 @@ export function SequenceReviewPanel({ data, onApprove }: SequenceReviewPanelProp
       {/* Header */}
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-[#afc4ff]" />
+          <Users className="h-4 w-4 text-[var(--link)]" />
           <span className="text-sm font-medium text-[var(--text-strong)]">Your Outreach Sequence</span>
         </div>
       </div>
@@ -208,7 +208,7 @@ export function SequenceReviewPanel({ data, onApprove }: SequenceReviewPanelProp
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   placeholder="e.g. The follow-up messages are too formal — make them more conversational..."
-                  className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
+                  className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 resize-none"
                 />
                 <button
                   type="button"

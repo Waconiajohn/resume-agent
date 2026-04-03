@@ -37,9 +37,9 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
     quality_score == null
       ? 'text-[var(--text-soft)]'
       : quality_score >= 80
-        ? 'text-[#a8d7b8]'
+        ? 'text-[var(--badge-green-text)]'
         : quality_score >= 65
-          ? 'text-[#f0d99f]'
+          ? 'text-[var(--badge-amber-text)]'
           : 'text-[#f0a9a9]';
 
   return (
@@ -48,7 +48,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[#afc4ff]" />
+            <FileText className="h-4 w-4 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Cover Letter Review</span>
           </div>
           {quality_score != null && (
@@ -77,7 +77,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
               rows={18}
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-y font-mono"
               aria-label="Edit cover letter directly"
             />
           </div>
@@ -98,7 +98,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. Strengthen the opening hook, make the tone less formal, add a reference to the company's recent product launch..."
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-none"
               aria-label="Feedback for cover letter revision"
               autoFocus
             />

@@ -329,7 +329,7 @@ export function SectionWorkbench({
                   We've grouped {reviewRequiredSections.length || 1} section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'} for your review
                 </span>
                 {reviewRequiredSections.includes(section) ? (
-                  <span className="text-[13px] text-[#b5dec2]/85">Please review this section.</span>
+                  <span className="text-[13px] text-[var(--badge-green-text)]/85">Please review this section.</span>
                 ) : (
                   <span className="text-[13px] text-[var(--text-soft)]">This section was approved automatically, but you can still edit it.</span>
                 )}
@@ -375,9 +375,9 @@ export function SectionWorkbench({
                         const bundleSections = sectionsByBundle[bundle.key as LocalBundleKey] ?? [];
                         const isCurrentBundle = bundle.key === currentReviewBundleKey;
                         const toneClass = bundle.status === 'complete'
-                          ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04]'
+                          ? 'border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)]'
                           : bundle.status === 'in_progress'
-                            ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
+                            ? 'border-[var(--link)]/18 bg-[var(--badge-blue-bg)]'
                             : bundle.status === 'auto_approved'
                               ? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'
                               : 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
@@ -413,9 +413,9 @@ export function SectionWorkbench({
                                       key={`${bundle.key}:${bundleSection}`}
                                       className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 text-[12px] ${
                                         isCurrentSection
-                                          ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
+                                          ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/90'
                                           : isApproved
-                                            ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]/85'
+                                            ? 'border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/85'
                                             : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                                       }`}
                                       title={toTitleCase(bundleSection)}
@@ -444,9 +444,9 @@ export function SectionWorkbench({
                       {reviewBundles.map((bundle) => {
                         const isCurrentBundle = bundle.key === currentReviewBundleKey;
                         const toneClass = bundle.status === 'complete'
-                          ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
+                          ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/85'
                           : bundle.status === 'in_progress'
-                            ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
+                            ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/90'
                             : bundle.status === 'auto_approved'
                               ? 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-muted)]'
                               : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
@@ -486,9 +486,9 @@ export function SectionWorkbench({
                             key={reviewSection}
                             className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.08em] ${
                               isApproved
-                                ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
+                                ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/85'
                                 : isCurrent
-                                  ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
+                                  ? 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/90'
                                   : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
                             }`}
                             title={toTitleCase(reviewSection)}
@@ -520,7 +520,7 @@ export function SectionWorkbench({
                           </span>
                         )}
                         {!nextPendingReviewBundleMeta && currentBundleMeta?.status === 'complete' && (
-                          <span className="text-[#b5dec2]/80">This group is complete.</span>
+                          <span className="text-[var(--badge-green-text)]/80">This group is complete.</span>
                         )}
                         {autoApprovedBundleCount > 0 && (
                           <span className="text-[var(--text-soft)]">
@@ -609,7 +609,7 @@ export function SectionWorkbench({
 
           {/* Refining loading overlay */}
           {isRefining && (
-            <div className="relative rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
+            <div className="relative rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.04] p-3">
               <AiHelperHint
                 title="This Section Is Being Rewritten"
                 body={lastAiAction
@@ -618,7 +618,7 @@ export function SectionWorkbench({
                 tip="You do not need to type the whole answer from scratch here. Wait for the updated draft, then review and fine-tune it inline."
               />
               <div className="mt-2 h-0.5 w-full overflow-hidden bg-[var(--accent-muted)]">
-                <div className="h-full w-1/3 bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
+                <div className="h-full w-1/3 bg-[var(--link)]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
               </div>
             </div>
           )}
@@ -690,10 +690,10 @@ export function SectionWorkbench({
       </div>
 
       {isApprovalAnimating && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#b5dec2]/[0.08] backdrop-blur-sm motion-safe:animate-[fadeIn_200ms_ease-out]">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--badge-green-bg)] backdrop-blur-sm motion-safe:animate-[fadeIn_200ms_ease-out]">
           <div className="flex flex-col items-center gap-2 motion-safe:animate-[scaleIn_300ms_ease-out]">
-            <Check className="h-8 w-8 text-[#b5dec2]" />
-            <span className="text-sm font-medium text-[#b5dec2]">Section approved</span>
+            <Check className="h-8 w-8 text-[var(--badge-green-text)]" />
+            <span className="text-sm font-medium text-[var(--badge-green-text)]">Section approved</span>
           </div>
         </div>
       )}

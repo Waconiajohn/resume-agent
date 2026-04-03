@@ -63,7 +63,7 @@ function ActivityFeed({
           const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#b5dec2]' : 'bg-[var(--line-strong)]')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[var(--badge-green-text)]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -115,7 +115,7 @@ function CaseStudySlider({
             onClick={() => onChange(n)}
             className={cn(
               'flex-1 h-2 rounded-full transition-all',
-              n <= value ? 'bg-[#b5dec2]/60' : 'bg-[var(--surface-1)]',
+              n <= value ? 'bg-[var(--badge-green-text)]/60' : 'bg-[var(--surface-1)]',
             )}
           />
         ))}
@@ -136,8 +136,8 @@ interface MetricChip {
 
 function MetricHighlight({ metric }: { metric: MetricChip }) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] px-4 py-3 min-w-[80px]">
-      <span className="text-[20px] font-bold text-[#b5dec2] leading-none">{metric.value}</span>
+    <div className="flex flex-col items-center rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.04] px-4 py-3 min-w-[80px]">
+      <span className="text-[20px] font-bold text-[var(--badge-green-text)] leading-none">{metric.value}</span>
       <span className="text-[12px] text-[var(--text-soft)] mt-1 text-center leading-tight">{metric.label}</span>
     </div>
   );
@@ -200,10 +200,10 @@ interface CaseStudyCardSection {
 }
 
 const SECTION_CONFIG: Omit<CaseStudyCardSection, 'content'>[] = [
-  { type: 'challenge', label: 'Challenge', icon: AlertCircle, color: 'text-[#f0d99f]', border: 'border-[#f0d99f]/15' },
-  { type: 'approach', label: 'Approach', icon: Wrench, color: 'text-[#afc4ff]', border: 'border-[#afc4ff]/15' },
-  { type: 'results', label: 'Results', icon: TrendingUp, color: 'text-[#b5dec2]', border: 'border-[#b5dec2]/15' },
-  { type: 'unique', label: 'What Made This Unique', icon: Lightbulb, color: 'text-[#f0d99f]', border: 'border-[#f0d99f]/15' },
+  { type: 'challenge', label: 'Challenge', icon: AlertCircle, color: 'text-[var(--badge-amber-text)]', border: 'border-[var(--badge-amber-text)]/15' },
+  { type: 'approach', label: 'Approach', icon: Wrench, color: 'text-[var(--link)]', border: 'border-[var(--link)]/15' },
+  { type: 'results', label: 'Results', icon: TrendingUp, color: 'text-[var(--badge-green-text)]', border: 'border-[var(--badge-green-text)]/15' },
+  { type: 'unique', label: 'What Made This Unique', icon: Lightbulb, color: 'text-[var(--badge-amber-text)]', border: 'border-[var(--badge-amber-text)]/15' },
 ];
 
 function parseCaseStudySections(content: string): Partial<Record<CaseStudyCardSection['type'], string>> {
@@ -290,8 +290,8 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
       {/* Card header */}
       <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="rounded-lg bg-[#b5dec2]/10 p-1.5 flex-shrink-0">
-            <BookOpen size={14} className="text-[#b5dec2]" />
+          <div className="rounded-lg bg-[var(--badge-green-text)]/10 p-1.5 flex-shrink-0">
+            <BookOpen size={14} className="text-[var(--badge-green-text)]" />
           </div>
           <h3 className="text-[14px] font-semibold text-[var(--text-strong)] truncate">{title}</h3>
         </div>
@@ -302,7 +302,7 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
             className={cn(
               'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
               copied
-                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                ? 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
                 : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
@@ -315,7 +315,7 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
             className={cn(
               'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
               addedToPortfolio
-                ? 'bg-[#afc4ff]/10 border-[#afc4ff]/20 text-[#afc4ff]'
+                ? 'bg-[var(--link)]/10 border-[var(--link)]/20 text-[var(--link)]'
                 : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
@@ -437,8 +437,8 @@ function ReportView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-[#b5dec2]/15 to-[#98b3ff]/10 p-2.5 border border-[#b5dec2]/20">
-            <BookOpen size={18} className="text-[#b5dec2]" />
+          <div className="rounded-xl bg-gradient-to-br from-[var(--badge-green-text)]/15 to-[var(--link)]/10 p-2.5 border border-[var(--badge-green-text)]/20">
+            <BookOpen size={18} className="text-[var(--badge-green-text)]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Portfolio</h2>
@@ -447,7 +447,7 @@ function ReportView({
         </div>
         <div className="flex items-center gap-2">
           {portfolioCount > 0 && (
-            <span className="rounded-md px-2 py-0.5 text-[13px] bg-[#afc4ff]/10 border border-[#afc4ff]/20 text-[#afc4ff]">
+            <span className="rounded-md px-2 py-0.5 text-[13px] bg-[var(--link)]/10 border border-[var(--link)]/20 text-[var(--link)]">
               {portfolioCount} added to portfolio
             </span>
           )}
@@ -455,16 +455,16 @@ function ReportView({
             <div className={cn(
               'text-[12px] font-semibold px-3 py-1.5 rounded-full border',
               qualityScore >= 80
-                ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
+                ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
                 : qualityScore >= 60
-                ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-                : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20',
+                ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
+                : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20',
             )}>
               Quality {qualityScore}%
             </div>
           )}
           <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
-            {copiedAll ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
+            {copiedAll ? <Check size={14} className="mr-1.5 text-[var(--badge-green-text)]" /> : <Copy size={14} className="mr-1.5" />}
             {copiedAll ? 'Copied' : 'Copy All'}
           </GlassButton>
           <GlassButton variant="ghost" onClick={onReset} size="sm">
@@ -481,7 +481,7 @@ function ReportView({
             <span className="text-[13px] text-[var(--text-soft)]">Portfolio Quality</span>
             <span className={cn(
               'text-[13px] font-semibold',
-              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+              qualityScore >= 80 ? 'text-[var(--badge-green-text)]' : qualityScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
             )}>
               {qualityScore >= 80 ? 'Consulting-Grade' : qualityScore >= 60 ? 'Strong' : 'Needs Work'}
             </span>
@@ -490,7 +490,7 @@ function ReportView({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+                qualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : qualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
               )}
               style={{ width: `${qualityScore}%` }}
             />
@@ -516,13 +516,13 @@ function ReportView({
             className="prose prose-invert prose-sm max-w-none
               prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
               prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
-              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#b5dec2]/90
+              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[var(--badge-green-text)]/90
               prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
               prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
               prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
               prose-strong:text-[var(--text-strong)]
-              prose-em:text-[#f0d99f]/80
-              prose-blockquote:border-[#b5dec2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#b5dec2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-em:text-[var(--badge-amber-text)]/80
+              prose-blockquote:border-[var(--badge-green-text)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[var(--badge-green-text)]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
               prose-hr:border-[var(--line-soft)] prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
@@ -635,8 +635,8 @@ export function CaseStudyRoom() {
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
-                  isActive ? 'bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25'
-                    : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2]/60 border border-[#b5dec2]/15'
+                  isActive ? 'bg-[var(--badge-green-text)]/15 text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/25'
+                    : isDone ? 'bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)]/60 border border-[var(--badge-green-text)]/15'
                     : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
@@ -652,8 +652,8 @@ export function CaseStudyRoom() {
         {/* Activity feed */}
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div className="flex items-center gap-2 mb-5">
-            <div className="rounded-lg bg-[#b5dec2]/10 p-2">
-              <Loader2 size={16} className="text-[#b5dec2] animate-spin" />
+            <div className="rounded-lg bg-[var(--badge-green-text)]/10 p-2">
+              <Loader2 size={16} className="text-[var(--badge-green-text)] animate-spin" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
@@ -683,11 +683,11 @@ export function CaseStudyRoom() {
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Generator</h1>
         </div>
-        <GlassCard className="p-6 border-[#f0b8b8]/20">
+        <GlassCard className="p-6 border-[var(--badge-red-text)]/20">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
+              <p className="text-[13px] text-[var(--badge-red-text)] font-medium">Generation failed</p>
               <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
@@ -704,8 +704,8 @@ export function CaseStudyRoom() {
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Room header */}
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-[#b5dec2]/15 to-[#98b3ff]/10 p-2.5 border border-[#b5dec2]/20">
-          <BookOpen size={20} className="text-[#b5dec2]" />
+        <div className="rounded-xl bg-gradient-to-br from-[var(--badge-green-text)]/15 to-[var(--link)]/10 p-2.5 border border-[var(--badge-green-text)]/20">
+          <BookOpen size={20} className="text-[var(--badge-green-text)]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Case Study Generator</h1>
@@ -749,7 +749,7 @@ export function CaseStudyRoom() {
       {/* Resume section */}
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles size={15} className="text-[#b5dec2]" />
+          <Sparkles size={15} className="text-[var(--badge-green-text)]" />
           <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Your Resume</h2>
         </div>
 
@@ -760,7 +760,7 @@ export function CaseStudyRoom() {
           </div>
         ) : resumeText.length > 50 ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
               Resume loaded — {Math.round(resumeText.length / 5)} words
             </div>
@@ -774,7 +774,7 @@ export function CaseStudyRoom() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
               <AlertCircle size={12} />
               No master resume found — paste below
             </div>
@@ -783,7 +783,7 @@ export function CaseStudyRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--badge-green-text)]/40 focus:ring-2 focus:ring-[var(--badge-green-text)]/10 transition-all"
             />
           </div>
         )}
@@ -795,7 +795,7 @@ export function CaseStudyRoom() {
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-6">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-2">
-              <Target size={15} className="text-[#b5dec2]" />
+              <Target size={15} className="text-[var(--badge-green-text)]" />
               <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Focus Areas <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
             </div>
             <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">What to emphasize</label>
@@ -804,7 +804,7 @@ export function CaseStudyRoom() {
               onChange={(e) => setFocusAreas(e.target.value)}
               placeholder="e.g. Cost reduction, team leadership, digital transformation, supply chain optimization..."
               rows={3}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--badge-green-text)]/40 focus:ring-2 focus:ring-[var(--badge-green-text)]/10 transition-all"
             />
           </div>
 
@@ -814,7 +814,7 @@ export function CaseStudyRoom() {
         {/* Right — Target context */}
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
-            <BarChart3 size={15} className="text-[#98b3ff]" />
+            <BarChart3 size={15} className="text-[var(--link)]" />
             <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Target Context <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
           </div>
           <p className="text-[12px] text-[var(--text-soft)] -mt-3">Tailor the case studies for a specific role or industry</p>
@@ -826,7 +826,7 @@ export function CaseStudyRoom() {
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Chief Operating Officer"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -836,13 +836,13 @@ export function CaseStudyRoom() {
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g. Healthcare Technology"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
             />
           </div>
 
           {/* What you'll get */}
-          <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4 mt-auto">
-            <p className="text-[13px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider mb-2">What you'll get</p>
+          <div className="rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.04] p-4 mt-auto">
+            <p className="text-[13px] font-semibold text-[var(--badge-green-text)]/70 uppercase tracking-wider mb-2">What you'll get</p>
             <ul className="space-y-1">
               {[
                 'Challenge → Approach → Results → Impact structure',
@@ -852,7 +852,7 @@ export function CaseStudyRoom() {
                 'Ready for interviews, proposals, and portfolio',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
-                  <Check size={10} className="text-[#b5dec2]/60 mt-0.5 flex-shrink-0" />
+                  <Check size={10} className="text-[var(--badge-green-text)]/60 mt-0.5 flex-shrink-0" />
                   {item}
                 </li>
               ))}
@@ -872,7 +872,7 @@ export function CaseStudyRoom() {
           disabled={!canSubmit}
           className={cn(
             'px-6 py-3 text-[14px] font-medium rounded-xl',
-            'bg-gradient-to-r from-[#b5dec2]/20 to-[#98b3ff]/15 hover:from-[#b5dec2]/30 hover:to-[#98b3ff]/25',
+            'bg-gradient-to-r from-[var(--badge-green-text)]/20 to-[var(--link)]/15 hover:from-[var(--badge-green-text)]/30 hover:to-[var(--link)]/25',
             !canSubmit && 'opacity-40 cursor-not-allowed',
           )}
         >

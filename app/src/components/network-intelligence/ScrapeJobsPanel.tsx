@@ -262,7 +262,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
                 <StatCard
                   label="Referral"
                   value={scrapeStatus.output_summary.referral_available ?? 0}
-                  accent="text-[#57CDA4]/90"
+                  accent="text-[var(--badge-green-text)]/90"
                 />
               </div>
             )}
@@ -318,19 +318,19 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             <StatCard
               label="Matching"
               value={result.matchingJobs}
-              accent={result.matchingJobs > 0 ? 'text-[#afc4ff]/90' : undefined}
+              accent={result.matchingJobs > 0 ? 'text-[var(--link)]/90' : undefined}
               dim={result.matchingJobs === 0}
             />
-            <div className="flex flex-col items-center rounded-md border border-[#57CDA4]/20 bg-[#57CDA4]/10 px-4 py-3 text-center">
+            <div className="flex flex-col items-center rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/10 px-4 py-3 text-center">
               <span
                 className={cn(
                   'text-2xl font-bold tabular-nums',
-                  result.referralAvailable > 0 ? 'text-[#57CDA4]' : 'text-[var(--text-soft)]',
+                  result.referralAvailable > 0 ? 'text-[var(--badge-green-text)]' : 'text-[var(--text-soft)]',
                 )}
               >
                 {result.referralAvailable}
               </span>
-              <span className="mt-0.5 text-[12px] font-medium uppercase tracking-wider text-[#57CDA4]/60">
+              <span className="mt-0.5 text-[12px] font-medium uppercase tracking-wider text-[var(--badge-green-text)]/60">
                 Referral
               </span>
             </div>
@@ -345,7 +345,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
                 {result.referralAvailable > 0 && (
                   <>
                     {' '}
-                    <span className="font-medium text-[#57CDA4]">{result.referralAvailable}</span>{' '}
+                    <span className="font-medium text-[var(--badge-green-text)]">{result.referralAvailable}</span>{' '}
                     ha{result.referralAvailable !== 1 ? 've' : 's'} a referral bonus available.
                   </>
                 )}

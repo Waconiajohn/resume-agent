@@ -36,11 +36,11 @@ function StatBadge({ label, value }: { label: string; value: string | number }) 
 function toneClass(tone: 'error' | 'warning' | 'success' | 'info'): string {
   switch (tone) {
     case 'error':
-      return 'border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/90';
+      return 'border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/90';
     case 'warning':
-      return 'border-[#f0d99f]/28 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90';
+      return 'border-[var(--badge-amber-text)]/28 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90';
     case 'success':
-      return 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90';
+      return 'border-[var(--badge-green-text)]/28 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90';
     case 'info':
     default:
       return 'border-[var(--line-strong)] bg-[var(--accent-muted)] text-[var(--text-muted)]';
@@ -162,14 +162,14 @@ export function CompletionPanel({
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="motion-safe:animate-celebration-check rounded-full motion-safe:animate-celebration-glow">
-            <CheckCircle className="h-8 w-8 text-[#a8d7b8]" />
+            <CheckCircle className="h-8 w-8 text-[var(--badge-green-text)]" />
           </div>
           <span className="text-lg font-semibold text-[var(--text-strong)]" aria-live="assertive" role="status">
             Your Resume Is Ready!
           </span>
         </div>
         {data.ats_score != null && (
-          <p className="text-sm text-[#b5dec2]/80 mt-1">{data.ats_score}% match for this role</p>
+          <p className="text-sm text-[var(--badge-green-text)]/80 mt-1">{data.ats_score}% match for this role</p>
         )}
       </div>
 
@@ -246,10 +246,10 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
+            <span className="rounded-md border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--link)]/85">
               Action
             </span>
-            <FileText className="h-4 w-4 text-[#afc4ff]" />
+            <FileText className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-sm font-medium text-[var(--text-strong)]">Download Your Resume</h3>
           </div>
           {resume ? (
@@ -269,7 +269,7 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
                 {docxBlocked && (
-                  <span className="ml-2 rounded-md border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-2 py-1 text-[12px] uppercase tracking-wider text-[#f0d99f]/80">
+                  <span className="ml-2 rounded-md border border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] px-2 py-1 text-[12px] uppercase tracking-wider text-[var(--badge-amber-text)]/80">
                     Upgrade
                   </span>
                 )}
@@ -294,7 +294,7 @@ export function CompletionPanel({
               <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
                 Optional
               </span>
-              <Save className="h-4 w-4 text-[#a8d7b8]" />
+              <Save className="h-4 w-4 text-[var(--badge-green-text)]" />
               <h3 className="text-sm font-medium text-[var(--text-strong)]">Save for Future Applications</h3>
             </div>
             <p className="mb-3 text-xs text-[var(--text-soft)]">
@@ -338,7 +338,7 @@ export function CompletionPanel({
             <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
               Optional
             </span>
-            <FileText className="h-4 w-4 text-[#afc4ff]" />
+            <FileText className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-sm font-medium text-[var(--text-strong)]">Positioning Summary</h3>
           </div>
           <p className="mb-3 text-xs text-[var(--text-soft)]">

@@ -260,7 +260,7 @@ export function SessionHistoryTab({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{record.company}</div>
-                        <span className="rounded-md border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#c9d7ff]">
+                        <span className="rounded-md border border-[var(--link)]/16 bg-[var(--link)]/[0.05] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--link)]">
                           Job workspace
                         </span>
                       </div>

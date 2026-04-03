@@ -75,22 +75,22 @@ function NumberField({
 
   const accentClasses = {
     green: {
-      border: 'border-[#b5dec2]/20',
-      bg: 'bg-[#b5dec2]/[0.06]',
-      icon: 'text-[#b5dec2]',
-      badge: 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90',
+      border: 'border-[var(--badge-green-text)]/20',
+      bg: 'bg-[var(--badge-green-bg)]',
+      icon: 'text-[var(--badge-green-text)]',
+      badge: 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90',
     },
     yellow: {
-      border: 'border-[#f0d99f]/20',
-      bg: 'bg-[#f0d99f]/[0.06]',
-      icon: 'text-[#f0d99f]',
-      badge: 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90',
+      border: 'border-[var(--badge-amber-text)]/20',
+      bg: 'bg-[var(--badge-amber-bg)]',
+      icon: 'text-[var(--badge-amber-text)]',
+      badge: 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90',
     },
     blue: {
-      border: 'border-[#afc4ff]/20',
-      bg: 'bg-[#afc4ff]/[0.06]',
-      icon: 'text-[#afc4ff]',
-      badge: 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90',
+      border: 'border-[var(--link)]/20',
+      bg: 'bg-[var(--badge-blue-bg)]',
+      icon: 'text-[var(--link)]',
+      badge: 'border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-[var(--link)]/90',
     },
   };
 
@@ -130,14 +130,14 @@ function NumberField({
               if (e.key === 'Escape') { onResetEdit(); onDoneEdit(); }
             }}
             autoFocus
-            className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+            className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             placeholder="e.g. $185,000 base"
           />
           <div className="flex gap-3">
             <button
               type="button"
               onClick={onDoneEdit}
-              className="text-[12px] text-[#afc4ff]/80 hover:text-[#afc4ff] transition-colors"
+              className="text-[12px] text-[var(--link)]/80 hover:text-[var(--link)] transition-colors"
             >
               Done
             </button>
@@ -239,18 +239,18 @@ export function StrategyReviewPanel({ data, onApprove }: StrategyReviewPanelProp
       {/* Header */}
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-[#b5dec2]" />
+          <TrendingUp className="h-4 w-4 text-[var(--badge-green-text)]" />
           <span className="text-sm font-medium text-[var(--text-strong)]">Your Negotiation Strategy</span>
         </div>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Estimated market-data disclaimer — prominent by design */}
-        <div className="rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-3 py-2.5">
+        <div className="rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] px-3 py-2.5">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-[#f0d99f]/70" />
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-[var(--badge-amber-text)]/70" />
             <div>
-              <p className="text-[13px] font-semibold text-[#f0d99f]/85">Estimated Market Data</p>
+              <p className="text-[13px] font-semibold text-[var(--badge-amber-text)]/85">Estimated Market Data</p>
               <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--text-soft)]">
                 These numbers are based on pattern analysis of available market signals — not live salary databases.
                 Verify against Levels.fyi, Glassdoor, or Payscale before entering negotiations.
@@ -360,7 +360,7 @@ export function StrategyReviewPanel({ data, onApprove }: StrategyReviewPanelProp
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   placeholder="e.g. Adjust BATNA — I have a competing offer at $175k..."
-                  className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
+                  className="w-full rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 resize-none"
                 />
                 <button
                   type="button"
@@ -389,7 +389,7 @@ export function StrategyReviewPanel({ data, onApprove }: StrategyReviewPanelProp
         {/* Preview-only notice */}
         {!onApprove && (
           <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-soft)]">
-            <CheckCircle2 className="inline h-3 w-3 mr-1.5 text-[#b5dec2]" />
+            <CheckCircle2 className="inline h-3 w-3 mr-1.5 text-[var(--badge-green-text)]" />
             Strategy finalized — the full report is ready below.
           </div>
         )}

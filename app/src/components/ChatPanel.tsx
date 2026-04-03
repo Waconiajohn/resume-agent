@@ -262,7 +262,7 @@ export function ChatPanel({
         {phaseGate && (
           <div className="mx-4 my-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="mb-2 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
+              <CheckCircle className="h-4 w-4 text-[var(--badge-green-text)]" />
               <span className="text-sm font-medium text-[var(--text-strong)]">
                 {PHASE_LABELS[phaseGate.currentPhase] ?? phaseGate.currentPhase} complete
               </span>

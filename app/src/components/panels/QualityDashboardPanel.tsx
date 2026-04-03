@@ -22,15 +22,15 @@ interface QualityDashboardPanelProps {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 70) return 'text-[#b5dec2]';
-  if (score >= 50) return 'text-[#f0d99f]';
-  return 'text-[#f0b8b8]';
+  if (score >= 70) return 'text-[var(--badge-green-text)]';
+  if (score >= 50) return 'text-[var(--badge-amber-text)]';
+  return 'text-[var(--badge-red-text)]';
 }
 
 function secondaryScoreColor(score: number): string {
-  if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#f0d99f]';
-  return 'text-[#f0b8b8]';
+  if (score >= 80) return 'text-[var(--badge-green-text)]';
+  if (score >= 60) return 'text-[var(--badge-amber-text)]';
+  return 'text-[var(--badge-red-text)]';
 }
 
 interface CollapsibleSectionProps {
@@ -104,7 +104,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           score: hiring_manager.checklist_total ?? 0,
           max: hiring_manager.checklist_max ?? 50,
           label: 'Hiring Manager',
-          color: hiring_manager.pass ? 'text-[#b5dec2]' : 'text-[#f0b8b8]',
+          color: hiring_manager.pass ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-red-text)]',
         }
       : null,
     ats_score != null
@@ -206,7 +206,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           return (
             <GlassCard className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck className="h-3.5 w-3.5 text-[#afc4ff]" />
+                <ShieldCheck className="h-3.5 w-3.5 text-[var(--link)]" />
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                   Score Details
                 </h3>
@@ -223,7 +223,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                     {needsWork.map(([key, score]) => (
                       <div key={key} className="flex items-center justify-between rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1">
                         <span className="text-xs text-[var(--text-muted)] capitalize">{key.replace(/_/g, ' ')}</span>
-                        <span className="text-xs font-medium text-[#f0b8b8]">{score}/5</span>
+                        <span className="text-xs font-medium text-[var(--badge-red-text)]">{score}/5</span>
                       </div>
                     ))}
                   </div>
@@ -238,7 +238,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                     {strong.map(([key, score]) => (
                       <div key={key} className="flex items-center justify-between rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1">
                         <span className="text-xs text-[var(--text-muted)] capitalize">{key.replace(/_/g, ' ')}</span>
-                        <span className="text-xs font-medium text-[#b5dec2]">{score}/5</span>
+                        <span className="text-xs font-medium text-[var(--badge-green-text)]">{score}/5</span>
                       </div>
                     ))}
                   </div>
@@ -252,7 +252,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {overall_assessment && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <ScanSearch className="h-3.5 w-3.5 text-[#afc4ff]" />
+              <ScanSearch className="h-3.5 w-3.5 text-[var(--link)]" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
                 Assessment
               </h3>
@@ -268,16 +268,16 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {/* ATS Findings — collapsible */}
         {atsFindingsCount > 0 && (
           <CollapsibleSection
-            icon={<ClipboardList className="h-3.5 w-3.5 text-[#afc4ff]" />}
+            icon={<ClipboardList className="h-3.5 w-3.5 text-[var(--link)]" />}
             title="Hiring System Findings"
             count={atsFindingsCount}
           >
             <div className="space-y-1.5">
               {ats_findings!.map((finding, i) => {
                 const priorityStyles: Record<string, string> = {
-                  high: 'border-[#f0b8b8]/25 bg-[#f0b8b8]/10 text-[#f0b8b8]/90',
-                  medium: 'border-[#f0d99f]/25 bg-[#f0d99f]/10 text-[#f0d99f]/90',
-                  low: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#b5dec2]/90',
+                  high: 'border-[var(--badge-red-text)]/25 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/90',
+                  medium: 'border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90',
+                  low: 'border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90',
                 };
                 const badgeStyle =
                   priorityStyles[finding.priority?.toLowerCase()] ??
@@ -305,7 +305,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {/* Humanize Issues — collapsible */}
         {humanizeIssuesCount > 0 && (
           <CollapsibleSection
-            icon={<Bot className="h-3.5 w-3.5 text-[#afc4ff]" />}
+            icon={<Bot className="h-3.5 w-3.5 text-[var(--link)]" />}
             title="Naturalness Check"
             count={humanizeIssuesCount}
           >
@@ -325,7 +325,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {/* Coherence Issues — collapsible */}
         {coherenceIssuesCount > 0 && (
           <CollapsibleSection
-            icon={<GitBranch className="h-3.5 w-3.5 text-[#afc4ff]" />}
+            icon={<GitBranch className="h-3.5 w-3.5 text-[var(--link)]" />}
             title="Story Consistency"
             count={coherenceIssuesCount}
           >
@@ -348,7 +348,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="flex items-center gap-2 mb-3">
               <span className={`rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] ${
                 highRiskCount > 0
-                  ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
+                  ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/85'
                   : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]'
               }`}>
                 {highRiskCount > 0 ? 'Action required' : 'Review'}
@@ -361,9 +361,9 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-2">
               {risk_flags.map((rf, i) => {
                 const severityColor = ({
-                  low: 'border-[#b5dec2]/20 bg-[#b5dec2]/10',
-                  medium: 'border-[#f0d99f]/20 bg-[#f0d99f]/10',
-                  high: 'border-[#f0b8b8]/20 bg-[#f0b8b8]/10',
+                  low: 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)]',
+                  medium: 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]',
+                  high: 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)]',
                 } as Record<string, string>)[rf.severity] ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]';
                 return (
                   <div key={`risk-flag-${rf.flag.slice(0, 30)}-${i}`} className={`rounded-lg border p-2.5 ${severityColor}`}>
@@ -380,7 +380,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-md border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
+              <span className="rounded-md border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--badge-amber-text)]/85">
                 Action required
               </span>
               <AlertTriangle className="h-3.5 w-3.5 text-[var(--text-soft)]" />

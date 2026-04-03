@@ -30,7 +30,7 @@ export function DailyOpsSection({
   return (
     <GlassCard className="p-6 space-y-6">
       <div className="flex items-center gap-2">
-        <Clock size={18} className="text-[#98b3ff]" />
+        <Clock size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">{title}</h3>
       </div>
 
@@ -148,7 +148,7 @@ function StatMetric({
       ? 'text-[var(--badge-green-text)]'
       : accent === 'amber'
         ? 'text-[var(--badge-amber-text)]'
-        : 'text-[#98b3ff]'
+        : 'text-[var(--link)]'
     : 'text-[var(--text-muted)]';
 
   return (

@@ -102,7 +102,7 @@ export function BooleanSearchPanel({
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2">
-        <Search size={18} className="text-[#98b3ff]" />
+        <Search size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Strings</h3>
       </div>
       <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">

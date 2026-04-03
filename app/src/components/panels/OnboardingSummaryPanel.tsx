@@ -77,10 +77,10 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
   const [editedStats, setEditedStats] = useState<Record<string, string>>({});
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const confidenceTone = parseConfidence === 'high'
-    ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
+    ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]/90'
     : parseConfidence === 'medium'
-      ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
-      : 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] text-[#f0b8b8]/90';
+      ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90'
+      : 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/90';
   const confidenceLabel = parseConfidence === 'high'
     ? 'Resume read successfully'
     : parseConfidence === 'medium'
@@ -138,7 +138,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
             return (
               <GlassCard key={label} className="motion-safe:opacity-0 motion-safe:animate-card-stagger p-3" style={{ animationDelay: `${i * 75}ms` }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon className="h-3.5 w-3.5 text-[#afc4ff]" />
+                  <Icon className="h-3.5 w-3.5 text-[var(--link)]" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)] flex-1">
                     {label}
                   </span>
@@ -159,7 +159,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
                     onBlur={() => setEditingLabel(null)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingLabel(null); }}
                     autoFocus
-                    className="w-full rounded border border-[var(--line-strong)] bg-[var(--accent-muted)] px-2 py-1 text-sm font-semibold text-[var(--text-strong)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+                    className="w-full rounded border border-[var(--line-strong)] bg-[var(--accent-muted)] px-2 py-1 text-sm font-semibold text-[var(--text-strong)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
                   />
                 ) : (
                   <span className="text-lg font-semibold text-[var(--text-strong)]">{displayValue}</span>
@@ -179,7 +179,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
             <div className="space-y-2">
               {strengths.map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
+                  <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--badge-green-text)]" />
                   <span className="text-sm text-[var(--text-strong)]">{s}</span>
                 </div>
               ))}

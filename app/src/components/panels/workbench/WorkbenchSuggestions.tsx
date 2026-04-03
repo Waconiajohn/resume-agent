@@ -168,7 +168,7 @@ export function WorkbenchSuggestions({
     return (
       <div className="flex items-center justify-center gap-2 py-4">
         <Check
-          className={cn('h-4 w-4 text-[#b5dec2]/70', 'suggestion-resolved')}
+          className={cn('h-4 w-4 text-[var(--badge-green-text)]/70', 'suggestion-resolved')}
         />
         <span className="text-xs text-[var(--text-soft)]">All suggestions addressed</span>
       </div>
@@ -189,7 +189,7 @@ export function WorkbenchSuggestions({
       key={currentSuggestion.id}
       className={cn(
         'rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5',
-        isHighPriority && 'border-l-2 border-l-[#98b3ff]',
+        isHighPriority && 'border-l-2 border-l-[var(--link)]',
         isResolvedAnim ? 'suggestion-resolved' : slideDir === 'out' ? 'suggestion-slide-out' : 'suggestion-slide-in',
       )}
     >

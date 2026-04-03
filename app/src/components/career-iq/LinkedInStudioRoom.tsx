@@ -141,7 +141,7 @@ function ActivityFeed({ messages, label }: { messages: Array<{ id: string; messa
   return (
     <GlassCard className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Loader2 size={14} className="text-[#98b3ff] animate-spin" />
+        <Loader2 size={14} className="text-[var(--link)] animate-spin" />
         <span className="text-[12px] font-medium text-[var(--text-soft)]">{label ?? 'Working...'}</span>
       </div>
       <div className="space-y-1 max-h-[160px] overflow-y-auto">
@@ -209,9 +209,9 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           </div>
         )}
         {signals.clarity !== 'green' && (
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3 flex items-center gap-3">
-            <Sparkles size={16} className="text-[#98b3ff] flex-shrink-0" />
-            <p className="text-[13px] text-[#98b3ff]/70">
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-4 py-3 flex items-center gap-3">
+            <Sparkles size={16} className="text-[var(--link)] flex-shrink-0" />
+            <p className="text-[13px] text-[var(--link)]/70">
               Strengthen your Clarity signal first — your posts will have sharper positioning once your Career Profile is defined.
             </p>
           </div>
@@ -249,7 +249,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
       <div className="flex flex-col gap-4">
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={16} className="text-[#98b3ff]" />
+            <Sparkles size={16} className="text-[var(--link)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Choose a Topic</h3>
             <span className="ml-auto text-[13px] text-[var(--text-soft)]">Select one to write</span>
           </div>
@@ -259,20 +259,20 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                 key={topic.id}
                 type="button"
                 onClick={() => handleSelectTopic(topic)}
-                className="w-full text-left rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[#98b3ff]/30 hover:bg-[#98b3ff]/[0.04] p-4 transition-all group"
+                className="w-full text-left rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--link)]/30 hover:bg-[var(--link)]/[0.04] p-4 transition-all group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-[var(--text-strong)] mb-1">{topic.topic}</p>
                     <p className="text-[12px] text-[var(--text-soft)] italic mb-2">&ldquo;{topic.hook}&rdquo;</p>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-[#98b3ff]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/60">
+                      <span className="rounded-md bg-[var(--link)]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]/60">
                         {topic.expertise_area}
                       </span>
                       <span className="text-[13px] text-[var(--text-soft)]">{topic.rationale}</span>
                     </div>
                   </div>
-                  <ChevronRight size={16} className="text-[var(--text-soft)] group-hover:text-[#98b3ff]/50 flex-shrink-0 mt-0.5 transition-colors" />
+                  <ChevronRight size={16} className="text-[var(--text-soft)] group-hover:text-[var(--link)]/50 flex-shrink-0 mt-0.5 transition-colors" />
                 </div>
               </button>
             ))}
@@ -292,26 +292,26 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
       <div className="flex flex-col gap-4">
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <FileText size={16} className="text-[#98b3ff]" />
+            <FileText size={16} className="text-[var(--link)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Post Draft</h3>
             {scores && (
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                  scores.authenticity >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                  scores.authenticity >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
                   Auth {scores.authenticity}
                 </span>
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                  scores.engagement_potential >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                  scores.engagement_potential >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
                   Engage {scores.engagement_potential}
                 </span>
                 {content.hookScore != null && (
                   <span className={cn(
                     'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                    content.hookScore >= 60 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                    content.hookScore >= 60 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                   )}>
                     Hook {content.hookScore}
                   </span>
@@ -325,18 +325,18 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               {content.postDraft}
             </pre>
             {content.postHashtags.length > 0 && (
-              <p className="mt-3 text-[12px] text-[#98b3ff]/60">
+              <p className="mt-3 text-[12px] text-[var(--link)]/60">
                 {content.postHashtags.map((h) => `#${h}`).join(' ')}
               </p>
             )}
           </div>
 
           {content.hookScore != null && content.hookScore < 60 && (
-            <div className="mb-4 rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04] px-4 py-3 flex items-start gap-2">
-              <TrendingUp size={14} className="text-[#f0d99f] flex-shrink-0 mt-0.5" />
+            <div className="mb-4 rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04] px-4 py-3 flex items-start gap-2">
+              <TrendingUp size={14} className="text-[var(--badge-amber-text)] flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium text-[#f0d99f]">Your opening could be stronger.</p>
-                <p className="text-[13px] text-[#f0d99f]/70 mt-0.5 leading-relaxed">
+                <p className="text-[12px] font-medium text-[var(--badge-amber-text)]">Your opening could be stronger.</p>
+                <p className="text-[13px] text-[var(--badge-amber-text)]/70 mt-0.5 leading-relaxed">
                   {content.hookAssessment ?? 'The first 210 characters need to earn the click — that\'s what shows before "see more".'}
                 </p>
               </div>
@@ -365,7 +365,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                     value={revisionFeedback}
                     onChange={(e) => setRevisionFeedback(e.target.value)}
                     placeholder="What would you like changed? (e.g. make it more direct, add a specific story, shorten it)"
-                    className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px]"
+                    className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 min-h-[80px]"
                   />
                   <GlassButton
                     onClick={handleRevise}
@@ -399,32 +399,32 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
     return (
       <div className="flex flex-col gap-4">
         {content.postSaved && (
-          <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-2.5 flex items-center gap-2">
-            <Check size={13} className="text-[#b5dec2] flex-shrink-0" />
-            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved to Library</span>
+          <div className="rounded-xl border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.05] px-4 py-2.5 flex items-center gap-2">
+            <Check size={13} className="text-[var(--badge-green-text)] flex-shrink-0" />
+            <span className="text-[12px] text-[var(--badge-green-text)]/80 font-medium">Saved to Library</span>
             <span className="text-[13px] text-[var(--text-soft)] ml-1">— reopen it from Library when you want to reuse it</span>
           </div>
         )}
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Check size={16} className="text-[#b5dec2]" />
+            <Check size={16} className="text-[var(--badge-green-text)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Post Draft Ready</h3>
             <button
               type="button"
               onClick={handleCopy}
               className="ml-auto flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
-              {copied ? <Check size={13} className="text-[#b5dec2]" /> : <Copy size={13} />}
+              {copied ? <Check size={13} className="text-[var(--badge-green-text)]" /> : <Copy size={13} />}
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
 
-          <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-4 mb-4">
+          <div className="rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.03] p-4 mb-4">
             <pre className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
               {content.postDraft}
             </pre>
             {content.postHashtags.length > 0 && (
-              <p className="mt-3 text-[12px] text-[#98b3ff]/60">
+              <p className="mt-3 text-[12px] text-[var(--link)]/60">
                 {content.postHashtags.map((h) => `#${h}`).join(' ')}
               </p>
             )}
@@ -522,9 +522,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
           </div>
         )}
         {signals.clarity !== 'green' && (
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3 flex items-center gap-3">
-            <Sparkles size={16} className="text-[#98b3ff] flex-shrink-0" />
-            <p className="text-[13px] text-[#98b3ff]/70">
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-4 py-3 flex items-center gap-3">
+            <Sparkles size={16} className="text-[var(--link)] flex-shrink-0" />
+            <p className="text-[13px] text-[var(--link)]/70">
               Strengthen your Clarity signal first — your LinkedIn sections will be sharper once your Career Profile is defined.
             </p>
           </div>
@@ -566,7 +566,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                   key={section}
                   className={cn(
                   'h-1.5 flex-1',
-                  editor.sectionsCompleted.includes(section) ? 'bg-[#b5dec2]' : 'bg-[var(--line-strong)]',
+                  editor.sectionsCompleted.includes(section) ? 'bg-[var(--badge-green-text)]' : 'bg-[var(--line-strong)]',
                 )}
                 />
               ))}
@@ -601,9 +601,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                 className={cn(
                   'h-1.5 flex-1',
                   editor.sectionsCompleted.includes(s)
-                    ? 'bg-[#b5dec2]'
+                    ? 'bg-[var(--badge-green-text)]'
                     : s === section
-                    ? 'bg-[#98b3ff]'
+                    ? 'bg-[var(--link)]'
                     : 'bg-[var(--line-strong)]',
                 )}
               />
@@ -616,9 +616,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                 className={cn(
                   'flex-1 text-center text-[12px] font-medium uppercase tracking-wide',
                   editor.sectionsCompleted.includes(s)
-                    ? 'text-[#b5dec2]/70'
+                    ? 'text-[var(--badge-green-text)]/70'
                     : s === section
-                    ? 'text-[#98b3ff]/80'
+                    ? 'text-[var(--link)]/80'
                     : 'text-[var(--text-soft)]',
                 )}
               >
@@ -631,19 +631,19 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
         {/* Section draft */}
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <PenLine size={16} className="text-[#98b3ff]" />
+            <PenLine size={16} className="text-[var(--link)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">{label}</h3>
             {scores && (
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                  scores.keyword_coverage >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                  scores.keyword_coverage >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
                   Keywords {scores.keyword_coverage}
                 </span>
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                  scores.positioning_alignment >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                  scores.positioning_alignment >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
                   Positioning {scores.positioning_alignment}
                 </span>
@@ -651,7 +651,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
             )}
           </div>
 
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.03] p-4 mb-4">
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.03] p-4 mb-4">
             <pre className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
               {editor.currentDraft}
             </pre>
@@ -678,7 +678,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                   value={revisionFeedback}
                   onChange={(e) => setRevisionFeedback(e.target.value)}
                   placeholder="What would you like changed?"
-                  className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px]"
+                  className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 min-h-[80px]"
                 />
                 <GlassButton
                   onClick={handleRevise}
@@ -706,7 +706,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
       <div className="flex flex-col gap-4">
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Check size={16} className="text-[#b5dec2]" />
+            <Check size={16} className="text-[var(--badge-green-text)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Updated Profile Sections</h3>
           </div>
           <div className="space-y-3">
@@ -764,7 +764,7 @@ function SectionResult({ label, content }: { label: string; content: string }) {
           onClick={handleCopy}
           className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
         >
-          {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
+          {copied ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
         </button>
       </div>
       <p className="text-[12px] text-[var(--text-soft)] leading-relaxed line-clamp-3">{content}</p>
@@ -779,7 +779,7 @@ function ProfileScoreRing({ score, label }: { score: number; label: string }) {
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
   const strokeColor =
-    score >= 80 ? '#b5dec2' : score >= 60 ? '#f0d99f' : '#f0b8b8';
+    score >= 80 ? 'var(--badge-green-text)' : score >= 60 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="flex flex-col items-center gap-1.5">
@@ -834,11 +834,11 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-5">
-          <PenLine size={18} className="text-[#98b3ff]" />
+          <PenLine size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Quick Profile Check</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Sparkles size={24} className="text-[#98b3ff]/40 mb-3" />
+          <Sparkles size={24} className="text-[var(--link)]/40 mb-3" />
           <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
             Run a fast profile check to see what to tighten first.
           </p>
@@ -852,9 +852,9 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
-        <PenLine size={18} className="text-[#98b3ff]" />
+        <PenLine size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Quick Profile Check</h3>
-        <span className="ml-auto text-[13px] text-[#b5dec2]/70 flex items-center gap-1">
+        <span className="ml-auto text-[13px] text-[var(--badge-green-text)]/70 flex items-center gap-1">
           <Check size={11} />
           Comparison ready
         </span>
@@ -867,15 +867,15 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
             <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Current</div>
             <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">{currentHeadline}</p>
           </div>
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] p-3">
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] p-3">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[12px] text-[#98b3ff]/60 uppercase tracking-wider">Optimized</span>
+              <span className="text-[12px] text-[var(--link)]/60 uppercase tracking-wider">Optimized</span>
               <button
                 type="button"
                 onClick={() => handleCopy(headline, 'headline')}
                 className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
               >
-                {copied === 'headline' ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
+                {copied === 'headline' ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
               </button>
             </div>
             <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">{headline}</p>
@@ -890,15 +890,15 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
             <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Current</div>
             <p className="text-[12px] text-[var(--text-soft)] leading-relaxed line-clamp-3">{currentAbout}</p>
           </div>
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] p-3">
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] p-3">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[12px] text-[#98b3ff]/60 uppercase tracking-wider">Optimized</span>
+              <span className="text-[12px] text-[var(--link)]/60 uppercase tracking-wider">Optimized</span>
               <button
                 type="button"
                 onClick={() => handleCopy(about, 'about')}
                 className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
               >
-                {copied === 'about' ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
+                {copied === 'about' ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
               </button>
             </div>
             <p className="text-[12px] text-[var(--text-soft)] leading-relaxed line-clamp-3">{about}</p>
@@ -916,7 +916,7 @@ function FiftyGroupsGuide() {
     <GlassCard className="p-6 mt-6">
       <details>
         <summary className="cursor-pointer flex items-center gap-2 text-[14px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors list-none">
-          <Users size={16} className="text-[#98b3ff]" />
+          <Users size={16} className="text-[var(--link)]" />
           The 50 Groups Strategy
           <span className="ml-auto text-[13px] text-[var(--text-soft)] font-normal">Coaching Guide</span>
         </summary>
@@ -1024,7 +1024,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
         {selectedReport && (
           <GlassCard className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Clock size={16} className="text-[#98b3ff]" />
+              <Clock size={16} className="text-[var(--link)]" />
               <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
                 {selectedReport.target_role || 'Content Plan'}
               </h3>
@@ -1043,7 +1043,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
               {selectedReport.quality_score > 0 && (
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                  selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                  selectedReport.quality_score >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
                   Score {selectedReport.quality_score}
                 </span>
@@ -1101,7 +1101,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                     type="button"
                     onClick={() => void handleLoadReport(saved.id)}
                     disabled={loadingReportId === saved.id}
-                    className="w-full text-left rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[#98b3ff]/25 hover:bg-[#98b3ff]/[0.03] px-4 py-3 transition-all flex items-center gap-3 disabled:opacity-50"
+                    className="w-full text-left rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--link)]/25 hover:bg-[var(--link)]/[0.03] px-4 py-3 transition-all flex items-center gap-3 disabled:opacity-50"
                   >
                     <Calendar size={13} className="text-[var(--text-soft)] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -1116,7 +1116,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                     {saved.quality_score > 0 && (
                       <span className={cn(
                         'shrink-0 rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
-                        saved.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                        saved.quality_score >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                       )}>
                         {saved.quality_score}
                       </span>
@@ -1164,7 +1164,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-2 text-[12px] font-medium transition-colors rounded-t-lg border-b-2 -mb-px',
                   calendarView === view.id
-                    ? 'text-[var(--text-strong)] border-[#98b3ff] bg-[#98b3ff]/[0.04]'
+                    ? 'text-[var(--text-strong)] border-[var(--link)] bg-[var(--link)]/[0.04]'
                     : 'text-[var(--text-soft)] border-transparent hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)]',
                 )}
               >
@@ -1183,7 +1183,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
         {calendarView === 'calendar' && (
           <GlassCard className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar size={18} className="text-[#98b3ff]" />
+              <Calendar size={18} className="text-[var(--link)]" />
               <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Content Plan</h3>
               {calendar.postCount !== null && (
                 <span className="ml-auto text-[13px] text-[var(--text-soft)]">{calendar.postCount} posts planned</span>
@@ -1266,7 +1266,7 @@ function ResultsSnapshot({ qualityScore }: { qualityScore: number | null }) {
     <GlassCard className="p-6">
       <div className="eyebrow-label">Step 3 of 3</div>
       <div className="mt-2 flex items-center gap-2">
-        <BarChart3 size={18} className="text-[#98b3ff]" />
+        <BarChart3 size={18} className="text-[var(--link)]" />
         <h3 className="text-[18px] font-semibold text-[var(--text-strong)]">Review what is landing and what still needs work</h3>
       </div>
       <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-soft)]">
@@ -1303,7 +1303,7 @@ function ResultsSnapshot({ qualityScore }: { qualityScore: number | null }) {
 
         <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
           <div className="flex items-center gap-2">
-            <BarChart3 size={16} className="text-[#98b3ff]" />
+            <BarChart3 size={16} className="text-[var(--link)]" />
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
               Platform Metrics
             </div>
@@ -1322,8 +1322,8 @@ function ResultsSnapshot({ qualityScore }: { qualityScore: number | null }) {
           </div>
 
           {posts.length > 0 ? (
-            <div className="mt-4 rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.05] px-4 py-3 flex items-center gap-3">
-              <Check size={14} className="text-[#b5dec2] flex-shrink-0" />
+            <div className="mt-4 rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.05] px-4 py-3 flex items-center gap-3">
+              <Check size={14} className="text-[var(--badge-green-text)] flex-shrink-0" />
               <span className="text-[12px] text-[var(--text-soft)]">
                 Approval rate: <span className="text-[var(--text-muted)] font-medium">{approvalRate}%</span>
                 <span className="text-[var(--text-soft)] ml-1">({approvedOrPublished} of {posts.length} posts approved or published)</span>
@@ -1393,9 +1393,9 @@ function PostLibrary() {
   }
 
   const STATUS_COLORS: Record<string, string> = {
-    published: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    approved: 'text-[#98b3ff] bg-[#98b3ff]/10',
-    draft: 'text-[#f0d99f] bg-[#f0d99f]/10',
+    published: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
+    approved: 'text-[var(--link)] bg-[var(--link)]/10',
+    draft: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
   };
 
   return (
@@ -1432,7 +1432,7 @@ function PostLibrary() {
               className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
               {copiedId === post.id ? (
-                <Check size={12} className="text-[#b5dec2]" />
+                <Check size={12} className="text-[var(--badge-green-text)]" />
               ) : (
                 <Copy size={12} />
               )}
@@ -1443,7 +1443,7 @@ function PostLibrary() {
               <button
                 type="button"
                 onClick={() => handleMarkPublished(post.id)}
-                className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[#b5dec2] transition-colors ml-2"
+                className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--badge-green-text)] transition-colors ml-2"
               >
                 <Check size={12} />
                 Mark Published
@@ -1498,9 +1498,9 @@ function KeywordMultiplierNudge() {
 
   const colorClass =
     postedThisWeek >= 4
-      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
+      ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/15'
       : postedThisWeek >= 2
-      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/15'
+      ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/15'
       : 'text-red-400 bg-red-400/10 border-red-400/15';
 
   return (
@@ -1701,7 +1701,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
                     className={cn(
                       'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
                       activeTab === tab
-                        ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.08] text-[#98b3ff]'
+                        ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.08] text-[var(--link)]'
                         : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
                     )}
                   >
@@ -1718,7 +1718,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               Right now
             </div>
             <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
-              <ActiveStageIcon size={15} className="text-[#98b3ff]" />
+              <ActiveStageIcon size={15} className="text-[var(--link)]" />
               {activeStage.focusTitle}
             </div>
             <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
@@ -1812,7 +1812,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             {optimizer.experienceEntries.length > 0 && (
               <GlassCard className="p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Linkedin size={18} className="text-[#afc4ff]" />
+                  <Linkedin size={18} className="text-[var(--link)]" />
                   <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Rewritten Experience Entries</h3>
                   <span className="ml-auto text-[13px] text-[var(--text-soft)]">
                     {optimizer.experienceEntries.length} role{optimizer.experienceEntries.length !== 1 ? 's' : ''}

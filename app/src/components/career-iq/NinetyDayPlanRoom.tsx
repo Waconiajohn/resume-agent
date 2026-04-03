@@ -38,31 +38,31 @@ const PHASES = [
     days: 'Days 1–30',
     label: 'Listen & Learn',
     theme: 'Absorb context and build relationships',
-    color: 'text-[#afc4ff]',
-    bg: 'bg-[#afc4ff]/10',
-    border: 'border-[#afc4ff]/15',
-    accent: '#afc4ff',
-    dot: 'bg-[#afc4ff]',
+    color: 'text-[var(--link)]',
+    bg: 'bg-[var(--link)]/10',
+    border: 'border-[var(--link)]/15',
+    accent: 'var(--link)',
+    dot: 'bg-[var(--link)]',
   },
   {
     days: 'Days 31–60',
     label: 'Contribute & Build',
     theme: 'Execute quick wins and build confidence',
-    color: 'text-[#b5dec2]',
-    bg: 'bg-[#b5dec2]/10',
-    border: 'border-[#b5dec2]/15',
-    accent: '#b5dec2',
-    dot: 'bg-[#b5dec2]',
+    color: 'text-[var(--badge-green-text)]',
+    bg: 'bg-[var(--badge-green-text)]/10',
+    border: 'border-[var(--badge-green-text)]/15',
+    accent: 'var(--badge-green-text)',
+    dot: 'bg-[var(--badge-green-text)]',
   },
   {
     days: 'Days 61–90',
     label: 'Lead & Deliver',
     theme: 'Drive strategy and deliver results',
-    color: 'text-[#f0d99f]',
-    bg: 'bg-[#f0d99f]/10',
-    border: 'border-[#f0d99f]/15',
-    accent: '#f0d99f',
-    dot: 'bg-[#f0d99f]',
+    color: 'text-[var(--badge-amber-text)]',
+    bg: 'bg-[var(--badge-amber-text)]/10',
+    border: 'border-[var(--badge-amber-text)]/15',
+    accent: 'var(--badge-amber-text)',
+    dot: 'bg-[var(--badge-amber-text)]',
   },
 ];
 
@@ -102,7 +102,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const filled = (score / 100) * circumference;
-  const color = score >= 80 ? '#b5dec2' : score >= 60 ? '#f0d99f' : '#f0b8b8';
+  const color = score >= 80 ? 'var(--badge-green-text)' : score >= 60 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
   const label = score >= 80 ? 'Strong' : score >= 60 ? 'Solid' : 'Developing';
 
   return (
@@ -174,15 +174,15 @@ function ActivityFeed({
 
   return (
     <GlassCard className="p-8 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-72 h-72 rounded-full bg-[#afc4ff]/[0.04] blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-72 h-72 rounded-full bg-[var(--link)]/[0.04] blur-3xl pointer-events-none" />
 
       <div className="flex items-center gap-4 mb-8">
         <div className="relative">
-          <div className="rounded-xl bg-[#afc4ff]/10 p-3">
-            <Map size={20} className="text-[#afc4ff]" />
+          <div className="rounded-xl bg-[var(--link)]/10 p-3">
+            <Map size={20} className="text-[var(--link)]" />
           </div>
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#b5dec2]/20 border-2 border-[#b5dec2]/40 flex items-center justify-center">
-            <Loader2 size={8} className="text-[#b5dec2] animate-spin" />
+          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[var(--badge-green-text)]/20 border-2 border-[var(--badge-green-text)]/40 flex items-center justify-center">
+            <Loader2 size={8} className="text-[var(--badge-green-text)] animate-spin" />
           </div>
         </div>
         <div>
@@ -207,7 +207,7 @@ function ActivityFeed({
             const opacity = Math.max(0.3, 1 - (activityMessages.length - 1 - i) * 0.08);
             return (
               <div key={msg.id} className="flex items-start gap-3 py-1.5" style={{ opacity }}>
-                <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50 mt-2 flex-shrink-0" />
+                <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/50 mt-2 flex-shrink-0" />
                 <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
               </div>
             );
@@ -274,10 +274,10 @@ function ReportView({
 
   const scoreColor =
     qualityScore !== null && qualityScore >= 80
-      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
+      ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
       : qualityScore !== null && qualityScore >= 60
-      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-      : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20';
+      ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
+      : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20';
 
   return (
     <div className="space-y-6">
@@ -299,7 +299,7 @@ function ReportView({
         )}
         <GlassButton variant="ghost" onClick={handleCopy} size="sm">
           {copied ? (
-            <Check size={13} className="mr-1.5 text-[#b5dec2]" />
+            <Check size={13} className="mr-1.5 text-[var(--badge-green-text)]" />
           ) : (
             <Copy size={13} className="mr-1.5" />
           )}
@@ -309,10 +309,10 @@ function ReportView({
 
       {/* Header card */}
       <GlassCard className="p-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[#afc4ff]/[0.04] blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[var(--link)]/[0.04] blur-3xl pointer-events-none" />
         <div className="flex items-start gap-4">
-          <div className="rounded-xl bg-[#afc4ff]/10 p-3 flex-shrink-0">
-            <Map size={20} className="text-[#afc4ff]" />
+          <div className="rounded-xl bg-[var(--link)]/10 p-3 flex-shrink-0">
+            <Map size={20} className="text-[var(--link)]" />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-[18px] font-semibold text-[var(--text-strong)]">30-60-90 Plan</h2>
@@ -343,10 +343,10 @@ function ReportView({
       </div>
 
       {/* Quick wins callout */}
-      <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.03] px-5 py-4">
+      <div className="rounded-xl border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-text)]/[0.03] px-5 py-4">
         <div className="flex items-center gap-2 mb-3">
-          <Zap size={14} className="text-[#f0d99f]" />
-          <span className="text-[12px] font-semibold text-[#f0d99f]">First-Week Priority</span>
+          <Zap size={14} className="text-[var(--badge-amber-text)]" />
+          <span className="text-[12px] font-semibold text-[var(--badge-amber-text)]">First-Week Priority</span>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
           Your plan includes specific quick wins designed to demonstrate competence in the first 30 days — without reorganizing the team or pushing premature change. Listen first, earn trust, then lead.
@@ -356,10 +356,10 @@ function ReportView({
       {/* Key sections legend */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { icon: Users, label: 'Stakeholder Map', desc: 'Who to meet, in what order', color: 'text-[#afc4ff]', bg: 'bg-[#afc4ff]/10' },
-          { icon: Trophy, label: 'Quick Wins', desc: 'Early impact opportunities', color: 'text-[#b5dec2]', bg: 'bg-[#b5dec2]/10' },
-          { icon: Flag, label: 'Measurable Milestones', desc: 'Observable success markers', color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10' },
-          { icon: MessageSquare, label: 'Manager Talking Points', desc: 'How to frame the plan upward', color: 'text-[#afc4ff]', bg: 'bg-[#afc4ff]/10' },
+          { icon: Users, label: 'Stakeholder Map', desc: 'Who to meet, in what order', color: 'text-[var(--link)]', bg: 'bg-[var(--link)]/10' },
+          { icon: Trophy, label: 'Quick Wins', desc: 'Early impact opportunities', color: 'text-[var(--badge-green-text)]', bg: 'bg-[var(--badge-green-text)]/10' },
+          { icon: Flag, label: 'Measurable Milestones', desc: 'Observable success markers', color: 'text-[var(--badge-amber-text)]', bg: 'bg-[var(--badge-amber-text)]/10' },
+          { icon: MessageSquare, label: 'Manager Talking Points', desc: 'How to frame the plan upward', color: 'text-[var(--link)]', bg: 'bg-[var(--link)]/10' },
         ].map(({ icon: Icon, label, desc, color, bg }) => (
           <div key={label} className="flex items-start gap-2.5 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-3">
             <div className={cn('rounded-lg p-1.5 flex-shrink-0', bg)}>
@@ -375,10 +375,10 @@ function ReportView({
 
       {/* Full plan prose */}
       <GlassCard className="p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#afc4ff]/[0.03] blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[var(--link)]/[0.03] blur-3xl pointer-events-none" />
 
         <div className="flex items-center gap-3 mb-6">
-          <ChevronRight size={14} className="text-[#afc4ff]/60" />
+          <ChevronRight size={14} className="text-[var(--link)]/60" />
           <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Full Strategic Plan</span>
         </div>
 
@@ -386,13 +386,13 @@ function ReportView({
           className="prose prose-invert prose-sm max-w-none
             prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
             prose-h1:text-[18px] prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
-            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3 prose-h2:text-[#afc4ff]/80
+            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3 prose-h2:text-[var(--link)]/80
             prose-h3:text-[13px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
             prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
             prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
             prose-strong:text-[var(--text-muted)]
             prose-em:text-[var(--text-soft)]
-            prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
+            prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
             prose-hr:border-[var(--line-soft)]
             prose-table:text-[12px] prose-table:text-[var(--text-soft)]
             prose-th:text-[var(--text-soft)] prose-th:font-semibold prose-th:border-[var(--line-soft)]
@@ -402,11 +402,11 @@ function ReportView({
       </GlassCard>
 
       {/* Guardrail reminder */}
-      <div className="rounded-xl border border-[#f0b8b8]/15 bg-[#f0b8b8]/[0.03] px-5 py-4">
+      <div className="rounded-xl border border-[var(--badge-red-text)]/15 bg-[var(--badge-red-text)]/[0.03] px-5 py-4">
         <div className="flex items-start gap-3">
-          <ShieldAlert size={14} className="text-[#f0b8b8] mt-0.5 flex-shrink-0" />
+          <ShieldAlert size={14} className="text-[var(--badge-red-text)] mt-0.5 flex-shrink-0" />
           <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
-            <span className="text-[#f0b8b8]/80 font-semibold">Guardrail: </span>
+            <span className="text-[var(--badge-red-text)]/80 font-semibold">Guardrail: </span>
             Avoid reorganizing the team in the first 30 days. This is the single most common mistake new executives make. Build trust and earn the right to drive organizational change first.
           </p>
         </div>
@@ -434,7 +434,7 @@ function FieldLabel({
       className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5"
     >
       {label}
-      {required && <span className="text-[#afc4ff]/60 ml-1">*</span>}
+      {required && <span className="text-[var(--link)]/60 ml-1">*</span>}
       {optional && (
         <span className="text-[var(--text-soft)] normal-case font-normal ml-1">(optional)</span>
       )}
@@ -443,7 +443,7 @@ function FieldLabel({
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors';
+  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors';
 
 // --- Main component ---
 
@@ -595,7 +595,7 @@ export function NinetyDayPlanRoom({
         </div>
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CheckCircle2 size={18} className="text-[#b5dec2]" />
+            <CheckCircle2 size={18} className="text-[var(--badge-green-text)]" />
             <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Research Ready</h3>
           </div>
           <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
@@ -659,8 +659,8 @@ export function NinetyDayPlanRoom({
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f0b8b8]" />
-            <span className="text-[13px] text-[#f0b8b8]">{error}</span>
+            <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
+            <span className="text-[13px] text-[var(--badge-red-text)]">{error}</span>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
@@ -676,8 +676,8 @@ export function NinetyDayPlanRoom({
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Header */}
       <div className="flex gap-3">
-        <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 self-start shrink-0">
-          <Map size={20} className="text-[#afc4ff]" />
+        <div className="rounded-xl bg-[var(--link)]/10 p-2.5 self-start shrink-0">
+          <Map size={20} className="text-[var(--link)]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">30-60-90 Plan</h1>
@@ -741,8 +741,8 @@ export function NinetyDayPlanRoom({
           loadingResume
             ? 'text-[var(--text-soft)]'
             : loadedResumeText
-            ? 'text-[#b5dec2]/70'
-            : 'text-[#f0d99f]/70',
+            ? 'text-[var(--badge-green-text)]/70'
+            : 'text-[var(--badge-amber-text)]/70',
         )}
       >
         {loadingResume ? (
@@ -768,14 +768,14 @@ export function NinetyDayPlanRoom({
           onChange={(e) => setManualResumeText(e.target.value)}
           placeholder="Paste your resume text here..."
           rows={5}
-          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors resize-none leading-relaxed"
+          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors resize-none leading-relaxed"
         />
       )}
 
       {/* Section 1: Role details */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Briefcase size={16} className="text-[#afc4ff]" />
+          <Briefcase size={16} className="text-[var(--link)]" />
           <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Role Details</h2>
           <div className="flex-1 h-px bg-[var(--accent-muted)]" />
         </div>
@@ -821,7 +821,7 @@ export function NinetyDayPlanRoom({
       {/* Section 2: Reporting structure */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <UserCheck size={16} className="text-[#b5dec2]" />
+          <UserCheck size={16} className="text-[var(--badge-green-text)]" />
           <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Reporting Structure</h2>
           <div className="flex-1 h-px bg-[var(--accent-muted)]" />
           <span className="text-[13px] text-[var(--text-soft)]">optional — improves stakeholder map</span>
@@ -863,22 +863,22 @@ export function NinetyDayPlanRoom({
             {
               icon: Users,
               text: 'Stakeholder map with engagement priorities and talking points',
-              color: 'text-[#afc4ff]',
+              color: 'text-[var(--link)]',
             },
             {
               icon: Target,
               text: 'Quick wins that build credibility without overstepping',
-              color: 'text-[#b5dec2]',
+              color: 'text-[var(--badge-green-text)]',
             },
             {
               icon: Calendar,
               text: 'Three-phase milestone roadmap with measurable outcomes',
-              color: 'text-[#afc4ff]',
+              color: 'text-[var(--link)]',
             },
             {
               icon: Building2,
               text: 'Manager talking points to frame your plan upward',
-              color: 'text-[#f0d99f]',
+              color: 'text-[var(--badge-amber-text)]',
             },
           ].map(({ icon: Icon, text, color }) => (
             <div key={text} className="flex items-start gap-2">
@@ -891,7 +891,7 @@ export function NinetyDayPlanRoom({
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 text-[13px] text-[#f0b8b8] bg-[#f0b8b8]/5 border border-[#f0b8b8]/15 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-[13px] text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/5 border border-[var(--badge-red-text)]/15 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="flex-shrink-0" />
           {formError}
         </div>

@@ -23,10 +23,10 @@ const CONTENT_TYPE_LABELS_SHORT: Record<string, string> = {
 };
 
 const CONTENT_TYPE_COLORS: Record<string, string> = {
-  thought_leadership: 'text-[#afc4ff] bg-[#afc4ff]/10',
-  storytelling: 'text-[#b5dec2] bg-[#b5dec2]/10',
-  engagement: 'text-[#f0d99f] bg-[#f0d99f]/10',
-  industry_insight: 'text-[#98b3ff] bg-[#98b3ff]/10',
+  thought_leadership: 'text-[var(--link)] bg-[var(--link)]/10',
+  storytelling: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
+  engagement: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
+  industry_insight: 'text-[var(--link)] bg-[var(--link)]/10',
   how_to: 'text-[#c9b8ff] bg-[#c9b8ff]/10',
   case_study: 'text-[#ffc4a0] bg-[#ffc4a0]/10',
   career_lesson: 'text-[#a0e0ff] bg-[#a0e0ff]/10',
@@ -47,9 +47,9 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
   const typeColor = CONTENT_TYPE_COLORS[post.content_type] ?? 'text-[var(--text-soft)] bg-[var(--accent-muted)]';
   const scoreColor =
     post.quality_score >= 80
-      ? 'text-[#b5dec2] bg-[#b5dec2]/10'
+      ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10'
       : post.quality_score >= 60
-      ? 'text-[#f0d99f] bg-[#f0d99f]/10'
+      ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10'
       : 'text-[var(--text-soft)] bg-[var(--accent-muted)]';
 
   return (
@@ -90,7 +90,7 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
               {[post.hook, '', post.body, '', post.cta].join('\n')}
             </pre>
             {post.hashtags.length > 0 && (
-              <p className="mt-2 text-[13px] text-[#98b3ff]/50">
+              <p className="mt-2 text-[13px] text-[var(--link)]/50">
                 {post.hashtags.map((h) => `#${h}`).join(' ')}
               </p>
             )}
@@ -101,7 +101,7 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
               onClick={handleCopy}
               className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
-              {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
+              {copied ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
               {copied ? 'Copied!' : 'Copy post'}
             </button>
             {post.posting_time && (
@@ -173,8 +173,8 @@ export function SeriesPlanner({ posts, onWritePost }: { posts: StructuredPost[];
                   className={cn(
                     'ml-auto text-[12px] font-medium px-1.5 py-0.5 rounded-full',
                     avgScore >= 80
-                      ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-                      : 'text-[#f0d99f] bg-[#f0d99f]/10',
+                      ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10'
+                      : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                   )}
                 >
                   Avg {avgScore}

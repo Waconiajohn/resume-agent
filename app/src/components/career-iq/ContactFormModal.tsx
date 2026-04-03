@@ -80,7 +80,7 @@ export function ContactFormModal({
   };
 
   const inputClass =
-    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
+    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40';
   const labelClass = 'block text-[13px] text-[var(--text-soft)] mb-1';
 
   return (

@@ -31,9 +31,9 @@ const RANK_LABELS: Record<string, string> = {
 };
 
 const RANK_COLORS: Record<string, string> = {
-  top_10_percent: 'text-[#b5dec2] border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]',
-  top_25_percent: 'text-[#98b3ff] border-[#98b3ff]/20 bg-[#98b3ff]/[0.04]',
-  average: 'text-[#f0d99f] border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]',
+  top_10_percent: 'text-[var(--badge-green-text)] border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.04]',
+  top_25_percent: 'text-[var(--link)] border-[var(--link)]/20 bg-[var(--link)]/[0.04]',
+  average: 'text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04]',
   below_average: 'text-[#ffc4a0] border-[#ffc4a0]/20 bg-[#ffc4a0]/[0.04]',
   unlikely_to_appear: 'text-red-400 border-red-400/20 bg-red-400/[0.04]',
 };
@@ -97,18 +97,18 @@ export function RecruiterSimulator() {
     !result
       ? ''
       : result.visibility_score >= 80
-      ? 'text-[#b5dec2]'
+      ? 'text-[var(--badge-green-text)]'
       : result.visibility_score >= 60
-      ? 'text-[#98b3ff]'
+      ? 'text-[var(--link)]'
       : result.visibility_score >= 40
-      ? 'text-[#f0d99f]'
+      ? 'text-[var(--badge-amber-text)]'
       : 'text-red-400';
 
   return (
     <div className="flex flex-col gap-4">
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Search size={16} className="text-[#98b3ff]" />
+          <Search size={16} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Recruiter Search Simulator</h3>
         </div>
         <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
@@ -125,7 +125,7 @@ export function RecruiterSimulator() {
               value={searchTerms}
               onChange={(e) => setSearchTerms(e.target.value)}
               placeholder="e.g. VP Operations manufacturing supply chain"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
           </div>
 
@@ -138,7 +138,7 @@ export function RecruiterSimulator() {
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="Your current LinkedIn headline"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
           </div>
 
@@ -151,7 +151,7 @@ export function RecruiterSimulator() {
               onChange={(e) => setAbout(e.target.value)}
               placeholder="Paste your About section for a more detailed analysis..."
               rows={3}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
           </div>
 
@@ -164,7 +164,7 @@ export function RecruiterSimulator() {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="e.g. Supply Chain, P&L Management, Lean Manufacturing"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
           </div>
 
@@ -224,7 +224,7 @@ export function RecruiterSimulator() {
               <p className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">Keyword Matches</p>
               <div className="flex flex-wrap gap-1.5">
                 {result.keyword_matches.map((kw) => (
-                  <span key={kw} className="text-[12px] text-[#b5dec2] bg-[#b5dec2]/10 px-2 py-0.5 rounded-full">
+                  <span key={kw} className="text-[12px] text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 px-2 py-0.5 rounded-full">
                     {kw}
                   </span>
                 ))}
@@ -237,7 +237,7 @@ export function RecruiterSimulator() {
               <p className="text-[12px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">Missing Keywords</p>
               <div className="flex flex-wrap gap-1.5">
                 {result.keyword_gaps.map((kw) => (
-                  <span key={kw} className="text-[12px] text-[#f0d99f] bg-[#f0d99f]/10 px-2 py-0.5 rounded-full">
+                  <span key={kw} className="text-[12px] text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 px-2 py-0.5 rounded-full">
                     {kw}
                   </span>
                 ))}
@@ -245,10 +245,10 @@ export function RecruiterSimulator() {
             </div>
           )}
 
-          <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.03] px-4 py-3 mb-4 flex items-start gap-2">
-            <Zap size={13} className="text-[#98b3ff] flex-shrink-0 mt-0.5" />
+          <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.03] px-4 py-3 mb-4 flex items-start gap-2">
+            <Zap size={13} className="text-[var(--link)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] font-medium text-[#98b3ff]/80 mb-0.5">Top Recommendation</p>
+              <p className="text-[13px] font-medium text-[var(--link)]/80 mb-0.5">Top Recommendation</p>
               <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{result.top_recommendation}</p>
             </div>
           </div>

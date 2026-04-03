@@ -75,9 +75,9 @@ function HomeGuideCard({
   const secondaryAction = guidance.secondary;
 
   return (
-    <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
+    <GlassCard className="overflow-hidden border-[var(--link)]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
       <div className="p-4 sm:p-5">
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/78">
           {guidance.eyebrow}
         </div>
         <h1 className="mt-2.5 max-w-3xl text-[1.55rem] font-semibold leading-tight text-[var(--text-strong)] sm:text-[1.75rem]">
@@ -110,7 +110,7 @@ function HomeGuideCard({
             <button
               type="button"
               onClick={() => (secondaryAction.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(secondaryAction.room))}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:border-[#98b3ff]/35 hover:text-white"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:border-[var(--link)]/35 hover:text-white"
             >
               {secondaryAction.label}
             </button>
@@ -125,7 +125,7 @@ function HomeGuideCard({
           description="Tighten the positioning story every other tool reads."
           actionLabel="Review story"
           onClick={onRefineWhyMe}
-          className="border-[#98b3ff]/18 bg-[#98b3ff]/[0.08]"
+          className="border-[var(--link)]/18 bg-[var(--link)]/[0.08]"
         />
         <StepCard
           icon={FileText}
@@ -143,7 +143,7 @@ function HomeGuideCard({
           description="Search roles, save the best ones, and keep applications moving."
           actionLabel="Open jobs"
           onClick={() => onNavigateRoom?.('jobs')}
-          className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
+          className="border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06]"
         />
       </div>
     </GlassCard>
@@ -169,7 +169,7 @@ function StepCard({
     <div className={`rounded-2xl border p-3.5 ${className ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
       <div className="flex items-center gap-2">
         <div className="rounded-xl bg-black/20 p-2">
-          <Icon size={16} className="text-[#98b3ff]" />
+          <Icon size={16} className="text-[var(--link)]" />
         </div>
         <div className="text-sm font-semibold text-[var(--text-strong)]">{title}</div>
       </div>
@@ -178,7 +178,7 @@ function StepCard({
         <button
           type="button"
           onClick={onClick}
-          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[#98b3ff] transition-colors hover:text-[#c9d7ff]"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[var(--link)] transition-colors hover:text-[var(--link)]"
         >
           {actionLabel}
           <ArrowRight size={12} />

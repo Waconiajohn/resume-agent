@@ -92,7 +92,7 @@ function normalizeData(data: GapAnalysisData & Record<string, unknown>) {
 const classificationConfig = {
   strong: {
     icon: CheckCircle,
-    color: 'text-[#a8d7b8]',
+    color: 'text-[var(--badge-green-text)]',
     border: 'border-[var(--line-soft)]',
     bg: 'bg-[var(--accent-muted)]',
     label: 'Strong Match',
@@ -152,7 +152,7 @@ function RequirementRow({ item, userContext, onUserContextChange }: {
                 onBlur={() => { if (!userContext) setShowInput(false); }}
                 placeholder="Add evidence or dispute this assessment..."
                 autoFocus
-                className="w-full rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+                className="w-full rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
               />
             </div>
           )}
@@ -213,9 +213,9 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
             />
           </div>
           <p className="mt-2 text-[13px] text-[var(--text-soft)]">
-            <span className="text-[#b5dec2] font-medium">{strong_count} strong</span>
+            <span className="text-[var(--badge-green-text)] font-medium">{strong_count} strong</span>
             {', '}
-            <span className="text-[#f0d99f] font-medium">{partial_count} partial</span>
+            <span className="text-[var(--badge-amber-text)] font-medium">{partial_count} partial</span>
             {', '}
             <span className="text-[#dfa9a9] font-medium">{gap_count} gaps</span>
           </p>

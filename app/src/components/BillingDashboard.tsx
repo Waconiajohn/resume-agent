@@ -251,7 +251,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <AlertCircle className="h-8 w-8 text-[#f0b8b8]" />
+        <AlertCircle className="h-8 w-8 text-[var(--badge-red-text)]" />
         <p className="text-sm text-[var(--text-soft)]">{error}</p>
         <GlassButton variant="ghost" onClick={() => void fetchSubscription()}>
           <RefreshCw className="h-4 w-4" />
@@ -357,7 +357,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       </GlassCard>
 
       {actionError && (
-        <div className="support-callout border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
+        <div className="support-callout border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/70">
           {actionError}
         </div>
       )}

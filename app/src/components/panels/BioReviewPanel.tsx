@@ -17,9 +17,9 @@ function BioCard({ bio, index }: { bio: BioVariant; index: number }) {
 
   const scoreColor =
     bio.quality_score >= 80
-      ? 'text-[#a8d7b8]'
+      ? 'text-[var(--badge-green-text)]'
       : bio.quality_score >= 65
-        ? 'text-[#f0d99f]'
+        ? 'text-[var(--badge-amber-text)]'
         : 'text-[#f0a9a9]';
 
   return (
@@ -83,9 +83,9 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
     quality_score == null
       ? 'text-[var(--text-soft)]'
       : quality_score >= 80
-        ? 'text-[#a8d7b8]'
+        ? 'text-[var(--badge-green-text)]'
         : quality_score >= 65
-          ? 'text-[#f0d99f]'
+          ? 'text-[var(--badge-amber-text)]'
           : 'text-[#f0a9a9]';
 
   // Compute edit placeholder from first bio if no report available
@@ -99,7 +99,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-[#afc4ff]" />
+            <User className="h-4 w-4 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Executive Bio Review</span>
           </div>
           <div className="flex items-center gap-2">
@@ -132,7 +132,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               onChange={(e) => setEditedReport(e.target.value)}
               rows={20}
               placeholder={editPlaceholder}
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2.5 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-y font-mono"
               aria-label="Edit bio collection directly"
             />
           </div>
@@ -155,7 +155,7 @@ export function BioReviewPanel({ data, onPipelineRespond }: BioReviewPanelProps)
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. Make the speaker bio more story-driven, shorten the LinkedIn bio to under 200 words, add a reference to board-level P&L responsibility..."
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-none"
               aria-label="Feedback for bio revision"
               autoFocus
             />

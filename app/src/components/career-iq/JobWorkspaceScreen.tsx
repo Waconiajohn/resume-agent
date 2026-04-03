@@ -82,7 +82,7 @@ export function JobWorkspaceScreen({
     return (
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-6">
         <GlassCard className="p-8">
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Job Workspace</div>
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Job Workspace</div>
           <h1 className="mt-2 text-xl font-semibold text-[var(--text-strong)]">Workspace not found</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-soft)]">
             We could not find saved assets linked to this job yet. Open Resume Builder to review recent tailored work or attach new assets to the application.
@@ -103,12 +103,12 @@ export function JobWorkspaceScreen({
           <button
             type="button"
             onClick={() => onNavigate?.(RESUME_BUILDER_SESSION_ROUTE)}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#98b3ff]"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--link)]"
           >
             <ArrowLeft size={14} />
             Back to Resume Builder
           </button>
-          <div className="mt-4 text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Job Workspace</div>
+          <div className="mt-4 text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Job Workspace</div>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--text-strong)]">{record.company}</h1>
           <p className="mt-2 text-sm text-[var(--text-soft)]">
             {record.role}. This view keeps the exact saved assets, stage history, and next moves for a single application in one place.
@@ -117,7 +117,7 @@ export function JobWorkspaceScreen({
 
         <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)]">
           <div className="flex items-center gap-2">
-            <BriefcaseBusiness size={14} className="text-[#98b3ff]" />
+            <BriefcaseBusiness size={14} className="text-[var(--link)]" />
             Exact assets reopen from here, not just the latest output for the tool.
           </div>
         </div>

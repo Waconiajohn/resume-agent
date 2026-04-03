@@ -69,10 +69,10 @@ function formatScheduledDate(dateStr: string): string | null {
 
 const STAGE_COLORS: Record<PipelineStage, string> = {
   Discovered: 'border-t-white/20',
-  Applied: 'border-t-[#98b3ff]/40',
-  Interviewing: 'border-t-[#f0d99f]/40',
-  Offer: 'border-t-[#b5dec2]/40',
-  Accepted: 'border-t-[#b5dec2]/60',
+  Applied: 'border-t-[var(--link)]/40',
+  Interviewing: 'border-t-[var(--badge-amber-text)]/40',
+  Offer: 'border-t-[var(--badge-green-text)]/40',
+  Accepted: 'border-t-[var(--badge-green-text)]/60',
 };
 
 interface ZoneYourPipelineProps {
@@ -122,7 +122,7 @@ function PipelineCardItem({
         'group rounded-xl border-t-2 border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 cursor-grab active:cursor-grabbing transition-all duration-150',
         'hover:border-[var(--line-strong)] hover:bg-[var(--accent-muted)] hover:shadow-lg hover:shadow-black/10',
         isStale && 'opacity-50 hover:opacity-80',
-        card.hasNewActivity && 'border-[#98b3ff]/20',
+        card.hasNewActivity && 'border-[var(--link)]/20',
         STAGE_COLORS[card.stage],
       )}
     >
@@ -134,7 +134,7 @@ function PipelineCardItem({
               {card.company}
             </span>
             {card.hasNewActivity && (
-              <span className="h-1.5 w-1.5 rounded-full bg-[#98b3ff] flex-shrink-0 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--link)] flex-shrink-0 animate-pulse" />
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -142,7 +142,7 @@ function PipelineCardItem({
               {card.role}
             </span>
             {card.stage === 'Interviewing' && card.interviewRound != null && (
-              <span className="flex-shrink-0 rounded bg-[#f0d99f]/15 border border-[#f0d99f]/20 px-1.5 py-px text-[12px] font-medium text-[#f0d99f]/80">
+              <span className="flex-shrink-0 rounded bg-[var(--badge-amber-text)]/15 border border-[var(--badge-amber-text)]/20 px-1.5 py-px text-[12px] font-medium text-[var(--badge-amber-text)]/80">
                 {ordinal(card.interviewRound)}
               </span>
             )}
@@ -173,7 +173,7 @@ function PipelineCardItem({
               : `${card.daysSinceMovement}d ago`}
         </span>
         {isStale && (
-          <span className="flex items-center gap-1 text-[#f0d99f] ml-auto">
+          <span className="flex items-center gap-1 text-[var(--badge-amber-text)] ml-auto">
             <MessageCircle size={11} />
             Follow up?
           </span>
@@ -186,9 +186,9 @@ function PipelineCardItem({
           type="button"
           onClick={(e) => { e.stopPropagation(); onInterviewPrepClick?.(card); }}
           className={cn(
-            'mt-2.5 w-full rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]',
-            'px-2.5 py-1.5 text-[12px] font-medium text-[#f0d99f]/70',
-            'hover:border-[#f0d99f]/35 hover:bg-[#f0d99f]/[0.08] hover:text-[#f0d99f] transition-colors',
+            'mt-2.5 w-full rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04]',
+            'px-2.5 py-1.5 text-[12px] font-medium text-[var(--badge-amber-text)]/70',
+            'hover:border-[var(--badge-amber-text)]/35 hover:bg-[var(--badge-amber-text)]/[0.08] hover:text-[var(--badge-amber-text)] transition-colors',
             'cursor-pointer',
           )}
         >
@@ -200,9 +200,9 @@ function PipelineCardItem({
           type="button"
           onClick={(e) => { e.stopPropagation(); onNegotiationPrepClick?.(card); }}
           className={cn(
-            'mt-2.5 w-full rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]',
-            'px-2.5 py-1.5 text-[12px] font-medium text-[#b5dec2]/70',
-            'hover:border-[#b5dec2]/35 hover:bg-[#b5dec2]/[0.08] hover:text-[#b5dec2] transition-colors',
+            'mt-2.5 w-full rounded-lg border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.04]',
+            'px-2.5 py-1.5 text-[12px] font-medium text-[var(--badge-green-text)]/70',
+            'hover:border-[var(--badge-green-text)]/35 hover:bg-[var(--badge-green-text)]/[0.08] hover:text-[var(--badge-green-text)] transition-colors',
             'cursor-pointer',
           )}
         >
@@ -348,7 +348,7 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
         <div className="flex items-center gap-4 text-[13px] text-[var(--text-soft)]">
           <span>{totalActive} active</span>
           <span className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#b5dec2]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-green-text)]" />
             {inMotion} in motion
           </span>
         </div>
@@ -364,7 +364,7 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
             <button
               type="button"
               onClick={() => onNavigateRoom?.('jobs')}
-              className="text-[#98b3ff]/60 hover:text-[#98b3ff] underline underline-offset-2 transition-colors"
+              className="text-[var(--link)]/60 hover:text-[var(--link)] underline underline-offset-2 transition-colors"
             >
               Job Search
             </button>
@@ -395,7 +395,7 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
                 <div
                   className={cn(
                     'space-y-2 min-h-[120px] rounded-xl p-1.5 transition-colors duration-150',
-                    isDragOver && 'bg-[#98b3ff]/[0.06] ring-1 ring-[#98b3ff]/20',
+                    isDragOver && 'bg-[var(--link)]/[0.06] ring-1 ring-[var(--link)]/20',
                   )}
                 >
                   {stageCards.map((card) => (
@@ -411,7 +411,7 @@ export function ZoneYourPipeline({ onNavigateRoom, onInterviewPrepClick, onNegot
                   {stageCards.length === 0 && (
                     <div className={cn(
                       'rounded-xl border border-dashed p-4 text-center transition-colors',
-                      isDragOver ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.04]' : 'border-[var(--line-soft)]',
+                      isDragOver ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.04]' : 'border-[var(--line-soft)]',
                     )}>
                       <span className="text-[13px] text-[var(--text-soft)]">
                         {isDragOver ? 'Drop here' : 'No items'}

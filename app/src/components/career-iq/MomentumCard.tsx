@@ -78,7 +78,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
   }
 
   const streak = summary?.current_streak ?? 0;
-  const streakColor = streak >= 3 ? 'text-[#b5dec2]' : 'text-[#f0d99f]';
+  const streakColor = streak >= 3 ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-amber-text)]';
   const recentWins = summary?.recent_wins?.slice(0, 3) ?? [];
 
   return (
@@ -93,12 +93,12 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
         <div
           className={cn(
             'rounded-lg p-2 flex-shrink-0',
-            streak >= 3 ? 'bg-[#b5dec2]/10' : 'bg-[#f0d99f]/10',
+            streak >= 3 ? 'bg-[var(--badge-green-text)]/10' : 'bg-[var(--badge-amber-text)]/10',
           )}
         >
           <Flame
             size={20}
-            className={cn(streak >= 3 ? 'text-[#b5dec2]' : 'text-[#f0d99f]')}
+            className={cn(streak >= 3 ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-amber-text)]')}
           />
         </div>
         {streak > 0 ? (
@@ -109,7 +109,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
             <span className="text-[13px] text-[var(--text-soft)]">day streak</span>
           </div>
         ) : (
-          <span className="text-[13px] text-[#f0d99f]">Start your streak!</span>
+          <span className="text-[13px] text-[var(--badge-amber-text)]">Start your streak!</span>
         )}
       </div>
 
@@ -126,8 +126,8 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
           <div className="text-[13px] text-[var(--text-soft)] uppercase tracking-wide mb-0.5">Recent wins</div>
           {recentWins.map((win) => (
             <div key={win.id} className="flex items-center gap-2">
-              <div className="rounded-full bg-[#b5dec2]/10 p-1 flex-shrink-0">
-                <Check size={11} className="text-[#b5dec2]" />
+              <div className="rounded-full bg-[var(--badge-green-text)]/10 p-1 flex-shrink-0">
+                <Check size={11} className="text-[var(--badge-green-text)]" />
               </div>
               <span className="text-[12px] text-[var(--text-soft)] leading-snug">
                 {humanizeActivityType(win.activity_type)}

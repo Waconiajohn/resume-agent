@@ -37,13 +37,13 @@ function NarrativeStatusLine({ phase }: { phase: string }) {
 
 function VictoryMoment({ message }: { message: string }) {
   return (
-    <GlassCard role="alert" className="border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-6 text-center">
+    <GlassCard role="alert" className="border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] p-6 text-center">
       <div className="mb-2 flex justify-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#b5dec2]/20">
-          <Check className="h-5 w-5 text-[#b5dec2]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--badge-green-bg)]">
+          <Check className="h-5 w-5 text-[var(--badge-green-text)]" />
         </div>
       </div>
-      <p className="text-sm font-medium text-[#b5dec2]/90">{message}</p>
+      <p className="text-sm font-medium text-[var(--badge-green-text)]/90">{message}</p>
     </GlassCard>
   );
 }

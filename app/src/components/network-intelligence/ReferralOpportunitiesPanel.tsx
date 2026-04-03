@@ -111,7 +111,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
         <button
           type="button"
           onClick={fetchOpportunities}
-          className="mt-3 text-xs text-[#98b3ff]/70 hover:text-[#98b3ff] transition-colors"
+          className="mt-3 text-xs text-[var(--link)]/70 hover:text-[var(--link)] transition-colors"
         >
           Try Again
         </button>
@@ -145,7 +145,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
         <button
           type="button"
           onClick={fetchOpportunities}
-          className="text-xs text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+          className="text-xs text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
         >
           Refresh
         </button>

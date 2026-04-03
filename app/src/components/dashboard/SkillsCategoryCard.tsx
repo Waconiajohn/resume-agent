@@ -46,7 +46,7 @@ export function SkillsCategoryCard({
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
+            className="inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--badge-red-text)]"
             aria-label={`Delete ${category} category`}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -65,7 +65,7 @@ export function SkillsCategoryCard({
               <button
                 type="button"
                 onClick={() => handleRemoveSkill(i)}
-                className="text-[var(--text-soft)] hover:text-[#f0b8b8] transition-colors"
+                className="text-[var(--text-soft)] hover:text-[var(--badge-red-text)] transition-colors"
                 aria-label={`Remove ${skill}`}
               >
                 <X className="h-3 w-3" />

@@ -72,7 +72,7 @@ export function JobWorkspaceView({
     <GlassCard className="space-y-5 p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
             Job Workspace
           </div>
           <h3 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">{record.company}</h3>
@@ -112,7 +112,7 @@ export function JobWorkspaceView({
                 onClick={() => void onMoveJobStage?.(record, stage)}
                 className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors ${
                   active
-                    ? 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]'
+                    ? 'border-[var(--link)]/25 bg-[var(--link)]/10 text-[var(--link)]'
                     : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]'
                 }`}
               >
@@ -136,7 +136,7 @@ export function JobWorkspaceView({
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-strong)]">
-                  <FileText size={14} className="text-[#98b3ff]" />
+                  <FileText size={14} className="text-[var(--link)]" />
                   Resume Builder
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
@@ -173,7 +173,7 @@ export function JobWorkspaceView({
 
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-strong)]">
-                  <Mic size={14} className="text-[#98b3ff]" />
+                  <Mic size={14} className="text-[var(--link)]" />
                   Interview Prep
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
@@ -252,7 +252,7 @@ export function JobWorkspaceView({
               const stage = isPipelineStage(entry.stage) ? entry.stage : activeStage;
               return (
                 <div key={`${entry.stage}-${entry.at}-${index}`} className="flex items-start gap-3">
-                  <div className="mt-1 h-2 w-2 bg-[#98b3ff]/70" />
+                  <div className="mt-1 h-2 w-2 bg-[var(--link)]/70" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-[var(--text-muted)]">{stageLabel(stage)}</div>
                     <div className="mt-1 text-[12px] text-[var(--text-soft)]">

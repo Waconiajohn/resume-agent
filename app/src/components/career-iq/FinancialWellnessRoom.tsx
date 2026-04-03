@@ -74,14 +74,14 @@ const SIGNAL_CONFIG: Record<
 > = {
   green: {
     label: 'Well Positioned',
-    color: 'text-[#b5dec2]',
-    bgColor: 'bg-[#b5dec2]',
+    color: 'text-[var(--badge-green-text)]',
+    bgColor: 'bg-[var(--badge-green-text)]',
     Icon: CheckCircle2,
   },
   yellow: {
     label: 'Worth Exploring',
-    color: 'text-[#f0d99f]',
-    bgColor: 'bg-[#f0d99f]',
+    color: 'text-[var(--badge-amber-text)]',
+    bgColor: 'bg-[var(--badge-amber-text)]',
     Icon: AlertCircle,
   },
   red: {
@@ -107,8 +107,8 @@ const DIMENSION_LABELS: Record<ReadinessDimension, string> = {
 function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: boolean }) {
   return (
     <GlassCard className="p-8 flex flex-col items-center text-center gap-5">
-      <div className="h-14 w-14 rounded-2xl bg-[#98b3ff]/10 flex items-center justify-center">
-        <TrendingDown size={26} className="text-[#98b3ff]" />
+      <div className="h-14 w-14 rounded-2xl bg-[var(--link)]/10 flex items-center justify-center">
+        <TrendingDown size={26} className="text-[var(--link)]" />
       </div>
 
       <div className="max-w-sm">
@@ -179,7 +179,7 @@ function AssessmentQuestionsView({
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
-        <TrendingDown size={18} className="text-[#98b3ff]" />
+        <TrendingDown size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Assessment Questions</h3>
         <span className="ml-auto text-[12px] text-[var(--text-soft)]">{questions.length} questions</span>
       </div>
@@ -195,7 +195,7 @@ function AssessmentQuestionsView({
           return (
             <div key={q.id}>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[12px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                <span className="text-[12px] font-medium text-[var(--link)]/50 uppercase tracking-wider">
                   {dimLabel}
                 </span>
               </div>
@@ -207,7 +207,7 @@ function AssessmentQuestionsView({
                 onChange={(e) => handleChange(q.id, e.target.value)}
                 rows={3}
                 placeholder="Your answer..."
-                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 transition-colors"
               />
             </div>
           );
@@ -260,7 +260,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
-        <TrendingDown size={18} className="text-[#98b3ff]" />
+        <TrendingDown size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Retirement Bridge Analysis</h3>
         <button
           onClick={handleCopyShare}
@@ -269,8 +269,8 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
         >
           {copied ? (
             <>
-              <ClipboardCheck size={13} className="text-[#b5dec2]" />
-              <span className="text-[#b5dec2]">Copied</span>
+              <ClipboardCheck size={13} className="text-[var(--badge-green-text)]" />
+              <span className="text-[var(--badge-green-text)]">Copied</span>
             </>
           ) : (
             <>
@@ -341,7 +341,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
           <div className="space-y-1">
             {summary.recommended_planner_topics.map((topic, i) => (
               <div key={i} className="flex items-start gap-2">
-                <ChevronRight size={11} className="text-[#98b3ff]/50 mt-0.5 flex-shrink-0" />
+                <ChevronRight size={11} className="text-[var(--link)]/50 mt-0.5 flex-shrink-0" />
                 <span className="text-[12px] text-[var(--text-soft)]">{topic}</span>
               </div>
             ))}
@@ -371,13 +371,13 @@ function PlannerConnectionCard() {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-[#98b3ff]" />
+          <Users size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Introduction Scheduled</h3>
         </div>
-        <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/5 p-4 mb-4">
+        <div className="rounded-xl border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/5 p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 size={15} className="text-[#b5dec2]" />
-            <span className="text-[13px] font-semibold text-[#b5dec2]">Referral confirmed</span>
+            <CheckCircle2 size={15} className="text-[var(--badge-green-text)]" />
+            <span className="text-[13px] font-semibold text-[var(--badge-green-text)]">Referral confirmed</span>
           </div>
           <p className="text-[12px] text-[var(--text-soft)]">
             A fiduciary planner will reach out within 1-2 business days to schedule your free
@@ -398,7 +398,7 @@ function PlannerConnectionCard() {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-[#98b3ff]" />
+          <Users size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
         </div>
         <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-4">
@@ -419,7 +419,7 @@ function PlannerConnectionCard() {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-[#98b3ff]" />
+          <Users size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">No Planners Available</h3>
         </div>
         <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mb-4">
@@ -440,7 +440,7 @@ function PlannerConnectionCard() {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-[#98b3ff]" />
+          <Users size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Select a Planner</h3>
         </div>
         <div className="space-y-3 mb-4">
@@ -468,7 +468,7 @@ function PlannerConnectionCard() {
                   {planner.specializations.map((s) => (
                     <span
                       key={s}
-                      className="text-[12px] text-[#98b3ff]/60 bg-[#98b3ff]/8 border border-[#98b3ff]/15 rounded-full px-2 py-0.5"
+                      className="text-[12px] text-[var(--link)]/60 bg-[var(--link)]/8 border border-[var(--link)]/15 rounded-full px-2 py-0.5"
                     >
                       {s}
                     </span>
@@ -498,7 +498,7 @@ function PlannerConnectionCard() {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-[#98b3ff]" />
+          <Users size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
         </div>
 
@@ -514,7 +514,7 @@ function PlannerConnectionCard() {
             <select
               value={assetRange}
               onChange={(e) => setAssetRange(e.target.value)}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 transition-colors"
             >
               <option value="">Select a range</option>
               <option value="under_100k">Under $100k</option>
@@ -533,7 +533,7 @@ function PlannerConnectionCard() {
               value={geography}
               onChange={(e) => setGeography(e.target.value)}
               placeholder="e.g. Chicago, IL"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 transition-colors"
             />
           </div>
         </div>
@@ -571,7 +571,7 @@ function PlannerConnectionCard() {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Users size={18} className="text-[#98b3ff]" />
+        <Users size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Connect with a Planner</h3>
       </div>
 
@@ -591,7 +591,7 @@ function PlannerConnectionCard() {
           'Your data is shared only with your explicit consent',
         ].map((point) => (
           <div key={point} className="flex items-start gap-2.5">
-            <Shield size={13} className="text-[#b5dec2] mt-0.5 flex-shrink-0" />
+            <Shield size={13} className="text-[var(--badge-green-text)] mt-0.5 flex-shrink-0" />
             <span className="text-[13px] text-[var(--text-soft)]">{point}</span>
           </div>
         ))}
@@ -617,7 +617,7 @@ function EducationalResources() {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <BookOpen size={18} className="text-[#98b3ff]" />
+        <BookOpen size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Financial Resources</h3>
       </div>
 
@@ -629,7 +629,7 @@ function EducationalResources() {
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[12px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                <span className="text-[12px] font-medium text-[var(--link)]/50 uppercase tracking-wider">
                   {resource.category}
                 </span>
                 <span className="text-[12px] text-[var(--text-soft)]">·</span>
@@ -657,7 +657,7 @@ function EducationalResources() {
 function EvaluatingState() {
   return (
     <GlassCard className="p-8 flex flex-col items-center gap-4">
-      <Loader2 size={28} className="text-[#98b3ff] animate-spin" />
+      <Loader2 size={28} className="text-[var(--link)] animate-spin" />
       <div className="text-center">
         <p className="text-[14px] font-medium text-[var(--text-muted)] mb-1">Evaluating your responses</p>
         <p className="text-[12px] text-[var(--text-soft)]">
@@ -728,7 +728,7 @@ export function FinancialWellnessRoom({
           <GlassCard className="p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                   Saved Bridge
                 </div>
                 <h3 className="mt-2 text-[16px] font-semibold text-[var(--text-strong)]">
@@ -810,7 +810,7 @@ export function FinancialWellnessRoom({
       <GlassCard className="p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
               Retirement Bridge
             </div>
             <h1 className="mt-2 text-lg font-semibold text-[var(--text-strong)]">Retirement Bridge</h1>
@@ -859,7 +859,7 @@ export function FinancialWellnessRoom({
             },
           ].map((item) => (
             <div key={item.step} className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Step {item.step}</div>
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Step {item.step}</div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
               <div className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">{item.copy}</div>
             </div>

@@ -211,7 +211,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
             onKeyDown={handleKeyDown}
             placeholder="Ask your coach..."
             rows={1}
-            className="flex-1 resize-none bg-[var(--accent-muted)] border border-[var(--line-soft)] rounded-xl px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+            className="flex-1 resize-none bg-[var(--accent-muted)] border border-[var(--line-soft)] rounded-xl px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
             style={{ maxHeight: '120px' }}
           />
           <button

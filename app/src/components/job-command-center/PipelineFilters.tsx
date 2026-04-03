@@ -34,7 +34,7 @@ export function PipelineFilters({
           value={searchText}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search applications..."
-          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
         />
       </div>
 
@@ -50,7 +50,7 @@ export function PipelineFilters({
             className={cn(
               'rounded-md px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors',
               activeStageFilter === key
-                ? 'bg-[#98b3ff]/15 text-[#98b3ff] font-medium'
+                ? 'bg-[var(--link)]/15 text-[var(--link)] font-medium'
                 : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >

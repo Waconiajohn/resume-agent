@@ -245,7 +245,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-[#57CDA4]/85">
+                    <div className="text-sm font-semibold text-[var(--badge-green-text)]/85">
                       {company.bonusDisplay ?? formatCurrencyAmount(company.bonusAmountMax) ?? 'Bonus listed'}
                     </div>
                     <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
@@ -260,7 +260,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
                       className={cn(
                         'rounded-md border px-2 py-1',
                         company.bonusAmountMax >= 5000
-                          ? 'border-[#57CDA4]/20 bg-[#57CDA4]/10 text-[#57CDA4]/80'
+                          ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)]/80'
                           : 'border-[var(--line-soft)] bg-[var(--surface-1)] text-[var(--text-soft)]',
                       )}
                     >

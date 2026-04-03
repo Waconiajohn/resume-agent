@@ -8,8 +8,8 @@ interface ExperienceEntryCardProps {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return 'text-[#b5dec2] bg-[#b5dec2]/10';
-  if (score >= 60) return 'text-[#f0d99f] bg-[#f0d99f]/10';
+  if (score >= 80) return 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10';
+  if (score >= 60) return 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10';
   return 'text-red-400 bg-red-400/10';
 }
 
@@ -104,7 +104,7 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
                 className={cn(
                   'text-[12px] px-3 py-1 rounded-lg border transition-colors',
                   !showOriginal
-                    ? 'border-[#98b3ff]/40 bg-[#98b3ff]/10 text-[#98b3ff]'
+                    ? 'border-[var(--link)]/40 bg-[var(--link)]/10 text-[var(--link)]'
                     : 'border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-strong)]',
                 )}
               >
@@ -116,7 +116,7 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
                 className={cn(
                   'text-[12px] px-3 py-1 rounded-lg border transition-colors',
                   showOriginal
-                    ? 'border-[#98b3ff]/40 bg-[#98b3ff]/10 text-[#98b3ff]'
+                    ? 'border-[var(--link)]/40 bg-[var(--link)]/10 text-[var(--link)]'
                     : 'border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-strong)]',
                 )}
               >
@@ -126,7 +126,7 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
           )}
 
           {/* Content area */}
-          <div className="rounded-lg border border-[#98b3ff]/10 bg-[#98b3ff]/[0.03] px-3 py-2.5">
+          <div className="rounded-lg border border-[var(--link)]/10 bg-[var(--link)]/[0.03] px-3 py-2.5">
             <pre className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
               {showOriginal && hasOriginal ? entry.original : entry.optimized}
             </pre>
@@ -142,8 +142,8 @@ export function ExperienceEntryCard({ entry }: ExperienceEntryCardProps) {
             >
               {copied ? (
                 <>
-                  <Check size={12} className="text-[#b5dec2]" />
-                  <span className="text-[#b5dec2]">Copied</span>
+                  <Check size={12} className="text-[var(--badge-green-text)]" />
+                  <span className="text-[var(--badge-green-text)]">Copied</span>
                 </>
               ) : (
                 <>

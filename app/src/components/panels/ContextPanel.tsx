@@ -70,7 +70,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]"
+            className="rounded p-1 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]"
             aria-label="Close context panel"
           >
             <X className="h-4 w-4" />

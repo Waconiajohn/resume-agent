@@ -100,12 +100,12 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
+              <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[var(--link)]" />
             </div>
           )}
 
           {!loading && error && (
-            <div className="support-callout border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-xs text-[#f0b8b8]/90">
+            <div className="support-callout border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-xs text-[var(--badge-red-text)]/90">
               Failed to load resume: {error}
             </div>
           )}

@@ -58,7 +58,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
       className={cn(
         'rounded-lg border p-3 transition-all duration-200',
         used
-          ? 'border-[#a8d7b8]/25 bg-[#a8d7b8]/[0.04]'
+          ? 'border-[var(--badge-green-text)]/25 bg-[var(--badge-green-text)]/[0.04]'
           : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
       )}
     >
@@ -68,14 +68,14 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           <p
             className={cn(
               'text-sm font-medium leading-snug line-clamp-1',
-              used ? 'text-[#a8d7b8]/80' : 'text-[var(--text-muted)]',
+              used ? 'text-[var(--badge-green-text)]/80' : 'text-[var(--text-muted)]',
             )}
           >
             {item.result || 'No result recorded'}
           </p>
         </div>
         {used && (
-          <span className="flex-shrink-0 flex items-center gap-0.5 text-[12px] text-[#a8d7b8]/70 font-medium">
+          <span className="flex-shrink-0 flex items-center gap-0.5 text-[12px] text-[var(--badge-green-text)]/70 font-medium">
             <Check className="h-3 w-3" />
             Used
           </span>
@@ -102,7 +102,7 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
           {item.mapped_requirements.slice(0, 3).map((req) => (
             <span
               key={req}
-              className="rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.07] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
+              className="rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]/70"
             >
               {truncate(req, 30)}
             </span>

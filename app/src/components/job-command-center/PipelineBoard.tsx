@@ -13,7 +13,7 @@ import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline'
 
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
   { key: 'saved', label: 'Shortlist', color: 'text-[var(--text-soft)]' },
-  { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
+  { key: 'researching', label: 'Researching', color: 'text-[var(--link)]' },
   { key: 'applied', label: 'Applied', color: 'text-[var(--badge-amber-text)]' },
   { key: 'screening', label: 'Screening', color: 'text-[var(--badge-amber-text)]' },
   { key: 'interviewing', label: 'Interviewing', color: 'text-[var(--badge-green-text)]' },
@@ -70,14 +70,14 @@ export function PipelineBoard({
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Briefcase size={18} className="text-[#98b3ff]" />
+        <Briefcase size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Application Pipeline</h3>
-        {loading && <Loader2 size={14} className="text-[#98b3ff] animate-spin ml-1" />}
+        {loading && <Loader2 size={14} className="text-[var(--link)] animate-spin ml-1" />}
         {onAddApplication && (
           <button
             type="button"
             onClick={onAddApplication}
-            className="ml-auto flex items-center gap-1 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+            className="ml-auto flex items-center gap-1 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
           >
             <span className="text-base leading-none">+</span> Add Application
           </button>

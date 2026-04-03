@@ -39,15 +39,15 @@ export function ScoresCard({
         <AtsScorePanel value={scores.ats_match} />
 
         <div className="support-callout flex items-center gap-4 shrink-0 px-4 py-4">
-          <MiniRingGauge label="Truth" score={scores.truth} color="#b5dec2" />
-          <MiniRingGauge label="Tone" score={scores.tone} color="#f0d99f" />
+          <MiniRingGauge label="Truth" score={scores.truth} color="var(--badge-green-text)" />
+          <MiniRingGauge label="Tone" score={scores.tone} color="var(--badge-amber-text)" />
         </div>
       </div>
 
       {quickWins.length > 0 && (
         <div className="support-callout px-4 py-4">
           <div className="mb-2 flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5 text-[#f0d99f]" />
+            <Zap className="h-3.5 w-3.5 text-[var(--badge-amber-text)]" />
             <span className="eyebrow-label">Quick Wins</span>
           </div>
           <ul className="space-y-1.5">

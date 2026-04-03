@@ -64,7 +64,7 @@ export function ContactDetailSheet({
   };
 
   const inputClass =
-    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
+    'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
@@ -144,7 +144,7 @@ export function ContactDetailSheet({
 
         {/* Relationship info */}
         <div className="flex flex-wrap gap-2 mb-5">
-          <span className="rounded-md bg-[#98b3ff]/10 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]">
+          <span className="rounded-md bg-[var(--link)]/10 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
             {contact.relationship_type.replace('_', ' ')}
           </span>
           <span className="rounded-md border border-[var(--line-soft)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-soft)]">

@@ -148,7 +148,7 @@ function ReadinessGauge({ score, size = 72 }: { score: number; size?: number }) 
   const cx = size / 2;
   const cy = size / 2;
 
-  const color = score >= 80 ? '#b5dec2' : score >= 50 ? '#f0d99f' : '#f0b8b8';
+  const color = score >= 80 ? 'var(--badge-green-text)' : score >= 50 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -181,12 +181,12 @@ function ReadinessGauge({ score, size = 72 }: { score: number; size?: number }) 
 // --- Category badge ---
 
 const CATEGORY_CONFIG = {
-  behavioral: { label: 'Behavioral', bg: 'bg-[#afc4ff]/10', border: 'border-[#afc4ff]/20', text: 'text-[#afc4ff]' },
-  technical: { label: 'Technical', bg: 'bg-[#b5dec2]/10', border: 'border-[#b5dec2]/20', text: 'text-[#b5dec2]' },
-  situational: { label: 'Situational', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
-  strategic: { label: 'Strategic', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
+  behavioral: { label: 'Behavioral', bg: 'bg-[var(--link)]/10', border: 'border-[var(--link)]/20', text: 'text-[var(--link)]' },
+  technical: { label: 'Technical', bg: 'bg-[var(--badge-green-text)]/10', border: 'border-[var(--badge-green-text)]/20', text: 'text-[var(--badge-green-text)]' },
+  situational: { label: 'Situational', bg: 'bg-[var(--badge-amber-text)]/10', border: 'border-[var(--badge-amber-text)]/20', text: 'text-[var(--badge-amber-text)]' },
+  strategic: { label: 'Strategic', bg: 'bg-[var(--badge-red-text)]/10', border: 'border-[var(--badge-red-text)]/20', text: 'text-[var(--badge-red-text)]' },
   'culture-fit': { label: 'Culture Fit', bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]' },
-  trap: { label: 'Trap', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/25', text: 'text-[#f0b8b8]' },
+  trap: { label: 'Trap', bg: 'bg-[var(--badge-red-text)]/10', border: 'border-[var(--badge-red-text)]/25', text: 'text-[var(--badge-red-text)]' },
 } as const;
 
 type QuestionCategory = keyof typeof CATEGORY_CONFIG;
@@ -209,9 +209,9 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 
 function DifficultyBadge({ level }: { level: Difficulty }) {
   const cfg = {
-    easy: { label: 'Easy', color: 'text-[#b5dec2]/70' },
-    medium: { label: 'Medium', color: 'text-[#f0d99f]/70' },
-    hard: { label: 'Hard', color: 'text-[#f0b8b8]/70' },
+    easy: { label: 'Easy', color: 'text-[var(--badge-green-text)]/70' },
+    medium: { label: 'Medium', color: 'text-[var(--badge-amber-text)]/70' },
+    hard: { label: 'Hard', color: 'text-[var(--badge-red-text)]/70' },
   }[level];
 
   const dots = level === 'easy' ? 1 : level === 'medium' ? 2 : 3;
@@ -247,7 +247,7 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
+        className="flex items-center gap-1.5 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
       >
         <Brain size={11} />
         Coaching Notes
@@ -255,9 +255,9 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
       </button>
 
       {open && (
-        <div className="mt-2 rounded-lg border border-[#afc4ff]/10 bg-[#afc4ff]/[0.03] p-3 space-y-2.5">
+        <div className="mt-2 rounded-lg border border-[var(--link)]/10 bg-[var(--link)]/[0.03] p-3 space-y-2.5">
           <div className="flex items-center gap-1.5 mb-1">
-            <Lightbulb size={11} className="text-[#f0d99f]/60" />
+            <Lightbulb size={11} className="text-[var(--badge-amber-text)]/60" />
             <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">STAR Framework Guide</span>
           </div>
 
@@ -265,7 +265,7 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
             <div className="space-y-2">
               {(['situation', 'task', 'action', 'result'] as const).map((key) => (
                 <div key={key}>
-                  <span className="text-[12px] font-semibold text-[#afc4ff]/60 uppercase tracking-wider">
+                  <span className="text-[12px] font-semibold text-[var(--link)]/60 uppercase tracking-wider">
                     {key.charAt(0).toUpperCase() + key.slice(1)}
                   </span>
                   <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mt-0.5">{notes[key]}</p>
@@ -275,16 +275,16 @@ function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; que
           ) : (
             <div className="space-y-1.5">
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[#afc4ff]/70 font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
+                <span className="text-[var(--link)]/70 font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[#afc4ff]/70 font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
+                <span className="text-[var(--link)]/70 font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[#afc4ff]/70 font-medium">A</span>ction: <span className="text-[#f0d99f]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
+                <span className="text-[var(--link)]/70 font-medium">A</span>ction: <span className="text-[var(--badge-amber-text)]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
-                <span className="text-[#afc4ff]/70 font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
+                <span className="text-[var(--link)]/70 font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
               </p>
               {questionText && (
                 <div className="mt-2 pt-2 border-t border-[var(--line-soft)]">
@@ -315,7 +315,7 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
       {data.overview && (
         <GlassCard className="p-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2">
-            <Building2 size={13} className="text-[#afc4ff]" />
+            <Building2 size={13} className="text-[var(--link)]" />
             <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Company Overview</span>
           </div>
           <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{data.overview}</p>
@@ -325,13 +325,13 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
       {data.recentNews && data.recentNews.length > 0 && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Star size={12} className="text-[#f0d99f]" />
+            <Star size={12} className="text-[var(--badge-amber-text)]" />
             <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Recent Signals</span>
           </div>
           <ul className="space-y-1.5">
             {data.recentNews.map((item, i) => (
               <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
-                <span className="h-1 w-1 rounded-full bg-[#f0d99f]/40 mt-1.5 flex-shrink-0" />
+                <span className="h-1 w-1 rounded-full bg-[var(--badge-amber-text)]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
             ))}
@@ -342,13 +342,13 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
       {data.cultureSignals && data.cultureSignals.length > 0 && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Lightbulb size={12} className="text-[#b5dec2]" />
+            <Lightbulb size={12} className="text-[var(--badge-green-text)]" />
             <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Culture Signals</span>
           </div>
           <ul className="space-y-1.5">
             {data.cultureSignals.map((item, i) => (
               <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
-                <span className="h-1 w-1 rounded-full bg-[#b5dec2]/40 mt-1.5 flex-shrink-0" />
+                <span className="h-1 w-1 rounded-full bg-[var(--badge-green-text)]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
             ))}
@@ -359,13 +359,13 @@ function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
       {data.risks && data.risks.length > 0 && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={12} className="text-[#f0b8b8]" />
+            <AlertTriangle size={12} className="text-[var(--badge-red-text)]" />
             <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Risk Factors</span>
           </div>
           <ul className="space-y-1.5">
             {data.risks.map((item, i) => (
               <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-soft)]">
-                <span className="h-1 w-1 rounded-full bg-[#f0b8b8]/40 mt-1.5 flex-shrink-0" />
+                <span className="h-1 w-1 rounded-full bg-[var(--badge-red-text)]/40 mt-1.5 flex-shrink-0" />
                 {item}
               </li>
             ))}
@@ -485,7 +485,7 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
               key={i}
               className={cn(
                 'rounded-xl border bg-[var(--accent-muted)] p-4 transition-all',
-                practiced ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.02]' : 'border-[var(--line-soft)]',
+                practiced ? 'border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.02]' : 'border-[var(--line-soft)]',
               )}
             >
               <div className="flex items-start gap-3">
@@ -495,13 +495,13 @@ function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
                   className={cn(
                     'flex-shrink-0 mt-0.5 h-4 w-4 rounded-full border transition-colors',
                     practiced
-                      ? 'border-[#b5dec2]/50 bg-[#b5dec2]/15'
-                      : 'border-[var(--line-strong)] bg-transparent hover:border-[#b5dec2]/30',
+                      ? 'border-[var(--badge-green-text)]/50 bg-[var(--badge-green-text)]/15'
+                      : 'border-[var(--line-strong)] bg-transparent hover:border-[var(--badge-green-text)]/30',
                   )}
                   title={practiced ? 'Mark as not practiced' : 'Mark as practiced'}
                 >
                   {practiced && (
-                    <CheckCircle2 size={14} className="text-[#b5dec2] -mt-0.5 -ml-0.5" />
+                    <CheckCircle2 size={14} className="text-[var(--badge-green-text)] -mt-0.5 -ml-0.5" />
                   )}
                 </button>
 
@@ -538,7 +538,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Calendar size={18} className="text-[#afc4ff]" />
+        <Calendar size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Upcoming Interviews</h3>
       </div>
 
@@ -562,8 +562,8 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
                     : 'border border-transparent hover:bg-[var(--accent-muted)]',
                 )}
               >
-                <div className="rounded-lg bg-[#afc4ff]/10 p-2 flex-shrink-0">
-                  <Building2 size={16} className="text-[#afc4ff]" />
+                <div className="rounded-lg bg-[var(--link)]/10 p-2 flex-shrink-0">
+                  <Building2 size={16} className="text-[var(--link)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-medium text-[var(--text-muted)]">{interview.company}</div>
@@ -611,9 +611,9 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
   const [newNotes, setNewNotes] = useState('');
 
   const outcomeConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
-    advanced: { icon: CheckCircle2, color: 'text-[#b5dec2]', label: 'Advanced' },
-    rejected: { icon: XCircle, color: 'text-[#f0b8b8]', label: 'Not Selected' },
-    pending: { icon: Clock, color: 'text-[#f0d99f]', label: 'Pending' },
+    advanced: { icon: CheckCircle2, color: 'text-[var(--badge-green-text)]', label: 'Advanced' },
+    rejected: { icon: XCircle, color: 'text-[var(--badge-red-text)]', label: 'Not Selected' },
+    pending: { icon: Clock, color: 'text-[var(--badge-amber-text)]', label: 'Pending' },
   };
 
   const outcomes: PastInterview['outcome'][] = ['pending', 'advanced', 'rejected'];
@@ -632,18 +632,18 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Clock size={18} className="text-[#afc4ff]" />
+        <Clock size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Interview History</h3>
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onAddDebrief}
-            className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
+            className="flex items-center gap-1 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
           >
             <ClipboardList size={12} />
             Add Debrief
             {debriefCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-[#afc4ff]/15 px-1.5 py-0.5 text-[12px] text-[#afc4ff]/70">
+              <span className="ml-0.5 rounded-full bg-[var(--link)]/15 px-1.5 py-0.5 text-[12px] text-[var(--link)]/70">
                 {debriefCount}
               </span>
             )}
@@ -660,21 +660,21 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
       </div>
 
       {showAddForm && (
-        <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-4 mb-4 space-y-2.5">
+        <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] p-4 mb-4 space-y-2.5">
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Company"
               value={newCompany}
               onChange={(e) => setNewCompany(e.target.value)}
-              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
             <input
               type="text"
               placeholder="Role"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
-              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+              className="flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             />
           </div>
           <input
@@ -682,7 +682,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
             placeholder="Notes (optional)"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
-            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
+            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
           />
           <div className="flex gap-2">
             <GlassButton variant="primary" onClick={handleSubmit} size="sm">Save</GlassButton>
@@ -758,8 +758,8 @@ function PrepProgress({ company, activityMessages, currentStage }: {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
-          <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
+        <div className="rounded-lg bg-[var(--link)]/10 p-2">
+          <Loader2 size={18} className="text-[var(--link)] animate-spin" />
         </div>
         <div>
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
@@ -774,7 +774,7 @@ function PrepProgress({ company, activityMessages, currentStage }: {
       <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
         {activityMessages.map((msg) => (
           <div key={msg.id} className="flex items-start gap-2 py-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/40 mt-1.5 flex-shrink-0" />
+            <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/40 mt-1.5 flex-shrink-0" />
             <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
           </div>
         ))}
@@ -839,8 +839,8 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
       <GlassCard className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/15">
-              <FileText size={18} className="text-[#afc4ff]" />
+            <div className="rounded-lg bg-[var(--link)]/10 p-2.5 border border-[var(--link)]/15">
+              <FileText size={18} className="text-[var(--link)]" />
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
@@ -887,13 +887,13 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
             className="prose prose-invert prose-sm max-w-none
               prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
               prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-2 prose-h1:mb-4
-              prose-h2:text-[15px] prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[#afc4ff]/90
+              prose-h2:text-[15px] prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[var(--link)]/90
               prose-h3:text-[14px] prose-h3:mt-4 prose-h3:mb-2
               prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
               prose-li:text-[var(--text-soft)] prose-li:text-[13px]
               prose-strong:text-[var(--text-strong)]
               prose-em:text-[var(--text-soft)]
-              prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg
+              prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[var(--link)]/[0.03] prose-blockquote:rounded-r-lg
               prose-hr:border-[var(--line-soft)]"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
@@ -978,14 +978,14 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
     } catch { /* ignore */ }
   }, [result]);
 
-  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
+  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30';
   const labelClass = 'block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5';
 
   return (
     <GlassCard className="p-6 space-y-5">
       <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
-          <Send size={15} className="text-[#afc4ff]" />
+        <div className="rounded-lg bg-[var(--link)]/10 p-2">
+          <Send size={15} className="text-[var(--link)]" />
         </div>
         <div>
           <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Follow-Up Email</h3>
@@ -1011,13 +1011,13 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
               className={cn(
                 'w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
                 situation === key
-                  ? 'border-[#afc4ff]/25 bg-[#afc4ff]/[0.06]'
+                  ? 'border-[var(--link)]/25 bg-[var(--link)]/[0.06]'
                   : 'border-[var(--line-soft)] hover:border-[var(--line-soft)] hover:bg-[var(--accent-muted)]',
               )}
             >
               <div className={cn(
                 'mt-0.5 h-3 w-3 rounded-full border-2 flex-shrink-0',
-                situation === key ? 'border-[#afc4ff] bg-[#afc4ff]/30' : 'border-[var(--line-strong)]',
+                situation === key ? 'border-[var(--link)] bg-[var(--link)]/30' : 'border-[var(--line-strong)]',
               )} />
               <div>
                 <div className={cn('text-[12px] font-medium', situation === key ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]')}>
@@ -1077,9 +1077,9 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-3 py-2">
-          <AlertCircle size={13} className="text-[#f0b8b8] flex-shrink-0" />
-          <span className="text-[12px] text-[#f0b8b8]/80">{error}</span>
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-3 py-2">
+          <AlertCircle size={13} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <span className="text-[12px] text-[var(--badge-red-text)]/80">{error}</span>
         </div>
       )}
 
@@ -1090,7 +1090,7 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
             <button
               type="button"
               onClick={() => void handleCopy()}
-              className="ml-auto text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors flex items-center gap-1"
+              className="ml-auto text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors flex items-center gap-1"
             >
               {copied ? <CheckCircle2 size={11} /> : <FileText size={11} />}
               {copied ? 'Copied' : 'Copy'}
@@ -1105,8 +1105,8 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
             <p className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{result.body}</p>
           </div>
           {result.timing_guidance && (
-            <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
-              <p className="text-[13px] text-[#f0d99f]/70">{result.timing_guidance}</p>
+            <div className="rounded-lg border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-text)]/[0.04] px-3 py-2">
+              <p className="text-[13px] text-[var(--badge-amber-text)]/70">{result.timing_guidance}</p>
             </div>
           )}
         </div>
@@ -1540,8 +1540,8 @@ export function InterviewLabRoom({
         {inputError ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle size={18} className="text-[#f0b8b8]" />
-              <span className="text-[13px] text-[#f0b8b8]">{inputError}</span>
+              <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
+              <span className="text-[13px] text-[var(--badge-red-text)]">{inputError}</span>
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
@@ -1551,15 +1551,15 @@ export function InterviewLabRoom({
         ) : loadingInputs ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3">
-              <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
+              <Loader2 size={18} className="text-[var(--link)] animate-spin" />
               <span className="text-[13px] text-[var(--text-soft)]">Loading resume and job details...</span>
             </div>
           </GlassCard>
         ) : error ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle size={18} className="text-[#f0b8b8]" />
-              <span className="text-[13px] text-[#f0b8b8]">{error}</span>
+              <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
+              <span className="text-[13px] text-[var(--badge-red-text)]">{error}</span>
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
@@ -1569,10 +1569,10 @@ export function InterviewLabRoom({
         ) : (
           <>
             {jdWarning && (
-              <GlassCard className="p-4 mb-0 border-[#f0d99f]/20">
+              <GlassCard className="p-4 mb-0 border-[var(--badge-amber-text)]/20">
                 <div className="flex items-center gap-2">
-                  <AlertCircle size={14} className="text-[#f0d99f] flex-shrink-0" />
-                  <span className="text-[12px] text-[#f0d99f]/80">
+                  <AlertCircle size={14} className="text-[var(--badge-amber-text)] flex-shrink-0" />
+                  <span className="text-[12px] text-[var(--badge-amber-text)]/80">
                     No job description found — the report will be based on the role title and company name only. For best results, add a JD to the job application.
                   </span>
                 </div>
@@ -1613,9 +1613,9 @@ export function InterviewLabRoom({
       </div>
 
       {mockInterviewError && (
-        <div className="rounded-xl border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-[#f0b8b8] flex-shrink-0" />
-          <span className="text-[13px] text-[#f0b8b8]/80">{mockInterviewError}</span>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <span className="text-[13px] text-[var(--badge-red-text)]/80">{mockInterviewError}</span>
         </div>
       )}
 
@@ -1641,11 +1641,11 @@ export function InterviewLabRoom({
                 className={cn(
                   'rounded-2xl border p-3.5 text-left transition-colors',
                   isActive
-                    ? 'border-[#afc4ff]/30 bg-[#afc4ff]/[0.06]'
+                    ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.06]'
                     : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-strong)]',
                 )}
               >
-                <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                   Step {index + 1}
                 </div>
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -1666,7 +1666,7 @@ export function InterviewLabRoom({
       <GlassCard className="p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70">
               Right now
             </div>
             <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -1744,7 +1744,7 @@ export function InterviewLabRoom({
 
           <GlassCard className="p-5">
             <div className="mb-3">
-              <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70 mb-1">Practice Mode</div>
+              <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/70 mb-1">Practice Mode</div>
               <p className="text-[13px] leading-5 text-[var(--text-soft)]">
                 Practice one targeted question — choose a type and get immediate STAR-framework feedback.
               </p>
@@ -1759,7 +1759,7 @@ export function InterviewLabRoom({
                     className={cn(
                       'px-3 py-1.5 text-[12px] font-medium capitalize transition-colors',
                       practiceQuestionType === type
-                        ? 'bg-[#98b3ff]/20 text-[#98b3ff]'
+                        ? 'bg-[var(--link)]/20 text-[var(--link)]'
                         : 'bg-transparent text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]',
                     )}
                   >
@@ -1834,7 +1834,7 @@ export function InterviewLabRoom({
                   const Icon = tool.icon;
                   return (
                     <div key={tool.view} className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                      <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                         {tool.label}
                       </div>
                       <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">

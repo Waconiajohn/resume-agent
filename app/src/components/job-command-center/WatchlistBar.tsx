@@ -41,7 +41,7 @@ export function WatchlistBar({
               onClick={() => onSearchCompany(company.name)}
               className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-soft)] transition-all hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
             >
-              <Building2 size={11} className="flex-shrink-0 text-[#98b3ff]/60" />
+              <Building2 size={11} className="flex-shrink-0 text-[var(--link)]/60" />
               {company.name}
             </button>
           ))

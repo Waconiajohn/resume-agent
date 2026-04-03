@@ -186,7 +186,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
       {/* Panel header */}
         <div className="border-b border-[var(--line-soft)] px-4 py-3">
           <div className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-[#afc4ff]" />
+            <ClipboardList className="h-4 w-4 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Your Resume Plan</span>
           </div>
         </div>
@@ -210,7 +210,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               <span className={cn(
                 'rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em]',
                 angleWasEdited
-                  ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
+                  ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90'
                   : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
               )}>
                 {angleWasEdited ? 'Edited' : 'Editable'}
@@ -240,14 +240,14 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                       }
                     }}
                     rows={3}
-                    className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+                    className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-none"
                     placeholder="Enter positioning angle..."
                   />
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setEditingAngle(false)}
-                      className="text-[12px] text-[#afc4ff]/80 hover:text-[#afc4ff] transition-colors"
+                      className="text-[12px] text-[var(--link)]/80 hover:text-[var(--link)] transition-colors"
                     >
                       Done
                     </button>
@@ -273,7 +273,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                   <div className="flex items-start gap-2">
                     <p className={cn(
                       'flex-1 text-xs italic leading-relaxed',
-                      angleWasEdited ? 'text-[#f0d99f]/70' : 'text-[var(--text-soft)]',
+                      angleWasEdited ? 'text-[var(--badge-amber-text)]/70' : 'text-[var(--text-soft)]',
                     )}>
                       &ldquo;{currentAngle}&rdquo;
                     </p>
@@ -295,7 +295,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 <span className={cn(
                   'rounded-md border px-2.5 py-1 text-[12px] uppercase tracking-[0.12em]',
                   orderWasEdited
-                    ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90'
+                    ? 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]/90'
                     : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
                 )}>
                   {orderWasEdited ? 'Edited' : 'Reorderable'}
@@ -368,8 +368,8 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                     <span className={cn(
                       'rounded-md border px-2 py-1 text-[12px] font-medium uppercase tracking-[0.12em]',
                       kw.current_count > 0
-                        ? 'border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]'
-                        : 'border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]'
+                        ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
+                        : 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]'
                     )}>
                       {kw.action || (kw.current_count > 0 ? 'present' : 'add')}
                     </span>
@@ -432,7 +432,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         ) : (
           <GlassCard className="p-3 border-[var(--line-strong)]">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--badge-green-text)]" />
               <span className="text-xs font-medium text-[var(--text-muted)]">No age signals detected</span>
             </div>
           </GlassCard>

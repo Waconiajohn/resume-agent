@@ -30,22 +30,22 @@ const ROUND_TYPE_LABELS: Record<string, string> = {
 };
 
 const OUTCOME_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  excellent: { label: 'Excellent', color: 'text-[#b5dec2]', dot: 'bg-[#b5dec2]' },
-  good: { label: 'Good', color: 'text-[#afc4ff]', dot: 'bg-[#afc4ff]' },
-  needs_work: { label: 'Needs Work', color: 'text-[#f0d99f]', dot: 'bg-[#f0d99f]' },
-  missed: { label: 'Missed', color: 'text-[#f0b8b8]', dot: 'bg-[#f0b8b8]' },
+  excellent: { label: 'Excellent', color: 'text-[var(--badge-green-text)]', dot: 'bg-[var(--badge-green-text)]' },
+  good: { label: 'Good', color: 'text-[var(--link)]', dot: 'bg-[var(--link)]' },
+  needs_work: { label: 'Needs Work', color: 'text-[var(--badge-amber-text)]', dot: 'bg-[var(--badge-amber-text)]' },
+  missed: { label: 'Missed', color: 'text-[var(--badge-red-text)]', dot: 'bg-[var(--badge-red-text)]' },
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#f0d99f]';
-  return 'text-[#f0b8b8]';
+  if (score >= 80) return 'text-[var(--badge-green-text)]';
+  if (score >= 60) return 'text-[var(--badge-amber-text)]';
+  return 'text-[var(--badge-red-text)]';
 }
 
 function scoreBg(score: number): string {
-  if (score >= 80) return 'bg-[#b5dec2]';
-  if (score >= 60) return 'bg-[#f0d99f]';
-  return 'bg-[#f0b8b8]';
+  if (score >= 80) return 'bg-[var(--badge-green-text)]';
+  if (score >= 60) return 'bg-[var(--badge-amber-text)]';
+  return 'bg-[var(--badge-red-text)]';
 }
 
 // ─── ScoreBar ─────────────────────────────────────────────────────────────────
@@ -135,13 +135,13 @@ function EvaluationCard({ evaluation, index }: { evaluation: RoundEvaluation; in
 
           {evaluation.strengths.length > 0 && (
             <div>
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-[#b5dec2]/60 mb-1.5">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--badge-green-text)]/60 mb-1.5">
                 Strengths
               </p>
               <ul className="space-y-1">
                 {evaluation.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#b5dec2]/50 mt-1.5 flex-shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-green-text)]/50 mt-1.5 flex-shrink-0" />
                     {s}
                   </li>
                 ))}
@@ -151,13 +151,13 @@ function EvaluationCard({ evaluation, index }: { evaluation: RoundEvaluation; in
 
           {evaluation.improvements.length > 0 && (
             <div>
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f0d99f]/60 mb-1.5">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--badge-amber-text)]/60 mb-1.5">
                 To Improve
               </p>
               <ul className="space-y-1">
                 {evaluation.improvements.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-amber-text)]/50 mt-1.5 flex-shrink-0" />
                     {s}
                   </li>
                 ))}
@@ -166,8 +166,8 @@ function EvaluationCard({ evaluation, index }: { evaluation: RoundEvaluation; in
           )}
 
           {evaluation.coaching_note && (
-            <div className="rounded-lg bg-[#afc4ff]/[0.04] border border-[#afc4ff]/15 px-3 py-2.5">
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-[#afc4ff]/50 mb-1">
+            <div className="rounded-lg bg-[var(--link)]/[0.04] border border-[var(--link)]/15 px-3 py-2.5">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--link)]/50 mb-1">
                 Coaching note
               </p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
@@ -193,10 +193,10 @@ function SummaryView({
   onReset: () => void;
 }) {
   const scoreColor = summary.overall_score >= 80
-    ? '#b5dec2'
+    ? 'var(--badge-green-text)'
     : summary.overall_score >= 60
-    ? '#f0d99f'
-    : '#f0b8b8';
+    ? 'var(--badge-amber-text)'
+    : 'var(--badge-red-text)';
 
   return (
     <div className="space-y-6">
@@ -215,8 +215,8 @@ function SummaryView({
         </div>
       </div>
 
-      <GlassCard className="p-5 border-[#afc4ff]/10">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-[#afc4ff]/50 mb-2">
+      <GlassCard className="p-5 border-[var(--link)]/10">
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--link)]/50 mb-2">
           Coaching Takeaway
         </p>
         <p className="text-[14px] text-[var(--text-soft)] leading-relaxed">
@@ -227,13 +227,13 @@ function SummaryView({
       <div className="grid grid-cols-2 gap-4">
         {summary.strengths.length > 0 && (
           <GlassCard className="p-4">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#b5dec2]/60 mb-2">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--badge-green-text)]/60 mb-2">
               Strengths
             </p>
             <ul className="space-y-1.5">
               {summary.strengths.map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#b5dec2]/50 mt-1.5 flex-shrink-0" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-green-text)]/50 mt-1.5 flex-shrink-0" />
                   {s}
                 </li>
               ))}
@@ -242,13 +242,13 @@ function SummaryView({
         )}
         {summary.areas_for_improvement.length > 0 && (
           <GlassCard className="p-4">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f0d99f]/60 mb-2">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--badge-amber-text)]/60 mb-2">
               Areas to Improve
             </p>
             <ul className="space-y-1.5">
               {summary.areas_for_improvement.map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-[13px] text-[var(--text-soft)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--badge-amber-text)]/50 mt-1.5 flex-shrink-0" />
                   {s}
                 </li>
               ))}
@@ -282,14 +282,14 @@ function EmployerBubble({ round }: { round: NegotiationRound }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center h-7 w-7 rounded-full bg-[#f0b8b8]/10 border border-[#f0b8b8]/20 flex-shrink-0">
-          <Briefcase size={12} className="text-[#f0b8b8]/70" />
+        <div className="flex items-center justify-center h-7 w-7 rounded-full bg-[var(--badge-red-text)]/10 border border-[var(--badge-red-text)]/20 flex-shrink-0">
+          <Briefcase size={12} className="text-[var(--badge-red-text)]/70" />
         </div>
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-[#f0b8b8]/50">
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--badge-red-text)]/50">
           Employer — {label}
         </span>
       </div>
-      <div className="ml-9 rounded-2xl rounded-tl-sm bg-[#f0b8b8]/[0.06] border border-[#f0b8b8]/15 px-4 py-3">
+      <div className="ml-9 rounded-2xl rounded-tl-sm bg-[var(--badge-red-text)]/[0.06] border border-[var(--badge-red-text)]/15 px-4 py-3">
         <p className="text-[14px] text-[var(--text-muted)] leading-relaxed">
           "{round.employer_position}"
         </p>
@@ -336,10 +336,10 @@ function ResponseInput({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2 mb-1">
-        <div className="flex items-center justify-center h-7 w-7 rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 flex-shrink-0">
-          <DollarSign size={12} className="text-[#afc4ff]/70" />
+        <div className="flex items-center justify-center h-7 w-7 rounded-full bg-[var(--link)]/10 border border-[var(--link)]/20 flex-shrink-0">
+          <DollarSign size={12} className="text-[var(--link)]/70" />
         </div>
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-[#afc4ff]/50">
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--link)]/50">
           Your Response
         </span>
       </div>
@@ -352,7 +352,7 @@ function ResponseInput({
           rows={4}
           disabled={isSubmitting}
           placeholder="Type your counter-response here... (Cmd+Enter to submit)"
-          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/10 transition-all disabled:opacity-60"
+          className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all disabled:opacity-60"
         />
         <div className="flex items-center justify-between mt-2">
           <span className="text-[12px] text-[var(--text-soft)]">
@@ -518,11 +518,11 @@ export function NegotiationSimulationView({
           <ArrowLeft size={13} />
           Back
         </button>
-        <GlassCard className="p-5 border-[#f0b8b8]/20">
+        <GlassCard className="p-5 border-[var(--badge-red-text)]/20">
           <div className="flex items-start gap-3">
-            <AlertCircle size={16} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f0b8b8] font-medium">Simulation error</p>
+              <p className="text-[13px] text-[var(--badge-red-text)] font-medium">Simulation error</p>
               <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
@@ -550,8 +550,8 @@ export function NegotiationSimulationView({
 
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-[#f0b8b8]/10 p-2.5 border border-[#f0b8b8]/20">
-              <Briefcase size={18} className="text-[#f0b8b8]/80" />
+            <div className="rounded-xl bg-[var(--badge-red-text)]/10 p-2.5 border border-[var(--badge-red-text)]/20">
+              <Briefcase size={18} className="text-[var(--badge-red-text)]/80" />
             </div>
             <div>
               <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
@@ -614,7 +614,7 @@ export function NegotiationSimulationView({
           </p>
         </div>
         {(status === 'connecting' || status === 'running') && (
-          <Loader2 size={14} className="text-[#afc4ff] animate-spin ml-auto" />
+          <Loader2 size={14} className="text-[var(--link)] animate-spin ml-auto" />
         )}
       </div>
 
@@ -653,8 +653,8 @@ export function NegotiationSimulationView({
             />
             <div className="flex flex-col gap-2 ml-9">
               <div className="flex items-center gap-2">
-                <DollarSign size={12} className="text-[#afc4ff]/50" />
-                <span className="text-[12px] font-semibold uppercase tracking-wider text-[#afc4ff]/50">
+                <DollarSign size={12} className="text-[var(--link)]/50" />
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--link)]/50">
                   You said
                 </span>
               </div>
@@ -677,7 +677,7 @@ export function NegotiationSimulationView({
         {/* Running — waiting for next round */}
         {status === 'running' && !currentRound && evaluations.length > 0 && (
           <div className="flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
-            <Loader2 size={13} className="animate-spin text-[#afc4ff]" />
+            <Loader2 size={13} className="animate-spin text-[var(--link)]" />
             Preparing next round...
           </div>
         )}

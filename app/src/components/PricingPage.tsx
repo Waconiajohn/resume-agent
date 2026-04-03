@@ -193,11 +193,11 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               key={plan.id}
               className={cn(
                 'relative flex flex-col gap-6 p-6',
-                plan.highlighted && 'border-[#9eb8ff]/40',
+                plan.highlighted && 'border-[var(--link)]/40',
               )}
             >
               {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-[#9eb8ff]/40 bg-[linear-gradient(180deg,rgba(158,184,255,0.25),rgba(158,184,255,0.12))] px-3 py-0.5 text-xs font-semibold text-[#c5d8ff]">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--link)]/40 bg-[linear-gradient(180deg,rgba(158,184,255,0.25),rgba(158,184,255,0.12))] px-3 py-0.5 text-xs font-semibold text-[var(--link)]">
                   Most popular
                 </div>
               )}
@@ -265,7 +265,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               onChange={(e) => { setPromoCode(e.target.value); setPromoResult(null); }}
               onKeyDown={(e) => { if (e.key === 'Enter') void handleValidatePromo(); }}
               placeholder="Have a promo code?"
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:border-[#9eb8ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
           </div>
           <GlassButton

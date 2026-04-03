@@ -36,17 +36,17 @@ const TONE_LABELS: Record<string, string> = {
 };
 
 const ENGAGEMENT_COLORS: Record<string, string> = {
-  high: 'text-[#b5dec2] bg-[#b5dec2]/10',
-  above_average: 'text-[#98b3ff] bg-[#98b3ff]/10',
-  average: 'text-[#f0d99f] bg-[#f0d99f]/10',
+  high: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
+  above_average: 'text-[var(--link)] bg-[var(--link)]/10',
+  average: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
   below_average: 'text-[#ffc4a0] bg-[#ffc4a0]/10',
   low: 'text-red-400 bg-red-400/10',
 };
 
 const AI_RISK_COLORS: Record<string, string> = {
-  very_low: 'text-[#b5dec2]',
-  low: 'text-[#98b3ff]',
-  moderate: 'text-[#f0d99f]',
+  very_low: 'text-[var(--badge-green-text)]',
+  low: 'text-[var(--link)]',
+  moderate: 'text-[var(--badge-amber-text)]',
   high: 'text-[#ffc4a0]',
   very_high: 'text-red-400',
 };
@@ -111,18 +111,18 @@ export function WritingAnalyzer() {
     !result
       ? ''
       : result.overall_score >= 80
-      ? 'text-[#b5dec2]'
+      ? 'text-[var(--badge-green-text)]'
       : result.overall_score >= 60
-      ? 'text-[#98b3ff]'
+      ? 'text-[var(--link)]'
       : result.overall_score >= 40
-      ? 'text-[#f0d99f]'
+      ? 'text-[var(--badge-amber-text)]'
       : 'text-red-400';
 
   return (
     <div className="flex flex-col gap-4">
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Eye size={16} className="text-[#98b3ff]" />
+          <Eye size={16} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Writing Analyzer</h3>
         </div>
         <p className="text-[13px] text-[var(--text-soft)] mb-4 leading-relaxed">
@@ -139,7 +139,7 @@ export function WritingAnalyzer() {
                 className={cn(
                   'text-[13px] font-medium px-3 py-1 rounded-full border transition-colors',
                   context === opt.value
-                    ? 'text-[#98b3ff] border-[#98b3ff]/30 bg-[#98b3ff]/[0.08]'
+                    ? 'text-[var(--link)] border-[var(--link)]/30 bg-[var(--link)]/[0.08]'
                     : 'text-[var(--text-soft)] border-[var(--line-soft)] bg-[var(--accent-muted)] hover:text-[var(--text-soft)] hover:border-[var(--line-strong)]',
                 )}
               >
@@ -153,7 +153,7 @@ export function WritingAnalyzer() {
             onChange={(e) => setText(e.target.value)}
             placeholder="Paste your LinkedIn text here..."
             rows={6}
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
           />
 
           <div className="flex items-center justify-between">
@@ -201,16 +201,16 @@ export function WritingAnalyzer() {
                 <p className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Authenticity</p>
                 <p className={cn(
                   'text-[18px] font-bold tabular-nums',
-                  result.authenticity_score >= 80 ? 'text-[#b5dec2]' :
-                  result.authenticity_score >= 60 ? 'text-[#f0d99f]' : 'text-red-400',
+                  result.authenticity_score >= 80 ? 'text-[var(--badge-green-text)]' :
+                  result.authenticity_score >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-red-400',
                 )}>{result.authenticity_score}</p>
               </div>
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 text-center">
                 <p className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Hook</p>
                 <p className={cn(
                   'text-[18px] font-bold tabular-nums',
-                  result.hook_quality >= 70 ? 'text-[#98b3ff]' :
-                  result.hook_quality >= 50 ? 'text-[#f0d99f]' : 'text-red-400',
+                  result.hook_quality >= 70 ? 'text-[var(--link)]' :
+                  result.hook_quality >= 50 ? 'text-[var(--badge-amber-text)]' : 'text-red-400',
                 )}>{result.hook_quality}</p>
               </div>
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 text-center">
@@ -243,7 +243,7 @@ export function WritingAnalyzer() {
               <ul className="space-y-1.5">
                 {result.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                    <Check size={12} className="text-[#b5dec2] flex-shrink-0 mt-0.5" />
+                    <Check size={12} className="text-[var(--badge-green-text)] flex-shrink-0 mt-0.5" />
                     {s}
                   </li>
                 ))}
@@ -257,7 +257,7 @@ export function WritingAnalyzer() {
               <ul className="space-y-1.5">
                 {result.improvements.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-soft)]">
-                    <TrendingUp size={12} className="text-[#f0d99f] flex-shrink-0 mt-0.5" />
+                    <TrendingUp size={12} className="text-[var(--badge-amber-text)] flex-shrink-0 mt-0.5" />
                     {s}
                   </li>
                 ))}
@@ -266,8 +266,8 @@ export function WritingAnalyzer() {
           )}
 
           {result.suggested_rewrite_of_first_line && (
-            <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.03] px-4 py-3">
-              <p className="text-[12px] font-medium text-[#98b3ff]/60 uppercase tracking-wider mb-2">Stronger opening</p>
+            <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.03] px-4 py-3">
+              <p className="text-[12px] font-medium text-[var(--link)]/60 uppercase tracking-wider mb-2">Stronger opening</p>
               <p className="text-[13px] text-[var(--text-soft)] leading-relaxed italic">
                 &ldquo;{result.suggested_rewrite_of_first_line}&rdquo;
               </p>

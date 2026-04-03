@@ -20,10 +20,10 @@ const STAGE_DB_MAP: Record<string, string> = {
 
 const STAGE_COLORS: Record<string, string> = {
   Shortlist: 'bg-[var(--line-strong)]',
-  Applied: 'bg-[#98b3ff]/50',
-  Interviewing: 'bg-[#f0d99f]/50',
-  Offer: 'bg-[#b5dec2]/50',
-  Accepted: 'bg-[#b5dec2]/70',
+  Applied: 'bg-[var(--link)]/50',
+  Interviewing: 'bg-[var(--badge-amber-text)]/50',
+  Offer: 'bg-[var(--badge-green-text)]/50',
+  Accepted: 'bg-[var(--badge-green-text)]/70',
 };
 
 function makeEmptyCounts(): Record<string, number> {

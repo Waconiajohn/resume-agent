@@ -29,12 +29,12 @@ function sortByImportance(a: RequirementGap, b: RequirementGap): number {
 function importanceBadge(importance: RequirementGap['importance']) {
   const styles: Record<string, React.CSSProperties> = {
     must_have: {
-      color: '#f0b8b8',
+      color: 'var(--badge-red-text)',
       backgroundColor: 'rgba(240,184,184,0.10)',
       border: '1px solid rgba(240,184,184,0.22)',
     },
     important: {
-      color: '#f0d99f',
+      color: 'var(--badge-amber-text)',
       backgroundColor: 'rgba(240,217,159,0.10)',
       border: '1px solid rgba(240,217,159,0.22)',
     },
@@ -66,7 +66,7 @@ function sourceBadge(source: RequirementGap['source']) {
     <span
       className="rounded-md px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap"
       style={{
-        color: isJD ? '#afc4ff' : '#c4b5fd',
+        color: isJD ? 'var(--link)' : '#c4b5fd',
         backgroundColor: isJD ? 'rgba(175,196,255,0.08)' : 'rgba(196,181,253,0.08)',
         border: isJD ? '1px solid rgba(175,196,255,0.18)' : '1px solid rgba(196,181,253,0.18)',
       }}
@@ -193,10 +193,10 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
             style={{
               color:
                 coverage_score >= 80
-                  ? '#b5dec2'
+                  ? 'var(--badge-green-text)'
                   : coverage_score >= 50
-                    ? '#f0d99f'
-                    : '#f0b8b8',
+                    ? 'var(--badge-amber-text)'
+                    : 'var(--badge-red-text)',
             }}
           >
             {coverage_score}
@@ -210,7 +210,7 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
               <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 space-y-1">
                 <p className="text-[10px] font-medium text-[var(--text-soft)]">JD Requirements</p>
                 <p className="text-[9px] text-[var(--text-soft)] -mt-0.5">What the employer asked for</p>
-                <p className="text-xs font-bold tabular-nums" style={{ color: '#afc4ff' }}>
+                <p className="text-xs font-bold tabular-nums" style={{ color: 'var(--link)' }}>
                   {jd.coverage_score}
                 </p>
                 <p className="text-[10px] text-[var(--text-soft)]">
@@ -236,17 +236,17 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
 
       {/* Critical gaps callout */}
       {critical_gaps.length > 0 && (
-        <div className="rounded-lg border border-[#f0b8b8]/25 bg-[#f0b8b8]/[0.05] px-4 py-3 space-y-1.5">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/25 bg-[var(--badge-red-text)]/[0.05] px-4 py-3 space-y-1.5">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: '#f0b8b8' }} />
-            <p className="text-xs font-semibold" style={{ color: '#f0b8b8' }}>
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
+            <p className="text-xs font-semibold" style={{ color: 'var(--badge-red-text)' }}>
               Critical Gaps ({critical_gaps.length})
             </p>
           </div>
           <ul className="space-y-1 pl-5">
             {critical_gaps.map((gap, i) => (
               <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-[#f0b8b8]" />
+                <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-[var(--badge-red-text)]" />
                 {gap}
               </li>
             ))}
@@ -257,24 +257,24 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
       {/* Grouped requirements */}
       <RequirementGroup
         label="Strong Matches"
-        icon={<CheckCircle2 className="h-3.5 w-3.5" style={{ color: '#b5dec2' }} />}
-        borderColor="#b5dec2"
+        icon={<CheckCircle2 className="h-3.5 w-3.5" style={{ color: 'var(--badge-green-text)' }} />}
+        borderColor="var(--badge-green-text)"
         bgColor="rgba(181,222,194,0.25)"
         requirements={strong}
       />
 
       <RequirementGroup
         label="Partial Matches"
-        icon={<AlertTriangle className="h-3.5 w-3.5" style={{ color: '#f0d99f' }} />}
-        borderColor="#f0d99f"
+        icon={<AlertTriangle className="h-3.5 w-3.5" style={{ color: 'var(--badge-amber-text)' }} />}
+        borderColor="var(--badge-amber-text)"
         bgColor="rgba(240,217,159,0.25)"
         requirements={partial}
       />
 
       <RequirementGroup
         label="Gaps"
-        icon={<XCircle className="h-3.5 w-3.5" style={{ color: '#f0b8b8' }} />}
-        borderColor="#f0b8b8"
+        icon={<XCircle className="h-3.5 w-3.5" style={{ color: 'var(--badge-red-text)' }} />}
+        borderColor="var(--badge-red-text)"
         bgColor="rgba(240,184,184,0.25)"
         requirements={missing}
       />

@@ -92,7 +92,7 @@ type OutreachStatus = 'not_started' | 'messaged';
 
 const STATUS_CONFIG: Record<OutreachStatus, { label: string; color: string; borderColor: string }> = {
   not_started: { label: 'Not Started', color: 'text-[var(--text-soft)] bg-[var(--accent-muted)]', borderColor: 'border-[var(--line-soft)]' },
-  messaged: { label: 'Contacted', color: 'text-[#afc4ff] bg-[#afc4ff]/10', borderColor: 'border-[#afc4ff]/15' },
+  messaged: { label: 'Contacted', color: 'text-[var(--link)] bg-[var(--link)]/10', borderColor: 'border-[var(--link)]/15' },
 };
 
 function deriveOutreachStatus(contact: NetworkingContact): OutreachStatus {
@@ -128,16 +128,16 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
   if (followUps.length === 0) return null;
 
   return (
-    <details className="rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04] overflow-hidden">
+    <details className="rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04] overflow-hidden">
       <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none hover:bg-[var(--accent-muted)] transition-colors">
-        <Bell size={14} className="text-[#f0d99f] flex-shrink-0" />
-        <span className="text-[13px] font-medium text-[#f0d99f]">
+        <Bell size={14} className="text-[var(--badge-amber-text)] flex-shrink-0" />
+        <span className="text-[13px] font-medium text-[var(--badge-amber-text)]">
           {followUps.length} contact{followUps.length !== 1 ? 's' : ''} need follow-up
         </span>
-        <ChevronDown size={13} className="text-[#f0d99f]/50 ml-auto" />
+        <ChevronDown size={13} className="text-[var(--badge-amber-text)]/50 ml-auto" />
       </summary>
 
-      <div className="border-t border-[#f0d99f]/10 px-4 py-3 space-y-2">
+      <div className="border-t border-[var(--badge-amber-text)]/10 px-4 py-3 space-y-2">
         {followUps.map((contact) => {
           const days = daysUntil(contact.next_followup_at);
           const overdue = days < 0;
@@ -151,7 +151,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                 <span
                   className={cn(
                     'text-[13px] ml-2',
-                    overdue ? 'text-red-400' : 'text-[#f0d99f]',
+                    overdue ? 'text-red-400' : 'text-[var(--badge-amber-text)]',
                   )}
                 >
                   {overdue
@@ -163,7 +163,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                 <button
                   type="button"
                   onClick={() => onDone(contact.id)}
-                  className="text-[13px] text-[#b5dec2] hover:text-[#b5dec2]/80 transition-colors px-2 py-1 rounded border border-[#b5dec2]/20 hover:bg-[#b5dec2]/5"
+                  className="text-[13px] text-[var(--badge-green-text)] hover:text-[var(--badge-green-text)]/80 transition-colors px-2 py-1 rounded border border-[var(--badge-green-text)]/20 hover:bg-[var(--badge-green-text)]/5"
                 >
                   Done
                 </button>
@@ -204,7 +204,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
-        <Users size={18} className="text-[#98b3ff]" />
+        <Users size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Rule of Four</h3>
       </div>
       <p className="text-[12px] text-[var(--text-soft)] mb-4">
@@ -248,9 +248,9 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                     className={cn(
                       'text-[13px] font-medium',
                       group.progress === 4
-                        ? 'text-[#b5dec2]'
+                        ? 'text-[var(--badge-green-text)]'
                         : group.progress > 0
-                        ? 'text-[#f0d99f]'
+                        ? 'text-[var(--badge-amber-text)]'
                         : 'text-[var(--text-soft)]',
                     )}
                   >
@@ -303,7 +303,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                               title: contact.title ?? '',
                               company: group.application.company_name,
                             })}
-                            className="flex items-center gap-0.5 text-[12px] text-[#98b3ff]/50 hover:text-[#98b3ff] transition-colors px-1.5 py-0.5 rounded border border-[#98b3ff]/15 hover:bg-[#98b3ff]/[0.06]"
+                            className="flex items-center gap-0.5 text-[12px] text-[var(--link)]/50 hover:text-[var(--link)] transition-colors px-1.5 py-0.5 rounded border border-[var(--link)]/15 hover:bg-[var(--link)]/[0.06]"
                           >
                             <Sparkles size={9} />
                             Message
@@ -324,7 +324,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                             group.missingRoles[0],
                           )
                         }
-                        className="flex items-center gap-1.5 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+                        className="flex items-center gap-1.5 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
                       >
                         <Plus size={11} />
                         Add {CONTACT_ROLE_LABELS[group.missingRoles[0]]}
@@ -355,7 +355,7 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Clock size={14} className="text-[#afc4ff]" />
+        <Clock size={14} className="text-[var(--link)]" />
         <span className="text-[12px] font-semibold text-[var(--text-muted)]">Follow-Up Cadence</span>
         <span className="ml-auto text-[12px] text-[var(--text-soft)]">Best practice</span>
       </div>
@@ -370,17 +370,17 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
                 <div className={cn(
                   'w-3.5 h-3.5 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center',
                   isStop
-                    ? 'border-[#f0b8b8]/40 bg-[#f0b8b8]/10'
+                    ? 'border-[var(--badge-red-text)]/40 bg-[var(--badge-red-text)]/10'
                     : hasReport && idx === 0
-                    ? 'border-[#b5dec2]/40 bg-[#b5dec2]/20'
+                    ? 'border-[var(--badge-green-text)]/40 bg-[var(--badge-green-text)]/20'
                     : 'border-[var(--line-strong)] bg-[var(--accent-muted)]',
                 )}>
                   {isStop ? (
-                    <Minus size={6} className="text-[#f0b8b8]/60" />
+                    <Minus size={6} className="text-[var(--badge-red-text)]/60" />
                   ) : (
                     <div className={cn(
                       'w-1.5 h-1.5 rounded-full',
-                      hasReport && idx === 0 ? 'bg-[#b5dec2]' : 'bg-[var(--line-strong)]',
+                      hasReport && idx === 0 ? 'bg-[var(--badge-green-text)]' : 'bg-[var(--line-strong)]',
                     )} />
                   )}
                 </div>
@@ -388,12 +388,12 @@ function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={cn(
                       'text-[13px] font-medium',
-                      isStop ? 'text-[#f0b8b8]/70' : 'text-[var(--text-muted)]',
+                      isStop ? 'text-[var(--badge-red-text)]/70' : 'text-[var(--text-muted)]',
                     )}>
                       {step.label}
                     </span>
                     {step.day > 0 && (
-                      <span className="text-[12px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+                      <span className="text-[12px] text-[var(--link)]/50 bg-[var(--link)]/[0.06] px-1.5 py-0.5 rounded-md border border-[var(--link)]/10">
                         Day {step.day}
                       </span>
                     )}
@@ -430,16 +430,16 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
-        <MessageSquare size={18} className="text-[#afc4ff]" />
+        <MessageSquare size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Generated Sequence</h3>
         {qualityScore != null && (
           <span className={cn(
             'ml-auto text-[12px] font-medium px-1.5 py-0.5 rounded-md border',
             qualityScore >= 80
-              ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
+              ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/15'
               : qualityScore >= 60
-              ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/15'
-              : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/15',
+              ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/15'
+              : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/15',
           )}>
             Quality: {qualityScore}%
           </span>
@@ -450,7 +450,7 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
         <div className="py-6 text-center space-y-2">
           <Zap size={24} className="text-[var(--text-soft)] mx-auto" />
           <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
-            Click <span className="text-[#afc4ff]/60 font-medium">Message</span> next to any Rule of Four contact to generate a personalized outreach sequence.
+            Click <span className="text-[var(--link)]/60 font-medium">Message</span> next to any Rule of Four contact to generate a personalized outreach sequence.
           </p>
           <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
             Each sequence includes a connection request, follow-ups, a value offer, and a meeting request — all personalized to the specific contact.
@@ -464,7 +464,7 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-[var(--text-soft)]">{messageCount} messages</span>
               <span className="text-[12px] text-[var(--text-soft)]">·</span>
-              <span className="text-[12px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+              <span className="text-[12px] text-[var(--link)]/50 bg-[var(--link)]/[0.06] px-1.5 py-0.5 rounded-md border border-[var(--link)]/10">
                 Personalized sequence
               </span>
             </div>
@@ -480,7 +480,7 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
             className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
           >
             {copied ? (
-              <><Check size={11} className="text-[#b5dec2]" /> Copied</>
+              <><Check size={11} className="text-[var(--badge-green-text)]" /> Copied</>
             ) : (
               <><Copy size={11} /> Copy Full Sequence</>
             )}
@@ -522,7 +522,7 @@ function WeeklyActivity({ contacts: rawContacts }: WeeklyActivityProps) {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <TrendingUp size={18} className="text-[#98b3ff]" />
+        <TrendingUp size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Weekly Activity</h3>
         <span className="ml-auto text-[13px] text-[var(--text-soft)]">This week</span>
       </div>
@@ -556,8 +556,8 @@ interface RecruiterTrackerProps {
 function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact }: RecruiterTrackerProps) {
   const contacts = rawContacts ?? [];
   const statusColors: Record<string, string> = {
-    active: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    cold: 'text-[#f0d99f] bg-[#f0d99f]/10',
+    active: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
+    cold: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
     dormant: 'text-[var(--text-soft)] bg-[var(--accent-muted)]',
   };
 
@@ -573,12 +573,12 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Briefcase size={18} className="text-[#98b3ff]" />
+        <Briefcase size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Recruiter Tracker</h3>
         <button
           type="button"
           onClick={onAddRecruiter}
-          className="ml-auto flex items-center gap-1.5 text-[13px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+          className="ml-auto flex items-center gap-1.5 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
         >
           <Plus size={11} /> Add Recruiter
         </button>
@@ -593,7 +593,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
           <button
             type="button"
             onClick={onAddRecruiter}
-            className="text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+            className="text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
           >
             Add your first recruiter.
           </button>
@@ -757,7 +757,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
-        <Sparkles size={18} className="text-[#98b3ff]" />
+        <Sparkles size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Outreach Generator</h3>
         {outreach.status !== 'idle' && outreach.status !== 'connecting' && (
           <button
@@ -785,7 +785,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target name *"
               value={targetName}
               onChange={(e) => setTargetName(e.target.value)}
-              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
             <input
               id="outreach-target-title"
@@ -794,7 +794,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target title *"
               value={targetTitle}
               onChange={(e) => setTargetTitle(e.target.value)}
-              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
             <input
               id="outreach-target-company"
@@ -803,7 +803,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target company *"
               value={targetCompany}
               onChange={(e) => setTargetCompany(e.target.value)}
-              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -814,7 +814,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="LinkedIn URL (optional)"
               value={targetLinkedIn}
               onChange={(e) => setTargetLinkedIn(e.target.value)}
-              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
             <input
               id="outreach-context-notes"
@@ -823,7 +823,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Context notes (optional — shared events, mutual connections, etc.)"
               value={contextNotes}
               onChange={(e) => setContextNotes(e.target.value)}
-              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+              className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
           </div>
           <textarea
@@ -833,7 +833,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
+            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 resize-none"
           />
           <div className="flex flex-col gap-2">
             <label className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider">Messaging Method</label>
@@ -846,7 +846,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                   className={cn(
                     'rounded-lg border px-3 py-2 text-left transition-all',
                     messagingMethod === method
-                      ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.06]'
+                      ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.06]'
                       : 'border-[var(--line-soft)] bg-[var(--accent-muted)] hover:border-[var(--line-soft)]',
                   )}
                 >
@@ -855,7 +855,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                 </button>
               ))}
             </div>
-            <p className="text-[13px] text-[#98b3ff]/50 italic">{MESSAGING_METHOD_CONFIG[messagingMethod].coaching}</p>
+            <p className="text-[13px] text-[var(--link)]/50 italic">{MESSAGING_METHOD_CONFIG[messagingMethod].coaching}</p>
           </div>
           <GlassButton onClick={handleGenerate} disabled={!canGenerate} className="w-full sm:w-auto">
             <Sparkles size={14} />
@@ -868,7 +868,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
       {(outreach.status === 'connecting' || outreach.status === 'running') && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
-            <Loader2 size={14} className="animate-spin text-[#98b3ff]" />
+            <Loader2 size={14} className="animate-spin text-[var(--link)]" />
             <span>
               {outreach.currentStage === 'writing'
                 ? 'Writing outreach messages...'
@@ -879,7 +879,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 space-y-1.5">
               {outreach.activityMessages.map((msg) => (
                 <div key={msg.id} className="flex items-start gap-2 text-[13px]">
-                  <span className="text-[#98b3ff]/40 font-mono shrink-0">
+                  <span className="text-[var(--link)]/40 font-mono shrink-0">
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -904,10 +904,10 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
 
       {/* Complete state — hand off to the dedicated results card below */}
       {outreach.status === 'complete' && outreach.report && (
-        <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+        <div className="rounded-xl border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.05] px-4 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-[13px] font-semibold text-[#b5dec2]">Sequence ready</div>
+              <div className="text-[13px] font-semibold text-[var(--badge-green-text)]">Sequence ready</div>
               <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
                 Review the finished outreach sequence in the Generated Sequence card below, then copy or reset from there.
               </p>
@@ -1123,7 +1123,7 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
           className={cn(
             'text-[12px] flex items-center gap-2 px-3 py-2 rounded-lg border',
             niImportStatus === 'success'
-              ? 'text-[#b5dec2] border-[#b5dec2]/20 bg-[#b5dec2]/[0.05]'
+              ? 'text-[var(--badge-green-text)] border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.05]'
               : 'text-red-400 border-red-400/20 bg-red-400/[0.05]',
           )}
         >
@@ -1145,7 +1145,7 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
                 setContactsError('Could not load contacts. Please try again.');
               });
             }}
-            className="text-[#98b3ff] hover:underline"
+            className="text-[var(--link)] hover:underline"
           >
             Retry
           </button>

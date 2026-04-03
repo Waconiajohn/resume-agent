@@ -55,20 +55,20 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, h
 
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
-      <div className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest mb-3">
+      <div className="text-[13px] font-medium text-[var(--link)]/60 uppercase tracking-widest mb-3">
         Your One Action Today
       </div>
       <h2 className="text-lg font-semibold text-[var(--text-strong)] mb-2">
         Good {getTimeOfDay()}, {displayName}
       </h2>
       <p className="text-[14px] text-[var(--text-soft)] leading-relaxed flex-1">
-        <Sparkles size={14} className="inline mr-1.5 text-[#98b3ff] -mt-0.5" />
+        <Sparkles size={14} className="inline mr-1.5 text-[var(--link)] -mt-0.5" />
         {guidance.mobileInsight}
       </p>
       <button
         type="button"
         onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe() : onNavigateRoom(guidance.primary.room))}
-        className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[#9eb8ff]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
+        className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--link)]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
       >
         {guidance.primary.label}
         <ArrowRight size={16} />
@@ -95,8 +95,8 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
       <div className="flex items-center gap-2 mb-4">
-        <Bot size={16} className="text-[#98b3ff]" />
-        <span className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
+        <Bot size={16} className="text-[var(--link)]" />
+        <span className="text-[13px] font-medium text-[var(--link)]/60 uppercase tracking-widest">
           Agent Activity
         </span>
       </div>
@@ -110,7 +110,7 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
         <div className="flex-1 space-y-3">
           {events.slice(0, 5).map((event, i) => (
             <div key={`${event.type}-${event.timestamp}-${i}`} className="flex items-start gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/40 mt-1.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">{event.detail}</p>
                 <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{relativeTime(event.timestamp)}</p>
@@ -193,7 +193,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
               onClick={() => setActiveIndex(i)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
-                i === activeIndex ? 'w-6 bg-[#98b3ff]' : 'w-2 bg-[var(--line-strong)]',
+                i === activeIndex ? 'w-6 bg-[var(--link)]' : 'w-2 bg-[var(--line-strong)]',
               )}
             />
           ))}
@@ -235,7 +235,7 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
             onClick={() => onNavigate(tab.id)}
             className={cn(
               'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
-              isActive ? 'text-[#98b3ff]' : 'text-[var(--text-soft)]',
+              isActive ? 'text-[var(--link)]' : 'text-[var(--text-soft)]',
             )}
           >
             <Icon size={20} />
@@ -271,7 +271,7 @@ export function MobileBriefing({
     <div className="flex flex-col min-h-screen pb-20">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <span className="text-[13px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
+        <span className="text-[13px] font-medium text-[var(--link)]/60 uppercase tracking-widest">
           Daily Briefing
         </span>
       </div>

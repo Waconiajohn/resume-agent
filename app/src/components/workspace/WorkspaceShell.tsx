@@ -45,26 +45,26 @@ function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
     case 'complete':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full bg-[#b5dec2] motion-safe:animate-node-complete-pop',
-        pill: 'text-[#b5dec2]/90 border-[#b5dec2]/25 bg-[#b5dec2]/[0.08]',
+        dot: 'h-1.5 w-1.5 rounded-full bg-[var(--badge-green-text)] motion-safe:animate-node-complete-pop',
+        pill: 'text-[var(--badge-green-text)]/90 border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)]',
         label: '\u2713',
       };
     case 'blocked':
       return {
-        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#f0d99f] motion-safe:animate-node-pulse',
-        pill: 'text-[#f0d99f]/90 border-[#f0d99f]/20 bg-[#f0d99f]/[0.08]',
+        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[var(--badge-amber-text)] motion-safe:animate-node-pulse',
+        pill: 'text-[var(--badge-amber-text)]/90 border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]',
         label: 'Your turn',
       };
     case 'in_progress':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full border-[1.5px] border-[#afc4ff] motion-safe:animate-node-pulse',
-        pill: 'text-[#d5e1ff] border-[#afc4ff]/25 bg-[#afc4ff]/[0.09]',
+        dot: 'h-1.5 w-1.5 rounded-full border-[1.5px] border-[var(--link)] motion-safe:animate-node-pulse',
+        pill: 'text-[var(--link)] border-[var(--link)]/25 bg-[var(--badge-blue-bg)]',
         label: 'Active',
       };
     case 'stale':
       return {
-        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-[#f0d99f]',
-        pill: 'text-[#f0d99f]/90 border-[#f0d99f]/20 bg-[#f0d99f]/[0.08]',
+        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-[var(--badge-amber-text)]',
+        pill: 'text-[var(--badge-amber-text)]/90 border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]',
         label: '',
       };
     case 'ready':
@@ -132,9 +132,9 @@ export function WorkspaceShell({
       </a>
       {activeGate?.active && (
         <div className="border-b border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
-          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-[14px] border border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <Sparkles className="h-3.5 w-3.5 text-[#f0d99f]/90" />
-            <p className="min-w-0 flex-1 truncate text-[13px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-[14px] border border-[var(--badge-amber-text)]/18 bg-[var(--badge-amber-bg)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <Sparkles className="h-3.5 w-3.5 text-[var(--badge-amber-text)]/90" />
+            <p className="min-w-0 flex-1 truncate text-[13px] uppercase tracking-[0.12em] text-[var(--badge-amber-text)]/85">
               {selectedNode === activeGate.activeNode
                 ? `Your input is needed${activeGate.label ? `: ${activeGate.label}` : ''}`
                 : `Your input is needed on a different step${activeGate.label ? `: ${activeGate.label}` : ''}`}

@@ -110,7 +110,7 @@ export function CoverLetterIntakeForm({
         </p>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]">
+          <div className="mb-4 rounded-lg border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]">
             {error}
           </div>
         )}
@@ -144,7 +144,7 @@ export function CoverLetterIntakeForm({
                 disabled={loading}
               />
               {resumeText.length > 0 && resumeText.trim().length < 50 && (
-                <p className="mt-1 text-xs text-[#f0d99f]/70">
+                <p className="mt-1 text-xs text-[var(--badge-amber-text)]/70">
                   Minimum 50 characters ({resumeText.trim().length}/50)
                 </p>
               )}
@@ -197,7 +197,7 @@ export function CoverLetterIntakeForm({
                       className={cn(
                         'flex flex-col items-center gap-2 rounded-xl border p-3.5 text-center transition-all',
                         isSelected
-                          ? 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]'
+                          ? 'border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-[var(--link)]'
                           : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                         loading && 'cursor-not-allowed opacity-50',
                       )}

@@ -20,20 +20,20 @@ import {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-  behavioral: 'text-[#98b3ff] bg-[#98b3ff]/10',
-  technical: 'text-[#b5dec2] bg-[#b5dec2]/10',
-  situational: 'text-[#f0d99f] bg-[#f0d99f]/10',
+  behavioral: 'text-[var(--link)] bg-[var(--link)]/10',
+  technical: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
+  situational: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#f0d99f]';
+  if (score >= 80) return 'text-[var(--badge-green-text)]';
+  if (score >= 60) return 'text-[var(--badge-amber-text)]';
   return 'text-[#e8a0a0]';
 }
 
 function scoreBg(score: number): string {
-  if (score >= 80) return 'bg-[#b5dec2]';
-  if (score >= 60) return 'bg-[#f0d99f]';
+  if (score >= 80) return 'bg-[var(--badge-green-text)]';
+  if (score >= 60) return 'bg-[var(--badge-amber-text)]';
   return 'bg-[#e8a0a0]';
 }
 
@@ -110,8 +110,8 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#b5dec2]/50" />
-                    <span className="text-[12px] text-[#b5dec2]/70 leading-relaxed">{s}</span>
+                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[var(--badge-green-text)]/50" />
+                    <span className="text-[12px] text-[var(--badge-green-text)]/70 leading-relaxed">{s}</span>
                   </li>
                 ))}
               </ul>
@@ -127,8 +127,8 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.improvements.map((imp, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#f0d99f]/50" />
-                    <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{imp}</span>
+                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[var(--badge-amber-text)]/50" />
+                    <span className="text-[12px] text-[var(--badge-amber-text)]/70 leading-relaxed">{imp}</span>
                   </li>
                 ))}
               </ul>
@@ -137,9 +137,9 @@ function EvaluationCard({
 
           {/* Model answer hint */}
           {evaluation.model_answer_hint && (
-            <div className="rounded-lg border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-3 py-2.5">
-              <div className="text-[13px] font-medium text-[#98b3ff]/60 mb-1">Coaching Tip</div>
-              <p className="text-[12px] text-[#98b3ff]/50 leading-relaxed">
+            <div className="rounded-lg border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-3 py-2.5">
+              <div className="text-[13px] font-medium text-[var(--link)]/60 mb-1">Coaching Tip</div>
+              <p className="text-[12px] text-[var(--link)]/50 leading-relaxed">
                 {evaluation.model_answer_hint}
               </p>
             </div>
@@ -208,8 +208,8 @@ function ConnectingView({
   return (
     <GlassCard className="p-8 flex flex-col items-center gap-6">
       <div className="flex flex-col items-center gap-3">
-        <div className="rounded-xl bg-[#98b3ff]/10 p-4">
-          <Loader2 size={28} className="text-[#98b3ff] animate-spin" />
+        <div className="rounded-xl bg-[var(--link)]/10 p-4">
+          <Loader2 size={28} className="text-[var(--link)] animate-spin" />
         </div>
         <h3 className="text-[16px] font-semibold text-[var(--text-strong)]">Preparing your interview...</h3>
         <p className="text-[13px] text-[var(--text-soft)] text-center">
@@ -221,7 +221,7 @@ function ConnectingView({
         <div className="w-full space-y-1.5 max-h-[200px] overflow-y-auto">
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 py-0.5">
-              <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#98b3ff]/40" />
+              <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[var(--link)]/40" />
               <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
             </div>
           ))}
@@ -266,9 +266,9 @@ function SummaryView({
             className={cn(
               'ml-auto rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
               summary.overall_score >= 80
-                ? 'text-[#b5dec2] bg-[#b5dec2]/10'
+                ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10'
                 : summary.overall_score >= 60
-                  ? 'text-[#f0d99f] bg-[#f0d99f]/10'
+                  ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10'
                   : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
             )}
           >
@@ -289,8 +289,8 @@ function SummaryView({
             <ul className="space-y-1.5">
               {summary.strengths.map((s, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <CheckCircle2 size={13} className="text-[#b5dec2] mt-0.5 flex-shrink-0" />
-                  <span className="text-[12px] text-[#b5dec2]/70 leading-relaxed">{s}</span>
+                  <CheckCircle2 size={13} className="text-[var(--badge-green-text)] mt-0.5 flex-shrink-0" />
+                  <span className="text-[12px] text-[var(--badge-green-text)]/70 leading-relaxed">{s}</span>
                 </li>
               ))}
             </ul>
@@ -304,8 +304,8 @@ function SummaryView({
             <ul className="space-y-1.5">
               {summary.areas_for_improvement.map((area, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[#f0d99f]/50" />
-                  <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{area}</span>
+                  <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 bg-[var(--badge-amber-text)]/50" />
+                  <span className="text-[12px] text-[var(--badge-amber-text)]/70 leading-relaxed">{area}</span>
                 </li>
               ))}
             </ul>
@@ -314,9 +314,9 @@ function SummaryView({
 
         {/* Recommendation */}
         {summary.recommendation && (
-          <div className="rounded-lg border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3">
-            <div className="text-[13px] font-medium text-[#98b3ff]/60 mb-1">Recommendation</div>
-            <p className="text-[13px] text-[#98b3ff]/60 leading-relaxed">{summary.recommendation}</p>
+          <div className="rounded-lg border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-4 py-3">
+            <div className="text-[13px] font-medium text-[var(--link)]/60 mb-1">Recommendation</div>
+            <p className="text-[13px] text-[var(--link)]/60 leading-relaxed">{summary.recommendation}</p>
           </div>
         )}
       </GlassCard>
@@ -555,7 +555,7 @@ export function MockInterviewView({
           {status === 'evaluating' ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <Loader2 size={16} className="text-[#98b3ff] animate-spin" />
+                <Loader2 size={16} className="text-[var(--link)] animate-spin" />
                 <span className="text-[13px] text-[var(--text-soft)]">Evaluating your answer...</span>
               </div>
               <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
@@ -578,7 +578,7 @@ export function MockInterviewView({
                   className={cn(
                     'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3',
                     'text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] leading-relaxed',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-y',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 resize-y',
                   )}
                 />
                 <div className="flex items-center justify-between mt-1.5">

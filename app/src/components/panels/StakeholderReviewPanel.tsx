@@ -23,7 +23,7 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   critical: { label: 'Critical', color: 'text-[#f0a9a9]' },
   high: { label: 'High', color: 'text-[#f0c9a9]' },
-  medium: { label: 'Medium', color: 'text-[#f0d99f]' },
+  medium: { label: 'Medium', color: 'text-[var(--badge-amber-text)]' },
   low: { label: 'Low', color: 'text-[var(--text-soft)]' },
 };
 
@@ -48,7 +48,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-[#afc4ff]" />
+            <Users className="h-4 w-4 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Stakeholder Map Review</span>
           </div>
           <span className="text-xs text-[var(--text-soft)] tabular-nums">
@@ -113,7 +113,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
               <ul className="space-y-1.5">
                 {quick_wins.slice(0, 3).map((win, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-[13px] text-[var(--text-muted)]">
-                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 bg-[#afc4ff]/50" />
+                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 bg-[var(--link)]/50" />
                     <span>{win.description}</span>
                     <span className="shrink-0 text-[var(--text-soft)]">{win.impact} impact</span>
                   </li>
@@ -134,7 +134,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. I will not have direct reports — this is an IC role. Add the Head of Product as a cross-functional stakeholder. The CFO is a critical superior, not medium..."
-              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] leading-relaxed placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 focus:ring-[var(--link)]/20 resize-none"
               aria-label="Corrections to stakeholder map"
               autoFocus
             />

@@ -53,8 +53,8 @@ export function WorkbenchProgressDots({
               key={section}
               className={cn(
                 'h-full flex-1',
-                isApproved && 'bg-[#a8d7b8]',
-                isCurrent && 'bg-[#98b3ff] motion-safe:animate-pulse',
+                isApproved && 'bg-[var(--badge-green-text)]',
+                isCurrent && 'bg-[var(--link)] motion-safe:animate-pulse',
                 !isApproved && !isCurrent && 'bg-transparent',
               )}
             />

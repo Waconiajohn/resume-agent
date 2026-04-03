@@ -10,7 +10,7 @@ const SOURCE_BADGE: Record<NonNullable<QuestionnaireOptionType['source']>, { lab
   },
   jd: {
     label: 'From JD',
-    className: 'border border-[#afc4ff]/25 bg-[#afc4ff]/[0.06] text-[#afc4ff]/70',
+    className: 'border border-[var(--link)]/25 bg-[var(--badge-blue-bg)] text-[var(--link)]/70',
   },
   inferred: {
     label: 'Inferred',
@@ -71,7 +71,7 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
           <div
             className={cn(
               'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition-all duration-200 flex items-center justify-center',
-              isSelected ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30' : 'border-[var(--text-soft)] bg-transparent',
+              isSelected ? 'border-[var(--link)]/80 bg-[var(--badge-blue-bg)]' : 'border-[var(--text-soft)] bg-transparent',
             )}
             aria-hidden="true"
           >

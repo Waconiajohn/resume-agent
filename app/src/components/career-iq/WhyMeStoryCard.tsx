@@ -20,8 +20,8 @@ import { useNarrativeSnapshot } from './useNarrativeSnapshot';
 // ---------------------------------------------------------------------------
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   const colorMap: Record<SignalLevel, string> = {
-    green: 'bg-[#b5dec2]',
-    yellow: 'bg-[#f0d99f]',
+    green: 'bg-[var(--badge-green-text)]',
+    yellow: 'bg-[var(--badge-amber-text)]',
     red: 'bg-[var(--line-strong)]',
   };
   return (
@@ -70,7 +70,7 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
             type="button"
             onClick={handleCancel}
             aria-label="Cancel edit"
-            className="rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/40"
+            className="rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
           >
             <X size={13} />
           </button>
@@ -79,7 +79,7 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
             type="button"
             onClick={handleEdit}
             aria-label={`Edit ${label}`}
-            className="rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/40"
+            className="rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
           >
             <Pencil size={13} />
           </button>
@@ -94,9 +94,9 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
             placeholder={placeholder}
             autoFocus
             className={cn(
-              'min-h-[100px] w-full rounded-xl border border-[#98b3ff]/20 bg-black/20 px-3 py-2.5',
+              'min-h-[100px] w-full rounded-xl border border-[var(--link)]/20 bg-black/20 px-3 py-2.5',
               'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-              'focus:border-[#98b3ff]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
+              'focus:border-[var(--link)]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
               'resize-y',
             )}
           />
@@ -109,7 +109,7 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
             <button
               type="button"
               onClick={handleSave}
-              className="rounded-lg border border-[#98b3ff]/25 bg-[#98b3ff]/10 px-3 py-1.5 text-[13px] font-medium text-[#98b3ff] transition-colors hover:bg-[#98b3ff]/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/40"
+              className="rounded-lg border border-[var(--link)]/25 bg-[var(--link)]/10 px-3 py-1.5 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             >
               Save
             </button>
@@ -156,11 +156,11 @@ export function WhyMeStoryCard() {
     <GlassCard className="p-6">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <div className="rounded-lg bg-[#98b3ff]/12 p-2">
-          <BookOpen size={16} className="text-[#98b3ff]" />
+        <div className="rounded-lg bg-[var(--link)]/12 p-2">
+          <BookOpen size={16} className="text-[var(--link)]" />
         </div>
         <div>
-          <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
             Your Why Me Story
           </div>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
@@ -223,8 +223,8 @@ export function WhyMeStoryCard() {
           <div className="space-y-3">
             {/* Branded title */}
             {snapshot.branded_title && (
-              <div className="rounded-xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.05] p-4">
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              <div className="rounded-xl border border-[var(--link)]/18 bg-[var(--link)]/[0.05] p-4">
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                   Branded Title
                 </div>
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -247,15 +247,15 @@ export function WhyMeStoryCard() {
 
             {/* Best line — pull-quote treatment */}
             {snapshot.why_me_best_line && (
-              <div className="relative overflow-hidden rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
+              <div className="relative overflow-hidden rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.04] p-4">
                 <div
-                  className="absolute left-3 top-2 select-none font-serif text-4xl leading-none text-[#b5dec2]/10"
+                  className="absolute left-3 top-2 select-none font-serif text-4xl leading-none text-[var(--badge-green-text)]/10"
                   aria-hidden="true"
                 >
                   &ldquo;
                 </div>
                 <div className="relative z-10">
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[#b5dec2]/70">
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--badge-green-text)]/70">
                     Best Line to Reuse
                   </div>
                   <p className="mt-2 pl-2 text-sm italic text-[var(--text-strong)]">
@@ -275,7 +275,7 @@ export function WhyMeStoryCard() {
                   {snapshot.unique_differentiators.map((diff) => (
                     <span
                       key={diff}
-                      className="flex items-center gap-1.5 rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-[#98b3ff]/80"
+                      className="flex items-center gap-1.5 rounded-md border border-[var(--link)]/20 bg-[var(--link)]/10 px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-[var(--link)]/80"
                     >
                       <Sparkles size={11} className="shrink-0" />
                       {diff}
@@ -331,8 +331,8 @@ export function WhyMeStoryCard() {
               key={label}
               className="flex flex-col items-center rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-center"
             >
-              <div className="rounded-lg bg-[#98b3ff]/10 p-2.5">
-                <Icon size={14} className="text-[#98b3ff]/70" />
+              <div className="rounded-lg bg-[var(--link)]/10 p-2.5">
+                <Icon size={14} className="text-[var(--link)]/70" />
               </div>
               <div className="mt-2 text-[13px] font-medium text-[var(--text-muted)]">{label}</div>
               <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">{detail}</div>

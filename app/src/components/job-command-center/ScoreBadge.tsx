@@ -8,7 +8,7 @@ export function ScoreBadge({ score }: { score: number }) {
         score >= 80
           ? 'border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
           : score >= 60
-            ? 'border border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#98b3ff]'
+            ? 'border border-[var(--link)]/25 bg-[var(--link)]/10 text-[var(--link)]'
             : 'border border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
       )}
     >

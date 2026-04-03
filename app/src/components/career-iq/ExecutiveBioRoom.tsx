@@ -138,7 +138,7 @@ function BioSectionCard({ title, content }: BioSectionCardProps) {
             className={cn(
               'flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] border transition-all',
               copied
-                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                ? 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
                 : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
@@ -208,7 +208,7 @@ function ReportView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[#98b3ff]/10 p-2.5 border border-[#A396E2]/20">
+          <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[var(--link)]/10 p-2.5 border border-[#A396E2]/20">
             <User size={18} className="text-[#A396E2]" />
           </div>
           <div>
@@ -221,16 +221,16 @@ function ReportView({
             <div className={cn(
               'text-[12px] font-semibold px-3 py-1.5 rounded-full border',
               qualityScore >= 80
-                ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
+                ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
                 : qualityScore >= 60
-                ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-                : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20',
+                ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
+                : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20',
             )}>
               Quality {qualityScore}%
             </div>
           )}
           <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
-            {copiedAll ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
+            {copiedAll ? <Check size={14} className="mr-1.5 text-[var(--badge-green-text)]" /> : <Copy size={14} className="mr-1.5" />}
             {copiedAll ? 'Copied' : 'Copy All'}
           </GlassButton>
           <GlassButton variant="ghost" onClick={onReset} size="sm">
@@ -247,7 +247,7 @@ function ReportView({
             <span className="text-[13px] text-[var(--text-soft)]">Bio Collection Quality</span>
             <span className={cn(
               'text-[13px] font-semibold',
-              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+              qualityScore >= 80 ? 'text-[var(--badge-green-text)]' : qualityScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
             </span>
@@ -256,7 +256,7 @@ function ReportView({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+                qualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : qualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
               )}
               style={{ width: `${qualityScore}%` }}
             />
@@ -282,7 +282,7 @@ function ReportView({
               prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
               prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
               prose-strong:text-[var(--text-strong)]
-              prose-em:text-[#f0d99f]/80
+              prose-em:text-[var(--badge-amber-text)]/80
               prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
               prose-hr:border-[var(--line-soft)] prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
@@ -409,7 +409,7 @@ export function ExecutiveBioRoom() {
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
                   isActive ? 'bg-[#A396E2]/15 text-[#A396E2] border border-[#A396E2]/25'
-                    : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20'
+                    : isDone ? 'bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/20'
                     : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
@@ -456,11 +456,11 @@ export function ExecutiveBioRoom() {
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Suite</h1>
         </div>
-        <GlassCard className="p-6 border-[#f0b8b8]/20">
+        <GlassCard className="p-6 border-[var(--badge-red-text)]/20">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
+              <p className="text-[13px] text-[var(--badge-red-text)] font-medium">Generation failed</p>
               <p className="text-[12px] text-[var(--text-soft)] mt-0.5">{error}</p>
             </div>
           </div>
@@ -477,7 +477,7 @@ export function ExecutiveBioRoom() {
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Room header */}
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[#98b3ff]/10 p-2.5 border border-[#A396E2]/20">
+        <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[var(--link)]/10 p-2.5 border border-[#A396E2]/20">
           <User size={20} className="text-[#A396E2]" />
         </div>
         <div>
@@ -533,7 +533,7 @@ export function ExecutiveBioRoom() {
           </div>
         ) : resumeText.length > 50 ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
               Resume loaded — {Math.round(resumeText.length / 5)} words
             </div>
@@ -547,7 +547,7 @@ export function ExecutiveBioRoom() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
               <AlertCircle size={12} />
               No master resume found — paste below
             </div>
@@ -556,7 +556,7 @@ export function ExecutiveBioRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
         )}
@@ -611,7 +611,7 @@ export function ExecutiveBioRoom() {
                   className={cn(
                     'flex-1 flex flex-col items-center gap-1 rounded-xl p-4 border transition-all',
                     isSelected
-                      ? 'bg-[#98b3ff]/10 border-[#98b3ff]/30 text-[#98b3ff]'
+                      ? 'bg-[var(--link)]/10 border-[var(--link)]/30 text-[var(--link)]'
                       : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-soft)]',
                   )}
                 >
@@ -632,7 +632,7 @@ export function ExecutiveBioRoom() {
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Chief Operating Officer"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -642,7 +642,7 @@ export function ExecutiveBioRoom() {
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g. Healthcare Technology"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
             />
           </div>
         </GlassCard>
@@ -660,7 +660,7 @@ export function ExecutiveBioRoom() {
           disabled={!canSubmit}
           className={cn(
             'px-6 py-3 text-[14px] font-medium rounded-xl',
-            'bg-gradient-to-r from-[#A396E2]/20 to-[#98b3ff]/15 hover:from-[#A396E2]/30 hover:to-[#98b3ff]/25',
+            'bg-gradient-to-r from-[#A396E2]/20 to-[var(--link)]/15 hover:from-[#A396E2]/30 hover:to-[var(--link)]/25',
             !canSubmit && 'opacity-40 cursor-not-allowed',
           )}
         >

@@ -34,7 +34,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
     },
     jd: {
       label: 'From JD',
-      className: 'bg-[#afc4ff]/[0.18] text-[#afc4ff] border border-[#afc4ff]/[0.25]',
+      className: 'bg-[var(--badge-blue-bg)] text-[var(--link)] border border-[var(--link)]/[0.25]',
     },
   }[source];
 
@@ -44,7 +44,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
       aria-checked={isSelected}
       tabIndex={0}
       className={cn(
-        'p-3.5 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+        'p-3.5 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45',
         isSelected
           ? 'border-[var(--line-strong)] bg-[var(--accent-muted)] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
           : 'hover:border-[var(--line-strong)] hover:bg-[var(--accent-muted)]',
@@ -63,7 +63,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
           className={cn(
             'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition-all duration-200 flex items-center justify-center',
             isSelected
-              ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30'
+              ? 'border-[var(--link)]/80 bg-[var(--badge-blue-bg)]'
               : 'border-[var(--line-strong)] bg-transparent',
           )}
           aria-hidden="true"
@@ -113,7 +113,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
                 'mt-2 w-full resize-none rounded-lg border bg-[var(--accent-muted)] px-3 py-2',
                 'text-xs text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
                 'backdrop-blur-xl transition-all duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
+                'focus:outline-none focus:ring-2 focus:ring-[var(--link)]/40',
                 'border-[var(--line-strong)] focus:border-[var(--line-strong)]',
               )}
               placeholder="Edit this suggestion or leave as-is..."
@@ -151,7 +151,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
               className={cn(
                 'shrink-0 rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wider whitespace-nowrap',
                 isComplete
-                  ? 'bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/25'
+                  ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/25'
                   : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
               )}
             >
@@ -169,7 +169,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
               <div
                 className={cn(
                   'h-full transition-all duration-500 ease-out',
-                  isComplete ? 'bg-[#b5dec2]/70' : 'bg-[#b5c9ff]/60',
+                  isComplete ? 'bg-[var(--badge-green-text)]/70' : 'bg-[var(--link)]/60',
                 )}
                 style={{ width: `${pct}%` }}
               />
@@ -326,9 +326,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
     <div className="space-y-3">
       {/* Encouraging message from previous answer */}
       {encouragingText && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-[#b5dec2]/[0.20] bg-[#b5dec2]/[0.08] px-3.5 py-2.5">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#b5dec2]/80" aria-hidden="true" />
-          <p className="text-xs text-[#b5dec2]/90 leading-relaxed">{encouragingText}</p>
+        <div className="flex items-start gap-2.5 rounded-xl border border-[var(--badge-green-text)]/[0.20] bg-[var(--badge-green-bg)] px-3.5 py-2.5">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--badge-green-text)]/80" aria-hidden="true" />
+          <p className="text-xs text-[var(--badge-green-text)]/90 leading-relaxed">{encouragingText}</p>
         </div>
       )}
 
@@ -336,7 +336,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {suggestions.length > 0 && (
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-md border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+            <span className="rounded-md border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]/90">
               Select Your Answer
             </span>
             <span className="text-[13px] text-[var(--text-soft)]">
@@ -386,7 +386,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
             'w-full resize-none rounded-xl border bg-[var(--accent-muted)] px-3.5 py-2.5',
             'text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
             'backdrop-blur-xl transition-all duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
+            'focus:outline-none focus:ring-2 focus:ring-[var(--link)]/40',
             hasSelection
               ? 'border-[var(--line-strong)] focus:border-[var(--line-strong)]'
               : 'border-[var(--line-soft)] focus:border-[var(--line-strong)]',
@@ -396,7 +396,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
 
       {/* Elaboration hint for inferred/JD suggestions */}
       {needsElaboration && (
-        <p className="text-xs text-[#f0d99f]/70">
+        <p className="text-xs text-[var(--badge-amber-text)]/70">
           Please edit the selected suggestion or add a specific example below to confirm this applies to your experience.
         </p>
       )}
@@ -449,7 +449,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
+            <MessageSquare className="h-3.5 w-3.5 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Why Me Interview</span>
           </div>
           {/* Show simple counter only when no category progress */}
@@ -475,7 +475,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
               aria-label={`${progressPct}% complete`}
             >
               <div
-                className="h-full bg-[#b5c9ff] transition-all duration-500 ease-out"
+                className="h-full bg-[var(--link)] transition-all duration-500 ease-out"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
@@ -498,10 +498,10 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             {/* Follow-up indicator */}
             {current_question.is_follow_up && (
               <div className="flex items-center gap-2">
-                <div className="w-0.5 self-stretch rounded-full bg-[#afc4ff]/50" aria-hidden="true" />
+                <div className="w-0.5 self-stretch rounded-full bg-[var(--link)]/50" aria-hidden="true" />
                 <div className="flex items-center gap-1.5">
-                  <GitBranch className="h-3 w-3 text-[#afc4ff]/70" aria-hidden="true" />
-                  <span className="text-[12px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
+                  <GitBranch className="h-3 w-3 text-[var(--link)]/70" aria-hidden="true" />
+                  <span className="text-[12px] font-medium uppercase tracking-wider text-[var(--link)]/70">
                     Follow-up
                   </span>
                 </div>
@@ -509,7 +509,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             )}
 
             {/* Question text — indented slightly when it's a follow-up */}
-            <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-[#afc4ff]/25')}>
+            <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-[var(--link)]/25')}>
               <p className="text-base font-medium text-[var(--text-strong)] leading-snug">
                 {current_question.question_text}
               </p>
@@ -521,7 +521,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
                   {current_question.requirement_map.map((req) => (
                     <span
                       key={req}
-                      className="rounded-md bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.08em] text-[#afc4ff]/80"
+                      className="rounded-md bg-[var(--badge-blue-bg)] border border-[var(--link)]/[0.22] px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.08em] text-[var(--link)]/80"
                     >
                       {req}
                     </span>

@@ -4,7 +4,7 @@ import type { PipelineStage } from '@/hooks/useApplicationPipeline';
 
 const STAGE_DOT: Record<PipelineStage, string> = {
   saved: 'bg-white/30',
-  researching: 'bg-[#98b3ff]/60',
+  researching: 'bg-[var(--link)]/60',
   applied: 'bg-[var(--badge-amber-text)]/60',
   screening: 'bg-[var(--badge-amber-text)]/80',
   interviewing: 'bg-[var(--badge-green-text)]/60',

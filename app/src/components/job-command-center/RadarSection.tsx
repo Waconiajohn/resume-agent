@@ -45,7 +45,7 @@ function NetworkBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
     <span
-      className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
+      className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.06] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]/70"
       title={`${count} network contact${count === 1 ? '' : 's'} at this company`}
     >
       <Users size={9} />
@@ -60,7 +60,7 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
     score >= 80
       ? 'bg-[var(--badge-green-bg)] border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
       : score >= 60
-        ? 'bg-[#98b3ff]/10 border-[#98b3ff]/20 text-[#98b3ff]'
+        ? 'bg-[var(--link)]/10 border-[var(--link)]/20 text-[var(--link)]'
         : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)]';
 
   return (
@@ -113,7 +113,7 @@ export function RadarSection({
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={18} className="text-[#98b3ff]" />
+        <Sparkles size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Job Board</h3>
         {jobs.length > 0 && (
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">{jobs.length} results</span>
@@ -137,7 +137,7 @@ export function RadarSection({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Job title, keywords..."
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
           />
         </div>
         <div className="relative flex-[2]">
@@ -151,7 +151,7 @@ export function RadarSection({
             onChange={(e) => setLocation(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Location or Remote"
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
           />
         </div>
       </div>
@@ -161,7 +161,7 @@ export function RadarSection({
         <select
           value={datePosted}
           onChange={(e) => setDatePosted(e.target.value as RadarSearchFilters['datePosted'])}
-          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
         >
           <option value="any">Any time</option>
           <option value="24h">Last 24h</option>
@@ -173,7 +173,7 @@ export function RadarSection({
         <select
           value={remoteType}
           onChange={(e) => setRemoteType(e.target.value as RadarSearchFilters['remoteType'])}
-          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
         >
           <option value="any">Any work type</option>
           <option value="remote">Remote</option>

@@ -88,7 +88,7 @@ function SmartMatches({
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
+          <Loader2 size={18} className="text-[var(--link)] animate-spin" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
             {status === 'connecting' ? 'Connecting...' : 'Finding Suggestions'}
           </h3>
@@ -118,7 +118,7 @@ function SmartMatches({
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Star size={18} className="text-[#f0d99f]" />
+          <Star size={18} className="text-[var(--badge-amber-text)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Review More Suggestions</h3>
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">Action required</span>
         </div>
@@ -130,7 +130,7 @@ function SmartMatches({
             onClick={() => onRespondGate({ approved: true })}
             className="flex-1"
           >
-            <CheckCircle2 size={14} className="text-[#b5dec2]" /> Save Suggestions
+            <CheckCircle2 size={14} className="text-[var(--badge-green-text)]" /> Save Suggestions
           </GlassButton>
           <GlassButton
             onClick={() => onRespondGate({ approved: false })}
@@ -146,7 +146,7 @@ function SmartMatches({
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Star size={18} className="text-[#98b3ff]" />
+          <Star size={18} className="text-[var(--link)]" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">More Role Ideas</h3>
         </div>
         <p className="text-[12px] text-[var(--text-soft)] mb-4">
@@ -162,7 +162,7 @@ function SmartMatches({
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Star size={18} className="text-[#98b3ff]" />
+        <Star size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">More Role Ideas</h3>
         <span className="ml-auto text-[13px] text-[var(--text-soft)]">{matches.length} suggestions</span>
         <button
@@ -186,9 +186,9 @@ function SmartMatches({
                 className={cn(
                   'rounded-lg px-2 py-1.5 text-center flex-shrink-0',
                   job.fit_score >= 90
-                    ? 'bg-[#b5dec2]/10 border border-[#b5dec2]/20'
+                    ? 'bg-[var(--badge-green-text)]/10 border border-[var(--badge-green-text)]/20'
                     : job.fit_score >= 80
-                      ? 'bg-[#98b3ff]/10 border border-[#98b3ff]/20'
+                      ? 'bg-[var(--link)]/10 border border-[var(--link)]/20'
                       : 'bg-[var(--accent-muted)] border border-[var(--line-soft)]',
                 )}
               >
@@ -196,9 +196,9 @@ function SmartMatches({
                   className={cn(
                     'text-[16px] font-bold tabular-nums',
                     job.fit_score >= 90
-                      ? 'text-[#b5dec2]'
+                      ? 'text-[var(--badge-green-text)]'
                       : job.fit_score >= 80
-                        ? 'text-[#98b3ff]'
+                        ? 'text-[var(--link)]'
                         : 'text-[var(--text-soft)]',
                   )}
                 >
@@ -243,7 +243,7 @@ function SmartMatches({
                     {job.work_type && <span className="capitalize">{job.work_type}</span>}
                   </div>
                 )}
-                <div className="mt-2 text-[12px] text-[#98b3ff]/50 italic leading-relaxed">
+                <div className="mt-2 text-[12px] text-[var(--link)]/50 italic leading-relaxed">
                   <Sparkles size={10} className="inline mr-1 -mt-0.5" />
                   {job.why_match}
                 </div>

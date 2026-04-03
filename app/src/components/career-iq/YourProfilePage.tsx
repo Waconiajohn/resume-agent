@@ -49,9 +49,9 @@ const SOURCE_LABELS: Record<EvidenceSource, string> = {
 };
 
 const SOURCE_COLORS: Record<EvidenceSource, string> = {
-  resume: 'border-[#98b3ff]/20 bg-[#98b3ff]/10 text-[#98b3ff]/80',
-  why_me: 'border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]/80',
-  career_profile: 'border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]/80',
+  resume: 'border-[var(--link)]/20 bg-[var(--link)]/10 text-[var(--link)]/80',
+  why_me: 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)]/80',
+  career_profile: 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/10 text-[var(--badge-amber-text)]/80',
   manual: 'border-[var(--line-strong)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
 };
 
@@ -81,11 +81,11 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="rounded-lg bg-[#98b3ff]/12 p-2">
-        <Icon size={16} className="text-[#98b3ff]" />
+      <div className="rounded-lg bg-[var(--link)]/12 p-2">
+        <Icon size={16} className="text-[var(--link)]" />
       </div>
       <div>
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
           {label}
         </div>
         <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
@@ -98,7 +98,7 @@ function ProfileBackboneCard() {
   return (
     <GlassCard className="p-4">
       <div>
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
           Profile backbone
         </div>
         <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
@@ -110,8 +110,8 @@ function ProfileBackboneCard() {
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] p-3.5">
-          <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/75">
+        <div className="rounded-xl border border-[var(--link)]/18 bg-[var(--link)]/[0.07] p-3.5">
+          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/75">
             Why Me
           </div>
           <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -126,8 +126,8 @@ function ProfileBackboneCard() {
             Keep the facts, chronology, and real proof grounded.
           </div>
         </div>
-        <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.06] p-3.5">
-          <div className="text-[12px] font-medium uppercase tracking-widest text-[#b5dec2]">
+        <div className="rounded-xl border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06] p-3.5">
+          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--badge-green-text)]">
             Brand & Benchmark
           </div>
           <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -208,7 +208,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
       <GlassCard className="p-6">
         <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
-          <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
+          <Loader2 size={16} className="animate-spin text-[var(--link)]" />
           Loading your master resume...
         </div>
       </GlassCard>
@@ -243,14 +243,14 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           className={cn(
             'mt-5 flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all duration-200 select-none',
             isDragging
-              ? 'border-[#afc4ff]/60 bg-[#afc4ff]/10 scale-[1.01]'
-              : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[#afc4ff]/40 hover:bg-[#afc4ff]/[0.04]',
+              ? 'border-[var(--link)]/60 bg-[var(--link)]/10 scale-[1.01]'
+              : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[var(--link)]/40 hover:bg-[var(--link)]/[0.04]',
             fileLoading && 'pointer-events-none opacity-60',
           )}
         >
           {fileLoading ? (
             <>
-              <Loader2 className="h-8 w-8 text-[#afc4ff] motion-safe:animate-spin" />
+              <Loader2 className="h-8 w-8 text-[var(--link)] motion-safe:animate-spin" />
               <p className="text-sm text-[var(--text-soft)]">Reading file...</p>
             </>
           ) : (
@@ -259,14 +259,14 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
                 className={cn(
                   'flex h-12 w-12 items-center justify-center rounded-xl border transition-colors duration-200',
                   isDragging
-                    ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10'
+                    ? 'border-[var(--link)]/40 bg-[var(--link)]/10'
                     : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
                 )}
               >
                 <Upload
                   className={cn(
                     'h-6 w-6 transition-colors duration-200',
-                    isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-soft)]',
+                    isDragging ? 'text-[var(--link)]' : 'text-[var(--text-soft)]',
                   )}
                 />
               </div>
@@ -274,7 +274,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
                 <p
                   className={cn(
                     'text-sm font-medium transition-colors duration-200',
-                    isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-strong)]',
+                    isDragging ? 'text-[var(--link)]' : 'text-[var(--text-strong)]',
                   )}
                 >
                   {isDragging ? 'Drop your resume here' : 'Upload your master resume to get started'}
@@ -312,7 +312,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
             <button
               type="button"
               onClick={onNavigateResume}
-              className="inline-flex items-center gap-1.5 text-[13px] text-[#98b3ff] transition-colors hover:text-[#98b3ff]/70"
+              className="inline-flex items-center gap-1.5 text-[13px] text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
             >
               Go to Resume Builder to upload
               <ExternalLink size={12} />
@@ -416,8 +416,8 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           </div>
         )}
         {resume.evidence_items.length > 0 && (
-          <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-3 py-2">
-            <span className="text-[13px] text-[#b5dec2]/80">
+          <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.05] px-3 py-2">
+            <span className="text-[13px] text-[var(--badge-green-text)]/80">
               {resume.evidence_items.length} evidence item{resume.evidence_items.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -429,7 +429,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           <button
             type="button"
             onClick={onNavigateResume}
-            className="text-[13px] text-[#98b3ff] transition-colors hover:text-[#98b3ff]/70"
+            className="text-[13px] text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
           >
             Upload a new version in Resume Builder
           </button>
@@ -438,7 +438,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
 
       {fileName && (
         <div className="mt-3 flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
-          <CheckCircle2 size={14} className="text-[#b5dec2]" />
+          <CheckCircle2 size={14} className="text-[var(--badge-green-text)]" />
           {fileName} read successfully
         </div>
       )}
@@ -470,7 +470,7 @@ function LinkedInSection() {
 
       {loading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
-          <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
+          <Loader2 size={16} className="animate-spin text-[var(--link)]" />
           Loading...
         </div>
       ) : (
@@ -492,7 +492,7 @@ function LinkedInSection() {
               className={cn(
                 'mt-2 w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3',
                 'text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-                'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
+                'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
               )}
             />
           </div>
@@ -514,7 +514,7 @@ function LinkedInSection() {
               className={cn(
                 'mt-2 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3',
                 'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-                'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
+                'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
               )}
             />
             {profile.about.trim().length > 0 && (
@@ -543,7 +543,7 @@ function LinkedInSection() {
               {saving ? 'Saving...' : 'Save LinkedIn Profile'}
             </GlassButton>
             {saved && (
-              <div className="flex items-center gap-1.5 text-[13px] text-[#b5dec2]">
+              <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
                 <CheckCircle2 size={13} />
                 Saved
               </div>
@@ -618,7 +618,7 @@ function EvidenceLibrarySection({
             className={cn(
               'mt-2 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-black/20 px-3 py-2.5',
               'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-              'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
+              'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
             )}
           />
           <div className="mt-2 flex items-center gap-2">
@@ -644,7 +644,7 @@ function EvidenceLibrarySection({
 
       {loading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
-          <Loader2 size={16} className="animate-spin text-[#98b3ff]" />
+          <Loader2 size={16} className="animate-spin text-[var(--link)]" />
           Loading evidence...
         </div>
       ) : items.length === 0 ? (
@@ -771,7 +771,7 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               onClick={() => setActiveAsset('bio')}
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                 Open first
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -787,7 +787,7 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
               onClick={() => setActiveAsset('case-study')}
               className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
             >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">
                 Then build
               </div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
@@ -856,11 +856,11 @@ export function YourProfilePage({
         // WhyMeStoryCard renders its own GlassCard
         <div>
           <div className="mb-3 flex items-center gap-2 px-1">
-            <div className="rounded-lg bg-[#98b3ff]/12 p-2">
-              <BookOpen size={16} className="text-[#98b3ff]" />
+            <div className="rounded-lg bg-[var(--link)]/12 p-2">
+              <BookOpen size={16} className="text-[var(--link)]" />
             </div>
             <div>
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Section A</div>
+              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]/70">Section A</div>
               <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
                 Your Why Me Story
               </h2>

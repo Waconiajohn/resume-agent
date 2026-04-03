@@ -266,14 +266,14 @@ export function MasterResumeTab({
       </div>
 
       {saveError && (
-        <div className="rounded-lg border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-2 text-xs text-[#f0b8b8]/90">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-2 text-xs text-[var(--badge-red-text)]/90">
           {saveError}
         </div>
       )}
 
       {resumeLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[#afc4ff]" />
+          <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-[var(--line-strong)] border-t-[var(--link)]" />
         </div>
       ) : draft ? (
         <>
@@ -352,7 +352,7 @@ export function MasterResumeTab({
                                   <button
                                     type="button"
                                     onClick={() => void deleteEvidence(originalIndex)}
-                                    className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
+                                    className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--badge-red-text)]"
                                     aria-label="Delete evidence"
                                   >
                                     <Trash2 className="h-3 w-3" />
@@ -389,7 +389,7 @@ export function MasterResumeTab({
                             <button
                               type="button"
                               onClick={() => void deleteEvidence(originalIndex)}
-                              className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[#f0b8b8]"
+                              className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-[var(--text-soft)] transition-colors hover:text-[var(--badge-red-text)]"
                               aria-label="Delete evidence"
                             >
                               <Trash2 className="h-3 w-3" />

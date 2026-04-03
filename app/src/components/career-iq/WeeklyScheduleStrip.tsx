@@ -18,7 +18,7 @@ export function WeeklyScheduleStrip() {
   return (
     <GlassCard className="px-5 py-4">
       <div className="flex items-center gap-2 mb-3">
-        <Calendar size={14} className="text-[#98b3ff]" />
+        <Calendar size={14} className="text-[var(--link)]" />
         <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Weekly Live Sessions</h3>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -34,7 +34,7 @@ export function WeeklyScheduleStrip() {
             <span className="text-[12px] text-[var(--text-soft)] leading-snug">{session.topic}</span>
             <a
               href={session.signupUrl}
-              className="mt-1 flex items-center gap-1 text-[13px] text-[#98b3ff]/70 hover:text-[#98b3ff] transition-colors w-fit"
+              className="mt-1 flex items-center gap-1 text-[13px] text-[var(--link)]/70 hover:text-[var(--link)] transition-colors w-fit"
             >
               Sign up <ExternalLink size={10} />
             </a>

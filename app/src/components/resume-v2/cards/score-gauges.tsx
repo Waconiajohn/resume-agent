@@ -1,9 +1,9 @@
 // ─── Shared score gauge components ──────────────────────────────────────────
 
 export function scoreColor(score: number): string {
-  if (score >= 80) return '#b5dec2';
-  if (score >= 60) return '#f0d99f';
-  return '#f0b8b8';
+  if (score >= 80) return 'var(--badge-green-text)';
+  if (score >= 60) return 'var(--badge-amber-text)';
+  return 'var(--badge-red-text)';
 }
 
 export function MiniRingGauge({
@@ -66,7 +66,7 @@ export function MiniRingGauge({
 
 export function ImpactDot({ impact }: { impact: string }) {
   const color =
-    impact === 'high' ? '#f0b8b8' : impact === 'medium' ? '#f0d99f' : 'rgba(255,255,255,0.30)';
+    impact === 'high' ? 'var(--badge-red-text)' : impact === 'medium' ? 'var(--badge-amber-text)' : 'rgba(255,255,255,0.30)';
   return (
     <div
       className="h-1.5 w-1.5 rounded-full shrink-0 mt-1.5"

@@ -71,7 +71,7 @@ export function BenchmarkCandidateCard({
                     <div key={i} className="support-callout px-3 py-2">
                       <div className="text-sm font-medium text-[var(--text-strong)]">{a.area}</div>
                       <div className="text-xs text-[var(--text-soft)]">{a.description}</div>
-                      <div className="mt-1 text-xs text-[#afc4ff]/70">{a.typical_metrics}</div>
+                      <div className="mt-1 text-xs text-[var(--link)]/70">{a.typical_metrics}</div>
                     </div>
                   ))}
                 </div>
@@ -80,10 +80,10 @@ export function BenchmarkCandidateCard({
             {data.differentiators.length > 0 && (
               <div>
                 <h4 className="mb-2 text-xs font-medium text-[var(--text-soft)] uppercase tracking-[0.16em]">What often separates the strongest candidates</h4>
-                <div className="support-callout border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] p-3">
+                <div className="support-callout border border-dashed border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.02] p-3">
                   <ul className="space-y-1">
                     {data.differentiators.map((d, i) => (
-                      <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#f0d99f]/50">{d}</li>
+                      <li key={i} className="text-sm text-[var(--text-soft)] pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[var(--badge-amber-text)]/50">{d}</li>
                     ))}
                   </ul>
                 </div>

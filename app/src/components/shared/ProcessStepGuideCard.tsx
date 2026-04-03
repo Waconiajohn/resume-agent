@@ -21,11 +21,11 @@ interface ProcessStepGuideCardProps {
 function toneBorderClass(tone: GuideTone): string {
   switch (tone) {
     case 'action':
-      return 'border-l-[#afc4ff]/60';
+      return 'border-l-[var(--link)]/60';
     case 'review':
-      return 'border-l-[#f0d99f]/60';
+      return 'border-l-[var(--badge-amber-text)]/60';
     case 'export':
-      return 'border-l-[#b5dec2]/60';
+      return 'border-l-[var(--badge-green-text)]/60';
     case 'info':
     default:
       return 'border-l-[var(--line-strong)]';

@@ -26,9 +26,9 @@ export function RatingInput({ value, onChange, levels = DEFAULT_LEVELS }: Rating
             onClick={() => onChange(level)}
             className={cn(
               'min-h-[44px] flex-1 min-w-[72px] rounded-xl border px-3 py-2.5 text-sm font-medium',
-              'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+              'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45',
               isActive
-                ? 'border-[#9eb8ff]/65 bg-[linear-gradient(180deg,rgba(158,184,255,0.22),rgba(158,184,255,0.11))] text-white shadow-[0_4px_18px_-10px_rgba(132,160,255,0.7)]'
+                ? 'border-[var(--link)]/65 bg-[linear-gradient(180deg,rgba(158,184,255,0.22),rgba(158,184,255,0.11))] text-white shadow-[0_4px_18px_-10px_rgba(132,160,255,0.7)]'
                 : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
             )}
           >

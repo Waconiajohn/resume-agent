@@ -82,7 +82,7 @@ function DesignCard({
       aria-checked={isSelected}
       tabIndex={0}
       className={cn(
-        'p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
+        'p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45',
         isSelected
           ? 'border-[var(--line-strong)] shadow-[0_0_20px_-10px_rgba(255,255,255,0.35)]'
           : 'hover:border-[var(--line-soft)]',
@@ -97,7 +97,7 @@ function DesignCard({
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Layout className="h-3.5 w-3.5 text-[#afc4ff]" />
+        <Layout className="h-3.5 w-3.5 text-[var(--link)]" />
         <span className="text-sm font-medium text-[var(--text-strong)]">{option.name}</span>
         {isSelected && (
           <span className="ml-auto rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">

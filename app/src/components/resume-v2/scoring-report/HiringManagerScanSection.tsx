@@ -20,7 +20,7 @@ function SubScoreCard({
   note: string;
 }) {
   const color =
-    score >= 80 ? '#b5dec2' : score >= 50 ? '#f0d99f' : '#f0b8b8';
+    score >= 80 ? 'var(--badge-green-text)' : score >= 50 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1.5">
@@ -63,7 +63,7 @@ export function HiringManagerScanSection({ scan }: HiringManagerScanSectionProps
   } = scan;
 
   const overallColor =
-    scan_score >= 80 ? '#b5dec2' : scan_score >= 50 ? '#f0d99f' : '#f0b8b8';
+    scan_score >= 80 ? 'var(--badge-green-text)' : scan_score >= 50 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="space-y-4">
@@ -71,8 +71,8 @@ export function HiringManagerScanSection({ scan }: HiringManagerScanSectionProps
       <div
         className={`rounded-lg border px-4 py-3 space-y-2 ${
           pass
-            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]'
-            : 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]'
+            ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.04]'
+            : 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04]'
         }`}
       >
         <div className="flex items-center justify-between">
@@ -87,8 +87,8 @@ export function HiringManagerScanSection({ scan }: HiringManagerScanSectionProps
             <span
               className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                 pass
-                  ? 'text-[#b5dec2] bg-[#b5dec2]/10 border border-[#b5dec2]/25'
-                  : 'text-[#f0d99f] bg-[#f0d99f]/10 border border-[#f0d99f]/25'
+                  ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border border-[var(--badge-green-text)]/25'
+                  : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border border-[var(--badge-amber-text)]/25'
               }`}
             >
               {pass ? 'PASS' : 'NEEDS WORK'}
@@ -132,17 +132,17 @@ export function HiringManagerScanSection({ scan }: HiringManagerScanSectionProps
 
       {/* Red flags */}
       {red_flags.length > 0 && (
-        <div className="rounded-lg border border-[#f0b8b8]/25 bg-[#f0b8b8]/[0.05] px-4 py-3 space-y-2">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/25 bg-[var(--badge-red-text)]/[0.05] px-4 py-3 space-y-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: '#f0b8b8' }} />
-            <p className="text-xs font-semibold" style={{ color: '#f0b8b8' }}>
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
+            <p className="text-xs font-semibold" style={{ color: 'var(--badge-red-text)' }}>
               Red Flags ({red_flags.length})
             </p>
           </div>
           <ul className="space-y-1">
             {red_flags.map((flag, i) => (
               <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                <XCircle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#f0b8b8' }} />
+                <XCircle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: 'var(--badge-red-text)' }} />
                 {flag}
               </li>
             ))}
@@ -152,17 +152,17 @@ export function HiringManagerScanSection({ scan }: HiringManagerScanSectionProps
 
       {/* Quick wins */}
       {quick_wins.length > 0 && (
-        <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-4 py-3 space-y-2">
+        <div className="rounded-lg border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.04] px-4 py-3 space-y-2">
           <div className="flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
-            <p className="text-xs font-semibold" style={{ color: '#b5dec2' }}>
+            <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
+            <p className="text-xs font-semibold" style={{ color: 'var(--badge-green-text)' }}>
               Quick Wins ({quick_wins.length})
             </p>
           </div>
           <ul className="space-y-1">
             {quick_wins.map((win, i) => (
               <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-soft)]">
-                <CheckCircle2 className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#b5dec2' }} />
+                <CheckCircle2 className="h-3 w-3 shrink-0 mt-0.5" style={{ color: 'var(--badge-green-text)' }} />
                 {win}
               </li>
             ))}

@@ -15,7 +15,7 @@ interface WatchlistManagerProps {
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
+  'w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30';
 
 const LABEL_CLASS = 'text-[13px] text-[var(--text-soft)] uppercase tracking-wider mb-1 block';
 
@@ -179,7 +179,7 @@ export function WatchlistManager({
                       max="5"
                       value={editPriority}
                       onChange={(e) => setEditPriority(e.target.value)}
-                      className="w-12 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-[12px] text-[var(--text-muted)] text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+                      className="w-12 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2 py-1 text-[12px] text-[var(--text-muted)] text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
                     />
                     <button
                       type="button"

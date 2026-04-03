@@ -166,9 +166,9 @@ export function ExportBar({
   return (
     <div className="space-y-2">
       {hasWarnings && (
-        <div className="support-callout border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3.5">
+        <div className="support-callout border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.05] px-4 py-3.5">
           <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--badge-amber-text)]" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-[var(--text-strong)]">Export still has open warnings</p>
               <div className="mt-1 space-y-1 text-xs leading-5 text-[var(--text-soft)]">
@@ -276,8 +276,8 @@ export function ExportBar({
         >
           {copied ? (
             <>
-              <ClipboardCheck className="h-3.5 w-3.5 text-[#b5dec2]" />
-              <span className="text-[#b5dec2]">Copied!</span>
+              <ClipboardCheck className="h-3.5 w-3.5 text-[var(--badge-green-text)]" />
+              <span className="text-[var(--badge-green-text)]">Copied!</span>
             </>
           ) : (
             <>
@@ -289,7 +289,7 @@ export function ExportBar({
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-xs text-[#f0b8b8]/80">
+        <div className="flex items-center gap-2 text-xs text-[var(--badge-red-text)]/80">
           <AlertCircle className="h-3 w-3 shrink-0" />
           {error}
         </div>

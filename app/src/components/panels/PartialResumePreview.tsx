@@ -21,7 +21,7 @@ export function PartialResumePreview({ approvedSections, totalSections = 7 }: Pa
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-3.5 w-3.5 text-[#afc4ff]" />
+            <FileText className="h-3.5 w-3.5 text-[var(--link)]" />
             <span className="text-sm font-medium text-[var(--text-strong)]">Resume Preview</span>
           </div>
           <span className="text-xs text-[var(--text-soft)]">

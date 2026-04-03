@@ -66,7 +66,7 @@ function EditableLine({
     return (
       <div className="group rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
         <textarea
-          className="w-full resize-none rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
+          className="w-full resize-none rounded border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] focus:border-[var(--line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
           value={editText}
           onChange={(e) => onEditTextChange(e.target.value)}
           rows={3}
@@ -146,7 +146,7 @@ function ChangeBlock({
           <span className="mb-0.5 block text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
             Original
           </span>
-          <p className="text-xs text-[var(--text-muted)] leading-relaxed line-through decoration-[#f0b8b8]/30 break-words">
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed line-through decoration-[var(--badge-red-text)]/30 break-words">
             {cleanText(change.original)}
           </p>
         </div>

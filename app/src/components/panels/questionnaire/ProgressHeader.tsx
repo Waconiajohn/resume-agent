@@ -15,7 +15,7 @@ export function ProgressHeader({ title, currentStep, totalSteps, icon }: Progres
     <div className="border-b border-[var(--line-soft)] px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {icon ?? <ClipboardList className="h-3.5 w-3.5 text-[#afc4ff]" aria-hidden="true" />}
+          {icon ?? <ClipboardList className="h-3.5 w-3.5 text-[var(--link)]" aria-hidden="true" />}
           <span className="text-sm font-medium text-[var(--text-strong)]">{title}</span>
         </div>
         {totalSteps > 0 && (
@@ -38,7 +38,7 @@ export function ProgressHeader({ title, currentStep, totalSteps, icon }: Progres
           aria-label={`${progressPct}% complete`}
         >
           <div
-            className="h-full bg-[#b5c9ff] transition-all duration-500 ease-out"
+            className="h-full bg-[var(--link)] transition-all duration-500 ease-out"
             style={{ width: `${progressPct}%` }}
           />
         </div>

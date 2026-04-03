@@ -180,7 +180,7 @@ export function PipelineIntakeForm({
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
-            <Sparkles className="h-8 w-8 text-[#afc4ff]" />
+            <Sparkles className="h-8 w-8 text-[var(--link)]" />
           </div>
           <h1 className="mb-2 text-3xl font-bold text-[var(--text-strong)]">Let's Build Your Resume</h1>
           <p className="max-w-md text-sm text-[var(--text-soft)]">
@@ -191,7 +191,7 @@ export function PipelineIntakeForm({
         {/* Form */}
         <GlassCard className="p-6">
           {error && (
-            <div className="mb-4 rounded-lg border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-3 py-2 text-xs text-[#f0b8b8]/90">
+            <div className="mb-4 rounded-lg border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-3 py-2 text-xs text-[var(--badge-red-text)]/90">
               {error}
             </div>
           )}
@@ -239,7 +239,7 @@ export function PipelineIntakeForm({
                           value={selectedSavedResumeId}
                           onChange={(e) => setSelectedSavedResumeId(e.target.value)}
                           disabled={loading || savedResumeLoadLoading}
-                          className="min-w-0 flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[#afc4ff]/40"
+                          className="min-w-0 flex-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--link)]/40"
                         >
                           {savedResumes.map((resume) => (
                             <option key={resume.id} value={resume.id} className="bg-[var(--bg-1)] text-[var(--text-strong)]">
@@ -278,7 +278,7 @@ export function PipelineIntakeForm({
                   </>
                 )}
                 {savedResumeLoadError && (
-                  <p className="mt-2 text-xs text-[#f0b8b8]" role="alert">{savedResumeLoadError}</p>
+                  <p className="mt-2 text-xs text-[var(--badge-red-text)]" role="alert">{savedResumeLoadError}</p>
                 )}
               </div>
               <GlassTextarea
@@ -297,7 +297,7 @@ export function PipelineIntakeForm({
                   onClick={handleFileClick}
                   disabled={loading || fileLoading}
                   id="file-upload-hint"
-                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:underline"
                   aria-label="Upload a resume file (.txt, .docx, .pdf)"
                 >
                   {fileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -314,12 +314,12 @@ export function PipelineIntakeForm({
                 />
               </div>
               {initialResumeText?.trim() && (
-                <p className="text-xs text-[#b5dec2]/80">
+                <p className="text-xs text-[var(--badge-green-text)]/80">
                   Default base resume is available. You can reuse it, load another saved resume, upload a new file, or edit manually.
                 </p>
               )}
               {fileError && (
-                <p id="file-error" className="text-xs text-[#f0b8b8]" role="alert">
+                <p id="file-error" className="text-xs text-[var(--badge-red-text)]" role="alert">
                   {fileError}
                 </p>
               )}
@@ -347,7 +347,7 @@ export function PipelineIntakeForm({
                   type="button"
                   onClick={handleJobFileClick}
                   disabled={loading || jobFileLoading}
-                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:underline"
                   aria-label="Upload a job description file (.txt, .docx, .pdf, .html)"
                 >
                   {jobFileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -364,7 +364,7 @@ export function PipelineIntakeForm({
                 />
               </div>
               {jobFileError && (
-                <p className="text-xs text-[#f0b8b8]" role="alert">
+                <p className="text-xs text-[var(--badge-red-text)]" role="alert">
                   {jobFileError}
                 </p>
               )}

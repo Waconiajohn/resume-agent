@@ -50,26 +50,26 @@ function getDeliveryRecommendation(interviewType: string): DeliveryRecommendatio
       return {
         label: 'Send within 2 hours',
         urgency: 'high',
-        color: 'text-[#f0d99f]',
-        bg: 'bg-[#f0d99f]/10',
-        border: 'border-[#f0d99f]/20',
+        color: 'text-[var(--badge-amber-text)]',
+        bg: 'bg-[var(--badge-amber-text)]/10',
+        border: 'border-[var(--badge-amber-text)]/20',
       };
     case 'video':
       return {
         label: 'Send within 4 hours',
         urgency: 'medium',
-        color: 'text-[#afc4ff]',
-        bg: 'bg-[#afc4ff]/10',
-        border: 'border-[#afc4ff]/20',
+        color: 'text-[var(--link)]',
+        bg: 'bg-[var(--link)]/10',
+        border: 'border-[var(--link)]/20',
       };
     case 'phone':
     default:
       return {
         label: 'Send same day',
         urgency: 'low',
-        color: 'text-[#b5dec2]',
-        bg: 'bg-[#b5dec2]/10',
-        border: 'border-[#b5dec2]/20',
+        color: 'text-[var(--badge-green-text)]',
+        bg: 'bg-[var(--badge-green-text)]/10',
+        border: 'border-[var(--badge-green-text)]/20',
       };
   }
 }
@@ -85,12 +85,12 @@ function detectNoteTone(content: string): { label: string; color: string } {
   const formalCount = (content.match(formalWords) || []).length;
 
   if (warmCount >= boldCount && warmCount >= formalCount) {
-    return { label: 'Warm', color: 'text-[#b5dec2]' };
+    return { label: 'Warm', color: 'text-[var(--badge-green-text)]' };
   }
   if (boldCount >= warmCount && boldCount >= formalCount) {
-    return { label: 'Confident', color: 'text-[#f0d99f]' };
+    return { label: 'Confident', color: 'text-[var(--badge-amber-text)]' };
   }
-  return { label: 'Professional', color: 'text-[#afc4ff]' };
+  return { label: 'Professional', color: 'text-[var(--link)]' };
 }
 
 // --- Individual note card in the output ---
@@ -158,7 +158,7 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
             className={cn(
               'flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] border transition-all',
               copied
-                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                ? 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
                 : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
             )}
           >
@@ -265,7 +265,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(index); }}
-              className="p-1 rounded-lg text-[var(--text-soft)] hover:text-[#f0b8b8]/70 hover:bg-[#f0b8b8]/5 transition-colors"
+              className="p-1 rounded-lg text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/70 hover:bg-[var(--badge-red-text)]/5 transition-colors"
               aria-label="Remove interviewer"
             >
               <Trash2 size={13} />
@@ -286,7 +286,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
                 value={interviewer.name}
                 onChange={(e) => update({ name: e.target.value })}
                 placeholder="e.g. Sarah Chen"
-                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
               />
             </div>
             <div>
@@ -296,7 +296,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
                 value={interviewer.title}
                 onChange={(e) => update({ title: e.target.value })}
                 placeholder="e.g. VP of Engineering"
-                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
               />
             </div>
           </div>
@@ -311,7 +311,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               onChange={(e) => setTopicsRaw(e.target.value)}
               onBlur={handleTopicsBlur}
               placeholder="e.g. supply chain transformation, Q3 targets, team structure"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
             />
           </div>
 
@@ -324,7 +324,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               onChange={(e) => update({ rapport_notes: e.target.value })}
               placeholder="Shared interests, personal anecdotes, memorable moments..."
               rows={2}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors resize-none leading-relaxed"
             />
           </div>
 
@@ -338,7 +338,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               onBlur={handleKeyQsBlur}
               placeholder="Tell me about a transformation you led..."
               rows={2}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -382,8 +382,8 @@ function ActivityFeed({
           <div className="rounded-xl bg-[#A396E2]/10 p-3">
             <Mail size={20} className="text-[#A396E2]" />
           </div>
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#b5dec2]/20 border-2 border-[#b5dec2]/40 flex items-center justify-center">
-            <Loader2 size={8} className="text-[#b5dec2] animate-spin" />
+          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[var(--badge-green-text)]/20 border-2 border-[var(--badge-green-text)]/40 flex items-center justify-center">
+            <Loader2 size={8} className="text-[var(--badge-green-text)] animate-spin" />
           </div>
         </div>
         <div>
@@ -450,10 +450,10 @@ function ReportView({
 
   const scoreColor =
     qualityScore !== null && qualityScore >= 80
-      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
+      ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
       : qualityScore !== null && qualityScore >= 60
-      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-      : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20';
+      ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
+      : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20';
 
   const noteCards = parseNoteCards(report);
   const hasParsedCards = noteCards.length > 0;
@@ -477,7 +477,7 @@ function ReportView({
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
-          {copiedAll ? <Check size={13} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={13} className="mr-1.5" />}
+          {copiedAll ? <Check size={13} className="mr-1.5 text-[var(--badge-green-text)]" /> : <Copy size={13} className="mr-1.5" />}
           {copiedAll ? 'Copied!' : 'Copy All'}
         </GlassButton>
       </div>
@@ -486,8 +486,8 @@ function ReportView({
       <GlassCard className="px-5 py-4 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-[#A396E2]/[0.03] blur-3xl pointer-events-none" />
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-[#b5dec2]/10 p-2.5">
-            <CheckCircle2 size={18} className="text-[#b5dec2]" />
+          <div className="rounded-xl bg-[var(--badge-green-text)]/10 p-2.5">
+            <CheckCircle2 size={18} className="text-[var(--badge-green-text)]" />
           </div>
           <div>
             <h2 className="text-[16px] font-semibold text-[var(--text-strong)]">Thank-You Notes — {company}</h2>
@@ -503,7 +503,7 @@ function ReportView({
             <span className="text-[13px] text-[var(--text-soft)]">Note Strength</span>
             <span className={cn(
               'text-[13px] font-semibold',
-              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+              qualityScore >= 80 ? 'text-[var(--badge-green-text)]' : qualityScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
             )}>
               {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
             </span>
@@ -512,7 +512,7 @@ function ReportView({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+                qualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : qualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
               )}
               style={{ width: `${qualityScore}%` }}
             />
@@ -738,8 +738,8 @@ export function ThankYouNoteRoom({
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f0b8b8]" />
-            <span className="text-[13px] text-[#f0b8b8]">{error}</span>
+            <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
+            <span className="text-[13px] text-[var(--badge-red-text)]">{error}</span>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
@@ -808,12 +808,12 @@ export function ThankYouNoteRoom({
           Loading your resume...
         </div>
       ) : loadedResumeText ? (
-        <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
           <CheckCircle2 size={12} />
           Resume loaded from your profile
         </div>
       ) : (
-        <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70">
           <AlertCircle size={12} />
           No resume found — complete the Resume Strategist first for best results
         </div>
@@ -822,7 +822,7 @@ export function ThankYouNoteRoom({
       {/* Section 1: Interview details */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Building2 size={16} className="text-[#98b3ff]" />
+          <Building2 size={16} className="text-[var(--link)]" />
           <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Interview Details</h2>
           <div className="flex-1 h-px bg-[var(--accent-muted)]" />
         </div>
@@ -830,26 +830,26 @@ export function ThankYouNoteRoom({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
-              Company <span className="text-[#98b3ff]/60">*</span>
+              Company <span className="text-[var(--link)]/60">*</span>
             </label>
             <input
               type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Medtronic"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
             />
           </div>
           <div>
             <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
-              Role <span className="text-[#98b3ff]/60">*</span>
+              Role <span className="text-[var(--link)]/60">*</span>
             </label>
             <input
               type="text"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g. VP of Supply Chain"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
             />
           </div>
         </div>
@@ -863,7 +863,7 @@ export function ThankYouNoteRoom({
               type="date"
               value={interviewDate}
               onChange={(e) => setInterviewDate(e.target.value)}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors [color-scheme:dark]"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors [color-scheme:dark]"
             />
           </div>
           <div>
@@ -879,7 +879,7 @@ export function ThankYouNoteRoom({
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium border transition-all',
                     interviewType === value
-                      ? 'border-[#98b3ff]/30 bg-[#98b3ff]/10 text-[#98b3ff]'
+                      ? 'border-[var(--link)]/30 bg-[var(--link)]/10 text-[var(--link)]'
                       : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:border-[var(--line-soft)]',
                   )}
                 >
@@ -939,7 +939,7 @@ export function ThankYouNoteRoom({
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 text-[13px] text-[#f0b8b8] bg-[#f0b8b8]/5 border border-[#f0b8b8]/15 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-[13px] text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/5 border border-[var(--badge-red-text)]/15 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="flex-shrink-0" />
           {formError}
         </div>

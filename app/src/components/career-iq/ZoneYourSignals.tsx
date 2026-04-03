@@ -79,9 +79,9 @@ const SIGNAL_DEFINITIONS: Pick<Signal, 'label' | 'description' | 'icon'>[] = [
 ];
 
 const LEVEL_CONFIG: Record<SignalLevel, { color: string; bg: string; border: string; label: string; barWidth: string }> = {
-  strong: { color: 'text-[#b5dec2]', bg: 'bg-[#b5dec2]/10', border: 'border-[#b5dec2]/20', label: 'Strong', barWidth: 'w-[85%]' },
-  building: { color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', label: 'Building', barWidth: 'w-[55%]' },
-  'needs-work': { color: 'text-[#f0b8b8]', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', label: 'Needs work', barWidth: 'w-[30%]' },
+  strong: { color: 'text-[var(--badge-green-text)]', bg: 'bg-[var(--badge-green-text)]/10', border: 'border-[var(--badge-green-text)]/20', label: 'Strong', barWidth: 'w-[85%]' },
+  building: { color: 'text-[var(--badge-amber-text)]', bg: 'bg-[var(--badge-amber-text)]/10', border: 'border-[var(--badge-amber-text)]/20', label: 'Building', barWidth: 'w-[55%]' },
+  'needs-work': { color: 'text-[var(--badge-red-text)]', bg: 'bg-[var(--badge-red-text)]/10', border: 'border-[var(--badge-red-text)]/20', label: 'Needs work', barWidth: 'w-[30%]' },
 };
 
 function SignalCard({ signal }: { signal: Signal }) {
@@ -115,9 +115,9 @@ function SignalCard({ signal }: { signal: Signal }) {
         <div
           className={cn(
             'h-full rounded-full transition-all duration-700',
-            signal.level === 'strong' && 'bg-[#b5dec2]/60',
-            signal.level === 'building' && 'bg-[#f0d99f]/60',
-            signal.level === 'needs-work' && 'bg-[#f0b8b8]/60',
+            signal.level === 'strong' && 'bg-[var(--badge-green-text)]/60',
+            signal.level === 'building' && 'bg-[var(--badge-amber-text)]/60',
+            signal.level === 'needs-work' && 'bg-[var(--badge-red-text)]/60',
             config.barWidth,
           )}
         />

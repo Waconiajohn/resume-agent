@@ -31,8 +31,8 @@ const ACTIONS_BY_STATE: Record<DashboardState, string> = {
 
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   const colors: Record<SignalLevel, string> = {
-    green: 'bg-[#b5dec2]',
-    yellow: 'bg-[#f0d99f]',
+    green: 'bg-[var(--badge-green-text)]',
+    yellow: 'bg-[var(--badge-amber-text)]',
     red: 'bg-[var(--line-strong)]',
   };
   return (
@@ -55,7 +55,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
             Good {getTimeOfDay()}, {displayName}
           </h2>
           <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-soft)] max-w-xl">
-            <Sparkles size={14} className="inline mr-1.5 text-[#98b3ff] -mt-0.5" />
+            <Sparkles size={14} className="inline mr-1.5 text-[var(--link)] -mt-0.5" />
             {getRotatingInsight(dashboardState)}
           </p>
           <div className="mt-4 flex items-center gap-3">

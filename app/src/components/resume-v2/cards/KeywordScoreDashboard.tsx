@@ -29,17 +29,17 @@ function hasActionablePrefix(description: string): boolean {
 
 const impactButtonStyle: Record<QuickWin['impact'], React.CSSProperties> = {
   high: {
-    color: '#f0b8b8',
+    color: 'var(--badge-red-text)',
     backgroundColor: 'rgba(240,184,184,0.12)',
     border: '1px solid rgba(240,184,184,0.30)',
   },
   medium: {
-    color: '#f0d99f',
+    color: 'var(--badge-amber-text)',
     backgroundColor: 'rgba(240,217,159,0.12)',
     border: '1px solid rgba(240,217,159,0.30)',
   },
   low: {
-    color: '#afc4ff',
+    color: 'var(--link)',
     backgroundColor: 'rgba(175,196,255,0.12)',
     border: '1px solid rgba(175,196,255,0.30)',
   },
@@ -165,7 +165,7 @@ export function KeywordScoreDashboard({
         {/* Score labels */}
         <div className="flex-1 min-w-0 w-full">
           <div className="mb-1 flex items-center gap-2">
-            <Shield className="h-3.5 w-3.5 text-[#afc4ff]" />
+            <Shield className="h-3.5 w-3.5 text-[var(--link)]" />
             <span className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">ATS Match Score</span>
             {isScoring && (
               <span className="text-[12px] text-[var(--text-soft)] italic">rescoring…</span>
@@ -183,7 +183,7 @@ export function KeywordScoreDashboard({
               <span
                 className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-semibold"
                 style={{
-                  color: delta > 0 ? '#b5dec2' : '#f0b8b8',
+                  color: delta > 0 ? 'var(--badge-green-text)' : 'var(--badge-red-text)',
                   backgroundColor:
                     delta > 0 ? 'rgba(181,222,194,0.14)' : 'rgba(240,184,184,0.14)',
                   border: `1px solid ${delta > 0 ? 'rgba(181,222,194,0.25)' : 'rgba(240,184,184,0.25)'}`,
@@ -206,7 +206,7 @@ export function KeywordScoreDashboard({
               <span
                 className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-semibold"
                 style={{
-                  color: pipelineDelta > 0 ? '#b5dec2' : '#f0b8b8',
+                  color: pipelineDelta > 0 ? 'var(--badge-green-text)' : 'var(--badge-red-text)',
                   backgroundColor:
                     pipelineDelta > 0 ? 'rgba(181,222,194,0.14)' : 'rgba(240,184,184,0.14)',
                   border: `1px solid ${pipelineDelta > 0 ? 'rgba(181,222,194,0.25)' : 'rgba(240,184,184,0.25)'}`,
@@ -225,8 +225,8 @@ export function KeywordScoreDashboard({
 
           {/* Truth + Tone mini ring gauges */}
           <div className="support-callout flex items-center gap-4 px-4 py-3">
-            <MiniRingGauge label="Truth" score={pipelineScores.truth} color="#b5dec2" />
-            <MiniRingGauge label="Tone" score={pipelineScores.tone} color="#f0d99f" />
+            <MiniRingGauge label="Truth" score={pipelineScores.truth} color="var(--badge-green-text)" />
+            <MiniRingGauge label="Tone" score={pipelineScores.tone} color="var(--badge-amber-text)" />
           </div>
         </div>
       </div>
@@ -237,7 +237,7 @@ export function KeywordScoreDashboard({
           {/* Found */}
           <div>
             <div className="mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="h-3 w-3 text-[#b5dec2]" />
+              <CheckCircle2 className="h-3 w-3 text-[var(--badge-green-text)]" />
               <span className="eyebrow-label">
                 Found ({keywordsFound.length})
               </span>
@@ -248,7 +248,7 @@ export function KeywordScoreDashboard({
                   key={i}
                   className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                   style={{
-                    color: '#b5dec2',
+                    color: 'var(--badge-green-text)',
                     backgroundColor: 'rgba(181,222,194,0.10)',
                     border: '1px solid rgba(181,222,194,0.20)',
                   }}
@@ -262,7 +262,7 @@ export function KeywordScoreDashboard({
           {/* Missing */}
           <div>
             <div className="mb-2 flex items-center gap-1.5">
-              <div className="h-3 w-3 shrink-0 border border-[#f0b8b8]/50 bg-[#f0b8b8]/10" />
+              <div className="h-3 w-3 shrink-0 border border-[var(--badge-red-text)]/50 bg-[var(--badge-red-text)]/10" />
               <span className="eyebrow-label">
                 Missing ({keywordsMissing.length})
               </span>
@@ -278,7 +278,7 @@ export function KeywordScoreDashboard({
                     disabled={isIntegrating}
                     className="rounded-md px-1.5 py-0.5 text-[12px] leading-4 transition-colors hover:bg-[rgba(240,184,184,0.20)] disabled:opacity-50 cursor-pointer"
                     style={{
-                      color: '#f0b8b8',
+                      color: 'var(--badge-red-text)',
                       backgroundColor: isActive
                         ? 'rgba(240,184,184,0.25)'
                         : 'rgba(240,184,184,0.10)',
@@ -293,7 +293,7 @@ export function KeywordScoreDashboard({
                     key={i}
                     className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                     style={{
-                      color: '#f0b8b8',
+                      color: 'var(--badge-red-text)',
                       backgroundColor: 'rgba(240,184,184,0.10)',
                       border: '1px solid rgba(240,184,184,0.20)',
                     }}
@@ -316,7 +316,7 @@ export function KeywordScoreDashboard({
       {showTopSuggestions && (
         <div className="mb-5 pt-4 border-t border-[var(--line-soft)]">
           <div className="mb-2 flex items-center gap-1.5">
-            <Zap className="h-3 w-3 text-[#afc4ff]" />
+            <Zap className="h-3 w-3 text-[var(--link)]" />
             <span className="eyebrow-label">
               Top Suggestions
             </span>
@@ -332,7 +332,7 @@ export function KeywordScoreDashboard({
                   disabled={isIntegrating}
                   className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] leading-4 transition-colors hover:bg-[rgba(175,196,255,0.20)] disabled:opacity-50 cursor-pointer"
                   style={{
-                    color: '#afc4ff',
+                    color: 'var(--link)',
                     backgroundColor: isActive
                       ? 'rgba(175,196,255,0.20)'
                       : 'rgba(175,196,255,0.08)',
@@ -350,7 +350,7 @@ export function KeywordScoreDashboard({
                   key={i}
                   className="rounded-md px-1.5 py-0.5 text-[12px] leading-4"
                   style={{
-                    color: '#afc4ff',
+                    color: 'var(--link)',
                     backgroundColor: 'rgba(175,196,255,0.08)',
                     border: '1px solid rgba(175,196,255,0.18)',
                   }}
@@ -367,7 +367,7 @@ export function KeywordScoreDashboard({
       {quickWins.length > 0 && (
         <div className="pt-4 border-t border-[var(--line-soft)]">
           <div className="mb-2 flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5 text-[#f0d99f]" />
+            <Zap className="h-3.5 w-3.5 text-[var(--badge-amber-text)]" />
             <span className="eyebrow-label">Quick Wins</span>
           </div>
           <ul className="space-y-1.5">

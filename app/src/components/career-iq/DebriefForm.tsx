@@ -39,7 +39,7 @@ function getTodayDateString(): string {
 }
 
 const INPUT_CLASS =
-  'rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
+  'rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30';
 
 const LABEL_CLASS = 'text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5 block';
 
@@ -56,11 +56,11 @@ const SCORE_LABELS: Record<ScoreLevel, string> = {
 };
 
 const SCORE_COLORS: Record<ScoreLevel, string> = {
-  1: '#f0b8b8',
-  2: '#f0b8b8',
-  3: '#f0d99f',
-  4: '#b5dec2',
-  5: '#b5dec2',
+  1: 'var(--badge-red-text)',
+  2: 'var(--badge-red-text)',
+  3: 'var(--badge-amber-text)',
+  4: 'var(--badge-green-text)',
+  5: 'var(--badge-green-text)',
 };
 
 function PerformanceScoreSelector({
@@ -115,8 +115,8 @@ interface FollowUpItem {
 }
 
 const PRIORITY_CONFIG: Record<FollowUpPriority, { label: string; bg: string; border: string; text: string }> = {
-  urgent: { label: 'Urgent', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
-  important: { label: 'Important', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
+  urgent: { label: 'Urgent', bg: 'bg-[var(--badge-red-text)]/10', border: 'border-[var(--badge-red-text)]/20', text: 'text-[var(--badge-red-text)]' },
+  important: { label: 'Important', bg: 'bg-[var(--badge-amber-text)]/10', border: 'border-[var(--badge-amber-text)]/20', text: 'text-[var(--badge-amber-text)]' },
   normal: { label: 'Normal', bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]' },
 };
 
@@ -168,12 +168,12 @@ function FollowUpChecklist({
               className={cn(
                 'flex-shrink-0 mt-0.5 h-4 w-4 rounded border transition-colors',
                 item.done
-                  ? 'border-[#b5dec2]/40 bg-[#b5dec2]/15'
-                  : 'border-[var(--line-strong)] bg-transparent hover:border-[#b5dec2]/40',
+                  ? 'border-[var(--badge-green-text)]/40 bg-[var(--badge-green-text)]/15'
+                  : 'border-[var(--line-strong)] bg-transparent hover:border-[var(--badge-green-text)]/40',
               )}
             >
               {item.done && (
-                <CheckSquare size={14} className="text-[#b5dec2] -mt-0.5 -ml-0.5" />
+                <CheckSquare size={14} className="text-[var(--badge-green-text)] -mt-0.5 -ml-0.5" />
               )}
             </button>
             <div className="flex-1 min-w-0">
@@ -200,7 +200,7 @@ function FollowUpChecklist({
               <button
                 type="button"
                 onClick={() => removeItem(i)}
-                className="ml-1 text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
+                className="ml-1 text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/60 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -230,7 +230,7 @@ function FollowUpChecklist({
         <button
           type="button"
           onClick={addItem}
-          className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+          className="flex items-center gap-1 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors px-2 py-1.5 rounded-lg border border-[var(--link)]/20 hover:border-[var(--link)]/40"
         >
           <Plus size={12} />
           Add
@@ -250,9 +250,9 @@ interface SentimentItem {
 }
 
 const SENTIMENT_CONFIG: Record<SentimentSignal, { bg: string; border: string; text: string; dot: string }> = {
-  positive: { bg: 'bg-[#b5dec2]/[0.05]', border: 'border-[#b5dec2]/15', text: 'text-[#b5dec2]/80', dot: 'bg-[#b5dec2]' },
+  positive: { bg: 'bg-[var(--badge-green-text)]/[0.05]', border: 'border-[var(--badge-green-text)]/15', text: 'text-[var(--badge-green-text)]/80', dot: 'bg-[var(--badge-green-text)]' },
   neutral: { bg: 'bg-[var(--accent-muted)]', border: 'border-[var(--line-soft)]', text: 'text-[var(--text-soft)]', dot: 'bg-[var(--line-strong)]' },
-  concerning: { bg: 'bg-[#f0b8b8]/[0.04]', border: 'border-[#f0b8b8]/12', text: 'text-[#f0b8b8]/70', dot: 'bg-[#f0b8b8]' },
+  concerning: { bg: 'bg-[var(--badge-red-text)]/[0.04]', border: 'border-[var(--badge-red-text)]/12', text: 'text-[var(--badge-red-text)]/70', dot: 'bg-[var(--badge-red-text)]' },
 };
 
 function SentimentSummary({
@@ -295,7 +295,7 @@ function SentimentSummary({
             <button
               type="button"
               onClick={() => removeItem(i)}
-              className="flex-shrink-0 text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
+              className="flex-shrink-0 text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/60 transition-colors"
             >
               <X size={12} />
             </button>
@@ -324,7 +324,7 @@ function SentimentSummary({
         <button
           type="button"
           onClick={addItem}
-          className="flex items-center gap-1 text-[13px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+          className="flex items-center gap-1 text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors px-2 py-1.5 rounded-lg border border-[var(--link)]/20 hover:border-[var(--link)]/40"
         >
           <Plus size={12} />
           Add
@@ -407,7 +407,7 @@ function InterviewerCard({ note, index, onChange, onRemove }: InterviewerCardPro
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors"
+          className="text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/60 transition-colors"
           aria-label="Remove interviewer"
         >
           <X size={13} />
@@ -608,7 +608,7 @@ export function DebriefForm({
 
   // Overall performance score for display
   const avgScore = Math.round((commScore + technicalScore + cultureFitScore + enthusiasmScore) / 4);
-  const avgColor = avgScore >= 4 ? '#b5dec2' : avgScore === 3 ? '#f0d99f' : '#f0b8b8';
+  const avgColor = avgScore >= 4 ? 'var(--badge-green-text)' : avgScore === 3 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
   const avgLabel = avgScore >= 4 ? 'Strong' : avgScore === 3 ? 'Average' : 'Needs Work';
 
   return (
@@ -690,8 +690,8 @@ export function DebriefForm({
             current={overallImpression}
             icon={<ThumbsUp size={16} />}
             label="Positive"
-            color="text-[#b5dec2]"
-            activeClass="border-[#b5dec2]/30 bg-[#b5dec2]/[0.06] text-[#b5dec2]"
+            color="text-[var(--badge-green-text)]"
+            activeClass="border-[var(--badge-green-text)]/30 bg-[var(--badge-green-text)]/[0.06] text-[var(--badge-green-text)]"
             onClick={setOverallImpression}
           />
           <ImpressionButton
@@ -699,8 +699,8 @@ export function DebriefForm({
             current={overallImpression}
             icon={<Minus size={16} />}
             label="Neutral"
-            color="text-[#f0d99f]"
-            activeClass="border-[#f0d99f]/30 bg-[#f0d99f]/[0.06] text-[#f0d99f]"
+            color="text-[var(--badge-amber-text)]"
+            activeClass="border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-text)]/[0.06] text-[var(--badge-amber-text)]"
             onClick={setOverallImpression}
           />
           <ImpressionButton
@@ -708,8 +708,8 @@ export function DebriefForm({
             current={overallImpression}
             icon={<ThumbsDown size={16} />}
             label="Negative"
-            color="text-[#f0b8b8]"
-            activeClass="border-[#f0b8b8]/30 bg-[#f0b8b8]/[0.06] text-[#f0b8b8]"
+            color="text-[var(--badge-red-text)]"
+            activeClass="border-[var(--badge-red-text)]/30 bg-[var(--badge-red-text)]/[0.06] text-[var(--badge-red-text)]"
             onClick={setOverallImpression}
           />
         </div>
@@ -753,45 +753,45 @@ export function DebriefForm({
       <GlassCard className="p-5 space-y-4">
         <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Performance Reflection</h3>
 
-        <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
+        <div className="rounded-lg border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.03] p-3">
           <div className="flex items-center gap-1.5 mb-2">
-            <ThumbsUp size={12} className="text-[#b5dec2]/70" />
-            <label className="text-[13px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">What went well</label>
+            <ThumbsUp size={12} className="text-[var(--badge-green-text)]/70" />
+            <label className="text-[13px] font-semibold text-[var(--badge-green-text)]/70 uppercase tracking-wider">What went well</label>
           </div>
           <textarea
             placeholder="Moments of strong rapport, questions you nailed, stories that landed..."
             value={whatWentWell}
             onChange={(e) => setWhatWentWell(e.target.value)}
             rows={3}
-            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#b5dec2]/10')}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[var(--badge-green-text)]/10')}
           />
         </div>
 
-        <div className="rounded-lg border border-[#f0d99f]/12 bg-[#f0d99f]/[0.02] p-3">
+        <div className="rounded-lg border border-[var(--badge-amber-text)]/12 bg-[var(--badge-amber-text)]/[0.02] p-3">
           <div className="flex items-center gap-1.5 mb-2">
-            <Minus size={12} className="text-[#f0d99f]/70" />
-            <label className="text-[13px] font-semibold text-[#f0d99f]/70 uppercase tracking-wider">What could have gone better</label>
+            <Minus size={12} className="text-[var(--badge-amber-text)]/70" />
+            <label className="text-[13px] font-semibold text-[var(--badge-amber-text)]/70 uppercase tracking-wider">What could have gone better</label>
           </div>
           <textarea
             placeholder="Stumbling points, questions you were unprepared for, missed opportunities..."
             value={whatWentPoorly}
             onChange={(e) => setWhatWentPoorly(e.target.value)}
             rows={3}
-            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#f0d99f]/10')}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[var(--badge-amber-text)]/10')}
           />
         </div>
 
-        <div className="rounded-lg border border-[#f0b8b8]/12 bg-[#f0b8b8]/[0.02] p-3">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/12 bg-[var(--badge-red-text)]/[0.02] p-3">
           <div className="flex items-center gap-1.5 mb-2">
-            <AlertTriangle size={12} className="text-[#f0b8b8]/70" />
-            <label className="text-[13px] font-semibold text-[#f0b8b8]/70 uppercase tracking-wider">Red flags or concerns</label>
+            <AlertTriangle size={12} className="text-[var(--badge-red-text)]/70" />
+            <label className="text-[13px] font-semibold text-[var(--badge-red-text)]/70 uppercase tracking-wider">Red flags or concerns</label>
           </div>
           <textarea
             placeholder="Anything that might have raised a concern for the interviewer — be honest..."
             value={companySignals}
             onChange={(e) => setCompanySignals(e.target.value)}
             rows={2}
-            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#f0b8b8]/10')}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[var(--badge-red-text)]/10')}
           />
         </div>
       </GlassCard>
@@ -819,7 +819,7 @@ export function DebriefForm({
                 <button
                   type="button"
                   onClick={() => removeQuestion(i)}
-                  className="text-[var(--text-soft)] hover:text-[#f0b8b8]/60 transition-colors flex-shrink-0"
+                  className="text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/60 transition-colors flex-shrink-0"
                   aria-label="Remove question"
                 >
                   <X size={14} />
@@ -867,7 +867,7 @@ export function DebriefForm({
       {/* Follow-up actions checklist */}
       <GlassCard className="p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <Flag size={14} className="text-[#afc4ff]/60" />
+          <Flag size={14} className="text-[var(--link)]/60" />
           <h3 className="text-[13px] font-semibold text-[var(--text-muted)]">Follow-Up Actions</h3>
         </div>
         <FollowUpChecklist items={followUpItems} onChange={setFollowUpItems} />
@@ -887,14 +887,14 @@ export function DebriefForm({
 
       {/* Thank you note CTA (shown when interviewer names are present) */}
       {interviewerNotes.some((n) => n.name.trim().length > 0) && !saved && (
-        <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] p-4 flex items-center justify-between gap-3">
+        <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.03] p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-[13px] font-medium text-[var(--text-muted)]">Ready to write thank you notes?</p>
             <p className="text-[13px] text-[var(--text-soft)] mt-0.5">
               Save the debrief first, then generate personalized thank you notes for each interviewer.
             </p>
           </div>
-          <Send size={16} className="text-[#afc4ff]/40 flex-shrink-0" />
+          <Send size={16} className="text-[var(--link)]/40 flex-shrink-0" />
         </div>
       )}
 
@@ -922,7 +922,7 @@ export function DebriefForm({
           </>
         ) : (
           <>
-            <div className="text-[12px] text-[#b5dec2] font-medium px-1">
+            <div className="text-[12px] text-[var(--badge-green-text)] font-medium px-1">
               Debrief saved.
             </div>
             {onNavigateToThankYou && (

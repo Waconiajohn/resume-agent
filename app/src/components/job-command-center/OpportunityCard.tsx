@@ -19,7 +19,7 @@ const ALL_STAGES: { key: PipelineStage; label: string }[] = [
 
 const STAGE_DOT: Record<PipelineStage, string> = {
   saved: 'bg-white/30',
-  researching: 'bg-[#98b3ff]/60',
+  researching: 'bg-[var(--link)]/60',
   applied: 'bg-[var(--badge-amber-text)]/60',
   screening: 'bg-[var(--badge-amber-text)]/80',
   interviewing: 'bg-[var(--badge-green-text)]/60',
@@ -84,7 +84,7 @@ export function OpportunityCard({
             {application.company_name}
           </div>
           {application.next_action && (
-            <div className="mt-1.5 text-[13px] text-[#98b3ff]/50 truncate">
+            <div className="mt-1.5 text-[13px] text-[var(--link)]/50 truncate">
               {application.next_action}
             </div>
           )}
@@ -96,7 +96,7 @@ export function OpportunityCard({
                 e.stopPropagation();
                 onBuildResume(application);
               }}
-              className="mt-2 flex items-center gap-1 text-[12px] font-medium text-[#98b3ff]/70 hover:text-[#98b3ff] transition-colors"
+              className="mt-2 flex items-center gap-1 text-[12px] font-medium text-[var(--link)]/70 hover:text-[var(--link)] transition-colors"
             >
               <FileText size={10} />
               Build Resume

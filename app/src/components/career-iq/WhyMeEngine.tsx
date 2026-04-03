@@ -56,8 +56,8 @@ const STEPS: PromptStep[] = [
 
 function SignalIndicator({ level }: { level: SignalLevel }) {
   const config: Record<SignalLevel, { color: string; label: string }> = {
-    green: { color: 'bg-[#b5dec2]', label: 'Strong' },
-    yellow: { color: 'bg-[#f0d99f]', label: 'Getting there' },
+    green: { color: 'bg-[var(--badge-green-text)]', label: 'Strong' },
+    yellow: { color: 'bg-[var(--badge-amber-text)]', label: 'Getting there' },
     red: { color: 'bg-[var(--line-strong)]', label: 'Not started' },
   };
   const c = config[level];
@@ -80,9 +80,9 @@ function StepIndicator({ currentStep, signals }: { currentStep: number; signals:
             className={cn(
               'h-8 w-8 rounded-full flex items-center justify-center text-[12px] font-medium transition-all duration-200',
               i === currentStep
-                ? 'bg-[#98b3ff]/20 text-[#98b3ff] ring-1 ring-[#98b3ff]/30'
+                ? 'bg-[var(--link)]/20 text-[var(--link)] ring-1 ring-[var(--link)]/30'
                 : signals[signalKeys[i]] === 'green'
-                  ? 'bg-[#b5dec2]/15 text-[#b5dec2]'
+                  ? 'bg-[var(--badge-green-text)]/15 text-[var(--badge-green-text)]'
                   : 'bg-[var(--accent-muted)] text-[var(--text-soft)]',
             )}
           >
@@ -91,7 +91,7 @@ function StepIndicator({ currentStep, signals }: { currentStep: number; signals:
           {i < STEPS.length - 1 && (
             <div className={cn(
               'h-px w-8 transition-colors duration-300',
-              signals[signalKeys[i]] === 'green' ? 'bg-[#b5dec2]/30' : 'bg-white/[0.08]',
+              signals[signalKeys[i]] === 'green' ? 'bg-[var(--badge-green-text)]/30' : 'bg-white/[0.08]',
             )} />
           )}
         </div>
@@ -117,8 +117,8 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={16} className="text-[#98b3ff]" />
-              <span className="text-[13px] font-medium text-[#98b3ff] uppercase tracking-widest">
+              <Sparkles size={16} className="text-[var(--link)]" />
+              <span className="text-[13px] font-medium text-[var(--link)] uppercase tracking-widest">
                 Career Profile
               </span>
             </div>
@@ -148,10 +148,10 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
             className={cn(
               'w-full min-h-[160px] rounded-xl border bg-[var(--accent-muted)] px-4 py-3',
               'text-[14px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] leading-relaxed',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 transition-all duration-200 resize-y',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-1 transition-all duration-200 resize-y',
               signals[signalKeys[currentStep]] === 'green'
-                ? 'border-[#b5dec2]/20 focus:ring-[#b5dec2]/30 focus:border-[#b5dec2]/30'
-                : 'border-[var(--line-soft)] focus:ring-[#98b3ff]/30 focus:border-[#98b3ff]/20',
+                ? 'border-[var(--badge-green-text)]/20 focus:ring-[var(--badge-green-text)]/30 focus:border-[var(--badge-green-text)]/30'
+                : 'border-[var(--line-soft)] focus:ring-[var(--link)]/30 focus:border-[var(--link)]/20',
             )}
           />
 
@@ -162,7 +162,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
                 : 'Take your time — there are no wrong answers'}
             </span>
             {story[step.field].trim().length > 0 && story[step.field].trim().length < 50 && (
-              <span className="text-[13px] text-[#f0d99f]">
+              <span className="text-[13px] text-[var(--badge-amber-text)]">
                 A few more sentences will strengthen this
               </span>
             )}
