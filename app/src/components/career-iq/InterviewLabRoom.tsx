@@ -1239,6 +1239,7 @@ export function InterviewLabRoom({
   const [mockInterviewConfig, setMockInterviewConfig] = useState<MockInterviewConfig | null>(null);
   const [mockInterviewLoading, setMockInterviewLoading] = useState(false);
   const [mockInterviewError, setMockInterviewError] = useState<string | null>(null);
+  const [practiceQuestionType, setPracticeQuestionType] = useState<'behavioral' | 'technical' | 'situational'>('behavioral');
 
   const { debriefs, createDebrief } = useInterviewDebriefs();
 
@@ -1456,6 +1457,26 @@ export function InterviewLabRoom({
       setMockInterviewLoading(false);
     }
   }, [fetchResumeText]);
+
+  const handleStartPracticeQuestion = useCallback(async () => {
+    setActiveSection('practice');
+    setMockInterviewLoading(true);
+    setMockInterviewError(null);
+    try {
+      const resumeText = await fetchResumeText();
+      if (!resumeText || resumeText.length < 50) {
+        setMockInterviewError('Upload a resume first — we need it to run the practice session.');
+        setMockInterviewLoading(false);
+        return;
+      }
+      setMockInterviewConfig({ resumeText, mode: 'practice', questionType: practiceQuestionType });
+      setViewMode('mock_interview');
+    } catch (err) {
+      console.error('[InterviewLab] Failed to load resume for practice session:', err);
+    } finally {
+      setMockInterviewLoading(false);
+    }
+  }, [fetchResumeText, practiceQuestionType]);
 
   const handleMockInterviewBack = useCallback(() => {
     setViewMode('lab');
@@ -1699,26 +1720,69 @@ export function InterviewLabRoom({
       )}
 
       {activeSection === 'practice' && (
-        <GlassCard className="p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
-              Run the mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
+        <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl text-sm leading-relaxed text-[var(--text-soft)]">
+                Run the full mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
+              </div>
+              <GlassButton
+                variant="primary"
+                onClick={() => void handleStartMockInterview()}
+                disabled={mockInterviewLoading}
+                className="text-[13px]"
+              >
+                {mockInterviewLoading ? (
+                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                ) : (
+                  <Mic size={14} className="mr-1.5" />
+                )}
+                Start Mock Interview
+              </GlassButton>
             </div>
-            <GlassButton
-              variant="primary"
-              onClick={() => void handleStartMockInterview()}
-              disabled={mockInterviewLoading}
-              className="text-[13px]"
-            >
-              {mockInterviewLoading ? (
-                <Loader2 size={14} className="mr-1.5 animate-spin" />
-              ) : (
-                <Mic size={14} className="mr-1.5" />
-              )}
-              Start Mock Interview
-            </GlassButton>
-          </div>
-        </GlassCard>
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="mb-3">
+              <div className="text-[12px] font-medium uppercase tracking-widest text-[#98b3ff]/70 mb-1">Practice Mode</div>
+              <p className="text-[13px] leading-5 text-[var(--text-soft)]">
+                Practice one targeted question — choose a type and get immediate STAR-framework feedback.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-4">
+              <div className="flex rounded-lg overflow-hidden border border-[var(--line-soft)]">
+                {(['behavioral', 'technical', 'situational'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setPracticeQuestionType(type)}
+                    className={cn(
+                      'px-3 py-1.5 text-[12px] font-medium capitalize transition-colors',
+                      practiceQuestionType === type
+                        ? 'bg-[#98b3ff]/20 text-[#98b3ff]'
+                        : 'bg-transparent text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)]',
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <GlassButton
+                variant="ghost"
+                onClick={() => void handleStartPracticeQuestion()}
+                disabled={mockInterviewLoading}
+                className="text-[13px]"
+              >
+                {mockInterviewLoading ? (
+                  <Loader2 size={13} className="mr-1.5 animate-spin" />
+                ) : (
+                  <Brain size={13} className="mr-1.5" />
+                )}
+                Practice One Question
+              </GlassButton>
+            </div>
+          </GlassCard>
+        </div>
       )}
 
       {activeSection === 'documents' && (

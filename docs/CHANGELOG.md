@@ -1,5 +1,52 @@
 # Changelog — Resume Agent
 
+## 2026-04-01 — Session 94
+**Sprint:** SN1 | **Story:** Salary Negotiation Enhancement — SN1-1 (Counter-Offer Simulation) + SN1-2 (Kanban Trigger)
+**Summary:** SN1-2 was already fully built end-to-end. Built SN1-1 from scratch: a gate-based interactive Employer simulation agent that presents authentic negotiation positions, pauses for candidate responses, scores each round, and delivers coaching feedback.
+
+### Changes Made
+- `server/src/agents/salary-negotiation/simulation/types.ts` — New: NegotiationSimulationState, NegotiationRound, RoundEvaluation, NegotiationSimulationSSEEvent types
+- `server/src/agents/salary-negotiation/simulation/employer/tools.ts` — New: 3 tools — generate_employer_position, present_position_to_user (gate), evaluate_response
+- `server/src/agents/salary-negotiation/simulation/employer/agent.ts` — New: Employer agent config (gate-based, orchestrator model, 15 min overall timeout)
+- `server/src/agents/salary-negotiation/simulation/product.ts` — New: ProductConfig for negotiation simulation (full 4-round / practice 3-round modes, finalizeResult with coaching takeaway)
+- `server/src/routes/negotiation-simulation.ts` — New: Route mounted at /api/negotiation-simulation, shares FF_SALARY_NEGOTIATION flag, loads platform context, momentum type counter_offer_sim_completed
+- `server/src/index.ts` — Mounted negotiationSimulationRoutes at /api/negotiation-simulation
+- `app/src/hooks/useNegotiationSimulation.ts` — New: Hook managing SSE, gate submission via POST /respond, status lifecycle (idle/connecting/running/awaiting_response/complete/error)
+- `app/src/components/career-iq/NegotiationSimulationView.tsx` — New: Full interactive simulation UI with employer bubbles, response input, per-round score display, summary view
+- `app/src/components/career-iq/SalaryNegotiationRoom.tsx` — Added PlayCircle import, NegotiationSimulationView import, showSimulation state, "Practice Counter-Offer" button on ReportView, simulation view early-return rendering
+
+### Decisions Made
+- SN1-2 (Kanban Trigger): Fully built before this session. OpportunityCard shows "Negotiate Salary" when stage=offer. JobCommandCenterRoom navigates to ?room=interview&focus=negotiation&job=ID&company=X&role=Y. CareerIQScreen threads all params to InterviewLabRoom which routes to SalaryNegotiationRoom with prefill. Zero changes needed.
+- SN1-1 used the mock-interview simulation as the reference architecture: gate-based, single agent, present_to_user in tool name to bypass round timeout, finalizeResult computes summary deterministically
+- Simulation shares FF_SALARY_NEGOTIATION (no new flag) — it is a companion feature of the salary negotiation workflow
+- No DB persistence for simulation results — ephemeral like mock interview, summary delivered via SSE simulation_complete event
+- Route uses momentum type counter_offer_sim_completed which was already registered in momentum.ts
+
+### Known Issues
+- None introduced by this session
+
+### Next Steps
+- The simulation currently launches in practice mode (3 rounds). Full-mode (4 rounds) can be enabled by changing the mode prop in SalaryNegotiationRoom or by adding a mode picker to the simulation launch screen.
+
+## 2026-04-01 — Session 93
+**Sprint:** IP1 | **Story:** Interview Prep Enhancement — Stories IP1-1 through IP1-4
+**Summary:** Audited all four stories. Three are fully built with no changes needed. Added practice mode question-type picker UI to `InterviewLabRoom` — the only missing piece.
+
+### Changes Made
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — Added `practiceQuestionType` state (behavioral/technical/situational), `handleStartPracticeQuestion` callback, and a Practice Mode card in the practice section. Users can now select a question type and start a single-question practice session directly from the practice tab.
+
+### Decisions Made
+- IP1-1 (Mock Interview Simulation): Fully built in a prior sprint. Backend: `server/src/agents/interview-prep/simulation/` (4 tools, gate-based agent), `server/src/routes/mock-interview.ts` (mounted at `/api/mock-interview`, FF_MOCK_INTERVIEW=true). Frontend: `useMockInterview.ts` SSE hook, `MockInterviewView.tsx`. Tests in `mock-interview-sim.test.ts` and `useMockInterview.test.ts`. No changes needed.
+- IP1-2 (Post-Interview Debrief): Fully built. `server/src/routes/interview-debrief.ts` (CRUD at `/api/interview-debriefs`, FF_INTERVIEW_DEBRIEF=true), `server/src/routes/interview-prep.ts` has `/debrief` AI endpoint and `/follow-up-email` endpoint. Frontend: `useInterviewDebriefs.ts`, `DebriefForm.tsx`, wired in `InterviewLabRoom` `followUpView === 'debrief'`. No changes needed.
+- IP1-3 (Practice Mode): Backend fully supported `mode: 'practice'` and `question_type` in MockInterviewProductConfig. `MockInterviewView` already handled practice mode rendering. Only the UI in `InterviewLabRoom` was missing the question-type selector — the minimal fix was adding a type-toggle row and a "Practice One Question" button.
+- IP1-4 (Kanban Integration): Fully built. `ZoneYourPipeline.tsx` shows interview prep CTA on `Interviewing`-stage pipeline cards, wired through `CareerIQScreen.tsx` `handleInterviewPrepClick` → `pipelineInterviews` → `InterviewLabRoom`. No changes needed.
+
+### Known Issues
+- 50 pre-existing test failures in unrelated rooms (resume-v2 split-screen inline edit, CaseStudy, ExecutiveBio, NinetyDayPlan, Sidebar). None in interview-prep files.
+
+### Next Steps
+- All four IP1 stories verified or completed. Practice mode is now wired end-to-end.
+
 ## 2026-04-01 — Session 92
 **Sprint:** NH1 | **Story:** Networking Hub Stories 2-5
 **Summary:** Audited all four stories. Most of the implementation is already built. Added the two missing pieces: `fetchOverdue` and `importFromNI` to `useNetworkingContacts`, and wired NI Import into `NetworkingHubRoom` with status feedback.

@@ -2,6 +2,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import { NegotiationSimulationView } from '@/components/career-iq/NegotiationSimulationView';
 import type { CareerProfileSummary } from './career-profile-summary';
 import {
   DollarSign,
@@ -20,6 +21,7 @@ import {
   Zap,
   AlertTriangle,
   MessageSquare,
+  PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -430,12 +432,14 @@ function ReportView({
   strategyReviewData,
   offerBaseSalary,
   onReset,
+  onPractice,
 }: {
   report: string;
   qualityScore: number | null;
   strategyReviewData: { market_p50?: number; market_p75?: number; data_confidence?: 'low' | 'medium' | 'high'; opening_position?: string; walk_away_point?: string } | null;
   offerBaseSalary?: number;
   onReset: () => void;
+  onPractice?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<'playbook' | 'leverage' | 'redlines'>('playbook');
   const [copied, setCopied] = useState(false);
@@ -515,6 +519,12 @@ function ReportView({
         <div className="flex items-center gap-3">
           <ConfidenceGauge score={confidenceScore} size={72} label="Position Strength" />
           <div className="flex flex-col gap-2">
+            {onPractice && (
+              <GlassButton variant="ghost" onClick={onPractice} size="sm" className="text-[#f0b8b8]/80 hover:text-[#f0b8b8]">
+                <PlayCircle size={14} className="mr-1.5" />
+                Practice Counter-Offer
+              </GlassButton>
+            )}
             <GlassButton variant="ghost" onClick={handleCopy} size="sm">
               {copied ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
               {copied ? 'Copied' : 'Copy'}
@@ -755,6 +765,7 @@ export function SalaryNegotiationRoom({
     offerRole: prefillRole ?? '',
   }));
   const [showPriorResult, setShowPriorResult] = useState(false);
+  const [showSimulation, setShowSimulation] = useState(false);
   const [resumeText, setResumeText] = useState('');
   const [resumeError, setResumeError] = useState<string | null>(null);
   const { resumeText: loadedResumeText, loading: resumeLoading } = useLatestMasterResumeText();
@@ -840,6 +851,20 @@ export function SalaryNegotiationRoom({
     setForm(DEFAULT_FORM);
   }, [reset]);
 
+  // Simulation view — practice counter-offer
+  if (showSimulation) {
+    return (
+      <NegotiationSimulationView
+        offerCompany={form.offerCompany || (prefillCompany ?? '')}
+        offerRole={form.offerRole || (prefillRole ?? '')}
+        offerBaseSalary={form.offerBaseSalary ? Number(form.offerBaseSalary) : undefined}
+        offerEquityDetails={form.offerEquityDetails || undefined}
+        mode="practice"
+        onBack={() => setShowSimulation(false)}
+      />
+    );
+  }
+
   // Complete — report view
   if (status === 'complete' && report) {
     return (
@@ -850,6 +875,7 @@ export function SalaryNegotiationRoom({
           strategyReviewData={strategyReviewData}
           offerBaseSalary={form.offerBaseSalary ? Number(form.offerBaseSalary) : undefined}
           onReset={handleReset}
+          onPractice={() => setShowSimulation(true)}
         />
       </div>
     );
@@ -867,6 +893,7 @@ export function SalaryNegotiationRoom({
             clearPrior();
             handleReset();
           }}
+          onPractice={() => setShowSimulation(true)}
         />
       </div>
     );
