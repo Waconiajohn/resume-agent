@@ -265,7 +265,7 @@ describe('WhatChangedCard — bullet colours', () => {
     // No click needed — check the content is directly visible
     const addedText = screen.getByText('Freshly added achievement here');
     // The wrapping div carries the green background class
-    expect(addedText.closest('div')?.className).toContain('bg-[#b5dec2]');
+    expect(addedText.closest('div')?.className).toContain('badge-green-bg');
   });
 
   it('shows removed bullets in the red colour class when details are expanded', () => {
@@ -312,7 +312,7 @@ describe('WhatChangedCard — bullet colours', () => {
     // Details are expanded by default in jsdom (window.innerWidth >= 640)
     // No click needed — check the content is directly visible
     const removedText = screen.getByText('This bullet will be removed in rerun');
-    expect(removedText.closest('div')?.className).toContain('bg-[#f0b8b8]');
+    expect(removedText.closest('div')?.className).toContain('badge-red-bg');
   });
 });
 

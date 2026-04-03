@@ -813,9 +813,9 @@ function RequirementCard({
                 style={{
                   fontSize: 13,
                   fontWeight: 500,
-                  color: '#afc4ff',
-                  backgroundColor: 'rgba(175,196,255,0.06)',
-                  border: '1px solid rgba(175,196,255,0.15)',
+                  color: 'var(--link)',
+                  backgroundColor: 'var(--badge-blue-bg)',
+                  border: '1px solid color-mix(in srgb, var(--link) 15%, transparent)',
                 }}
                 data-testid="action-coach-me"
               >

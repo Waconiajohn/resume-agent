@@ -105,8 +105,8 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom />);
 
     expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
-    expect(screen.getByText('Use your existing connections first')).toBeInTheDocument();
-    expect(screen.getByText('Chase strong referral bonuses separately')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Network path' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bonus path' })).toBeInTheDocument();
     expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
   });
 
@@ -126,8 +126,10 @@ describe('SmartReferralsRoom', () => {
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Matches' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Outreach' })).toBeEnabled();
-    expect(screen.queryByRole('button', { name: /Target titles/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Job Scan' })).not.toBeInTheDocument();
+    // Network path tab bar includes Target Titles and Job Scan as visible tabs
+    expect(screen.getByRole('button', { name: /Target Titles/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Job Scan' })).toBeInTheDocument();
+    // Bonus Search is only in the bonus path, not the network path
     expect(screen.queryByRole('button', { name: 'Bonus Search' })).not.toBeInTheDocument();
   });
 
@@ -183,7 +185,7 @@ describe('SmartReferralsRoom', () => {
 
     await screen.findByTestId('csv-uploader');
 
-    screen.getByRole('button', { name: /Second visible path.*Chase strong referral bonuses separately/i }).click();
+    screen.getByRole('button', { name: 'Bonus path' }).click();
     const referralBonusButton = await screen.findByRole('button', { name: 'Referral Bonus' });
     referralBonusButton.click();
     await screen.findByTestId('referral-opportunities-panel');
@@ -277,7 +279,8 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom initialFocus="bonus-search" />);
 
     expect(await screen.findByTestId('bonus-search-panel')).toBeInTheDocument();
-    expect(screen.getAllByText(/coverage is still limited to the bonus programs/i).length).toBeGreaterThan(0);
+    // Bonus path selector is active
+    expect(screen.getByRole('button', { name: 'Bonus path' })).toBeInTheDocument();
   });
 
   it('tracks path selection when switching to the bonus path', async () => {
@@ -293,7 +296,7 @@ describe('SmartReferralsRoom', () => {
     render(<SmartReferralsRoom />);
 
     await screen.findByTestId('csv-uploader');
-    fireEvent.click(screen.getByRole('button', { name: /Second visible path.*Chase strong referral bonuses separately/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bonus path' }));
 
     expect(trackProductEventMock).toHaveBeenCalledWith('smart_referrals_path_selected', {
       path: 'bonus',

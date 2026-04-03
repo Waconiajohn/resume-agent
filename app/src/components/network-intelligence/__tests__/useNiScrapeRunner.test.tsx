@@ -70,7 +70,8 @@ describe('useNiScrapeRunner', () => {
     });
 
     expect(result.current.running).toBe(true);
-    expect(vi.getTimerCount()).toBe(1);
+    // Hook creates a polling interval + a safety timeout = 2 timers
+    expect(vi.getTimerCount()).toBe(2);
 
     await act(async () => {
       rerender({ token: null });

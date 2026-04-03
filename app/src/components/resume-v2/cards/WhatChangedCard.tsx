@@ -262,7 +262,7 @@ function JumpToSection({ sectionKey }: { sectionKey: string }) {
     <button
       type="button"
       onClick={handleClick}
-      className="text-[12px] text-[#afc4ff]/50 hover:text-[#afc4ff]/80 transition-colors shrink-0"
+      className="text-[12px] text-[var(--link)]/50 hover:text-[var(--link)]/80 transition-colors shrink-0"
       aria-label={`View ${sectionKey} in resume`}
     >
       View in resume ↓
@@ -282,9 +282,9 @@ function BulletLine({ change }: { change: BulletChange }) {
 
   const prefix = change.type === 'added' ? '+' : '−';
   const color =
-    change.type === 'added' ? 'text-[#b5dec2]' : 'text-[#f0b8b8]';
+    change.type === 'added' ? 'text-[var(--badge-green-text)]' : 'text-[var(--badge-red-text)]';
   const bg =
-    change.type === 'added' ? 'bg-[#b5dec2]/[0.05]' : 'bg-[#f0b8b8]/[0.05]';
+    change.type === 'added' ? 'bg-[var(--badge-green-bg)]' : 'bg-[var(--badge-red-bg)]';
 
   return (
     <div className={`flex items-start gap-2 rounded px-2 py-1.5 ${bg}`}>
@@ -331,14 +331,14 @@ function StringListDiff({ added, removed, label }: { added: string[]; removed: s
       </div>
       <div className="space-y-1 pl-1">
         {removed.map((item, i) => (
-          <div key={`r-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
-            <span className="text-xs font-bold shrink-0 text-[#f0b8b8]" aria-hidden="true">−</span>
+          <div key={`r-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[var(--badge-red-bg)]">
+            <span className="text-xs font-bold shrink-0 text-[var(--badge-red-text)]" aria-hidden="true">−</span>
             <span className="text-xs text-[var(--text-muted)]">{item}</span>
           </div>
         ))}
         {added.map((item, i) => (
-          <div key={`a-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#b5dec2]/[0.05]">
-            <span className="text-xs font-bold shrink-0 text-[#b5dec2]" aria-hidden="true">+</span>
+          <div key={`a-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[var(--badge-green-bg)]">
+            <span className="text-xs font-bold shrink-0 text-[var(--badge-green-text)]" aria-hidden="true">+</span>
             <span className="text-xs text-[var(--text-muted)]">{item}</span>
           </div>
         ))}
@@ -357,12 +357,12 @@ function SummaryDiffSection({ diff }: { diff: SummaryDiff }) {
         <JumpToSection sectionKey="executive_summary" />
       </div>
       <div className="pl-1 space-y-1">
-        <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
-          <span className="text-xs font-bold shrink-0 text-[#f0b8b8]" aria-hidden="true">−</span>
+        <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[var(--badge-red-bg)]">
+          <span className="text-xs font-bold shrink-0 text-[var(--badge-red-text)]" aria-hidden="true">−</span>
           <span className="text-xs text-[var(--text-muted)] line-clamp-3">{diff.previous}</span>
         </div>
-        <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#b5dec2]/[0.05]">
-          <span className="text-xs font-bold shrink-0 text-[#b5dec2]" aria-hidden="true">+</span>
+        <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[var(--badge-green-bg)]">
+          <span className="text-xs font-bold shrink-0 text-[var(--badge-green-text)]" aria-hidden="true">+</span>
           <span className="text-xs text-[var(--text-muted)] line-clamp-3">{diff.current}</span>
         </div>
       </div>
@@ -384,10 +384,10 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
   if (!hasAnyChange) return null;
 
   return (
-    <GlassCard className="p-5 border-[#afc4ff]/20">
+    <GlassCard className="p-5 border-[var(--link)]/20">
       {/* Header row */}
       <div className="flex items-center gap-2 mb-4">
-        <ArrowLeftRight className="h-4 w-4 text-[#afc4ff] shrink-0" />
+        <ArrowLeftRight className="h-4 w-4 text-[var(--link)] shrink-0" />
         <h3 className="text-sm font-semibold text-[var(--text-strong)] flex-1">What Changed</h3>
         <button
           type="button"
@@ -402,19 +402,19 @@ export function WhatChangedCard({ previousResume, currentResume, onDismiss }: Wh
       {/* Summary counts */}
       <div className="flex flex-wrap gap-3 text-xs mb-4">
         {changes.totalAdded > 0 && (
-          <span className="flex items-center gap-1 text-[#b5dec2]">
+          <span className="flex items-center gap-1 text-[var(--badge-green-text)]">
             <span className="font-bold text-sm">+{changes.totalAdded}</span>
             <span className="text-[var(--text-soft)]">added</span>
           </span>
         )}
         {changes.totalRemoved > 0 && (
-          <span className="flex items-center gap-1 text-[#f0b8b8]">
+          <span className="flex items-center gap-1 text-[var(--badge-red-text)]">
             <span className="font-bold text-sm">−{changes.totalRemoved}</span>
             <span className="text-[var(--text-soft)]">removed</span>
           </span>
         )}
         {changes.totalModified > 0 && (
-          <span className="flex items-center gap-1 text-[#afc4ff]">
+          <span className="flex items-center gap-1 text-[var(--link)]">
             <span className="font-bold text-sm">~{changes.totalModified}</span>
             <span className="text-[var(--text-soft)]">modified</span>
           </span>

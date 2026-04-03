@@ -15,10 +15,10 @@ export function StatusBadge({
         <span
           className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
-            color: '#b5dec2',
-            backgroundColor: 'rgba(181,222,194,0.08)',
-            border: '1px solid rgba(181,222,194,0.18)',
-            borderLeftColor: 'rgba(181,222,194,0.42)',
+            color: 'var(--badge-green-text)',
+            backgroundColor: 'var(--badge-green-bg)',
+            border: '1px solid color-mix(in srgb, var(--badge-green-text) 18%, transparent)',
+            borderLeftColor: 'color-mix(in srgb, var(--badge-green-text) 42%, transparent)',
           }}
         >
           <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
@@ -30,10 +30,10 @@ export function StatusBadge({
         <span
           className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
-            color: '#afc4ff',
-            backgroundColor: 'rgba(175,196,255,0.08)',
-            border: '1px solid rgba(175,196,255,0.18)',
-            borderLeftColor: 'rgba(175,196,255,0.42)',
+            color: 'var(--link)',
+            backgroundColor: 'var(--badge-blue-bg)',
+            border: '1px solid color-mix(in srgb, var(--link) 18%, transparent)',
+            borderLeftColor: 'color-mix(in srgb, var(--link) 42%, transparent)',
           }}
         >
           <Shuffle className="h-2.5 w-2.5" aria-hidden="true" />
@@ -45,10 +45,10 @@ export function StatusBadge({
         <span
           className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
-            color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.08)',
-            border: '1px solid rgba(240,184,184,0.18)',
-            borderLeftColor: 'rgba(240,184,184,0.42)',
+            color: 'var(--badge-red-text)',
+            backgroundColor: 'var(--badge-red-bg)',
+            border: '1px solid color-mix(in srgb, var(--badge-red-text) 18%, transparent)',
+            borderLeftColor: 'color-mix(in srgb, var(--badge-red-text) 42%, transparent)',
           }}
         >
           <X className="h-2.5 w-2.5" aria-hidden="true" />
@@ -76,17 +76,17 @@ export function importanceStyle(
   switch (importance) {
     case 'must_have':
       return {
-        color: '#f0b8b8',
-        backgroundColor: 'rgba(240,184,184,0.10)',
-        border: '1px solid rgba(240,184,184,0.20)',
-        borderColor: 'rgba(240,184,184,0.20)',
+        color: 'var(--badge-red-text)',
+        backgroundColor: 'var(--badge-red-bg)',
+        border: '1px solid color-mix(in srgb, var(--badge-red-text) 20%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--badge-red-text) 20%, transparent)',
       };
     case 'important':
       return {
-        color: '#f0d99f',
-        backgroundColor: 'rgba(240,217,159,0.10)',
-        border: '1px solid rgba(240,217,159,0.20)',
-        borderColor: 'rgba(240,217,159,0.20)',
+        color: 'var(--badge-amber-text)',
+        backgroundColor: 'var(--badge-amber-bg)',
+        border: '1px solid color-mix(in srgb, var(--badge-amber-text) 20%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--badge-amber-text) 20%, transparent)',
       };
     case 'nice_to_have':
     default:

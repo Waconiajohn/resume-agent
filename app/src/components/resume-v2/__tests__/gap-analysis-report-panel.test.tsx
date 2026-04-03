@@ -357,10 +357,10 @@ describe('GapAnalysisReportPanel', () => {
 
     expect(strongCard).toBeTruthy();
     expect(gapCard).toBeTruthy();
-    // Strong should have green-tinted border (jsdom may add spaces in rgba)
-    expect(strongCard!.style.borderLeft).toMatch(/rgba\(181,?\s*222,?\s*194/);
-    // Gap should have red-tinted border
-    expect(gapCard!.style.borderLeft).toMatch(/rgba\(240,?\s*184,?\s*184/);
+    // Strong should have green-tinted border using CSS custom properties
+    expect(strongCard!.style.borderLeft).toContain('badge-green-text');
+    // Gap should have red-tinted border using CSS custom properties
+    expect(gapCard!.style.borderLeft).toContain('badge-red-text');
   });
 
   // ─── Mapping-first layout ──────────────────────────────────────────────────

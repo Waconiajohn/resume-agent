@@ -33,18 +33,18 @@ describe('ScoreBadge — color tiers', () => {
   it('applies green class for high score (>=80)', () => {
     render(<ScoreBadge score={80} />);
     const badge = screen.getByText('80');
-    expect(badge.className).toContain('text-[#b5dec2]');
-    expect(badge.className).toContain('bg-[#b5dec2]/10');
+    expect(badge.className).toContain('badge-green-text');
+    expect(badge.className).toContain('badge-green-bg');
   });
 
   it('applies green class at exactly 80 (boundary)', () => {
     render(<ScoreBadge score={80} />);
-    expect(screen.getByText('80').className).toContain('text-[#b5dec2]');
+    expect(screen.getByText('80').className).toContain('badge-green-text');
   });
 
   it('applies green class for score 95', () => {
     render(<ScoreBadge score={95} />);
-    expect(screen.getByText('95').className).toContain('text-[#b5dec2]');
+    expect(screen.getByText('95').className).toContain('badge-green-text');
   });
 
   it('applies blue class for medium score (>=60 and <80)', () => {

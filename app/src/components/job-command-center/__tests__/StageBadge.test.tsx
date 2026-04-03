@@ -50,13 +50,13 @@ describe('StageBadge — color classes', () => {
   it('applies golden color class for "applied"', () => {
     render(<StageBadge stage="applied" />);
     const badge = screen.getByText('applied');
-    expect(badge.className).toContain('text-[#f0d99f]');
+    expect(badge.className).toContain('badge-amber-text');
   });
 
   it('applies green color class for "offer"', () => {
     render(<StageBadge stage="offer" />);
     const badge = screen.getByText('offer');
-    expect(badge.className).toContain('text-[#b5dec2]');
+    expect(badge.className).toContain('badge-green-text');
   });
 
   it('applies red color class for "closed_lost"', () => {

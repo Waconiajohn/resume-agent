@@ -516,9 +516,9 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByText('1 of 2')).toBeInTheDocument();
     expect(screen.getByText(/1 line still needs your story, and 1 more still need attention/i)).toBeInTheDocument();
     expect(screen.getByText('Do this next')).toBeInTheDocument();
-    expect(screen.getAllByText(/Start with the strengthen this line in Selected Accomplishments\./i).length).toBeGreaterThan(0);
-    expect(within(strip).getByText(/Next best action: Start with the strengthen this line in Selected Accomplishments\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Strengthen this')).toBeInTheDocument();
+    expect(screen.getAllByText(/Start with the we think this can be stronger line in Selected Accomplishments\./i).length).toBeGreaterThan(0);
+    expect(within(strip).getByText(/Next best action: Start with the we think this can be stronger line in Selected Accomplishments\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('We think this can be stronger')).toBeInTheDocument();
     expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
   });

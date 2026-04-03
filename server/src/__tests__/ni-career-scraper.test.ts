@@ -36,6 +36,7 @@ const mockSupabase = vi.hoisted(() => {
 
 const mockFetchFromATS = vi.hoisted(() => vi.fn());
 const mockSearchViaSerper = vi.hoisted(() => vi.fn());
+const mockExtractJobsFromCareerPage = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: mockSupabase,
@@ -47,6 +48,10 @@ vi.mock('../lib/ni/ats-clients.js', () => ({
 
 vi.mock('../lib/ni/serper-job-search.js', () => ({
   searchJobsViaSerper: mockSearchViaSerper,
+}));
+
+vi.mock('../lib/ni/json-ld-extractor.js', () => ({
+  extractJobsFromCareerPage: mockExtractJobsFromCareerPage,
 }));
 
 vi.mock('../lib/ni/job-matches-store.js', () => ({

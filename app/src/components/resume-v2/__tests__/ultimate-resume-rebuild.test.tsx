@@ -75,6 +75,8 @@ vi.mock('lucide-react', () => {
     Wand2: Icon,
     Trash2: Icon,
     User: Icon,
+    Users: Icon,
+    ArrowRightLeft: Icon,
   };
 });
 
@@ -250,7 +252,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--partial');
-    expect(screen.getByText('Strengthen this')).toBeInTheDocument();
+    expect(screen.getByText('We think this can be stronger')).toBeInTheDocument();
   });
 
   it('renders highlighted red treatment for needs_validation confidence bullets from JD', () => {
@@ -263,7 +265,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--code-red');
-    expect(screen.getByText('We need your story')).toBeInTheDocument();
+    expect(screen.getByText('We need your input')).toBeInTheDocument();
   });
 
   it('renders highlighted orange treatment for needs_validation + benchmark source', () => {
@@ -277,16 +279,16 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--benchmark');
     expect(bullet!.className).not.toContain('resume-proof-line--code-red');
-    expect(screen.getByText('Double-check this fits you')).toBeInTheDocument();
+    expect(screen.getByText('Worth a double-check')).toBeInTheDocument();
   });
 
   it('keeps strong bullets visually quiet without an extra pill', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'strong' });
     render(<ResumeDocumentCard resume={resume} />);
 
-    expect(screen.queryByText('Strengthen this')).not.toBeInTheDocument();
-    expect(screen.queryByText('We need your story')).not.toBeInTheDocument();
-    expect(screen.queryByText('Double-check this fits you')).not.toBeInTheDocument();
+    expect(screen.queryByText('We think this can be stronger')).not.toBeInTheDocument();
+    expect(screen.queryByText('We need your input')).not.toBeInTheDocument();
+    expect(screen.queryByText('Worth a double-check')).not.toBeInTheDocument();
   });
 
   it('renders explicit line-level proof treatment on reviewable bullets', () => {
