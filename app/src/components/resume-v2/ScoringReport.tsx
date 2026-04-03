@@ -496,13 +496,13 @@ function CompactScoreSummaryHeader({
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="score-snapshot-band score-snapshot-band--good px-3.5 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#b5dec2' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-green-text)' }}>
             What improved
           </p>
           <ul className="mt-2.5 space-y-1.5">
             {visibleTopGains.map((gain) => (
               <li key={gain} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
-                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
+                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span>{gain}</span>
               </li>
             ))}
@@ -510,18 +510,18 @@ function CompactScoreSummaryHeader({
         </div>
 
         <div className="score-snapshot-band score-snapshot-band--warn px-3.5 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#f0d99f' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-amber-text)' }}>
             Still to close
           </p>
           <ul className="mt-2.5 space-y-1.5">
             {visibleTopRisks.length > 0 ? visibleTopRisks.map((risk) => (
               <li key={risk} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
-                <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#f0d99f' }} />
+                <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-amber-text)' }} />
                 <span>{risk}</span>
               </li>
             )) : (
               <li className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
-                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: '#b5dec2' }} />
+                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span>No major issues are blocking the draft right now.</span>
               </li>
             )}
@@ -603,13 +603,13 @@ function BeforeReport({
             {/* Column headers */}
             <div className="grid grid-cols-2 border-b border-[var(--line-soft)] bg-black/10">
               <div className="px-3 py-2 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                   Found ({foundCount})
                 </span>
               </div>
               <div className="px-3 py-2 flex items-center gap-1.5 border-l border-[var(--line-soft)]">
-                <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                <XCircle className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                   Missing ({missingCount})
                 </span>
@@ -624,7 +624,7 @@ function BeforeReport({
                   ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">None detected</p>
                   : visibleFound.map((kw) => (
                     <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
-                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                       <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
                     </div>
                   ))
@@ -636,7 +636,7 @@ function BeforeReport({
                   ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">All keywords present</p>
                   : visibleMissing.map((kw) => (
                     <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
-                      <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                      <XCircle className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
                       <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
                     </div>
                   ))
@@ -711,15 +711,15 @@ function AfterReport({
   return (
     <div className="space-y-4">
       {/* ATS delta headline */}
-      <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-4 py-3 space-y-2">
+      <div className="rounded-lg border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-[var(--text-muted)]">Optimized ATS Match</p>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold tabular-nums" style={{ color: '#b5dec2' }}>{afterAts}%</span>
+            <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--badge-green-text)' }}>{afterAts}%</span>
             <DeltaBadge before={preScores.ats_match} after={afterAts} />
           </div>
         </div>
-        <ScoreBar value={afterAts} color="#b5dec2" />
+        <ScoreBar value={afterAts} color="var(--badge-green-text)" />
         <div className="flex items-center gap-1 text-[11px] text-[var(--text-soft)]">
           <span aria-hidden="true" className="text-[10px]">-&gt;</span>
           <span>
@@ -757,13 +757,13 @@ function AfterReport({
             {/* Column headers */}
             <div className="grid grid-cols-2 border-b border-[var(--line-soft)] bg-black/10">
               <div className="px-3 py-2 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                   Found ({keywordsFoundAfter.length})
                 </span>
               </div>
               <div className="px-3 py-2 flex items-center gap-1.5 border-l border-[var(--line-soft)]">
-                <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                <XCircle className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                   Still Missing ({keywordsMissingAfter.length})
                 </span>
@@ -778,12 +778,12 @@ function AfterReport({
                   ? <p className="px-3 py-2 text-[11px] text-[var(--text-soft)] italic">None matched</p>
                   : visibleFoundAfter.map((kw) => (
                     <div key={kw} className="flex items-center gap-2 px-3 py-1.5">
-                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: '#b5dec2' }} />
+                      <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                       <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
                       {newlyAddedSet.has(kw) && (
                         <span
                           className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                          style={{ color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.14)', border: '1px solid rgba(181,222,194,0.28)' }}
+                          style={{ color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' }}
                         >
                           NEW
                         </span>
@@ -795,13 +795,13 @@ function AfterReport({
               {/* Missing column — with placement hint if available */}
               <div className="py-1 border-l border-[var(--line-soft)]">
                 {visibleMissingAfter.length === 0
-                  ? <p className="px-3 py-2 text-[11px]" style={{ color: '#b5dec2' }}>All keywords matched</p>
+                  ? <p className="px-3 py-2 text-[11px]" style={{ color: 'var(--badge-green-text)' }}>All keywords matched</p>
                   : visibleMissingAfter.map((kw) => {
                     const hint = suggestionMap.get(kw);
                     return (
                       <div key={kw} className="px-3 py-1.5">
                         <div className="flex items-center gap-2">
-                          <XCircle className="h-3 w-3 shrink-0" style={{ color: '#f0b8b8' }} />
+                          <XCircle className="h-3 w-3 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
                           <span className="text-[12px] text-[var(--text-muted)]">{kw}</span>
                         </div>
                         {hint && (
@@ -842,7 +842,7 @@ function AfterReport({
           {keywordSuggestions.map((s) => (
             <div key={s.keyword} className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold" style={{ color: '#f0d99f' }}>{s.keyword}</span>
+                <span className="text-[11px] font-semibold" style={{ color: 'var(--badge-amber-text)' }}>{s.keyword}</span>
                 <span className="text-[10px] text-[var(--text-soft)]">→ {s.suggested_placement}</span>
               </div>
               <p className="text-xs text-[var(--text-soft)] leading-4 italic">{s.natural_phrasing}</p>
@@ -855,21 +855,21 @@ function AfterReport({
       <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-[var(--text-muted)]">Truth Score</p>
-          <span className="text-sm font-bold tabular-nums" style={{ color: '#afc4ff' }}>{afterTruth}/100</span>
+          <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--link)' }}>{afterTruth}/100</span>
         </div>
-        <ScoreBar value={afterTruth} color="#afc4ff" />
+        <ScoreBar value={afterTruth} color="var(--link)" />
         {truth && truth.claims.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
             {(['verified', 'plausible', 'unverified', 'fabricated'] as const).map((conf) => {
               const count = truth.claims.filter((c) => c.confidence === conf).length;
               if (count === 0) return null;
               const style: React.CSSProperties = conf === 'verified'
-                ? { color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.10)', border: '1px solid rgba(181,222,194,0.22)' }
+                ? { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 22%, transparent)' }
                 : conf === 'plausible'
-                ? { color: '#afc4ff', backgroundColor: 'rgba(175,196,255,0.10)', border: '1px solid rgba(175,196,255,0.22)' }
+                ? { color: 'var(--link)', backgroundColor: 'var(--badge-blue-bg)', border: '1px solid color-mix(in srgb, var(--link) 22%, transparent)' }
                 : conf === 'unverified'
-                ? { color: '#f0d99f', backgroundColor: 'rgba(240,217,159,0.10)', border: '1px solid rgba(240,217,159,0.22)' }
-                : { color: '#f0b8b8', backgroundColor: 'rgba(240,184,184,0.10)', border: '1px solid rgba(240,184,184,0.22)' };
+                ? { color: 'var(--badge-amber-text)', backgroundColor: 'var(--badge-amber-bg)', border: '1px solid color-mix(in srgb, var(--badge-amber-text) 22%, transparent)' }
+                : { color: 'var(--badge-red-text)', backgroundColor: 'var(--badge-red-bg)', border: '1px solid color-mix(in srgb, var(--badge-red-text) 22%, transparent)' };
               return (
                 <span key={conf} className="rounded-md px-2 py-0.5 text-[10px] font-medium capitalize" style={style}>
                   {count} {conf}
@@ -879,7 +879,7 @@ function AfterReport({
           </div>
         )}
         {flaggedClaims.length === 0 && (
-          <p className="text-[11px]" style={{ color: '#b5dec2' }}>All claims verified</p>
+          <p className="text-[11px]" style={{ color: 'var(--badge-green-text)' }}>All claims verified</p>
         )}
       </div>
 
@@ -887,11 +887,11 @@ function AfterReport({
       <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-[var(--text-muted)]">Executive Tone Score</p>
-          <span className="text-sm font-bold tabular-nums" style={{ color: '#f0d99f' }}>{afterTone}/100</span>
+          <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--badge-amber-text)' }}>{afterTone}/100</span>
         </div>
-        <ScoreBar value={afterTone} color="#f0d99f" />
+        <ScoreBar value={afterTone} color="var(--badge-amber-text)" />
         {toneFindings.length === 0 && (
-          <p className="text-[11px]" style={{ color: '#b5dec2' }}>No tone issues detected</p>
+          <p className="text-[11px]" style={{ color: 'var(--badge-green-text)' }}>No tone issues detected</p>
         )}
         {toneFindings.length > 0 && (
           <p className="text-[11px] text-[var(--text-soft)]">{toneFindings.length} tone finding{toneFindings.length !== 1 ? 's' : ''} below</p>
@@ -904,9 +904,9 @@ function AfterReport({
             Tone findings ({toneFindings.length})
           </p>
           {toneFindings.map((f, i) => (
-            <div key={i} className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2.5 space-y-1">
+            <div key={i} className="rounded-lg border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)] px-3 py-2.5 space-y-1">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#f0d99f' }} />
+                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: 'var(--badge-amber-text)' }} />
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium text-[var(--text-muted)]">{humanizeSectionName(f.section)}: {humanizeIssueType(f.issue)}</p>
                   <p className="text-xs text-[var(--text-soft)] leading-4 line-clamp-2">"{f.text}"</p>
@@ -914,7 +914,7 @@ function AfterReport({
               </div>
               {f.suggestion && (
                 <p className="text-xs text-[var(--text-soft)] leading-4 ml-5">
-                  <span style={{ color: '#b5dec2' }}>Suggestion:</span> {f.suggestion}
+                  <span style={{ color: 'var(--badge-green-text)' }}>Suggestion:</span> {f.suggestion}
                 </p>
               )}
             </div>
@@ -928,10 +928,10 @@ function AfterReport({
             Flagged claims ({flaggedClaims.length})
           </p>
           {flaggedClaims.map((item, i) => (
-            <div key={i} className="rounded-lg border border-[#f0b8b8]/15 bg-[#f0b8b8]/[0.04] px-3 py-2.5 space-y-1">
+            <div key={i} className="rounded-lg border border-[var(--badge-red-text)]/15 bg-[var(--badge-red-bg)] px-3 py-2.5 space-y-1">
               <p className="text-xs text-[var(--text-muted)] leading-4 line-clamp-2">"{item.claim}"</p>
               <p className="text-[11px] text-[var(--text-soft)]">{item.issue}</p>
-              <p className="text-[11px]" style={{ color: '#b5dec2' }}>{item.recommendation}</p>
+              <p className="text-[11px]" style={{ color: 'var(--badge-green-text)' }}>{item.recommendation}</p>
             </div>
           ))}
         </div>
@@ -966,7 +966,7 @@ function KeywordAnalysis({
           {' '}keywords matched after optimization
         </p>
         <div className="mt-2">
-          <ScoreBar value={total > 0 ? Math.round((found.length / total) * 100) : 0} color="#b5dec2" />
+          <ScoreBar value={total > 0 ? Math.round((found.length / total) * 100) : 0} color="var(--badge-green-text)" />
         </div>
       </div>
 
@@ -974,7 +974,7 @@ function KeywordAnalysis({
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2 flex items-center gap-1.5">
-            <CheckCircle2 className="h-3 w-3" style={{ color: '#b5dec2' }} />
+            <CheckCircle2 className="h-3 w-3" style={{ color: 'var(--badge-green-text)' }} />
             Found in Resume ({found.length})
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -986,12 +986,12 @@ function KeywordAnalysis({
 
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)] mb-2 flex items-center gap-1.5">
-            <XCircle className="h-3 w-3" style={{ color: '#f0b8b8' }} />
+            <XCircle className="h-3 w-3" style={{ color: 'var(--badge-red-text)' }} />
             Missing from Resume ({missing.length})
           </p>
           <div className="flex flex-wrap gap-1.5">
             {missing.length === 0
-              ? <p className="text-xs" style={{ color: '#b5dec2' }}>All keywords matched</p>
+              ? <p className="text-xs" style={{ color: 'var(--badge-green-text)' }}>All keywords matched</p>
               : missing.map((kw) => <KeywordChip key={kw} keyword={kw} variant="missing" />)}
           </div>
         </div>
@@ -1007,7 +1007,7 @@ function KeywordAnalysis({
               className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 space-y-1.5"
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold" style={{ color: '#f0d99f' }}>{s.keyword}</span>
+                <span className="text-xs font-semibold" style={{ color: 'var(--badge-amber-text)' }}>{s.keyword}</span>
                 <span
                   className="rounded px-1.5 py-0.5 text-[10px]"
                   style={{ color: 'rgba(255,255,255,0.55)', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
@@ -1026,8 +1026,8 @@ function KeywordAnalysis({
         <div className="space-y-1.5">
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">ATS formatting notes</p>
           {ats.formatting_issues.map((issue, i) => (
-            <div key={i} className="flex items-start gap-2 rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
-              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: '#f0d99f' }} />
+            <div key={i} className="flex items-start gap-2 rounded-lg border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)] px-3 py-2">
+              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" style={{ color: 'var(--badge-amber-text)' }} />
               <p className="text-xs text-[var(--text-soft)]">{issue}</p>
             </div>
           ))}

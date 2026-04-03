@@ -13,14 +13,14 @@ import type { GapClassification } from '@/types/resume-v2';
 
 export const REPORT_COLORS = {
   // Tier accents — green/blue/red matching streaming view
-  strong: '#b5dec2',
-  partial: '#afc4ff',
-  gap: '#f0b8b8',
+  strong: 'var(--badge-green-text)',
+  partial: 'var(--link)',
+  gap: 'var(--badge-red-text)',
 
   // Text roles
-  heading: 'rgba(255,255,255,0.92)',
-  body: 'rgba(255,255,255,0.78)',
-  secondary: 'rgba(255,255,255,0.55)',
+  heading: 'var(--text-strong)',
+  body: 'var(--text-muted)',
+  secondary: 'var(--text-soft)',
   tertiary: 'rgba(255,255,255,0.38)',
 } as const;
 
@@ -41,16 +41,16 @@ export function tierColor(tier: Tier): string {
 
 export function tierBg(tier: Tier): string {
   switch (tier) {
-    case 'strong': return 'rgba(181,222,194,0.04)';
-    case 'partial': return 'rgba(175,196,255,0.04)';
-    case 'gap': return 'rgba(240,184,184,0.04)';
+    case 'strong': return 'var(--badge-green-bg)';
+    case 'partial': return 'var(--badge-blue-bg)';
+    case 'gap': return 'var(--badge-red-bg)';
   }
 }
 
 export function tierBorder(tier: Tier): string {
   switch (tier) {
-    case 'strong': return 'rgba(181,222,194,0.30)';
-    case 'partial': return 'rgba(175,196,255,0.30)';
-    case 'gap': return 'rgba(240,184,184,0.30)';
+    case 'strong': return 'color-mix(in srgb, var(--badge-green-text) 30%, transparent)';
+    case 'partial': return 'color-mix(in srgb, var(--link) 30%, transparent)';
+    case 'gap': return 'color-mix(in srgb, var(--badge-red-text) 30%, transparent)';
   }
 }

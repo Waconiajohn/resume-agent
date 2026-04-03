@@ -140,14 +140,14 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
         className={cn(
           'relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all duration-200 select-none',
           isDragging
-            ? 'border-[#afc4ff]/60 bg-[#afc4ff]/10 scale-[1.01]'
-            : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[#afc4ff]/40 hover:bg-[#afc4ff]/[0.04]',
+            ? 'border-[var(--link)]/60 bg-[var(--badge-blue-bg)] scale-[1.01]'
+            : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[var(--link)]/40 hover:bg-[var(--badge-blue-bg)]',
           (loading || fileLoading) && 'pointer-events-none opacity-60',
         )}
       >
         {fileLoading ? (
           <>
-            <Loader2 className="h-8 w-8 text-[#afc4ff] motion-safe:animate-spin" />
+            <Loader2 className="h-8 w-8 text-[var(--link)] motion-safe:animate-spin" />
             <p className="text-sm text-[var(--text-soft)]">Reading file...</p>
           </>
         ) : fileName ? (
@@ -158,7 +158,7 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleClearFile(); }}
-                className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded"
+                className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded"
                 aria-label="Remove uploaded file"
               >
                 <X className="h-3 w-3" />
@@ -170,17 +170,17 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
           <>
             <div className={cn(
               'flex h-12 w-12 items-center justify-center rounded-xl border transition-colors duration-200',
-              isDragging ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10' : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
+              isDragging ? 'border-[var(--link)]/40 bg-[var(--badge-blue-bg)]' : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
             )}>
-              <Upload className={cn('h-6 w-6 transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-soft)]')} />
+              <Upload className={cn('h-6 w-6 transition-colors duration-200', isDragging ? 'text-[var(--link)]' : 'text-[var(--text-soft)]')} />
             </div>
             <div className="text-center">
-              <p className={cn('text-sm font-medium transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-strong)]')}>
+              <p className={cn('text-sm font-medium transition-colors duration-200', isDragging ? 'text-[var(--link)]' : 'text-[var(--text-strong)]')}>
                 {isDragging ? 'Drop your resume here' : 'Drag your resume here'}
               </p>
               <p className="mt-0.5 text-xs text-[var(--text-soft)]">
                 .docx, .pdf, or .txt — or{' '}
-                <span className="text-[#afc4ff] underline-offset-2 hover:underline">click to browse</span>
+                <span className="text-[var(--link)] underline-offset-2 hover:underline">click to browse</span>
               </p>
             </div>
           </>
@@ -188,7 +188,7 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
       </div>
 
       {fileError && (
-        <p className="text-[12px] text-[#f0b8b8]" role="alert">{fileError}</p>
+        <p className="text-[12px] text-[var(--badge-red-text)]" role="alert">{fileError}</p>
       )}
 
       <input
@@ -206,7 +206,7 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
         type="button"
         onClick={() => setPasteOpen((o) => !o)}
         disabled={loading}
-        className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
+        className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
         aria-expanded={pasteOpen}
         aria-controls={pasteId}
       >
@@ -232,7 +232,7 @@ function ResumeDropZone({ resumeText, onResumeTextChange, loading, initialResume
             disabled={loading}
             aria-required="true"
             aria-label="Resume text"
-            className="min-h-[160px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
+            className="min-h-[160px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[var(--link)]/30 focus:ring-1 focus:ring-[var(--link)]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
           />
           <div className="flex justify-end">
             <CharCounter value={resumeText} label="Resume" />
@@ -337,14 +337,14 @@ function JdDropZone({ jobDescription: _jobDescription, onJobDescriptionChange, l
         className={cn(
           'relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all duration-200 select-none',
           isDragging
-            ? 'border-[#afc4ff]/60 bg-[#afc4ff]/10 scale-[1.01]'
-            : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[#afc4ff]/40 hover:bg-[#afc4ff]/[0.04]',
+            ? 'border-[var(--link)]/60 bg-[var(--badge-blue-bg)] scale-[1.01]'
+            : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[var(--link)]/40 hover:bg-[var(--badge-blue-bg)]',
           (loading || fileLoading) && 'pointer-events-none opacity-60',
         )}
       >
         {fileLoading ? (
           <>
-            <Loader2 className="h-8 w-8 text-[#afc4ff] motion-safe:animate-spin" />
+            <Loader2 className="h-8 w-8 text-[var(--link)] motion-safe:animate-spin" />
             <p className="text-sm text-[var(--text-soft)]">Reading file...</p>
           </>
         ) : fileName ? (
@@ -355,7 +355,7 @@ function JdDropZone({ jobDescription: _jobDescription, onJobDescriptionChange, l
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleClearFile(); }}
-                className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded"
+                className="inline-flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded"
                 aria-label="Remove uploaded job description file"
               >
                 <X className="h-3 w-3" />
@@ -367,17 +367,17 @@ function JdDropZone({ jobDescription: _jobDescription, onJobDescriptionChange, l
           <>
             <div className={cn(
               'flex h-12 w-12 items-center justify-center rounded-xl border transition-colors duration-200',
-              isDragging ? 'border-[#afc4ff]/40 bg-[#afc4ff]/10' : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
+              isDragging ? 'border-[var(--link)]/40 bg-[var(--badge-blue-bg)]' : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
             )}>
-              <Upload className={cn('h-6 w-6 transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-soft)]')} />
+              <Upload className={cn('h-6 w-6 transition-colors duration-200', isDragging ? 'text-[var(--link)]' : 'text-[var(--text-soft)]')} />
             </div>
             <div className="text-center">
-              <p className={cn('text-sm font-medium transition-colors duration-200', isDragging ? 'text-[#afc4ff]' : 'text-[var(--text-strong)]')}>
+              <p className={cn('text-sm font-medium transition-colors duration-200', isDragging ? 'text-[var(--link)]' : 'text-[var(--text-strong)]')}>
                 {isDragging ? 'Drop the job description here' : 'Drag the job description here'}
               </p>
               <p className="mt-0.5 text-xs text-[var(--text-soft)]">
                 .pdf, .docx, or .txt — or{' '}
-                <span className="text-[#afc4ff] underline-offset-2 hover:underline">click to browse</span>
+                <span className="text-[var(--link)] underline-offset-2 hover:underline">click to browse</span>
               </p>
             </div>
           </>
@@ -385,7 +385,7 @@ function JdDropZone({ jobDescription: _jobDescription, onJobDescriptionChange, l
       </div>
 
       {fileError && (
-        <p className="text-[12px] text-[#f0b8b8]" role="alert">{fileError}</p>
+        <p className="text-[12px] text-[var(--badge-red-text)]" role="alert">{fileError}</p>
       )}
 
       <input
@@ -465,7 +465,7 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
       {/* URL input */}
       <div className="space-y-1.5">
         <label htmlFor={urlId} className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)]">
-          <Link className="h-3.5 w-3.5 text-[#afc4ff]" />
+          <Link className="h-3.5 w-3.5 text-[var(--link)]" />
           Paste job posting URL
         </label>
         <GlassInput
@@ -502,7 +502,7 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
           type="button"
           onClick={() => setPasteOpen((o) => !o)}
           disabled={loading}
-          className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
+          className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
           aria-expanded={pasteOpen}
           aria-controls={pasteId}
         >
@@ -526,7 +526,7 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
             disabled={loading}
             aria-required="true"
             aria-label="Job description text"
-            className="min-h-[140px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[#afc4ff]/30 focus:ring-1 focus:ring-[#afc4ff]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
+            className="min-h-[140px] resize-y bg-[var(--accent-muted)] border-[var(--line-soft)] focus:border-[var(--link)]/30 focus:ring-1 focus:ring-[var(--link)]/20 text-[var(--text-strong)] placeholder:text-[var(--text-soft)]"
           />
         </div>
       )}

@@ -28,31 +28,31 @@ const CONFIDENCE_CONFIG: Record<
 > = {
   verified: {
     label: 'Verified',
-    color: '#b5dec2',
-    bgColor: 'rgba(181,222,194,0.10)',
-    borderColor: 'rgba(181,222,194,0.22)',
-    icon: <CheckCircle2 className="h-3.5 w-3.5" style={{ color: '#b5dec2' }} />,
+    color: 'var(--badge-green-text)',
+    bgColor: 'var(--badge-green-bg)',
+    borderColor: 'color-mix(in srgb, var(--badge-green-text) 22%, transparent)',
+    icon: <CheckCircle2 className="h-3.5 w-3.5" style={{ color: 'var(--badge-green-text)' }} />,
   },
   plausible: {
     label: 'Plausible',
-    color: '#afc4ff',
-    bgColor: 'rgba(175,196,255,0.10)',
-    borderColor: 'rgba(175,196,255,0.22)',
-    icon: <Info className="h-3.5 w-3.5" style={{ color: '#afc4ff' }} />,
+    color: 'var(--link)',
+    bgColor: 'var(--badge-blue-bg)',
+    borderColor: 'color-mix(in srgb, var(--link) 22%, transparent)',
+    icon: <Info className="h-3.5 w-3.5" style={{ color: 'var(--link)' }} />,
   },
   unverified: {
     label: 'Unverified',
-    color: '#f0d99f',
-    bgColor: 'rgba(240,217,159,0.10)',
-    borderColor: 'rgba(240,217,159,0.22)',
-    icon: <HelpCircle className="h-3.5 w-3.5" style={{ color: '#f0d99f' }} />,
+    color: 'var(--badge-amber-text)',
+    bgColor: 'var(--badge-amber-bg)',
+    borderColor: 'color-mix(in srgb, var(--badge-amber-text) 22%, transparent)',
+    icon: <HelpCircle className="h-3.5 w-3.5" style={{ color: 'var(--badge-amber-text)' }} />,
   },
   fabricated: {
     label: 'Fabricated',
-    color: '#f0b8b8',
-    bgColor: 'rgba(240,184,184,0.10)',
-    borderColor: 'rgba(240,184,184,0.22)',
-    icon: <AlertOctagon className="h-3.5 w-3.5" style={{ color: '#f0b8b8' }} />,
+    color: 'var(--badge-red-text)',
+    bgColor: 'var(--badge-red-bg)',
+    borderColor: 'color-mix(in srgb, var(--badge-red-text) 22%, transparent)',
+    icon: <AlertOctagon className="h-3.5 w-3.5" style={{ color: 'var(--badge-red-text)' }} />,
   },
 };
 
@@ -154,7 +154,7 @@ export function TruthVerificationSection({ truth }: TruthVerificationSectionProp
   };
 
   const scoreColor =
-    truth_score >= 80 ? '#b5dec2' : truth_score >= 50 ? '#f0d99f' : '#f0b8b8';
+    truth_score >= 80 ? 'var(--badge-green-text)' : truth_score >= 50 ? 'var(--badge-amber-text)' : 'var(--badge-red-text)';
 
   return (
     <div className="space-y-4">
@@ -171,7 +171,7 @@ export function TruthVerificationSection({ truth }: TruthVerificationSectionProp
         </div>
         <div
           className="h-1.5 w-full rounded-full overflow-hidden"
-          style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+          style={{ backgroundColor: 'var(--ring-track)' }}
         >
           <div
             className="h-full rounded-full transition-all duration-700"
@@ -185,10 +185,10 @@ export function TruthVerificationSection({ truth }: TruthVerificationSectionProp
 
       {/* Flagged items callout */}
       {flagged_items.length > 0 && (
-        <div className="rounded-lg border border-[#f0b8b8]/25 bg-[#f0b8b8]/[0.05] px-4 py-3 space-y-2">
+        <div className="rounded-lg border border-[var(--badge-red-text)]/25 bg-[var(--badge-red-bg)] px-4 py-3 space-y-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: '#f0b8b8' }} />
-            <p className="text-xs font-semibold" style={{ color: '#f0b8b8' }}>
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-red-text)' }} />
+            <p className="text-xs font-semibold" style={{ color: 'var(--badge-red-text)' }}>
               Flagged Items ({flagged_items.length})
             </p>
           </div>
@@ -196,7 +196,7 @@ export function TruthVerificationSection({ truth }: TruthVerificationSectionProp
             <div key={i} className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 space-y-1">
               <p className="text-xs text-[var(--text-muted)] leading-4">"{item.claim}"</p>
               <p className="text-[11px] text-[var(--text-soft)]">{item.issue}</p>
-              <p className="text-[11px]" style={{ color: '#b5dec2' }}>
+              <p className="text-[11px]" style={{ color: 'var(--badge-green-text)' }}>
                 {item.recommendation}
               </p>
             </div>

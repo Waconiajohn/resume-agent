@@ -805,13 +805,13 @@ export function V2StreamingDisplay({
           <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
             {/* Error banners */}
             {error && (
-              <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {error}
               </div>
             )}
             {editError && (
-              <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90" role="alert">
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {editError}
               </div>
@@ -947,14 +947,14 @@ export function V2StreamingDisplay({
         <div className="mx-auto max-w-[720px] px-6 py-8">
           {/* Connection lost notice */}
           {!isComplete && !isConnected && data.stage !== 'intake' && (
-            <div className="flex items-center gap-2 text-xs text-[#f0d99f]/70 mb-4" role="status">
+            <div className="flex items-center gap-2 text-xs text-[var(--badge-amber-text)]/70 mb-4" role="status">
               <AlertCircle className="h-3 w-3" />
               Connection lost — waiting to reconnect...
             </div>
           )}
 
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-sm text-[#f0b8b8]/90 mb-4" role="alert">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-4" role="alert">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>

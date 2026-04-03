@@ -106,7 +106,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
           >
             <span
               className="text-[12px] font-semibold uppercase tracking-wide"
-              style={{ color: '#b5dec2' }}
+              style={{ color: 'var(--badge-green-text)' }}
             >
               Resume line ready to review
             </span>
@@ -129,9 +129,9 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
                 style={{
                   fontSize: 13,
                   fontWeight: 500,
-                  color: '#b5dec2',
-                  backgroundColor: 'rgba(181,222,194,0.08)',
-                  border: '1px solid rgba(181,222,194,0.20)',
+                  color: 'var(--badge-green-text)',
+                  backgroundColor: 'var(--badge-green-bg)',
+                  border: '1px solid color-mix(in srgb, var(--badge-green-text) 20%, transparent)',
                 }}
                 data-testid="accept-language"
               >
@@ -167,7 +167,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
               </p>
             )}
             {message.needsCandidateInput && (
-              <p style={{ fontSize: 11, color: '#f0d99f', marginTop: 4 }}>
+              <p style={{ fontSize: 11, color: 'var(--badge-amber-text)', marginTop: 4 }}>
                 This gap still needs candidate detail before it should count as addressed.
               </p>
             )}
@@ -192,7 +192,7 @@ function LoadingDots() {
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="inline-block h-1.5 w-1.5 rounded-full bg-[#afc4ff]/60 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--link)]/60 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
               style={{ animationDelay: `${i * 0.16}s` }}
             />
           ))}
@@ -343,8 +343,8 @@ export function GapChatThread({
         }}
       >
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5" style={{ color: '#b5dec2' }} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#b5dec2' }}>
+          <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--badge-green-text)' }} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--badge-green-text)' }}>
             Sent to review
           </span>
         </div>
@@ -388,7 +388,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.12)',
             }}
           >
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--link)' }}>
               Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
@@ -408,7 +408,7 @@ export function GapChatThread({
               border: '1px solid rgba(181,222,194,0.18)',
             }}
           >
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--badge-green-text)' }}>
               Suggested rewrite to start from
             </p>
             {initialSuggestedLanguage ? (
@@ -432,9 +432,9 @@ export function GapChatThread({
                     style={{
                       fontSize: 13,
                       fontWeight: 500,
-                      color: '#b5dec2',
-                      backgroundColor: 'rgba(181,222,194,0.08)',
-                      border: '1px solid rgba(181,222,194,0.20)',
+                      color: 'var(--badge-green-text)',
+                      backgroundColor: 'var(--badge-green-bg)',
+                      border: '1px solid color-mix(in srgb, var(--badge-green-text) 20%, transparent)',
                     }}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
@@ -475,7 +475,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.12)',
             }}
           >
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--link)' }}>
               Best next detail to add
             </p>
             <p className="mt-2" style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
@@ -542,9 +542,9 @@ export function GapChatThread({
             disabled={isLoading}
             className="rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
-              color: '#afc4ff',
-              backgroundColor: 'rgba(175,196,255,0.06)',
-              border: '1px solid rgba(175,196,255,0.15)',
+              color: 'var(--link)',
+              backgroundColor: 'var(--badge-blue-bg)',
+              border: '1px solid color-mix(in srgb, var(--link) 15%, transparent)',
             }}
             >
             Tell Me What Is Missing
@@ -555,9 +555,9 @@ export function GapChatThread({
             disabled={isLoading}
             className="rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
-              color: '#b5dec2',
-              backgroundColor: 'rgba(181,222,194,0.08)',
-              border: '1px solid rgba(181,222,194,0.20)',
+              color: 'var(--badge-green-text)',
+              backgroundColor: 'var(--badge-green-bg)',
+              border: '1px solid color-mix(in srgb, var(--badge-green-text) 20%, transparent)',
             }}
             >
             Draft from What We Know
@@ -602,7 +602,7 @@ export function GapChatThread({
 
       {/* Error with retry */}
       {error && (
-        <div className="px-4 py-2 flex items-center gap-2 text-xs" style={{ color: '#f0b8b8' }}>
+        <div className="px-4 py-2 flex items-center gap-2 text-xs" style={{ color: 'var(--badge-red-text)' }}>
           <AlertCircle className="h-3 w-3 shrink-0" />
           <span className="flex-1">{error}</span>
           {lastSentRef.current && (
@@ -662,7 +662,7 @@ export function GapChatThread({
             disabled={!inputValue.trim() || isLoading}
             className="rounded-lg p-2 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--surface-1)]"
             style={{
-              color: inputValue.trim() ? '#afc4ff' : REPORT_COLORS.tertiary,
+              color: inputValue.trim() ? 'var(--link)' : REPORT_COLORS.tertiary,
             }}
             aria-label="Send message"
           >
