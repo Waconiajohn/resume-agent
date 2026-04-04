@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { Sidebar } from '@/components/career-iq/Sidebar';
 import type { CareerIQRoom } from '@/components/career-iq/Sidebar';
 import type { DashboardState } from '@/components/career-iq/useWhyMeStory';
@@ -29,7 +29,6 @@ describe('CoachBanner (via Sidebar)', () => {
         coachData={{ phase: 'Resume Building' }}
       />,
     );
-    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
     expect(screen.getAllByText('Coach').length).toBeGreaterThan(0);
   });
 
@@ -40,7 +39,8 @@ describe('CoachBanner (via Sidebar)', () => {
         coachData={{ phase: 'Interview Prep' }}
       />,
     );
-    expect(within(screen.getByRole('button', { name: /open coach/i })).getByText('Interview Prep')).toBeInTheDocument();
+    // 'Interview Prep' also appears as a nav room label, so use getAllByText
+    expect(screen.getAllByText('Interview Prep').length).toBeGreaterThan(0);
   });
 
   it('renders recommendation text when coachData.recommendation is provided', () => {
@@ -63,12 +63,10 @@ describe('CoachBanner (via Sidebar)', () => {
         coachData={{ phase: 'Networking' }}
       />,
     );
-    // Without a recommendation, no recommendation button should be present
     expect(screen.queryByText(/update your/i)).not.toBeInTheDocument();
   });
 
   it('shows only the avatar circle (no name text) when sidebar is collapsed', () => {
-    // The collapse button is rendered by CoachBanner; click it to collapse.
     render(
       <Sidebar
         {...BASE_PROPS}
@@ -79,47 +77,29 @@ describe('CoachBanner (via Sidebar)', () => {
     fireEvent.click(collapseBtn);
 
     expect(screen.queryByText('Coach')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
   });
 
-  it('calls onOpenCoach when the avatar/banner button is clicked', () => {
-    const onOpenCoach = vi.fn();
+  it('falls back to "Coach" label when no coach data is provided', () => {
+    render(<Sidebar {...BASE_PROPS} />);
+    expect(screen.getAllByText('Coach').length).toBeGreaterThan(0);
+  });
+
+  it('falls back to "Career Profile" phase when phase is not provided', () => {
+    render(<Sidebar {...BASE_PROPS} />);
+    expect(screen.getByText('Career Profile')).toBeInTheDocument();
+  });
+
+  it('recommendation text is static (not a button)', () => {
     render(
       <Sidebar
         {...BASE_PROPS}
-        onOpenCoach={onOpenCoach}
-        coachData={{ phase: 'Offer Negotiation' }}
-      />,
-    );
-    const openBtn = screen.getByRole('button', { name: /open coach/i });
-    fireEvent.click(openBtn);
-    expect(onOpenCoach).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onOpenCoach when recommendation text is clicked', () => {
-    const onOpenCoach = vi.fn();
-    render(
-      <Sidebar
-        {...BASE_PROPS}
-        onOpenCoach={onOpenCoach}
         coachData={{
           phase: 'Offer Negotiation',
           recommendation: 'Negotiate your base salary first.',
         }}
       />,
     );
-    fireEvent.click(screen.getByText('Negotiate your base salary first.'));
-    expect(onOpenCoach).toHaveBeenCalledTimes(1);
-  });
-
-  it('falls back to "Coach" when no coach data is provided', () => {
-    render(<Sidebar {...BASE_PROPS} />);
-    expect(screen.getByRole('button', { name: /open coach/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Coach').length).toBeGreaterThan(0);
-  });
-
-  it('falls back to "Career Profile" phase when phase is not provided', () => {
-    render(<Sidebar {...BASE_PROPS} />);
-    expect(within(screen.getByRole('button', { name: /open coach/i })).getByText('Career Profile')).toBeInTheDocument();
+    const recText = screen.getByText('Negotiate your base salary first.');
+    expect(recText.tagName).not.toBe('BUTTON');
   });
 });

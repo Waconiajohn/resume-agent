@@ -22,7 +22,6 @@ interface SidebarProps {
   activeRoom: WorkspaceRoom;
   onNavigate: (room: CareerIQRoom) => void;
   dashboardState: DashboardState;
-  onOpenCoach?: () => void;
   coachData?: { phase: string; recommendation?: string };
 }
 
@@ -60,7 +59,7 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
   interview: 'nav-interview',
 };
 
-export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, coachData }: SidebarProps) {
+export function Sidebar({ activeRoom, onNavigate, dashboardState, coachData }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const isLocked = dashboardState === 'new-user';
 
@@ -131,7 +130,6 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
       <CoachBanner
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(!collapsed)}
-        onOpenCoach={onOpenCoach}
         phase={coachData?.phase}
         recommendation={coachData?.recommendation}
       />
@@ -170,26 +168,22 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
 interface CoachBannerProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
-  onOpenCoach?: () => void;
   phase?: string;
   recommendation?: string;
 }
 
-function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, phase, recommendation }: CoachBannerProps) {
+function CoachBanner({ collapsed, onToggleCollapse, phase, recommendation }: CoachBannerProps) {
   const displayPhase = phase || 'Career Profile';
 
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-3 px-2 pb-4 pt-4">
-        <button
-          type="button"
-          onClick={onOpenCoach}
-          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)] text-[var(--text-strong)] transition-colors hover:border-[var(--sidebar-coach-hover-border)] hover:bg-[var(--sidebar-coach-hover-bg)]"
-          aria-label="Open coach"
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)] text-[var(--text-strong)]"
           title="Coach"
         >
           <MessageSquare size={16} className="text-[var(--text-strong)]" />
-        </button>
+        </div>
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -206,12 +200,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, phase, recommen
   return (
     <div className="border-b border-[var(--line-soft)] px-4 pb-4 pt-4">
       <div className="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          onClick={onOpenCoach}
-          className="flex min-w-0 items-center gap-3 text-left transition-opacity hover:opacity-80"
-          aria-label="Open coach"
-        >
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)]">
             <MessageSquare size={16} className="text-[var(--text-strong)]" />
           </div>
@@ -220,7 +209,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, phase, recommen
             <div className="truncate text-sm font-semibold text-[var(--text-strong)]">Coach</div>
             <div className="truncate text-[13px] text-[var(--text-soft)]">{displayPhase}</div>
           </div>
-        </button>
+        </div>
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -232,13 +221,9 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, phase, recommen
         </button>
       </div>
       {recommendation && (
-        <button
-          type="button"
-          onClick={onOpenCoach}
-          className="w-full border-l border-[var(--line-soft)] pl-[58px] text-left text-[13px] leading-relaxed text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
-        >
+        <div className="border-l border-[var(--line-soft)] pl-[58px] text-[13px] leading-relaxed text-[var(--text-muted)]">
           {recommendation}
-        </button>
+        </div>
       )}
     </div>
   );

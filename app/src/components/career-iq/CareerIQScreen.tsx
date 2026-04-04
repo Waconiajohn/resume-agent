@@ -26,7 +26,6 @@ const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((modul
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
-const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Workspace Home',
@@ -110,7 +109,6 @@ export function CareerIQScreen({
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
   const { nudges, dismissNudge, checkStalls } = useMomentum();
   const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
-  const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
   const workspaceLaunchContext = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const jobApplicationId = params.get('job');
@@ -419,16 +417,6 @@ export function CareerIQScreen({
             coachRecommendation={coachRec}
             feedEvents={mobileFeedEvents}
           />
-          <Suspense fallback={null}>
-            <CoachDrawer
-              userName={userName}
-              onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
-              isOpen={coachDrawerOpen}
-              onOpen={() => setCoachDrawerOpen(true)}
-              onClose={() => setCoachDrawerOpen(false)}
-              isMobile
-            />
-          </Suspense>
         </>
       );
     }
@@ -467,16 +455,6 @@ export function CareerIQScreen({
           feedEvents={mobileFeedEvents}
           navOnly
         />
-
-        <Suspense fallback={null}>
-          <CoachDrawer
-            userName={userName}
-            onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
-            isOpen={coachDrawerOpen}
-            onOpen={() => setCoachDrawerOpen(true)}
-            onClose={() => setCoachDrawerOpen(false)}
-          />
-        </Suspense>
       </div>
     );
   }
@@ -487,7 +465,6 @@ export function CareerIQScreen({
         activeRoom={activeRoom}
         onNavigate={handleRoomNavigate}
         dashboardState={dashboardState}
-        onOpenCoach={() => setCoachDrawerOpen(true)}
         coachData={{
           phase: coachRec?.phase_label || 'Career Profile',
           recommendation: coachRec?.action,
@@ -502,16 +479,6 @@ export function CareerIQScreen({
           {renderContent()}
         </Suspense>
       </main>
-
-      <Suspense fallback={null}>
-        <CoachDrawer
-          userName={userName}
-          onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
-          isOpen={coachDrawerOpen}
-          onOpen={() => setCoachDrawerOpen(true)}
-          onClose={() => setCoachDrawerOpen(false)}
-        />
-      </Suspense>
 
       <OnboardingTour onMountReplay={handleTourMount} />
     </div>
