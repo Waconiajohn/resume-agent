@@ -763,48 +763,36 @@
   .resume-proof-line--partial,
   .resume-proof-line--benchmark,
   .resume-proof-line--code-red {
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    background: rgba(255, 255, 255, 0.98);
-    padding: 0.85rem 1rem 1rem 1.1rem;
-    box-shadow: 0 18px 34px -32px rgba(15, 23, 42, 0.42);
-    backdrop-filter: none;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-left: 3px solid;
+    background: rgba(255, 255, 255, 0.99);
+    padding: 0.75rem 1rem 0.85rem 1rem;
+    border-radius: 4px;
   }
 
   .resume-proof-line--partial {
-    border-left: 4px solid #b45309;
-    border-color: rgba(180, 83, 9, 0.22);
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.09), rgba(255, 255, 255, 0.98) 13rem);
+    border-left-color: #6366f1;
   }
 
   .resume-proof-line--benchmark {
-    border-left: 4px solid #2563eb;
-    border-color: rgba(37, 99, 235, 0.2);
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.08), rgba(255, 255, 255, 0.98) 13rem);
+    border-left-color: #0ea5e9;
   }
 
   .resume-proof-line--code-red {
-    border-left: 4px solid #8f2d2d;
-    border-color: rgba(143, 45, 45, 0.2);
-    background: linear-gradient(90deg, rgba(254, 226, 226, 0.66), rgba(255, 255, 255, 0.98) 13rem);
+    border-left-color: #dc2626;
   }
 
-  .resume-proof-line--partial::marker {
-    color: #b45309;
-  }
-
-  .resume-proof-line--benchmark::marker {
-    color: #2563eb;
-  }
-
+  .resume-proof-line--partial::marker,
+  .resume-proof-line--benchmark::marker,
   .resume-proof-line--code-red::marker {
-    color: #8f2d2d;
+    color: #94a3b8;
   }
 
   .resume-proof-line--partial:hover,
   .resume-proof-line--benchmark:hover,
   .resume-proof-line--code-red:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 24px 40px -34px rgba(15, 23, 42, 0.45);
+    background: rgba(248, 250, 252, 1);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   }
 
   .resume-proof-meta-row {
@@ -820,39 +808,30 @@
   }
 
   .resume-proof-meta-label--partial {
-    color: #b45309;
+    color: #6366f1;
   }
 
   .resume-proof-meta-label--benchmark {
-    color: #2563eb;
+    color: #0ea5e9;
   }
 
   .resume-proof-meta-label--code-red {
-    color: #8f2d2d;
+    color: #dc2626;
   }
 
   .resume-proof-line--partial .resume-bullet-interactive--flagged {
-    color: #b45309;
-    text-decoration: underline;
-    text-decoration-style: dashed;
-    text-decoration-color: rgba(180, 83, 9, 0.45);
-    text-underline-offset: 0.18rem;
+    color: #1e293b;
+    text-decoration: none;
   }
 
   .resume-proof-line--benchmark .resume-bullet-interactive--flagged {
-    color: #2563eb;
-    text-decoration: underline;
-    text-decoration-style: dashed;
-    text-decoration-color: rgba(37, 99, 235, 0.4);
-    text-underline-offset: 0.18rem;
+    color: #1e293b;
+    text-decoration: none;
   }
 
   .resume-proof-line--code-red .resume-bullet-interactive--flagged {
-    color: #8f2d2d;
-    text-decoration: underline;
-    text-decoration-style: dashed;
-    text-decoration-color: rgba(143, 45, 45, 0.5);
-    text-underline-offset: 0.18rem;
+    color: #1e293b;
+    text-decoration: none;
   }
 
   .resume-bullet-interactive {
