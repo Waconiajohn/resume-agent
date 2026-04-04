@@ -119,6 +119,10 @@ interface V2StreamingDisplayProps {
     requirement: string,
     evidence?: string,
   ) => Promise<import('@/hooks/useBulletEnhance').EnhanceResult | null>;
+  /** Job application URL — when present and pipeline is complete, shows the Apply to This Job button */
+  jobUrl?: string;
+  /** Access token for the link-resume API call in ExportBar */
+  accessToken?: string | null;
 }
 
 interface AttentionReviewItem {
@@ -549,6 +553,8 @@ export function V2StreamingDisplay({
   onGapAssist,
   initialActiveBullet = null,
   onBulletEnhance,
+  jobUrl,
+  accessToken,
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -905,6 +911,9 @@ export function V2StreamingDisplay({
                   nextQueueItemLabel={rewriteQueue?.nextItem?.title}
                   finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
                   onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
+                  jobUrl={jobUrl}
+                  sessionId={data.sessionId}
+                  accessToken={accessToken}
                 />
               </CollapsibleWorkspaceRail>
             )}

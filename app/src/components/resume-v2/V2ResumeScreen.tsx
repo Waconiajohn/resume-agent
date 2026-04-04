@@ -151,6 +151,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [previousResume, setPreviousResume] = useState<ResumeDraft | null>(null);
+  // Job URL used for the current pipeline — populated when the JD input is a URL
+  const [activeJobUrl, setActiveJobUrl] = useState<string | null>(initialJobUrl ?? null);
 
   const {
     pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -973,6 +975,17 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const handleSubmit = useCallback((rt: string, jd: string) => {
     setResumeText(rt);
     setJobDescription(jd);
+    // Capture the job URL if the JD field contains a URL (from the URL input in the intake form)
+    try {
+      const parsed = new URL(jd);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        setActiveJobUrl(jd);
+      } else {
+        setActiveJobUrl(null);
+      }
+    } catch {
+      setActiveJobUrl(null);
+    }
     setEditableResume(null);
     setSessionLoadError(null);
     lastMasterSnapshotRef.current = '';
@@ -1381,6 +1394,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onClearMasterPromotionItems={handleClearMasterPromotionItems}
         onGapAssist={handleGapAssist}
         onBulletEnhance={handleBulletEnhance}
+        jobUrl={activeJobUrl ?? undefined}
+        accessToken={accessToken}
       />
     </div>
   );

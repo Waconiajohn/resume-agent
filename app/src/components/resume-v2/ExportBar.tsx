@@ -1,9 +1,9 @@
 /**
- * ExportBar — DOCX + PDF download buttons and plain-text copy for completed v2 resume
+ * ExportBar — DOCX + PDF download buttons, plain-text copy, and Apply to This Job for completed v2 resume
  */
 
 import { useState, useCallback } from 'react';
-import { Download, FileType2, Loader2, AlertCircle, Clipboard, ClipboardCheck } from 'lucide-react';
+import { Download, FileType2, Loader2, AlertCircle, Clipboard, ClipboardCheck, ExternalLink } from 'lucide-react';
 import { GlassButton } from '../GlassButton';
 import { TemplateSelector } from '../TemplateSelector';
 import type { ResumeDraft } from '@/types/resume-v2';
@@ -12,6 +12,8 @@ import { getExportGateState } from '@/lib/export-bar-gating';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
 import type { TemplateId } from '@/lib/export-templates';
+import { useToast } from '@/components/Toast';
+import { API_BASE } from '@/lib/api';
 
 interface ExportBarProps {
   resume: ResumeDraft;
@@ -29,6 +31,12 @@ interface ExportBarProps {
   onAcknowledgeWarnings?: () => void;
   /** Optional: called when the user clicks Copy. Supply a plain-text representation. */
   onCopy?: () => string | undefined;
+  /** Job application URL — when present, shows the "Apply to This Job" button */
+  jobUrl?: string;
+  /** Session ID — required for linking the resume to the job application */
+  sessionId?: string;
+  /** Access token — required for the link-resume API call */
+  accessToken?: string | null;
 }
 
 export function ExportBar({
@@ -46,11 +54,16 @@ export function ExportBar({
   warningsAcknowledged = false,
   onAcknowledgeWarnings,
   onCopy,
+  jobUrl,
+  sessionId,
+  accessToken,
 }: ExportBarProps) {
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
+  const [isLinkingResume, setIsLinkingResume] = useState(false);
+  const { addToast } = useToast();
   const { hasWarnings, exportBlocked } = getExportGateState({
     hasCompletedFinalReview,
     isFinalReviewStale,
@@ -162,6 +175,40 @@ export function ExportBar({
     unresolvedCriticalCount,
     unresolvedHardGapCount,
   ]);
+
+  const handleApply = useCallback(async () => {
+    if (!jobUrl || !sessionId || !accessToken) return;
+    setIsLinkingResume(true);
+    try {
+      await fetch(`${API_BASE}/extension/link-resume`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          job_url: jobUrl,
+          job_title: jobTitle,
+          company_name: companyName,
+        }),
+      });
+      window.open(jobUrl, '_blank', 'noopener,noreferrer');
+      addToast({
+        type: 'info',
+        message: 'Opening application — the CareerIQ extension will auto-fill your resume',
+        duration: 5000,
+      });
+    } catch {
+      addToast({
+        type: 'error',
+        message: 'Failed to link resume. The application page will still open.',
+      });
+      window.open(jobUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsLinkingResume(false);
+    }
+  }, [jobUrl, sessionId, accessToken, jobTitle, companyName, addToast]);
 
   return (
     <div className="space-y-2">
@@ -286,6 +333,24 @@ export function ExportBar({
             </>
           )}
         </GlassButton>
+
+        {jobUrl && sessionId && accessToken && (
+          <GlassButton
+            onClick={handleApply}
+            disabled={isLinkingResume}
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            aria-label="Open job application and auto-fill with CareerIQ extension"
+          >
+            {isLinkingResume ? (
+              <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" />
+            ) : (
+              <ExternalLink className="h-3.5 w-3.5" />
+            )}
+            Apply to This Job
+          </GlassButton>
+        )}
       </div>
 
       {error && (

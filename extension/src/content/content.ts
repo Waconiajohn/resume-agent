@@ -1,12 +1,13 @@
 import { FieldMapper } from './field-mapper.js';
 import { detectPlatform } from '../shared/url-normalizer.js';
-import type { ATSPlatform, ResumePayload } from '../shared/types.js';
+import type { ATSPlatform, ResumePayload, ReadyResumeResult } from '../shared/types.js';
 
 // ─── Module State ─────────────────────────────────────────────────────────────
 
 let currentResume: ResumePayload | null = null;
 let fillButton: HTMLDivElement | null = null;
 let statusBanner: HTMLDivElement | null = null;
+let readyResumeBanner: HTMLDivElement | null = null;
 let isFilledAlready = false;
 
 // ─── Initialisation ───────────────────────────────────────────────────────────
@@ -32,6 +33,12 @@ async function init(): Promise<void> {
   injectUI(platform, resume);
   watchForSubmission(platform);
   watchForFormChanges(platform);
+
+  // Proactive ready-resume check — fires asynchronously so it never blocks the
+  // base UI.  If a tailored resume is already linked to this URL (e.g. the tab
+  // was opened via "Apply to This Job" in the CareerIQ web app), we upgrade the
+  // banner to a one-click auto-fill prompt.
+  checkReadyResume(platform);
 
   // LinkedIn: if the Easy Apply modal hasn't opened yet, watch for it
   if (platform === 'LINKEDIN' && !document.querySelector('.jobs-easy-apply-modal')) {
@@ -278,13 +285,100 @@ function watchForLinkedInModal(): void {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
+// ─── Ready-Resume Proactive Check ─────────────────────────────────────────────
+
+async function checkReadyResume(platform: ATSPlatform): Promise<void> {
+  // Remove any previous ready-resume banner before starting the check so that
+  // re-init calls (SPA navigation) do not leave stale banners behind.
+  readyResumeBanner?.remove();
+  readyResumeBanner = null;
+
+  let result: ReadyResumeResult;
+  try {
+    result = await chrome.runtime.sendMessage({
+      type: 'READY_RESUME_CHECK',
+      payload: { jobUrl: window.location.href },
+    }) as ReadyResumeResult;
+  } catch (err) {
+    console.log('[CareerIQ] Ready-resume check failed:', (err as Error).message);
+    return;
+  }
+
+  if (!result?.found || !result.resumePayload) return;
+
+  // Update module state — the ready resume may have richer data than what the
+  // standard lookup returned (or the standard lookup may have found nothing).
+  currentResume = result.resumePayload;
+
+  // If the standard banner already shows "ready" there is nothing to upgrade.
+  // Replace it with the proactive auto-fill banner.
+  statusBanner?.remove();
+  statusBanner = null;
+  // Also inject the fill button if it wasn't already present (resume was null
+  // during the first injectUI call).
+  if (!fillButton) {
+    injectFillButton(platform, result.resumePayload);
+  }
+
+  injectReadyResumeBanner(platform, result.resumePayload);
+}
+
+function injectReadyResumeBanner(platform: ATSPlatform, resume: ResumePayload): void {
+  const existing = document.getElementById('careeriq-ready-banner');
+  existing?.remove();
+
+  const role = resume.job_title ?? 'this role';
+  const company = resume.company_name ?? 'the company';
+
+  const banner = document.createElement('div');
+  banner.id = 'careeriq-ready-banner';
+  banner.innerHTML = `
+    <div class="ciq-banner-inner ciq-banner-autofill">
+      <span class="ciq-banner-icon">⚡</span>
+      <span class="ciq-banner-text">
+        CareerIQ has a tailored resume ready for
+        <strong>${escapeHtml(role)}</strong> at <strong>${escapeHtml(company)}</strong>.
+        <button class="ciq-autofill-trigger" type="button">Click to auto-fill</button>
+      </span>
+      <button class="ciq-banner-close" title="Dismiss" type="button">✕</button>
+    </div>
+  `;
+
+  const autofillBtn = banner.querySelector<HTMLButtonElement>('.ciq-autofill-trigger');
+  autofillBtn?.addEventListener('click', () => {
+    banner.remove();
+    readyResumeBanner = null;
+    handleFillClick(platform, resume);
+  });
+
+  const closeBtn = banner.querySelector<HTMLButtonElement>('.ciq-banner-close');
+  closeBtn?.addEventListener('click', () => {
+    banner.remove();
+    readyResumeBanner = null;
+  });
+
+  document.body.insertBefore(banner, document.body.firstChild);
+  readyResumeBanner = banner;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ─── Cleanup ──────────────────────────────────────────────────────────────────
 
 function removeExistingUI(): void {
   document.getElementById('careeriq-fill-btn')?.remove();
   document.getElementById('careeriq-banner')?.remove();
+  document.getElementById('careeriq-ready-banner')?.remove();
   fillButton = null;
   statusBanner = null;
+  readyResumeBanner = null;
 }
 
 // ─── Message Listener (from popup / background DO_FILL) ───────────────────────

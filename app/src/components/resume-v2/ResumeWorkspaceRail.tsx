@@ -115,6 +115,9 @@ export function ResumeWorkspaceRail({
   nextQueueItemLabel,
   finalReviewWarningsAcknowledged,
   onAcknowledgeFinalReviewWarnings,
+  jobUrl,
+  sessionId,
+  accessToken,
 }: {
   displayResume: ResumeDraft;
   companyName?: string;
@@ -127,6 +130,12 @@ export function ResumeWorkspaceRail({
   nextQueueItemLabel?: string;
   finalReviewWarningsAcknowledged?: boolean;
   onAcknowledgeFinalReviewWarnings?: () => void;
+  /** Job application URL — when present, shows the Apply to This Job button in ExportBar */
+  jobUrl?: string;
+  /** Session ID for linking the resume to the job application */
+  sessionId?: string;
+  /** Access token for the link-resume API call */
+  accessToken?: string | null;
 }) {
   const unresolvedCriticalConcerns = hiringManagerResult
     ? hiringManagerResult.concerns.filter((concern) => (
@@ -150,6 +159,9 @@ export function ResumeWorkspaceRail({
         nextQueueItemLabel={nextQueueItemLabel}
         warningsAcknowledged={finalReviewWarningsAcknowledged}
         onAcknowledgeWarnings={onAcknowledgeFinalReviewWarnings}
+        jobUrl={jobUrl}
+        sessionId={sessionId}
+        accessToken={accessToken}
       />
     </div>
   );

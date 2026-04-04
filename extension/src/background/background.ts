@@ -2,7 +2,7 @@
 
 import { CONFIG } from '../shared/config.js';
 import { normalizeJobUrl, isJobApplicationPage, detectPlatform } from '../shared/url-normalizer.js';
-import type { ExtensionMessage, TabStatus, ResumePayload, ATSPlatform } from '../shared/types.js';
+import type { ExtensionMessage, TabStatus, ResumePayload, ATSPlatform, ReadyResumeResult } from '../shared/types.js';
 
 // ─── Auth Helpers ─────────────────────────────────────────────────────────────
 
@@ -112,6 +112,64 @@ async function fetchResumeForJob(jobUrl: string): Promise<ResumePayload | null> 
     }
     console.log('[CareerIQ] Resume lookup failed:', (err as Error).message);
     return null;
+  }
+}
+
+// ─── Ready Resume Check ────────────────────────────────────────────────────────
+// Called when the content script detects an ATS form page and wants to know
+// if a tailored resume is already linked (e.g. the tab was opened via "Apply
+// to This Job" in the CareerIQ web app).  Uses the same session-storage cache
+// as fetchResumeForJob — a cache hit is the common path since the tab monitor
+// already ran fetchResumeForJob when the tab finished loading.
+
+async function fetchReadyResume(jobUrl: string): Promise<ReadyResumeResult> {
+  const token = await getAuthToken();
+  if (!token) return { found: false };
+
+  const normalizedUrl = normalizeJobUrl(jobUrl);
+
+  // Attempt cache hit first (populated by the tab monitor on page load)
+  try {
+    const cacheKey = `resume_cache_${normalizedUrl}`;
+    const cached = await chrome.storage.session.get(cacheKey);
+    const entry = cached[cacheKey] as { resume: ResumePayload | null; cachedAt: number } | undefined;
+    if (entry && Date.now() - entry.cachedAt < CONFIG.CACHE_TTL_MS) {
+      console.log('[CareerIQ] Ready-resume cache hit for', normalizedUrl);
+      return entry.resume
+        ? { found: true, resumePayload: entry.resume }
+        : { found: false };
+    }
+  } catch {
+    // Session storage unavailable — fall through to network request
+  }
+
+  // Cache miss — call the dedicated ready-resume endpoint
+  try {
+    const version = chrome.runtime.getManifest().version;
+    const url = `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.READY_RESUME}?job_url=${encodeURIComponent(normalizedUrl)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Extension-Version': version,
+      },
+    });
+
+    if (response.status === 401) {
+      await clearAuth();
+      return { found: false };
+    }
+
+    if (!response.ok) return { found: false };
+
+    const data = await response.json() as { resume: ResumePayload | null; status: string };
+    if (data.resume) {
+      return { found: true, resumePayload: data.resume };
+    }
+    return { found: false };
+  } catch (err) {
+    console.log('[CareerIQ] Ready-resume check failed:', (err as Error).message);
+    return { found: false };
   }
 }
 
@@ -318,6 +376,11 @@ async function handleMessage(
       if (!activeTab?.url) return { resume: null };
       const resume = await fetchResumeForJob(activeTab.url);
       return { resume };
+    }
+
+    case 'READY_RESUME_CHECK': {
+      const result = await fetchReadyResume(message.payload.jobUrl);
+      return result satisfies ReadyResumeResult;
     }
 
     case 'APPLICATION_SUBMITTED': {

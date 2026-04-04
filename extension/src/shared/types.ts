@@ -6,6 +6,7 @@ export type ExtensionMessage =
   | { type: 'GET_TAB_STATUS' }
   | { type: 'FETCH_RESUME_FOR_JOB'; payload: { jobUrl: string } }
   | { type: 'GET_RESUME_FOR_CURRENT_PAGE' }
+  | { type: 'READY_RESUME_CHECK'; payload: { jobUrl: string } }
   | { type: 'APPLICATION_SUBMITTED'; payload: { jobUrl: string; platform: ATSPlatform } }
   | { type: 'SET_AUTH'; payload: { token: string; userId: string } }
   | { type: 'LOGOUT' }
@@ -13,6 +14,13 @@ export type ExtensionMessage =
   | { type: 'AI_FIELD_INFERENCE'; payload: AIFieldInferencePayload }
   | { type: 'TRIGGER_FILL' }
   | { type: 'FETCH_RESUME_PDF'; payload: { sessionId: string } };
+
+// ─── Ready Resume Result ──────────────────────────────────────────────────────
+// Returned by the background handler for READY_RESUME_CHECK.
+export interface ReadyResumeResult {
+  found: boolean;
+  resumePayload?: ResumePayload;
+}
 
 export interface AIFieldInferencePayload {
   fieldName: string;

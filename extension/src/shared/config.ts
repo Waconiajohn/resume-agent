@@ -5,6 +5,7 @@ export const CONFIG = {
 
   ENDPOINTS: {
     RESUME_LOOKUP: '/api/extension/resume-lookup',
+    READY_RESUME: '/api/extension/ready-resume',
     JOB_DISCOVER: '/api/extension/job-discover',
     APPLY_STATUS: '/api/extension/apply-status',
     AUTH_VERIFY: '/api/extension/auth-verify',

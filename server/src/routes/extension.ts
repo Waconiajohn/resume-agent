@@ -2,8 +2,9 @@
  * Chrome Extension API Routes — /api/extension/*
  *
  * Feature-flagged via FF_EXTENSION.
- * Provides 8 endpoints consumed exclusively by the CareerIQ browser extension:
+ * Provides 9 endpoints consumed exclusively by the CareerIQ browser extension:
  *   POST /resume-lookup          — Look up a tailored resume for the current job URL
+ *   GET  /ready-resume           — Proactive check: is a resume ready for this job URL?
  *   POST /job-discover           — Record a newly discovered job listing
  *   POST /apply-status           — Mark a listing as applied
  *   GET  /auth-verify            — Lightweight token verification
@@ -101,6 +102,17 @@ const resumeLookupSchema = z.object({
   job_url: z.string().url(),
 });
 
+const linkResumeSchema = z.object({
+  session_id: z.string().uuid(),
+  job_url: z.string().url(),
+  job_title: z.string().optional(),
+  company_name: z.string().optional(),
+});
+
+const readyResumeQuerySchema = z.object({
+  job_url: z.string().url(),
+});
+
 const resumePdfParamsSchema = z.object({
   sessionId: z.string().uuid(),
 });
@@ -131,6 +143,92 @@ const inferFieldSchema = z.object({
   ).max(30),
   platform: z.string(),
 });
+
+// ─── GET /ready-resume ────────────────────────────────────────────────────────
+// Proactive check called by the content script when it lands on an ATS form
+// page.  Returns the tailored resume if one is linked to the given job URL.
+// Same lookup logic as POST /resume-lookup but accepts a query parameter so
+// the background service worker can call it with a simple GET.
+
+extensionRoutes.get(
+  '/ready-resume',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const query = c.req.query();
+
+    const parsed = readyResumeQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      return c.json({ error: 'Missing required query parameter: job_url' }, 400);
+    }
+
+    const normalizedUrl = normalizeJobUrl(parsed.data.job_url);
+
+    // Primary path: job_applications → coach_sessions → session_workflow_artifacts
+    const { data: jobApp } = await supabaseAdmin
+      .from('job_applications')
+      .select('id, job_title, company_name')
+      .eq('normalized_url', normalizedUrl)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (jobApp) {
+      const { data: session } = await supabaseAdmin
+        .from('coach_sessions')
+        .select('id')
+        .eq('job_application_id', jobApp.id)
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (session) {
+        const { data: artifact } = await supabaseAdmin
+          .from('session_workflow_artifacts')
+          .select('payload')
+          .eq('session_id', session.id)
+          .eq('node_key', 'export')
+          .eq('artifact_type', 'completion')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (artifact?.payload) {
+          const payload = artifact.payload as Record<string, unknown>;
+          const resume = (payload.resume ?? null) as unknown;
+          if (resume) {
+            return c.json({
+              resume,
+              status: 'ready',
+              job_title: jobApp.job_title ?? null,
+              company_name: jobApp.company_name ?? null,
+            });
+          }
+        }
+      }
+    }
+
+    // Fallback path: application_pipeline
+    const { data: pipelineRow } = await supabaseAdmin
+      .from('application_pipeline')
+      .select('id, role_title, company_name, resume_version_id')
+      .eq('normalized_url', normalizedUrl)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (pipelineRow?.resume_version_id) {
+      return c.json({
+        resume: null,
+        status: 'ready',
+        job_title: pipelineRow.role_title ?? null,
+        company_name: pipelineRow.company_name ?? null,
+        resume_version_id: pipelineRow.resume_version_id,
+      });
+    }
+
+    return c.json({ resume: null, status: 'not_found' });
+  },
+);
 
 // ─── POST /resume-lookup ──────────────────────────────────────────────────────
 
@@ -399,6 +497,161 @@ extensionRoutes.post(
 
     log.info({ userId: user.id }, 'extension: token exchange code created');
     return c.json({ code });
+  },
+);
+
+// ─── POST /link-resume ────────────────────────────────────────────────────────
+// Serializes the tailored resume from a completed coach session into
+// resume_application_links so the extension can retrieve it by job URL.
+
+extensionRoutes.post(
+  '/link-resume',
+  rateLimitMiddleware(30, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => null);
+
+    const parsed = linkResumeSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }, 400);
+    }
+
+    const { session_id, job_url, job_title, company_name } = parsed.data;
+
+    // Verify the session exists and belongs to this user.
+    const { data: session } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('id, tailored_sections')
+      .eq('id', session_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+
+    // Extract the resume from the stored pipeline snapshot.
+    // V2 pipeline stores: tailored_sections.pipeline_data.assembly.final_resume
+    // Older pipelines may store a resumeDraft directly at pipeline_data.resumeDraft.
+    const stored = session.tailored_sections as Record<string, unknown> | null;
+    let resumeSource: Record<string, unknown> | null = null;
+
+    if (stored && stored.version === 'v2') {
+      const pipelineData = stored.pipeline_data as Record<string, unknown> | null;
+      if (pipelineData) {
+        const assembly = pipelineData.assembly as Record<string, unknown> | null;
+        const finalResume = assembly?.final_resume as Record<string, unknown> | null;
+        if (finalResume) {
+          resumeSource = finalResume;
+        } else {
+          // Fall back to resumeDraft if assembly hasn't been written yet.
+          resumeSource = (pipelineData.resumeDraft as Record<string, unknown> | null) ?? null;
+        }
+      }
+    }
+
+    if (!resumeSource) {
+      return c.json({ error: 'No completed resume found in this session' }, 422);
+    }
+
+    // Build a flat resume payload from the structured draft output.
+    // Only extract fields the extension's FieldMapper needs — keeps the
+    // stored payload lean and avoids leaking intermediate scoring data.
+    const header = (resumeSource.header ?? {}) as Record<string, unknown>;
+    const execSummary = resumeSource.executive_summary as Record<string, unknown> | null;
+
+    const resumePayload: Record<string, unknown> = {
+      header: {
+        name: header.name ?? null,
+        email: header.email ?? null,
+        phone: header.phone ?? null,
+        linkedin: header.linkedin ?? null,
+      },
+      executive_summary: execSummary?.content ?? null,
+      professional_experience: resumeSource.professional_experience ?? [],
+      selected_accomplishments: resumeSource.selected_accomplishments ?? [],
+      technical_skills: resumeSource.technical_skills ?? [],
+      core_competencies: resumeSource.core_competencies ?? [],
+      education: resumeSource.education ?? [],
+      certifications: resumeSource.certifications ?? [],
+    };
+
+    // Insert the link row.
+    const { data: linkRow, error: insertError } = await supabaseAdmin
+      .from('resume_application_links')
+      .insert({
+        user_id: user.id,
+        session_id,
+        job_url,
+        job_title: job_title ?? null,
+        company_name: company_name ?? null,
+        resume_payload: resumePayload,
+        status: 'ready',
+      })
+      .select('id, status, job_url')
+      .single();
+
+    if (insertError || !linkRow) {
+      log.error({ error: insertError?.message, userId: user.id, session_id }, 'extension: link-resume insert failed');
+      return c.json({ error: 'Failed to create resume link' }, 500);
+    }
+
+    // Best-effort: update job_matches to 'applying' if a row exists for this
+    // user + URL.  A missing row is not an error — job_matches is optional.
+    const { error: matchUpdateError } = await supabaseAdmin
+      .from('job_matches')
+      .update({ status: 'applied' })
+      .eq('user_id', user.id)
+      .eq('url', job_url)
+      .eq('status', 'new');
+
+    if (matchUpdateError) {
+      log.warn({ error: matchUpdateError.message, userId: user.id }, 'extension: link-resume job_matches update failed (non-fatal)');
+    }
+
+    return c.json({ id: linkRow.id, status: linkRow.status, job_url: linkRow.job_url }, 201);
+  },
+);
+
+// ─── GET /ready-resume ────────────────────────────────────────────────────────
+// Returns the most recently linked resume payload for the given job URL.
+// The extension calls this when landing on an application form page.
+
+extensionRoutes.get(
+  '/ready-resume',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const query = c.req.query();
+
+    const parsed = readyResumeQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      return c.json({ error: 'Missing or invalid query parameter: job_url' }, 400);
+    }
+
+    const { job_url } = parsed.data;
+
+    const { data: linkRow } = await supabaseAdmin
+      .from('resume_application_links')
+      .select('id, status, resume_payload, job_title, company_name, created_at')
+      .eq('user_id', user.id)
+      .eq('job_url', job_url)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!linkRow) {
+      return c.json({ error: 'No linked resume', status: 404 }, 404);
+    }
+
+    return c.json({
+      id: linkRow.id,
+      status: linkRow.status,
+      job_title: linkRow.job_title ?? null,
+      company_name: linkRow.company_name ?? null,
+      created_at: linkRow.created_at,
+      resume: linkRow.resume_payload,
+    });
   },
 );
 
