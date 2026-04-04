@@ -996,7 +996,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
 
   const { data: sessionData } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id, user_id, pipeline_state')
+    .select('id, user_id, tailored_sections')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .single();
@@ -1022,10 +1022,11 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   let gapContext = '';
   let jobContext2 = '';
   try {
-    const pipelineState = sessionData.pipeline_state as Record<string, unknown> | null;
+    const stored = sessionData.tailored_sections as Record<string, unknown> | null;
+    const pipelineState = (stored?.pipeline_data ?? stored) as Record<string, unknown> | null;
     if (pipelineState) {
       // ── Narrative context ──────────────────────────────────────────────
-      const narrative = pipelineState.narrative_strategy as Record<string, unknown> | undefined;
+      const narrative = (pipelineState.narrativeStrategy ?? pipelineState.narrative_strategy) as Record<string, unknown> | undefined;
       if (narrative?.primary_narrative) {
         narrativeContext = `\nCANDIDATE'S POSITIONING: ${narrative.primary_narrative}`;
       }
@@ -1034,7 +1035,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       }
 
       // ── Candidate background ───────────────────────────────────────────
-      const candidate = pipelineState.candidate_intelligence as Record<string, unknown> | undefined;
+      const candidate = (pipelineState.candidateIntelligence ?? pipelineState.candidate_intelligence) as Record<string, unknown> | undefined;
       if (candidate) {
         const careerThemes = Array.isArray(candidate.career_themes)
           ? (candidate.career_themes as string[]).slice(0, 5).join(', ')
@@ -1074,7 +1075,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       }
 
       // ── Gap analysis context ───────────────────────────────────────────
-      const gapAnalysis = pipelineState.gap_analysis as Record<string, unknown> | undefined;
+      const gapAnalysis = (pipelineState.gapAnalysis ?? pipelineState.gap_analysis) as Record<string, unknown> | undefined;
       if (gapAnalysis) {
         const strengthSummary = typeof gapAnalysis.strength_summary === 'string'
           ? gapAnalysis.strength_summary
@@ -1113,7 +1114,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       }
 
       // ── Job intelligence context ───────────────────────────────────────
-      const jobIntelligence = pipelineState.job_intelligence as Record<string, unknown> | undefined;
+      const jobIntelligence = (pipelineState.jobIntelligence ?? pipelineState.job_intelligence) as Record<string, unknown> | undefined;
       if (jobIntelligence) {
         const targetRole = typeof jobIntelligence.role_title === 'string'
           ? jobIntelligence.role_title
