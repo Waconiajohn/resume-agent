@@ -152,9 +152,9 @@ export function ResumeDocumentCard({
                     section="selected_accomplishments"
                     bulletIndex={i}
                     requirements={accomplishmentDisplayTargets}
-                    onBulletClick={isGreen ? undefined : onBulletClick}
+                    onBulletClick={onBulletClick}
                   />
-                  {isActive && !isGreen && gapChat && buildChatContext && (
+                  {isActive && gapChat && buildChatContext && (
                     <BulletCoachingPanel
                       bulletText={a.content}
                       section="selected_accomplishments"
@@ -241,9 +241,9 @@ export function ResumeDocumentCard({
                           section="professional_experience"
                           bulletIndex={bulletIndex}
                           requirements={bulletDisplayTargets}
-                          onBulletClick={isGreen ? undefined : onBulletClick}
+                          onBulletClick={onBulletClick}
                         />
-                        {isActive && !isGreen && gapChat && buildChatContext && (
+                        {isActive && gapChat && buildChatContext && (
                           <BulletCoachingPanel
                             bulletText={bullet.text}
                             section="professional_experience"
@@ -343,8 +343,7 @@ function BulletLineContent({
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
   const statusMeta = getConfidencePill(resolvedReviewState, requirementSource);
   const sourceLabel = getConfidenceSourceLabel(resolvedReviewState, requirementSource);
-  const isGreen = isResolvedReviewState(resolvedReviewState);
-  const isClickable = !isGreen && !!onBulletClick;
+  const isClickable = !!onBulletClick;
 
   const handleActivate = () => {
     if (isClickable) {
