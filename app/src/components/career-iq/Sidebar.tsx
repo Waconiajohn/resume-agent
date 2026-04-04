@@ -5,7 +5,6 @@ import {
   Linkedin,
   Search,
   Mic,
-  MessageSquare,
   ChevronLeft,
   ChevronRight,
   Lock,
@@ -22,7 +21,6 @@ interface SidebarProps {
   activeRoom: WorkspaceRoom;
   onNavigate: (room: CareerIQRoom) => void;
   dashboardState: DashboardState;
-  coachData?: { phase: string; recommendation?: string };
 }
 
 interface RoomGroup {
@@ -59,7 +57,7 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
   interview: 'nav-interview',
 };
 
-export function Sidebar({ activeRoom, onNavigate, dashboardState, coachData }: SidebarProps) {
+export function Sidebar({ activeRoom, onNavigate, dashboardState }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const isLocked = dashboardState === 'new-user';
 
@@ -126,13 +124,18 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, coachData }: S
         collapsed ? 'w-[68px]' : 'w-[260px]',
       )}
     >
-      {/* Coach Banner */}
-      <CoachBanner
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
-        phase={coachData?.phase}
-        recommendation={coachData?.recommendation}
-      />
+      {/* Collapse / Expand toggle */}
+      <div className={cn('flex items-center border-b border-[var(--line-soft)] px-3 py-3', collapsed ? 'justify-center' : 'justify-end')}>
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="rounded-[10px] p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
 
       <nav className="flex-1 overflow-y-auto px-3">
         {ROOM_GROUPS.map((group) => (
@@ -163,68 +166,3 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, coachData }: S
   );
 }
 
-// ─── Coach Banner ──────────────────────────────────────────────────
-
-interface CoachBannerProps {
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-  phase?: string;
-  recommendation?: string;
-}
-
-function CoachBanner({ collapsed, onToggleCollapse, phase, recommendation }: CoachBannerProps) {
-  const displayPhase = phase || 'Career Profile';
-
-  if (collapsed) {
-    return (
-      <div className="flex flex-col items-center gap-3 px-2 pb-4 pt-4">
-        <div
-          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)] text-[var(--text-strong)]"
-          title="Coach"
-        >
-          <MessageSquare size={16} className="text-[var(--text-strong)]" />
-        </div>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="rounded-[10px] p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]"
-          aria-label="Expand sidebar"
-          aria-expanded={!collapsed}
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-b border-[var(--line-soft)] px-4 pb-4 pt-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[image:var(--sidebar-coach-bg)]">
-            <MessageSquare size={16} className="text-[var(--text-strong)]" />
-          </div>
-          <div className="min-w-0">
-            <div className="eyebrow-label">Coach</div>
-            <div className="truncate text-sm font-semibold text-[var(--text-strong)]">Coach</div>
-            <div className="truncate text-[13px] text-[var(--text-soft)]">{displayPhase}</div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="flex-shrink-0 rounded-[10px] p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]"
-          aria-label="Collapse sidebar"
-          aria-expanded={!collapsed}
-        >
-          <ChevronLeft size={16} />
-        </button>
-      </div>
-      {recommendation && (
-        <div className="border-l border-[var(--line-soft)] pl-[58px] text-[13px] leading-relaxed text-[var(--text-muted)]">
-          {recommendation}
-        </div>
-      )}
-    </div>
-  );
-}

@@ -465,10 +465,6 @@ export function CareerIQScreen({
         activeRoom={activeRoom}
         onNavigate={handleRoomNavigate}
         dashboardState={dashboardState}
-        coachData={{
-          phase: coachRec?.phase_label || 'Career Profile',
-          recommendation: coachRec?.action,
-        }}
       />
 
       <main className="flex flex-1 flex-col overflow-y-auto">
