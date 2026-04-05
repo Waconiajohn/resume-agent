@@ -9,6 +9,22 @@ import type { ActivityMessage } from '@/types/activity';
 export type { ActivityMessage };
 export type JobFinderStatus = 'idle' | 'connecting' | 'running' | 'gate' | 'complete' | 'error';
 
+export interface JobEvaluation {
+  fit_check: {
+    rating: 'STRONG_FIT' | 'STRETCH' | 'MISMATCH';
+    reasoning: string;
+  };
+  gap_assessment: {
+    summary: string;
+    bridgeable: boolean;
+  };
+  red_flags: string[];
+  verdict: {
+    decision: 'APPLY_NOW' | 'WORTH_A_CONVERSATION' | 'DEPRIORITIZE';
+    reasoning: string;
+  };
+}
+
 export interface RankedMatch {
   id: string;
   title: string;
@@ -20,6 +36,7 @@ export interface RankedMatch {
   posted_date?: string;
   work_type?: 'remote' | 'hybrid' | 'onsite';
   url?: string;
+  evaluation?: JobEvaluation;
 }
 
 interface JobFinderState {
@@ -33,32 +50,83 @@ interface JobFinderState {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
+function asJobEvaluation(raw: unknown): JobEvaluation | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+
+  const fitCheck = obj.fit_check as Record<string, unknown> | undefined;
+  const gapAssessment = obj.gap_assessment as Record<string, unknown> | undefined;
+  const verdict = obj.verdict as Record<string, unknown> | undefined;
+  const redFlags = obj.red_flags;
+
+  if (!fitCheck || !gapAssessment || !verdict) return undefined;
+
+  const rating = fitCheck.rating;
+  const decision = verdict.decision;
+
+  if (
+    rating !== 'STRONG_FIT' && rating !== 'STRETCH' && rating !== 'MISMATCH'
+  ) return undefined;
+  if (
+    decision !== 'APPLY_NOW' && decision !== 'WORTH_A_CONVERSATION' && decision !== 'DEPRIORITIZE'
+  ) return undefined;
+
+  return {
+    fit_check: {
+      rating,
+      reasoning: typeof fitCheck.reasoning === 'string' ? fitCheck.reasoning : '',
+    },
+    gap_assessment: {
+      summary: typeof gapAssessment.summary === 'string' ? gapAssessment.summary : '',
+      bridgeable: gapAssessment.bridgeable === true,
+    },
+    red_flags: Array.isArray(redFlags)
+      ? redFlags.filter((f): f is string => typeof f === 'string')
+      : [],
+    verdict: {
+      decision,
+      reasoning: typeof verdict.reasoning === 'string' ? verdict.reasoning : '',
+    },
+  };
+}
+
 function asRankedMatches(value: unknown): RankedMatch[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
     const candidate = item as Record<string, unknown>;
     if (
-      typeof candidate.id !== 'string' ||
       typeof candidate.title !== 'string' ||
-      typeof candidate.company !== 'string' ||
-      typeof candidate.why_match !== 'string'
+      typeof candidate.company !== 'string'
     ) {
       return [];
     }
 
+    // `id` may come as a UUID from the DB or be synthesized from title+company
+    const id = typeof candidate.id === 'string'
+      ? candidate.id
+      : `${candidate.title}::${candidate.company}`;
+
+    // `why_match` comes from the DB schema; `fit_narrative` is the server-side field name
+    const whyMatch = typeof candidate.why_match === 'string'
+      ? candidate.why_match
+      : typeof candidate.fit_narrative === 'string'
+        ? candidate.fit_narrative
+        : '';
+
     const workType = candidate.work_type;
     return [{
-      id: candidate.id,
+      id,
       title: candidate.title,
       company: candidate.company,
       location: typeof candidate.location === 'string' ? candidate.location : undefined,
       fit_score: safeNumber(candidate.fit_score),
-      why_match: candidate.why_match,
+      why_match: whyMatch,
       salary_range: typeof candidate.salary_range === 'string' ? candidate.salary_range : undefined,
       posted_date: typeof candidate.posted_date === 'string' ? candidate.posted_date : undefined,
       work_type: workType === 'remote' || workType === 'hybrid' || workType === 'onsite' ? workType : undefined,
       url: typeof candidate.url === 'string' ? candidate.url : undefined,
+      evaluation: asJobEvaluation(candidate.evaluation),
     }];
   });
 }

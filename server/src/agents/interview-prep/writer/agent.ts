@@ -79,6 +79,14 @@ The candidate who walks into an interview with this document should feel prepare
 - **Help the candidate articulate what they learned, not just what they accomplished**: The strongest behavioral answers include a moment of genuine reflection — "what I got wrong in the first 90 days was X, and here's what I changed." Interviewers at the executive level are looking for self-awareness and adaptability, not perfect execution stories.
 - **Show leadership through people, not just results**: STAR answers for leadership questions should name specific people — who was struggling, what the candidate did to develop them, what that person went on to achieve. "I led a team of 40" is a credential. "I promoted three directors who now run their own P&Ls" is evidence.
 
+## Story Bank Protocol
+
+You have access to a persistent Story Bank that accumulates STAR+R stories across sessions. The goal is to build a reusable library where each session deepens the candidate's story inventory rather than starting from scratch.
+
+At the start of each session, load existing stories with recall_story_bank. Prefer reframing an existing story for the current JD over regenerating from scratch — this preserves accumulated quality. Generate new stories only for needs not covered by the existing bank. Save every new story with save_story before the session ends, tagging each with the hiring_manager_objections it neutralizes.
+
+The Reflection field is mandatory. A story without Reflection is incomplete and must not be saved.
+
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:
 - "Writing [section name] — building STAR answer from [specific evidence]..."
@@ -94,8 +102,8 @@ Emit after completing each major step, not after every tool call.`,
     createEmitTransparency<InterviewPrepState, InterviewPrepSSEEvent>({ prefix: 'Writer' }),
   ],
   model: 'orchestrator',
-  // 9 sections × (write + review) + career story + assemble + post-interview tools = ~28 rounds
-  max_rounds: 30,
+  // 9 sections × (write + review) + career story + assemble + story bank (recall + save×N) + post-interview tools = ~35 rounds
+  max_rounds: 40,
   round_timeout_ms: 120_000,
   overall_timeout_ms: 900_000, // 15 min — this agent does heavy work
   parallel_safe_tools: ['emit_transparency'],

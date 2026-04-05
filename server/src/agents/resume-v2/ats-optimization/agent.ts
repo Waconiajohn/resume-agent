@@ -11,6 +11,7 @@
 import { llm, MODEL_LIGHT } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { ATSOptimizationInput, ATSOptimizationOutput } from '../types.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
@@ -48,6 +49,8 @@ RULES:
 - formatting_issues: flag anything that would trip up ATS parsing (tables, multi-column, images, unusual section headers)
 - Readability for humans comes FIRST — keyword optimization second
 - Never explain a keyword inside an array item. Put explanation into keyword_suggestions or omit it.
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 

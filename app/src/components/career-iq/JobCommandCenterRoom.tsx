@@ -13,12 +13,15 @@ import {
   CheckCircle2,
   XCircle,
   Briefcase,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useJobFinder, type RankedMatch } from '@/hooks/useJobFinder';
+import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJobFinder';
 import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
@@ -42,6 +45,135 @@ interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
   initialFocus?: string | null;
+}
+
+// --- JobEvaluationCard ---
+
+const VERDICT_STYLES: Record<
+  JobEvaluation['verdict']['decision'],
+  { label: string; className: string; dotClass: string }
+> = {
+  APPLY_NOW: {
+    label: 'Apply Now',
+    className: 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]',
+    dotClass: 'bg-[var(--badge-green-text)]',
+  },
+  WORTH_A_CONVERSATION: {
+    label: 'Worth a Conversation',
+    className: 'bg-[var(--link)]/10 border-[var(--link)]/20 text-[var(--link)]',
+    dotClass: 'bg-[var(--link)]',
+  },
+  DEPRIORITIZE: {
+    label: 'Deprioritize',
+    className: 'bg-[var(--text-soft)]/10 border-[var(--line-soft)] text-[var(--text-soft)]',
+    dotClass: 'bg-[var(--text-soft)]',
+  },
+};
+
+const FIT_CHECK_STYLES: Record<
+  JobEvaluation['fit_check']['rating'],
+  string
+> = {
+  STRONG_FIT: 'text-[var(--badge-green-text)]',
+  STRETCH: 'text-[var(--badge-amber-text)]',
+  MISMATCH: 'text-[var(--text-soft)]',
+};
+
+function JobEvaluationCard({ evaluation }: { evaluation: JobEvaluation }) {
+  const [expanded, setExpanded] = useState(false);
+  const verdict = VERDICT_STYLES[evaluation.verdict.decision];
+  const fitStyle = FIT_CHECK_STYLES[evaluation.fit_check.rating];
+
+  return (
+    <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)]/40 overflow-hidden">
+      {/* Collapsed row — always visible */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--accent-muted)] transition-colors"
+      >
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+            verdict.className,
+          )}
+        >
+          <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', verdict.dotClass)} />
+          {verdict.label}
+        </span>
+        <span className="text-[12px] text-[var(--text-soft)] flex-1 text-left truncate">
+          {evaluation.verdict.reasoning}
+        </span>
+        {expanded ? (
+          <ChevronUp size={12} className="text-[var(--text-soft)] flex-shrink-0" />
+        ) : (
+          <ChevronDown size={12} className="text-[var(--text-soft)] flex-shrink-0" />
+        )}
+      </button>
+
+      {/* Expanded panel */}
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3 border-t border-[var(--line-soft)]">
+          {/* Fit check */}
+          <div className="pt-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
+                Fit Check
+              </span>
+              <span className={cn('text-[11px] font-semibold uppercase', fitStyle)}>
+                {evaluation.fit_check.rating.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
+              {evaluation.fit_check.reasoning}
+            </p>
+          </div>
+
+          {/* Gap assessment */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
+                Gap Assessment
+              </span>
+              <span
+                className={cn(
+                  'text-[11px] font-semibold uppercase',
+                  evaluation.gap_assessment.bridgeable
+                    ? 'text-[var(--badge-green-text)]'
+                    : 'text-[var(--badge-amber-text)]',
+                )}
+              >
+                {evaluation.gap_assessment.bridgeable ? 'Bridgeable' : 'Hard gap'}
+              </span>
+            </div>
+            <p className="text-[12px] text-[var(--text-soft)] leading-relaxed">
+              {evaluation.gap_assessment.summary}
+            </p>
+          </div>
+
+          {/* Red flags */}
+          {evaluation.red_flags.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <AlertTriangle size={11} className="text-[var(--badge-amber-text)]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--badge-amber-text)]">
+                  Red Flags
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {evaluation.red_flags.map((flag, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[12px] text-[var(--text-soft)]">
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-[var(--badge-amber-text)]/60 flex-shrink-0" />
+                    {flag}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // --- SmartMatches ---
@@ -247,9 +379,14 @@ function SmartMatches({
                   <Sparkles size={10} className="inline mr-1 -mt-0.5" />
                   {job.why_match}
                 </div>
-                <div className="mt-2 text-[12px] text-[var(--text-soft)]">
-                  Save the worthwhile ones to your shortlist, then come back to build resumes for them.
-                </div>
+                {job.evaluation && (
+                  <JobEvaluationCard evaluation={job.evaluation} />
+                )}
+                {!job.evaluation && (
+                  <div className="mt-2 text-[12px] text-[var(--text-soft)]">
+                    Save the worthwhile ones to your shortlist, then come back to build resumes for them.
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

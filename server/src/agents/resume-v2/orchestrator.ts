@@ -35,6 +35,7 @@ import type {
   ApprovedStrategy,
   GapPlacementTarget,
   GapCoachingResponse,
+  FeedbackMetadata,
 } from './types.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
@@ -192,6 +193,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     state.job_intelligence = jobIntel;
     state.candidate_intelligence = candidateIntel;
+    state.role_profile = jobIntel.role_profile;
 
     emit({ type: 'job_intelligence', data: jobIntel });
     emit({ type: 'candidate_intelligence', data: candidateIntel });
@@ -205,8 +207,8 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       state.pre_scores = normalizePreScores(options.pre_scores);
     }
 
-    // Agent 3 depends on Agent 1
-    const benchmark = await runBenchmarkCandidate({ job_intelligence: jobIntel }, signal, { session_id: options.session_id });
+    // Agent 3 depends on Agents 1 and 2
+    const benchmark = await runBenchmarkCandidate({ job_intelligence: jobIntel, candidate: candidateIntel }, signal, { session_id: options.session_id });
     state.benchmark_candidate = benchmark;
 
     emit({ type: 'benchmark_candidate', data: benchmark });
@@ -347,6 +349,8 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       career_profile: options.career_profile,
       approved_strategies: allApproved,
       benchmark_differentiators: benchmark.differentiators,
+      benchmark_positioning_frame: benchmark.positioning_frame,
+      benchmark_hiring_manager_objections: benchmark.hiring_manager_objections,
     }, signal);
 
     state.narrative_strategy = narrative;
@@ -389,6 +393,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
         draft,
         original_resume: options.resume_text,
         candidate: candidateIntel,
+        benchmark_direct_matches: benchmark.direct_matches,
       }, signal),
       runATSOptimization({
         draft,
@@ -431,6 +436,26 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'stage_complete', stage: 'assembly', message: 'Assembly complete', duration_ms: Date.now() - assemblyStart });
 
     // ─── Complete ────────────────────────────────────────────────────
+
+    // Populate feedback loop instrumentation metadata before marking complete.
+    // Downstream consumers (route, Apply flow) attach this to job_matches.metadata
+    // so future queries can correlate resume framings with callbacks.
+    const feedbackMetadata: FeedbackMetadata = {
+      resume_session_id: options.session_id,
+    };
+    if (jobIntel.role_profile) {
+      feedbackMetadata.role_profile = jobIntel.role_profile;
+    }
+    if (benchmark.positioning_frame) {
+      feedbackMetadata.positioning_frame = benchmark.positioning_frame;
+    }
+    if (Array.isArray(benchmark.hiring_manager_objections) && benchmark.hiring_manager_objections.length > 0) {
+      feedbackMetadata.hiring_manager_objections = benchmark.hiring_manager_objections.map(
+        (o) => o.objection,
+      );
+    }
+    state.feedback_metadata = feedbackMetadata;
+
     state.current_stage = 'complete';
     state.token_usage = {
       input_tokens: usageAcc.input_tokens,

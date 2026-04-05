@@ -361,6 +361,22 @@ export const QUALITY_GATES = [
 
 export type QualityGateId = typeof QUALITY_GATES[number]['id'];
 
+// ─── Source Discipline ──────────────────────────────────────────────
+
+/**
+ * Injected into every resume-v2 agent system prompt.
+ * Prevents hallucinated metrics, stale context carry-forward,
+ * and fabricated credentials across all pipeline agents.
+ */
+export const SOURCE_DISCIPLINE = `
+SOURCE DISCIPLINE — NON-NEGOTIABLE:
+- Read the candidate's actual resume text and job description fresh for this evaluation.
+- Never assume metrics, accomplishments, or credentials from prior context.
+- Never carry forward or cache numbers between evaluations.
+- If a fact is not in the source resume or job description provided, it does not exist.
+- Every claim must trace to text in the provided inputs.
+- Do not reference anything from a previous pipeline run.`;
+
 // ─── Combined Prompt Block ───────────────────────────────────────────
 
 /**

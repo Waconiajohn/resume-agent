@@ -12,6 +12,7 @@ import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { detectAIPrecursors, buildAIPrecursorSummary } from '../../../contracts/ai-readiness-policy.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
 import {
   buildSourceResumeOutline,
@@ -119,6 +120,8 @@ RULES:
 - Career themes: look across the entire career, not just the most recent role
 - quantified_outcomes: extract EVERY metric mentioned anywhere on the resume
 - raw_text: include the first 200 characters for downstream verification
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 

@@ -177,8 +177,54 @@ export interface InterviewPrepState extends BaseState {
   /** Feedback from the user review gate (star_stories_review) */
   revision_feedback?: string;
 
+  /**
+   * Feedback loop instrumentation — which stories were used this session.
+   * Populated by onComplete from scratchpad after the writer runs.
+   * Persisted to interview_prep_reports.stories_used for future correlation.
+   */
+  stories_used?: {
+    /** Stories loaded from the Story Bank at session start */
+    existing_count: number;
+    /** Stories newly generated and saved to the Story Bank this session */
+    saved_count: number;
+    /** Themes present in newly saved stories (for aggregation) */
+    saved_themes: string[][];
+    /** Objections addressed by newly saved stories */
+    saved_objections: string[][];
+  };
+
   /** Post-interview documents generated after the interview completes */
   post_interview_docs?: PostInterviewDocs;
+}
+
+// ─── Story Bank ─────────────────────────────────────────────────────
+
+/**
+ * A single STAR+R story persisted in the user's Story Bank.
+ * Accumulates across sessions — each interview prep session reads the bank
+ * first so existing stories can be reframed rather than regenerated.
+ */
+export interface InterviewStory {
+  /** The Situation — context and background */
+  situation: string;
+  /** The Task — what needed to be accomplished */
+  task: string;
+  /** The Action — what the candidate specifically did */
+  action: string;
+  /** The Result — measurable outcomes */
+  result: string;
+  /** The Reflection — what was learned, what would be done differently. MANDATORY. */
+  reflection: string;
+  /** Thematic tags (e.g., leadership, crisis-management, scale, turnaround) */
+  themes: string[];
+  /** Which hiring manager objections this story neutralizes */
+  objections_addressed: string[];
+  /** Job application session ID this story was generated for, or null */
+  source_job_id: string | null;
+  /** ISO timestamp when this story was generated */
+  generated_at: string;
+  /** Number of times this story has been used across sessions */
+  used_count: number;
 }
 
 // ─── Post-Interview Documents ────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { CareerProfileV2 } from '../lib/career-profile-context.js';
-import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/types.js';
+import type { V2PipelineSSEEvent, V2PipelineStage, FeedbackMetadata } from '../agents/resume-v2/types.js';
 import {
   buildRequirementClarifyingQuestion,
   buildRequirementProofAction,
@@ -61,6 +61,8 @@ export type StoredV2PipelineData = {
   narrativeStrategy: unknown | null;
   resumeDraft: unknown | null;
   assembly: unknown | null;
+  /** Feedback loop instrumentation — populated at pipeline completion */
+  feedbackMetadata: FeedbackMetadata | null;
   error: string | null;
   stageMessages: Array<{
     stage: V2PipelineStage;
@@ -93,6 +95,7 @@ function createInitialPipelineData(): StoredV2PipelineData {
     narrativeStrategy: null,
     resumeDraft: null,
     assembly: null,
+    feedbackMetadata: null,
     error: null,
     stageMessages: [],
   };

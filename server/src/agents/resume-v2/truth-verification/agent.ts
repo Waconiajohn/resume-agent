@@ -11,6 +11,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { TruthVerificationInput, TruthVerificationOutput } from '../types.js';
 import { mapTruthVerificationOutputToEvidenceItems } from '../../../contracts/shared-evidence.js';
 
@@ -58,6 +59,8 @@ RULES:
 - "plausible" inferences are acceptable (budget from team size, etc.) — don't flag these
 - Flag anything "unverified" or "fabricated" in flagged_items
 - Be strict but fair — creative positioning of REAL experience is fine, inventing experience is not
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 

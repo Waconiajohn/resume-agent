@@ -10,6 +10,9 @@
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
+import type { RoleProfile } from '../knowledge/role-archetypes.js';
+import { ARCHETYPE_SEEDS } from '../knowledge/role-archetype-seeds.js';
 import type { JobIntelligenceInput, JobIntelligenceOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a senior executive recruiter who has placed 500+ candidates at the VP/C-suite level. Your job is to deconstruct a job description and extract what the hiring manager ACTUALLY wants — not what HR wrote.
@@ -42,7 +45,16 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "cultural_signals": ["what the culture feels like based on language"],
   "hidden_hiring_signals": ["what they're NOT saying but clearly need"],
   "language_keywords": ["exact multi-word phrases as they appear in the JD — prefer 2-4 word phrases like 'cross-functional collaboration', 'P&L ownership', 'enterprise SaaS'. Include single words only when the phrase IS one word."],
-  "industry": "industry/sector"
+  "industry": "industry/sector",
+  "role_profile": {
+    "function": "primary functional domain — derive from JD content, not a fixed list. Examples: operations, finance, technology, people, sales, supply-chain, marketing, legal-compliance, program-delivery, general-management, engineering, customer-service, risk, data-analytics, cybersecurity, quality-assurance",
+    "industry": "industry — derive from JD and company context",
+    "scope": "individual-contributor|team|department|business-unit|enterprise",
+    "success_definition": "what winning looks like in this specific role based on JD language — 2-3 sentences",
+    "proof_point_priorities": ["what proof points this JD signals it cares about most, ordered by priority — be specific"],
+    "narrative_frame": "how a strong candidate should be positioned for this role",
+    "cultural_signals": ["language from the JD that signals what this organization values"]
+  }
 }
 
 RULES:
@@ -54,7 +66,14 @@ RULES:
 - Business problems: what's broken or missing that this hire fixes? These must be concrete business or operating problems, not generic goals like "drive growth" unless the JD actually says that.
 - Avoid duplicative competencies that say the same thing in slightly different words.
 - Do not invent company context, revenue, org scale, or urgency that the JD does not support.
-- Be specific, not generic. "Revenue growth" is useless. "$50M ARR to $100M" is useful.`;
+- Be specific, not generic. "Revenue growth" is useless. "$50M ARR to $100M" is useful.
+- role_profile: Derive from JD content — do NOT constrain to a fixed list of functions or industries. The function, industry, scope, success_definition, proof_point_priorities, narrative_frame, and cultural_signals must all be specific to THIS role, not generic categories.
+
+ROLE PROFILE EXAMPLES (use as style guides, not constraints — derive from the actual JD):
+${ARCHETYPE_SEEDS.slice(0, 4).map(s => `- ${s.function} (${s.scope}): "${s.success_definition}" → priorities: ${s.proof_point_priorities.slice(0, 2).join('; ')}`).join('\n')}
+If the role does not fit any of these examples, derive a novel profile from the JD content.
+
+${SOURCE_DISCIPLINE}`;
 
 export async function runJobIntelligence(
   input: JobIntelligenceInput,
@@ -141,6 +160,19 @@ function buildDeterministicJobIntelligence(input: JobIntelligenceInput): JobInte
   const language_keywords = buildLanguageKeywords(core_competencies, normalizedText);
   const industry = inferIndustry(lowerText);
 
+  const role_profile: RoleProfile = {
+    function: inferFunctionFromTitle(role_title, lowerText),
+    industry,
+    scope: inferScopeFromSeniority(seniority_level),
+    success_definition: `Deliver on the core responsibilities of ${role_title} at ${company_name}.`,
+    proof_point_priorities: core_competencies
+      .filter(c => c.importance === 'must_have')
+      .slice(0, 4)
+      .map(c => c.competency),
+    narrative_frame: `Position as a proven ${role_title.toLowerCase()} with direct experience in the top requirements.`,
+    cultural_signals: cultural_signals.slice(0, 6),
+  };
+
   return {
     company_name,
     role_title,
@@ -152,7 +184,44 @@ function buildDeterministicJobIntelligence(input: JobIntelligenceInput): JobInte
     hidden_hiring_signals,
     language_keywords,
     industry,
+    role_profile,
   };
+}
+
+function inferFunctionFromTitle(title: string, text: string): string {
+  const titleLower = title.toLowerCase();
+  const functionMap: Array<[RegExp, string]> = [
+    [/\b(operations|ops)\b/i, 'operations'],
+    [/\b(financ|cfo|controller|treasury|fp&a)\b/i, 'finance'],
+    [/\b(hr|human resources|people|talent|chro)\b/i, 'people'],
+    [/\b(sales|revenue|business development|account)\b/i, 'sales'],
+    [/\b(supply chain|logistics|procurement|distribution)\b/i, 'supply-chain'],
+    [/\b(market|brand|communications|pr|content)\b/i, 'marketing'],
+    [/\b(engineer|technical|r&d|manufacturing)\b/i, 'engineering'],
+    [/\b(program|project|pmo|delivery)\b/i, 'program-delivery'],
+    [/\b(legal|compliance|regulatory|counsel)\b/i, 'legal-compliance'],
+    [/\b(cyber|security|infosec|ciso)\b/i, 'cybersecurity'],
+    [/\b(data|analytics|intelligence|bi)\b/i, 'data-analytics'],
+    [/\b(customer|client|service|success|support)\b/i, 'customer-service'],
+    [/\b(quality|qa|assurance)\b/i, 'quality-assurance'],
+    [/\b(risk|audit|internal audit)\b/i, 'risk'],
+    [/\b(general manager|gm|president|ceo|coo)\b/i, 'general-management'],
+    [/\b(it|information technology|cio|cto|software|platform)\b/i, 'technology'],
+  ];
+  for (const [pattern, fn] of functionMap) {
+    if (pattern.test(titleLower) || pattern.test(text)) return fn;
+  }
+  return 'general-management';
+}
+
+function inferScopeFromSeniority(level: string): RoleProfile['scope'] {
+  switch (level) {
+    case 'c_suite': return 'enterprise';
+    case 'vp': return 'business-unit';
+    case 'director': return 'department';
+    case 'senior': return 'team';
+    default: return 'team';
+  }
 }
 
 function buildCoreCompetencies(

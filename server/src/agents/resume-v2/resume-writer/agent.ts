@@ -13,7 +13,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
-import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
+import { getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
 import type {
   ResumeWriterInput,
@@ -312,6 +312,8 @@ Include ALL sections that have data. Do not truncate. This is a finished documen
 CRITICAL — EVERY position from the candidate's experience MUST appear in the output.
 Recent positions go in professional_experience with full bullets. Older positions stay in professional_experience when they still prove the target role; move them to earlier_career only when they are both old and low relevance.
 NEVER omit a position to save space. A 2-page target is a guideline, not a hard limit — include all roles even if that means 3 pages.
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -689,8 +691,23 @@ function buildUserMessage(input: ResumeWriterInput): string {
     '## JOB KEYWORDS (ATS targets — weave naturally)',
     input.job_intelligence.language_keywords.join(', '),
     '',
-    '## GAP STRATEGIES (user-approved — use in bullets)',
   );
+
+  if (input.job_intelligence.role_profile) {
+    const rp = input.job_intelligence.role_profile;
+    parts.push(
+      '## ROLE PROFILE',
+      `Function: ${rp.function} | Industry: ${rp.industry} | Scope: ${rp.scope}`,
+      `Success: ${rp.success_definition}`,
+      'Proof point priorities (allocate resume space in this order):',
+      ...rp.proof_point_priorities.map((p, i) => `${i + 1}. ${p}`),
+      'Cultural signals (use this language):',
+      rp.cultural_signals.join(', '),
+      '',
+    );
+  }
+
+  parts.push('## GAP STRATEGIES (user-approved — use in bullets)');
 
   for (const s of input.approved_strategies) {
     const metricNote = s.strategy.inferred_metric ? ` [use: ${s.strategy.inferred_metric}]` : '';
@@ -725,6 +742,38 @@ function buildUserMessage(input: ResumeWriterInput): string {
       '## UNIQUE DIFFERENTIATORS (what sets this candidate apart — reinforce these throughout)',
       ...input.narrative.unique_differentiators.map(d => `- ${d}`),
     );
+  }
+
+  if (input.benchmark.positioning_frame) {
+    parts.push(
+      '',
+      '## BENCHMARK POSITIONING DIRECTIVE',
+      '(The entire resume must reinforce this frame. Lead with what this directive says to lead with. Subordinate what it says to subordinate.)',
+      input.benchmark.positioning_frame,
+    );
+  }
+
+  if (input.benchmark.direct_matches && input.benchmark.direct_matches.length > 0) {
+    parts.push(
+      '',
+      '## DIRECT CANDIDATE-TO-ROLE MATCHES (surface these prominently — they are the strongest evidence)',
+      ...input.benchmark.direct_matches.map(
+        m => `- [${m.strength}] JD requires: ${m.jd_requirement} → Candidate has: ${m.candidate_evidence}`
+      ),
+    );
+  }
+
+  if (input.benchmark.gap_assessment && input.benchmark.gap_assessment.length > 0) {
+    const significantGaps = input.benchmark.gap_assessment.filter(g => g.severity !== 'NOISE');
+    if (significantGaps.length > 0) {
+      parts.push(
+        '',
+        '## GAP SEVERITY GUIDANCE (address DISQUALIFYING proactively, minimize NOISE)',
+        ...significantGaps.map(
+          g => `- [${g.severity}] ${g.gap}: ${g.bridging_strategy}`
+        ),
+      );
+    }
   }
 
   if (input.narrative.gap_positioning_map && input.narrative.gap_positioning_map.length > 0) {

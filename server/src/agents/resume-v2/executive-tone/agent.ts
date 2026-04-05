@@ -10,7 +10,7 @@
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
-import { BANNED_PHRASES } from '../knowledge/resume-rules.js';
+import { BANNED_PHRASES, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { ExecutiveToneInput, ExecutiveToneOutput } from '../types.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
@@ -59,6 +59,8 @@ RULES:
 - If a line is acceptable but not perfect, leave it alone. Only return clear, high-confidence issues.
 - Focus on the most visible tone issues first: headline, summary, selected accomplishments, and the first bullets under each role.
 - Return only the highest-value tone issues. Maximum 12 findings.
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 

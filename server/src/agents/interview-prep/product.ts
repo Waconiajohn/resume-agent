@@ -67,6 +67,21 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
             state.quality_score = scratchpad.quality_score;
           }
 
+          // Feedback loop instrumentation: record which stories were loaded and
+          // newly saved this session so the data can be correlated downstream.
+          const existingStories = Array.isArray(scratchpad.existing_stories)
+            ? (scratchpad.existing_stories as Array<{ themes?: string[]; objections_addressed?: string[] }>)
+            : [];
+          const savedStories = Array.isArray(scratchpad.saved_stories)
+            ? (scratchpad.saved_stories as Array<{ themes?: string[]; objections_addressed?: string[] }>)
+            : [];
+          state.stories_used = {
+            existing_count: existingStories.length,
+            saved_count: savedStories.length,
+            saved_themes: savedStories.map((s) => s.themes ?? []),
+            saved_objections: savedStories.map((s) => s.objections_addressed ?? []),
+          };
+
           // Emit review data before the gate blocks
           if (state.final_report) {
             emit({
@@ -268,6 +283,8 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
             company_research: data.company_research,
             sourced_questions: data.sourced_questions,
             career_story_questions: data.career_story_questions,
+            // Feedback loop instrumentation — stories used/created this session
+            stories_used: state.stories_used ?? null,
           });
       } catch (err) {
         logger.warn(

@@ -200,6 +200,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
       liveSnapshot.pipeline_data.narrativeStrategy = result.narrative_strategy ?? liveSnapshot.pipeline_data.narrativeStrategy;
       liveSnapshot.pipeline_data.resumeDraft = result.resume_draft ?? liveSnapshot.pipeline_data.resumeDraft;
       liveSnapshot.pipeline_data.assembly = result.final_resume ?? liveSnapshot.pipeline_data.assembly;
+      liveSnapshot.pipeline_data.feedbackMetadata = result.feedback_metadata ?? liveSnapshot.pipeline_data.feedbackMetadata;
       liveSnapshot.pipeline_data.error = null;
 
       await queueSnapshotPersist('complete', 'complete');

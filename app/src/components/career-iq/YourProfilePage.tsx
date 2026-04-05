@@ -14,12 +14,16 @@ import {
   AlertCircle,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   FileText,
   Linkedin,
   Loader2,
+  MessageSquare,
   Plus,
   Save,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
@@ -30,6 +34,8 @@ import { WhyMeStoryCard } from './WhyMeStoryCard';
 import { WhyMeEngine } from './WhyMeEngine';
 import { useWhyMeStory } from './useWhyMeStory';
 import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
+import { useStoryBank } from '@/hooks/useStoryBank';
+import type { InterviewStory, StoryBankRow } from '@/hooks/useStoryBank';
 import { useEvidenceLibrary } from '@/hooks/useEvidenceLibrary';
 import { ExecutiveBioRoom } from './ExecutiveBioRoom';
 import { CaseStudyRoom } from './CaseStudyRoom';
@@ -821,6 +827,283 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
   );
 }
 
+// ─── Section F — Story Bank ───────────────────────────────────────────────────
+
+function ThemeBadge({ theme }: { theme: string }) {
+  return (
+    <span className="rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2 py-0.5 text-[11px] text-[var(--link)]/80 uppercase tracking-[0.06em]">
+      {theme}
+    </span>
+  );
+}
+
+function ObjectionBadge({ objection }: { objection: string }) {
+  return (
+    <span className="rounded-md border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.07] px-2 py-0.5 text-[11px] text-[var(--badge-amber-text)]/80">
+      {objection}
+    </span>
+  );
+}
+
+interface StoryCardProps {
+  row: StoryBankRow;
+  onDelete: (id: string) => void;
+  onSave: (id: string, content: InterviewStory) => Promise<boolean>;
+}
+
+function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<InterviewStory>(row.content);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    const ok = await onSave(row.id, draft);
+    setSaving(false);
+    if (ok) {
+      setEditing(false);
+    } else {
+      setSaveError('Save failed. Please try again.');
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    await onDelete(row.id);
+    // Parent removes the row from state; no need to reset local state
+  };
+
+  const generatedDate = row.content.generated_at
+    ? new Date(row.content.generated_at).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : null;
+
+  return (
+    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
+      {/* Card header — always visible */}
+      <div className="flex items-start gap-3 p-4">
+        <div className="mt-0.5 rounded-lg bg-[var(--link)]/10 p-1.5 shrink-0">
+          <MessageSquare size={13} className="text-[var(--link)]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] line-clamp-2">
+            {row.content.situation}
+          </p>
+          {(row.content.themes.length > 0 || row.content.objections_addressed.length > 0) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {row.content.themes.map((t) => (
+                <ThemeBadge key={t} theme={t} />
+              ))}
+              {row.content.objections_addressed.map((o) => (
+                <ObjectionBadge key={o} objection={o} />
+              ))}
+            </div>
+          )}
+          {generatedDate && (
+            <p className="mt-1.5 text-[12px] text-[var(--text-soft)]">Generated {generatedDate}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+          aria-label={expanded ? 'Collapse story' : 'Expand story'}
+        >
+          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {/* Expanded — STAR+R detail or edit form */}
+      {expanded && (
+        <div className="border-t border-[var(--line-soft)] p-4">
+          {editing ? (
+            <div className="space-y-4">
+              {(
+                ['situation', 'task', 'action', 'result', 'reflection'] as const
+              ).map((field) => (
+                <div key={field}>
+                  <label
+                    htmlFor={`story-${row.id}-${field}`}
+                    className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]"
+                  >
+                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                    {field === 'reflection' && (
+                      <span className="ml-1 text-[11px] normal-case text-amber-400">required</span>
+                    )}
+                  </label>
+                  <textarea
+                    id={`story-${row.id}-${field}`}
+                    value={draft[field]}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, [field]: e.target.value }))}
+                    rows={field === 'action' ? 5 : 3}
+                    className={cn(
+                      'mt-1.5 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-black/20 px-3 py-2.5',
+                      'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
+                      'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
+                    )}
+                  />
+                </div>
+              ))}
+
+              {saveError && (
+                <div className="flex items-center gap-2 text-sm text-red-300">
+                  <AlertCircle size={13} />
+                  {saveError}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <GlassButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void handleSave()}
+                  disabled={saving || !draft.reflection.trim()}
+                  loading={saving}
+                >
+                  <Save size={13} className="mr-1" />
+                  {saving ? 'Saving...' : 'Save changes'}
+                </GlassButton>
+                <button
+                  type="button"
+                  onClick={() => { setEditing(false); setDraft(row.content); setSaveError(null); }}
+                  className="rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+                  aria-label="Cancel edit"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(
+                [
+                  { key: 'situation', label: 'Situation' },
+                  { key: 'task', label: 'Task' },
+                  { key: 'action', label: 'Action' },
+                  { key: 'result', label: 'Result' },
+                  { key: 'reflection', label: 'Reflection' },
+                ] as const
+              ).map(({ key, label }) => (
+                <div key={key}>
+                  <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+                    {label}
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+                    {row.content[key]}
+                  </p>
+                </div>
+              ))}
+
+              <div className="flex items-center gap-2 border-t border-[var(--line-soft)] pt-3">
+                <button
+                  type="button"
+                  onClick={() => { setDraft(row.content); setEditing(true); }}
+                  className="inline-flex items-center gap-1.5 text-[13px] text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
+                >
+                  Edit story
+                </button>
+                <span className="text-[var(--line-strong)]">·</span>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1.5 text-[13px] text-red-400/70 transition-colors hover:text-red-400 disabled:opacity-50"
+                >
+                  <Trash2 size={12} />
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StoryBankSection() {
+  const { stories, loading, error, reload, updateStory, deleteStory } = useStoryBank();
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await deleteStory(id);
+    },
+    [deleteStory],
+  );
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-start justify-between gap-4">
+        <SectionHeader icon={MessageSquare} label="Section F" title="Story Bank" />
+        {stories.length > 0 && (
+          <div className="shrink-0 rounded-full border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-0.5 text-[12px] text-[var(--link)]/80">
+            {stories.length} {stories.length === 1 ? 'story' : 'stories'}
+          </div>
+        )}
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+        STAR+R stories that accumulate across every interview prep session. Each new session builds
+        on this bank instead of starting from scratch — existing stories are reframed for the
+        current role, new ones are generated only for gaps.
+      </p>
+
+      {loading ? (
+        <div className="mt-5 flex items-center gap-2 text-sm text-[var(--text-soft)]">
+          <Loader2 size={16} className="animate-spin text-[var(--link)]" />
+          Loading your story bank...
+        </div>
+      ) : error ? (
+        <div className="mt-5 flex items-start gap-2 text-sm text-[var(--text-soft)]">
+          <AlertCircle size={14} className="mt-0.5 shrink-0 text-amber-400" />
+          <div>
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => void reload()}
+              className="ml-2 text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : stories.length === 0 ? (
+        <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-black/10 p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-[var(--accent-muted)] p-2 shrink-0">
+              <MessageSquare size={14} className="text-[var(--text-soft)]" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-[var(--text-soft)]">No stories yet</div>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
+                Your Story Bank fills automatically during Interview Prep sessions. The writer agent
+                saves every STAR+R story it generates so future sessions can reuse and adapt them.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {stories.map((row) => (
+            <StoryCard
+              key={row.id}
+              row={row}
+              onDelete={handleDelete}
+              onSave={updateStory}
+            />
+          ))}
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 interface YourProfilePageProps {
@@ -898,6 +1181,9 @@ export function YourProfilePage({
         onGetDefaultResume={onGetDefaultResume}
         careerProfile={careerProfile}
       />
+
+      {/* Section F — Story Bank */}
+      <StoryBankSection />
     </div>
   );
 }

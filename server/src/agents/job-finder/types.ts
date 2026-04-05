@@ -38,6 +38,25 @@ export interface DiscoveredJob {
   description_snippet?: string;
 }
 
+// ─── Job Evaluation ──────────────────────────────────────────────────
+
+/** Structured evaluation to help the user decide whether a role is worth pursuing */
+export interface JobEvaluation {
+  fit_check: {
+    rating: 'STRONG_FIT' | 'STRETCH' | 'MISMATCH';
+    reasoning: string;
+  };
+  gap_assessment: {
+    summary: string;
+    bridgeable: boolean;
+  };
+  red_flags: string[];
+  verdict: {
+    decision: 'APPLY_NOW' | 'WORTH_A_CONVERSATION' | 'DEPRIORITIZE';
+    reasoning: string;
+  };
+}
+
 // ─── Ranked Match ────────────────────────────────────────────────────
 
 /** A job opening ranked and narrated against the user's positioning */
@@ -54,6 +73,8 @@ export interface RankedMatch extends DiscoveredJob {
   seniority_fit: string;
   /** Names of network connections at this company (if any) */
   network_connections?: string[];
+  /** Structured evaluation — fit check, gap assessment, red flags, verdict */
+  evaluation?: JobEvaluation;
 }
 
 // ─── User Decision (from review gate) ───────────────────────────────
@@ -106,7 +127,7 @@ export type JobFinderSSEEvent =
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'search_progress'; source: string; jobs_found: number; companies_scanned?: number }
   | { type: 'match_found'; title: string; company: string; source: string; match_score: number }
-  | { type: 'results_ready'; total_matches: number; top_fit_score: number }
+  | { type: 'results_ready'; total_matches: number; top_fit_score: number; matches?: RankedMatch[] }
   | { type: 'job_finder_complete'; session_id: string; ranked_count: number; promoted_count: number }
   | { type: 'pipeline_error'; stage: string; error: string };
 

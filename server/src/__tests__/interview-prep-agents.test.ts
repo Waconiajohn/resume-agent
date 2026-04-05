@@ -41,6 +41,11 @@ vi.mock('../lib/perplexity.js', () => ({
   queryWithFallback: vi.fn(),
 }));
 
+vi.mock('../lib/platform-context.js', () => ({
+  getUserContext: vi.fn().mockResolvedValue([]),
+  upsertUserContext: vi.fn().mockResolvedValue({ id: 'mock-id' }),
+}));
+
 vi.mock('../lib/logger.js', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) },
   createSessionLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -114,10 +119,10 @@ describe('Interview Prep Agent Registration', () => {
     expect(desc!.tools).toContain('emit_transparency');
   });
 
-  it('writer has 8 tools (7 + emit_transparency)', () => {
+  it('writer has 10 tools (9 + emit_transparency)', () => {
     const desc = agentRegistry.describe('interview-prep', 'writer');
     expect(desc).toBeDefined();
-    expect(desc!.tools).toHaveLength(8);
+    expect(desc!.tools).toHaveLength(10);
     expect(desc!.tools).toContain('write_section');
     expect(desc!.tools).toContain('self_review_section');
     expect(desc!.tools).toContain('build_career_story');
@@ -125,6 +130,8 @@ describe('Interview Prep Agent Registration', () => {
     expect(desc!.tools).toContain('generate_thank_you_notes');
     expect(desc!.tools).toContain('generate_follow_up_email');
     expect(desc!.tools).toContain('generate_interview_debrief');
+    expect(desc!.tools).toContain('recall_story_bank');
+    expect(desc!.tools).toContain('save_story');
     expect(desc!.tools).toContain('emit_transparency');
   });
 
@@ -164,6 +171,8 @@ describe('Interview Prep Tool Model Tiers', () => {
       generate_thank_you_notes: 'primary',
       generate_follow_up_email: 'primary',
       generate_interview_debrief: 'mid',
+      recall_story_bank: 'light',
+      save_story: 'light',
     };
     for (const tool of writerTools) {
       expect(tool.model_tier).toBe(tierMap[tool.name]);

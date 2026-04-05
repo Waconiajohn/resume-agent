@@ -281,6 +281,7 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
                     fit_narrative: match.fit_narrative,
                     positioning_alignment: match.positioning_alignment,
                     promoted_at: new Date().toISOString(),
+                    ...(match.evaluation !== undefined ? { evaluation: match.evaluation } : {}),
                   },
                 },
                 { onConflict: 'user_id,company_id,title' },

@@ -13,6 +13,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { NarrativeStrategyInput, NarrativeStrategyOutput } from '../types.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
@@ -218,6 +219,10 @@ Return valid JSON matching this exact structure:
 - interview_talking_points: must reference actual moments from their background. Not generic advice — specific story prompts.
 - Only choose narratives the candidate can actually defend. If they're a support operations leader, do not brand them as a revenue architect unless the gap analysis found genuine revenue evidence.
 - If benchmark differentiators are provided, use them as raw material for Layer 3 — the unique combination angle.
+- If a benchmark positioning_frame is provided, build the narrative around that frame. Do not generate a contradictory frame.
+- If hiring_manager_objections are provided, the narrative must address each one somewhere in the why_me_story or section_guidance.
+
+${SOURCE_DISCIPLINE}
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -571,6 +576,43 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
       '## Benchmark Differentiators (from ideal candidate profile)',
       '(Use these as raw material for the Layer 3 unique combination angle)',
       ...input.benchmark_differentiators.map(d => `- ${d}`),
+    );
+  }
+
+  if (input.benchmark_positioning_frame) {
+    parts.push(
+      '',
+      '## Benchmark Positioning Frame (from ideal candidate analysis)',
+      '(Build the narrative around this frame — do not generate a contradictory frame)',
+      input.benchmark_positioning_frame,
+    );
+  }
+
+  if (input.benchmark_hiring_manager_objections && input.benchmark_hiring_manager_objections.length > 0) {
+    parts.push(
+      '',
+      '## Hiring Manager Objections (from benchmark analysis)',
+      '(Address each one proactively in the narrative)',
+      ...input.benchmark_hiring_manager_objections.map(o => `- OBJECTION: ${o.objection}\n  NEUTRALIZATION: ${o.neutralization_strategy}`),
+    );
+  }
+
+  if (input.job_intelligence.role_profile) {
+    const rp = input.job_intelligence.role_profile;
+    parts.push(
+      '',
+      '## Role Profile (derived from JD analysis)',
+      `Function: ${rp.function}`,
+      `Industry: ${rp.industry}`,
+      `Scope: ${rp.scope}`,
+      `Success definition: ${rp.success_definition}`,
+      `Narrative frame: ${rp.narrative_frame}`,
+      'Proof point priorities (in order):',
+      ...rp.proof_point_priorities.map((p, i) => `${i + 1}. ${p}`),
+      'Cultural signals:',
+      ...rp.cultural_signals.map(s => `- ${s}`),
+      '',
+      'INSTRUCTION: Use the role profile proof_point_priorities to determine which accomplishments get the most resume space. The first priority gets the most emphasis. Use cultural_signals language throughout the resume to signal belonging.',
     );
   }
 

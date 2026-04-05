@@ -24,6 +24,8 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { normalizeJobUrl, detectPlatform } from '../lib/url-normalizer.js';
 import { llm, MODEL_LIGHT, MAX_TOKENS } from '../lib/llm.js';
 import logger from '../lib/logger.js';
+import { mergeJobMatchMetadata } from '../lib/ni/job-matches-store.js';
+import type { FeedbackMetadata } from '../agents/resume-v2/types.js';
 
 const log = logger.child({ route: 'extension' });
 
@@ -596,17 +598,65 @@ extensionRoutes.post(
       return c.json({ error: 'Failed to create resume link' }, 500);
     }
 
-    // Best-effort: update job_matches to 'applying' if a row exists for this
-    // user + URL.  A missing row is not an error — job_matches is optional.
-    const { error: matchUpdateError } = await supabaseAdmin
+    // Extract feedback metadata from the stored pipeline snapshot for the
+    // feedback loop instrumentation layer (Feature 5).
+    const feedbackMetadata = (() => {
+      if (stored && stored.version === 'v2') {
+        const pd = stored.pipeline_data as Record<string, unknown> | null;
+        const raw = pd?.feedbackMetadata;
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          const obj = raw as Record<string, unknown>;
+          if (typeof obj.resume_session_id === 'string') {
+            return {
+              resume_session_id: obj.resume_session_id,
+              role_profile: obj.role_profile && typeof obj.role_profile === 'object' ? obj.role_profile : undefined,
+              positioning_frame: typeof obj.positioning_frame === 'string' ? obj.positioning_frame : undefined,
+              hiring_manager_objections: Array.isArray(obj.hiring_manager_objections) ? obj.hiring_manager_objections.filter((s): s is string => typeof s === 'string') : undefined,
+            } as FeedbackMetadata;
+          }
+        }
+      }
+      return null;
+    })();
+
+    // Best-effort: update job_matches to 'applied' and merge feedback metadata
+    // if a row exists for this user + URL.  A missing row is not an error —
+    // job_matches is optional.
+    const { data: matchRows, error: matchFindError } = await supabaseAdmin
       .from('job_matches')
-      .update({ status: 'applied' })
+      .select('id')
       .eq('user_id', user.id)
       .eq('url', job_url)
       .eq('status', 'new');
 
-    if (matchUpdateError) {
-      log.warn({ error: matchUpdateError.message, userId: user.id }, 'extension: link-resume job_matches update failed (non-fatal)');
+    if (matchFindError) {
+      log.warn({ error: matchFindError.message, userId: user.id }, 'extension: link-resume job_matches lookup failed (non-fatal)');
+    } else if (Array.isArray(matchRows) && matchRows.length > 0) {
+      for (const matchRow of matchRows as Array<{ id: string }>) {
+        // Update status to 'applied'
+        await supabaseAdmin
+          .from('job_matches')
+          .update({ status: 'applied' })
+          .eq('id', matchRow.id)
+          .eq('user_id', user.id);
+
+        // Merge feedback metadata for the feedback loop instrumentation
+        if (feedbackMetadata) {
+          const metadataToMerge: Record<string, unknown> = {
+            resume_session_id: feedbackMetadata.resume_session_id,
+          };
+          if (feedbackMetadata.role_profile) {
+            metadataToMerge.role_profile = feedbackMetadata.role_profile;
+          }
+          if (feedbackMetadata.positioning_frame) {
+            metadataToMerge.positioning_frame = feedbackMetadata.positioning_frame;
+          }
+          if (feedbackMetadata.hiring_manager_objections) {
+            metadataToMerge.hiring_manager_objections = feedbackMetadata.hiring_manager_objections;
+          }
+          await mergeJobMatchMetadata(user.id, matchRow.id, metadataToMerge);
+        }
+      }
     }
 
     return c.json({ id: linkRow.id, status: linkRow.status, job_url: linkRow.job_url }, 201);

@@ -16,12 +16,14 @@ import type {
   InterviewPrepState,
   InterviewPrepSSEEvent,
   InterviewPrepSection,
+  InterviewStory,
   WrittenSection,
   ThankYouNoteOutput,
   FollowUpEmailOutput,
   FollowUpSituation,
   InterviewDebriefOutput,
 } from '../types.js';
+import { getUserContext, insertUserContext } from '../../../lib/platform-context.js';
 import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
@@ -1030,6 +1032,150 @@ Return JSON:
   },
 };
 
+// ─── Tool: recall_story_bank ────────────────────────────────────────
+
+const recallStoryBankTool: InterviewPrepTool = {
+  name: 'recall_story_bank',
+  description:
+    "Load all existing STAR+R stories from the user's Story Bank. " +
+    'Call this at the beginning of every interview prep session to review existing stories ' +
+    'before generating new ones. Returns an array of InterviewStory objects.',
+  model_tier: 'light',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+  async execute(_input, ctx) {
+    const state = ctx.getState();
+    const userId = state.user_id;
+
+    if (!userId) {
+      return JSON.stringify({ success: false, error: 'No user_id available' });
+    }
+
+    const rows = await getUserContext(userId, 'interview_story');
+    const stories = rows
+      .map((row) => {
+        const c = row.content as Record<string, unknown>;
+        return {
+          situation: typeof c.situation === 'string' ? c.situation : '',
+          task: typeof c.task === 'string' ? c.task : '',
+          action: typeof c.action === 'string' ? c.action : '',
+          result: typeof c.result === 'string' ? c.result : '',
+          reflection: typeof c.reflection === 'string' ? c.reflection : '',
+          themes: Array.isArray(c.themes) ? c.themes.filter((t): t is string => typeof t === 'string') : [],
+          objections_addressed: Array.isArray(c.objections_addressed) ? c.objections_addressed.filter((t): t is string => typeof t === 'string') : [],
+          source_job_id: typeof c.source_job_id === 'string' ? c.source_job_id : null,
+          generated_at: typeof c.generated_at === 'string' ? c.generated_at : '',
+          used_count: typeof c.used_count === 'number' ? c.used_count : 0,
+        } satisfies InterviewStory;
+      })
+      .filter((s) => s.situation.length > 0 || s.action.length > 0)
+      .slice(0, 30);
+
+    ctx.scratchpad.existing_stories = stories;
+
+    return JSON.stringify({
+      success: true,
+      story_count: stories.length,
+      stories: stories.map((s, i) => ({
+        index: i,
+        themes: s.themes,
+        objections_addressed: s.objections_addressed,
+        situation_preview: s.situation.slice(0, 100),
+        reflection_preview: s.reflection.slice(0, 100),
+        used_count: s.used_count,
+        source_job_id: s.source_job_id,
+      })),
+    });
+  },
+};
+
+// ─── Tool: save_story ───────────────────────────────────────────────
+
+const saveStoryTool: InterviewPrepTool = {
+  name: 'save_story',
+  description:
+    "Save a complete STAR+R story to the user's Story Bank. " +
+    'Every field including Reflection is mandatory. ' +
+    'Call this for each new story generated during the session.',
+  model_tier: 'light',
+  input_schema: {
+    type: 'object',
+    properties: {
+      situation: { type: 'string', description: 'The Situation — context and background' },
+      task: { type: 'string', description: 'The Task — what needed to be accomplished' },
+      action: { type: 'string', description: 'The Action — what the candidate specifically did' },
+      result: { type: 'string', description: 'The Result — measurable outcomes' },
+      reflection: {
+        type: 'string',
+        description: 'The Reflection — what was learned, what would be done differently. MANDATORY.',
+      },
+      themes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Thematic tags (e.g., leadership, crisis-management, scale, turnaround)',
+      },
+      objections_addressed: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Which hiring manager objections this story neutralizes ' +
+          '(e.g., "employment gap concern", "age adaptability concern")',
+      },
+    },
+    required: ['situation', 'task', 'action', 'result', 'reflection', 'themes'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const userId = state.user_id;
+
+    if (!userId) {
+      return JSON.stringify({ success: false, error: 'No user_id available' });
+    }
+
+    const reflection = input.reflection ? String(input.reflection) : '';
+    if (!reflection || reflection.trim().length === 0) {
+      return JSON.stringify({ success: false, error: 'Reflection field is mandatory and cannot be empty' });
+    }
+
+    const story: InterviewStory = {
+      situation: String(input.situation ?? ''),
+      task: String(input.task ?? ''),
+      action: String(input.action ?? ''),
+      result: String(input.result ?? ''),
+      reflection,
+      themes: Array.isArray(input.themes) ? (input.themes as string[]).map(String) : [],
+      objections_addressed: Array.isArray(input.objections_addressed)
+        ? (input.objections_addressed as string[]).map(String)
+        : [],
+      source_job_id: state.job_application_id ?? state.session_id ?? null,
+      generated_at: new Date().toISOString(),
+      used_count: 0,
+    };
+
+    await insertUserContext(
+      userId,
+      'interview_story',
+      story as unknown as Record<string, unknown>,
+      'interview-prep',
+      state.session_id,
+    );
+
+    // Track in scratchpad
+    const saved = (ctx.scratchpad.saved_stories as InterviewStory[] | undefined) ?? [];
+    saved.push(story);
+    ctx.scratchpad.saved_stories = saved;
+
+    return JSON.stringify({
+      success: true,
+      message: `Story saved with themes: ${story.themes.join(', ')}`,
+      total_saved_this_session: saved.length,
+    });
+  },
+};
+
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const writerTools: InterviewPrepTool[] = [
@@ -1040,4 +1186,6 @@ export const writerTools: InterviewPrepTool[] = [
   generateThankYouNotesTool,
   generateFollowUpEmailTool,
   generateInterviewDebriefTool,
+  recallStoryBankTool,
+  saveStoryTool,
 ];

@@ -8,7 +8,7 @@
  * - emit_transparency: Live progress updates
  */
 
-import type { JobFinderTool, DiscoveredJob, RankedMatch } from '../types.js';
+import type { JobFinderTool, DiscoveredJob, RankedMatch, JobEvaluation } from '../types.js';
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
@@ -98,7 +98,22 @@ Return a JSON array — one object per job, same order as above:
     "positioning_alignment": "1-2 sentences on how this aligns with the positioning strategy",
     "career_trajectory_fit": "1-2 sentences on whether this is a good career trajectory move",
     "seniority_fit": "match" | "over" | "under",
-    "fit_reasoning": "2-3 sentences on overall fit"
+    "fit_reasoning": "2-3 sentences on overall fit",
+    "evaluation": {
+      "fit_check": {
+        "rating": "STRONG_FIT" | "STRETCH" | "MISMATCH",
+        "reasoning": "1 sentence on how well the role matches the candidate's profile and seniority"
+      },
+      "gap_assessment": {
+        "summary": "What is missing and can it be bridged? 1-2 sentences.",
+        "bridgeable": true | false
+      },
+      "red_flags": ["posting age concern", "unicorn spec", "unrealistic scope"],
+      "verdict": {
+        "decision": "APPLY_NOW" | "WORTH_A_CONVERSATION" | "DEPRIORITIZE",
+        "reasoning": "1 sentence justification for the verdict"
+      }
+    }
   }
 ]
 
@@ -110,11 +125,17 @@ Scoring guide:
 - Below 45: Poor fit — not recommended
 - Score based on the candidate's actual positioning, not just surface-level title matching
 - Consider whether this is a "step up", "lateral", or "step down" move
-- Executive candidates applying "down" by 1-2 levels is a valid strategy — adjust accordingly`;
+- Executive candidates applying "down" by 1-2 levels is a valid strategy — adjust accordingly
+
+Evaluation guidance:
+- fit_check.rating: STRONG_FIT = clear match on level, function, and trajectory; STRETCH = one or two gaps but candidate could make a case; MISMATCH = fundamentally wrong level or function
+- gap_assessment: be specific about what is missing (credentials, industry, scope) and whether the candidate's transferable experience makes it bridgeable
+- red_flags: flag posting age (>60 days old = likely filled), unicorn specs (10+ unrelated requirements), vague or contradictory job descriptions, signs the role may be filled internally, unrealistic scope for one person. Use an empty array if no flags apply.
+- verdict: APPLY_NOW = strong match, invest the energy now; WORTH_A_CONVERSATION = not perfect but worth a recruiter call; DEPRIORITIZE = not worth the time given current priorities`;
 
     const response = await llm.chat({
       model: MODEL_MID,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: 'You are a career strategist evaluating job fit for senior executives. Return ONLY valid JSON.',
       messages: [{ role: 'user', content: scoringPrompt }],
     });
@@ -127,6 +148,7 @@ Scoring guide:
       career_trajectory_fit: string;
       seniority_fit: string;
       fit_reasoning: string;
+      evaluation?: JobEvaluation;
     }> = [];
 
     try {
@@ -195,6 +217,7 @@ const rankAndNarrateTool: JobFinderTool = {
       career_trajectory_fit: string;
       seniority_fit: string;
       fit_reasoning: string;
+      evaluation?: JobEvaluation;
     }> | undefined) ?? [];
 
     if (scoredJobs.length === 0) {
@@ -299,6 +322,7 @@ Rules:
         positioning_alignment: scored.positioning_alignment ?? '',
         career_trajectory_fit: scored.career_trajectory_fit ?? '',
         seniority_fit: scored.seniority_fit ?? 'match',
+        ...(scored.evaluation !== undefined ? { evaluation: scored.evaluation } : {}),
       };
     });
 
@@ -360,6 +384,7 @@ const presentResultsTool: JobFinderTool = {
       type: 'results_ready',
       total_matches: rankedResults.length,
       top_fit_score: topScore,
+      matches: rankedResults,
     });
 
     ctx.emit({

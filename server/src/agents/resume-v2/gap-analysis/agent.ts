@@ -14,6 +14,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import {
   buildRequirementInterviewQuestion,
   buildRequirementInterviewQuestionLookingFor,
@@ -186,6 +187,8 @@ RULES:
 - critical_gaps must contain only unresolved formal credential requirement strings (degrees, certifications, licenses, work authorization, years-of-experience minimums), not skills, competencies, explanations, evidence snippets, or serialized JSON.
 - Be honest about critical_gaps — but NEVER include skills, soft skills, or operational competencies. Those belong in pending_strategies as coaching opportunities.
 
+${SOURCE_DISCIPLINE}
+
 ${JSON_OUTPUT_GUARDRAILS}`;
 
 const HIGH_VOLUME_REQUIREMENT_THRESHOLD = 35;
@@ -340,6 +343,27 @@ function buildUserMessage(
     ...achievements.map(
       a => `- ${a.area}: ${a.description} (typical metrics: ${a.typical_metrics})`
     ),
+  );
+
+  if (input.benchmark.role_problem_hypothesis) {
+    parts.push(
+      '',
+      '## Role Problem Hypothesis (what this role is actually solving for)',
+      input.benchmark.role_problem_hypothesis,
+    );
+  }
+
+  if (input.benchmark.gap_assessment && input.benchmark.gap_assessment.length > 0) {
+    parts.push(
+      '',
+      '## Pre-assessed Gap Severity (use to prioritize — DISQUALIFYING gaps must be addressed)',
+      ...input.benchmark.gap_assessment.map(
+        g => `- [${g.severity}] ${g.gap}: ${g.bridging_strategy}`
+      ),
+    );
+  }
+
+  parts.push(
     '',
     '## Actual Candidate',
     `Career themes: ${candidateCareerThemes.join(', ')}`,

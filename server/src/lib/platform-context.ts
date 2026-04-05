@@ -36,7 +36,8 @@ export type ContextType =
   | 'content_post'
   | 'retirement_readiness'
   | 'emotional_baseline'
-  | 'linkedin_profile';
+  | 'linkedin_profile'
+  | 'interview_story';
 
 export interface PlatformContextRow {
   id: string;
@@ -136,6 +137,49 @@ export async function upsertUserContext(
     logger.error(
       { error: err instanceof Error ? err.message : String(err), userId, contextType },
       'upsertUserContext: unexpected error',
+    );
+    return null;
+  }
+}
+
+// ─── insertUserContext ──────────────────────────────────────────────────────
+
+/**
+ * Inserts a new platform context row WITHOUT upserting. Unlike upsertUserContext,
+ * this always creates a new row — use for accumulation patterns like the Story Bank
+ * where each item needs its own row.
+ */
+export async function insertUserContext(
+  userId: string,
+  contextType: ContextType,
+  content: Record<string, unknown>,
+  sourceProduct: string,
+  sourceSessionId?: string,
+): Promise<PlatformContextRow | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('user_platform_context')
+      .insert({
+        user_id: userId,
+        context_type: contextType,
+        content,
+        source_product: sourceProduct,
+        source_session_id: sourceSessionId ?? null,
+        version: 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error({ error: error.message, userId, contextType }, 'insertUserContext: insert failed');
+      return null;
+    }
+
+    return (data as PlatformContextRow) ?? null;
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err), userId, contextType },
+      'insertUserContext: unexpected error',
     );
     return null;
   }

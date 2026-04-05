@@ -46,10 +46,11 @@ vi.mock('../lib/perplexity.js', () => ({
   queryWithFallback: vi.fn().mockResolvedValue(''),
 }));
 
-// resume-rules is imported by resume-writer and executive-tone; provide a minimal stub
+// resume-rules is imported by resume-writer, executive-tone, benchmark-candidate, and others; provide a minimal stub
 vi.mock('../agents/resume-v2/knowledge/resume-rules.js', () => ({
   getResumeRulesPrompt: () => '## RESUME RULES\n- Write strong bullets.',
   BANNED_PHRASES: ['responsible for', 'team player', 'results-oriented'],
+  SOURCE_DISCIPLINE: '## SOURCE DISCIPLINE\n- Every claim must trace to the provided inputs.',
 }));
 
 // ─── Agent imports (after mocks) ───────────────────────────────────────────
@@ -141,6 +142,19 @@ const CANDIDATE_OUTPUT: CandidateIntelligenceOutput = {
 };
 
 const BENCHMARK_OUTPUT: BenchmarkCandidateOutput = {
+  // New structured assessment fields
+  role_problem_hypothesis: 'The company needs a leader who can scale platform infrastructure to support rapid growth while maintaining reliability.',
+  direct_matches: [
+    { jd_requirement: 'Cloud architecture expertise', candidate_evidence: 'Built cloud platform from scratch at Acme Startup', strength: 'STRONG' },
+  ],
+  gap_assessment: [
+    { gap: 'Enterprise scale experience (500M+ users)', severity: 'MANAGEABLE', bridging_strategy: 'Frame the 10x growth trajectory and infrastructure decisions that enabled scaling' },
+  ],
+  positioning_frame: 'Lead with the candidate\'s hands-on platform scaling experience. The most compelling story is the 10x growth in team and infrastructure. Subordinate any gaps in enterprise-scale. The proof point that closes the gap is the measurable outcomes from Acme Startup.',
+  hiring_manager_objections: [
+    { objection: 'Startup background — can they operate at enterprise scale?', neutralization_strategy: 'Highlight the 10x growth trajectory and the architectural decisions that enabled it' },
+  ],
+  // Legacy compatibility fields
   ideal_profile_summary: 'A seasoned engineering leader who has scaled platform infra at a Series C or later company.',
   expected_achievements: [
     { area: 'Platform Scaling', description: 'Scaled to 10M+ users', typical_metrics: '10x growth in 2 years' },
@@ -640,7 +654,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   describe('Benchmark Candidate', () => {
-    const input: BenchmarkCandidateInput = { job_intelligence: JOB_INTEL_OUTPUT };
+    const input: BenchmarkCandidateInput = { job_intelligence: JOB_INTEL_OUTPUT, candidate: CANDIDATE_OUTPUT };
 
     it('returns parsed output on first successful attempt', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
@@ -711,17 +725,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('Cloud Architecture');
     });
 
-    it('adds realism guardrails so the benchmark does not drift into fantasy-candidate territory', async () => {
+    it('sends the five-question assessment prompt and includes candidate context', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
       mockRepairJSON.mockReturnValueOnce(BENCHMARK_OUTPUT);
 
       await runBenchmarkCandidate(input);
 
       const llmCall = mockLlmChat.mock.calls[0][0];
-      expect(llmCall.system).toContain('strongest REALISTIC candidate');
-      expect(llmCall.system).toContain('Do NOT use prestige stand-ins like FAANG');
-      expect(llmCall.messages[0].content).toContain('Guardrails:');
-      expect(llmCall.messages[0].content).toContain('Keep the benchmark tightly tied to the actual role.');
+      expect(llmCall.system).toContain('role_problem_hypothesis');
+      expect(llmCall.system).toContain('DISQUALIFYING');
+      expect(llmCall.system).toContain('positioning_frame');
+      expect(llmCall.system).toContain('hiring_manager_objections');
+      expect(llmCall.messages[0].content).toContain('CANDIDATE PROFILE');
+      expect(llmCall.messages[0].content).toContain('JOB ANALYSIS');
     });
   });
 

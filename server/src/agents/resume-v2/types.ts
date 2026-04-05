@@ -12,6 +12,7 @@
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { EvidenceItem } from '../../contracts/shared-evidence.js';
 import type { RequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
+import type { RoleProfile } from './knowledge/role-archetypes.js';
 
 // ─── Agent 1: Job Intelligence ───────────────────────────────────────
 
@@ -35,6 +36,8 @@ export interface JobIntelligenceOutput {
   hidden_hiring_signals: string[];
   language_keywords: string[];
   industry: string;
+  /** Dynamic role profile derived from JD content — dimensional, not a fixed enum */
+  role_profile?: RoleProfile;
 }
 
 // ─── Agent 2: Candidate Intelligence ─────────────────────────────────
@@ -120,9 +123,43 @@ export interface CandidateIntelligenceOutput {
 
 export interface BenchmarkCandidateInput {
   job_intelligence: JobIntelligenceOutput;
+  candidate: CandidateIntelligenceOutput;
+}
+
+export interface DirectMatch {
+  jd_requirement: string;
+  candidate_evidence: string;
+  strength: 'STRONG' | 'PARTIAL';
+}
+
+export interface GapAssessment {
+  gap: string;
+  severity: 'DISQUALIFYING' | 'MANAGEABLE' | 'NOISE';
+  bridging_strategy: string;
+}
+
+export interface HiringManagerObjection {
+  objection: string;
+  neutralization_strategy: string;
 }
 
 export interface BenchmarkCandidateOutput {
+  // ── New structured assessment fields ─────────────────────────────
+  /** Hypothesis about the business problem this role is actually solving */
+  role_problem_hypothesis: string;
+  /** What this candidate has that directly matches what the role requires */
+  direct_matches: DirectMatch[];
+  /** What the candidate is missing and how disqualifying each gap is */
+  gap_assessment: GapAssessment[];
+  /** Single narrative frame that makes this person the closest available match */
+  positioning_frame: string;
+  /** Specific fears a hiring manager would have when seeing this resume */
+  hiring_manager_objections: HiringManagerObjection[];
+
+  // ── Legacy compatibility fields ──────────────────────────────────
+  // Populated by the agent for backward compatibility with gap analysis
+  // and resume writer deterministic fallbacks. Will be removed once
+  // all downstream consumers fully migrate to the new fields.
   /** The hiring manager's ideal hire — a realistic archetype, not a fantasy */
   ideal_profile_summary: string;
   expected_achievements: Array<{
@@ -263,6 +300,10 @@ export interface NarrativeStrategyInput {
   approved_strategies: ApprovedStrategy[];
   /** Differentiators from the Benchmark Candidate agent — raw material for the unique combination angle */
   benchmark_differentiators?: string[];
+  /** Positioning frame from benchmark agent — the single narrative directive */
+  benchmark_positioning_frame?: string;
+  /** Hiring manager objections from benchmark agent */
+  benchmark_hiring_manager_objections?: HiringManagerObjection[];
 }
 
 export interface GapPositioningMapEntry {
@@ -457,6 +498,8 @@ export interface TruthVerificationInput {
   draft: ResumeDraftOutput;
   original_resume: string;
   candidate: CandidateIntelligenceOutput;
+  /** Direct matches from benchmark agent — verify these are surfaced prominently */
+  benchmark_direct_matches?: DirectMatch[];
 }
 
 export interface ClaimVerification {
@@ -653,6 +696,24 @@ export interface GapCoachingResponse {
   target_company?: string;
 }
 
+// ─── Feedback Metadata ──────────────────────────────────────────────
+
+/**
+ * Feedback loop instrumentation data. Populated at pipeline completion and
+ * made available for consumers (route, Apply flow) to attach to job_matches
+ * metadata so future queries can correlate resume framings with callbacks.
+ */
+export interface FeedbackMetadata {
+  /** Session ID of the resume pipeline that produced this resume */
+  resume_session_id: string;
+  /** Dynamic role profile derived from the job description */
+  role_profile?: RoleProfile;
+  /** The single narrative frame used to position this candidate */
+  positioning_frame?: string;
+  /** Objection strings the resume was written to neutralize */
+  hiring_manager_objections?: string[];
+}
+
 // ─── Orchestrator State ──────────────────────────────────────────────
 
 export type V2PipelineStage =
@@ -678,6 +739,8 @@ export interface V2PipelineState {
   // Agent outputs (populated as pipeline progresses)
   job_intelligence?: JobIntelligenceOutput;
   candidate_intelligence?: CandidateIntelligenceOutput;
+  /** Role profile derived by job intelligence — passed to all downstream agents */
+  role_profile?: RoleProfile;
   benchmark_candidate?: BenchmarkCandidateOutput;
   gap_analysis?: GapAnalysisOutput;
   narrative_strategy?: NarrativeStrategyOutput;
@@ -695,6 +758,9 @@ export interface V2PipelineState {
 
   // Gap coaching responses from user
   gap_coaching_responses?: GapCoachingResponse[];
+
+  // Feedback loop instrumentation — populated at pipeline completion
+  feedback_metadata?: FeedbackMetadata;
 
   // Tracking
   token_usage: {

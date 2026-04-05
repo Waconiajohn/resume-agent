@@ -112,6 +112,56 @@ export async function getJobMatchesByUser(
   }
 }
 
+// ─── Update Metadata ─────────────────────────────────────────────────────────
+
+/**
+ * Merge additional fields into a job match's metadata JSONB column.
+ *
+ * Used by the feedback loop instrumentation layer to record which resume session,
+ * role profile, positioning frame, and hiring manager objections were associated
+ * with a specific application. Merges shallowly — existing metadata keys are
+ * preserved unless overwritten by the new fields.
+ */
+export async function mergeJobMatchMetadata(
+  userId: string,
+  matchId: string,
+  newMetadata: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    // Atomic JSONB merge using Postgres || operator via raw SQL.
+    // Avoids the read-modify-write race condition of a client-side merge.
+    const { error } = await supabaseAdmin.rpc('exec_sql', {
+      query: `UPDATE job_matches
+              SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
+              WHERE id = $2 AND user_id = $3`,
+      params: [JSON.stringify(newMetadata), matchId, userId],
+    }).single();
+
+    // Fallback: if the RPC doesn't exist, do a direct update (overwrites metadata).
+    if (error) {
+      logger.warn({ error: error.message, matchId }, 'mergeJobMatchMetadata: atomic merge RPC unavailable, falling back to direct update');
+      const { error: updateError } = await supabaseAdmin
+        .from('job_matches')
+        .update({ metadata: newMetadata })
+        .eq('id', matchId)
+        .eq('user_id', userId);
+
+      if (updateError) {
+        logger.error({ error: updateError.message, userId, matchId }, 'mergeJobMatchMetadata: fallback update failed');
+        return false;
+      }
+    }
+
+    return true;
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err), userId, matchId },
+      'mergeJobMatchMetadata: unexpected error',
+    );
+    return false;
+  }
+}
+
 // ─── Update Status ───────────────────────────────────────────────────────────
 
 export async function updateJobMatchStatus(
