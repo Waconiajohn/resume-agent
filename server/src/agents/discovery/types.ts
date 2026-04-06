@@ -62,9 +62,6 @@ export interface CareerIQProfile {
 export type DiscoverySSEEvent =
   | { type: 'processing_stage'; stage: string; message: string }
   | { type: 'recognition_ready'; data: { session_id: string; discovery: DiscoveryOutput } }
-  | { type: 'excavation_response'; data: ExcavationResponse }
-  | { type: 'profile_ready'; data: CareerIQProfile }
-  | { type: 'resume_highlight'; section: string; bullet_id?: string }
   | { type: 'error'; message: string };
 
 /**

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ export interface ResumeHighlightProps {
  */
 export function ResumeHighlight({ highlightType, contextSnippet, children }: ResumeHighlightProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const tooltipId = useId();
 
   const isGreen = highlightType === 'strengthened' || highlightType === 'added';
   const badgeLabel = highlightType === 'strengthened' ? 'Updated' : highlightType === 'added' ? 'New' : null;
@@ -61,12 +62,15 @@ export function ResumeHighlight({ highlightType, contextSnippet, children }: Res
               'h-3 w-3 cursor-help transition-colors duration-150',
               highlightType === 'referenced' ? 'text-blue-400/60 hover:text-blue-400' : 'text-green-400/60 hover:text-green-400',
             )}
-            aria-label="Context"
+            aria-label="Show context about this bullet"
+            aria-expanded={tooltipVisible}
+            aria-describedby={tooltipVisible ? tooltipId : undefined}
             tabIndex={0}
-            role="img"
+            role="button"
           />
           {tooltipVisible && (
             <span
+              id={tooltipId}
               role="tooltip"
               className={cn(
                 'absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2',

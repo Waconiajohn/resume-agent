@@ -150,6 +150,7 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
 
   const handleSubmit = useCallback(() => {
     if (!resume.content || !job.content) return;
+    autoSubmittedRef.current = true;  // Prevent auto-submit from also firing
     onAnalyze(resume.content, job.content);
   }, [resume.content, job.content, onAnalyze]);
 

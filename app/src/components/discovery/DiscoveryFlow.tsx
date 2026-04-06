@@ -102,16 +102,20 @@ function applyProfileSynthesis(resume: LiveResumeState, profile: CareerIQProfile
       experience: updated.experience.map(exp => ({
         ...exp,
         bullets: exp.bullets.map(b => {
+          const bulletLower = b.text.toLowerCase();
           const matchesEvidence = allEvidence.some(evidence => {
             const evidenceLower = evidence.toLowerCase();
-            const bulletLower = b.text.toLowerCase();
-            // Check if any 4+ word phrase from the evidence appears in the bullet
-            const words = evidenceLower.split(/\s+/);
-            for (let i = 0; i <= words.length - 4; i++) {
-              const phrase = words.slice(i, i + 4).join(' ');
+            // Try 3-word sliding window
+            const words = evidenceLower.split(/\s+/).filter(w => w.length > 3);
+            for (let i = 0; i <= words.length - 3; i++) {
+              const phrase = words.slice(i, i + 3).join(' ');
               if (bulletLower.includes(phrase)) return true;
             }
-            return false;
+            // Fallback: check for significant keywords (6+ chars, not common words)
+            const COMMON = new Set(['through', 'across', 'within', 'between', 'during', 'before', 'leadership', 'management', 'experience', 'including', 'organization']);
+            return words
+              .filter(w => w.length >= 6 && !COMMON.has(w))
+              .some(w => bulletLower.includes(w));
           });
           return matchesEvidence ? { ...b, highlighted: true } : b;
         }),
@@ -493,6 +497,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'PROFILE_ERROR':
       return {
         ...state,
+        screen: 'excavation',  // Go back to excavation screen so retry UI is visible
         profileFetchFailed: true,
         error: action.error,
       };
@@ -694,7 +699,7 @@ export default function DiscoveryFlow() {
               tabIndex={0}
               onClick={() => dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' });
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' }); }
               }}
             >
               <p className="font-semibold text-[var(--text-strong)]">Start fresh with a new job</p>
@@ -707,7 +712,7 @@ export default function DiscoveryFlow() {
               tabIndex={0}
               onClick={() => navigate('/workspace')}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate('/workspace');
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/workspace'); }
               }}
             >
               <p className="font-semibold text-[var(--text-strong)]">Go to your workspace</p>
@@ -734,7 +739,7 @@ export default function DiscoveryFlow() {
       )}
 
       {screen === 'fading_to_recognition' && resumeText && jobText && (
-        <div className="transition-opacity duration-400 opacity-0 pointer-events-none">
+        <div className="transition-opacity duration-500 opacity-0 pointer-events-none">
           <ProcessingReveal
             resumeText={resumeText}
             jobText={jobText}

@@ -144,7 +144,10 @@ function normalizeExcavationResponse(
         ? (u.action as 'highlight' | 'strengthen' | 'add' | 'reorder')
         : 'highlight',
       text: typeof u.text === 'string' ? u.text : undefined,
-      position: typeof u.position === 'number' ? u.position : undefined,
+      // M-4: reorder requires a numeric position; default to 0 if the LLM omits it
+      position: u.action === 'reorder'
+        ? (typeof u.position === 'number' ? u.position : 0)
+        : (typeof u.position === 'number' ? u.position : undefined),
     }));
 
   return {

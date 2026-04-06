@@ -48,3 +48,8 @@ COMMENT ON COLUMN discovery_sessions.session_state IS
   'Full DiscoverySessionState serialized as JSONB: candidate, job_intelligence, benchmark, discovery, conversation_history, excavation_answers, remaining_questions.';
 COMMENT ON COLUMN discovery_sessions.status IS
   'active = conversation in progress; complete = CareerIQ profile saved; expired = TTL eviction (reserved).';
+
+-- L-2: Keep updated_at current on every row update (requires moddatetime extension).
+CREATE TRIGGER set_discovery_sessions_updated_at
+  BEFORE UPDATE ON discovery_sessions
+  FOR EACH ROW EXECUTE FUNCTION moddatetime(updated_at);

@@ -31,11 +31,13 @@ export function useDiscovery(accessToken: string | null) {
   accessTokenRef.current = accessToken;
 
   const abortRef = useRef<AbortController | null>(null);
+  const jdAbortRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      jdAbortRef.current?.abort();
     };
   }, []);
 
@@ -170,12 +172,16 @@ export function useDiscovery(accessToken: string | null) {
 
   const fetchJobDescription = useCallback(
     async (url: string): Promise<{ text: string; title: string } | null> => {
+      jdAbortRef.current?.abort();
+      const controller = new AbortController();
+      jdAbortRef.current = controller;
+
       try {
         const res = await fetch(`${API_BASE}/discovery/fetch-jd`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ url }),
-          signal: abortRef.current?.signal,
+          signal: controller.signal,
         });
         if (!res.ok) return null;
         return (await res.json()) as { text: string; title: string };

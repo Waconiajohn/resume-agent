@@ -88,7 +88,11 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
 
   const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 90_000);
 
-  return streamSSE(c, async (stream) => {
+  // H-4: Wrap streamSSE so a synchronous throw still releases the in-flight lock.
+  // The inner finally block handles the normal (async) case; this outer catch
+  // only fires if streamSSE() itself throws before the async handler starts.
+  try {
+    return streamSSE(c, async (stream) => {
     const emit = async (event: DiscoverySSEEvent): Promise<void> => {
       await stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
     };
@@ -161,7 +165,12 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
       inFlightAnalyze.delete(session_id);
       signalCleanup();
     }
-  });
+    });
+  } catch (outerErr) {
+    inFlightAnalyze.delete(session_id);
+    signalCleanup();
+    throw outerErr;
+  }
 });
 
 // ─── POST /excavate ───────────────────────────────────────────────────────────
