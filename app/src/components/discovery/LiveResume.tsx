@@ -70,7 +70,7 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto bg-gray-900 px-8 py-6">
+      <div className="flex-1 bg-gray-900 px-8 py-6">
         {/* Contact header */}
         <div className="mb-6 pb-4 border-b border-gray-700">
           <h1 className="text-sm font-bold tracking-tight text-white leading-tight">

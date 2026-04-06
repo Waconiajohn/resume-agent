@@ -457,6 +457,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'RETRY_PROFILE':
       return {
         ...state,
+        screen: 'building_profile',
         profileFetchFailed: false,
         error: null,
       };

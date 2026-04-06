@@ -30,14 +30,15 @@ export function ExcavationConversation({
 }: ConversationViewProps) {
   const totalQuestions = discovery.excavation_questions.length || 5;
 
-  const openingMessage = [
+  const recognitionParts = [
     discovery.recognition.career_thread,
     discovery.recognition.role_fit,
     discovery.recognition.differentiator,
-    '\n\nWhat I need to know is whether that lands — because everything we build from here depends on it. Is that an accurate read of your career, or is there something I\'m not seeing?',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  ].filter(Boolean);
+
+  const openingMessage = recognitionParts.length > 0
+    ? recognitionParts.join(' ') + '\n\nWhat I need to know is whether that lands — because everything we build from here depends on it. Is that an accurate read of your career, or is there something I\'m not seeing?'
+    : (discovery.excavation_questions[0]?.question ?? 'Tell me about the thread that runs through your career — the thing you keep coming back to regardless of title or company.');
 
   const [messages, setMessages] = useState<ConversationMessage[]>([
     { role: 'ai', content: openingMessage },
@@ -77,7 +78,10 @@ export function ExcavationConversation({
 
     const result = await onExcavate(sessionId, trimmed);
     if (!result) {
-      // On failure, leave the user message in history but let the user try again
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', content: 'Something went wrong processing that answer. Try sending it again.' },
+      ]);
       return;
     }
 
@@ -101,6 +105,9 @@ export function ExcavationConversation({
       pendingTimers.current.push(t);
     } else if (result.next_question) {
       setMessages((prev) => [...prev, { role: 'ai', content: result.next_question! }]);
+    } else {
+      // No next question and not complete — ask a generic follow-up
+      setMessages((prev) => [...prev, { role: 'ai', content: 'Tell me more about that — what specifically made that possible?' }]);
     }
   }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete]);
 
@@ -121,7 +128,7 @@ export function ExcavationConversation({
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left column — conversation */}
-      <div className="flex w-[58%] flex-col h-full">
+      <div className="flex flex-col h-full" style={{ width: 'calc(58% - 1px)' }}>
         {/* Label */}
         <div className="shrink-0 px-12 pt-8 pb-6">
           <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
