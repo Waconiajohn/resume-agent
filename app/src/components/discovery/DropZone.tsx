@@ -28,6 +28,7 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
   const [jobDraftText, setJobDraftText] = useState('');
   const [jobLoading, setJobLoading] = useState(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const jobFileInputRef = useRef<HTMLInputElement>(null);
   const jobTextareaRef = useRef<HTMLTextAreaElement>(null);
   const autoSubmittedRef = useRef(false);
 
@@ -117,6 +118,27 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
   const handleJobDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault();
+      setJob((p) => ({ ...p, dragging: false }));
+
+      // Handle file drops (txt, pdf, docx)
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        try {
+          const text = await extractResumeTextFromUpload(file);
+          setJobDraftText('');
+          setJobEditing(false);
+          await resolveJobContent(text);
+        } catch {
+          // Fall back to reading as plain text
+          const fallback = await file.text().catch(() => '');
+          if (fallback.trim()) {
+            await resolveJobContent(fallback);
+          }
+        }
+        return;
+      }
+
+      // Handle text/URL drops
       const text = e.dataTransfer.getData('text/plain');
       if (text) {
         setJobDraftText('');
@@ -138,6 +160,18 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
     },
     [resolveJobContent],
   );
+
+  const handleJobFile = useCallback(async (file: File) => {
+    try {
+      const text = await extractResumeTextFromUpload(file);
+      await resolveJobContent(text);
+    } catch {
+      const fallback = await file.text().catch(() => '');
+      if (fallback.trim()) {
+        await resolveJobContent(fallback);
+      }
+    }
+  }, [resolveJobContent]);
 
   const commitJobDraft = useCallback(async () => {
     const trimmed = jobDraftText.trim();
@@ -207,6 +241,8 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
               'flex flex-1 flex-col gap-3 p-4 min-h-[220px]',
               'ring-2 ring-[var(--link)] ring-offset-2 ring-offset-[var(--bg-0)]',
             )}
+            onDrop={handleJobDrop}
+            onDragOver={(e) => e.preventDefault()}
           >
             <p className="text-xs font-medium text-[var(--text-soft)]">Paste or type the job description</p>
             <textarea
@@ -241,7 +277,7 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
                 : <Briefcase className="h-7 w-7" />
             }
             title="Drop one job you want"
-            subtitle="Paste the URL or job description"
+            subtitle="Drop a file, paste a URL, or type it"
             filled={job.content !== null}
             label={job.label}
             dragging={job.dragging}
@@ -253,6 +289,17 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
             onClick={() => { if (!jobLoading) setJobEditing(true); }}
           />
         )}
+        <input
+          ref={jobFileInputRef}
+          type="file"
+          accept=".txt,.pdf,.docx"
+          className="sr-only"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) await handleJobFile(file);
+          }}
+          aria-label="Upload job description file"
+        />
       </div>
 
       {/* Submit button — only visible when both zones have content */}
