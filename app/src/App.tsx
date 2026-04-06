@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+const DiscoveryFlow = lazy(() => import('./components/discovery/DiscoveryFlow'));
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
@@ -112,6 +113,7 @@ export default function App() {
   const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
   const normalizedWorkspaceRedirect = getNormalizedWorkspaceRedirect(location.search);
   const isResumeV2VisualHarnessRoute = import.meta.env.DEV && location.pathname === '/__dev/resume-v2-visual';
+  const isDiscoveryRoute = location.pathname === '/discover';
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -489,6 +491,7 @@ export default function App() {
   }
 
   if (loading) {
+
     return (
       <ToastProvider>
         <div className="flex h-screen items-center justify-center">
@@ -511,6 +514,22 @@ export default function App() {
             onGoogleSignIn={signInWithGoogle}
           />
         )}
+      </ToastProvider>
+    );
+  }
+
+  if (isDiscoveryRoute) {
+    return (
+      <ToastProvider>
+        <ErrorBoundary key="discovery">
+          <Suspense fallback={
+            <div className="flex h-screen items-center justify-center" style={{ background: 'var(--bg-0)' }}>
+              <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
+            </div>
+          }>
+            <DiscoveryFlow />
+          </Suspense>
+        </ErrorBoundary>
       </ToastProvider>
     );
   }
