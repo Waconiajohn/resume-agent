@@ -286,7 +286,8 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
             onPaste={handleJobPaste}
             onDragOver={(e) => { e.preventDefault(); setJob((p) => ({ ...p, dragging: true })); }}
             onDragLeave={() => setJob((p) => ({ ...p, dragging: false }))}
-            onClick={() => { if (!jobLoading) setJobEditing(true); }}
+            onClick={() => { if (!jobLoading) jobFileInputRef.current?.click(); }}
+            onTypeClick={() => { if (!jobLoading) setJobEditing(true); }}
           />
         )}
         <input
@@ -337,6 +338,7 @@ interface DropTargetProps {
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
   onClick: () => void;
+  onTypeClick?: () => void;
 }
 
 function DropTarget({
@@ -352,6 +354,7 @@ function DropTarget({
   onDragOver,
   onDragLeave,
   onClick,
+  onTypeClick,
 }: DropTargetProps) {
   return (
     <GlassCard
@@ -396,6 +399,18 @@ function DropTarget({
           </div>
           <p className="text-xs text-[var(--text-soft)]">
             Drag, drop, or paste — or click to browse
+            {onTypeClick && (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  className="text-[var(--link)] hover:text-[var(--link-hover)] underline"
+                  onClick={(e) => { e.stopPropagation(); onTypeClick(); }}
+                >
+                  or type it
+                </button>
+              </>
+            )}
           </p>
         </>
       )}
