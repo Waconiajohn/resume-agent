@@ -276,12 +276,12 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
     );
 
     // Save to user_platform_context as career_iq_profile type
+    // source_session_id column is UUID — pass null since our session IDs have a prefix
     const saved = await upsertUserContext(
       user.id,
       'career_iq_profile',
       profile as unknown as Record<string, unknown>,
       'profile-setup',
-      session_id,
     );
 
     if (!saved) {
