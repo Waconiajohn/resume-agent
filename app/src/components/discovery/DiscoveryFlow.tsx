@@ -1,25 +1,31 @@
 import { useReducer, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { GlassButton } from '@/components/GlassButton';
+import { GlassCard } from '@/components/GlassCard';
 import { DropZone } from './DropZone';
 import { ProcessingReveal } from './ProcessingReveal';
 import { RecognitionScreen } from './RecognitionScreen';
 import { ExcavationConversation } from './ExcavationConversation';
 import { CareerIQProfileScreen } from './CareerIQProfileScreen';
+import { API_BASE } from '@/lib/api';
 import type {
   DiscoveryOutput,
   CareerIQProfile,
   LiveResumeState,
+  RecognitionStatement,
   ResumeUpdate,
 } from '@/types/discovery';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type DiscoveryScreen = 'drop_zone' | 'processing' | 'recognition' | 'excavation' | 'profile';
+type DiscoveryScreen = 'drop_zone' | 'processing' | 'fading_to_recognition' | 'recognition' | 'excavation' | 'excavation_to_profile' | 'profile';
+type ProfileCheck = 'loading' | 'has_profile' | 'no_profile';
 
 interface DiscoveryState {
   screen: DiscoveryScreen;
+  profileCheck: ProfileCheck;
   resumeText: string | null;
   jobText: string | null;
   sessionId: string | null;
@@ -29,21 +35,92 @@ interface DiscoveryState {
   profile: CareerIQProfile | null;
   liveResume: LiveResumeState | null;
   highlightedSections: string[];
+  recognitionHighlights: string[];
+  recognitionResponse: 'confirmed' | 'corrected' | null;
+  processingStage: { stage: string; message: string } | null;
   error: string | null;
 }
 
 type DiscoveryAction =
   | { type: 'START_ANALYSIS'; resumeText: string; jobText: string }
   | { type: 'ANALYSIS_COMPLETE'; sessionId: string; discovery: DiscoveryOutput; liveResume: LiveResumeState }
+  | { type: 'FADE_COMPLETE' }
   | { type: 'ANALYSIS_ERROR'; error: string }
   | { type: 'RESPOND_TO_RECOGNITION'; response: 'confirmed' | 'corrected' }
   | { type: 'APPLY_RESUME_UPDATES'; updates: ResumeUpdate[] }
   | { type: 'EXCAVATION_COMPLETE' }
+  | { type: 'START_PROFILE_BUILD' }
   | { type: 'PROFILE_READY'; profile: CareerIQProfile }
   | { type: 'PROFILE_ERROR'; error: string }
   | { type: 'RETRY_PROFILE' }
+  | { type: 'SET_PROCESSING_STAGE'; stage: string; message: string }
+  | { type: 'SET_PROFILE_CHECK'; check: ProfileCheck }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' };
+
+// ─── Recognition highlight helper ────────────────────────────────────────────
+
+function computeRecognitionHighlights(
+  recognition: RecognitionStatement,
+  resume: LiveResumeState,
+): string[] {
+  const fullText = [recognition.career_thread, recognition.role_fit, recognition.differentiator]
+    .join(' ')
+    .toLowerCase();
+
+  const highlighted: string[] = [];
+  for (const exp of resume.experience) {
+    if (
+      (exp.company && fullText.includes(exp.company.toLowerCase())) ||
+      (exp.title && fullText.includes(exp.title.toLowerCase()))
+    ) {
+      highlighted.push(exp.id);
+    }
+  }
+  return highlighted;
+}
+
+// ─── Profile synthesis helper (Gap 12) ───────────────────────────────────────
+
+function applyProfileSynthesis(resume: LiveResumeState, profile: CareerIQProfile): LiveResumeState {
+  let updated = { ...resume };
+
+  // Replace summary with career thread
+  if (profile.career_thread) {
+    updated = { ...updated, summary: profile.career_thread };
+  }
+
+  // Highlight bullets that match evidence from exceptional_areas and role_fit_points
+  const allEvidence = [
+    ...profile.exceptional_areas.map(a => a.evidence),
+    ...profile.role_fit_points.map(p => p.evidence),
+  ].filter(Boolean);
+
+  if (allEvidence.length > 0) {
+    updated = {
+      ...updated,
+      experience: updated.experience.map(exp => ({
+        ...exp,
+        bullets: exp.bullets.map(b => {
+          const matchesEvidence = allEvidence.some(evidence => {
+            const evidenceLower = evidence.toLowerCase();
+            const bulletLower = b.text.toLowerCase();
+            // Check if any 4+ word phrase from the evidence appears in the bullet
+            const words = evidenceLower.split(/\s+/);
+            for (let i = 0; i <= words.length - 4; i++) {
+              const phrase = words.slice(i, i + 4).join(' ');
+              if (bulletLower.includes(phrase)) return true;
+            }
+            return false;
+          });
+          return matchesEvidence ? { ...b, highlighted: true } : b;
+        }),
+      })),
+    };
+  }
+
+  return updated;
+}
 
 // ─── Resume builder ───────────────────────────────────────────────────────────
 
@@ -291,6 +368,19 @@ function applyResumeUpdates(resume: LiveResumeState, updates: ResumeUpdate[]): L
       };
     }
 
+    if (update.action === 'reorder') {
+      const idx = updated.experience.findIndex(
+        (exp) => exp.id === update.section || exp.company.toLowerCase() === update.section.toLowerCase()
+      );
+      if (idx >= 0) {
+        const reordered = [...updated.experience];
+        const [entry] = reordered.splice(idx, 1);
+        const targetPos = Math.min(update.position ?? 0, reordered.length);
+        reordered.splice(targetPos, 0, entry);
+        updated = { ...updated, experience: reordered };
+      }
+    }
+
     if (update.action === 'add' && update.text) {
       if (update.section === 'summary') {
         updated = { ...updated, summary: update.text };
@@ -336,11 +426,25 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'ANALYSIS_COMPLETE':
       return {
         ...state,
-        screen: 'recognition',
+        screen: 'fading_to_recognition',
         sessionId: action.sessionId,
         discovery: action.discovery,
         liveResume: action.liveResume,
+        recognitionHighlights: computeRecognitionHighlights(action.discovery.recognition, action.liveResume),
+        processingStage: null,
         error: null,
+      };
+
+    case 'FADE_COMPLETE':
+      return {
+        ...state,
+        screen: 'recognition',
+      };
+
+    case 'SET_PROCESSING_STAGE':
+      return {
+        ...state,
+        processingStage: { stage: action.stage, message: action.message },
       };
 
     case 'ANALYSIS_ERROR':
@@ -354,6 +458,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
       return {
         ...state,
         screen: 'excavation',
+        recognitionResponse: action.response,
       };
 
     case 'APPLY_RESUME_UPDATES': {
@@ -368,6 +473,12 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'EXCAVATION_COMPLETE':
       return {
         ...state,
+        screen: 'excavation_to_profile',
+      };
+
+    case 'START_PROFILE_BUILD':
+      return {
+        ...state,
         excavationComplete: true,
       };
 
@@ -376,6 +487,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
         ...state,
         screen: 'profile',
         profile: action.profile,
+        liveResume: state.liveResume ? applyProfileSynthesis(state.liveResume, action.profile) : state.liveResume,
       };
 
     case 'PROFILE_ERROR':
@@ -392,6 +504,9 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
         error: null,
       };
 
+    case 'SET_PROFILE_CHECK':
+      return { ...state, profileCheck: action.check };
+
     case 'SET_ERROR':
       return { ...state, error: action.error };
 
@@ -405,6 +520,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
 
 const initialState: DiscoveryState = {
   screen: 'drop_zone',
+  profileCheck: 'loading',
   resumeText: null,
   jobText: null,
   sessionId: null,
@@ -414,6 +530,9 @@ const initialState: DiscoveryState = {
   profile: null,
   liveResume: null,
   highlightedSections: [],
+  recognitionHighlights: [],
+  recognitionResponse: null,
+  processingStage: null,
   error: null,
 };
 
@@ -422,9 +541,60 @@ const initialState: DiscoveryState = {
 export default function DiscoveryFlow() {
   const { session } = useAuth();
   const accessToken = session?.access_token ?? null;
-  const { analyze, excavate, complete, analyzing, excavating } = useDiscovery(accessToken);
+  const { analyze, excavate, complete, fetchJobDescription, analyzing, excavating } = useDiscovery(accessToken);
+  const navigate = useNavigate();
 
   const [state, dispatch] = useReducer(discoveryReducer, initialState);
+
+  // On mount: check if the user already has a career_profile in platform context (Gap 14)
+  useEffect(() => {
+    if (!accessToken) {
+      dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' });
+      return;
+    }
+    const checkProfile = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/platform-context/summary`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) {
+          dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' });
+          return;
+        }
+        const data = await res.json() as unknown;
+        const items = Array.isArray((data as { items?: unknown[] }).items)
+          ? (data as { items: unknown[] }).items
+          : Array.isArray(data)
+            ? (data as unknown[])
+            : [];
+        const hasProfile = items.some(
+          (item) => (item as { context_type?: string }).context_type === 'career_profile',
+        );
+        dispatch({ type: 'SET_PROFILE_CHECK', check: hasProfile ? 'has_profile' : 'no_profile' });
+      } catch {
+        dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' });
+      }
+    };
+    void checkProfile();
+  }, [accessToken]);
+
+  // Fade from processing to recognition after a short delay
+  useEffect(() => {
+    if (state.screen !== 'fading_to_recognition') return;
+    const timer = setTimeout(() => {
+      dispatch({ type: 'FADE_COMPLETE' });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [state.screen]);
+
+  // Show the transitional screen for 2s then kick off the profile build
+  useEffect(() => {
+    if (state.screen !== 'excavation_to_profile') return;
+    const timer = setTimeout(() => {
+      dispatch({ type: 'START_PROFILE_BUILD' });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [state.screen]);
 
   // After excavation complete, fetch the full profile
   useEffect(() => {
@@ -447,7 +617,9 @@ export default function DiscoveryFlow() {
       dispatch({ type: 'START_ANALYSIS', resumeText, jobText });
 
       const [result] = await Promise.all([
-        analyze(resumeText, jobText),
+        analyze(resumeText, jobText, (stage, message) => {
+          dispatch({ type: 'SET_PROCESSING_STAGE', stage, message });
+        }),
         new Promise<void>((resolve) => setTimeout(resolve, 3000)),
       ]);
       if (!result) {
@@ -478,7 +650,7 @@ export default function DiscoveryFlow() {
     dispatch({ type: 'EXCAVATION_COMPLETE' });
   }, []);
 
-  const { screen, resumeText, jobText, discovery, liveResume, profile, sessionId } = state;
+  const { screen, resumeText, jobText, discovery, liveResume, profile, sessionId, recognitionHighlights, recognitionResponse, processingStage } = state;
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--bg-0)' }}>
@@ -501,18 +673,81 @@ export default function DiscoveryFlow() {
       )}
 
       {/* Screens */}
-      {screen === 'drop_zone' && (
-        <DropZone onAnalyze={handleAnalyze} loading={analyzing} />
+
+      {/* Gap 14: While loading profile check, show nothing to avoid flashing the DropZone */}
+      {screen === 'drop_zone' && state.profileCheck === 'loading' && null}
+
+      {/* Gap 14: Welcome-back screen for users who already have a profile */}
+      {screen === 'drop_zone' && state.profileCheck === 'has_profile' && (
+        <div className="flex h-full flex-col items-center justify-center gap-8 px-8">
+          <p
+            className="text-3xl font-light text-[var(--text-strong)]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Welcome back. You already have a CareerIQ profile.
+          </p>
+          <div className="flex gap-4">
+            <GlassCard
+              hover
+              className="cursor-pointer px-6 py-4"
+              role="button"
+              tabIndex={0}
+              onClick={() => dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') dispatch({ type: 'SET_PROFILE_CHECK', check: 'no_profile' });
+              }}
+            >
+              <p className="font-semibold text-[var(--text-strong)]">Start fresh with a new job</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Run a new analysis for a different role</p>
+            </GlassCard>
+            <GlassCard
+              hover
+              className="cursor-pointer px-6 py-4"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/workspace')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigate('/workspace');
+              }}
+            >
+              <p className="font-semibold text-[var(--text-strong)]">Go to your workspace</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Continue with your existing profile</p>
+            </GlassCard>
+          </div>
+        </div>
+      )}
+
+      {screen === 'drop_zone' && state.profileCheck === 'no_profile' && (
+        <DropZone
+          onAnalyze={handleAnalyze}
+          loading={analyzing}
+          onFetchJobDescription={fetchJobDescription}
+        />
       )}
 
       {screen === 'processing' && resumeText && jobText && (
-        <ProcessingReveal resumeText={resumeText} jobText={jobText} />
+        <ProcessingReveal
+          resumeText={resumeText}
+          jobText={jobText}
+          currentStage={processingStage}
+        />
+      )}
+
+      {screen === 'fading_to_recognition' && resumeText && jobText && (
+        <div className="transition-opacity duration-400 opacity-0 pointer-events-none">
+          <ProcessingReveal
+            resumeText={resumeText}
+            jobText={jobText}
+            currentStage={processingStage}
+          />
+        </div>
       )}
 
       {screen === 'recognition' && discovery && liveResume && (
         <RecognitionScreen
           discovery={discovery}
           resume={liveResume}
+          highlightedSections={recognitionHighlights}
           onRespond={handleRespond}
         />
       )}
@@ -524,6 +759,7 @@ export default function DiscoveryFlow() {
             sessionId={sessionId}
             resume={liveResume}
             initialConversation={[]}
+            correctionMode={recognitionResponse === 'corrected'}
             onExcavate={excavate}
             onResumeUpdate={handleResumeUpdate}
             onComplete={handleExcavationComplete}
@@ -545,8 +781,28 @@ export default function DiscoveryFlow() {
         </div>
       )}
 
+      {screen === 'excavation_to_profile' && (
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center">
+            <p className="text-2xl font-light text-[var(--text-strong)]" style={{ fontFamily: 'var(--font-display)' }}>
+              Building your profile...
+            </p>
+            <div className="mt-4 flex justify-center gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-2 w-2 rounded-full bg-[var(--link)] animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+                  style={{ animationDelay: `${i * 0.16}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gap 13: Pass jobText to CareerIQProfileScreen for downstream navigation context */}
       {screen === 'profile' && profile && liveResume && (
-        <CareerIQProfileScreen profile={profile} resume={liveResume} />
+        <CareerIQProfileScreen profile={profile} resume={liveResume} jobText={jobText ?? undefined} />
       )}
     </div>
   );

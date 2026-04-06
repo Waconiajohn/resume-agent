@@ -20,8 +20,9 @@ export interface DiscoveryOutput {
 export interface ResumeUpdate {
   section: string;
   bullet_id?: string;
-  action: 'highlight' | 'strengthen' | 'add';
+  action: 'highlight' | 'strengthen' | 'add' | 'reorder';
   text?: string;
+  position?: number;
 }
 
 export interface ExcavationResponse {
@@ -62,3 +63,8 @@ export interface LiveResumeState {
   skills: string[];
   education: Array<{ degree: string; institution: string; year?: string }>;
 }
+
+export type DiscoverySSEEvent =
+  | { type: 'processing_stage'; stage: string; message: string }
+  | { type: 'recognition_ready'; data: { session_id: string; discovery: DiscoveryOutput } }
+  | { type: 'error'; message: string };

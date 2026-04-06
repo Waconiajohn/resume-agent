@@ -15,9 +15,10 @@ const JOB_SECTIONS = ['Must-haves', 'Culture signals', 'Key requirements', 'Team
 interface ProcessingRevealProps {
   resumeText: string;
   jobText: string;
+  currentStage?: { stage: string; message: string } | null;
 }
 
-export function ProcessingReveal({ resumeText, jobText }: ProcessingRevealProps) {
+export function ProcessingReveal({ resumeText, jobText, currentStage }: ProcessingRevealProps) {
   const [messageIdx, setMessageIdx] = useState(0);
   const [visibleMessage, setVisibleMessage] = useState(true);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
@@ -27,8 +28,9 @@ export function ProcessingReveal({ resumeText, jobText }: ProcessingRevealProps)
   const candidateName = resumeText.trim().split('\n')[0]?.trim().slice(0, 60) || 'Your Resume';
   const jobFirstLine = jobText.trim().split('\n')[0]?.trim().slice(0, 60) || 'Position';
 
-  // Rotate messages
+  // Rotate messages — only runs as fallback when no live stage data
   useEffect(() => {
+    if (currentStage) return;
     const interval = setInterval(() => {
       setVisibleMessage(false);
       setTimeout(() => {
@@ -37,25 +39,44 @@ export function ProcessingReveal({ resumeText, jobText }: ProcessingRevealProps)
       }, 400);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentStage]);
 
-  // Advance resume sections
+  // When stage advances, light up all sections immediately
   useEffect(() => {
+    if (!currentStage) return;
+    const { stage } = currentStage;
+    if (stage === 'benchmark' || stage === 'discovery') {
+      setActiveSectionIdx(RESUME_SECTIONS.length - 1);
+      setActiveJobSectionIdx(JOB_SECTIONS.length - 1);
+    }
+  }, [currentStage]);
+
+  // Advance resume sections (fallback timer when no live stage)
+  useEffect(() => {
+    if (currentStage) return;
     if (activeSectionIdx >= RESUME_SECTIONS.length - 1) return;
     const timer = setTimeout(() => {
       setActiveSectionIdx((prev) => prev + 1);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [activeSectionIdx]);
+  }, [activeSectionIdx, currentStage]);
 
-  // Advance job sections
+  // Advance job sections (fallback timer when no live stage)
   useEffect(() => {
+    if (currentStage) return;
     if (activeJobSectionIdx >= JOB_SECTIONS.length - 1) return;
     const timer = setTimeout(() => {
       setActiveJobSectionIdx((prev) => prev + 1);
     }, 1400);
     return () => clearTimeout(timer);
-  }, [activeJobSectionIdx]);
+  }, [activeJobSectionIdx, currentStage]);
+
+  // Derive the displayed message
+  const displayMessage = currentStage
+    ? currentStage.stage === 'discovery'
+      ? 'Almost there...'
+      : currentStage.message
+    : PROCESSING_MESSAGES[messageIdx];
 
   return (
     <div className="flex h-full items-center justify-center px-8">
@@ -93,12 +114,12 @@ export function ProcessingReveal({ resumeText, jobText }: ProcessingRevealProps)
             <p
               className={cn(
                 'text-sm font-medium leading-relaxed text-[var(--text-muted)] transition-opacity duration-300',
-                visibleMessage ? 'opacity-100' : 'opacity-0',
+                currentStage || visibleMessage ? 'opacity-100' : 'opacity-0',
               )}
               aria-live="polite"
               aria-atomic="true"
             >
-              {PROCESSING_MESSAGES[messageIdx]}
+              {displayMessage}
             </p>
           </div>
           <div className="flex gap-1.5" aria-hidden="true">

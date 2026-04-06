@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Briefcase, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Upload, Briefcase, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 
 interface DropZoneProps {
   onAnalyze: (resumeText: string, jobText: string) => void;
   loading: boolean;
+  onFetchJobDescription: (url: string) => Promise<{ text: string; title: string } | null>;
 }
 
 interface ZoneState {
@@ -15,22 +17,19 @@ interface ZoneState {
   dragging: boolean;
 }
 
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
+function isUrl(s: string): boolean {
+  return /^https?:\/\/.+/i.test(s.trim());
 }
 
-export function DropZone({ onAnalyze, loading }: DropZoneProps) {
+export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZoneProps) {
   const [resume, setResume] = useState<ZoneState>({ content: null, label: null, dragging: false });
   const [job, setJob] = useState<ZoneState>({ content: null, label: null, dragging: false });
   const [jobEditing, setJobEditing] = useState(false);
   const [jobDraftText, setJobDraftText] = useState('');
+  const [jobLoading, setJobLoading] = useState(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const jobTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoSubmittedRef = useRef(false);
 
   const canSubmit = resume.content !== null && job.content !== null && !loading;
 
@@ -41,12 +40,24 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
     }
   }, [jobEditing]);
 
+  // Gap 3: Auto-submit when both zones are filled
+  useEffect(() => {
+    if (resume.content && job.content && !loading && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      const timer = setTimeout(() => {
+        onAnalyze(resume.content!, job.content!);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [resume.content, job.content, loading, onAnalyze]);
+
   const handleResumeFile = useCallback(async (file: File) => {
     try {
-      const text = await readFileAsText(file);
+      const text = await extractResumeTextFromUpload(file);
       setResume({ content: text, label: file.name, dragging: false });
-    } catch {
-      setResume((prev) => ({ ...prev, dragging: false }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to read file';
+      setResume({ content: null, label: message, dragging: false });
     }
   }, []);
 
@@ -73,32 +84,69 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
     }
   }, []);
 
-  const handleJobDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const text = e.dataTransfer.getData('text/plain');
-    if (text) {
-      setJobDraftText('');
-      setJobEditing(false);
-      setJob({ content: text, label: text.trim().slice(0, 60), dragging: false });
-    }
-  }, []);
+  // Shared helper: resolve raw text or a URL into job content
+  const resolveJobContent = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
 
-  const handleJobPaste = useCallback((e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData('text/plain');
-    if (text.trim()) {
-      setJobDraftText('');
-      setJobEditing(false);
-      setJob({ content: text, label: text.trim().slice(0, 60), dragging: false });
-    }
-  }, []);
+      if (isUrl(trimmed)) {
+        setJobLoading(true);
+        try {
+          const result = await onFetchJobDescription(trimmed);
+          if (result) {
+            setJob({
+              content: result.text,
+              label: result.title || trimmed.slice(0, 60),
+              dragging: false,
+            });
+          } else {
+            // Fall back to raw URL text so the user isn't left empty-handed
+            setJob({ content: trimmed, label: trimmed.slice(0, 60), dragging: false });
+          }
+        } finally {
+          setJobLoading(false);
+        }
+      } else {
+        setJob({ content: trimmed, label: trimmed.slice(0, 60), dragging: false });
+      }
+    },
+    [onFetchJobDescription],
+  );
 
-  const commitJobDraft = useCallback(() => {
+  const handleJobDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      const text = e.dataTransfer.getData('text/plain');
+      if (text) {
+        setJobDraftText('');
+        setJobEditing(false);
+        await resolveJobContent(text);
+      }
+    },
+    [resolveJobContent],
+  );
+
+  const handleJobPaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const text = e.clipboardData.getData('text/plain');
+      if (text.trim()) {
+        setJobDraftText('');
+        setJobEditing(false);
+        await resolveJobContent(text);
+      }
+    },
+    [resolveJobContent],
+  );
+
+  const commitJobDraft = useCallback(async () => {
     const trimmed = jobDraftText.trim();
-    if (trimmed) {
-      setJob({ content: trimmed, label: trimmed.slice(0, 60), dragging: false });
-    }
     setJobEditing(false);
-  }, [jobDraftText]);
+    if (trimmed) {
+      await resolveJobContent(trimmed);
+    }
+    setJobDraftText('');
+  }, [jobDraftText, resolveJobContent]);
 
   const handleSubmit = useCallback(() => {
     if (!resume.content || !job.content) return;
@@ -129,7 +177,7 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
         <DropTarget
           icon={<Upload className="h-7 w-7" />}
           title="Drop your resume here"
-          subtitle="Text file or paste your resume"
+          subtitle="PDF, DOCX, or paste your resume"
           filled={resume.content !== null}
           label={resume.label}
           dragging={resume.dragging}
@@ -142,7 +190,7 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
         <input
           ref={resumeInputRef}
           type="file"
-          accept=".txt"
+          accept=".txt,.pdf,.docx"
           className="sr-only"
           onChange={async (e) => {
             const file = e.target.files?.[0];
@@ -163,7 +211,7 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
             <textarea
               ref={jobTextareaRef}
               className="flex-1 resize-none rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--link)]"
-              placeholder="Paste the job description here..."
+              placeholder="Paste the job description or a URL here..."
               value={jobDraftText}
               onChange={(e) => setJobDraftText(e.target.value)}
               onPaste={handleJobPaste}
@@ -186,17 +234,22 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
           </GlassCard>
         ) : (
           <DropTarget
-            icon={<Briefcase className="h-7 w-7" />}
+            icon={
+              jobLoading
+                ? <Loader2 className="h-7 w-7 animate-spin" />
+                : <Briefcase className="h-7 w-7" />
+            }
             title="Drop one job you want"
             subtitle="Paste the URL or job description"
             filled={job.content !== null}
             label={job.label}
             dragging={job.dragging}
+            loading={jobLoading}
             onDrop={handleJobDrop}
             onPaste={handleJobPaste}
             onDragOver={(e) => { e.preventDefault(); setJob((p) => ({ ...p, dragging: true })); }}
             onDragLeave={() => setJob((p) => ({ ...p, dragging: false }))}
-            onClick={() => setJobEditing(true)}
+            onClick={() => { if (!jobLoading) setJobEditing(true); }}
           />
         )}
       </div>
@@ -230,6 +283,7 @@ interface DropTargetProps {
   filled: boolean;
   label: string | null;
   dragging: boolean;
+  loading?: boolean;
   onDrop: (e: React.DragEvent) => void;
   onPaste: (e: React.ClipboardEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -244,6 +298,7 @@ function DropTarget({
   filled,
   label,
   dragging,
+  loading = false,
   onDrop,
   onPaste,
   onDragOver,
@@ -257,6 +312,7 @@ function DropTarget({
         'flex flex-1 cursor-pointer flex-col items-center justify-center gap-4 p-8 text-center transition-all duration-200 min-h-[220px]',
         dragging && 'ring-2 ring-[var(--link)] ring-offset-2 ring-offset-[var(--bg-0)]',
         filled && 'ring-1 ring-green-400/40',
+        loading && 'cursor-wait',
       )}
       role="button"
       tabIndex={0}
@@ -268,7 +324,12 @@ function DropTarget({
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
     >
-      {filled ? (
+      {loading ? (
+        <>
+          <span className="text-[var(--text-soft)]">{icon}</span>
+          <p className="text-sm text-[var(--text-soft)]">Fetching job description...</p>
+        </>
+      ) : filled ? (
         <>
           <CheckCircle2 className="h-8 w-8 text-green-400" />
           <div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { ResumeHighlight } from './ResumeHighlight';
 import type { LiveResumeState } from '@/types/discovery';
 
 interface LiveResumeProps {
@@ -82,19 +83,33 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
                   </div>
                   {exp.bullets.length > 0 && (
                     <ul className="mt-2 space-y-1">
-                      {exp.bullets.map((bullet) => (
-                        <li
-                          key={bullet.id}
-                          className={cn(
-                            'pl-3 relative text-[var(--text-muted)] transition-all duration-500',
-                            'before:absolute before:left-0 before:top-[0.55em] before:h-1 before:w-1 before:rounded-full before:bg-[var(--text-soft)]',
-                            bullet.highlighted && 'text-[var(--text-strong)] ring-1 ring-blue-400/30 rounded bg-blue-400/5 px-2',
-                            bullet.strengthened && 'font-medium',
-                          )}
-                        >
-                          {bullet.text}
-                        </li>
-                      ))}
+                      {exp.bullets.map((bullet) => {
+                        const isAnnotated = bullet.highlighted || bullet.strengthened;
+                        const highlightType = bullet.strengthened ? 'strengthened' : 'referenced';
+                        return (
+                          <li
+                            key={bullet.id}
+                            className={cn(
+                              'pl-3 relative text-[var(--text-muted)] transition-all duration-500',
+                              'before:absolute before:left-0 before:top-[0.55em] before:h-1 before:w-1 before:rounded-full before:bg-[var(--text-soft)]',
+                              isAnnotated && 'before:hidden',
+                            )}
+                          >
+                            {isAnnotated ? (
+                              <ResumeHighlight
+                                bulletText={bullet.text}
+                                highlightType={highlightType}
+                              >
+                                <span className={cn(bullet.strengthened && 'font-medium')}>
+                                  {bullet.text}
+                                </span>
+                              </ResumeHighlight>
+                            ) : (
+                              bullet.text
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

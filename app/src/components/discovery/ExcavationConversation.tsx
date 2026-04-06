@@ -15,6 +15,7 @@ interface ExcavationConversationProps {
   sessionId: string;
   resume: LiveResumeState;
   initialConversation: ConversationMessage[];
+  correctionMode?: boolean;
   onExcavate: (sessionId: string, answer: string) => Promise<ExcavationResponse | null>;
   onResumeUpdate: (updates: ResumeUpdate[]) => void;
   onComplete: () => void;
@@ -26,6 +27,7 @@ export function ExcavationConversation({
   sessionId,
   resume,
   initialConversation,
+  correctionMode = false,
   onExcavate,
   onResumeUpdate,
   onComplete,
@@ -35,7 +37,23 @@ export function ExcavationConversation({
 
   const [conversation, setConversation] = useState<ConversationMessage[]>(() => {
     if (initialConversation.length > 0) return initialConversation;
-    return [{ role: 'ai', content: firstQuestion }];
+
+    if (correctionMode) {
+      return [
+        {
+          role: 'ai',
+          content:
+            "I may have gotten some things wrong. That's useful — help me understand what I missed or misread about your career. What felt off in what I said?",
+        },
+      ];
+    }
+
+    return [
+      {
+        role: 'ai',
+        content: `Good. Let me dig deeper into what makes you exceptional for this role.\n\n${firstQuestion}`,
+      },
+    ];
   });
   const [answer, setAnswer] = useState('');
   const [highlightedSections, setHighlightedSections] = useState<string[]>([]);
@@ -93,15 +111,14 @@ export function ExcavationConversation({
       const t2 = setTimeout(() => onComplete(), 2500);
       pendingTimers.current.push(t2);
     } else {
-      const messages: ConversationMessage[] = [];
       if (result.insight) {
-        messages.push({ role: 'ai', content: result.insight });
+        setConversation((prev) => [...prev, { role: 'ai', content: result.insight }]);
       }
       if (result.next_question) {
-        messages.push({ role: 'ai', content: result.next_question });
-      }
-      if (messages.length > 0) {
-        setConversation((prev) => [...prev, ...messages]);
+        const t = setTimeout(() => {
+          setConversation((prev) => [...prev, { role: 'ai', content: result.next_question! }]);
+        }, result.insight ? 1200 : 0);
+        pendingTimers.current.push(t);
       }
     }
   }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete]);

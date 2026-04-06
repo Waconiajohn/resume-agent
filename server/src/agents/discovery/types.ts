@@ -40,8 +40,9 @@ export interface DiscoveryOutput {
 export interface ResumeUpdate {
   section: string;
   bullet_id?: string;
-  action: 'highlight' | 'strengthen' | 'add';
+  action: 'highlight' | 'strengthen' | 'add' | 'reorder';
   text?: string;
+  position?: number;
 }
 
 export interface ExcavationResponse {
@@ -60,7 +61,7 @@ export interface CareerIQProfile {
 
 export type DiscoverySSEEvent =
   | { type: 'processing_stage'; stage: string; message: string }
-  | { type: 'recognition_ready'; data: DiscoveryOutput }
+  | { type: 'recognition_ready'; data: { session_id: string; discovery: DiscoveryOutput } }
   | { type: 'excavation_response'; data: ExcavationResponse }
   | { type: 'profile_ready'; data: CareerIQProfile }
   | { type: 'resume_highlight'; section: string; bullet_id?: string }

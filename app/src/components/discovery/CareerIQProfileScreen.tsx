@@ -8,9 +8,10 @@ import type { CareerIQProfile, LiveResumeState } from '@/types/discovery';
 interface CareerIQProfileScreenProps {
   profile: CareerIQProfile;
   resume: LiveResumeState;
+  jobText?: string;
 }
 
-export function CareerIQProfileScreen({ profile, resume }: CareerIQProfileScreenProps) {
+export function CareerIQProfileScreen({ profile, resume, jobText }: CareerIQProfileScreenProps) {
   const navigate = useNavigate();
 
   return (
@@ -87,7 +88,9 @@ export function CareerIQProfileScreen({ profile, resume }: CareerIQProfileScreen
               icon={<FileText className="h-5 w-5" />}
               title="Build the full resume for this job"
               description="Turn this profile into a tailored resume that positions you as the benchmark candidate."
-              onClick={() => navigate('/resume-builder/session')}
+              onClick={() => navigate('/resume-builder/session', {
+                state: { fromDiscovery: true, jobDescription: jobText },
+              })}
             />
             <PathCard
               icon={<Search className="h-5 w-5" />}
@@ -99,7 +102,9 @@ export function CareerIQProfileScreen({ profile, resume }: CareerIQProfileScreen
               icon={<MessageSquare className="h-5 w-5" />}
               title="Prepare for the interview"
               description="Practice with an AI interviewer who knows this role inside and out."
-              onClick={() => navigate('/workspace?room=interview')}
+              onClick={() => navigate('/workspace?room=interview', {
+                state: { fromDiscovery: true, jobDescription: jobText },
+              })}
             />
           </div>
         </div>

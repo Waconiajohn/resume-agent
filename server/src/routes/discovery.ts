@@ -14,44 +14,39 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import { upsertUserContext } from '../lib/platform-context.js';
 import { createCombinedAbortSignal } from '../lib/llm-provider.js';
+import {
+  getDiscoverySession,
+  saveDiscoverySession,
+  deleteDiscoverySession,
+} from '../lib/discovery-session-store.js';
 import { runJobIntelligence } from '../agents/resume-v2/job-intelligence/agent.js';
 import { runCandidateIntelligence } from '../agents/resume-v2/candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from '../agents/resume-v2/benchmark-candidate/agent.js';
 import { runDiscoveryAgent } from '../agents/discovery/agent.js';
 import { processExcavationAnswer } from '../agents/discovery/excavation.js';
 import { buildCareerIQProfile } from '../agents/discovery/profile-builder.js';
-import type { DiscoverySessionState } from '../agents/discovery/types.js';
+import type { DiscoverySessionState, DiscoverySSEEvent } from '../agents/discovery/types.js';
 import logger from '../lib/logger.js';
+import { discoveryJdFetchRoutes } from './discovery-jd-fetch.js';
 
 export const discoveryRoutes = new Hono();
 
-// ─── In-Flight Lock ───────────────────────────────────────────────────────────
-// Prevents duplicate concurrent /analyze runs for the same session_id.
+// Mount JD fetch sub-route
+discoveryRoutes.route('/', discoveryJdFetchRoutes);
+
+// ─── In-Flight Locks ──────────────────────────────────────────────────────────
+// Process-level sets that prevent duplicate concurrent requests for the same
+// session_id. These are intentionally in-memory — they guard a single request
+// lifecycle, not session durability.
 
 const inFlightAnalyze = new Set<string>();
 const inFlightExcavate = new Set<string>();
-
-// ─── In-Memory Session Store ──────────────────────────────────────────────────
-// Keyed by session_id. TTL cleanup runs every 30 minutes.
-// Sessions older than 2 hours are evicted.
-
-const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const discoverySessions = new Map<string, DiscoverySessionState>();
-
-const sessionCleanupTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [sessionId, state] of discoverySessions.entries()) {
-    if (now - state.last_active_at > SESSION_TTL_MS) {
-      discoverySessions.delete(sessionId);
-    }
-  }
-}, 30 * 60 * 1000);
-sessionCleanupTimer.unref();
 
 // ─── POST /analyze ────────────────────────────────────────────────────────────
 
@@ -93,65 +88,80 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
 
   const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 90_000);
 
-  try {
-    logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: starting');
-
-    // Run job intelligence and candidate intelligence in parallel
-    const [job_intelligence, candidate] = await Promise.all([
-      runJobIntelligence({ job_description }, signal),
-      runCandidateIntelligence({ resume_text }, signal),
-    ]);
-
-    logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: analysis agents complete, running benchmark');
-
-    // Run benchmark candidate sequentially (depends on both above)
-    const benchmark = await runBenchmarkCandidate({ job_intelligence, candidate }, signal);
-
-    logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: benchmark complete, running discovery agent');
-
-    // Run the discovery agent
-    const discovery = await runDiscoveryAgent({ candidate, job_intelligence, benchmark }, signal);
-
-    logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: recognition ready');
-
-    // Persist session state for follow-up excavation
-    const sessionState: DiscoverySessionState = {
-      user_id: user.id,
-      session_id,
-      candidate,
-      job_intelligence,
-      benchmark,
-      discovery,
-      conversation_history: [
-        {
-          role: 'ai',
-          content: [
-            discovery.recognition.career_thread,
-            discovery.recognition.role_fit,
-            discovery.recognition.differentiator,
-          ].join('\n\n'),
-        },
-      ],
-      excavation_answers: [],
-      remaining_questions: [...discovery.excavation_questions],
-      created_at: Date.now(),
-      last_active_at: Date.now(),
+  return streamSSE(c, async (stream) => {
+    const emit = async (event: DiscoverySSEEvent): Promise<void> => {
+      await stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
     };
 
-    discoverySessions.set(session_id, sessionState);
+    // Keep-alive heartbeat every 30s
+    const heartbeat = setInterval(() => {
+      void stream.writeSSE({ data: '', event: 'heartbeat' });
+    }, 30_000);
 
-    return c.json({
-      session_id,
-      discovery,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Discovery analyze: failed');
-    return c.json({ error: 'Discovery analysis failed. Please try again.' }, 500);
-  } finally {
-    inFlightAnalyze.delete(session_id);
-    signalCleanup();
-  }
+    try {
+      logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: starting');
+
+      await emit({ type: 'processing_stage', stage: 'intake', message: 'Reading your career history and the job description...' });
+
+      // Run job intelligence and candidate intelligence in parallel
+      const [job_intelligence, candidate] = await Promise.all([
+        runJobIntelligence({ job_description }, signal),
+        runCandidateIntelligence({ resume_text }, signal),
+      ]);
+
+      logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: analysis agents complete, running benchmark');
+
+      await emit({ type: 'processing_stage', stage: 'benchmark', message: 'Mapping your experience against what they need...' });
+
+      // Run benchmark candidate sequentially (depends on both above)
+      const benchmark = await runBenchmarkCandidate({ job_intelligence, candidate }, signal);
+
+      logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: benchmark complete, running discovery agent');
+
+      await emit({ type: 'processing_stage', stage: 'discovery', message: 'Finding the thread that runs through all of it...' });
+
+      // Run the discovery agent
+      const discovery = await runDiscoveryAgent({ candidate, job_intelligence, benchmark }, signal);
+
+      logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: recognition ready');
+
+      // Persist session state for follow-up excavation
+      const sessionState: DiscoverySessionState = {
+        user_id: user.id,
+        session_id,
+        candidate,
+        job_intelligence,
+        benchmark,
+        discovery,
+        conversation_history: [
+          {
+            role: 'ai',
+            content: [
+              discovery.recognition.career_thread,
+              discovery.recognition.role_fit,
+              discovery.recognition.differentiator,
+            ].join('\n\n'),
+          },
+        ],
+        excavation_answers: [],
+        remaining_questions: [...discovery.excavation_questions],
+        created_at: Date.now(),
+        last_active_at: Date.now(),
+      };
+
+      await saveDiscoverySession(sessionState);
+
+      await emit({ type: 'recognition_ready', data: { session_id, discovery } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Discovery analyze: failed');
+      await emit({ type: 'error', message: 'Discovery analysis failed. Please try again.' });
+    } finally {
+      clearInterval(heartbeat);
+      inFlightAnalyze.delete(session_id);
+      signalCleanup();
+    }
+  });
 });
 
 // ─── POST /excavate ───────────────────────────────────────────────────────────
@@ -179,7 +189,7 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
     return c.json({ error: 'Answer must be 2000 characters or fewer' }, 400);
   }
 
-  const sessionState = discoverySessions.get(session_id);
+  const sessionState = await getDiscoverySession(session_id);
   if (!sessionState) {
     return c.json({ error: 'Session not found or expired. Please run /analyze again.' }, 404);
   }
@@ -260,7 +270,7 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
       }
     }
 
-    discoverySessions.set(session_id, {
+    await saveDiscoverySession({
       ...sessionState,
       conversation_history: updatedConversation,
       excavation_answers: updatedAnswers,
@@ -297,7 +307,7 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
     return c.json({ error: 'Invalid session_id format' }, 400);
   }
 
-  const sessionState = discoverySessions.get(session_id);
+  const sessionState = await getDiscoverySession(session_id);
   if (!sessionState) {
     return c.json({ error: 'Session not found or expired. Please run /analyze again.' }, 404);
   }
@@ -339,7 +349,7 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
     logger.info({ userId: user.id, sessionId: session_id }, 'Discovery complete: CareerIQ profile saved');
 
     // Only clean up session after confirmed save
-    discoverySessions.delete(session_id);
+    await deleteDiscoverySession(session_id);
 
     return c.json({ profile });
   } catch (error) {

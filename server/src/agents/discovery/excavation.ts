@@ -23,7 +23,7 @@ Your job for each exchange is to acknowledge what was said, assess whether it re
 
 When acknowledging, be brief and genuine — show you heard a specific detail, not just that they answered. If the answer was vague, push back with precision.
 
-When assessing resume impact, determine whether any existing bullet should be highlighted (this answer proves it more strongly), strengthened (the bullet can be sharpened with new detail), or whether something entirely new should be added.
+When assessing resume impact, determine whether any existing bullet should be highlighted (this answer proves it more strongly), strengthened (the bullet can be sharpened with new detail), whether something entirely new should be added, or whether an earlier role should be promoted to the top because it is more relevant than the current top entry.
 
 When determining the next step, either generate a specific follow-up if the answer was incomplete, move to the next prepared question if it was sufficient, or set complete to true if enough has been gathered (typically 4-6 exchanges, never more than 8).
 
@@ -36,13 +36,16 @@ OUTPUT FORMAT: Return valid JSON:
     {
       "section": "experience|summary|accomplishments",
       "bullet_id": "approximate bullet text (first few words) to identify which bullet, if relevant",
-      "action": "highlight|strengthen|add",
-      "text": "the new or strengthened text if action is add or strengthen"
+      "action": "highlight|strengthen|add|reorder",
+      "text": "the new or strengthened text if action is add or strengthen",
+      "position": 0
     }
   ],
   "insight": "1-2 sentences: what this answer revealed about the candidate that changes how we think about their positioning",
   "complete": false
 }
+
+Use action "reorder" with a position number when an answer reveals that an earlier role is more relevant to the target job than the current top entry. Example: { "section": "exp-3", "action": "reorder", "position": 0 }
 
 RULES:
 - next_question must reference something specific from the conversation or from the candidate's background
@@ -137,10 +140,11 @@ function normalizeExcavationResponse(
     .map((u) => ({
       section: typeof u.section === 'string' ? u.section : 'experience',
       bullet_id: typeof u.bullet_id === 'string' ? u.bullet_id : undefined,
-      action: (['highlight', 'strengthen', 'add'] as const).includes(u.action as 'highlight' | 'strengthen' | 'add')
-        ? (u.action as 'highlight' | 'strengthen' | 'add')
+      action: (['highlight', 'strengthen', 'add', 'reorder'] as const).includes(u.action as 'highlight' | 'strengthen' | 'add' | 'reorder')
+        ? (u.action as 'highlight' | 'strengthen' | 'add' | 'reorder')
         : 'highlight',
       text: typeof u.text === 'string' ? u.text : undefined,
+      position: typeof u.position === 'number' ? u.position : undefined,
     }));
 
   return {

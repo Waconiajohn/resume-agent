@@ -7,13 +7,26 @@ import type { DiscoveryOutput, LiveResumeState } from '@/types/discovery';
 interface RecognitionScreenProps {
   discovery: DiscoveryOutput;
   resume: LiveResumeState;
+  highlightedSections: string[];
   onRespond: (response: 'confirmed' | 'corrected') => void;
 }
 
-export function RecognitionScreen({ discovery, resume, onRespond }: RecognitionScreenProps) {
+function getReferencedSections(text: string, resume: LiveResumeState): string[] {
+  const lower = text.toLowerCase();
+  return resume.experience
+    .filter(
+      (exp) =>
+        (exp.company && lower.includes(exp.company.toLowerCase())) ||
+        (exp.title && lower.includes(exp.title.toLowerCase())),
+    )
+    .map((exp) => exp.id);
+}
+
+export function RecognitionScreen({ discovery, resume, highlightedSections, onRespond }: RecognitionScreenProps) {
   const [visibleParagraphs, setVisibleParagraphs] = useState(0);
   const [showQuestion, setShowQuestion] = useState(false);
   const [showCards, setShowCards] = useState(false);
+  const [hoverHighlights, setHoverHighlights] = useState<string[]>([]);
 
   const { recognition } = discovery;
   const paragraphs = [recognition.career_thread, recognition.role_fit, recognition.differentiator];
@@ -57,8 +70,14 @@ export function RecognitionScreen({ discovery, resume, onRespond }: RecognitionS
                 className={cn(
                   'text-xl leading-relaxed text-[var(--text-strong)] transition-all duration-700',
                   idx < visibleParagraphs ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+                  idx < visibleParagraphs && 'cursor-default',
                 )}
                 style={{ fontFamily: 'var(--font-display)', transitionDelay: `${idx * 100}ms` }}
+                onMouseEnter={() => {
+                  const refs = getReferencedSections(text, resume);
+                  if (refs.length > 0) setHoverHighlights(refs);
+                }}
+                onMouseLeave={() => setHoverHighlights([])}
               >
                 {text}
               </p>
@@ -130,7 +149,7 @@ export function RecognitionScreen({ discovery, resume, onRespond }: RecognitionS
         <div className="flex-1 overflow-hidden">
           <LiveResume
             resume={resume}
-            highlightedSections={[]}
+            highlightedSections={hoverHighlights.length > 0 ? hoverHighlights : highlightedSections}
             footerText="This is your resume right now. Watch what it becomes."
           />
         </div>
