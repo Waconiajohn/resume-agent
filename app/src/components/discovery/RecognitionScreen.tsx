@@ -80,29 +80,17 @@ export function RecognitionScreen({ discovery, resume, highlightedSections, onRe
   const [hoverHighlights, setHoverHighlights] = useState<string[]>([]);
 
   const { recognition } = discovery;
-  const paragraphs = [recognition.career_thread, recognition.role_fit, recognition.differentiator];
+  const recognitionText = [recognition.career_thread, recognition.role_fit, recognition.differentiator]
+    .filter(Boolean)
+    .join(' ');
 
-  // Stagger in paragraphs then question then cards
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    paragraphs.forEach((_, idx) => {
-      timers.push(
-        setTimeout(() => {
-          setVisibleParagraphs((prev) => Math.max(prev, idx + 1));
-        }, idx * 800 + 300),
-      );
-    });
-
-    // Concerns appear when visibleParagraphs >= 3 (after ~2700ms + 300ms delay = ~3000ms).
-    // Question and cards follow after concerns have had time to settle.
-    timers.push(
-      setTimeout(() => setShowQuestion(true), paragraphs.length * 800 + 1200),
-      setTimeout(() => setShowCards(true), paragraphs.length * 800 + 1600),
-    );
-
+    const timers = [
+      setTimeout(() => setVisibleParagraphs(1), 300),
+      setTimeout(() => setShowQuestion(true), 1100),
+      setTimeout(() => setShowCards(true), 1500),
+    ];
     return () => timers.forEach(clearTimeout);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -115,33 +103,27 @@ export function RecognitionScreen({ discovery, resume, highlightedSections, onRe
             What we found
           </p>
 
-          {/* Recognition paragraphs */}
-          <div className="space-y-5">
-            {paragraphs.map((text, idx) => (
-              <p
-                key={idx}
-                className={cn(
-                  'text-xl leading-relaxed text-[var(--text-strong)] transition-all duration-700',
-                  idx < visibleParagraphs ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
-                  idx < visibleParagraphs && 'cursor-default',
-                )}
-                style={{ fontFamily: 'var(--font-display)', transitionDelay: `${idx * 100}ms` }}
-                onMouseEnter={() => {
-                  const refs = getReferencedSections(text, resume);
-                  if (refs.length > 0) setHoverHighlights(refs);
-                }}
-                onMouseLeave={() => setHoverHighlights([])}
-              >
-                {text}
-              </p>
-            ))}
-          </div>
+          {/* Recognition statement — single flowing paragraph */}
+          <p
+            className={cn(
+              'text-xl leading-relaxed text-[var(--text-strong)] transition-all duration-700',
+              visibleParagraphs >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+            )}
+            style={{ fontFamily: 'var(--font-display)' }}
+            onMouseEnter={() => {
+              const refs = getReferencedSections(recognitionText, resume);
+              if (refs.length > 0) setHoverHighlights(refs);
+            }}
+            onMouseLeave={() => setHoverHighlights([])}
+          >
+            {recognitionText}
+          </p>
 
           {/* Hiring manager concerns — collapsed */}
           {discovery.hiring_manager_concerns.length > 0 && (
             <CollapsedConcerns
               concerns={discovery.hiring_manager_concerns}
-              visible={visibleParagraphs >= 3}
+              visible={visibleParagraphs >= 1}
             />
           )}
         </div>
