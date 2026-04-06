@@ -69,25 +69,24 @@ FORBIDDEN PHRASES — none of these should appear anywhere in the output:
 
 WHY ME FINAL
 
-WHY ME FINAL is not the same as the RIGHTEOUS CLOSE. RIGHTEOUS CLOSE is a full paragraph written in the candidate's voice for networking contexts. WHY ME FINAL is a two-part distillation: the headline is a single claim built for a hiring manager scanning a stack of resumes, and the body proves that claim. The headline should be shorter, sharper, and more specific than anything in the RIGHTEOUS CLOSE paragraph.
+Two fields: headline and body. Together they answer: "Why would a company hire this person?"
 
-Two fields: headline and body.
+HEADLINE: Two to three sentences. This is the positioning statement — it explains WHY companies hire this type of person, not what they did at one company. It must:
+- Open with the VALUE the person brings, not a project description: "Companies hire me when they need someone who can..." or "I bring [rare combination] that produces [outcome]."
+- Describe a REPEATABLE PATTERN of impact — something they bring to every role, not something that happened once
+- Name the RARE COMBINATION that makes them hard to replace: the intersection of 2-3 capabilities that most candidates don't have together
+- Do NOT name a specific company. Do NOT recap a single project. This must work for ANY job they apply to.
+- Include scope/metrics as proof, not as the headline: team sizes, budget scale, percentage improvements support the claim but don't lead it.
 
-HEADLINE: One sentence. This is the 3-to-5 second test. A hiring manager glances at this and immediately knows what makes this person different. It must:
-- Position the PERSON, not describe a single project. Do NOT name a specific company in the headline.
-- Describe a repeatable capability or pattern — something they bring to every role, not something that happened once at one company
-- Include a concrete metric or scope to prove it is not generic (team sizes, budget scale, percentage improvements)
-- Pass the uniqueness test: could another executive with a similar background claim this exact sentence? If yes, rewrite it.
+Good example: "Companies hire me when they need someone who can step into a complex environment, stabilize it, and make it perform at a higher level. I bring a rare combination of frontline operations expertise and technical leadership — I understand service delivery well enough to improve it in real time, and I understand technology well enough to lead platform deployments and workflow automation. That means I translate between technical teams, business stakeholders, and operational staff without losing momentum."
 
-Good example: "Infrastructure leader who has migrated 60+ enterprise applications to cloud with zero downtime, grown engineering teams from 5 to 14, and earned the trust of product executives by translating infrastructure constraints into customer impact."
+Bad example: "Transformed Nimbus Technologies by migrating 60+ legacy apps to AWS, reducing costs by 35%." — This is a project recap at one company, not a positioning statement.
 
-Bad example: "Transformed Nimbus Technologies by migrating 60+ legacy apps to AWS" — this names one company and sounds like a project recap, not a positioning statement.
+Bad example: "I bring a unique combination of technical expertise and leadership skills." — Generic, could describe anyone.
 
-Bad example: "I'm the right fit because I bring a unique combination of technical expertise, leadership skills, and business acumen." — generic, could describe anyone.
+BODY: Three to five sentences. These prove the headline with specific evidence — metrics, outcomes, patterns. The body CAN name companies. Structure: first sentence names the biggest quantified impact. Second and third sentences show the pattern repeating across roles. Final sentence addresses HOW they lead (values, approach, what they build in teams).
 
-The headline is the single most important output of this entire profile. It will seed every professional summary this platform generates. It must work for ANY job this person applies to, not just the last one they held.
-
-BODY: Two to three sentences. These prove the headline with specifics — metrics, outcomes, moments from the interview. The body CAN name companies as evidence, but the headline must not.
+The WHY ME FINAL is the single most important output of this entire profile. It will seed every professional summary, cover letter, and interview prep this platform generates.
 
 OUTPUT FORMAT: Return valid JSON:
 {
