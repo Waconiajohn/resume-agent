@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload } from 'lucide-react';
+import { extractResumeTextFromUpload } from '@/lib/resume-upload';
+import { cn } from '@/lib/utils';
 
 interface IntakeFormProps {
   onSubmit: (
@@ -16,8 +19,37 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
   const [targetRoles, setTargetRoles] = useState('');
   const [situation, setSituation] = useState('');
   const [showLinkedInSkipConfirm, setShowLinkedInSkipConfirm] = useState(false);
+  const [resumeDragging, setResumeDragging] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState<string | null>(null);
+  const resumeFileRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = resumeText.trim().length > 0 && targetRoles.trim().length > 0 && !loading;
+
+  const handleResumeFile = useCallback(async (file: File) => {
+    try {
+      const text = await extractResumeTextFromUpload(file);
+      setResumeText(text);
+      setResumeFileName(file.name);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not read file';
+      setResumeFileName(message);
+    }
+  }, []);
+
+  const handleResumeDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setResumeDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await handleResumeFile(file);
+    } else {
+      const text = e.dataTransfer.getData('text/plain');
+      if (text.trim()) {
+        setResumeText(text);
+        setResumeFileName(null);
+      }
+    }
+  }, [handleResumeFile]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -59,16 +91,56 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
             Your resume
           </label>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            Paste the full text of your resume. Everything helps — work history, skills, education, accomplishments.
+            Upload a file, drag and drop, or paste the text of your resume.
           </p>
-          <textarea
-            className="w-full min-h-[200px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
-            placeholder="Paste your resume text here..."
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            aria-label="Resume text"
-            aria-required="true"
-          />
+
+          {/* File upload bar */}
+          <div className="mb-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => resumeFileRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--link)] hover:text-[var(--text-strong)] transition-colors"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Browse file
+            </button>
+            {resumeFileName && (
+              <span className="text-xs text-[var(--text-soft)] truncate max-w-[300px]">
+                {resumeFileName}
+              </span>
+            )}
+            <input
+              ref={resumeFileRef}
+              type="file"
+              accept=".txt,.pdf,.docx"
+              className="sr-only"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await handleResumeFile(file);
+              }}
+              aria-label="Upload resume file"
+            />
+          </div>
+
+          {/* Textarea with drag-and-drop */}
+          <div
+            className={cn(
+              'rounded-lg transition-all duration-200',
+              resumeDragging && 'ring-2 ring-[var(--link)] ring-offset-2 ring-offset-[var(--bg-0)]',
+            )}
+            onDrop={handleResumeDrop}
+            onDragOver={(e) => { e.preventDefault(); setResumeDragging(true); }}
+            onDragLeave={() => setResumeDragging(false)}
+          >
+            <textarea
+              className="w-full min-h-[200px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
+              placeholder={resumeDragging ? 'Drop your resume here...' : 'Paste your resume text here, or drag a file onto this area...'}
+              value={resumeText}
+              onChange={(e) => { setResumeText(e.target.value); setResumeFileName(null); }}
+              aria-label="Resume text"
+              aria-required="true"
+            />
+          </div>
         </div>
 
         {/* LinkedIn About */}
