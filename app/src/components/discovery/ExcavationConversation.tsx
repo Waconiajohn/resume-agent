@@ -1,20 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Send } from 'lucide-react';
-import { GlassButton } from '@/components/GlassButton';
-import { LiveResume } from './LiveResume';
 import { cn } from '@/lib/utils';
-import type { DiscoveryOutput, ExcavationResponse, LiveResumeState, ResumeUpdate } from '@/types/discovery';
-
-interface ConversationMessage {
-  role: 'ai' | 'user';
-  content: string;
-}
+import type { DiscoveryOutput, ExcavationResponse, ResumeUpdate } from '@/types/discovery';
 
 interface ExcavationConversationProps {
   discovery: DiscoveryOutput;
   sessionId: string;
-  resume: LiveResumeState;
-  initialConversation: ConversationMessage[];
+  initialConversation: Array<{ role: 'ai' | 'user'; content: string }>;
   correctionMode?: boolean;
   onExcavate: (sessionId: string, answer: string) => Promise<ExcavationResponse | null>;
   onResumeUpdate: (updates: ResumeUpdate[]) => void;
@@ -22,10 +13,14 @@ interface ExcavationConversationProps {
   excavating: boolean;
 }
 
+interface Exchange {
+  question: string;
+  answer: string;
+}
+
 export function ExcavationConversation({
   discovery,
   sessionId,
-  resume,
   initialConversation,
   correctionMode = false,
   onExcavate,
@@ -34,32 +29,24 @@ export function ExcavationConversation({
   excavating,
 }: ExcavationConversationProps) {
   const firstQuestion = discovery.excavation_questions[0]?.question ?? 'Tell me more about your experience.';
+  const totalQuestions = discovery.excavation_questions.length || 5;
 
-  const [conversation, setConversation] = useState<ConversationMessage[]>(() => {
-    if (initialConversation.length > 0) return initialConversation;
-
-    if (correctionMode) {
-      return [
-        {
-          role: 'ai',
-          content:
-            "I may have gotten some things wrong. That's useful — help me understand what I missed or misread about your career. What felt off in what I said?",
-        },
-      ];
+  const [currentQuestion, setCurrentQuestion] = useState<string>(() => {
+    if (initialConversation.length > 0) {
+      const lastAi = [...initialConversation].reverse().find((m) => m.role === 'ai');
+      return lastAi?.content ?? firstQuestion;
     }
-
-    return [
-      {
-        role: 'ai',
-        content: `Good. Let me dig deeper into what makes you exceptional for this role.\n\n${firstQuestion}`,
-      },
-    ];
+    if (correctionMode) {
+      return "I may have gotten some things wrong. That's useful — help me understand what I missed or misread about your career. What felt off in what I said?";
+    }
+    return firstQuestion;
   });
+
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [answer, setAnswer] = useState('');
-  const [highlightedSections, setHighlightedSections] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -69,10 +56,12 @@ export function ExcavationConversation({
     };
   }, []);
 
+  // Scroll to bottom when exchanges grow
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation]);
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [exchanges, currentQuestion]);
 
+  // Auto-focus textarea
   useEffect(() => {
     if (!excavating && !isComplete) {
       textareaRef.current?.focus();
@@ -83,45 +72,43 @@ export function ExcavationConversation({
     const trimmed = answer.trim();
     if (!trimmed || excavating || isComplete) return;
 
-    setConversation((prev) => [...prev, { role: 'user', content: trimmed }]);
+    // Record the exchange
+    const answeredQuestion = currentQuestion;
+    setExchanges((prev) => [...prev, { question: answeredQuestion, answer: trimmed }]);
     setAnswer('');
+    setCurrentQuestion('');
 
     const result = await onExcavate(sessionId, trimmed);
-    if (!result) return;
+    if (!result) {
+      setCurrentQuestion(answeredQuestion);
+      return;
+    }
 
     if (result.resume_updates.length > 0) {
       onResumeUpdate(result.resume_updates);
-      setHighlightedSections(result.resume_updates.map((u) => u.section));
-      // Clear highlight glow after 3s
-      const t1 = setTimeout(() => setHighlightedSections([]), 3000);
-      pendingTimers.current.push(t1);
     }
 
     if (result.complete) {
-      setConversation((prev) => [
-        ...prev,
-        { role: 'ai', content: result.insight },
-        {
-          role: 'ai',
-          content: "I think I understand who you are now.\nHere is the full picture.",
-        },
-      ]);
+      setCurrentQuestion("I think I understand who you are now. Here is the full picture.");
       setIsComplete(true);
-      // Wait a moment then transition
-      const t2 = setTimeout(() => onComplete(), 2500);
-      pendingTimers.current.push(t2);
+      const t = setTimeout(() => onComplete(), 2500);
+      pendingTimers.current.push(t);
     } else {
-      if (result.insight) {
-        setConversation((prev) => [...prev, { role: 'ai', content: result.insight }]);
-      }
+      // Show insight as a brief exchange note, then set next question
       if (result.next_question) {
-        const t = setTimeout(() => {
-          setConversation((prev) => [...prev, { role: 'ai', content: result.next_question! }]);
-        }, result.insight ? 1200 : 0);
-        pendingTimers.current.push(t);
+        if (result.insight) {
+          // Brief pause for the insight before showing the next question
+          setCurrentQuestion('');
+          const t = setTimeout(() => {
+            setCurrentQuestion(result.next_question!);
+          }, 800);
+          pendingTimers.current.push(t);
+        } else {
+          setCurrentQuestion(result.next_question);
+        }
       }
     }
-  }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete]);
+  }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete, currentQuestion]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -133,110 +120,110 @@ export function ExcavationConversation({
     [handleSubmit],
   );
 
-  return (
-    <div className="flex h-full gap-0">
-      {/* Left — conversation */}
-      <div className="flex w-[55%] flex-col border-r border-[var(--line-soft)]">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="flex flex-col gap-4" aria-live="polite" aria-relevant="additions">
-            {conversation.map((msg, idx) => (
-              <ChatMessage key={idx} message={msg} />
-            ))}
-            {excavating && <TypingIndicator />}
-            <div ref={bottomRef} />
-          </div>
-        </div>
+  const completedCount = exchanges.length;
 
-        {/* Input area */}
-        {!isComplete && (
-          <div className="border-t border-[var(--line-soft)] px-8 py-5">
-            <div className="flex gap-3">
-              <textarea
-                ref={textareaRef}
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Your answer — press Enter to send, Shift+Enter for new line"
-                disabled={excavating}
-                rows={3}
+  return (
+    <div className="flex h-full w-full flex-col">
+      {/* Top — purpose statement */}
+      <div className="shrink-0 px-16 pt-8 pb-4">
+        <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
+          Building your CareerIQ profile
+        </p>
+      </div>
+
+      {/* Middle — the conversation */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-16 py-4"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        <div className="mx-auto max-w-2xl">
+          {/* Previous exchanges — transcript style */}
+          {exchanges.map((exchange, idx) => (
+            <div key={idx} className="mb-8">
+              <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                {exchange.question}
+              </p>
+              <p className="mt-3 pl-4 border-l-2 border-[var(--line-soft)] text-sm leading-relaxed text-[var(--text-soft)]">
+                {exchange.answer}
+              </p>
+            </div>
+          ))}
+
+          {/* Current question — large, present, unboxed */}
+          {currentQuestion && (
+            <div className={cn('mt-4 transition-opacity duration-500', currentQuestion ? 'opacity-100' : 'opacity-0')}>
+              <p
                 className={cn(
-                  'flex-1 resize-none rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-4 py-3',
-                  'text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-                  'focus:border-[var(--line-strong)] focus:outline-none focus:ring-1 focus:ring-[var(--focus-ring)]',
-                  'transition-colors duration-200',
-                  excavating && 'opacity-50',
+                  'text-2xl font-light leading-relaxed text-[var(--text-strong)]',
+                  isComplete && 'text-xl',
                 )}
-                aria-label="Your answer"
-              />
-              <GlassButton
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                {currentQuestion}
+              </p>
+            </div>
+          )}
+
+          {/* Processing indicator */}
+          {excavating && !currentQuestion && (
+            <div className="mt-4 flex items-center gap-2">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 rounded-full bg-[var(--text-soft)] animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+                  style={{ animationDelay: `${i * 0.16}s` }}
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Progress signal */}
+          {completedCount > 0 && !isComplete && (
+            <p className="mt-6 text-xs text-[var(--text-muted)]">
+              {completedCount} of {totalQuestions} questions complete —
+              profile {Math.min(Math.round((completedCount / totalQuestions) * 100), 95)}% built
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom — answer input */}
+      {!isComplete && (
+        <div className="shrink-0 border-t border-[var(--line-soft)] px-16 py-8">
+          <div className="mx-auto max-w-2xl">
+            <textarea
+              ref={textareaRef}
+              className={cn(
+                'w-full bg-transparent text-base leading-relaxed text-[var(--text-strong)] resize-none outline-none',
+                'placeholder:text-[var(--text-muted)] min-h-[80px]',
+                excavating && 'opacity-40',
+              )}
+              placeholder="Your answer — press Enter to send, Shift+Enter for new line"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={excavating}
+              aria-label="Your answer"
+            />
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-xs text-[var(--text-muted)]">
+                {excavating ? 'Processing...' : 'Take your time. The more specific the better.'}
+              </p>
+              <button
+                type="button"
                 onClick={() => void handleSubmit()}
                 disabled={!answer.trim() || excavating}
-                loading={excavating}
-                size="md"
-                aria-label="Send answer"
-                className="self-end"
+                className="text-xs text-[var(--link)] hover:text-[var(--link-hover)] disabled:opacity-30 transition-opacity"
               >
-                <Send className="h-4 w-4" />
-              </GlassButton>
+                Send &rarr;
+              </button>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Right — live resume */}
-      <div className="flex w-[45%] flex-col px-8 py-8">
-        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
-          Your resume — updating live
-        </p>
-        <div className="flex-1 overflow-hidden">
-          <LiveResume
-            resume={resume}
-            highlightedSections={highlightedSections}
-          />
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ChatMessage({ message }: { message: ConversationMessage }) {
-  const isAi = message.role === 'ai';
-  return (
-    <div
-      className={cn(
-        'flex animate-[fade-in_300ms_ease-out_forwards]',
-        isAi ? 'justify-start' : 'justify-end',
       )}
-    >
-      <div
-        className={cn(
-          'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-          isAi
-            ? 'border-l-2 border-[var(--link)] bg-[var(--surface-2)] text-[var(--text-strong)]'
-            : 'bg-[var(--surface-3)] text-[var(--text-strong)]',
-        )}
-        style={{ whiteSpace: 'pre-wrap' }}
-      >
-        {message.content}
-      </div>
-    </div>
-  );
-}
-
-function TypingIndicator() {
-  return (
-    <div className="flex justify-start">
-      <div className="flex items-center gap-1.5 rounded-2xl border-l-2 border-[var(--link)] bg-[var(--surface-2)] px-4 py-3">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="h-1.5 w-1.5 rounded-full bg-[var(--text-soft)] animate-[dot-bounce_1.4s_ease-in-out_infinite]"
-            style={{ animationDelay: `${i * 0.16}s` }}
-            aria-hidden="true"
-          />
-        ))}
-      </div>
     </div>
   );
 }

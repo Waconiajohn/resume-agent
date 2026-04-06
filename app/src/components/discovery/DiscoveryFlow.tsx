@@ -757,12 +757,11 @@ export default function DiscoveryFlow() {
         />
       )}
 
-      {screen === 'excavation' && discovery && liveResume && sessionId && (
+      {screen === 'excavation' && discovery && sessionId && (
         <div className="relative h-full">
           <ExcavationConversation
             discovery={discovery}
             sessionId={sessionId}
-            resume={liveResume}
             initialConversation={[]}
             correctionMode={recognitionResponse === 'corrected'}
             onExcavate={excavate}
