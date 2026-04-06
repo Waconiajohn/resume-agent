@@ -14,6 +14,7 @@ import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
+import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
@@ -115,7 +116,6 @@ export default function App() {
   const normalizedWorkspaceRedirect = getNormalizedWorkspaceRedirect(location.search);
   const isResumeV2VisualHarnessRoute = import.meta.env.DEV && location.pathname === '/__dev/resume-v2-visual';
   const isDiscoveryRoute = location.pathname === '/discover';
-  const isProfileSetupRoute = location.pathname === '/profile-setup';
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -536,22 +536,6 @@ export default function App() {
     );
   }
 
-  if (isProfileSetupRoute) {
-    return (
-      <ToastProvider>
-        <ErrorBoundary key="profile-setup">
-          <Suspense fallback={
-            <div className="flex h-screen items-center justify-center" style={{ background: 'var(--bg-0)' }}>
-              <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
-            </div>
-          }>
-            <ProfileSetupPage />
-          </Suspense>
-        </ErrorBoundary>
-      </ToastProvider>
-    );
-  }
-
   return (
     <ToastProvider>
       <CareerProfileProvider>
@@ -653,18 +637,36 @@ export default function App() {
               <Route
                 path={RESUME_BUILDER_SESSION_ROUTE}
                 element={(
-                  <V2ResumeScreen
-                    accessToken={accessToken}
-                    onBack={() => navigate(buildResumeWorkspaceRoute())}
-                    initialResumeText={intakeInitialResumeText}
-                    initialJobUrl={intakeInitialJobUrl}
-                    onLoadMasterResume={async () => {
-                      const resume = await getDefaultResume();
-                      return resume?.raw_text?.trim() || null;
-                    }}
-                    initialSessionId={v2SessionId ?? undefined}
-                    onSyncToMasterResume={handleSyncV2ResumeToMaster}
-                  />
+                  <WorkspaceLayout>
+                    <V2ResumeScreen
+                      accessToken={accessToken}
+                      onBack={() => navigate(buildResumeWorkspaceRoute())}
+                      initialResumeText={intakeInitialResumeText}
+                      initialJobUrl={intakeInitialJobUrl}
+                      onLoadMasterResume={async () => {
+                        const resume = await getDefaultResume();
+                        return resume?.raw_text?.trim() || null;
+                      }}
+                      initialSessionId={v2SessionId ?? undefined}
+                      onSyncToMasterResume={handleSyncV2ResumeToMaster}
+                    />
+                  </WorkspaceLayout>
+                )}
+              />
+              <Route
+                path="/profile-setup"
+                element={(
+                  <WorkspaceLayout>
+                    <ErrorBoundary key="profile-setup">
+                      <Suspense fallback={
+                        <div className="flex h-full items-center justify-center" style={{ background: 'var(--bg-0)' }}>
+                          <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
+                        </div>
+                      }>
+                        <ProfileSetupPage />
+                      </Suspense>
+                    </ErrorBoundary>
+                  </WorkspaceLayout>
                 )}
               />
               <Route

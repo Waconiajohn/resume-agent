@@ -248,7 +248,7 @@ export default function ProfileSetupPage() {
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden"
+      className="relative h-full overflow-hidden"
       style={{ background: 'var(--bg-0)' }}
     >
       {/* Error banner */}
