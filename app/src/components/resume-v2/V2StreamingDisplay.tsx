@@ -13,6 +13,7 @@ import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCard
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
+import { BulletCoachingPanel } from './cards/BulletCoachingPanel';
 import type { LiveScores } from '@/hooks/useLiveScoring';
 import { DiffView } from './DiffView';
 import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/useHiringManagerReview';
@@ -391,10 +392,14 @@ export function V2StreamingDisplay({
     section: string;
     index: number;
     requirements: string[];
-  } | null>(initialActiveBullet);
+    bulletText: string;
+    reviewState: ResumeReviewState;
+    requirementSource?: RequirementSource;
+    evidenceFound: string;
+  } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
 
   useEffect(() => {
-    setActiveBullet(initialActiveBullet ?? null);
+    setActiveBullet(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
   }, [initialActiveBullet]);
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
@@ -406,10 +411,26 @@ export function V2StreamingDisplay({
   const [attentionIndex, setAttentionIndex] = useState(0);
 
   // Bullet click handler for cross-referencing
-  const handleBulletClick = useCallback((bulletText: string, section: string, bulletIndex: number, requirements: string[]) => {
+  const handleBulletClick = useCallback((
+    bulletText: string,
+    section: string,
+    bulletIndex: number,
+    requirements: string[],
+    reviewState?: ResumeReviewState,
+    requirementSource?: RequirementSource,
+    evidenceFound?: string,
+  ) => {
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
-      return { section, index: bulletIndex, requirements };
+      return {
+        section,
+        index: bulletIndex,
+        requirements,
+        bulletText,
+        reviewState: reviewState ?? 'supported' as ResumeReviewState,
+        requirementSource,
+        evidenceFound: evidenceFound ?? '',
+      };
     });
   }, []);
 
@@ -421,6 +442,9 @@ export function V2StreamingDisplay({
       section: item.section,
       index: item.index,
       requirements: item.requirements,
+      bulletText: item.text,
+      reviewState: 'strengthen' as ResumeReviewState,
+      evidenceFound: '',
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(item.selector);
@@ -641,9 +665,12 @@ export function V2StreamingDisplay({
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
-                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} gapChat={gapChat ?? undefined} buildChatContext={buildChatContext} onBulletConversationClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
                   </div>
                 </AnimatedCard>
+              )}
+              {activeBullet && gapChat && buildChatContext && (
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -709,6 +736,9 @@ export function V2StreamingDisplay({
                     <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
                   )}
                   {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+                  {activeBullet && gapChat && buildChatContext && (
+                    <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                  )}
                   {pendingEdit && !activeBullet && (
                     <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
                   )}
@@ -727,7 +757,7 @@ export function V2StreamingDisplay({
                   {displayResume && (
                     <AnimatedCard index={0}>
                       <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
-                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} gapChat={gapChat ?? undefined} buildChatContext={buildChatContext} onBulletConversationClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
                       </div>
                     </AnimatedCard>
                   )}

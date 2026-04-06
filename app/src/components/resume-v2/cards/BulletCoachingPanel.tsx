@@ -164,17 +164,6 @@ export function BulletCoachingPanel({
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  // ── Click-outside to close ─────────────────────────────────────────────────
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
-
   // ── Enhance handler ────────────────────────────────────────────────────────
   const handleEnhance = useCallback(async (action: EnhanceAction) => {
     if (!onBulletEnhance || isEnhancing) return;

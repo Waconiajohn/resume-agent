@@ -4,10 +4,6 @@ import type {
   RequirementSource,
   ResumeReviewState,
 } from '@/types/resume-v2';
-import type { GapChatHook } from '@/hooks/useGapChat';
-import type { GapChatContext } from '@/types/resume-v2';
-import { BulletCoachingPanel } from './BulletCoachingPanel';
-import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
@@ -17,22 +13,19 @@ interface ResumeDocumentCardProps {
   /** Which bullet is currently selected for inline editing */
   activeBullet?: { section: string; index: number } | null;
   /** Click handler for bullet selection */
-  onBulletClick?: (bulletText: string, section: string, bulletIndex: number, requirements: string[]) => void;
+  onBulletClick?: (
+    text: string,
+    section: string,
+    index: number,
+    requirements: string[],
+    reviewState: ResumeReviewState,
+    requirementSource: RequirementSource | undefined,
+    evidenceFound: string,
+  ) => void;
   /** Direct edit callback — saves edited text back into the resume */
   onBulletEdit?: (section: string, index: number, newText: string) => void;
   /** Remove a bullet from the resume */
   onBulletRemove?: (section: string, index: number) => void;
-  /** Gap chat infrastructure for BulletCoachingPanel */
-  gapChat?: GapChatHook;
-  buildChatContext?: (requirement: string) => GapChatContext;
-  onBulletConversationClose?: () => void;
-  /** AI enhancement handler for the bullet coaching panel */
-  onBulletEnhance?: (
-    action: string,
-    bulletText: string,
-    requirement: string,
-    evidence?: string,
-  ) => Promise<EnhanceResult | null>;
 }
 
 export function ResumeDocumentCard({
@@ -42,10 +35,6 @@ export function ResumeDocumentCard({
   onBulletClick,
   onBulletEdit,
   onBulletRemove,
-  gapChat,
-  buildChatContext,
-  onBulletConversationClose,
-  onBulletEnhance,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
@@ -129,7 +118,6 @@ export function ResumeDocumentCard({
               const accomplishmentDisplayTargets = accomplishmentPrimaryTarget ? [accomplishmentPrimaryTarget] : [];
               const hasStrategy = accomplishmentRequirements.length > 0;
               const resolvedState = resolveReviewState(a.review_state, a.confidence, a.requirement_source);
-              const isGreen = isResolvedReviewState(resolvedState);
               const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
 
               return (
@@ -139,7 +127,7 @@ export function ResumeDocumentCard({
                   data-confidence={a.confidence}
                   className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                     getConfidenceLineClass(a.review_state, a.confidence, a.requirement_source)
-                  }`}
+                  }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
                   {...(hasStrategy
                     ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
                     : {})}
@@ -152,25 +140,10 @@ export function ResumeDocumentCard({
                     section="selected_accomplishments"
                     bulletIndex={i}
                     requirements={accomplishmentDisplayTargets}
+                    resolvedState={resolvedState}
+                    evidenceFound={a.evidence_found}
                     onBulletClick={onBulletClick}
                   />
-                  {isActive && gapChat && buildChatContext && (
-                    <BulletCoachingPanel
-                      bulletText={a.content}
-                      section="selected_accomplishments"
-                      bulletIndex={i}
-                      requirements={accomplishmentDisplayTargets}
-                      reviewState={resolvedState}
-                      requirementSource={a.requirement_source}
-                      evidenceFound={a.evidence_found}
-                      gapChat={gapChat}
-                      chatContext={buildChatContext(accomplishmentDisplayTargets[0] ?? a.content)}
-                      onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
-                      onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
-                      onClose={() => onBulletConversationClose?.()}
-                      onBulletEnhance={onBulletEnhance}
-                    />
-                  )}
                 </li>
               );
             })}
@@ -218,7 +191,6 @@ export function ResumeDocumentCard({
                     const hasStrategy = bulletRequirements.length > 0;
                     const bulletIndex = i * 100 + j;
                     const resolvedState = resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source);
-                    const isGreen = isResolvedReviewState(resolvedState);
                     const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
 
                     return (
@@ -228,7 +200,7 @@ export function ResumeDocumentCard({
                         data-confidence={bullet.confidence}
                         className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                           getConfidenceLineClass(bullet.review_state, bullet.confidence, bullet.requirement_source)
-                        }`}
+                        }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
                         {...(hasStrategy
                           ? { 'data-addresses': JSON.stringify(bulletRequirements) }
                           : {})}
@@ -241,25 +213,10 @@ export function ResumeDocumentCard({
                           section="professional_experience"
                           bulletIndex={bulletIndex}
                           requirements={bulletDisplayTargets}
+                          resolvedState={resolvedState}
+                          evidenceFound={bullet.evidence_found}
                           onBulletClick={onBulletClick}
                         />
-                        {isActive && gapChat && buildChatContext && (
-                          <BulletCoachingPanel
-                            bulletText={bullet.text}
-                            section="professional_experience"
-                            bulletIndex={bulletIndex}
-                            requirements={bulletDisplayTargets}
-                            reviewState={resolvedState}
-                            requirementSource={bullet.requirement_source}
-                            evidenceFound={bullet.evidence_found}
-                            gapChat={gapChat}
-                            chatContext={buildChatContext(bulletDisplayTargets[0] ?? bullet.text)}
-                            onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
-                            onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
-                            onClose={() => onBulletConversationClose?.()}
-                            onBulletEnhance={onBulletEnhance}
-                          />
-                        )}
                       </li>
                     );
                   })}
@@ -326,8 +283,18 @@ interface BulletLineContentProps {
   section: string;
   bulletIndex: number;
   requirements: string[];
+  resolvedState: ResumeReviewState;
+  evidenceFound?: string;
   /** Click handler for non-green bullets — opens conversation editor. Undefined for green bullets. */
-  onBulletClick?: (bulletText: string, section: string, bulletIndex: number, requirements: string[]) => void;
+  onBulletClick?: (
+    text: string,
+    section: string,
+    index: number,
+    requirements: string[],
+    reviewState: ResumeReviewState,
+    requirementSource: RequirementSource | undefined,
+    evidenceFound: string,
+  ) => void;
 }
 
 function BulletLineContent({
@@ -338,6 +305,8 @@ function BulletLineContent({
   section,
   bulletIndex,
   requirements,
+  resolvedState,
+  evidenceFound,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
@@ -347,7 +316,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick!(text, section, bulletIndex, requirements);
+      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '');
     }
   };
 
