@@ -1,50 +1,50 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
-import type { DiscoveryOutput, ExcavationResponse, ResumeUpdate } from '@/types/discovery';
+import { LiveResume } from './LiveResume';
+import type { DiscoveryOutput, ExcavationResponse, LiveResumeState, ResumeUpdate } from '@/types/discovery';
 
-interface ExcavationConversationProps {
+interface ConversationViewProps {
   discovery: DiscoveryOutput;
   sessionId: string;
-  initialConversation: Array<{ role: 'ai' | 'user'; content: string }>;
-  correctionMode?: boolean;
+  liveResume: LiveResumeState;
+  highlightedSections: string[];
   onExcavate: (sessionId: string, answer: string) => Promise<ExcavationResponse | null>;
   onResumeUpdate: (updates: ResumeUpdate[]) => void;
   onComplete: () => void;
   excavating: boolean;
 }
 
-interface Exchange {
-  question: string;
-  answer: string;
+interface ConversationMessage {
+  role: 'ai' | 'user';
+  content: string;
 }
 
 export function ExcavationConversation({
   discovery,
   sessionId,
-  initialConversation,
-  correctionMode = false,
+  liveResume,
+  highlightedSections,
   onExcavate,
   onResumeUpdate,
   onComplete,
   excavating,
-}: ExcavationConversationProps) {
-  const firstQuestion = discovery.excavation_questions[0]?.question ?? 'Tell me more about your experience.';
+}: ConversationViewProps) {
   const totalQuestions = discovery.excavation_questions.length || 5;
 
-  const [currentQuestion, setCurrentQuestion] = useState<string>(() => {
-    if (initialConversation.length > 0) {
-      const lastAi = [...initialConversation].reverse().find((m) => m.role === 'ai');
-      return lastAi?.content ?? firstQuestion;
-    }
-    if (correctionMode) {
-      return "I may have gotten some things wrong. That's useful — help me understand what I missed or misread about your career. What felt off in what I said?";
-    }
-    return firstQuestion;
-  });
+  const openingMessage = [
+    discovery.recognition.career_thread,
+    discovery.recognition.role_fit,
+    discovery.recognition.differentiator,
+    '\n\nWhat I need to know is whether that lands — because everything we build from here depends on it. Is that an accurate read of your career, or is there something I\'m not seeing?',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [messages, setMessages] = useState<ConversationMessage[]>([
+    { role: 'ai', content: openingMessage },
+  ]);
   const [answer, setAnswer] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+  const [answeredCount, setAnsweredCount] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -56,12 +56,12 @@ export function ExcavationConversation({
     };
   }, []);
 
-  // Scroll to bottom when exchanges grow
+  // Scroll to bottom on new messages or loading state change
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [exchanges, currentQuestion]);
+  }, [messages, excavating]);
 
-  // Auto-focus textarea
+  // Auto-focus textarea when not loading and not complete
   useEffect(() => {
     if (!excavating && !isComplete) {
       textareaRef.current?.focus();
@@ -72,15 +72,12 @@ export function ExcavationConversation({
     const trimmed = answer.trim();
     if (!trimmed || excavating || isComplete) return;
 
-    // Record the exchange
-    const answeredQuestion = currentQuestion;
-    setExchanges((prev) => [...prev, { question: answeredQuestion, answer: trimmed }]);
+    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setAnswer('');
-    setCurrentQuestion('');
 
     const result = await onExcavate(sessionId, trimmed);
     if (!result) {
-      setCurrentQuestion(answeredQuestion);
+      // On failure, leave the user message in history but let the user try again
       return;
     }
 
@@ -88,27 +85,24 @@ export function ExcavationConversation({
       onResumeUpdate(result.resume_updates);
     }
 
+    setAnsweredCount((c) => c + 1);
+
     if (result.complete) {
-      setCurrentQuestion("I think I understand who you are now. Here is the full picture.");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'ai',
+          content:
+            'I have what I need.\n\nGive me a moment — I\'m putting together your complete CareerIQ profile.',
+        },
+      ]);
       setIsComplete(true);
-      const t = setTimeout(() => onComplete(), 2500);
+      const t = setTimeout(() => onComplete(), 2000);
       pendingTimers.current.push(t);
-    } else {
-      // Show insight as a brief exchange note, then set next question
-      if (result.next_question) {
-        if (result.insight) {
-          // Brief pause for the insight before showing the next question
-          setCurrentQuestion('');
-          const t = setTimeout(() => {
-            setCurrentQuestion(result.next_question!);
-          }, 800);
-          pendingTimers.current.push(t);
-        } else {
-          setCurrentQuestion(result.next_question);
-        }
-      }
+    } else if (result.next_question) {
+      setMessages((prev) => [...prev, { role: 'ai', content: result.next_question! }]);
     }
-  }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete, currentQuestion]);
+  }, [answer, excavating, isComplete, onExcavate, sessionId, onResumeUpdate, onComplete]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -120,88 +114,70 @@ export function ExcavationConversation({
     [handleSubmit],
   );
 
-  const completedCount = exchanges.length;
+  const completenessPercent = answeredCount > 0
+    ? Math.min(Math.round((answeredCount / totalQuestions) * 100), 95)
+    : null;
 
   return (
-    <div className="flex h-full w-full flex-col">
-      {/* Top — purpose statement */}
-      <div className="shrink-0 px-16 pt-8 pb-4">
-        <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
-          Building your CareerIQ profile
-        </p>
-      </div>
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Left column — conversation */}
+      <div className="flex w-[58%] flex-col h-full">
+        {/* Label */}
+        <div className="shrink-0 px-12 pt-8 pb-6">
+          <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
+            Building your CareerIQ profile
+          </p>
+        </div>
 
-      {/* Middle — the conversation */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-16 py-4"
-        aria-live="polite"
-        aria-relevant="additions"
-      >
-        <div className="mx-auto max-w-2xl">
-          {/* Previous exchanges — transcript style */}
-          {exchanges.map((exchange, idx) => (
-            <div key={idx} className="mb-8">
-              <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-                {exchange.question}
-              </p>
-              <p className="mt-3 pl-4 border-l-2 border-[var(--line-soft)] text-sm leading-relaxed text-[var(--text-soft)]">
-                {exchange.answer}
-              </p>
+        {/* Conversation scroll area */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-12"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
+          {messages.map((msg, idx) => {
+            const isFirst = idx === 0;
+            if (msg.role === 'ai') {
+              return (
+                <div
+                  key={idx}
+                  className={isFirst ? 'mb-8' : 'mb-8 animate-fade-in'}
+                  style={isFirst ? undefined : { animationDuration: '400ms' }}
+                >
+                  <p
+                    className="text-2xl font-light leading-relaxed text-[var(--text-strong)] whitespace-pre-line"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    {msg.content}
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div key={idx} className="mb-8 animate-fade-in" style={{ animationDuration: '400ms' }}>
+                <p className="text-sm leading-relaxed text-[var(--text-soft)] pl-4 border-l-2 border-[var(--line-soft)]">
+                  {msg.content}
+                </p>
+              </div>
+            );
+          })}
+
+          {/* Loading indicator — pulsing dot where next AI message will appear */}
+          {excavating && (
+            <div className="mb-8">
+              <span className="inline-block h-2 w-2 rounded-full bg-[var(--link)] animate-pulse" />
             </div>
-          ))}
-
-          {/* Current question — large, present, unboxed */}
-          {currentQuestion && (
-            <div className={cn('mt-4 transition-opacity duration-500', currentQuestion ? 'opacity-100' : 'opacity-0')}>
-              <p
-                className={cn(
-                  'text-2xl font-light leading-relaxed text-[var(--text-strong)]',
-                  isComplete && 'text-xl',
-                )}
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {currentQuestion}
-              </p>
-            </div>
-          )}
-
-          {/* Processing indicator */}
-          {excavating && !currentQuestion && (
-            <div className="mt-4 flex items-center gap-2">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-1.5 w-1.5 rounded-full bg-[var(--text-soft)] animate-[dot-bounce_1.4s_ease-in-out_infinite]"
-                  style={{ animationDelay: `${i * 0.16}s` }}
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Progress signal */}
-          {completedCount > 0 && !isComplete && (
-            <p className="mt-6 text-xs text-[var(--text-muted)]">
-              {completedCount} of {totalQuestions} questions complete —
-              profile {Math.min(Math.round((completedCount / totalQuestions) * 100), 95)}% built
-            </p>
           )}
         </div>
-      </div>
 
-      {/* Bottom — answer input */}
-      {!isComplete && (
-        <div className="shrink-0 border-t border-[var(--line-soft)] px-16 py-8">
-          <div className="mx-auto max-w-2xl">
+        {/* Input pinned to bottom */}
+        {!isComplete && (
+          <div className="shrink-0 px-12 py-8 border-t border-[var(--line-soft)]">
             <textarea
               ref={textareaRef}
-              className={cn(
-                'w-full bg-transparent text-base leading-relaxed text-[var(--text-strong)] resize-none outline-none',
-                'placeholder:text-[var(--text-muted)] min-h-[80px]',
-                excavating && 'opacity-40',
-              )}
-              placeholder="Your answer — press Enter to send, Shift+Enter for new line"
+              className="w-full bg-transparent text-base leading-relaxed text-[var(--text-strong)] resize-none outline-none placeholder:text-[var(--text-muted)] min-h-[80px] border-b border-[var(--line-soft)] pb-3"
+              placeholder={excavating ? 'Reading your answer...' : 'Your answer...'}
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -209,9 +185,13 @@ export function ExcavationConversation({
               aria-label="Your answer"
             />
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-[var(--text-muted)]">
-                {excavating ? 'Processing...' : 'Take your time. The more specific the better.'}
-              </p>
+              {completenessPercent !== null ? (
+                <p className="text-xs text-[var(--text-muted)]">
+                  Profile {completenessPercent}% built
+                </p>
+              ) : (
+                <span />
+              )}
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
@@ -222,8 +202,26 @@ export function ExcavationConversation({
               </button>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="w-px shrink-0 bg-gray-800" />
+
+      {/* Right column — live resume */}
+      <div className="flex w-[42%] flex-col h-full bg-gray-900">
+        <div className="shrink-0 px-10 pt-8 pb-4">
+          <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
+            Your resume — updating live
+          </p>
         </div>
-      )}
+        <div className="flex-1 overflow-y-auto px-10 pb-10">
+          <LiveResume
+            resume={liveResume}
+            highlightedSections={highlightedSections}
+          />
+        </div>
+      </div>
     </div>
   );
 }

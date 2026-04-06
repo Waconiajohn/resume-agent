@@ -6,7 +6,6 @@ import { GlassButton } from '@/components/GlassButton';
 import { GlassCard } from '@/components/GlassCard';
 import { DropZone } from './DropZone';
 import { ProcessingReveal } from './ProcessingReveal';
-import { RecognitionScreen } from './RecognitionScreen';
 import { ExcavationConversation } from './ExcavationConversation';
 import { CareerIQProfileScreen } from './CareerIQProfileScreen';
 import { API_BASE } from '@/lib/api';
@@ -14,13 +13,12 @@ import type {
   DiscoveryOutput,
   CareerIQProfile,
   LiveResumeState,
-  RecognitionStatement,
   ResumeUpdate,
 } from '@/types/discovery';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type DiscoveryScreen = 'drop_zone' | 'processing' | 'fading_to_recognition' | 'recognition' | 'excavation' | 'excavation_to_profile' | 'profile';
+type DiscoveryScreen = 'drop_zone' | 'processing' | 'conversation' | 'building_profile' | 'profile';
 type ProfileCheck = 'loading' | 'has_profile' | 'no_profile';
 
 interface DiscoveryState {
@@ -35,8 +33,6 @@ interface DiscoveryState {
   profile: CareerIQProfile | null;
   liveResume: LiveResumeState | null;
   highlightedSections: string[];
-  recognitionHighlights: string[];
-  recognitionResponse: 'confirmed' | 'corrected' | null;
   processingStage: { stage: string; message: string } | null;
   error: string | null;
 }
@@ -44,12 +40,9 @@ interface DiscoveryState {
 type DiscoveryAction =
   | { type: 'START_ANALYSIS'; resumeText: string; jobText: string }
   | { type: 'ANALYSIS_COMPLETE'; sessionId: string; discovery: DiscoveryOutput; liveResume: LiveResumeState }
-  | { type: 'FADE_COMPLETE' }
   | { type: 'ANALYSIS_ERROR'; error: string }
-  | { type: 'RESPOND_TO_RECOGNITION'; response: 'confirmed' | 'corrected' }
   | { type: 'APPLY_RESUME_UPDATES'; updates: ResumeUpdate[] }
   | { type: 'EXCAVATION_COMPLETE' }
-  | { type: 'START_PROFILE_BUILD' }
   | { type: 'PROFILE_READY'; profile: CareerIQProfile }
   | { type: 'PROFILE_ERROR'; error: string }
   | { type: 'RETRY_PROFILE' }
@@ -57,28 +50,6 @@ type DiscoveryAction =
   | { type: 'SET_PROFILE_CHECK'; check: ProfileCheck }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' };
-
-// ─── Recognition highlight helper ────────────────────────────────────────────
-
-function computeRecognitionHighlights(
-  recognition: RecognitionStatement,
-  resume: LiveResumeState,
-): string[] {
-  const fullText = [recognition.career_thread, recognition.role_fit, recognition.differentiator]
-    .join(' ')
-    .toLowerCase();
-
-  const highlighted: string[] = [];
-  for (const exp of resume.experience) {
-    if (
-      (exp.company && fullText.includes(exp.company.toLowerCase())) ||
-      (exp.title && fullText.includes(exp.title.toLowerCase()))
-    ) {
-      highlighted.push(exp.id);
-    }
-  }
-  return highlighted;
-}
 
 // ─── Profile synthesis helper (Gap 12) ───────────────────────────────────────
 
@@ -430,19 +401,12 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'ANALYSIS_COMPLETE':
       return {
         ...state,
-        screen: 'fading_to_recognition',
+        screen: 'conversation',
         sessionId: action.sessionId,
         discovery: action.discovery,
         liveResume: action.liveResume,
-        recognitionHighlights: computeRecognitionHighlights(action.discovery.recognition, action.liveResume),
         processingStage: null,
         error: null,
-      };
-
-    case 'FADE_COMPLETE':
-      return {
-        ...state,
-        screen: 'recognition',
       };
 
     case 'SET_PROCESSING_STAGE':
@@ -458,13 +422,6 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
         error: action.error,
       };
 
-    case 'RESPOND_TO_RECOGNITION':
-      return {
-        ...state,
-        screen: 'excavation',
-        recognitionResponse: action.response,
-      };
-
     case 'APPLY_RESUME_UPDATES': {
       if (!state.liveResume) return state;
       return {
@@ -477,12 +434,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'EXCAVATION_COMPLETE':
       return {
         ...state,
-        screen: 'excavation_to_profile',
-      };
-
-    case 'START_PROFILE_BUILD':
-      return {
-        ...state,
+        screen: 'building_profile',
         excavationComplete: true,
       };
 
@@ -497,7 +449,7 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'PROFILE_ERROR':
       return {
         ...state,
-        screen: 'excavation',  // Go back to excavation screen so retry UI is visible
+        screen: 'conversation',
         profileFetchFailed: true,
         error: action.error,
       };
@@ -535,8 +487,6 @@ const initialState: DiscoveryState = {
   profile: null,
   liveResume: null,
   highlightedSections: [],
-  recognitionHighlights: [],
-  recognitionResponse: null,
   processingStage: null,
   error: null,
 };
@@ -583,24 +533,6 @@ export default function DiscoveryFlow() {
     void checkProfile();
   }, [accessToken]);
 
-  // Fade from processing to recognition after a short delay
-  useEffect(() => {
-    if (state.screen !== 'fading_to_recognition') return;
-    const timer = setTimeout(() => {
-      dispatch({ type: 'FADE_COMPLETE' });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [state.screen]);
-
-  // Show the transitional screen for 2s then kick off the profile build
-  useEffect(() => {
-    if (state.screen !== 'excavation_to_profile') return;
-    const timer = setTimeout(() => {
-      dispatch({ type: 'START_PROFILE_BUILD' });
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [state.screen]);
-
   // After excavation complete, fetch the full profile
   useEffect(() => {
     if (!state.excavationComplete || !state.sessionId || state.profile || state.screen === 'profile' || state.profileFetchFailed) return;
@@ -643,10 +575,6 @@ export default function DiscoveryFlow() {
     [analyze],
   );
 
-  const handleRespond = useCallback((response: 'confirmed' | 'corrected') => {
-    dispatch({ type: 'RESPOND_TO_RECOGNITION', response });
-  }, []);
-
   const handleResumeUpdate = useCallback((updates: ResumeUpdate[]) => {
     dispatch({ type: 'APPLY_RESUME_UPDATES', updates });
   }, []);
@@ -655,7 +583,7 @@ export default function DiscoveryFlow() {
     dispatch({ type: 'EXCAVATION_COMPLETE' });
   }, []);
 
-  const { screen, resumeText, jobText, discovery, liveResume, profile, sessionId, recognitionHighlights, recognitionResponse, processingStage } = state;
+  const { screen, resumeText, jobText, discovery, liveResume, profile, sessionId, processingStage } = state;
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--bg-0)' }}>
@@ -738,32 +666,13 @@ export default function DiscoveryFlow() {
         />
       )}
 
-      {screen === 'fading_to_recognition' && resumeText && jobText && (
-        <div className="transition-opacity duration-500 opacity-0 pointer-events-none">
-          <ProcessingReveal
-            resumeText={resumeText}
-            jobText={jobText}
-            currentStage={processingStage}
-          />
-        </div>
-      )}
-
-      {screen === 'recognition' && discovery && liveResume && (
-        <RecognitionScreen
-          discovery={discovery}
-          resume={liveResume}
-          highlightedSections={recognitionHighlights}
-          onRespond={handleRespond}
-        />
-      )}
-
-      {screen === 'excavation' && discovery && sessionId && (
+      {screen === 'conversation' && discovery && liveResume && sessionId && (
         <div className="relative h-full">
           <ExcavationConversation
             discovery={discovery}
             sessionId={sessionId}
-            initialConversation={[]}
-            correctionMode={recognitionResponse === 'corrected'}
+            liveResume={liveResume}
+            highlightedSections={state.highlightedSections}
             onExcavate={excavate}
             onResumeUpdate={handleResumeUpdate}
             onComplete={handleExcavationComplete}
@@ -772,20 +681,15 @@ export default function DiscoveryFlow() {
           {state.profileFetchFailed && (
             <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-1)]/80 z-40">
               <div className="flex flex-col items-center gap-4 text-center">
-                <p className="text-lg text-[var(--text-strong)]">Could not build your profile.</p>
-                <GlassButton
-                  onClick={() => dispatch({ type: 'RETRY_PROFILE' })}
-                  size="lg"
-                >
-                  Try again
-                </GlassButton>
+                <p className="text-2xl font-light text-[var(--text-strong)]" style={{ fontFamily: 'var(--font-display)' }}>Could not build your profile.</p>
+                <GlassButton onClick={() => dispatch({ type: 'RETRY_PROFILE' })} size="lg">Try again</GlassButton>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {screen === 'excavation_to_profile' && (
+      {screen === 'building_profile' && (
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
             <p className="text-2xl font-light text-[var(--text-strong)]" style={{ fontFamily: 'var(--font-display)' }}>
@@ -793,11 +697,7 @@ export default function DiscoveryFlow() {
             </p>
             <div className="mt-4 flex justify-center gap-1.5">
               {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-2 w-2 rounded-full bg-[var(--link)] animate-[dot-bounce_1.4s_ease-in-out_infinite]"
-                  style={{ animationDelay: `${i * 0.16}s` }}
-                />
+                <span key={i} className="h-2 w-2 rounded-full bg-[var(--link)] animate-[dot-bounce_1.4s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.16}s` }} />
               ))}
             </div>
           </div>
