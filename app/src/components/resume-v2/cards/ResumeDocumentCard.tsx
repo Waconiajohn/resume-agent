@@ -372,7 +372,7 @@ function BulletLineContent({
         </span>
       )}
       {isActive && (
-        <p className="mt-1 text-[10px] text-blue-500">Editing in left panel &rarr;</p>
+        <p className="mt-1 text-[10px] text-blue-500">&#8592; Editing in left panel</p>
       )}
     </span>
   );

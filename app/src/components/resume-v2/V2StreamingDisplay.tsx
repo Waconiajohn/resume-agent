@@ -304,7 +304,7 @@ function AttentionReviewStrip({
             Review Attention Lines
           </p>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {items.length} {items.length === 1 ? 'line still needs attention.' : 'lines still need attention.'} Fix these directly on the resume.
+            {items.length} {items.length === 1 ? 'line still needs attention.' : 'lines still need attention.'} Click a bullet on the resume to review it here.
           </p>
           {nextActionCue && (
             <p className="mt-2 text-xs text-[var(--text-soft)]">
@@ -349,7 +349,7 @@ function AttentionReviewStrip({
             onClick={onOpenCurrent}
             className="rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
           >
-            Show on Resume
+            Jump to bullet
           </button>
         </div>
       </div>
@@ -702,7 +702,7 @@ export function V2StreamingDisplay({
           <div className="hidden lg:flex h-full">
             <ResumeEditorLayout
               leftPanel={
-                <div className="space-y-4">
+                <div className="space-y-4 px-3">
                   {data.preScores && data.assembly && (
                     <ScoringReport
                       preScores={data.preScores}

@@ -101,7 +101,7 @@ export function BulletBeforeAfter({
             className="text-[12px] italic"
             style={{ color: 'var(--text-soft)' }}
           >
-            AI will generate suggestions below
+            AI suggestions will appear here
           </p>
         )}
       </div>
