@@ -35,9 +35,14 @@ const EMPTY_STORY: WhyMeStory = {
 
 function assessSignal(text: string): SignalLevel {
   const trimmed = text.trim();
-  if (trimmed.length === 0) return 'red';
-  if (trimmed.length < 50) return 'yellow';
-  return 'green';
+  if (!trimmed) return 'red';
+
+  const words = trimmed.split(/\s+/).length;
+  const hasMetric = /\d/.test(trimmed);
+  const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
+
+  if (words >= 15 && hasMetric && sentences >= 2) return 'green';
+  return 'yellow';
 }
 
 function getStorageKey(userId: string | null) {

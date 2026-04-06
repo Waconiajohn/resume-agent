@@ -245,6 +245,18 @@ export function BulletCoachingPanel({
   const coachingExpandedDefault = reviewState === 'code_red';
   const primaryRequirement = requirements[0];
 
+  // ── Plain-language explanation of why this bullet is being coached ─────────
+  const explanationText: string = {
+    code_red:
+      "This bullet needs proof — we couldn't find evidence for this claim in your resume.",
+    confirm_fit:
+      'This comes from the benchmark profile for this role — confirm it matches your experience.',
+    strengthen:
+      'This addresses a job requirement but could be more specific and impactful.',
+    supported: 'This bullet is backed by your resume. No changes needed.',
+    supported_rewrite: 'This bullet is backed by your resume. No changes needed.',
+  }[reviewState] ?? '';
+
   return (
     <div
       ref={panelRef}
@@ -275,7 +287,35 @@ export function BulletCoachingPanel({
         </button>
       </div>
 
-      {/* 1. Context header */}
+      {/* 1a. Plain-language explanation of why this bullet is flagged */}
+      {explanationText && (
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          {explanationText}
+        </p>
+      )}
+
+      {/* 1b. Job / benchmark requirement callout */}
+      {requirements.length > 0 && (
+        <div
+          className="rounded-lg px-3 py-2"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          <p
+            className="text-[10px] uppercase tracking-wider mb-1"
+            style={{ color: 'var(--text-soft)' }}
+          >
+            {reviewState === 'confirm_fit' ? 'Benchmark requirement' : 'Job requirement'}
+          </p>
+          <p className="text-sm" style={{ color: 'var(--text-strong)' }}>
+            {requirements[0]}
+          </p>
+        </div>
+      )}
+
+      {/* 1c. Context header */}
       {primaryRequirement && (
         <BulletContextHeader
           requirement={primaryRequirement}

@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react';
 import type {
   ResumeDraft,
   BulletConfidence,
@@ -142,6 +143,7 @@ export function ResumeDocumentCard({
                     requirements={accomplishmentDisplayTargets}
                     resolvedState={resolvedState}
                     evidenceFound={a.evidence_found}
+                    isActive={isActive}
                     onBulletClick={onBulletClick}
                   />
                 </li>
@@ -215,6 +217,7 @@ export function ResumeDocumentCard({
                           requirements={bulletDisplayTargets}
                           resolvedState={resolvedState}
                           evidenceFound={bullet.evidence_found}
+                          isActive={isActive}
                           onBulletClick={onBulletClick}
                         />
                       </li>
@@ -285,6 +288,8 @@ interface BulletLineContentProps {
   requirements: string[];
   resolvedState: ResumeReviewState;
   evidenceFound?: string;
+  /** Whether this bullet is currently selected for editing in the left panel. */
+  isActive?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. Not provided for supported bullets. */
   onBulletClick?: (
     text: string,
@@ -307,6 +312,7 @@ function BulletLineContent({
   requirements,
   resolvedState,
   evidenceFound,
+  isActive = false,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
@@ -336,28 +342,37 @@ function BulletLineContent({
         </span>
       ) : null}
       {isClickable ? (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleActivate();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
+        <span className="group flex items-start gap-1">
+          <span
+            role="button"
+            tabIndex={0}
+            title="Click to review and edit this bullet"
+            onClick={(e) => {
               e.stopPropagation();
               handleActivate();
-            }
-          }}
-          className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-slate-50/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
-        >
-          {text}
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleActivate();
+              }
+            }}
+            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-slate-50/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
+          >
+            {text}
+          </span>
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
+            <Pencil className="h-3.5 w-3.5 text-gray-400" />
+          </span>
         </span>
       ) : (
         <span className="block font-normal text-gray-800">
           {text}
         </span>
+      )}
+      {isActive && (
+        <p className="mt-1 text-[10px] text-blue-500">Editing in left panel &rarr;</p>
       )}
     </span>
   );
