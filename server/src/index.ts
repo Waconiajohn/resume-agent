@@ -47,6 +47,7 @@ import { productTelemetryRoutes } from './routes/product-telemetry.js';
 import { ni } from './routes/ni.js';
 import { waitlistRoutes } from './routes/waitlist.js';
 import { discoveryRoutes } from './routes/discovery.js';
+import { profileSetupRoutes } from './routes/profile-setup.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -349,6 +350,7 @@ app.route('/api/product-telemetry', productTelemetryRoutes);
 app.route('/api/ni', ni);
 app.route('/api/waitlist', waitlistRoutes);
 app.route('/api/discovery', discoveryRoutes);
+app.route('/api/profile-setup', profileSetupRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);
