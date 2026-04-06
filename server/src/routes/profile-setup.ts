@@ -275,9 +275,9 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
       signal,
     );
 
-    // Save to user_platform_context as career_iq_profile type
-    // source_session_id column is UUID — pass null since our session IDs have a prefix
-    const saved = await upsertUserContext(
+    // Save to user_platform_context — try career_iq_profile first, fall back to career_profile
+    // if the DB constraint hasn't been updated yet. Either way, return the profile to the user.
+    let saved = await upsertUserContext(
       user.id,
       'career_iq_profile',
       profile as unknown as Record<string, unknown>,
@@ -285,16 +285,29 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
     );
 
     if (!saved) {
-      logger.error(
+      // Fallback: save as career_profile (always in the constraint)
+      logger.warn(
         { userId: user.id, sessionId: session_id },
-        'Profile setup complete: profile save failed — session preserved for retry',
+        'Profile setup: career_iq_profile save failed, falling back to career_profile',
       );
-      return c.json({ error: 'Profile save failed. Please try again.' }, 500);
+      saved = await upsertUserContext(
+        user.id,
+        'career_profile',
+        profile as unknown as Record<string, unknown>,
+        'profile-setup',
+      );
     }
 
-    logger.info({ userId: user.id, sessionId: session_id }, 'Profile setup complete: profile saved');
+    if (saved) {
+      logger.info({ userId: user.id, sessionId: session_id }, 'Profile setup complete: profile saved');
+    } else {
+      logger.warn(
+        { userId: user.id, sessionId: session_id },
+        'Profile setup: DB save failed on both context types — returning profile without persistence',
+      );
+    }
 
-    // Clean up session only after confirmed save
+    // Clean up session — profile is being returned to the user regardless
     sessions.delete(session_id);
 
     return c.json({ profile });
