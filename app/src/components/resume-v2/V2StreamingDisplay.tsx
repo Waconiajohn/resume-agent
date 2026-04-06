@@ -23,6 +23,7 @@ import type { FinalReviewTargetMatch } from './utils/final-review-target';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { ResumeFinalReviewPanel, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
 import { ScoringReport } from './ScoringReport';
+import { ResumeEditorLayout } from './ResumeEditorLayout';
 import { PipelineProgressCard } from './cards/PipelineProgressCard';
 import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
 import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
@@ -570,7 +571,8 @@ export function V2StreamingDisplay({
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto relative">
       {/* Scoring report — single instance, persists across layout transitions */}
-      {data.preScores && data.assembly && (
+      {/* Scoring report — only show outside the editing state (it moves into each variant below) */}
+      {data.preScores && data.assembly && !(canShowResumeDocument && hasPassedReadyGate) && (
         <div className="mx-auto max-w-[900px] px-6 pt-4">
           <ScoringReport
             preScores={data.preScores}
@@ -588,152 +590,151 @@ export function V2StreamingDisplay({
 
       {canShowResumeDocument && hasPassedReadyGate ? (
         <>
-          {/* Undo/redo bar */}
-          {canShowUndoBar && (
-            <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-[var(--line-soft)]">
-              <button
-                type="button"
-                onClick={onUndo}
-                disabled={undoCount === 0}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
-                title="Undo"
-              >
-                <Undo2 className="h-3 w-3" />
-                <span>Undo</span>
-                {undoCount > 0 && (
-                  <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
-                    {undoCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={onRedo}
-                disabled={redoCount === 0}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors"
-                title="Redo"
-              >
-                <Redo2 className="h-3 w-3" />
-                <span>Redo</span>
-                {redoCount > 0 && (
-                  <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">
-                    {redoCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Full-width centered resume document */}
-          <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
-            {/* Error banners */}
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {error}
-              </div>
-            )}
-            {editError && (
-              <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {editError}
-              </div>
-            )}
-
-            {/* Processing banner — shown while pipeline finalises after resume first appears */}
-            {!isComplete && isConnected && (
-              <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
-                <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-                <span>{getStageMessage(data.stage)}</span>
-              </div>
-            )}
-
-            {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-
-            {attentionItems.length > 0 && (
-              <AttentionReviewStrip
-                items={attentionItems}
-                currentIndex={attentionIndex}
-                nextActionCue={compactAttentionNextAction}
-                onOpenCurrent={() => openAttentionItem(attentionIndex)}
-                onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
-                onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
-              />
-            )}
-
-            {/* Original scores card — suppressed; unified GapOverviewCard shows ATS data */}
-
-            {/* Resume document with inline editing */}
-            {displayResume && (
-              <AnimatedCard index={0}>
-                {/* Paper-on-desk document card */}
-                <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
-                  <ResumeDocumentCard
-                    resume={displayResume}
-                    requirementCatalog={data.gapAnalysis?.requirements ?? []}
-                    activeBullet={activeBullet}
-                    onBulletClick={canInteract ? handleBulletClick : undefined}
-                    onBulletEdit={canInteract ? onBulletEdit : undefined}
-                    onBulletRemove={canInteract ? onBulletRemove : undefined}
-                    gapChat={gapChat ?? undefined}
-                    buildChatContext={buildChatContext}
-                    onBulletConversationClose={() => setActiveBullet(null)}
-                    onBulletEnhance={onBulletEnhance}
-                  />
-                </div>
-              </AnimatedCard>
-            )}
-
-            {/* Pending edit diff view (for text-selection edits, not inline bullet edits) */}
-            {pendingEdit && !activeBullet && (
-              <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
-                <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
-              </div>
-            )}
-
-            {isComplete && displayResume && (
-              <ResumeFinalReviewPanel
-                hiringManagerResult={hiringManagerResult ?? null}
-                resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-                isFinalReviewStale={isFinalReviewStale}
-                isHiringManagerLoading={isHiringManagerLoading}
-                hiringManagerError={hiringManagerError}
-                companyName={data.jobIntelligence?.company_name}
-                jobTitle={data.jobIntelligence?.role_title}
-                onRequestHiringManagerReview={onRequestHiringManagerReview}
-                onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
-                finalReviewChat={finalReviewChat}
-                buildFinalReviewChatContext={buildFinalReviewChatContext}
-                resolveConcernTarget={resolveFinalReviewTarget}
-                onPreviewConcernTarget={onPreviewFinalReviewTarget}
-                isEditing={isEditing}
-              />
-            )}
-
-            {/* Below resume: workspace rail — collapsed by default */}
-            {isComplete && data.assembly && displayResume && (
-              <CollapsibleWorkspaceRail>
-                <ResumeWorkspaceRail
-                  displayResume={displayResume}
-                  companyName={data.jobIntelligence?.company_name}
-                  jobTitle={data.jobIntelligence?.role_title}
-                  atsScore={data.assembly.scores.ats_match}
-                  hiringManagerResult={hiringManagerResult ?? null}
-                  resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-                  isFinalReviewStale={isFinalReviewStale}
-                  queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-                  nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-                  finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
-                  onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
-                  jobUrl={jobUrl}
-                  sessionId={data.sessionId}
-                  accessToken={accessToken}
+          {/* ── Mobile / tablet: single-column layout (existing behavior) ── */}
+          <div className="flex flex-col lg:hidden">
+            {data.preScores && data.assembly && (
+              <div className="mx-auto max-w-[900px] px-6 pt-4">
+                <ScoringReport
+                  preScores={data.preScores}
+                  assembly={data.assembly}
+                  verificationDetail={data.verificationDetail ?? null}
+                  gapAnalysis={data.gapAnalysis ?? null}
+                  compact
+                  compactReviewStatusLabel={compactReviewStatusLabel}
+                  compactAttentionSummary={compactAttentionSummary}
+                  compactAttentionNextAction={compactAttentionNextAction}
                 />
-              </CollapsibleWorkspaceRail>
+              </div>
             )}
-
+            {canShowUndoBar && (
+              <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-[var(--line-soft)]">
+                <button type="button" onClick={onUndo} disabled={undoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Undo">
+                  <Undo2 className="h-3 w-3" /><span>Undo</span>
+                  {undoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{undoCount}</span>}
+                </button>
+                <button type="button" onClick={onRedo} disabled={redoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Redo">
+                  <Redo2 className="h-3 w-3" /><span>Redo</span>
+                  {redoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{redoCount}</span>}
+                </button>
+              </div>
+            )}
+            <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
+                  <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                </div>
+              )}
+              {editError && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
+                  <AlertCircle className="h-4 w-4 shrink-0" />{editError}
+                </div>
+              )}
+              {!isComplete && isConnected && (
+                <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
+                  <Loader2 className="h-3 w-3 motion-safe:animate-spin" /><span>{getStageMessage(data.stage)}</span>
+                </div>
+              )}
+              {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+              {attentionItems.length > 0 && (
+                <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
+              )}
+              {displayResume && (
+                <AnimatedCard index={0}>
+                  <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} gapChat={gapChat ?? undefined} buildChatContext={buildChatContext} onBulletConversationClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                  </div>
+                </AnimatedCard>
+              )}
+              {pendingEdit && !activeBullet && (
+                <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+                  <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
+                </div>
+              )}
+              {isComplete && displayResume && (
+                <ResumeFinalReviewPanel hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} isHiringManagerLoading={isHiringManagerLoading} hiringManagerError={hiringManagerError} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} onRequestHiringManagerReview={onRequestHiringManagerReview} onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation} finalReviewChat={finalReviewChat} buildFinalReviewChatContext={buildFinalReviewChatContext} resolveConcernTarget={resolveFinalReviewTarget} onPreviewConcernTarget={onPreviewFinalReviewTarget} isEditing={isEditing} />
+              )}
+              {isComplete && data.assembly && displayResume && (
+                <CollapsibleWorkspaceRail>
+                  <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
+                </CollapsibleWorkspaceRail>
+              )}
+            </div>
           </div>
 
+          {/* ── Desktop: two-panel layout ── */}
+          <div className="hidden lg:flex h-full">
+            <ResumeEditorLayout
+              leftPanel={
+                <div className="space-y-4">
+                  {data.preScores && data.assembly && (
+                    <ScoringReport
+                      preScores={data.preScores}
+                      assembly={data.assembly}
+                      verificationDetail={data.verificationDetail ?? null}
+                      gapAnalysis={data.gapAnalysis ?? null}
+                      compact
+                      compactReviewStatusLabel={compactReviewStatusLabel}
+                      compactAttentionSummary={compactAttentionSummary}
+                      compactAttentionNextAction={compactAttentionNextAction}
+                    />
+                  )}
+                  {error && (
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
+                      <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                    </div>
+                  )}
+                  {editError && (
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
+                      <AlertCircle className="h-4 w-4 shrink-0" />{editError}
+                    </div>
+                  )}
+                  {!isComplete && isConnected && (
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
+                      <Loader2 className="h-3 w-3 motion-safe:animate-spin" /><span>{getStageMessage(data.stage)}</span>
+                    </div>
+                  )}
+                  {canShowUndoBar && (
+                    <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-[var(--surface-1)] border border-[var(--line-soft)]">
+                      <button type="button" onClick={onUndo} disabled={undoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Undo">
+                        <Undo2 className="h-3 w-3" /><span>Undo</span>
+                        {undoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{undoCount}</span>}
+                      </button>
+                      <button type="button" onClick={onRedo} disabled={redoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Redo">
+                        <Redo2 className="h-3 w-3" /><span>Redo</span>
+                        {redoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{redoCount}</span>}
+                      </button>
+                    </div>
+                  )}
+                  {attentionItems.length > 0 && (
+                    <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
+                  )}
+                  {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+                  {pendingEdit && !activeBullet && (
+                    <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
+                  )}
+                  {isComplete && displayResume && (
+                    <ResumeFinalReviewPanel hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} isHiringManagerLoading={isHiringManagerLoading} hiringManagerError={hiringManagerError} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} onRequestHiringManagerReview={onRequestHiringManagerReview} onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation} finalReviewChat={finalReviewChat} buildFinalReviewChatContext={buildFinalReviewChatContext} resolveConcernTarget={resolveFinalReviewTarget} onPreviewConcernTarget={onPreviewFinalReviewTarget} isEditing={isEditing} />
+                  )}
+                  {isComplete && data.assembly && displayResume && (
+                    <CollapsibleWorkspaceRail>
+                      <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
+                    </CollapsibleWorkspaceRail>
+                  )}
+                </div>
+              }
+              rightPanel={
+                <div className="mx-auto max-w-[900px]">
+                  {displayResume && (
+                    <AnimatedCard index={0}>
+                      <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} gapChat={gapChat ?? undefined} buildChatContext={buildChatContext} onBulletConversationClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                      </div>
+                    </AnimatedCard>
+                  )}
+                </div>
+              }
+            />
+          </div>
         </>
       ) : canShowResumeDocument && !hasPassedReadyGate ? (
         /* Beat 2 — "Your Resume Is Ready" gate screen */

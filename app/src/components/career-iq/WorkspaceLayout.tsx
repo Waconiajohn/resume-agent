@@ -60,6 +60,7 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         activeRoom={getActiveRoom()}
         onNavigate={handleNavigate}
         dashboardState={dashboardState}
+        defaultCollapsed={location.pathname === '/resume-builder/session'}
       />
       <main className="flex flex-1 flex-col overflow-hidden">
         {children}

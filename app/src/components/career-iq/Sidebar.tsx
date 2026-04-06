@@ -21,6 +21,7 @@ interface SidebarProps {
   activeRoom: WorkspaceRoom;
   onNavigate: (room: CareerIQRoom) => void;
   dashboardState: DashboardState;
+  defaultCollapsed?: boolean;
 }
 
 interface RoomGroup {
@@ -57,8 +58,8 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
   interview: 'nav-interview',
 };
 
-export function Sidebar({ activeRoom, onNavigate, dashboardState }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ activeRoom, onNavigate, dashboardState, defaultCollapsed }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
   const isLocked = dashboardState === 'new-user';
 
   const renderRoomButton = (room: RoomGroup['rooms'][number]) => {
