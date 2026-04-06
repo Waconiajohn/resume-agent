@@ -604,7 +604,7 @@ export function V2StreamingDisplay({
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto lg:overflow-hidden relative">
+    <div ref={containerRef} className={`flex-1 overflow-y-auto relative${canShowResumeDocument && hasPassedReadyGate ? ' lg:overflow-hidden' : ''}`}>
       {/* Scoring report — three instances: one here (non-editing state), one in mobile layout, one in desktop left panel */}
       {data.preScores && data.assembly && !(canShowResumeDocument && hasPassedReadyGate) && (
         <div className="mx-auto max-w-[900px] px-6 pt-4">

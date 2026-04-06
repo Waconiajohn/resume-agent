@@ -326,9 +326,14 @@ function CompactScoreSummaryHeader({
   const beforeSnapshotScore = preScores.overall_fit_score ?? (beforeRequirementScore !== null
     ? Math.round((beforeKeywordScore * 0.35) + (beforeRequirementScore * 0.65))
     : beforeKeywordScore);
-  const afterSnapshotScore = afterRequirementScore !== null
+  const rawAfterScore = afterRequirementScore !== null
     ? Math.max(afterAts, afterRequirementScore)
     : afterAts;
+  // Cap at 95% if there are still bullets that need attention — a 100% score
+  // with "10 lines could still be stronger" is contradictory and confusing.
+  const attentionCount = typeof attentionSummary === 'string' ? (attentionSummary.match(/\d+/) ?? [])[0] : undefined;
+  const hasOutstandingWork = attentionCount ? parseInt(attentionCount, 10) > 0 : false;
+  const afterSnapshotScore = hasOutstandingWork && rawAfterScore >= 100 ? 95 : rawAfterScore;
   const delta = afterSnapshotScore - beforeSnapshotScore;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
