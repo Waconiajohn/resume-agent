@@ -173,7 +173,7 @@ export function DropZone({ onAnalyze, loading, onFetchJobDescription }: DropZone
       </div>
 
       {/* Drop zones */}
-      <div className="flex w-full max-w-3xl gap-5">
+      <div className="flex w-full max-w-5xl gap-5">
         {/* Resume zone */}
         <DropTarget
           icon={<Upload className="h-7 w-7" />}

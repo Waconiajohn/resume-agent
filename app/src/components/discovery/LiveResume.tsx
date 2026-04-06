@@ -30,15 +30,15 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
   return (
     <div className="flex h-full flex-col">
       <div
-        className="flex-1 overflow-y-auto rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-3)] p-6 text-[var(--text-strong)]"
+        className="flex-1 overflow-y-auto bg-gray-900 p-6 text-white"
         style={{ fontSize: '0.82rem', lineHeight: '1.6' }}
       >
         {/* Header */}
         <div className="mb-5 border-b border-[var(--line-soft)] pb-4">
-          <h2 className="text-xl font-semibold tracking-tight text-[var(--text-strong)]">
+          <h2 className="text-lg font-bold text-white">
             {resume.name || 'Your Name'}
           </h2>
-          <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
+          <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-400">
             {resume.email && <span>{resume.email}</span>}
             {resume.phone && <span>&bull; {resume.phone}</span>}
           </div>
@@ -55,7 +55,7 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
             )}
           >
             <SectionHeading>Summary</SectionHeading>
-            <p className="mt-1 text-[var(--text-muted)]">{resume.summary}</p>
+            <p className="mt-1 text-gray-400">{resume.summary}</p>
           </div>
         )}
 
@@ -74,12 +74,14 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
                       : 'ring-1 ring-transparent',
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex justify-between items-start mb-1">
                     <div>
-                      <p className="font-semibold text-[var(--text-strong)]">{exp.title}</p>
-                      <p className="text-xs text-[var(--text-muted)]">{exp.company}</p>
+                      <span className="text-sm font-semibold text-white">{exp.title}</span>
+                      {exp.company && (
+                        <span className="text-sm text-gray-400"> &middot; {exp.company}</span>
+                      )}
                     </div>
-                    <span className="shrink-0 text-xs text-[var(--text-soft)]">{exp.dates}</span>
+                    <span className="text-xs text-gray-500 shrink-0">{exp.dates}</span>
                   </div>
                   {exp.bullets.length > 0 && (
                     <ul className="mt-2 space-y-1">
@@ -90,9 +92,10 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
                           <li
                             key={bullet.id}
                             className={cn(
-                              'pl-3 relative text-[var(--text-muted)] transition-all duration-500',
-                              'before:absolute before:left-0 before:top-[0.55em] before:h-1 before:w-1 before:rounded-full before:bg-[var(--text-soft)]',
-                              isAnnotated && 'before:hidden',
+                              'text-sm leading-relaxed pl-3 border-l-2 transition-colors duration-500',
+                              bullet.highlighted
+                                ? 'text-white border-blue-400'
+                                : 'text-gray-400 border-transparent',
                             )}
                           >
                             {isAnnotated ? (
@@ -133,7 +136,7 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
               {resume.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--text-muted)]"
+                  className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-2)] px-2 py-0.5 text-xs text-gray-400"
                 >
                   {skill}
                 </span>
@@ -157,10 +160,12 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
               {resume.education.map((edu, idx) => (
                 <div key={idx} className="flex items-baseline justify-between">
                   <div>
-                    <span className="font-medium text-[var(--text-strong)]">{edu.degree}</span>
-                    {edu.institution && <span className="text-[var(--text-muted)]"> &bull; {edu.institution}</span>}
+                    <span className="font-medium text-white">{edu.degree}</span>
+                    {edu.institution && (
+                      <span className="text-gray-400"> &bull; {edu.institution}</span>
+                    )}
                   </div>
-                  {edu.year && <span className="text-xs text-[var(--text-soft)]">{edu.year}</span>}
+                  {edu.year && <span className="text-xs text-gray-500">{edu.year}</span>}
                 </div>
               ))}
             </div>
@@ -177,7 +182,7 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--text-soft)]">
+    <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
       {children}
     </h3>
   );

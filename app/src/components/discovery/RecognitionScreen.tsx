@@ -22,6 +22,57 @@ function getReferencedSections(text: string, resume: LiveResumeState): string[] 
     .map((exp) => exp.id);
 }
 
+function CollapsedConcerns({
+  concerns,
+  visible,
+}: {
+  concerns: DiscoveryOutput['hiring_manager_concerns'];
+  visible: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const firstConcern = concerns[0];
+  const remainingCount = concerns.length - 1;
+
+  return (
+    <div
+      className={cn(
+        'mt-5 transition-all duration-700',
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+      )}
+      style={{ transitionDelay: '300ms' }}
+    >
+      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
+        What a hiring manager might worry about
+      </p>
+      {/* Always show first concern */}
+      <div className="rounded-lg border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)]/10 px-4 py-3">
+        <p className="text-sm font-medium text-[var(--text-strong)]">{firstConcern.objection}</p>
+        <p className="mt-1 text-xs text-[var(--text-muted)]">{firstConcern.neutralization_strategy}</p>
+      </div>
+      {/* Collapsed remaining */}
+      {remainingCount > 0 && !expanded && (
+        <button
+          type="button"
+          className="mt-2 text-xs text-[var(--link)] hover:text-[var(--link-hover)] transition-colors"
+          onClick={() => setExpanded(true)}
+        >
+          and {remainingCount} more concern{remainingCount > 1 ? 's' : ''} &rarr;
+        </button>
+      )}
+      {expanded &&
+        concerns.slice(1).map((concern, idx) => (
+          <div
+            key={idx}
+            className="mt-2 rounded-lg border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)]/10 px-4 py-3"
+          >
+            <p className="text-sm font-medium text-[var(--text-strong)]">{concern.objection}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{concern.neutralization_strategy}</p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
 export function RecognitionScreen({ discovery, resume, highlightedSections, onRespond }: RecognitionScreenProps) {
   const [visibleParagraphs, setVisibleParagraphs] = useState(0);
   const [showQuestion, setShowQuestion] = useState(false);
@@ -55,15 +106,17 @@ export function RecognitionScreen({ discovery, resume, highlightedSections, onRe
   }, []);
 
   return (
-    <div className="flex h-full gap-0">
-      {/* Left — recognition statement */}
-      <div className="flex w-[55%] flex-col justify-center overflow-y-auto px-12 py-10">
-        <div className="max-w-lg">
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Left column */}
+      <div className="flex w-[55%] flex-col h-full">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto px-12 py-10">
           <p className="mb-6 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
             What we found
           </p>
 
-          <div className="space-y-6">
+          {/* Recognition paragraphs */}
+          <div className="space-y-5">
             {paragraphs.map((text, idx) => (
               <p
                 key={idx}
@@ -84,33 +137,21 @@ export function RecognitionScreen({ discovery, resume, highlightedSections, onRe
             ))}
           </div>
 
-          {/* Hiring manager concerns */}
+          {/* Hiring manager concerns — collapsed */}
           {discovery.hiring_manager_concerns.length > 0 && (
-            <div
-              className={cn(
-                'mt-6 transition-all duration-700',
-                visibleParagraphs >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
-              )}
-              style={{ transitionDelay: '300ms' }}
-            >
-              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
-                What a hiring manager might worry about
-              </p>
-              <div className="space-y-2">
-                {discovery.hiring_manager_concerns.map((concern, idx) => (
-                  <div key={idx} className="rounded-lg border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)]/10 px-4 py-3">
-                    <p className="text-sm font-medium text-[var(--text-strong)]">{concern.objection}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{concern.neutralization_strategy}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CollapsedConcerns
+              concerns={discovery.hiring_manager_concerns}
+              visible={visibleParagraphs >= 3}
+            />
           )}
+        </div>
 
+        {/* CTA pinned to bottom — never scrolls */}
+        <div className="shrink-0 border-t border-[var(--line-soft)] px-12 py-6">
           {/* Question */}
           <div
             className={cn(
-              'mt-10 transition-all duration-700',
+              'transition-all duration-700',
               showQuestion ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
             )}
           >
@@ -141,18 +182,19 @@ export function RecognitionScreen({ discovery, resume, highlightedSections, onRe
         </div>
       </div>
 
-      {/* Right — live resume */}
-      <div className="flex w-[45%] flex-col border-l border-[var(--line-soft)] px-8 py-10">
+      {/* Divider */}
+      <div className="w-px shrink-0 bg-gray-800" />
+
+      {/* Right column */}
+      <div className="w-[45%] h-full overflow-y-auto px-10 py-10 bg-gray-900">
         <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
           Your resume now
         </p>
-        <div className="flex-1 overflow-hidden">
-          <LiveResume
-            resume={resume}
-            highlightedSections={hoverHighlights.length > 0 ? hoverHighlights : highlightedSections}
-            footerText="This is your resume right now. Watch what it becomes."
-          />
-        </div>
+        <LiveResume
+          resume={resume}
+          highlightedSections={hoverHighlights.length > 0 ? hoverHighlights : highlightedSections}
+          footerText="This is your resume right now. Watch what it becomes."
+        />
       </div>
     </div>
   );
