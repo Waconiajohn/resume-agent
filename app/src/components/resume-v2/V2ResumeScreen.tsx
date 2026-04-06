@@ -1323,7 +1323,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
           <div className="ml-auto flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1">
               {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
-              <span className="text-[var(--badge-blue-text)]">Match: {displayAtsScore}%</span>
+              <span className="text-[var(--badge-blue-text)]">Resume Match: {displayAtsScore}%</span>
             </div>
             {displayTruthScore !== null && (
               <span className="text-[var(--badge-green-text)]">Accuracy: {displayTruthScore}%</span>

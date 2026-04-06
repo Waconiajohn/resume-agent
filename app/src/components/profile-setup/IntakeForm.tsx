@@ -19,6 +19,9 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
   const [targetRoles, setTargetRoles] = useState('');
   const [situation, setSituation] = useState('');
   const [showLinkedInSkipConfirm, setShowLinkedInSkipConfirm] = useState(false);
+  const [showLinkedInHelp, setShowLinkedInHelp] = useState(false);
+  const [linkedinFileName, setLinkedinFileName] = useState<string | null>(null);
+  const linkedinFileRef = useRef<HTMLInputElement>(null);
   const [resumeDragging, setResumeDragging] = useState(false);
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const resumeFileRef = useRef<HTMLInputElement>(null);
@@ -35,6 +38,18 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
       setResumeFileName(message);
     }
   }, []);
+
+  const handleLinkedInFile = useCallback(async (file: File) => {
+    try {
+      const text = await extractResumeTextFromUpload(file);
+      setLinkedinAbout(text);
+      setLinkedinFileName(file.name);
+      if (showLinkedInSkipConfirm) setShowLinkedInSkipConfirm(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not read file';
+      setLinkedinFileName(message);
+    }
+  }, [showLinkedInSkipConfirm]);
 
   const handleResumeDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -143,25 +158,80 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           </div>
         </div>
 
-        {/* LinkedIn About */}
+        {/* LinkedIn Profile */}
         <div className="mb-8">
           <label className="block text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-2">
-            LinkedIn About section
+            LinkedIn profile
             <span className="ml-2 normal-case tracking-normal font-normal opacity-60">(encouraged)</span>
           </label>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            Your LinkedIn About section reveals how you talk about yourself — your voice, your framing, what you lead with.
-            It significantly improves the quality of your profile.
+            Your LinkedIn profile reveals how you talk about yourself — your voice, your framing, what you lead with.
+            Upload a PDF of your profile, or paste your About section below.
           </p>
+
+          {/* Upload bar + help toggle */}
+          <div className="mb-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => linkedinFileRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--link)] hover:text-[var(--text-strong)] transition-colors"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Upload LinkedIn PDF
+            </button>
+            {linkedinFileName && (
+              <span className="text-xs text-[var(--text-soft)] truncate max-w-[300px]">
+                {linkedinFileName}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowLinkedInHelp(!showLinkedInHelp)}
+              className="ml-auto text-xs text-[var(--link)] hover:text-[var(--link-hover)] transition-colors"
+            >
+              {showLinkedInHelp ? 'Hide instructions' : 'How do I get a PDF?'}
+            </button>
+            <input
+              ref={linkedinFileRef}
+              type="file"
+              accept=".pdf,.txt,.docx"
+              className="sr-only"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await handleLinkedInFile(file);
+              }}
+              aria-label="Upload LinkedIn profile file"
+            />
+          </div>
+
+          {/* Print-to-PDF instructions */}
+          {showLinkedInHelp && (
+            <div className="mb-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
+              <p className="text-xs font-medium text-[var(--text-strong)] mb-2">
+                Save your LinkedIn profile as a PDF:
+              </p>
+              <ol className="text-xs text-[var(--text-muted)] space-y-1.5 list-decimal list-inside">
+                <li>Open your LinkedIn profile in a browser</li>
+                <li>Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-0)] border border-[var(--line-soft)] text-[var(--text-strong)] font-mono text-[10px]">{navigator.platform?.includes('Mac') ? 'Cmd' : 'Ctrl'}+P</kbd> to open the print dialog</li>
+                <li>Change the destination to <strong>Save as PDF</strong></li>
+                <li>Click Save, then upload the file here</li>
+              </ol>
+              <p className="mt-2 text-[10px] text-[var(--text-soft)]">
+                This captures your full profile including expanded sections.
+              </p>
+            </div>
+          )}
+
           <textarea
             className="w-full min-h-[120px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
-            placeholder="Paste your LinkedIn About section here..."
+            placeholder="Or paste your LinkedIn About section or full profile text here..."
             value={linkedinAbout}
             onChange={(e) => {
               setLinkedinAbout(e.target.value);
+              setLinkedinFileName(null);
               if (showLinkedInSkipConfirm) setShowLinkedInSkipConfirm(false);
             }}
-            aria-label="LinkedIn About section"
+            aria-label="LinkedIn profile text"
           />
 
           {showLinkedInSkipConfirm && (

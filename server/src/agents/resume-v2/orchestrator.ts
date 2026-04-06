@@ -16,6 +16,7 @@ import logger from '../../lib/logger.js';
 import { MODEL_LIGHT, MODEL_MID, MODEL_PRIMARY, MODEL_PRICING } from '../../lib/model-constants.js';
 import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../../lib/llm-provider.js';
 import { getRequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
 import { runJobIntelligence } from './job-intelligence/agent.js';
 import { runCandidateIntelligence } from './candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from './benchmark-candidate/agent.js';
@@ -158,6 +159,92 @@ export interface RunPipelineOptions {
   }>;
   /** Pre-computed baseline scores (passed on re-run) */
   pre_scores?: PreScores;
+  /** Pre-loaded interview evidence lines from master resume (avoids extra DB query) */
+  interview_evidence_lines?: string[];
+}
+
+/**
+ * Load interview-sourced evidence from the user's master resume (if one exists).
+ * Returns enriched resume text with evidence appended, or the original text if
+ * no master resume or no interview evidence is found.
+ *
+ * When `preloadedLines` is provided (pre-fetched at the route level in parallel
+ * with other setup work), the DB query is skipped entirely.
+ */
+async function enrichResumeWithMasterEvidence(
+  userId: string,
+  resumeText: string,
+  preloadedLines?: string[],
+): Promise<string> {
+  try {
+    let evidenceLines: string[];
+
+    if (preloadedLines !== undefined) {
+      // Use caller-supplied evidence — no DB query needed
+      evidenceLines = preloadedLines;
+    } else {
+      // Fallback: load from DB (backward-compatible path)
+      const { data: resume } = await supabaseAdmin
+        .from('master_resumes')
+        .select('evidence_items, experience')
+        .eq('user_id', userId)
+        .eq('is_default', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (!resume) return resumeText;
+
+      const evidenceItems = Array.isArray(resume.evidence_items) ? resume.evidence_items : [];
+      const interviewEvidence = evidenceItems.filter(
+        (e: Record<string, unknown>) => e.source === 'interview' && typeof e.text === 'string',
+      );
+
+      if (interviewEvidence.length === 0) return resumeText;
+
+      // Cap evidence to avoid runaway context size
+      const MAX_EVIDENCE_ITEMS = 20;
+      const MAX_EVIDENCE_CHARS = 4000;
+      let cappedEvidence = interviewEvidence.slice(0, MAX_EVIDENCE_ITEMS);
+      let totalChars = 0;
+      cappedEvidence = cappedEvidence.filter((item) => {
+        const text = typeof item.text === 'string' ? item.text : '';
+        totalChars += text.length;
+        return totalChars <= MAX_EVIDENCE_CHARS;
+      });
+
+      if (cappedEvidence.length < interviewEvidence.length) {
+        logger.info(
+          { userId, total: interviewEvidence.length, used: cappedEvidence.length },
+          'Master resume evidence capped for context window',
+        );
+      }
+
+      evidenceLines = cappedEvidence.map((item) => {
+        const category = typeof item.category === 'string' ? item.category : 'interview_response';
+        return `[${category}]: ${item.text as string}`;
+      });
+    }
+
+    if (evidenceLines.length === 0) return resumeText;
+
+    const lines = [
+      '',
+      '---',
+      'ADDITIONAL CONTEXT FROM CAREER PROFILE INTERVIEW',
+      'The following evidence was provided by the candidate during their career profile interview.',
+      'Use this to strengthen experience sections where relevant.',
+      '',
+      ...evidenceLines.flatMap((line) => [line, '']),
+    ];
+
+    return resumeText + '\n' + lines.join('\n');
+  } catch (err) {
+    logger.warn(
+      { userId, error: err instanceof Error ? err.message : String(err) },
+      'Failed to load master resume evidence — proceeding with original resume text',
+    );
+    return resumeText;
+  }
 }
 
 export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2PipelineState> {
@@ -186,9 +273,18 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     const analysisStart = Date.now();
 
+    // Enrich resume text with interview evidence from master resume (if available).
+    // When the route pre-loads evidence in parallel, options.interview_evidence_lines
+    // is provided and the DB query inside the function is skipped.
+    const enrichedResumeText = await enrichResumeWithMasterEvidence(
+      options.user_id,
+      options.resume_text,
+      options.interview_evidence_lines,
+    );
+
     const [jobIntel, candidateIntel] = await Promise.all([
       runJobIntelligence({ job_description: options.job_description }, signal),
-      runCandidateIntelligence({ resume_text: options.resume_text }, signal),
+      runCandidateIntelligence({ resume_text: enrichedResumeText }, signal),
     ]);
 
     state.job_intelligence = jobIntel;
@@ -391,7 +487,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     const [truth, ats, tone] = await Promise.all([
       runTruthVerification({
         draft,
-        original_resume: options.resume_text,
+        original_resume: enrichedResumeText,
         candidate: candidateIntel,
         benchmark_direct_matches: benchmark.direct_matches,
       }, signal),

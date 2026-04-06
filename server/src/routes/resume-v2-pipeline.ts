@@ -59,6 +59,37 @@ import {
 
 export const resumeV2Pipeline = new Hono();
 
+/**
+ * Load interview-sourced evidence lines from the user's master resume.
+ * Returns an array of formatted evidence strings (one per item), or an empty
+ * array if no master resume exists or no interview evidence is found.
+ *
+ * This runs at the route level so it can be parallelised with
+ * loadCareerProfileContext — avoiding a serial round-trip inside the orchestrator.
+ */
+async function loadMasterResumeEvidence(userId: string): Promise<string[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('master_resumes')
+      .select('evidence_items')
+      .eq('user_id', userId)
+      .eq('is_default', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!data || !Array.isArray(data.evidence_items)) return [];
+
+    return (data.evidence_items as Record<string, unknown>[])
+      .filter((e) => e.source === 'interview' && typeof e.text === 'string')
+      .map((e) => {
+        const category = typeof e.category === 'string' ? e.category : 'interview_response';
+        return `[${category}]: ${e.text as string}`;
+      });
+  } catch {
+    return [];
+  }
+}
+
 async function withTrackedSessionUsage<T>(
   sessionId: string,
   userId: string,
@@ -158,7 +189,10 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
     };
 
     try {
-      const careerProfile = await loadCareerProfileContext(userId);
+      const [careerProfile, evidenceLines] = await Promise.all([
+        loadCareerProfileContext(userId),
+        loadMasterResumeEvidence(userId),
+      ]);
 
       // emitters is looked up on every emit so late-connecting clients receive events
       const emit = (event: V2PipelineSSEEvent) => {
@@ -190,6 +224,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         user_context,
         gap_coaching_responses,
         pre_scores,
+        interview_evidence_lines: evidenceLines,
       });
       liveSnapshot.pipeline_data.stage = 'complete';
       liveSnapshot.pipeline_data.jobIntelligence = result.job_intelligence ?? liveSnapshot.pipeline_data.jobIntelligence;

@@ -736,7 +736,7 @@ export function V2StreamingDisplay({
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
-    return `Start with the ${topItem.statusLabel.toLowerCase()} line in ${topItem.locationLabel}.`;
+    return `Start with the bullet marked '${topItem.statusLabel.toLowerCase()}' in ${topItem.locationLabel}.`;
   }, [attentionItems]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────

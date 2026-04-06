@@ -46,7 +46,6 @@ function HomeGuideCard({
   hasResumeSessions,
   sessionCount,
   dashboardState,
-  signals,
   coachRecommendation,
   onNavigateRoom,
   onRefineWhyMe,
@@ -54,7 +53,6 @@ function HomeGuideCard({
   hasResumeSessions: boolean;
   sessionCount: number;
   dashboardState: DashboardState;
-  signals: WhyMeSignals;
   coachRecommendation?: CoachRecommendation | null;
   onNavigateRoom?: (room: CareerIQRoom) => void;
   onRefineWhyMe?: () => void;
@@ -66,11 +64,6 @@ function HomeGuideCard({
     coachRecommendation,
   });
 
-  const signalSummary = [
-    `Clarity: ${signals.clarity}`,
-    `Alignment: ${signals.alignment}`,
-    `Differentiation: ${signals.differentiation}`,
-  ];
   const secondaryAction = guidance.secondary;
 
   return (
@@ -85,18 +78,6 @@ function HomeGuideCard({
         <p className="mt-2.5 max-w-xl text-sm leading-6 text-[var(--text-soft)]">
           {guidance.description}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--text-soft)]">
-          {signalSummary.map((item) => (
-            <span key={item} className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 uppercase tracking-[0.08em]">
-              {item}
-            </span>
-          ))}
-        </div>
-        {guidance.coachLine && (
-          <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-soft)]">
-            Coach note: {guidance.coachLine}
-          </p>
-        )}
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
@@ -213,7 +194,6 @@ export function DashboardHome({
         hasResumeSessions={hasResumeSessions}
         sessionCount={sessionCount}
         dashboardState={dashboardState}
-        signals={signals}
         coachRecommendation={coachRecommendation}
         onNavigateRoom={onNavigateRoom}
         onRefineWhyMe={onRefineWhyMe}

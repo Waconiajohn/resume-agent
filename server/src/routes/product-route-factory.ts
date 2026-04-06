@@ -349,8 +349,11 @@ export function createProductRoutes<
     let input = parsed.data as Record<string, unknown>;
     const sessionId = input.session_id as string;
 
-    // Verify session belongs to user — select extra fields for hooks
-    const { data: session, error } = await supabaseAdmin
+    // Look up existing session — if not found, auto-create it.
+    // Product hooks (LinkedIn Editor, Executive Bio, etc.) generate a UUID client-side
+    // and POST directly to /start without first calling POST /api/sessions.
+    // Auto-creating here fixes all 9+ affected product hooks in one place.
+    let { data: session, error } = await supabaseAdmin
       .from('coach_sessions')
       .select('id, user_id, pipeline_status, status, updated_at, master_resume_id')
       .eq('id', sessionId)
@@ -358,7 +361,47 @@ export function createProductRoutes<
       .single();
 
     if (error || !session) {
-      return c.json({ error: 'Session not found' }, 404);
+      // Session doesn't exist — check usage limits, then create it
+      const { data: usageResult, error: usageError } = await supabaseAdmin
+        .rpc('increment_session_usage', { p_user_id: user.id });
+
+      if (usageError) {
+        logger.error({ error: usageError.message }, 'Product factory: usage check failed');
+        return c.json({ error: 'Failed to verify usage limits' }, 500);
+      }
+
+      if (usageResult && !usageResult.allowed) {
+        return c.json({
+          error: 'Monthly session limit reached. Please upgrade your plan.',
+          code: 'USAGE_LIMIT',
+          current_count: usageResult.current_count,
+          max_count: usageResult.max_count,
+        }, 402);
+      }
+
+      // Determine product type from the route prefix (e.g. '/api/linkedin-editor' → 'linkedin-editor')
+      const productType = c.req.path.split('/api/')[1]?.split('/')[0] ?? 'unknown';
+
+      const { data: created, error: createError } = await supabaseAdmin
+        .from('coach_sessions')
+        .insert({
+          id: sessionId,
+          user_id: user.id,
+          status: 'active',
+          current_phase: 'onboarding',
+          messages: [],
+          product_type: productType,
+        })
+        .select('id, user_id, pipeline_status, status, updated_at, master_resume_id')
+        .single();
+
+      if (createError || !created) {
+        logger.error({ error: createError?.message, sessionId }, 'Product factory: session auto-create failed');
+        return c.json({ error: 'Failed to create session' }, 500);
+      }
+
+      session = created;
+      logger.info({ sessionId, productType, userId: user.id }, 'Product factory: auto-created session');
     }
 
     const sessionRecord = session as Record<string, unknown>;

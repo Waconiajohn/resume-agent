@@ -3,7 +3,7 @@ import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 interface ResumeReadyScreenProps {
   jobMatchPercent: number;
-  benchmarkMatchPercent: number;
+  benchmarkMatchPercent?: number;
   strengthSummary: string;
   flaggedBulletCount: number;
   companyName?: string;
@@ -66,21 +66,11 @@ export function ResumeReadyScreen({
             <ScoreRing
               score={Math.round(jobMatchPercent)}
               max={100}
-              label="Job Match"
+              label="Resume Match"
               color="text-blue-500"
             />
           ) : (
-            <PendingScoreRing label="Job Match" />
-          )}
-          {hasScoreData ? (
-            <ScoreRing
-              score={Math.round(benchmarkMatchPercent)}
-              max={100}
-              label="Benchmark Match"
-              color="text-emerald-500"
-            />
-          ) : (
-            <PendingScoreRing label="Benchmark Match" />
+            <PendingScoreRing label="Resume Match" />
           )}
         </div>
         {strengthSummary && (

@@ -904,3 +904,81 @@ Bible: Ch 8
   - [ ] API endpoint to list products (replaces static import)
   - [ ] Admin CRUD for product entries
   - [ ] Frontend catalog reads from API instead of constant
+
+---
+
+## Epic: Profile Setup as Master Resume Genesis (ADR-049)
+
+Profile setup currently creates only the CareerIQ profile (narrative positioning layer). It should ALSO create the initial master resume (structured content layer) from the same source material — the resume text, LinkedIn About, and 8 interview answers. This eliminates the disconnect between "who is this person" and "what goes on the page under which company." The Why Me synthesis must also be strengthened to pass a 3-5 second test, leading with the most powerful differentiator.
+
+### Story PSG-1: Intake Agent — Structured Experience Extraction [MEDIUM]
+- **As a** platform
+- **I want** the intake agent to extract structured experience entries (company, title, dates, location, key bullets) alongside its existing narrative analysis
+- **So that** downstream steps can anchor interview evidence to specific jobs
+- **Acceptance Criteria:**
+  - [ ] `IntakeAnalysis` type gains `structured_experience: Array<{ company, title, start_date, end_date, location, original_bullets: string[] }>`
+  - [ ] Intake agent prompt instructs LLM to parse resume into structured entries AND produce the existing narrative fields
+  - [ ] Each interview question's `references_resume_element` maps to a specific `structured_experience` entry by company/title
+  - [ ] Existing intake tests updated; new tests verify structured extraction against real resume fixtures
+  - [ ] Backward compatible — existing fields unchanged
+- **Dependencies:** None
+- **Notes:** The intake agent already receives and analyzes the full resume text. This adds structured parsing as a parallel output, not a replacement for the narrative analysis.
+
+### Story PSG-2: Persist Interview Answers [SMALL]
+- **As a** platform
+- **I want** the raw interview Q&A pairs to be persisted to `user_platform_context` when the profile is completed
+- **So that** the richest career material survives beyond the 2-hour in-memory session TTL
+- **Acceptance Criteria:**
+  - [ ] New context type `career_interview_transcript` added to `user_platform_context` constraint
+  - [ ] `/complete` endpoint saves `{ questions_and_answers: Array<{ question, answer, question_index, references_resume_element }> }` as platform context
+  - [ ] Each answer carries forward the `references_resume_element` from its question for company mapping
+  - [ ] Supabase migration for the new context type
+  - [ ] Tests verify persistence and retrieval
+- **Dependencies:** None (can run parallel with PSG-1)
+
+### Story PSG-3: Why Me — 3-to-5 Second Test [MEDIUM]
+- **As a** candidate
+- **I want** my Why Me statement to lead with the single most powerful, differentiated thing about me
+- **So that** it passes a 3-to-5 second scan and can seed my professional summary on every resume
+- **Acceptance Criteria:**
+  - [ ] Synthesizer prompt for `why_me_final` is redesigned: must open with the most powerful differentiator, not generic positioning language
+  - [ ] Why Me must pass the "3-to-5 second test" — a hiring manager reading only the first sentence knows exactly what makes this person exceptional
+  - [ ] Why Me must be concrete and evidence-backed, not aspirational ("I bring a unique combination of..." is banned)
+  - [ ] The strongest theme from `top_capabilities` or interview answers leads the statement
+  - [ ] Why Me output is structured as `{ headline: string (1 sentence, the hook), body: string (2-3 sentences, the proof) }` so the headline can seed professional summaries
+  - [ ] Existing `why_me_draft` (intake) also improved with same 3-5 second principle
+  - [ ] Test with real resume fixtures — output must not contain generic filler phrases
+- **Dependencies:** None (can run parallel with PSG-1 and PSG-2)
+- **Notes:** The current prompt produces text like "I'm the right fit because I bring a unique combination of technical expertise, leadership skills, and business acumen." That's resume-speak. It should produce something like: "Sarah turned a 15-year-old monolith into 4 microservices with zero downtime while growing her team from 5 to 14 — and she's the person the VP of Product calls when she needs a technical constraint explained in customer impact terms."
+
+### Story PSG-4: Profile Completion Creates Initial Master Resume [LARGE]
+- **As a** platform
+- **I want** the `/complete` endpoint to create both the CareerIQ profile AND the initial master resume in a single atomic flow
+- **So that** the first resume pipeline run has structured, enriched career data from day one
+- **Acceptance Criteria:**
+  - [ ] `/complete` endpoint calls synthesizer (existing) AND a new master resume builder step
+  - [ ] Master resume builder takes: structured_experience from intake + interview answers mapped to companies + resume raw text
+  - [ ] Each experience entry in master resume gets `evidence_items` populated from interview answers that reference that company (using `references_resume_element` mapping)
+  - [ ] Evidence items tagged with `source: 'interview'`, `source_session_id`, `created_at`
+  - [ ] Master resume includes parsed skills, education, certifications, contact_info from intake
+  - [ ] Created via existing `create_master_resume_atomic` RPC (version 1, set as default)
+  - [ ] If user already has a master resume, the new one is created as a new version (not overwrite)
+  - [ ] Why Me headline from PSG-3 stored in master resume summary field
+  - [ ] Profile reveal UI updated to show "Master resume created" confirmation
+  - [ ] Tests verify both outputs are created from same flow
+- **Dependencies:** PSG-1, PSG-2, PSG-3
+- **Notes:** This is the keystone story. After this, profile setup produces both the identity layer (CareerIQ) and the content layer (master resume). The CareerIQ profile stays narrative and company-agnostic — that's its job. The master resume carries the structured, company-anchored content.
+
+### Story PSG-5: Resume Pipeline Reads from Master Resume [MEDIUM]
+- **As a** resume pipeline
+- **I want** Candidate Intelligence (Agent 2) to optionally read from the master resume instead of re-parsing raw text every session
+- **So that** enriched evidence from the profile setup interview is available to the resume writer
+- **Acceptance Criteria:**
+  - [ ] Candidate Intelligence agent checks for existing master resume before parsing raw text
+  - [ ] If master resume exists with evidence_items, those are included in the candidate intelligence output
+  - [ ] If no master resume exists, falls back to raw text parsing (backward compatible)
+  - [ ] Resume Writer receives interview-sourced evidence alongside standard resume bullets
+  - [ ] Evidence provenance (source: interview vs resume vs crafted) is preserved through the pipeline
+  - [ ] Tests verify both paths: with master resume and without
+- **Dependencies:** PSG-4
+- **Notes:** This closes the loop. Interview stories told once during profile setup flow into every future resume the platform generates, anchored to the right companies.

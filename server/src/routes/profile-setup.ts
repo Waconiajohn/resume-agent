@@ -21,6 +21,7 @@ import { createCombinedAbortSignal } from '../lib/llm-provider.js';
 import { runIntakeAgent } from '../agents/profile-setup/intake-agent.js';
 import { processInterviewAnswer } from '../agents/profile-setup/interview-runner.js';
 import { synthesizeProfile } from '../agents/profile-setup/synthesizer.js';
+import { buildMasterResumePayload, createInitialMasterResume } from '../agents/profile-setup/master-resume-builder.js';
 import type { ProfileSetupSessionState, ProfileSetupInput } from '../agents/profile-setup/types.js';
 import logger from '../lib/logger.js';
 
@@ -263,6 +264,14 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
   const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 120_000);
 
   try {
+    // M6: Warn if no answers were recorded
+    if (sessionState.answers.length === 0) {
+      logger.warn(
+        { userId: user.id, sessionId: session_id },
+        'Profile setup complete: no interview answers recorded — transcript and evidence will be empty',
+      );
+    }
+
     logger.info(
       { userId: user.id, sessionId: session_id, answerCount: sessionState.answers.length },
       'Profile setup complete: synthesizing profile',
@@ -307,10 +316,73 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
       );
     }
 
+    // Persist interview transcript for downstream consumers
+    const transcriptContent = {
+      questions_and_answers: sessionState.answers.map((a) => {
+        const question = sessionState.intake.interview_questions[a.question_index];
+        if (!question) {
+          logger.warn(
+            { userId: user.id, sessionId: session_id, questionIndex: a.question_index, totalQuestions: sessionState.intake.interview_questions.length },
+            'Profile setup transcript: question_index out of bounds — references_resume_element will be null',
+          );
+        }
+        // suggested_starters intentionally omitted — UI-only, no downstream value
+        return {
+          question: a.question,
+          answer: a.answer,
+          question_index: a.question_index,
+          references_resume_element: question?.references_resume_element ?? null,
+        };
+      }),
+      intake_session_id: session_id,
+      completed_at: new Date().toISOString(),
+    };
+
+    const transcriptSaved = await upsertUserContext(
+      user.id,
+      'career_interview_transcript',
+      transcriptContent as unknown as Record<string, unknown>,
+      'profile-setup',
+    );
+
+    if (!transcriptSaved) {
+      logger.warn(
+        { userId: user.id, sessionId: session_id },
+        'Profile setup: interview transcript save failed',
+      );
+    }
+
+    // Build and create initial master resume from the profile setup data.
+    // Failure is non-fatal — profile is still returned to the user.
+    const resumePayload = buildMasterResumePayload(
+      sessionState.input,
+      sessionState.intake,
+      sessionState.answers,
+      profile,
+      session_id,
+    );
+
+    const resumeResult = await createInitialMasterResume(user.id, resumePayload);
+    if (resumeResult.success) {
+      logger.info(
+        { userId: user.id, sessionId: session_id, resumeId: resumeResult.resumeId },
+        'Profile setup complete: initial master resume created',
+      );
+    } else {
+      logger.warn(
+        { userId: user.id, sessionId: session_id },
+        'Profile setup: master resume creation failed — profile still saved',
+      );
+    }
+
     // Clean up session — profile is being returned to the user regardless
     sessions.delete(session_id);
 
-    return c.json({ profile });
+    return c.json({
+      profile,
+      master_resume_created: resumeResult.success,
+      master_resume_id: resumeResult.resumeId ?? null,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Profile setup complete: failed');

@@ -308,12 +308,12 @@ function CompactMetric({
 }) {
   return (
     <div className="score-snapshot-metric px-3 py-3" data-accent={accent}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</p>
       <div className="mt-2 flex items-end gap-2">
-        <span className="score-snapshot-metric__value text-lg font-semibold tabular-nums">{value}</span>
+        <span className="score-snapshot-metric__value text-2xl font-semibold tabular-nums">{value}</span>
       </div>
       {detail && (
-        <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-soft)]">{detail}</p>
+        <p className="mt-1.5 text-xs leading-5 text-[var(--text-soft)]">{detail}</p>
       )}
     </div>
   );
@@ -357,7 +357,6 @@ function CompactScoreSummaryHeader({
     : afterAts;
   const delta = afterSnapshotScore - beforeSnapshotScore;
   const redFlags = hiringManagerScan?.red_flags.length ?? 0;
-  const usesBlendedBaseline = beforeRequirementScore !== null;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
@@ -392,46 +391,36 @@ function CompactScoreSummaryHeader({
   const visibleTopRisks = topRisks.slice(0, 2);
 
   return (
-    <div className="score-snapshot-shell px-4 py-3.5 space-y-3">
+    <div className="score-snapshot-shell px-4 py-4 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="score-snapshot-kicker">Score Snapshot</p>
           <p className="mt-2 text-[1.05rem] font-semibold leading-6 text-[var(--text-strong)]">
-            How the tailored resume is reading.
+            How your resume matches this job.
           </p>
-          <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
+          <p className="mt-1 text-sm leading-5 text-[var(--text-soft)]">
             Baseline, what improved, and the last items still worth tightening before export.
           </p>
         </div>
-        {reviewStatusLabel && (
-          <div className="score-snapshot-status px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-            Final review status: <span className="text-[var(--text-strong)]">{reviewStatusLabel}</span>
-          </div>
-        )}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="score-snapshot-hero px-4 py-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">On-Paper Fit Score</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">On-Paper Fit Score</p>
           <div className="mt-2.5 flex flex-wrap items-end gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
               <p className="mt-1 text-[1.75rem] font-semibold tabular-nums text-[var(--text-muted)]">{beforeSnapshotScore}%</p>
             </div>
             <span aria-hidden="true" className="pb-1 text-lg text-[var(--text-soft)]">-&gt;</span>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-[2.25rem] font-semibold tabular-nums tracking-tight" style={{ color: 'var(--badge-green-text)' }}>{afterSnapshotScore}%</p>
+                <p className="text-[2.75rem] font-semibold tabular-nums tracking-tight" style={{ color: 'var(--badge-green-text)' }}>{afterSnapshotScore}%</p>
                 <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
               </div>
             </div>
           </div>
           <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              <span>Original to tailored resume</span>
-              <span>{beforeSnapshotScore}% to {afterSnapshotScore}%</span>
-            </div>
             <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-[rgba(175,196,255,0.38)]"
@@ -446,62 +435,44 @@ function CompactScoreSummaryHeader({
                 }}
               />
             </div>
-            {usesBlendedBaseline && (
-              <p className="text-[11px] leading-5 text-[var(--text-soft)]">
-                The starting point blends original keyword match ({beforeKeywordScore}%) with job-need coverage ({beforeRequirementScore}%).
-              </p>
-            )}
           </div>
           <div className="score-snapshot-meaning mt-3 rounded-xl px-3 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">What this means</p>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-muted)]">{summaryLine}</p>
+            <p className="mt-1.5 text-sm leading-5 text-[var(--text-muted)]">{summaryLine}</p>
           </div>
         </div>
 
-        <div className="grid gap-2 grid-cols-2">
-          <CompactMetric
-            label="Truth"
-            value={String(truth)}
-            accent="soft"
-            detail="Claim support"
-          />
-          <CompactMetric
-            label="Tone"
-            value={String(tone)}
-            accent="warn"
-            detail="Voice and polish"
-          />
+        <div className="grid gap-3 grid-cols-2">
           {coveredRequirements !== null && totalRequirements !== null ? (
             <CompactMetric
-              label="Job Needs"
+              label="Requirements Met"
               value={`${coveredRequirements}/${totalRequirements}`}
               accent="good"
-              detail="Read as covered"
+              detail="Job requirements your resume addresses"
             />
           ) : (
             <CompactMetric
-              label="Job Needs"
+              label="Requirements Met"
               value="N/A"
-              detail="Waiting on mapping"
+              detail="Job requirements your resume addresses"
             />
           )}
           <CompactMetric
-            label={hiringManagerScan ? 'Recruiter Skim' : 'Final Review'}
-            value={hiringManagerScan ? String(hiringManagerScan.scan_score) : (reviewStatusLabel ?? 'Not run')}
-            accent={hiringManagerScan ? (hiringManagerScan.pass ? 'good' : 'warn') : (attentionNextAction ? 'warn' : 'soft')}
-            detail={hiringManagerScan ? (hiringManagerScan.pass ? 'Fast first read' : 'Needs stronger first read') : 'Current status'}
+            label="Resume Quality"
+            value={String(Math.min(truth, tone))}
+            accent={Math.min(truth, tone) >= 85 ? 'good' : Math.min(truth, tone) >= 70 ? 'warn' : 'soft'}
+            detail="Accuracy and polish combined"
           />
         </div>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="score-snapshot-band score-snapshot-band--good px-3.5 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-green-text)' }}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="score-snapshot-band score-snapshot-band--good px-3.5 py-3.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-green-text)' }}>
             What improved
           </p>
-          <ul className="mt-2.5 space-y-1.5">
+          <ul className="mt-2.5 space-y-2">
             {visibleTopGains.map((gain) => (
-              <li key={gain} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
+              <li key={gain} className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
                 <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span>{gain}</span>
               </li>
@@ -509,18 +480,18 @@ function CompactScoreSummaryHeader({
           </ul>
         </div>
 
-        <div className="score-snapshot-band score-snapshot-band--warn px-3.5 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-amber-text)' }}>
+        <div className="score-snapshot-band score-snapshot-band--warn px-3.5 py-3.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-amber-text)' }}>
             Still to close
           </p>
-          <ul className="mt-2.5 space-y-1.5">
+          <ul className="mt-2.5 space-y-2">
             {visibleTopRisks.length > 0 ? visibleTopRisks.map((risk) => (
-              <li key={risk} className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
+              <li key={risk} className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
                 <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-amber-text)' }} />
                 <span>{risk}</span>
               </li>
             )) : (
-              <li className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-muted)]">
+              <li className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
                 <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
                 <span>No major issues are blocking the draft right now.</span>
               </li>
@@ -529,9 +500,9 @@ function CompactScoreSummaryHeader({
         </div>
       </div>
 
-      <div className="support-callout px-3.5 py-2.5">
-        <p className="text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">Do this next</p>
-        <p className="mt-1.5 text-[13px] font-medium leading-5 text-[var(--text-muted)]">
+      <div className="support-callout px-3.5 py-3">
+        <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">Do this next</p>
+        <p className="mt-1.5 text-sm font-medium leading-5 text-[var(--text-muted)]">
           {attentionNextAction
             ? attentionNextAction
             : 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.'}

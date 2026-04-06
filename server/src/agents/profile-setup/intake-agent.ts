@@ -13,7 +13,7 @@
 import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
-import type { ProfileSetupInput, IntakeAnalysis } from './types.js';
+import type { ProfileSetupInput, IntakeAnalysis, StructuredExperience } from './types.js';
 
 const SYSTEM_PROMPT = `You are the CareerIQ intake agent. You have just received this person's resume, LinkedIn about section, target roles, and current situation. Your job is to do two things before the interview begins.
 
@@ -36,6 +36,8 @@ FORBIDDEN PHRASES — never use these:
 - "dynamic professional"
 - any phrase that sounds like it was written by a job posting generator
 
+The first sentence is the most important. It must pass the 3-to-5 second test — a hiring manager glancing at this sentence alone should immediately know what makes this person different. Lead with the strongest, most specific claim you can make from the documents.
+
 The why_me_draft is a first draft. It will be refined after the interview. Aim for honest and specific over polished.
 
 TWO — Generate eight targeted interview questions.
@@ -46,13 +48,30 @@ The eight questions must cover these areas:
 1. SCALE AND SCOPE — What is the largest thing this person has owned or led? Get a number, a budget, a team size, a revenue figure — something concrete.
 2. DEFINING MOMENT — What is the hardest professional situation they have navigated? Not a challenge they overcame — a situation where the outcome was genuinely uncertain.
 3. HIDDEN ACCOMPLISHMENT — What did they build or fix that never made it onto the resume? Most executives have at least one thing they are proud of that nobody knows about.
-4. WHY THIS ROLE — What specifically draws them to this type of work now? This is not a softbal question. The answer should reveal something about their positioning, not their enthusiasm.
+4. WHY THIS ROLE — What specifically draws them to this type of work now? This is not a softball question. The answer should reveal something about their positioning, not their enthusiasm.
 5. THE THREAD — What do their colleagues consistently come to them for that has nothing to do with their job title?
 6. THE DIFFERENTIATOR — What would their best reference say about them that would surprise a hiring manager?
 7. HONEST CONCERN — What is the one thing about their background that they think will be the hardest to explain to a hiring manager?
 8. TARGET ROLE SPECIFICS — Based on their stated target roles, ask one question that forces them to explain why they are the right person for that specific type of role, not just any role.
 
 SOURCE DISCIPLINE: Every question must be grounded in what you actually read. Reference specific companies, roles, timeframes, or achievements from the resume or LinkedIn. Do not write generic questions. Do not write questions you could ask anyone.
+
+SUGGESTED STARTERS: For each question, provide 2-3 short suggested starting points that help the candidate begin their answer. These are clickable chips shown below the question to reduce blank-page paralysis. Each starter should be a short phrase (3-8 words) that names a specific project, moment, or role from the resume that is relevant to the question. Always include "Something else" as the last option. Example starters for a migration question: ["The billing platform migration", "The Kubernetes rollout", "Something else"].
+
+THREE — Extract structured experience entries.
+
+Parse the resume into structured experience entries. For each role the candidate held, extract:
+- company: the company or organization name
+- title: the job title
+- start_date: when they started (preserve the format from the resume)
+- end_date: when they ended or "Present"
+- location: city/state if mentioned, empty string if not
+- scope_statement: one sentence summarizing the scope of this role — team size, budget, revenue responsibility, number of direct reports, systems owned, or geographic reach. Pull the most quantified details from the bullets. If no scope data is available, use an empty string.
+- original_bullets: the bullet points listed under that role, as an array of strings
+
+Extract ALL roles from the resume, in chronological order (most recent first).
+
+Also include education entries — use "Education" as the company, the degree (e.g. "B.S. Computer Science") as the title, the institution name (e.g. "Oregon State University") in the location field, and leave original_bullets as an empty array. Do NOT include certifications or skills sections as experience entries.
 
 OUTPUT FORMAT: Return valid JSON:
 {
@@ -70,7 +89,19 @@ OUTPUT FORMAT: Return valid JSON:
     {
       "question": "the actual question to ask",
       "what_we_are_looking_for": "internal — what gap or proof point this question surfaces",
-      "references_resume_element": "the specific resume or linkedin element this question is grounded in, or null"
+      "references_resume_element": "the specific resume or linkedin element this question is grounded in, or null",
+      "suggested_starters": ["specific project or moment from resume", "another relevant option", "Something else"]
+    }
+  ],
+  "structured_experience": [
+    {
+      "company": "Company Name",
+      "title": "Job Title",
+      "start_date": "2020",
+      "end_date": "Present",
+      "location": "City, ST",
+      "scope_statement": "Led a 14-person team managing $4.2M annual budget across hybrid cloud environments",
+      "original_bullets": ["bullet 1", "bullet 2"]
     }
   ]
 }
@@ -136,43 +167,52 @@ function buildDeterministicFallback(input: ProfileSetupInput): IntakeAnalysis {
         question: 'What is the largest team or budget you have directly owned, and what made that scope manageable for you?',
         what_we_are_looking_for: 'Concrete scale and scope evidence',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'Walk me through the hardest professional situation you have navigated — one where the outcome was genuinely uncertain.',
         what_we_are_looking_for: 'Defining moment under pressure',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'What did you build or fix at one of your previous companies that you are proud of but that never made it onto your resume?',
         what_we_are_looking_for: 'Hidden accomplishments',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'What specifically draws you to your target roles now, beyond the natural next step in your career?',
         what_we_are_looking_for: 'Intentionality and positioning clarity',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'What do your colleagues consistently come to you for that has nothing to do with your job title?',
         what_we_are_looking_for: 'The thread that does not show up on a resume',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'What would your best reference say about you that would genuinely surprise a hiring manager who only read your resume?',
         what_we_are_looking_for: 'The differentiator',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'What is the one thing about your background that you think will be the hardest to explain in a hiring conversation?',
         what_we_are_looking_for: 'Honest self-assessment of the hardest gap',
         references_resume_element: null,
+        suggested_starters: [],
       },
       {
         question: 'Given your target roles, why are you specifically the right person for that kind of work — not just experienced in it?',
         what_we_are_looking_for: 'Positioning confidence and specificity',
         references_resume_element: null,
+        suggested_starters: [],
       },
     ],
+    structured_experience: [],
   };
 }
 
@@ -205,8 +245,31 @@ function normalizeIntakeAnalysis(raw: unknown, fallback: IntakeAnalysis): Intake
       question: typeof q.question === 'string' ? q.question : '',
       what_we_are_looking_for: typeof q.what_we_are_looking_for === 'string' ? q.what_we_are_looking_for : '',
       references_resume_element: typeof q.references_resume_element === 'string' ? q.references_resume_element : null,
+      suggested_starters: Array.isArray(q.suggested_starters)
+        ? q.suggested_starters.filter((s): s is string => typeof s === 'string' && s.length > 0)
+        : [],
     }))
     .filter((q) => q.question.length > 0);
+
+  const experienceRaw = Array.isArray(r.structured_experience) ? r.structured_experience : [];
+  const structured_experience: StructuredExperience[] = experienceRaw
+    .filter((e): e is Record<string, unknown> => Boolean(e && typeof e === 'object'))
+    .map((e) => ({
+      company: typeof e.company === 'string' ? e.company : '',
+      title: typeof e.title === 'string' ? e.title : '',
+      start_date: typeof e.start_date === 'string' ? e.start_date : '',
+      end_date: typeof e.end_date === 'string' ? e.end_date : '',
+      location: typeof e.location === 'string' ? e.location : '',
+      scope_statement: typeof e.scope_statement === 'string' ? e.scope_statement : '',
+      original_bullets: Array.isArray(e.original_bullets)
+        ? e.original_bullets.filter((b): b is string => typeof b === 'string')
+        : [],
+    }))
+    .filter((e) => e.company.length > 0 && e.title.length > 0);
+
+  if (structured_experience.length === 0) {
+    logger.warn('Intake Agent: structured_experience is empty — no roles extracted from resume');
+  }
 
   return {
     why_me_draft: typeof r.why_me_draft === 'string' && r.why_me_draft.length > 0
@@ -220,6 +283,7 @@ function normalizeIntakeAnalysis(raw: unknown, fallback: IntakeAnalysis): Intake
     primary_concern: typeof r.primary_concern === 'string' ? r.primary_concern
       : (r.primary_concern === null ? null : fallback.primary_concern),
     interview_questions: interview_questions.length > 0 ? interview_questions : fallback.interview_questions,
+    structured_experience,
   };
 }
 

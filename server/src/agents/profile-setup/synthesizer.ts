@@ -16,7 +16,7 @@ import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer, CareerIQProfil
 
 const SYSTEM_PROMPT = `You are the CareerIQ synthesis agent. The intake analysis and interview are complete. Now you must produce the finished profile.
 
-Five components: CAREER THREAD, TOP CAPABILITIES, SIGNATURE STORY, HONEST ANSWER, RIGHTEOUS CLOSE, and WHY ME FINAL.
+Six components: CAREER THREAD, TOP CAPABILITIES, SIGNATURE STORY, HONEST ANSWER, RIGHTEOUS CLOSE, and WHY ME FINAL.
 
 CAREER THREAD
 
@@ -69,7 +69,23 @@ FORBIDDEN PHRASES — none of these should appear anywhere in the output:
 
 WHY ME FINAL
 
-The polished version of the first-draft why_me_draft. Updated to incorporate the interview answers. Three to four sentences. Conversational. Specific. Honest.
+WHY ME FINAL is not the same as the RIGHTEOUS CLOSE. RIGHTEOUS CLOSE is a full paragraph written in the candidate's voice for networking contexts. WHY ME FINAL is a two-part distillation: the headline is a single claim built for a hiring manager scanning a stack of resumes, and the body proves that claim. The headline should be shorter, sharper, and more specific than anything in the RIGHTEOUS CLOSE paragraph.
+
+Two fields: headline and body.
+
+HEADLINE: One sentence. This is the 3-to-5 second test. A hiring manager glances at this and immediately knows what makes this person different. It must:
+- Open with the single most powerful, specific, defensible claim about this candidate
+- Name a concrete achievement, capability, or combination that no other candidate in the pile can claim
+- Be grounded in evidence from the interview or resume — not aspirational language
+- Pass the uniqueness test: could another executive with a similar background claim this exact sentence? If yes, rewrite it.
+
+Good example: "Sarah turned a 15-year-old monolith into 4 microservices with zero downtime while growing her team from 5 to 14 — and she's the person the VP of Product calls when a technical constraint needs to be explained in customer impact terms."
+
+Bad example: "I'm the right fit because I bring a unique combination of technical expertise, leadership skills, and business acumen."
+
+The headline is the single most important output of this entire profile. It will seed every professional summary this platform generates. Get it right.
+
+BODY: Two to three sentences. These prove the headline. Each sentence must reference a specific moment, metric, or outcome from the interview answers or resume. The body answers "how do we know?" for whatever the headline claims.
 
 OUTPUT FORMAT: Return valid JSON:
 {
@@ -93,7 +109,10 @@ OUTPUT FORMAT: Return valid JSON:
     "response": "the factual reframe"
   },
   "righteous_close": "one paragraph",
-  "why_me_final": "three to four sentences",
+  "why_me_final": {
+    "headline": "one sentence — the hook",
+    "body": "two to three sentences — the proof"
+  },
   "target_roles": ["role 1", "role 2"],
   "created_at": "ISO 8601 timestamp"
 }
@@ -184,7 +203,10 @@ function buildDeterministicFallback(
       response: 'The background, read carefully, shows consistent forward momentum and deliberate role choices.',
     },
     righteous_close: intake.why_me_draft,
-    why_me_final: intake.why_me_draft,
+    why_me_final: {
+      headline: intake.why_me_draft,
+      body: '',
+    },
     target_roles: targetRolesArray,
     created_at: new Date().toISOString(),
   };
@@ -256,9 +278,22 @@ function normalizeCareerIQProfile(raw: unknown, fallback: CareerIQProfileFull): 
     righteous_close: typeof r.righteous_close === 'string' && r.righteous_close.length > 0
       ? r.righteous_close
       : fallback.righteous_close,
-    why_me_final: typeof r.why_me_final === 'string' && r.why_me_final.length > 0
-      ? r.why_me_final
-      : fallback.why_me_final,
+    why_me_final: (() => {
+      const whyMeRaw = r.why_me_final;
+      if (whyMeRaw && typeof whyMeRaw === 'object' && !Array.isArray(whyMeRaw)) {
+        const wm = whyMeRaw as Record<string, unknown>;
+        return {
+          headline: typeof wm.headline === 'string' && wm.headline.length > 0
+            ? wm.headline : fallback.why_me_final.headline,
+          body: typeof wm.body === 'string' && wm.body.length > 0
+            ? wm.body : fallback.why_me_final.body,
+        };
+      } else if (typeof whyMeRaw === 'string' && whyMeRaw.length > 0) {
+        // Legacy string — use as headline, empty body
+        return { headline: whyMeRaw, body: '' };
+      }
+      return fallback.why_me_final;
+    })(),
     target_roles: target_roles.length > 0 ? target_roles : fallback.target_roles,
     created_at: typeof r.created_at === 'string' && r.created_at.length > 0
       ? r.created_at

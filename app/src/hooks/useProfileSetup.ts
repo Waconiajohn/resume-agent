@@ -9,6 +9,8 @@ interface AnalyzeResult {
 
 interface CompleteResult {
   profile: CareerIQProfileFull;
+  master_resume_created?: boolean;
+  master_resume_id?: string | null;
 }
 
 interface UseProfileSetupState {

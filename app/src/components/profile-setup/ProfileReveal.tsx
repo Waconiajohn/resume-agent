@@ -152,12 +152,29 @@ export function ProfileReveal({ profile }: ProfileRevealProps) {
             <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
               Your Why Me
             </p>
-            <p
-              className="text-xl font-light leading-relaxed text-[var(--text-strong)]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {profile.why_me_final}
-            </p>
+            {typeof profile.why_me_final === 'string' ? (
+              // Legacy string format
+              <p
+                className="text-xl font-light leading-relaxed text-[var(--text-strong)]"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                {profile.why_me_final}
+              </p>
+            ) : (
+              <>
+                <p
+                  className="text-xl font-light leading-relaxed text-[var(--text-strong)] mb-4"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {profile.why_me_final.headline}
+                </p>
+                {profile.why_me_final.body && (
+                  <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                    {profile.why_me_final.body}
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           {/* Path-forward buttons */}

@@ -22,23 +22,31 @@ export interface WhyMeContext {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ContextType =
-  | 'career_profile'
-  | 'positioning_strategy'
-  | 'evidence_item'
-  | 'career_narrative'
-  | 'target_role'
-  | 'client_profile'
-  | 'positioning_foundation'
+  | 'benchmark'
   | 'benchmark_candidate'
+  | 'blueprint'
+  | 'career_interview_transcript'
+  | 'career_iq_profile'
+  | 'career_narrative'
+  | 'career_profile'
+  | 'client_profile'
+  | 'company_research'
+  | 'content_post'
+  | 'emotional_baseline'
+  | 'evidence_item'
   | 'gap_analysis'
   | 'industry_research'
-  | 'job_discovery_results'
-  | 'content_post'
-  | 'retirement_readiness'
-  | 'emotional_baseline'
-  | 'linkedin_profile'
   | 'interview_story'
-  | 'career_iq_profile';
+  | 'interview_synthesis'
+  | 'jd_analysis'
+  | 'job_discovery_results'
+  | 'linkedin_profile'
+  | 'onboarding'
+  | 'positioning_foundation'
+  | 'positioning_strategy'
+  | 'retirement_readiness'
+  | 'target_role'
+  | 'why_me';
 
 export interface PlatformContextRow {
   id: string;

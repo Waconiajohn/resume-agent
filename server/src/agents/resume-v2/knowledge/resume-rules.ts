@@ -163,7 +163,7 @@ export const WRITING_RULES = `## Resume Writing Rules
 
 VOICE:
 - Strong past-tense action verbs for all prior roles; present tense for current role
-- Speak like a leader: "drove," "championed," "orchestrated," "influenced," "spearheaded," "transformed"
+- Speak like a leader: "drove," "championed," "orchestrated," "influenced," "directed," "transformed"
 - Never use: "responsible for," "helped," "assisted," "supported," "participated in," "worked on"
 - Authentic voice beats resume-speak — echo the candidate's actual language when it is strong
 - Preserve specific domain terminology; generic rewrites destroy credibility
@@ -278,6 +278,7 @@ export const BANNED_PHRASES = [
   'responsible for', 'helped', 'assisted', 'supported',
   'participated in', 'worked on', 'duties included',
   'leverage', 'utilize', 'value-add',
+  'spearheaded', 'high stakes', 'high-stakes',
 ];
 
 // ─── Guardrails ──────────────────────────────────────────────────────
