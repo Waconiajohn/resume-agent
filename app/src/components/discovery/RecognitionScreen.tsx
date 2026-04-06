@@ -30,9 +30,11 @@ export function RecognitionScreen({ discovery, resume, onRespond }: RecognitionS
       );
     });
 
+    // Concerns appear when visibleParagraphs >= 3 (after ~2700ms + 300ms delay = ~3000ms).
+    // Question and cards follow after concerns have had time to settle.
     timers.push(
-      setTimeout(() => setShowQuestion(true), paragraphs.length * 800 + 600),
-      setTimeout(() => setShowCards(true), paragraphs.length * 800 + 1000),
+      setTimeout(() => setShowQuestion(true), paragraphs.length * 800 + 1200),
+      setTimeout(() => setShowCards(true), paragraphs.length * 800 + 1600),
     );
 
     return () => timers.forEach(clearTimeout);
@@ -62,6 +64,29 @@ export function RecognitionScreen({ discovery, resume, onRespond }: RecognitionS
               </p>
             ))}
           </div>
+
+          {/* Hiring manager concerns */}
+          {discovery.hiring_manager_concerns.length > 0 && (
+            <div
+              className={cn(
+                'mt-6 transition-all duration-700',
+                visibleParagraphs >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+              )}
+              style={{ transitionDelay: '300ms' }}
+            >
+              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--text-soft)]">
+                What a hiring manager might worry about
+              </p>
+              <div className="space-y-2">
+                {discovery.hiring_manager_concerns.map((concern, idx) => (
+                  <div key={idx} className="rounded-lg border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)]/10 px-4 py-3">
+                    <p className="text-sm font-medium text-[var(--text-strong)]">{concern.objection}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{concern.neutralization_strategy}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Question */}
           <div

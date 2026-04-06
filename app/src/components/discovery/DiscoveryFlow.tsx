@@ -44,6 +44,7 @@ type DiscoveryAction =
   | { type: 'APPLY_RESUME_UPDATES'; updates: ResumeUpdate[] }
   | { type: 'EXCAVATION_COMPLETE' }
   | { type: 'PROFILE_READY'; profile: CareerIQProfile }
+  | { type: 'PROFILE_ERROR'; error: string }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' };
 
@@ -109,8 +110,8 @@ function buildInitialLiveResume(resumeText: string): LiveResumeState {
       continue;
     }
 
-    if (currentSection === 'summary' && !summary) {
-      summary = line;
+    if (currentSection === 'summary') {
+      summary = summary ? `${summary} ${line}` : line;
       continue;
     }
 
@@ -125,7 +126,33 @@ function buildInitialLiveResume(resumeText: string): LiveResumeState {
 
     if (currentSection === 'education') {
       if (line.length > 5) {
-        education.push({ degree: line, institution: '', year: undefined });
+        let degree = line;
+        let institution = '';
+        let year: string | undefined;
+
+        // Extract year
+        const yearMatch = line.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) {
+          year = yearMatch[0];
+          degree = line.replace(yearMatch[0], '').trim();
+        }
+
+        // Split degree from institution
+        const eduSeparators = [' from ', ' — ', ' - ', ' | ', ', '];
+        for (const sep of eduSeparators) {
+          const idx = degree.indexOf(sep);
+          if (idx > 0) {
+            institution = degree.slice(idx + sep.length).trim();
+            degree = degree.slice(0, idx).trim();
+            break;
+          }
+        }
+
+        // Clean trailing punctuation
+        degree = degree.replace(/[,;|]+$/, '').trim();
+        institution = institution.replace(/[,;|]+$/, '').trim();
+
+        education.push({ degree, institution, year });
       }
       continue;
     }
@@ -138,18 +165,36 @@ function buildInitialLiveResume(resumeText: string): LiveResumeState {
       if (hasDate && !isBullet && line.length < 100) {
         if (currentExp) experience.push(currentExp);
         expCounter++;
-        currentExp = {
-          id: `exp-${expCounter}`,
-          company: '',
-          title: line,
-          dates: '',
-          bullets: [],
-        };
+
+        let title = line;
+        let company = '';
+        let dates = '';
+
+        // Extract dates
         const dateMatch = line.match(/\b(19|20)\d{2}.*$/);
         if (dateMatch) {
-          currentExp.dates = dateMatch[0];
-          currentExp.title = line.replace(dateMatch[0], '').trim();
+          dates = dateMatch[0];
+          title = line.replace(dateMatch[0], '').trim();
         }
+
+        // Try to split title from company by common separators
+        const separators = [' at ', ' — ', ' - ', ' | ', ', '];
+        for (const sep of separators) {
+          const sepIdx = title.indexOf(sep);
+          if (sepIdx > 0 && sepIdx < title.length - sep.length) {
+            company = title.slice(sepIdx + sep.length).trim();
+            title = title.slice(0, sepIdx).trim();
+            break;
+          }
+        }
+
+        currentExp = {
+          id: `exp-${expCounter}`,
+          company,
+          title,
+          dates,
+          bullets: [],
+        };
         currentSection = 'experience';
       } else if (currentExp && (isBullet || (currentSection === 'experience' && line.length > 20 && !upper.includes('UNIVERSITY') && !upper.includes('COLLEGE')))) {
         bulletCounter++;
@@ -189,30 +234,52 @@ function applyResumeUpdates(resume: LiveResumeState, updates: ResumeUpdate[]): L
 
   for (const update of updates) {
     if (update.action === 'strengthen' && update.text) {
-      updated = {
-        ...updated,
-        experience: updated.experience.map((exp) => {
-          if (exp.id !== update.section && exp.company !== update.section) return exp;
-          return {
-            ...exp,
-            bullets: exp.bullets.map((b) => {
-              if (update.bullet_id && b.id !== update.bullet_id) return b;
-              return { ...b, text: update.text!, strengthened: true };
-            }),
-          };
-        }),
-      };
+      if (update.section === 'summary') {
+        updated = { ...updated, summary: update.text };
+      } else {
+        updated = {
+          ...updated,
+          experience: updated.experience.map((exp) => {
+            const matches =
+              exp.id === update.section ||
+              exp.company.toLowerCase() === update.section.toLowerCase() ||
+              update.section === 'experience';
+            if (!matches) return exp;
+            return {
+              ...exp,
+              bullets: exp.bullets.map((b, idx) => {
+                if (
+                  update.bullet_id &&
+                  b.id !== update.bullet_id &&
+                  !b.text.toLowerCase().startsWith(update.bullet_id.toLowerCase())
+                ) return b;
+                if (!update.bullet_id && update.section === 'experience' && idx > 0) return b;
+                return { ...b, text: update.text!, strengthened: true };
+              }),
+            };
+          }),
+        };
+      }
     }
 
     if (update.action === 'highlight') {
       updated = {
         ...updated,
         experience: updated.experience.map((exp) => {
-          if (exp.id !== update.section && exp.company !== update.section) return exp;
+          const matches =
+            exp.id === update.section ||
+            exp.company.toLowerCase() === update.section.toLowerCase() ||
+            update.section === 'experience';
+          if (!matches) return exp;
           return {
             ...exp,
-            bullets: exp.bullets.map((b) => {
-              if (update.bullet_id && b.id !== update.bullet_id) return b;
+            bullets: exp.bullets.map((b, idx) => {
+              if (
+                update.bullet_id &&
+                b.id !== update.bullet_id &&
+                !b.text.toLowerCase().startsWith(update.bullet_id.toLowerCase())
+              ) return b;
+              if (!update.bullet_id && update.section === 'experience' && idx > 0) return b;
               return { ...b, highlighted: true };
             }),
           };
@@ -221,9 +288,27 @@ function applyResumeUpdates(resume: LiveResumeState, updates: ResumeUpdate[]): L
     }
 
     if (update.action === 'add' && update.text) {
-      // Add to summary if section is 'summary'
       if (update.section === 'summary') {
         updated = { ...updated, summary: update.text };
+      } else if (update.section === 'accomplishments' || update.section === 'experience') {
+        // Add bullet to the first experience entry
+        if (updated.experience.length > 0) {
+          const [first, ...rest] = updated.experience;
+          const newBulletId = `bullet-added-${Date.now()}`;
+          updated = {
+            ...updated,
+            experience: [
+              {
+                ...first,
+                bullets: [
+                  ...first.bullets,
+                  { id: newBulletId, text: update.text, highlighted: true, strengthened: false },
+                ],
+              },
+              ...rest,
+            ],
+          };
+        }
       }
     }
   }
@@ -289,6 +374,13 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
         profile: action.profile,
       };
 
+    case 'PROFILE_ERROR':
+      return {
+        ...state,
+        excavationComplete: false,
+        error: action.error,
+      };
+
     case 'SET_ERROR':
       return { ...state, error: action.error };
 
@@ -331,6 +423,8 @@ export default function DiscoveryFlow() {
       const result = await complete(state.sessionId!);
       if (result) {
         dispatch({ type: 'PROFILE_READY', profile: result.profile });
+      } else {
+        dispatch({ type: 'PROFILE_ERROR', error: 'Could not build your profile. Click below to try again.' });
       }
     };
 
@@ -341,7 +435,10 @@ export default function DiscoveryFlow() {
     async (resumeText: string, jobText: string) => {
       dispatch({ type: 'START_ANALYSIS', resumeText, jobText });
 
-      const result = await analyze(resumeText, jobText);
+      const [result] = await Promise.all([
+        analyze(resumeText, jobText),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
       if (!result) {
         dispatch({ type: 'ANALYSIS_ERROR', error: 'Analysis failed. Please try again.' });
         return;

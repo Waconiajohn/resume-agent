@@ -92,7 +92,7 @@ export function ProcessingReveal({ resumeText, jobText }: ProcessingRevealProps)
           <div className="w-52 text-center">
             <p
               className={cn(
-                'text-sm font-medium leading-relaxed text-[var(--text-muted)] transition-opacity duration-400',
+                'text-sm font-medium leading-relaxed text-[var(--text-muted)] transition-opacity duration-300',
                 visibleMessage ? 'opacity-100' : 'opacity-0',
               )}
               aria-live="polite"

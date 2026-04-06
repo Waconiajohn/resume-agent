@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
 import type { DiscoveryOutput, ExcavationResponse, CareerIQProfile } from '@/types/discovery';
 
@@ -29,6 +29,15 @@ export function useDiscovery(accessToken: string | null) {
   const accessTokenRef = useRef<string | null>(accessToken);
   accessTokenRef.current = accessToken;
 
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const getHeaders = useCallback((): Record<string, string> => {
     const token = accessTokenRef.current;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -40,12 +49,17 @@ export function useDiscovery(accessToken: string | null) {
 
   const analyze = useCallback(
     async (resumeText: string, jobText: string): Promise<DiscoveryAnalyzeResult | null> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setState((prev) => ({ ...prev, analyzing: true, error: null }));
       try {
         const res = await fetch(`${API_BASE}/discovery/analyze`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ resume_text: resumeText, job_description: jobText }),
+          signal: controller.signal,
         });
         if (!res.ok) {
           const body = await res.text().catch(() => '');
@@ -54,6 +68,7 @@ export function useDiscovery(accessToken: string | null) {
         const data = (await res.json()) as DiscoveryAnalyzeResult;
         return data;
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return null;
         const message = err instanceof Error ? err.message : 'Analysis failed. Please try again.';
         setState((prev) => ({ ...prev, error: message }));
         return null;
@@ -66,12 +81,17 @@ export function useDiscovery(accessToken: string | null) {
 
   const excavate = useCallback(
     async (sessionId: string, answer: string): Promise<ExcavationResponse | null> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setState((prev) => ({ ...prev, excavating: true, error: null }));
       try {
         const res = await fetch(`${API_BASE}/discovery/excavate`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ session_id: sessionId, answer }),
+          signal: controller.signal,
         });
         if (!res.ok) {
           const body = await res.text().catch(() => '');
@@ -80,6 +100,7 @@ export function useDiscovery(accessToken: string | null) {
         const data = (await res.json()) as ExcavationResponse;
         return data;
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return null;
         const message = err instanceof Error ? err.message : 'Excavation failed. Please try again.';
         setState((prev) => ({ ...prev, error: message }));
         return null;
@@ -92,12 +113,17 @@ export function useDiscovery(accessToken: string | null) {
 
   const complete = useCallback(
     async (sessionId: string): Promise<CompleteResult | null> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setState((prev) => ({ ...prev, completing: true, error: null }));
       try {
         const res = await fetch(`${API_BASE}/discovery/complete`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ session_id: sessionId }),
+          signal: controller.signal,
         });
         if (!res.ok) {
           const body = await res.text().catch(() => '');
@@ -106,6 +132,7 @@ export function useDiscovery(accessToken: string | null) {
         const data = (await res.json()) as CompleteResult;
         return data;
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return null;
         const message = err instanceof Error ? err.message : 'Could not complete profile. Please try again.';
         setState((prev) => ({ ...prev, error: message }));
         return null;

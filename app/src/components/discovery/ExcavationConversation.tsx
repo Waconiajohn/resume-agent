@@ -43,6 +43,13 @@ export function ExcavationConversation({
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    return () => {
+      pendingTimers.current.forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,7 +75,8 @@ export function ExcavationConversation({
       onResumeUpdate(result.resume_updates);
       setHighlightedSections(result.resume_updates.map((u) => u.section));
       // Clear highlight glow after 3s
-      setTimeout(() => setHighlightedSections([]), 3000);
+      const t1 = setTimeout(() => setHighlightedSections([]), 3000);
+      pendingTimers.current.push(t1);
     }
 
     if (result.complete) {
@@ -82,7 +90,8 @@ export function ExcavationConversation({
       ]);
       setIsComplete(true);
       // Wait a moment then transition
-      setTimeout(() => onComplete(), 2500);
+      const t2 = setTimeout(() => onComplete(), 2500);
+      pendingTimers.current.push(t2);
     } else {
       const messages: ConversationMessage[] = [];
       if (result.insight) {

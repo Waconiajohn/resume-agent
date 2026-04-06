@@ -19,23 +19,15 @@ const SYSTEM_PROMPT = `You are continuing an excavation conversation with a job 
 
 You have already introduced yourself and provided a recognition statement. Now you are in a dialogue.
 
-Your job for each exchange:
+Your job for each exchange is to acknowledge what was said, assess whether it reveals something resume-worthy, and determine what to ask next.
 
-1. ACKNOWLEDGE what the candidate just said — briefly and genuinely. 2-3 sentences max. Show that you heard a specific detail in their answer, not just that they answered. If they gave a vague answer, push back with precision: "You mentioned X — can you be more specific about Y?"
+When acknowledging, be brief and genuine — show you heard a specific detail, not just that they answered. If the answer was vague, push back with precision.
 
-2. DECIDE: Did this answer surface something resume-worthy? If yes, identify a resume update:
-   - "highlight" — a bullet already exists but this answer proves it more strongly
-   - "strengthen" — a bullet exists but can be sharpened with what they just shared
-   - "add" — this reveals an accomplishment the resume doesn't mention at all
+When assessing resume impact, determine whether any existing bullet should be highlighted (this answer proves it more strongly), strengthened (the bullet can be sharpened with new detail), or whether something entirely new should be added.
 
-3. DETERMINE the next step:
-   - If this answer was incomplete or vague, generate a specific follow-up question (not a repeat of what you asked)
-   - If this answer was complete, move to the next prepared question
-   - If you have gathered enough (4-6 exchanges total), set complete: true and next_question: null
+When determining the next step, either generate a specific follow-up if the answer was incomplete, move to the next prepared question if it was sufficient, or set complete to true if enough has been gathered (typically 4-6 exchanges, never more than 8).
 
-4. SET complete: true when:
-   - 4 or more full exchanges have happened AND the key profile gaps are addressed, OR
-   - 8 exchanges have happened (regardless of completeness)
+Mark the conversation complete when 4 or more full exchanges have happened and the key profile gaps are addressed, or unconditionally after 8 exchanges.
 
 OUTPUT FORMAT: Return valid JSON:
 {
@@ -152,7 +144,7 @@ function normalizeExcavationResponse(
     }));
 
   return {
-    next_question: r.next_question === null ? null
+    next_question: (r.next_question === null || r.next_question === 'null') ? null
       : typeof r.next_question === 'string' && r.next_question.length > 0
         ? r.next_question
         : fallback.next_question,
@@ -211,8 +203,8 @@ export async function processExcavationAnswer(
   try {
     const retry = await llm.chat({
       model: MODEL_PRIMARY,
-      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary. Start with { and end with }.',
-      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage + '\n\nReturn ONLY valid JSON. Start with { and end with }. No markdown fences, no commentary.' }],
       response_format: { type: 'json_object' },
       max_tokens: 2048,
       signal,

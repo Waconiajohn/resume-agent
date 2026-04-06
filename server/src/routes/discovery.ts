@@ -18,6 +18,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import { upsertUserContext } from '../lib/platform-context.js';
+import { createCombinedAbortSignal } from '../lib/llm-provider.js';
 import { runJobIntelligence } from '../agents/resume-v2/job-intelligence/agent.js';
 import { runCandidateIntelligence } from '../agents/resume-v2/candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from '../agents/resume-v2/benchmark-candidate/agent.js';
@@ -28,6 +29,11 @@ import type { DiscoverySessionState } from '../agents/discovery/types.js';
 import logger from '../lib/logger.js';
 
 export const discoveryRoutes = new Hono();
+
+// ─── In-Flight Lock ───────────────────────────────────────────────────────────
+// Prevents duplicate concurrent /analyze runs for the same session_id.
+
+const inFlightAnalyze = new Set<string>();
 
 // ─── In-Memory Session Store ──────────────────────────────────────────────────
 // Keyed by session_id. TTL cleanup runs every 30 minutes.
@@ -59,7 +65,7 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
   const job_description = typeof body.job_description === 'string' ? body.job_description.trim() : '';
   const session_id = typeof body.session_id === 'string' && body.session_id.trim().length > 0
     ? body.session_id.trim()
-    : `discovery-${user.id}-${Date.now()}`;
+    : `discovery-${crypto.randomUUID()}`;
 
   if (resume_text.length < 100) {
     return c.json({ error: 'resume_text is required and must be at least 100 characters' }, 400);
@@ -67,8 +73,20 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
   if (job_description.length < 50) {
     return c.json({ error: 'job_description is required and must be at least 50 characters' }, 400);
   }
+  if (resume_text.length > 30000) {
+    return c.json({ error: 'Resume text must be under 30,000 characters' }, 400);
+  }
+  if (job_description.length > 15000) {
+    return c.json({ error: 'Job description must be under 15,000 characters' }, 400);
+  }
 
-  const signal = c.req.raw.signal;
+  // Fix 1: Concurrent duplicate prevention
+  if (inFlightAnalyze.has(session_id)) {
+    return c.json({ error: 'Analysis already in progress for this session.' }, 409);
+  }
+  inFlightAnalyze.add(session_id);
+
+  const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 90_000);
 
   try {
     logger.info({ userId: user.id, sessionId: session_id }, 'Discovery analyze: starting');
@@ -124,6 +142,9 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Discovery analyze: failed');
     return c.json({ error: 'Discovery analysis failed. Please try again.' }, 500);
+  } finally {
+    inFlightAnalyze.delete(session_id);
+    signalCleanup();
   }
 });
 
@@ -142,8 +163,14 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
   if (!session_id) {
     return c.json({ error: 'session_id is required' }, 400);
   }
+  if (session_id.length > 128 || !/^[\w-]+$/.test(session_id)) {
+    return c.json({ error: 'Invalid session_id format' }, 400);
+  }
   if (answer.length < 2) {
     return c.json({ error: 'answer is required' }, 400);
+  }
+  if (answer.length > 2000) {
+    return c.json({ error: 'Answer must be 2000 characters or fewer' }, 400);
   }
 
   const sessionState = discoverySessions.get(session_id);
@@ -154,6 +181,17 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
   // Verify the session belongs to this user
   if (sessionState.user_id !== user.id) {
     return c.json({ error: 'Session not found or expired.' }, 404);
+  }
+
+  // Server-side exchange limit enforcement
+  const exchangeCount = sessionState.conversation_history.filter(m => m.role === 'user').length;
+  if (exchangeCount >= 8) {
+    return c.json({
+      next_question: null,
+      resume_updates: [],
+      insight: 'We have gathered enough to build your profile.',
+      complete: true,
+    });
   }
 
   // Determine which question was just answered
@@ -184,24 +222,37 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
       updatedConversation.push({ role: 'ai' as const, content: excavationResult.next_question });
     }
 
+    // Track the answered question
     const updatedAnswers = currentQuestion
       ? [...sessionState.excavation_answers, { question: currentQuestion.question, answer }]
       : sessionState.excavation_answers;
 
-    // Pop the first remaining question now that it's been answered
-    const updatedRemaining = currentQuestion
-      ? sessionState.remaining_questions.slice(1)
-      : sessionState.remaining_questions;
+    // Determine remaining questions
+    let updatedRemaining = sessionState.remaining_questions;
+    if (excavationResult.complete) {
+      updatedRemaining = [];
+    } else if (currentQuestion) {
+      // Check if the LLM's next question matches a prepared question
+      const isFollowUp = excavationResult.next_question
+        && !sessionState.remaining_questions.some(q => q.question === excavationResult.next_question);
 
-    // If the next question is a follow-up (not from the prepared list), prepend it
-    // so it becomes the next item to answer. Follow-ups replace the queue head temporarily.
-    const finalRemaining = excavationResult.complete ? [] : updatedRemaining;
+      if (isFollowUp && excavationResult.next_question) {
+        // Follow-up: don't pop the current prepared question — prepend the follow-up
+        updatedRemaining = [
+          { question: excavationResult.next_question, what_we_are_looking_for: 'Follow-up from previous answer' },
+          ...sessionState.remaining_questions,
+        ];
+      } else {
+        // Moving to next prepared question: pop the answered one
+        updatedRemaining = sessionState.remaining_questions.slice(1);
+      }
+    }
 
     discoverySessions.set(session_id, {
       ...sessionState,
       conversation_history: updatedConversation,
       excavation_answers: updatedAnswers,
-      remaining_questions: finalRemaining,
+      remaining_questions: updatedRemaining,
     });
 
     return c.json(excavationResult);
@@ -225,6 +276,9 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
 
   if (!session_id) {
     return c.json({ error: 'session_id is required' }, 400);
+  }
+  if (session_id.length > 128 || !/^[\w-]+$/.test(session_id)) {
+    return c.json({ error: 'Invalid session_id format' }, 400);
   }
 
   const sessionState = discoverySessions.get(session_id);
@@ -253,7 +307,7 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
     );
 
     // Save to user_platform_context as career_profile type
-    await upsertUserContext(
+    const saved = await upsertUserContext(
       user.id,
       'career_profile',
       profile as unknown as Record<string, unknown>,
@@ -261,9 +315,14 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
       session_id,
     );
 
+    if (!saved) {
+      logger.error({ userId: user.id, sessionId: session_id }, 'Discovery complete: profile save failed — session preserved for retry');
+      return c.json({ error: 'Profile save failed. Please try again.' }, 500);
+    }
+
     logger.info({ userId: user.id, sessionId: session_id }, 'Discovery complete: CareerIQ profile saved');
 
-    // Clean up session
+    // Only clean up session after confirmed save
     discoverySessions.delete(session_id);
 
     return c.json({ profile });

@@ -244,8 +244,8 @@ export async function buildCareerIQProfile(
   try {
     const retry = await llm.chat({
       model: MODEL_PRIMARY,
-      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary. Start with { and end with }.',
-      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage + '\n\nReturn ONLY valid JSON. Start with { and end with }. No markdown fences, no commentary.' }],
       response_format: { type: 'json_object' },
       max_tokens: 4096,
       signal,

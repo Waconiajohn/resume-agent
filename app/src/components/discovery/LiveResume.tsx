@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { LiveResumeState, ResumeUpdate } from '@/types/discovery';
+import type { LiveResumeState } from '@/types/discovery';
 
 interface LiveResumeProps {
   resume: LiveResumeState;
   highlightedSections: string[];
-  pendingUpdates?: ResumeUpdate[];
   footerText?: string;
 }
 
@@ -149,7 +148,7 @@ export function LiveResume({ resume, highlightedSections, footerText }: LiveResu
                 <div key={idx} className="flex items-baseline justify-between">
                   <div>
                     <span className="font-medium text-[var(--text-strong)]">{edu.degree}</span>
-                    <span className="text-[var(--text-muted)]"> &bull; {edu.institution}</span>
+                    {edu.institution && <span className="text-[var(--text-muted)]"> &bull; {edu.institution}</span>}
                   </div>
                   {edu.year && <span className="text-xs text-[var(--text-soft)]">{edu.year}</span>}
                 </div>

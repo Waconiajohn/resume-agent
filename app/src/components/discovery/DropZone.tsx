@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Briefcase, CheckCircle2, ArrowRight } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -27,10 +27,19 @@ function readFileAsText(file: File): Promise<string> {
 export function DropZone({ onAnalyze, loading }: DropZoneProps) {
   const [resume, setResume] = useState<ZoneState>({ content: null, label: null, dragging: false });
   const [job, setJob] = useState<ZoneState>({ content: null, label: null, dragging: false });
+  const [jobEditing, setJobEditing] = useState(false);
+  const [jobDraftText, setJobDraftText] = useState('');
   const resumeInputRef = useRef<HTMLInputElement>(null);
-  const jobInputRef = useRef<HTMLTextAreaElement>(null);
+  const jobTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const canSubmit = resume.content !== null && job.content !== null && !loading;
+
+  // Focus the inline job textarea when editing begins
+  useEffect(() => {
+    if (jobEditing && jobTextareaRef.current) {
+      jobTextareaRef.current.focus();
+    }
+  }, [jobEditing]);
 
   const handleResumeFile = useCallback(async (file: File) => {
     try {
@@ -68,6 +77,8 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
     e.preventDefault();
     const text = e.dataTransfer.getData('text/plain');
     if (text) {
+      setJobDraftText('');
+      setJobEditing(false);
       setJob({ content: text, label: text.trim().slice(0, 60), dragging: false });
     }
   }, []);
@@ -75,9 +86,19 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
   const handleJobPaste = useCallback((e: React.ClipboardEvent) => {
     const text = e.clipboardData.getData('text/plain');
     if (text.trim()) {
+      setJobDraftText('');
+      setJobEditing(false);
       setJob({ content: text, label: text.trim().slice(0, 60), dragging: false });
     }
   }, []);
+
+  const commitJobDraft = useCallback(() => {
+    const trimmed = jobDraftText.trim();
+    if (trimmed) {
+      setJob({ content: trimmed, label: trimmed.slice(0, 60), dragging: false });
+    }
+    setJobEditing(false);
+  }, [jobDraftText]);
 
   const handleSubmit = useCallback(() => {
     if (!resume.content || !job.content) return;
@@ -108,7 +129,7 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
         <DropTarget
           icon={<Upload className="h-7 w-7" />}
           title="Drop your resume here"
-          subtitle="PDF or paste your text"
+          subtitle="Text file or paste your resume"
           filled={resume.content !== null}
           label={resume.label}
           dragging={resume.dragging}
@@ -121,7 +142,7 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
         <input
           ref={resumeInputRef}
           type="file"
-          accept=".txt,.pdf,.doc,.docx"
+          accept=".txt"
           className="sr-only"
           onChange={async (e) => {
             const file = e.target.files?.[0];
@@ -131,27 +152,53 @@ export function DropZone({ onAnalyze, loading }: DropZoneProps) {
         />
 
         {/* Job zone */}
-        <DropTarget
-          icon={<Briefcase className="h-7 w-7" />}
-          title="Drop one job you want"
-          subtitle="Paste the URL or job description"
-          filled={job.content !== null}
-          label={job.label}
-          dragging={job.dragging}
-          onDrop={handleJobDrop}
-          onPaste={handleJobPaste}
-          onDragOver={(e) => { e.preventDefault(); setJob((p) => ({ ...p, dragging: true })); }}
-          onDragLeave={() => setJob((p) => ({ ...p, dragging: false }))}
-          onClick={() => jobInputRef.current?.focus()}
-        />
-        {/* Hidden textarea for job paste focus target */}
-        <textarea
-          ref={jobInputRef}
-          className="sr-only"
-          aria-label="Paste job description"
-          onPaste={handleJobPaste}
-          onChange={() => undefined}
-        />
+        {jobEditing ? (
+          <GlassCard
+            className={cn(
+              'flex flex-1 flex-col gap-3 p-4 min-h-[220px]',
+              'ring-2 ring-[var(--link)] ring-offset-2 ring-offset-[var(--bg-0)]',
+            )}
+          >
+            <p className="text-xs font-medium text-[var(--text-soft)]">Paste or type the job description</p>
+            <textarea
+              ref={jobTextareaRef}
+              className="flex-1 resize-none rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-3 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--link)]"
+              placeholder="Paste the job description here..."
+              value={jobDraftText}
+              onChange={(e) => setJobDraftText(e.target.value)}
+              onPaste={handleJobPaste}
+              onBlur={commitJobDraft}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setJobEditing(false);
+                  setJobDraftText('');
+                }
+              }}
+              aria-label="Job description text"
+            />
+            <button
+              type="button"
+              className="self-end rounded-lg bg-[var(--link)] px-4 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+              onClick={commitJobDraft}
+            >
+              Done
+            </button>
+          </GlassCard>
+        ) : (
+          <DropTarget
+            icon={<Briefcase className="h-7 w-7" />}
+            title="Drop one job you want"
+            subtitle="Paste the URL or job description"
+            filled={job.content !== null}
+            label={job.label}
+            dragging={job.dragging}
+            onDrop={handleJobDrop}
+            onPaste={handleJobPaste}
+            onDragOver={(e) => { e.preventDefault(); setJob((p) => ({ ...p, dragging: true })); }}
+            onDragLeave={() => setJob((p) => ({ ...p, dragging: false }))}
+            onClick={() => setJobEditing(true)}
+          />
+        )}
       </div>
 
       {/* Submit button — only visible when both zones have content */}
