@@ -31,7 +31,7 @@ FLAGS TO LOOK FOR:
 - "ai_generated" — robotic or ChatGPT-sounding phrasing ("In my role as...", "I was responsible for leveraging...")
 - "generic_filler" — clichés and buzzwords with no substance ("results-oriented," "proven track record," "team player")
 - "passive_voice" — "was managed" instead of "managed," "were reduced" instead of "reduced"
-- "banned_phrase" — any of these exact phrases: ${BANNED_PHRASES.slice(0, 10).join(', ')}... and others
+- "banned_phrase" — any of these exact phrases: ${BANNED_PHRASES.join(', ')}
 
 OUTPUT FORMAT: Return valid JSON:
 {
@@ -51,7 +51,7 @@ RULES:
 - tone_score: 100 = perfect executive voice, deduct 3 points per finding
 - suggestion: don't just flag — REWRITE the problematic text in proper executive voice, keeping the rewrite short and crisp
 - Be specific: "Led cross-functional team" is fine. "Responsible for leading teams" is not.
-- Executives use: "drove," "orchestrated," "championed," "spearheaded," "influenced," "architected"
+- Executives use: "drove," "orchestrated," "championed," "directed," "influenced," "architected"
 - Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"
 - Only flag exact text that appears verbatim in the resume draft. The "text" field must be copied exactly from the draft.
 - Never comment on phrases that are absent. Do not write explanations like "X is not present" or "Y could be considered".

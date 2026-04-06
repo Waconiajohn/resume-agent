@@ -152,7 +152,7 @@ You are generating the BEST POSSIBLE resume that addresses ALL requirements. For
 
 1. **Strong evidence exists**: Use the candidate's actual experience. Set source='original' or 'enhanced', confidence='strong'.
 2. **Partial evidence exists**: Strengthen and position the adjacent experience. Set source='enhanced', confidence='partial'.
-3. **No evidence found**: Draft aspirational but plausible positioning based on the candidate's career arc. Set source='drafted', confidence='needs_validation'. NEVER fabricate specific metrics — use qualitative language.
+3. **No evidence found**: Do NOT write a bullet for this requirement. Mark it as unaddressed. If the candidate genuinely has no relevant experience for a requirement, it is better to leave it out than to fabricate positioning. Set confidence='gap_unaddressed'. The gap will be surfaced to the user for their input.
 4. **Benchmark aspiration**: Include top benchmark items where evidence exists. Set requirement_source='benchmark'.
 
 For EVERY bullet in selected_accomplishments and professional_experience, include:
@@ -464,22 +464,6 @@ export async function runResumeWriter(
   }
   logger.info({ reviewStateCounts }, 'Resume Writer: deterministic review-state distribution');
 
-  // Temp debug: write to file so we can inspect
-  try {
-    const fs = await import('node:fs');
-    const debugData = {
-      reviewStateCounts,
-      totalBullets: (parsed.selected_accomplishments?.length ?? 0) + (parsed.professional_experience ?? []).reduce((s, e) => s + (e.bullets?.length ?? 0), 0),
-      positions: (parsed.professional_experience ?? []).map(e => ({
-        company: e.company,
-        bulletCount: (e.bullets ?? []).length,
-        bullets: (e.bullets ?? []).slice(0, 2).map(b => ({ text: b.text.slice(0, 60), source: b.source, confidence: b.confidence, req_source: b.requirement_source, reqs: b.addresses_requirements?.slice(0, 2) })),
-      })),
-      reqSourceMap: input.gap_analysis?.requirements?.slice(0, 5).map(r => ({ req: r.requirement, source: r.source })),
-      selectedAccomplishmentTargets,
-    };
-    fs.writeFileSync('/tmp/resume-color-debug.json', JSON.stringify(debugData, null, 2));
-  } catch {}
 
   return parsed;
 }
