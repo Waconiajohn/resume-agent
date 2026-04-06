@@ -138,6 +138,7 @@ interface AttentionReviewItem {
   priority: number;
   order: number;
   requirements: string[];
+  reviewState: ResumeReviewState;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -231,6 +232,7 @@ function buildAttentionReviewItems(
         bullet.primary_target_requirement,
         bullet.addresses_requirements,
       ),
+      reviewState,
     });
   });
 
@@ -265,6 +267,7 @@ function buildAttentionReviewItems(
           bullet.primary_target_requirement,
           bullet.addresses_requirements,
         ),
+        reviewState,
       });
     });
   });
@@ -386,6 +389,7 @@ export function V2StreamingDisplay({
   accessToken,
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const coachingPanelRef = useRef<HTMLDivElement | null>(null);
 
   // Active bullet for inline editing
   const [activeBullet, setActiveBullet] = useState<{
@@ -416,9 +420,9 @@ export function V2StreamingDisplay({
     section: string,
     bulletIndex: number,
     requirements: string[],
-    reviewState?: ResumeReviewState,
-    requirementSource?: RequirementSource,
-    evidenceFound?: string,
+    reviewState: ResumeReviewState,
+    requirementSource: RequirementSource | undefined,
+    evidenceFound: string,
   ) => {
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
@@ -427,9 +431,9 @@ export function V2StreamingDisplay({
         index: bulletIndex,
         requirements,
         bulletText,
-        reviewState: reviewState ?? 'supported' as ResumeReviewState,
+        reviewState,
         requirementSource,
-        evidenceFound: evidenceFound ?? '',
+        evidenceFound,
       };
     });
   }, []);
@@ -443,7 +447,7 @@ export function V2StreamingDisplay({
       index: item.index,
       requirements: item.requirements,
       bulletText: item.text,
-      reviewState: 'strengthen' as ResumeReviewState,
+      reviewState: item.reviewState,
       evidenceFound: '',
     });
     window.requestAnimationFrame(() => {
@@ -475,6 +479,13 @@ export function V2StreamingDisplay({
     if (attentionIndex < attentionItems.length) return;
     setAttentionIndex(0);
   }, [attentionIndex, attentionItems.length]);
+
+  // M3: Scroll to coaching panel when a bullet is activated
+  useEffect(() => {
+    if (activeBullet && coachingPanelRef.current) {
+      coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeBullet]);
 
   // B3: Escape key closes inline edit panel
   useEffect(() => {
@@ -593,9 +604,8 @@ export function V2StreamingDisplay({
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto relative">
-      {/* Scoring report — single instance, persists across layout transitions */}
-      {/* Scoring report — only show outside the editing state (it moves into each variant below) */}
+    <div ref={containerRef} className="flex-1 overflow-y-auto lg:overflow-hidden relative">
+      {/* Scoring report — three instances: one here (non-editing state), one in mobile layout, one in desktop left panel */}
       {data.preScores && data.assembly && !(canShowResumeDocument && hasPassedReadyGate) && (
         <div className="mx-auto max-w-[900px] px-6 pt-4">
           <ScoringReport
@@ -736,9 +746,11 @@ export function V2StreamingDisplay({
                     <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
                   )}
                   {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-                  {activeBullet && gapChat && buildChatContext && (
-                    <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
-                  )}
+                  <div ref={coachingPanelRef}>
+                    {activeBullet && gapChat && buildChatContext && (
+                      <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                    )}
+                  </div>
                   {pendingEdit && !activeBullet && (
                     <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
                   )}

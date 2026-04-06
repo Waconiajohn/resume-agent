@@ -285,7 +285,7 @@ interface BulletLineContentProps {
   requirements: string[];
   resolvedState: ResumeReviewState;
   evidenceFound?: string;
-  /** Click handler for non-green bullets — opens conversation editor. Undefined for green bullets. */
+  /** Click handler — marks this bullet active, surfacing coaching in the left panel. Not provided for supported bullets. */
   onBulletClick?: (
     text: string,
     section: string,

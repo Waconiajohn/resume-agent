@@ -11,7 +11,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DashboardState } from './useWhyMeStory';
 import type { ExposedWorkspaceRoom, WorkspaceRoom } from './workspaceRoomAccess';
 
@@ -61,6 +61,12 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
 export function Sidebar({ activeRoom, onNavigate, dashboardState, defaultCollapsed }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
   const isLocked = dashboardState === 'new-user';
+
+  useEffect(() => {
+    if (defaultCollapsed !== undefined) {
+      setCollapsed(defaultCollapsed);
+    }
+  }, [defaultCollapsed]);
 
   const renderRoomButton = (room: RoomGroup['rooms'][number]) => {
     const Icon = room.icon;

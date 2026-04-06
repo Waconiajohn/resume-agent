@@ -14,7 +14,7 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
       </div>
 
       {/* Right panel: resume preview */}
-      <div className="flex-1 overflow-y-auto bg-[#f5f5f5]">
+      <div className="flex-1 overflow-y-auto bg-[var(--bg-1)]">
         {rightPanel}
       </div>
     </div>

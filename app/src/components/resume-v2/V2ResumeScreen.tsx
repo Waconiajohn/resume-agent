@@ -259,12 +259,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         atsScore: postReviewPolish.result?.ats_score ?? liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? undefined,
       });
       await exportDocx(finalResume, DEFAULT_TEMPLATE_ID);
-    } catch {
-      // silent — download failures are non-critical in the top bar context
+    } catch (err) {
+      console.error('DOCX export failed:', err);
+      addToast({ type: 'error', message: 'Export failed. Please try again.' });
     } finally {
       setIsExportingDocx(false);
     }
-  }, [currentResume, data.jobIntelligence, data.assembly?.scores.ats_match, liveScores?.ats_score, postReviewPolish.result?.ats_score]);
+  }, [currentResume, data.jobIntelligence, data.assembly?.scores.ats_match, liveScores?.ats_score, postReviewPolish.result?.ats_score, addToast]);
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((requirement: string): GapChatContext => {
@@ -1363,6 +1364,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
                 size="sm"
                 onClick={handleTopBarDocx}
                 disabled={isExportingDocx}
+                aria-busy={isExportingDocx}
                 aria-label="Download resume as DOCX"
                 className="gap-1 text-xs"
               >

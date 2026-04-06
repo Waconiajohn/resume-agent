@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { useCareerProfile } from './CareerProfileContext';
 import { useMediaQuery } from './useMediaQuery';
+import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 
 interface WorkspaceLayoutProps {
   children: ReactNode;
@@ -60,7 +61,7 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         activeRoom={getActiveRoom()}
         onNavigate={handleNavigate}
         dashboardState={dashboardState}
-        defaultCollapsed={location.pathname === '/resume-builder/session'}
+        defaultCollapsed={location.pathname === RESUME_BUILDER_SESSION_ROUTE}
       />
       <main className="flex flex-1 flex-col overflow-hidden">
         {children}

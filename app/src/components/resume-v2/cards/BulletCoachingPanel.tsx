@@ -106,6 +106,7 @@ export function BulletCoachingPanel({
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // ── Internal state ─────────────────────────────────────────────────────────
   const [selectedSuggestion, setSelectedSuggestion] = useState<number | null>(null);
@@ -124,6 +125,13 @@ export function BulletCoachingPanel({
   // ── Focus panel on mount (Fix 10) ─────────────────────────────────────────
   useEffect(() => {
     panelRef.current?.focus();
+  }, []);
+
+  // ── Cleanup confirmRemove timeout on unmount ───────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    };
   }, []);
 
   // ── Derive chat state from the gap-chat hook ───────────────────────────────
@@ -503,7 +511,7 @@ export function BulletCoachingPanel({
               onClose();
             } else {
               setConfirmRemove(true);
-              setTimeout(() => setConfirmRemove(false), 3000);
+              confirmTimeoutRef.current = setTimeout(() => setConfirmRemove(false), 3000);
             }
           }}
           disabled={isEnhancing || isChatLoading}
