@@ -27,6 +27,7 @@ export function InterviewView({
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [chipUsed, setChipUsed] = useState(false);
+  const [whyMeExpanded, setWhyMeExpanded] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasInitialized = useRef(false);
@@ -121,6 +122,13 @@ export function InterviewView({
     }, 0);
   };
 
+  const COLLAPSED_LENGTH = 150;
+  const whyMeText = intake.why_me_draft ?? '';
+  const whyMeIsLong = whyMeText.length > COLLAPSED_LENGTH;
+  const whyMeDisplayText = whyMeExpanded || !whyMeIsLong
+    ? whyMeText
+    : whyMeText.slice(0, COLLAPSED_LENGTH).trimEnd() + '…';
+
   const displayQuestionNumber = Math.min(currentQuestionIndex + 1, TOTAL_QUESTIONS);
 
   // Get suggested starters for the current question
@@ -133,17 +141,27 @@ export function InterviewView({
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto pb-48">
         <div className="max-w-2xl mx-auto px-8 py-16">
-          {/* Why Me Draft */}
-          <div className="mb-10">
-            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-4">
+          {/* Why Me Draft — compact context card */}
+          <div
+            className="mb-10 rounded-lg px-4 py-3"
+            style={{ background: 'var(--surface-1)', border: '1px solid var(--line-soft)' }}
+          >
+            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-2">
               Here is what we found
             </p>
-            <p
-              className="text-xl font-light leading-relaxed text-[var(--text-strong)]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {intake.why_me_draft}
+            <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+              {whyMeDisplayText}
             </p>
+            {whyMeIsLong && (
+              <button
+                type="button"
+                onClick={() => setWhyMeExpanded((v) => !v)}
+                className="mt-2 text-xs transition-colors"
+                style={{ color: 'var(--link)' }}
+              >
+                {whyMeExpanded ? 'Show less' : 'Show full analysis'}
+              </button>
+            )}
           </div>
 
           {/* Divider */}

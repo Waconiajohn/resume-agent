@@ -295,29 +295,6 @@ function ScoreSummaryHeader({
   );
 }
 
-function CompactMetric({
-  label,
-  value,
-  accent = 'default',
-  detail,
-}: {
-  label: string;
-  value: string;
-  accent?: 'default' | 'good' | 'warn' | 'soft';
-  detail?: string;
-}) {
-  return (
-    <div className="score-snapshot-metric px-3 py-3" data-accent={accent}>
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</p>
-      <div className="mt-2 flex items-end gap-2">
-        <span className="score-snapshot-metric__value text-2xl font-semibold tabular-nums">{value}</span>
-      </div>
-      {detail && (
-        <p className="mt-1.5 text-xs leading-5 text-[var(--text-soft)]">{detail}</p>
-      )}
-    </div>
-  );
-}
 
 function CompactScoreSummaryHeader({
   preScores,
@@ -336,9 +313,6 @@ function CompactScoreSummaryHeader({
 }) {
   const beforeKeywordScore = preScores.keyword_match_score ?? preScores.ats_match;
   const afterAts = assembly.scores.ats_match;
-  const truth = assembly.scores.truth;
-  const tone = assembly.scores.tone;
-  const hiringManagerScan = assembly.hiring_manager_scan;
   const jdBreakdown = gapAnalysis?.score_breakdown?.job_description;
   const outstandingRequirements = jdBreakdown
     ? jdBreakdown.partial + jdBreakdown.missing
@@ -356,7 +330,6 @@ function CompactScoreSummaryHeader({
     ? Math.max(afterAts, afterRequirementScore)
     : afterAts;
   const delta = afterSnapshotScore - beforeSnapshotScore;
-  const redFlags = hiringManagerScan?.red_flags.length ?? 0;
 
   const summaryLine = attentionSummary ?? (outstandingRequirements === null
     ? gapAnalysis?.strength_summary
@@ -365,138 +338,39 @@ function CompactScoreSummaryHeader({
       ? `Your resume now clearly covers the job requirements we measured${reviewStatusLabel ? `, and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`
       : `Your resume is up ${delta} points, but ${outstandingRequirements} job requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof${reviewStatusLabel ? ` and final review is ${reviewStatusLabel.toLowerCase()}` : ''}.`);
 
-  const topGains = [
-    `${Math.abs(delta)}-point on-paper improvement from your original resume`,
-    coveredRequirements !== null && totalRequirements !== null
-      ? `${coveredRequirements} of ${totalRequirements} measured role requirements now read as addressed`
-      : null,
-    hiringManagerScan
-      ? `Recruiter scan is ${hiringManagerScan.pass ? 'passing' : 'flagged for review'} at ${hiringManagerScan.scan_score}`
-      : null,
-  ].filter((item): item is string => Boolean(item));
-
-  const topRisks = [
-    outstandingRequirements && outstandingRequirements > 0
-      ? `${outstandingRequirements} role requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof`
-      : null,
-    redFlags > 0
-      ? `${redFlags} recruiter red flag${redFlags === 1 ? '' : 's'} still showing`
-      : null,
-  ].filter((item): item is string => Boolean(item));
-
-  const visibleTopGains = topGains.slice(0, 2);
-  const visibleTopRisks = topRisks.slice(0, 2);
-
   return (
-    <div className="score-snapshot-shell px-4 py-4 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="mt-2 text-[1.05rem] font-semibold leading-6 text-[var(--text-strong)]">
-            How your resume matches this job.
-          </p>
-          <p className="mt-1 text-sm leading-5 text-[var(--text-soft)]">
-            Baseline, what improved, and the last items still worth tightening before export.
-          </p>
+    <div className="score-snapshot-shell px-4 py-4 space-y-3">
+      {/* Score line */}
+      <div className="score-snapshot-hero px-4 py-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">Resume Score</p>
+          <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
         </div>
-      </div>
+        <p className="mt-1 text-[3rem] font-semibold tabular-nums tracking-tight leading-none" style={{ color: 'var(--badge-green-text)' }}>
+          {afterSnapshotScore}%
+        </p>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <div className="score-snapshot-hero px-4 py-3.5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">On-Paper Fit Score</p>
-          <div className="mt-2.5 flex flex-wrap items-end gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Before</p>
-              <p className="mt-1 text-[1.75rem] font-semibold tabular-nums text-[var(--text-muted)]">{beforeSnapshotScore}%</p>
-            </div>
-            <span aria-hidden="true" className="pb-1 text-lg text-[var(--text-soft)]">-&gt;</span>
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-soft)]">Now</p>
-              <div className="mt-1 flex items-center gap-2">
-                <p className="text-[2.75rem] font-semibold tabular-nums tracking-tight" style={{ color: 'var(--badge-green-text)' }}>{afterSnapshotScore}%</p>
-                <DeltaBadge before={beforeSnapshotScore} after={afterSnapshotScore} />
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 space-y-2">
-            <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-[rgba(175,196,255,0.38)]"
-                style={{ width: `${beforeSnapshotScore}%` }}
-              />
-              <div
-                className="absolute inset-y-0 left-0 rounded-full"
-                style={{
-                  width: `${afterSnapshotScore}%`,
-                  background: 'linear-gradient(90deg, rgba(181,222,194,0.78), rgba(210,236,219,0.95))',
-                  boxShadow: '0 0 18px rgba(181,222,194,0.25)',
-                }}
-              />
-            </div>
-          </div>
-          <div className="score-snapshot-meaning mt-3 rounded-xl px-3 py-2.5">
-            <p className="mt-1.5 text-sm leading-5 text-[var(--text-muted)]">{summaryLine}</p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 grid-cols-2">
-          {coveredRequirements !== null && totalRequirements !== null ? (
-            <CompactMetric
-              label="Requirements Met"
-              value={`${coveredRequirements}/${totalRequirements}`}
-              accent="good"
-              detail="Job requirements your resume addresses"
-            />
-          ) : (
-            <CompactMetric
-              label="Requirements Met"
-              value="N/A"
-              detail="Job requirements your resume addresses"
-            />
-          )}
-          <CompactMetric
-            label="Accuracy + Polish"
-            value={String(Math.min(truth, tone))}
-            accent={Math.min(truth, tone) >= 85 ? 'good' : Math.min(truth, tone) >= 70 ? 'warn' : 'soft'}
-            detail="How well each bullet holds up"
+        {/* Progress bar */}
+        <div className="mt-3 relative h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-[rgba(175,196,255,0.38)]"
+            style={{ width: `${beforeSnapshotScore}%` }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              width: `${afterSnapshotScore}%`,
+              background: 'linear-gradient(90deg, rgba(181,222,194,0.78), rgba(210,236,219,0.95))',
+              boxShadow: '0 0 18px rgba(181,222,194,0.25)',
+            }}
           />
         </div>
+
+        {/* Plain-language summary */}
+        <p className="mt-3 text-sm leading-5 text-[var(--text-muted)]">{summaryLine}</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="score-snapshot-band score-snapshot-band--good px-3.5 py-3.5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-green-text)' }}>
-            What improved
-          </p>
-          <ul className="mt-2.5 space-y-2">
-            {visibleTopGains.map((gain) => (
-              <li key={gain} className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
-                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
-                <span>{gain}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="score-snapshot-band score-snapshot-band--warn px-3.5 py-3.5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--badge-amber-text)' }}>
-            Still to close
-          </p>
-          <ul className="mt-2.5 space-y-2">
-            {visibleTopRisks.length > 0 ? visibleTopRisks.map((risk) => (
-              <li key={risk} className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
-                <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-amber-text)' }} />
-                <span>{risk}</span>
-              </li>
-            )) : (
-              <li className="flex items-start gap-2 text-sm leading-5 text-[var(--text-muted)]">
-                <CheckCircle2 className="mt-1 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--badge-green-text)' }} />
-                <span>No major issues are blocking the draft right now.</span>
-              </li>
-            )}
-          </ul>
-        </div>
-      </div>
-
+      {/* Do this next */}
       <div className="support-callout px-3.5 py-3">
         <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">Do this next</p>
         <p className="mt-1.5 text-sm font-medium leading-5 text-[var(--text-muted)]">

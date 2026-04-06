@@ -6,7 +6,7 @@ interface ProfileRevealProps {
   profile: CareerIQProfileFull;
 }
 
-const STAGGER_DELAYS = [0, 200, 400, 600, 800, 1000, 1200];
+const STAGGER_DELAYS = [0, 200, 400, 600];
 
 interface FadeInSectionProps {
   children: React.ReactNode;
@@ -99,61 +99,11 @@ export function ProfileReveal({ profile }: ProfileRevealProps) {
           </div>
         </FadeInSection>
 
-        {/* Section 3: Signature Story */}
+        {/* Positioning Statement */}
         <FadeInSection delayMs={STAGGER_DELAYS[3] ?? 600}>
-          <div className="mb-12">
-            <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
-              Signature Story
-            </p>
-            <div className="space-y-4">
-              {[
-                { label: 'The situation', text: profile.signature_story.situation },
-                { label: 'What you were asked to do', text: profile.signature_story.task },
-                { label: 'How you did it', text: profile.signature_story.action },
-                { label: 'What happened', text: profile.signature_story.result },
-                { label: 'What it says about you', text: profile.signature_story.reflection },
-              ].map(({ label, text }) => (
-                <div key={label}>
-                  <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-                  <p className="text-sm leading-relaxed text-[var(--text-strong)]">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeInSection>
-
-        {/* Section 4: Honest Answer */}
-        <FadeInSection delayMs={STAGGER_DELAYS[4] ?? 800}>
-          <div className="mb-12">
-            <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
-              The Honest Answer
-            </p>
-            <div className="rounded-xl px-5 py-4" style={{ background: 'var(--surface-1)', border: '1px solid var(--line-soft)' }}>
-              <p className="text-xs text-[var(--text-muted)] mb-2">{profile.honest_answer.concern}</p>
-              <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-                {profile.honest_answer.response}
-              </p>
-            </div>
-          </div>
-        </FadeInSection>
-
-        {/* Section 5: Righteous Close */}
-        <FadeInSection delayMs={STAGGER_DELAYS[5] ?? 1000}>
-          <div className="mb-12">
-            <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
-              How You Close
-            </p>
-            <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-              {profile.righteous_close}
-            </p>
-          </div>
-        </FadeInSection>
-
-        {/* Full Why Me Final */}
-        <FadeInSection delayMs={STAGGER_DELAYS[6] ?? 1200}>
           <div className="mb-16">
             <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
-              Your Why Me
+              Positioning Statement
             </p>
             {typeof profile.why_me_final === 'string' ? (
               // Legacy string format

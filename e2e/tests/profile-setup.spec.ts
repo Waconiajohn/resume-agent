@@ -355,10 +355,7 @@ test.describe('Profile Setup', () => {
     await expect(page.getByText(/From systems engineering to cloud-scale leadership/i)).toBeVisible();
 
     await expect(page.getByText(/Where You Are Exceptional/i)).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText(/Signature Story/i)).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText(/The Honest Answer/i)).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText(/How You Close/i)).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText(/Your Why Me/i)).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText(/Positioning Statement/i)).toBeVisible({ timeout: 3_000 });
     await expect(page.getByText(/Sarah turns infrastructure chaos/i)).toBeVisible({ timeout: 3_000 });
 
     // Navigation buttons present — primary CTA first, two secondary below

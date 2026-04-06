@@ -74,18 +74,20 @@ WHY ME FINAL is not the same as the RIGHTEOUS CLOSE. RIGHTEOUS CLOSE is a full p
 Two fields: headline and body.
 
 HEADLINE: One sentence. This is the 3-to-5 second test. A hiring manager glances at this and immediately knows what makes this person different. It must:
-- Open with the single most powerful, specific, defensible claim about this candidate
-- Name a concrete achievement, capability, or combination that no other candidate in the pile can claim
-- Be grounded in evidence from the interview or resume — not aspirational language
+- Position the PERSON, not describe a single project. Do NOT name a specific company in the headline.
+- Describe a repeatable capability or pattern — something they bring to every role, not something that happened once at one company
+- Include a concrete metric or scope to prove it is not generic (team sizes, budget scale, percentage improvements)
 - Pass the uniqueness test: could another executive with a similar background claim this exact sentence? If yes, rewrite it.
 
-Good example: "Sarah turned a 15-year-old monolith into 4 microservices with zero downtime while growing her team from 5 to 14 — and she's the person the VP of Product calls when a technical constraint needs to be explained in customer impact terms."
+Good example: "Infrastructure leader who has migrated 60+ enterprise applications to cloud with zero downtime, grown engineering teams from 5 to 14, and earned the trust of product executives by translating infrastructure constraints into customer impact."
 
-Bad example: "I'm the right fit because I bring a unique combination of technical expertise, leadership skills, and business acumen."
+Bad example: "Transformed Nimbus Technologies by migrating 60+ legacy apps to AWS" — this names one company and sounds like a project recap, not a positioning statement.
 
-The headline is the single most important output of this entire profile. It will seed every professional summary this platform generates. Get it right.
+Bad example: "I'm the right fit because I bring a unique combination of technical expertise, leadership skills, and business acumen." — generic, could describe anyone.
 
-BODY: Two to three sentences. These prove the headline. Each sentence must reference a specific moment, metric, or outcome from the interview answers or resume. The body answers "how do we know?" for whatever the headline claims.
+The headline is the single most important output of this entire profile. It will seed every professional summary this platform generates. It must work for ANY job this person applies to, not just the last one they held.
+
+BODY: Two to three sentences. These prove the headline with specifics — metrics, outcomes, moments from the interview. The body CAN name companies as evidence, but the headline must not.
 
 OUTPUT FORMAT: Return valid JSON:
 {
