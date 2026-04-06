@@ -122,7 +122,7 @@ export function ExcavationConversation({
       <div className="flex w-[55%] flex-col border-r border-[var(--line-soft)]">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4" aria-live="polite" aria-relevant="additions">
             {conversation.map((msg, idx) => (
               <ChatMessage key={idx} message={msg} />
             ))}

@@ -10,26 +10,21 @@ interface LiveResumeProps {
 
 export function LiveResume({ resume, highlightedSections, footerText }: LiveResumeProps) {
   const [glowSections, setGlowSections] = useState<Set<string>>(new Set());
-  const glowTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (highlightedSections.length === 0) return;
-
     setGlowSections(new Set(highlightedSections));
 
-    const timer = setTimeout(() => {
+    if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
+    glowTimerRef.current = setTimeout(() => {
       setGlowSections(new Set());
     }, 2500);
 
-    glowTimerRef.current.push(timer);
-    return () => clearTimeout(timer);
-  }, [highlightedSections]);
-
-  useEffect(() => {
     return () => {
-      glowTimerRef.current.forEach(clearTimeout);
+      if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
     };
-  }, []);
+  }, [highlightedSections]);
 
   return (
     <div className="flex h-full flex-col">

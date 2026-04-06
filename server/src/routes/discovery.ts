@@ -34,6 +34,7 @@ export const discoveryRoutes = new Hono();
 // Prevents duplicate concurrent /analyze runs for the same session_id.
 
 const inFlightAnalyze = new Set<string>();
+const inFlightExcavate = new Set<string>();
 
 // ─── In-Memory Session Store ──────────────────────────────────────────────────
 // Keyed by session_id. TTL cleanup runs every 30 minutes.
@@ -45,7 +46,7 @@ const discoverySessions = new Map<string, DiscoverySessionState>();
 const sessionCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [sessionId, state] of discoverySessions.entries()) {
-    if (now - state.created_at > SESSION_TTL_MS) {
+    if (now - state.last_active_at > SESSION_TTL_MS) {
       discoverySessions.delete(sessionId);
     }
   }
@@ -66,6 +67,10 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
   const session_id = typeof body.session_id === 'string' && body.session_id.trim().length > 0
     ? body.session_id.trim()
     : `discovery-${crypto.randomUUID()}`;
+
+  if (session_id.length > 128 || !/^[\w-]+$/.test(session_id)) {
+    return c.json({ error: 'Invalid session_id format' }, 400);
+  }
 
   if (resume_text.length < 100) {
     return c.json({ error: 'resume_text is required and must be at least 100 characters' }, 400);
@@ -130,6 +135,7 @@ discoveryRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_000),
       excavation_answers: [],
       remaining_questions: [...discovery.excavation_questions],
       created_at: Date.now(),
+      last_active_at: Date.now(),
     };
 
     discoverySessions.set(session_id, sessionState);
@@ -183,9 +189,15 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
     return c.json({ error: 'Session not found or expired.' }, 404);
   }
 
+  if (inFlightExcavate.has(session_id)) {
+    return c.json({ error: 'Excavation already in progress for this session.' }, 409);
+  }
+  inFlightExcavate.add(session_id);
+
   // Server-side exchange limit enforcement
   const exchangeCount = sessionState.conversation_history.filter(m => m.role === 'user').length;
   if (exchangeCount >= 8) {
+    inFlightExcavate.delete(session_id);
     return c.json({
       next_question: null,
       resume_updates: [],
@@ -196,7 +208,7 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
 
   // Determine which question was just answered
   const currentQuestion = sessionState.remaining_questions[0];
-  const signal = c.req.raw.signal;
+  const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 60_000);
 
   try {
     const excavationResult = await processExcavationAnswer(
@@ -241,7 +253,7 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
         updatedRemaining = [
           { question: excavationResult.next_question, what_we_are_looking_for: 'Follow-up from previous answer' },
           ...sessionState.remaining_questions,
-        ];
+        ].slice(0, 10);
       } else {
         // Moving to next prepared question: pop the answered one
         updatedRemaining = sessionState.remaining_questions.slice(1);
@@ -253,6 +265,7 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
       conversation_history: updatedConversation,
       excavation_answers: updatedAnswers,
       remaining_questions: updatedRemaining,
+      last_active_at: Date.now(),
     });
 
     return c.json(excavationResult);
@@ -260,6 +273,9 @@ discoveryRoutes.post('/excavate', authMiddleware, rateLimitMiddleware(20, 60_000
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Discovery excavate: failed');
     return c.json({ error: 'Excavation failed. Please try again.' }, 500);
+  } finally {
+    inFlightExcavate.delete(session_id);
+    signalCleanup();
   }
 });
 
@@ -290,7 +306,7 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
     return c.json({ error: 'Session not found or expired.' }, 404);
   }
 
-  const signal = c.req.raw.signal;
+  const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 60_000);
 
   try {
     logger.info({ userId: user.id, sessionId: session_id }, 'Discovery complete: building CareerIQ profile');
@@ -330,5 +346,7 @@ discoveryRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_000)
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ userId: user.id, sessionId: session_id, error: message }, 'Discovery complete: failed');
     return c.json({ error: 'Profile build failed. Please try again.' }, 500);
+  } finally {
+    signalCleanup();
   }
 });

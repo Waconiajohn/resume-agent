@@ -81,4 +81,5 @@ export interface DiscoverySessionState {
   excavation_answers: Array<{ question: string; answer: string }>;
   remaining_questions: ExcavationQuestion[];
   created_at: number;
+  last_active_at: number;
 }

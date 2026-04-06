@@ -1,6 +1,7 @@
 import { useReducer, useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
+import { GlassButton } from '@/components/GlassButton';
 import { DropZone } from './DropZone';
 import { ProcessingReveal } from './ProcessingReveal';
 import { RecognitionScreen } from './RecognitionScreen';
@@ -17,19 +18,14 @@ import type {
 
 type DiscoveryScreen = 'drop_zone' | 'processing' | 'recognition' | 'excavation' | 'profile';
 
-interface ConversationMessage {
-  role: 'ai' | 'user';
-  content: string;
-}
-
 interface DiscoveryState {
   screen: DiscoveryScreen;
   resumeText: string | null;
   jobText: string | null;
   sessionId: string | null;
   discovery: DiscoveryOutput | null;
-  conversation: ConversationMessage[];
   excavationComplete: boolean;
+  profileFetchFailed: boolean;
   profile: CareerIQProfile | null;
   liveResume: LiveResumeState | null;
   highlightedSections: string[];
@@ -45,6 +41,7 @@ type DiscoveryAction =
   | { type: 'EXCAVATION_COMPLETE' }
   | { type: 'PROFILE_READY'; profile: CareerIQProfile }
   | { type: 'PROFILE_ERROR'; error: string }
+  | { type: 'RETRY_PROFILE' }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' };
 
@@ -237,14 +234,18 @@ function applyResumeUpdates(resume: LiveResumeState, updates: ResumeUpdate[]): L
       if (update.section === 'summary') {
         updated = { ...updated, summary: update.text };
       } else {
+        let strengthApplied = false;
         updated = {
           ...updated,
           experience: updated.experience.map((exp) => {
+            // For generic "experience" section, only apply to the first entry
+            if (update.section === 'experience' && strengthApplied) return exp;
             const matches =
               exp.id === update.section ||
               exp.company.toLowerCase() === update.section.toLowerCase() ||
               update.section === 'experience';
             if (!matches) return exp;
+            strengthApplied = true;
             return {
               ...exp,
               bullets: exp.bullets.map((b, idx) => {
@@ -263,14 +264,17 @@ function applyResumeUpdates(resume: LiveResumeState, updates: ResumeUpdate[]): L
     }
 
     if (update.action === 'highlight') {
+      let highlightApplied = false;
       updated = {
         ...updated,
         experience: updated.experience.map((exp) => {
+          if (update.section === 'experience' && highlightApplied) return exp;
           const matches =
             exp.id === update.section ||
             exp.company.toLowerCase() === update.section.toLowerCase() ||
             update.section === 'experience';
           if (!matches) return exp;
+          highlightApplied = true;
           return {
             ...exp,
             bullets: exp.bullets.map((b, idx) => {
@@ -377,8 +381,15 @@ function discoveryReducer(state: DiscoveryState, action: DiscoveryAction): Disco
     case 'PROFILE_ERROR':
       return {
         ...state,
-        excavationComplete: false,
+        profileFetchFailed: true,
         error: action.error,
+      };
+
+    case 'RETRY_PROFILE':
+      return {
+        ...state,
+        profileFetchFailed: false,
+        error: null,
       };
 
     case 'SET_ERROR':
@@ -398,8 +409,8 @@ const initialState: DiscoveryState = {
   jobText: null,
   sessionId: null,
   discovery: null,
-  conversation: [],
   excavationComplete: false,
+  profileFetchFailed: false,
   profile: null,
   liveResume: null,
   highlightedSections: [],
@@ -417,7 +428,7 @@ export default function DiscoveryFlow() {
 
   // After excavation complete, fetch the full profile
   useEffect(() => {
-    if (!state.excavationComplete || !state.sessionId || state.profile || state.screen === 'profile') return;
+    if (!state.excavationComplete || !state.sessionId || state.profile || state.screen === 'profile' || state.profileFetchFailed) return;
 
     const fetchProfile = async () => {
       const result = await complete(state.sessionId!);
@@ -429,7 +440,7 @@ export default function DiscoveryFlow() {
     };
 
     void fetchProfile();
-  }, [state.excavationComplete, state.sessionId, state.profile, state.screen, complete]);
+  }, [state.excavationComplete, state.sessionId, state.profile, state.screen, state.profileFetchFailed, complete]);
 
   const handleAnalyze = useCallback(
     async (resumeText: string, jobText: string) => {
@@ -467,7 +478,7 @@ export default function DiscoveryFlow() {
     dispatch({ type: 'EXCAVATION_COMPLETE' });
   }, []);
 
-  const { screen, resumeText, jobText, discovery, liveResume, profile, conversation, sessionId } = state;
+  const { screen, resumeText, jobText, discovery, liveResume, profile, sessionId } = state;
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--bg-0)' }}>
@@ -507,16 +518,31 @@ export default function DiscoveryFlow() {
       )}
 
       {screen === 'excavation' && discovery && liveResume && sessionId && (
-        <ExcavationConversation
-          discovery={discovery}
-          sessionId={sessionId}
-          resume={liveResume}
-          initialConversation={conversation}
-          onExcavate={excavate}
-          onResumeUpdate={handleResumeUpdate}
-          onComplete={handleExcavationComplete}
-          excavating={excavating}
-        />
+        <div className="relative h-full">
+          <ExcavationConversation
+            discovery={discovery}
+            sessionId={sessionId}
+            resume={liveResume}
+            initialConversation={[]}
+            onExcavate={excavate}
+            onResumeUpdate={handleResumeUpdate}
+            onComplete={handleExcavationComplete}
+            excavating={excavating}
+          />
+          {state.profileFetchFailed && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-1)]/80 z-40">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <p className="text-lg text-[var(--text-strong)]">Could not build your profile.</p>
+                <GlassButton
+                  onClick={() => dispatch({ type: 'RETRY_PROFILE' })}
+                  size="lg"
+                >
+                  Try again
+                </GlassButton>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {screen === 'profile' && profile && liveResume && (
