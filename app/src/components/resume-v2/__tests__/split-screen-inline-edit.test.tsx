@@ -109,9 +109,6 @@ vi.mock('../cards/WhatChangedCard', () => ({
 vi.mock('../cards/HiringManagerReviewCard', () => ({
   HiringManagerReviewCard: () => <div data-testid="hiring-manager-review-card" />,
 }));
-vi.mock('../InlineEditToolbar', () => ({
-  InlineEditToolbar: () => <div data-testid="inline-edit-toolbar" />,
-}));
 vi.mock('../DiffView', () => ({
   DiffView: ({ edit }: { edit: PendingEdit }) => (
     <div data-testid="diff-view">{edit.replacement}</div>

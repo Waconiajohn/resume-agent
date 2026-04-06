@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileDown, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
 import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
 import { useLiveScoring } from '@/hooks/useLiveScoring';
@@ -36,6 +36,8 @@ import { useToast } from '@/components/Toast';
 import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
+import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
+import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
 import {
   buildAuthScopedStorageKey,
   decodeUserIdFromAccessToken,
@@ -220,6 +222,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [finalReviewWarningsAcknowledged, setFinalReviewWarningsAcknowledged] = useState(false);
   const [isFinalReviewStale, setIsFinalReviewStale] = useState(false);
   const [finalReviewResumeText, setFinalReviewResumeText] = useState<string | null>(null);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [masterSaveMode, setMasterSaveMode] = useState<MasterResumeSaveMode>('session_only');
   const [isSavingToMaster, setIsSavingToMaster] = useState(false);
   const [masterSaveStatus, setMasterSaveStatus] = useState<{
@@ -243,6 +246,25 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
     )).length ?? 0
   ), [hiringManagerResult, resolvedFinalReviewConcernIds]);
+
+  // DOCX download from top bar
+  const handleTopBarDocx = useCallback(async () => {
+    if (!currentResume) return;
+    setIsExportingDocx(true);
+    try {
+      const { exportDocx } = await import('@/lib/export-docx');
+      const finalResume = resumeDraftToFinalResume(currentResume, {
+        companyName: data.jobIntelligence?.company_name,
+        jobTitle: data.jobIntelligence?.role_title,
+        atsScore: postReviewPolish.result?.ats_score ?? liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? undefined,
+      });
+      await exportDocx(finalResume, DEFAULT_TEMPLATE_ID);
+    } catch {
+      // silent — download failures are non-critical in the top bar context
+    } finally {
+      setIsExportingDocx(false);
+    }
+  }, [currentResume, data.jobIntelligence, data.assembly?.scores.ats_match, liveScores?.ats_score, postReviewPolish.result?.ats_score]);
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((requirement: string): GapChatContext => {
@@ -1318,18 +1340,37 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
           </span>
         )}
 
-        {/* Live scores in header */}
-        {isComplete && displayAtsScore !== null && (
+        {/* Live scores + DOCX download in header */}
+        {isComplete && (displayAtsScore !== null || currentResume) && (
           <div className="ml-auto flex items-center gap-3 text-xs">
-            <div className="flex items-center gap-1">
-              {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
-              <span className="text-[var(--badge-blue-text)]">Resume Match: {displayAtsScore}%</span>
-            </div>
-            {displayTruthScore !== null && (
-              <span className="text-[var(--badge-green-text)]">Accuracy: {displayTruthScore}%</span>
+            {displayAtsScore !== null && (
+              <>
+                <div className="flex items-center gap-1">
+                  {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
+                  <span className="text-[var(--badge-blue-text)]">Resume Match: {displayAtsScore}%</span>
+                </div>
+                {displayTruthScore !== null && (
+                  <span className="text-[var(--badge-green-text)]">Accuracy: {displayTruthScore}%</span>
+                )}
+                {displayToneScore !== null && (
+                  <span className="text-[var(--badge-amber-text)]">Tone: {displayToneScore}%</span>
+                )}
+              </>
             )}
-            {displayToneScore !== null && (
-              <span className="text-[var(--badge-amber-text)]">Tone: {displayToneScore}%</span>
+            {currentResume && (
+              <GlassButton
+                variant="ghost"
+                size="sm"
+                onClick={handleTopBarDocx}
+                disabled={isExportingDocx}
+                aria-label="Download resume as DOCX"
+                className="gap-1 text-xs"
+              >
+                {isExportingDocx
+                  ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" />
+                  : <FileDown className="h-3.5 w-3.5" />}
+                DOCX
+              </GlassButton>
             )}
           </div>
         )}

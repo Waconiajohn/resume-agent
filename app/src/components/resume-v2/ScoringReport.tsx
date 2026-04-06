@@ -1130,7 +1130,7 @@ function ScoringReportDetails({
   );
 }
 
-export function ScoringReportDetailsDisclosure({
+function ScoringReportDetailsDisclosure({
   preScores,
   assembly,
   verificationDetail,
