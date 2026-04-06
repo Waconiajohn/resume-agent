@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   BookOpen,
@@ -21,10 +22,8 @@ import {
   Linkedin,
   Loader2,
   MessageSquare,
-  Plus,
   Save,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
@@ -39,7 +38,6 @@ import type { InterviewStory, StoryBankRow } from '@/hooks/useStoryBank';
 import { useEvidenceLibrary } from '@/hooks/useEvidenceLibrary';
 import { ExecutiveBioRoom } from './ExecutiveBioRoom';
 import { CaseStudyRoom } from './CaseStudyRoom';
-import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import type { MasterResume } from '@/types/resume';
 import type { CareerProfileV2 } from '@/types/career-profile';
 
@@ -100,51 +98,6 @@ function SectionHeader({
   );
 }
 
-function ProfileBackboneCard() {
-  return (
-    <GlassCard className="p-4">
-      <div>
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-          Profile backbone
-        </div>
-        <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-          Keep your story, source resume, and benchmark proof aligned.
-        </h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-soft)]">
-          Everything else on this page should support these three assets, not outrank them.
-        </p>
-      </div>
-
-      <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl border border-[var(--link)]/18 bg-[var(--link)]/[0.07] p-3.5">
-          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]/75">
-            Why Me
-          </div>
-          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-            Set the positioning story every tool should follow.
-          </div>
-        </div>
-        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
-          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-            Master Resume
-          </div>
-          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-            Keep the facts, chronology, and real proof grounded.
-          </div>
-        </div>
-        <div className="rounded-xl border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06] p-3.5">
-          <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--badge-green-text)]">
-            Brand & Benchmark
-          </div>
-          <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-            Turn the story into reusable assets and deeper proof.
-          </div>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
-
 // ─── Section A — Master Resume ────────────────────────────────────────────────
 
 interface ResumeSectionProps {
@@ -155,11 +108,6 @@ interface ResumeSectionProps {
 function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionProps) {
   const [resume, setResume] = useState<MasterResume | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [fileLoading, setFileLoading] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const loadAttemptedRef = useRef(false);
 
   // Load default resume once on mount — ref guards against double-runs
@@ -179,36 +127,6 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
     return () => { cancelled = true; };
   }, [onGetDefaultResume]);
 
-  const processFile = useCallback(async (file: File) => {
-    setFileError(null);
-    setFileLoading(true);
-    try {
-      const text = await extractResumeTextFromUpload(file);
-      if (!text) {
-        setFileError('No readable text found in this file.');
-        return;
-      }
-      setFileName(file.name);
-      // The page is read-only for MVP — file text is available but not uploaded
-      // here. Direct user to Resume Builder to upload a new master resume.
-      setFileError('To upload a new master resume, use Resume Builder above.');
-    } catch (err) {
-      setFileError(err instanceof Error ? err.message : 'Failed to read file.');
-    } finally {
-      setFileLoading(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) void processFile(file);
-    },
-    [processFile],
-  );
-
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
@@ -222,7 +140,6 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   }
 
   if (!resume) {
-    // Empty state — drag-drop zone
     return (
       <GlassCard className="p-6">
         <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
@@ -230,101 +147,14 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           Your master resume is the source of truth for every tool in the workspace. Upload it once
           and every session starts with full context.
         </p>
-
-        <div
-          role="button"
-          tabIndex={fileLoading ? -1 : 0}
-          aria-label="Drop zone for resume file. Click to browse or drag and drop."
-          onDrop={handleDrop}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-          onClick={() => !fileLoading && fileInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if ((e.key === 'Enter' || e.key === ' ') && !fileLoading) {
-              e.preventDefault();
-              fileInputRef.current?.click();
-            }
-          }}
-          className={cn(
-            'mt-5 flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all duration-200 select-none',
-            isDragging
-              ? 'border-[var(--link)]/60 bg-[var(--link)]/10 scale-[1.01]'
-              : 'border-[var(--line-strong)] bg-[var(--accent-muted)] hover:border-[var(--link)]/40 hover:bg-[var(--link)]/[0.04]',
-            fileLoading && 'pointer-events-none opacity-60',
-          )}
-        >
-          {fileLoading ? (
-            <>
-              <Loader2 className="h-8 w-8 text-[var(--link)] motion-safe:animate-spin" />
-              <p className="text-sm text-[var(--text-soft)]">Reading file...</p>
-            </>
-          ) : (
-            <>
-              <div
-                className={cn(
-                  'flex h-12 w-12 items-center justify-center rounded-xl border transition-colors duration-200',
-                  isDragging
-                    ? 'border-[var(--link)]/40 bg-[var(--link)]/10'
-                    : 'border-[var(--line-strong)] bg-[var(--surface-1)]',
-                )}
-              >
-                <Upload
-                  className={cn(
-                    'h-6 w-6 transition-colors duration-200',
-                    isDragging ? 'text-[var(--link)]' : 'text-[var(--text-soft)]',
-                  )}
-                />
-              </div>
-              <div className="text-center">
-                <p
-                  className={cn(
-                    'text-sm font-medium transition-colors duration-200',
-                    isDragging ? 'text-[var(--link)]' : 'text-[var(--text-strong)]',
-                  )}
-                >
-                  {isDragging ? 'Drop your resume here' : 'Upload your master resume to get started'}
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--text-soft)]">
-                  PDF, Word, or plain text — or go to Resume Builder to upload
-                </p>
-              </div>
-            </>
-          )}
+        <div className="mt-5 text-center py-6">
+          <p className="text-sm text-[var(--text-muted)] mb-3">
+            No master resume yet.
+          </p>
+          <GlassButton onClick={() => { window.location.href = '/workspace?room=resume'; }}>
+            Go to Resume Builder
+          </GlassButton>
         </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,.doc,.txt"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void processFile(file);
-            e.target.value = '';
-          }}
-        />
-
-        {fileError && (
-          <div className="mt-3 flex items-start gap-2 text-sm text-[var(--text-soft)]">
-            <AlertCircle size={14} className="mt-0.5 shrink-0 text-amber-400" />
-            <span>{fileError}</span>
-          </div>
-        )}
-
-        {onNavigateResume && (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={onNavigateResume}
-              className="inline-flex items-center gap-1.5 text-[13px] text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
-            >
-              Go to Resume Builder to upload
-              <ExternalLink size={12} />
-            </button>
-          </div>
-        )}
       </GlassCard>
     );
   }
@@ -441,13 +271,6 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           </button>
         </div>
       )}
-
-      {fileName && (
-        <div className="mt-3 flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
-          <CheckCircle2 size={14} className="text-[var(--badge-green-text)]" />
-          {fileName} read successfully
-        </div>
-      )}
     </GlassCard>
   );
 }
@@ -470,8 +293,8 @@ function LinkedInSection() {
     <GlassCard className="p-6">
       <SectionHeader icon={Linkedin} label="Section D" title="LinkedIn Profile" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        Your headline and About section should read like the public version of your Why Me Story.
-        LinkedIn Studio uses this as supporting context, not as a separate identity.
+        Your LinkedIn headline and About section are stored here as source material. LinkedIn Studio
+        uses this to generate optimized content and profile suggestions.
       </p>
 
       {loading ? (
@@ -573,80 +396,22 @@ function EvidenceLibrarySection({
   careerProfile,
 }: EvidenceLibrarySectionProps) {
   const { story } = useWhyMeStory();
-  const { items, loading, addManualItem } = useEvidenceLibrary({
+  const { items, loading } = useEvidenceLibrary({
     onGetDefaultResume,
     whyMeStory: story,
     careerProfile,
   });
-  const [newItemText, setNewItemText] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
 
-  const handleAdd = () => {
-    if (!newItemText.trim()) return;
-    addManualItem(newItemText.trim());
-    setNewItemText('');
-    setShowAddForm(false);
-  };
+  // Don't render at all until loading completes and there's something to show
+  if (!loading && items.length === 0 && !careerProfile) return null;
 
   return (
     <GlassCard className="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={BookOpen} label="Section E" title="Proof Library" />
-        <button
-          type="button"
-          onClick={() => setShowAddForm((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)] shrink-0"
-          aria-expanded={showAddForm}
-        >
-          <Plus size={13} />
-          Add
-        </button>
-      </div>
+      <SectionHeader icon={BookOpen} label="Section E" title="Proof Library" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
         Everything we have gathered from your accomplishments, positioning, and profile sources in one proof base.
         Use this to support your Why Me Story and benchmark assets.
       </p>
-
-      {showAddForm && (
-        <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-          <label
-            htmlFor="new-evidence-item"
-            className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]"
-          >
-            Add accomplishment
-          </label>
-          <textarea
-            id="new-evidence-item"
-            value={newItemText}
-            onChange={(e) => setNewItemText(e.target.value)}
-            placeholder="Describe a specific accomplishment, capability, or proof point. Be concrete — include scope, scale, and result."
-            rows={3}
-            className={cn(
-              'mt-2 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-black/20 px-3 py-2.5',
-              'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
-              'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
-            )}
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <GlassButton
-              variant="primary"
-              size="sm"
-              onClick={handleAdd}
-              disabled={!newItemText.trim()}
-            >
-              Add to library
-            </GlassButton>
-            <button
-              type="button"
-              onClick={() => { setShowAddForm(false); setNewItemText(''); }}
-              className="rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
-              aria-label="Cancel"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
@@ -662,7 +427,7 @@ function EvidenceLibrarySection({
             <div>
               <div className="text-sm font-medium text-[var(--text-soft)]">No evidence yet</div>
               <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                Complete the Why Me Story below, run a Resume Builder session, or use the Career
+                Complete the Why Me Story above, run a Resume Builder session, or use the Career
                 Profile assessment to populate your evidence library automatically.
               </p>
             </div>
@@ -692,12 +457,11 @@ function EvidenceLibrarySection({
 
 // ─── Section E — Brand & Proof Assets ────────────────────────────────────────
 
-type BrandAssetFocus = 'overview' | 'bio' | 'case-study';
+type BrandAssetFocus = 'bio' | 'case-study';
 
 function getBrandAssetFocus(initialFocus?: string): BrandAssetFocus {
-  if (initialFocus === 'bio') return 'bio';
   if (initialFocus === 'case-study') return 'case-study';
-  return 'overview';
+  return 'bio';
 }
 
 function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
@@ -724,13 +488,6 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
 
           <div className="flex flex-wrap gap-2">
             <GlassButton
-              variant={activeAsset === 'overview' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveAsset('overview')}
-            >
-              Overview
-            </GlassButton>
-            <GlassButton
               variant={showBio ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setActiveAsset('bio')}
@@ -746,79 +503,6 @@ function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
             </GlassButton>
           </div>
         </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Bio Builder
-            </div>
-            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              Build the short narrative version people reuse in intros, boards, and LinkedIn.
-            </div>
-          </div>
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Case Studies
-            </div>
-            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              Turn your strongest wins into deeper proof that supports the same benchmark story.
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-4 text-xs leading-relaxed text-[var(--text-soft)]">
-          Start with the short-form bio, then deepen the proof once the core story is stable.
-        </p>
-
-        {activeAsset === 'overview' ? (
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setActiveAsset('bio')}
-              className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
-            >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-                Open first
-              </div>
-              <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-                Build the bio version of your story
-              </div>
-              <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                Create the concise narrative people reuse most often across introductions and public-facing materials.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveAsset('case-study')}
-              className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)]"
-            >
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-                Then build
-              </div>
-              <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-                Turn your strongest wins into deeper proof
-              </div>
-              <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                Add longer proof narratives once the identity story is clear enough to anchor them.
-              </p>
-            </button>
-          </div>
-        ) : (
-          <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
-            <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Current focus
-            </div>
-            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              {showBio ? 'Bio Builder' : 'Case Studies'}
-            </div>
-            <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-              {showBio
-                ? 'Keep this aligned with your Why Me Story and LinkedIn so people get the same operator every time they encounter you.'
-                : 'Use this to deepen the proof behind your benchmark story, not to create a separate persona.'}
-            </p>
-          </div>
-        )}
       </GlassCard>
 
       {showBio ? <ExecutiveBioRoom /> : null}
@@ -1038,6 +722,9 @@ function StoryBankSection() {
     [deleteStory],
   );
 
+  // Don't render at all until loading completes and there are stories to show
+  if (!loading && !error && stories.length === 0) return null;
+
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
@@ -1073,21 +760,6 @@ function StoryBankSection() {
             </button>
           </div>
         </div>
-      ) : stories.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-[var(--line-soft)] bg-black/10 p-5">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-[var(--accent-muted)] p-2 shrink-0">
-              <MessageSquare size={14} className="text-[var(--text-soft)]" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-[var(--text-soft)]">No stories yet</div>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                Your Story Bank fills automatically during Interview Prep sessions. The writer agent
-                saves every STAR+R story it generates so future sessions can reuse and adapt them.
-              </p>
-            </div>
-          </div>
-        </div>
       ) : (
         <div className="mt-5 space-y-3">
           {stories.map((row) => (
@@ -1120,6 +792,37 @@ export function YourProfilePage({
   initialFocus,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted } = useWhyMeStory();
+  const navigate = useNavigate();
+
+  if (!careerProfile) {
+    return (
+      <div className="flex h-full items-center justify-center px-6 py-16">
+        <div
+          className="w-full max-w-lg rounded-2xl p-8 text-center"
+          style={{ background: 'var(--surface-1)', border: '1px solid var(--line-soft)' }}
+        >
+          <h2
+            className="text-xl font-light text-[var(--text-strong)] mb-3"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Build your CareerIQ profile first
+          </h2>
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-8">
+            Your profile is the foundation for everything else — resumes, interviews, job search.
+            It takes about 20 minutes.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/profile-setup')}
+            className="w-full py-4 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+            style={{ background: 'var(--link)', color: '#080b10' }}
+          >
+            Start Profile Setup →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
@@ -1131,8 +834,6 @@ export function YourProfilePage({
           workspace tool starts from the same foundation.
         </p>
       </div>
-
-      <ProfileBackboneCard />
 
       {/* Section A — Why Me Story */}
       {hasStarted ? (

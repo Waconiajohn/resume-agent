@@ -361,7 +361,8 @@ test.describe('Profile Setup', () => {
     await expect(page.getByText(/Your Why Me/i)).toBeVisible({ timeout: 3_000 });
     await expect(page.getByText(/Sarah turns infrastructure chaos/i)).toBeVisible({ timeout: 3_000 });
 
-    // Navigation buttons present
+    // Navigation buttons present — primary CTA first, two secondary below
+    await expect(page.getByRole('button', { name: /Go to Your Profile/i })).toBeVisible({ timeout: 3_000 });
     await expect(page.getByRole('button', { name: /Find jobs that fit this profile/i })).toBeVisible({ timeout: 3_000 });
     await expect(page.getByRole('button', { name: /Analyze a specific job/i })).toBeVisible({ timeout: 3_000 });
   });

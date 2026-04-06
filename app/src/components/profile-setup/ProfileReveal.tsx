@@ -178,29 +178,45 @@ export function ProfileReveal({ profile }: ProfileRevealProps) {
           </div>
 
           {/* Path-forward buttons */}
-          <div className="mt-16 flex gap-4">
+          <div className="mt-16 flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => navigate('/workspace?room=jobs')}
-              className="flex-1 py-4 rounded-xl text-sm text-[var(--text-strong)] hover:text-[var(--text-strong)] transition-colors"
-              style={{ border: '1px solid var(--line-soft)' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--link)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--line-soft)';
-              }}
-            >
-              Find jobs that fit this profile →
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/workspace?room=resume')}
-              className="flex-1 py-4 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              onClick={() => navigate('/workspace?room=career-profile')}
+              className="w-full py-4 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
               style={{ background: 'var(--link)', color: '#080b10' }}
             >
-              Analyze a specific job →
+              Go to Your Profile →
             </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/workspace?room=jobs')}
+                className="flex-1 py-4 rounded-xl text-sm text-[var(--text-strong)] hover:text-[var(--text-strong)] transition-colors"
+                style={{ border: '1px solid var(--line-soft)' }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--link)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--line-soft)';
+                }}
+              >
+                Find jobs that fit this profile →
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/workspace?room=resume')}
+                className="flex-1 py-4 rounded-xl text-sm text-[var(--text-strong)] hover:text-[var(--text-strong)] transition-colors"
+                style={{ border: '1px solid var(--line-soft)' }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--link)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--line-soft)';
+                }}
+              >
+                Analyze a specific job →
+              </button>
+            </div>
           </div>
         </FadeInSection>
       </div>
