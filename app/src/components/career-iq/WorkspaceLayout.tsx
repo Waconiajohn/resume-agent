@@ -61,7 +61,7 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         activeRoom={getActiveRoom()}
         onNavigate={handleNavigate}
         dashboardState={dashboardState}
-        defaultCollapsed={location.pathname === RESUME_BUILDER_SESSION_ROUTE}
+        defaultCollapsed={location.pathname === RESUME_BUILDER_SESSION_ROUTE || location.pathname === '/profile-setup'}
       />
       <main className="flex flex-1 flex-col overflow-hidden">
         {children}

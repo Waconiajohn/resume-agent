@@ -379,9 +379,6 @@ function CompactScoreSummaryHeader({
     outstandingRequirements && outstandingRequirements > 0
       ? `${outstandingRequirements} role requirement${outstandingRequirements === 1 ? '' : 's'} still need stronger proof`
       : null,
-    reviewStatusLabel && reviewStatusLabel !== 'Ready'
-      ? `Final review is currently ${reviewStatusLabel.toLowerCase()}`
-      : null,
     redFlags > 0
       ? `${redFlags} recruiter red flag${redFlags === 1 ? '' : 's'} still showing`
       : null,
@@ -457,10 +454,10 @@ function CompactScoreSummaryHeader({
             />
           )}
           <CompactMetric
-            label="Resume Quality"
+            label="Accuracy + Polish"
             value={String(Math.min(truth, tone))}
             accent={Math.min(truth, tone) >= 85 ? 'good' : Math.min(truth, tone) >= 70 ? 'warn' : 'soft'}
-            detail="Accuracy and polish combined"
+            detail="How well each bullet holds up"
           />
         </div>
       </div>

@@ -9,7 +9,7 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
   return (
     <div className="flex h-full w-full">
       {/* Left panel: editing & coaching */}
-      <div className="flex flex-col w-[45%] min-w-[380px] border-r border-[var(--line-soft)] overflow-y-auto">
+      <div className="flex flex-col w-[30%] min-w-[320px] border-r border-[var(--line-soft)] overflow-y-auto">
         {leftPanel}
       </div>
 

@@ -96,8 +96,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           Let's build your CareerIQ profile.
         </h1>
         <p className="text-sm text-[var(--text-muted)] mb-10">
-          This takes about 20 minutes. It is the most important thing
-          you will do in your job search.
+          About 20 minutes. Built to last your entire search.
         </p>
 
         {/* Resume */}
@@ -306,10 +305,10 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full py-4 rounded-xl text-sm font-medium transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-4 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
           style={{
-            background: canSubmit ? 'var(--link)' : 'var(--link)',
-            color: '#080b10',
+            background: canSubmit ? 'var(--link)' : 'var(--surface-1)',
+            color: canSubmit ? '#080b10' : 'var(--text-muted)',
           }}
           aria-label="Build my CareerIQ profile"
         >
