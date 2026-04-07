@@ -902,6 +902,143 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.requirements).toContain('Lead automation and operating-model transformation');
   });
 
+  it('opens coaching immediately after adding the AI section', async () => {
+    const resume = makeResumeDraft();
+    const nextResume: ResumeDraft = {
+      ...resume,
+      custom_sections: [
+        {
+          id: 'ai_highlights',
+          title: 'AI Leadership & Transformation',
+          kind: 'bullet_list',
+          summary: 'Applied AI and automation to improve operating rhythm across multiple sites.',
+          lines: [
+            'Applied AI and automation to improve operating rhythm across multiple sites.',
+            'Used workflow automation to speed cross-functional planning and execution.',
+          ],
+          recommended_for_job: true,
+        },
+      ],
+      section_plan: [
+        ...(resume.section_plan ?? []),
+        {
+          id: 'ai_highlights',
+          type: 'ai_highlights',
+          title: 'AI Leadership & Transformation',
+          enabled: true,
+          order: 2,
+          source: 'ai_readiness',
+          recommended_for_job: true,
+          is_custom: true,
+        },
+      ],
+    };
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: resume,
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
+          onAddAISection: vi.fn(() => ({
+            sectionId: 'ai_highlights',
+            title: 'AI Leadership & Transformation',
+            lines: [
+              'Applied AI and automation to improve operating rhythm across multiple sites.',
+              'Used workflow automation to speed cross-functional planning and execution.',
+            ],
+            resume: nextResume,
+          })),
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            candidateIntelligence: {
+              contact: {
+                name: 'Jane Doe',
+                email: 'jane@example.com',
+                phone: '555-0100',
+              },
+              career_themes: ['Transformation'],
+              leadership_scope: 'Regional operations',
+              quantified_outcomes: [],
+              industry_depth: ['Manufacturing'],
+              technologies: ['SAP'],
+              operational_scale: '3 sites',
+              career_span_years: 18,
+              experience: [],
+              education: [],
+              certifications: [],
+              hidden_accomplishments: [],
+              ai_readiness: {
+                strength: 'moderate',
+                summary: 'Applied AI and automation to improve operating rhythm across multiple sites.',
+                signals: [
+                  {
+                    family: 'automation',
+                    evidence: 'Used workflow automation to speed cross-functional planning and execution.',
+                    executive_framing: 'Applied AI and automation to improve operating rhythm across multiple sites.',
+                  },
+                ],
+              },
+            },
+            requirementWorkItems: [
+              {
+                id: 'work-ai',
+                requirement: 'Lead AI automation and operating-model change',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [
+                  {
+                    text: 'Used workflow automation to speed cross-functional planning and execution.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'adjacent',
+                  },
+                ],
+                best_evidence_excerpt: 'Used workflow automation to speed cross-functional planning and execution.',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+            ],
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    fireEvent.click(screen.getAllByRole('button', { name: /add ai section/i })[0]);
+
+    expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      section: string;
+      bulletText: string;
+      requirements: string[];
+    };
+    expect(lastCall.section).toBe('custom_section:ai_highlights');
+    expect(lastCall.bulletText).toBe('Applied AI and automation to improve operating rhythm across multiple sites.');
+    expect(lastCall.requirements).toContain('Lead AI automation and operating-model change');
+  });
+
   it('opens the summary in coaching mode without offering remove', async () => {
     render(
       <V2StreamingDisplay
