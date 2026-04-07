@@ -39,6 +39,7 @@ import {
   type EditAction,
   type StoredV2Snapshot,
   createInitialSnapshot,
+  buildClarificationMemoryContext,
   applyEventToSnapshot,
   enrichStoredPipelineDataForClient,
   enrichStoredDraftStateForClient,
@@ -132,8 +133,14 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { resume_text, job_description, user_context, gap_coaching_responses, pre_scores } = parsed.data;
-  const initialSnapshot = createInitialSnapshot(resume_text, job_description);
+  const { resume_text, job_description, user_context, clarification_memory, gap_coaching_responses, pre_scores } = parsed.data;
+  const initialSnapshot = createInitialSnapshot(resume_text, job_description, clarification_memory ?? null);
+  const combinedUserContext = [
+    user_context?.trim(),
+    buildClarificationMemoryContext(clarification_memory ?? null),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join('\n\n') || undefined;
 
   // Create session
   const { data: session, error: sessionError } = await supabaseAdmin
@@ -224,7 +231,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         user_id: userId,
         emit,
         career_profile: careerProfile ?? undefined,
-        user_context,
+        user_context: combinedUserContext,
         gap_coaching_responses,
         pre_scores,
         interview_evidence_lines: evidenceLines,

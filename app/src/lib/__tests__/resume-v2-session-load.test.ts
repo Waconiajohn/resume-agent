@@ -70,4 +70,41 @@ describe('resume-v2-session-load', () => {
     expect(hydrated?.shouldReconnect).toBe(false);
     expect(hydrated?.data.stage).toBe('complete');
   });
+
+  it('preserves clarification memory inside loaded draft state', () => {
+    const hydrated = hydrateV2SessionLoad('session-789', {
+      version: 'v2',
+      status: 'complete',
+      pipeline_stage: 'complete',
+      pipeline_data: {
+        stage: 'complete',
+        error: null,
+      },
+      inputs: {
+        resume_text: 'Original resume text',
+        job_description: 'Original job description',
+      },
+      draft_state: {
+        editable_resume: null,
+        master_save_mode: 'session_only',
+        clarification_memory: [
+          {
+            id: 'gap_chat:platform leadership',
+            source: 'gap_chat',
+            topic: 'Platform leadership',
+            userInput: 'I led platform modernization across four business units.',
+            suggestedLanguage: 'Led platform modernization across 4 business units.',
+          },
+        ],
+        updated_at: '2026-04-07T08:00:00.000Z',
+      },
+    });
+
+    expect(hydrated?.draftState?.clarification_memory).toEqual([
+      expect.objectContaining({
+        id: 'gap_chat:platform leadership',
+        topic: 'Platform leadership',
+      }),
+    ]);
+  });
 });

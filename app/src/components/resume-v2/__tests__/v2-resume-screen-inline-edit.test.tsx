@@ -8,12 +8,18 @@ const {
   mockStreamingDisplay,
   mockPipelineState,
   mockSetInitialScores,
+  mockStart,
+  mockGapChatSnapshot,
+  mockFinalReviewChatSnapshot,
 } = vi.hoisted(() => ({
   mockStreamingDisplay: vi.fn(),
   mockPipelineState: {
     data: null as V2PipelineData | null,
   },
   mockSetInitialScores: vi.fn(),
+  mockStart: vi.fn(),
+  mockGapChatSnapshot: { items: {} } as { items: Record<string, unknown> },
+  mockFinalReviewChatSnapshot: { items: {} } as { items: Record<string, unknown> },
 }));
 
 vi.mock('@/hooks/useV2Pipeline', () => ({
@@ -23,7 +29,7 @@ vi.mock('@/hooks/useV2Pipeline', () => ({
     isComplete: true,
     isStarting: false,
     error: null,
-    start: vi.fn(),
+    start: mockStart,
     reset: vi.fn(),
     loadSession: vi.fn(),
     saveDraftState: vi.fn(),
@@ -61,7 +67,7 @@ vi.mock('@/hooks/useGapChat', () => ({
     resetChat: vi.fn(),
     acceptLanguage: vi.fn(),
     clearResolvedLanguage: vi.fn(),
-    getSnapshot: () => ({ items: {} }),
+    getSnapshot: () => mockGapChatSnapshot,
     hydrateSnapshot: vi.fn(),
     getItemState: vi.fn(),
     sendMessage: vi.fn(),
@@ -73,7 +79,7 @@ vi.mock('@/hooks/useFinalReviewChat', () => ({
     resetChat: vi.fn(),
     acceptLanguage: vi.fn(),
     clearResolvedLanguage: vi.fn(),
-    getSnapshot: () => ({ items: {} }),
+    getSnapshot: () => mockFinalReviewChatSnapshot,
     hydrateSnapshot: vi.fn(),
   }),
 }));
@@ -235,6 +241,8 @@ describe('V2ResumeScreen inline editing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPipelineState.data = makePipelineData();
+    mockGapChatSnapshot.items = {};
+    mockFinalReviewChatSnapshot.items = {};
   });
 
   afterEach(() => {
@@ -303,5 +311,41 @@ describe('V2ResumeScreen inline editing', () => {
     });
 
     expect((latestStreamingProps().editableResume as ResumeDraft).custom_sections ?? []).toEqual([]);
+  });
+
+  it('passes clarification memory into reruns when the user adds more context', () => {
+    mockGapChatSnapshot.items = {
+      'Platform leadership': {
+        messages: [
+          { role: 'assistant', content: 'What was the scale?', currentQuestion: 'What was the scale?' },
+          { role: 'user', content: 'I led platform modernization across four business units.' },
+          { role: 'assistant', content: 'Great.', suggestedLanguage: 'Led platform modernization across 4 business units.' },
+        ],
+        resolvedLanguage: null,
+        error: null,
+      },
+    };
+
+    render(<V2ResumeScreen accessToken={null} onBack={vi.fn()} />);
+
+    act(() => {
+      const props = latestStreamingProps();
+      (props.onAddContext as (text: string) => void)('Also emphasize executive stakeholder alignment.');
+    });
+
+    expect(mockStart).toHaveBeenCalledWith(
+      '',
+      '',
+      expect.objectContaining({
+        userContext: 'Also emphasize executive stakeholder alignment.',
+        clarificationMemory: [
+          expect.objectContaining({
+            id: 'gap_chat:platform leadership',
+            topic: 'Platform leadership',
+            userInput: 'I led platform modernization across four business units.',
+          }),
+        ],
+      }),
+    );
   });
 });

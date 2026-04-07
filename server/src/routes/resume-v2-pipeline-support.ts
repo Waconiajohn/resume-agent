@@ -8,6 +8,15 @@ import {
   isGenericClarifyingQuestion,
 } from '../contracts/requirement-coaching-policy.js';
 
+const clarificationMemoryEntrySchema = z.object({
+  id: z.string().min(1).max(200),
+  source: z.enum(['gap_chat', 'final_review']),
+  topic: z.string().min(1).max(500),
+  userInput: z.string().min(1).max(4000),
+  suggestedLanguage: z.string().max(4000).optional(),
+  appliedLanguage: z.string().max(4000).optional(),
+});
+
 export const startSchema = z.object({
   resume_text: z.string().min(50, 'Resume must be at least 50 characters').max(50000, 'Resume must be at most 50,000 characters'),
   job_description: z.string().min(50, 'Job description must be at least 50 characters').max(50000, 'Job description must be at most 50,000 characters'),
@@ -27,6 +36,7 @@ export const startSchema = z.object({
     job_requirement_coverage_score: z.number().int().min(0).max(100).optional(),
     overall_fit_score: z.number().int().min(0).max(100).optional(),
   }).optional(),
+  clarification_memory: z.array(clarificationMemoryEntrySchema).max(20).optional(),
 });
 
 export const EDIT_ACTIONS = ['strengthen', 'add_metrics', 'shorten', 'add_keywords', 'rewrite', 'custom', 'not_my_voice'] as const;
@@ -103,7 +113,20 @@ function createInitialPipelineData(): StoredV2PipelineData {
   };
 }
 
-export function createInitialSnapshot(resumeText: string, jobDescription: string): StoredV2Snapshot {
+export function createInitialSnapshot(
+  resumeText: string,
+  jobDescription: string,
+  clarificationMemory?: z.infer<typeof clarificationMemoryEntrySchema>[] | null,
+): StoredV2Snapshot {
+  const nextDraftState = clarificationMemory && clarificationMemory.length > 0
+    ? {
+        editable_resume: null,
+        master_save_mode: 'session_only' as const,
+        clarification_memory: clarificationMemory,
+        updated_at: new Date().toISOString(),
+      }
+    : null;
+
   return {
     version: 'v2',
     pipeline_data: createInitialPipelineData(),
@@ -111,9 +134,38 @@ export function createInitialSnapshot(resumeText: string, jobDescription: string
       resume_text: resumeText,
       job_description: jobDescription,
     },
-    draft_state: null,
+    draft_state: nextDraftState,
     updated_at: new Date().toISOString(),
   };
+}
+
+export function buildClarificationMemoryContext(
+  clarificationMemory?: z.infer<typeof clarificationMemoryEntrySchema>[] | null,
+): string | undefined {
+  if (!clarificationMemory?.length) return undefined;
+
+  const lines = clarificationMemory
+    .slice(0, 8)
+    .map((entry) => {
+      const topicLabel = entry.source === 'final_review'
+        ? `final-review concern "${entry.topic}"`
+        : `requirement "${entry.topic}"`;
+      const acceptedLanguage = entry.appliedLanguage?.trim()
+        ? ` Accepted resume language: "${entry.appliedLanguage.trim()}".`
+        : '';
+      const suggestedLanguage = !acceptedLanguage && entry.suggestedLanguage?.trim()
+        ? ` Candidate wording to consider: "${entry.suggestedLanguage.trim()}".`
+        : '';
+      return `- For ${topicLabel}, the candidate clarified: ${entry.userInput.trim()}.${acceptedLanguage}${suggestedLanguage}`;
+    });
+
+  if (lines.length === 0) return undefined;
+
+  return [
+    'Previously confirmed candidate clarifications from this session:',
+    ...lines,
+    'Use them as truthful context when strengthening or reframing the resume.',
+  ].join('\n');
 }
 
 function withRequirementCoachingPolicy<T extends { requirement?: unknown; strategy?: unknown }>(value: T): T {
@@ -383,6 +435,7 @@ export const draftStateSchema = z.object({
   draft_state: z.object({
     editable_resume: z.unknown().nullable(),
     master_save_mode: z.enum(['session_only', 'master_resume']),
+    clarification_memory: z.array(clarificationMemoryEntrySchema).max(20).nullable().optional(),
     gap_chat_state: z.object({
       items: z.record(z.string(), z.object({
         messages: z.array(z.object({

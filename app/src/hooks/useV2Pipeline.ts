@@ -14,7 +14,16 @@ import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
 import { normalizeAssemblyResult, normalizeResumeDraft } from '@/lib/normalize-resume-draft';
-import type { GapCoachingResponse, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage, VerificationDetail } from '@/types/resume-v2';
+import type {
+  ClarificationMemoryEntry,
+  GapCoachingResponse,
+  PreScores,
+  V2PersistedDraftState,
+  V2PipelineData,
+  V2SSEEvent,
+  V2Stage,
+  VerificationDetail,
+} from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
   sessionId: '',
@@ -203,6 +212,7 @@ export function useV2Pipeline(accessToken: string | null) {
     jobDescription: string,
     options?: {
       userContext?: string;
+      clarificationMemory?: ClarificationMemoryEntry[];
       gapCoachingResponses?: GapCoachingResponse[];
       preScores?: PreScores | null;
     },
@@ -237,6 +247,7 @@ export function useV2Pipeline(accessToken: string | null) {
           resume_text: resumeText,
           job_description: jobDescription,
           user_context: options?.userContext,
+          clarification_memory: options?.clarificationMemory,
           gap_coaching_responses: options?.gapCoachingResponses,
           pre_scores: options?.preScores ?? undefined,
         }),

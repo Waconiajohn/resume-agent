@@ -20,6 +20,7 @@ import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
 import { scrollToAndFocusTarget } from './useStrategyThread';
 import type {
+  ClarificationMemoryEntry,
   FinalReviewChatContext,
   ResumeDraft,
   GapCoachingResponse,
@@ -39,6 +40,7 @@ import { useToast } from '@/components/Toast';
 import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
+import { extractClarificationMemory, mergeClarificationMemory } from '@/lib/resume-clarification-memory';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import {
   addOrEnableAIHighlightsSection,
@@ -736,6 +738,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [attemptedHistoricalSessionKey, setAttemptedHistoricalSessionKey] = useState<string | null>(null);
   const [activeHistoricalSessionKey, setActiveHistoricalSessionKey] = useState<string | null>(null);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
+  const [clarificationMemory, setClarificationMemory] = useState<ClarificationMemoryEntry[]>([]);
   const requestedHistoricalSessionKey = useMemo(() => (
     initialSessionId ? `${storageUserId ?? 'anon'}:${initialSessionId}` : null
   ), [initialSessionId, storageUserId]);
@@ -743,6 +746,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const resetScreenState = useCallback((options?: { clearInputs?: boolean; clearSessionError?: boolean }) => {
     setEditableResume(null);
     setPreviousResume(null);
+    setClarificationMemory([]);
     lastMasterSnapshotRef.current = '';
     lastPersistedDraftRef.current = 'null';
     setMasterSaveMode('session_only');
@@ -829,6 +833,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
         setEditableResume(normalizeResumeDraft(resolvedDraftState?.editable_resume ?? null));
+        setClarificationMemory(resolvedDraftState?.clarification_memory ?? []);
         setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
         hydrateGapChatSnapshot(resolvedDraftState?.gap_chat_state ?? null);
         hydrateHiringManagerReview(resolvedDraftState?.final_review_state?.result ?? null);
@@ -902,6 +907,26 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     addToast,
     hiringManagerResult,
   ]);
+
+  const gapChatSnapshot = getGapChatSnapshot();
+  const finalReviewChatSnapshot = getFinalReviewChatSnapshot();
+  const finalReviewConcernTopics = useMemo(() => (
+    Object.fromEntries(
+      (hiringManagerResult?.concerns ?? []).map((concern) => [
+        concern.id.trim().toLowerCase(),
+        concern.observation,
+      ]),
+    )
+  ), [hiringManagerResult]);
+  const currentClarificationMemory = mergeClarificationMemory(
+    clarificationMemory,
+    extractClarificationMemory({
+      gapChatSnapshot,
+      finalReviewChatSnapshot,
+      currentResumeText: currentResume ? resumeToPlainText(currentResume) : '',
+      finalReviewConcernTopics,
+    }),
+  );
 
   const handleDirectBulletEdit = useCallback((section: string, index: number, newText: string) => {
     setEditableResume((prev) => {
@@ -1296,16 +1321,14 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     if (!currentResume || !isComplete) return;
 
     const plainText = resumeToPlainText(currentResume);
-    const gapSnapshot = getGapChatSnapshot();
-    for (const [requirement, item] of Object.entries(gapSnapshot.items)) {
+    for (const [requirement, item] of Object.entries(gapChatSnapshot.items)) {
       if (item.resolvedLanguage && !plainText.includes(item.resolvedLanguage)) {
         clearGapResolvedLanguage(requirement);
       }
     }
 
-    const finalReviewSnapshot = getFinalReviewChatSnapshot();
     const missingResolvedIds = resolvedFinalReviewConcernIds.filter((concernId) => {
-      const resolvedLanguage = finalReviewSnapshot.items[concernId.trim().toLowerCase()]?.resolvedLanguage;
+      const resolvedLanguage = finalReviewChatSnapshot.items[concernId.trim().toLowerCase()]?.resolvedLanguage;
       return resolvedLanguage ? !plainText.includes(resolvedLanguage) : true;
     });
 
@@ -1323,8 +1346,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     clearFinalReviewResolvedLanguage,
     clearGapResolvedLanguage,
     currentResume,
-    getFinalReviewChatSnapshot,
-    getGapChatSnapshot,
+    finalReviewChatSnapshot,
+    gapChatSnapshot,
     isComplete,
     postReviewPolish.status,
     resetPostReviewPolish,
@@ -1379,8 +1402,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   useEffect(() => {
     if (!data.sessionId || !isComplete) return;
 
-    const gapChatSnapshot = getGapChatSnapshot();
-    const finalReviewChatSnapshot = getFinalReviewChatSnapshot();
     const hasGapChatState = Object.keys(gapChatSnapshot.items).length > 0;
     const hasFinalReviewChatState = Object.keys(finalReviewChatSnapshot.items).length > 0;
     const hasFinalReviewState = Boolean(hiringManagerResult);
@@ -1392,10 +1413,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       || hasFinalReviewState
       || hasFinalReviewChatState
       || hasPostReviewPolish
+      || currentClarificationMemory.length > 0
       || promotableMasterItems.length > 0
       ? {
           editable_resume: normalizeResumeDraft(editableResume),
           master_save_mode: masterSaveMode,
+          clarification_memory: currentClarificationMemory.length > 0 ? currentClarificationMemory : null,
           gap_chat_state: hasGapChatState ? gapChatSnapshot : null,
           final_review_state: hasFinalReviewState
             ? {
@@ -1435,8 +1458,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     editableResume,
     finalReviewWarningsAcknowledged,
     finalReviewResumeText,
-    getFinalReviewChatSnapshot,
-    getGapChatSnapshot,
+    finalReviewChatSnapshot,
+    gapChatSnapshot,
     hiringManagerResult,
     isFinalReviewStale,
     isComplete,
@@ -1447,6 +1470,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     saveDraftState,
     selectedMasterPromotionIds,
     storageUserId,
+    currentClarificationMemory,
   ]);
 
   const isPipelineActive = data.sessionId !== '';
@@ -1466,6 +1490,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       setActiveJobUrl(null);
     }
     setEditableResume(null);
+    setClarificationMemory([]);
     setSessionLoadError(null);
     lastMasterSnapshotRef.current = '';
     lastPersistedDraftRef.current = 'null';
@@ -1492,6 +1517,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     // Build user_context from responses: approved strategies stay, skipped get excluded,
     // context responses get their user text appended
     const contextParts: string[] = [];
+    const nextClarificationMemory = currentClarificationMemory;
     const skipped = responses.filter(r => r.action === 'skip').map(r => r.requirement);
     const withContext = responses.filter(r => r.action === 'context' && r.user_context);
 
@@ -1502,6 +1528,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       contextParts.push(`Additional context for "${r.requirement}": ${r.user_context}`);
     }
 
+    setClarificationMemory(nextClarificationMemory);
     setEditableResume(null);
     resetHistory();
     resetGapChat();
@@ -1515,10 +1542,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     resetPostReviewPolish();
     void start(resumeText, jobDescription, {
       userContext: contextParts.length > 0 ? contextParts.join('\n') : undefined,
+      clarificationMemory: nextClarificationMemory,
       gapCoachingResponses: responses,
       preScores: data.preScores,
     });
   }, [
+    currentClarificationMemory,
     start,
     resumeText,
     jobDescription,
@@ -1562,6 +1591,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   const handleAddContext = useCallback((userContext: string) => {
     // Snapshot the current resume before the re-run so we can show what changed
+    const nextClarificationMemory = currentClarificationMemory;
+    setClarificationMemory(nextClarificationMemory);
     setPreviousResume(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null);
     setEditableResume(null);
     resetHistory();
@@ -1574,8 +1605,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setFinalReviewResumeText(null);
     setSelectedMasterPromotionIds([]);
     resetPostReviewPolish();
-    void start(resumeText, jobDescription, { userContext, preScores: data.preScores });
+    void start(resumeText, jobDescription, {
+      userContext,
+      clarificationMemory: nextClarificationMemory,
+      preScores: data.preScores,
+    });
   }, [
+    currentClarificationMemory,
     start,
     resumeText,
     jobDescription,
@@ -1774,8 +1810,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const displayAtsScore = postReviewPolish.result?.ats_score ?? liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? null;
   const displayTruthScore = data.assembly?.scores.truth ?? null;
   const displayToneScore = postReviewPolish.result?.tone_score ?? data.assembly?.scores.tone ?? null;
-  const gapChatSnapshot = isComplete ? getGapChatSnapshot() : null;
-  const finalReviewChatSnapshot = isComplete ? getFinalReviewChatSnapshot() : null;
+  const gapChatSnapshotForDisplay = isComplete ? gapChatSnapshot : null;
+  const finalReviewChatSnapshotForDisplay = isComplete ? finalReviewChatSnapshot : null;
 
   const stepLabel = !isComplete
     ? 'Building your resume...'
@@ -1881,10 +1917,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onRequestHiringManagerReview={handleRequestHiringManagerReview}
         onApplyHiringManagerRecommendation={handleApplyHiringManagerRecommendation}
         gapChat={isComplete ? gapChat : null}
-        gapChatSnapshot={gapChatSnapshot}
+        gapChatSnapshot={gapChatSnapshotForDisplay}
         buildChatContext={isComplete ? buildChatContext : undefined}
         finalReviewChat={isComplete ? finalReviewChat : null}
-        finalReviewChatSnapshot={finalReviewChatSnapshot}
+        finalReviewChatSnapshot={finalReviewChatSnapshotForDisplay}
         buildFinalReviewChatContext={isComplete ? buildFinalReviewChatContext : undefined}
         resolveFinalReviewTarget={isComplete ? resolveFinalReviewTarget : undefined}
         onPreviewFinalReviewTarget={isComplete ? previewFinalReviewTarget : undefined}

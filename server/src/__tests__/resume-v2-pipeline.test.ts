@@ -256,6 +256,46 @@ describe('POST /api/resume-v2/start', () => {
     expect(res.status).toBe(200);
   });
 
+  it('merges clarification memory into the pipeline user context', async () => {
+    mockParseJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      data: {
+        ...VALID_START_BODY,
+        user_context: 'Keep the tone board-ready.',
+        clarification_memory: [
+          {
+            id: 'gap_chat:platform leadership',
+            source: 'gap_chat',
+            topic: 'Platform leadership',
+            userInput: 'I led platform modernization across four business units.',
+            suggestedLanguage: 'Led platform modernization across 4 business units.',
+          },
+        ],
+      },
+    });
+
+    const res = await callApp('/api/resume-v2/start', 'POST', VALID_START_BODY);
+    expect(res.status).toBe(200);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+    expect(mockRunV2Pipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_context: expect.stringContaining('Keep the tone board-ready.'),
+      }),
+    );
+    expect(mockRunV2Pipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_context: expect.stringContaining('Previously confirmed candidate clarifications from this session:'),
+      }),
+    );
+    expect(mockRunV2Pipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_context: expect.stringContaining('Platform leadership'),
+      }),
+    );
+  });
+
   it('returns 500 when session insert fails', async () => {
     const chain = buildSingleChain({ data: null, error: { message: 'DB constraint violation' } });
     mockFrom.mockReturnValue(chain);

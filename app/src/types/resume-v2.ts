@@ -540,6 +540,17 @@ export type CoachingRecommendedAction =
   | 'skip'
   | 'confirm';
 
+export type ClarificationMemorySource = 'gap_chat' | 'final_review';
+
+export interface ClarificationMemoryEntry {
+  id: string;
+  source: ClarificationMemorySource;
+  topic: string;
+  userInput: string;
+  suggestedLanguage?: string;
+  appliedLanguage?: string;
+}
+
 export interface GapChatRelatedLineCandidate {
   id: string;
   section: string;
@@ -848,6 +859,7 @@ export interface MasterPromotionState {
 export interface V2PersistedDraftState {
   editable_resume: ResumeDraft | null;
   master_save_mode: 'session_only' | 'master_resume';
+  clarification_memory?: ClarificationMemoryEntry[] | null;
   gap_chat_state?: CoachingThreadSnapshot | null;
   final_review_state?: FinalReviewPersistedState | null;
   final_review_chat_state?: CoachingThreadSnapshot | null;
