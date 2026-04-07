@@ -135,6 +135,13 @@ export function ResumeStructurePlannerCard({
     handleSelectPreset(presetId);
   };
 
+  const handleAddRecommendedSection = (presetId: ResumeCustomSectionPresetId) => {
+    const preset = RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === presetId);
+    const suggestion = buildCustomSectionDraftSuggestions(candidateIntelligence, requirementWorkItems, presetId)[0];
+    if (!preset || !suggestion || suggestion.lines.length === 0) return;
+    onAddCustomSection(preset.title, suggestion.lines, presetId);
+  };
+
   const handleAddSection = () => {
     if (!canAddSection) return;
     onAddCustomSection(sectionTitle.trim(), draftLines, selectedPresetId === 'custom' ? undefined : selectedPresetId);
@@ -327,13 +334,22 @@ export function ResumeStructurePlannerCard({
                     </div>
                     <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">{recommendation.whyNow}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleUseRecommendedPreset(recommendation.presetId)}
-                    className="shrink-0 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
-                  >
-                    Preview Draft
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUseRecommendedPreset(recommendation.presetId)}
+                      className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
+                    >
+                      Preview Draft
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddRecommendedSection(recommendation.presetId)}
+                      className="rounded-lg bg-[var(--link)] px-3 py-2 text-xs font-semibold text-white hover:opacity-95 transition-opacity"
+                    >
+                      Add Now
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -190,4 +190,33 @@ describe('ResumeStructurePlannerCard', () => {
       'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
     ].join('\n'));
   });
+
+  it('can add a recommended section immediately without opening the composer first', () => {
+    const onAddCustomSection = vi.fn();
+
+    render(
+      <ResumeStructurePlannerCard
+        resume={makeResumeDraft()}
+        candidateIntelligence={makeCandidate()}
+        requirementWorkItems={makeTransformationWorkItems()}
+        onMoveSection={vi.fn()}
+        onToggleSection={vi.fn()}
+        onAddAISection={vi.fn()}
+        onAddCustomSection={onAddCustomSection}
+        onRemoveCustomSection={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+
+    expect(onAddCustomSection).toHaveBeenCalledWith(
+      'Transformation Highlights',
+      [
+        'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+        'Led transformation work across 3 sites while rolled out workflow automation across operations.',
+        'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
+      ],
+      'transformation_highlights',
+    );
+  });
 });
