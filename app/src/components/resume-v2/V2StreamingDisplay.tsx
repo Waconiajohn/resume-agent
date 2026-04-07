@@ -583,23 +583,28 @@ function buildClarificationCues(
     .slice(0, 3);
 }
 
+function clarificationMatchesAttentionItem(
+  entry: ClarificationMemoryEntry,
+  item: AttentionReviewItem,
+): boolean {
+  const requirementHit = item.requirements.some((requirement) => (
+    overlapScore(requirement, entry.topic) >= 0.35
+      || overlapScore(requirement, entry.userInput) >= 0.24
+  ));
+  const evidenceHit = item.evidenceFound
+    ? overlapScore(item.evidenceFound, entry.userInput) >= 0.24
+    : false;
+  const lineHit = overlapScore(item.text, entry.userInput) >= 0.24;
+  return requirementHit || evidenceHit || lineHit;
+}
+
 function buildRememberedEvidenceCues(
   clarificationMemory: ClarificationMemoryEntry[],
   attentionItems: AttentionReviewItem[],
 ): RememberedEvidenceCue[] {
   return clarificationMemory
     .map((entry) => {
-      const matches = attentionItems.filter((item) => {
-        const requirementHit = item.requirements.some((requirement) => (
-          overlapScore(requirement, entry.topic) >= 0.35
-            || overlapScore(requirement, entry.userInput) >= 0.24
-        ));
-        const evidenceHit = item.evidenceFound
-          ? overlapScore(item.evidenceFound, entry.userInput) >= 0.24
-          : false;
-        const lineHit = overlapScore(item.text, entry.userInput) >= 0.24;
-        return requirementHit || evidenceHit || lineHit;
-      });
+      const matches = attentionItems.filter((item) => clarificationMatchesAttentionItem(entry, item));
 
       return {
         id: entry.id,
@@ -895,6 +900,7 @@ export function V2StreamingDisplay({
     proofLevel?: ProofLevel;
     nextBestAction?: NextBestAction;
     canRemove?: boolean;
+    autoReuseClarificationId?: string;
   } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
 
   useEffect(() => {
@@ -916,6 +922,13 @@ export function V2StreamingDisplay({
   ), [attentionItems, clarificationMemory, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
   const rememberedEvidenceCues = useMemo(() => (
     buildRememberedEvidenceCues(clarificationMemory, attentionItems)
+  ), [attentionItems, clarificationMemory]);
+  const rememberedAttentionItemIds = useMemo(() => new Set(
+    clarificationMemory.flatMap((entry) => (
+      attentionItems
+        .filter((item) => clarificationMatchesAttentionItem(entry, item))
+        .map((item) => item.id)
+    ))
   ), [attentionItems, clarificationMemory]);
   const sectionCoachTargets = useMemo(() => (
     displayResume
@@ -959,7 +972,7 @@ export function V2StreamingDisplay({
     });
   }, []);
 
-  const openAttentionItem = useCallback((index: number) => {
+  const openAttentionItem = useCallback((index: number, options?: { autoReuseClarificationId?: string }) => {
     const item = attentionItems[index];
     if (!item) return;
     setAttentionIndex(index);
@@ -975,6 +988,7 @@ export function V2StreamingDisplay({
       proofLevel: item.proofLevel,
       nextBestAction: item.nextBestAction,
       canRemove: true,
+      autoReuseClarificationId: options?.autoReuseClarificationId,
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(item.selector);
@@ -1168,13 +1182,21 @@ export function V2StreamingDisplay({
       return `Your Resume Is Complete \u2014 all lines verified.`;
     }
 
-    const proofCount = attentionItems.filter((item) => item.priority === 0).length;
+    const reusableAnswerCount = attentionItems.filter((item) => rememberedAttentionItemIds.has(item.id)).length;
+    const proofCount = attentionItems.filter((item) => item.priority === 0 && !rememberedAttentionItemIds.has(item.id)).length;
     const validateCount = attentionItems.filter((item) => item.priority === 1).length;
     const strengthenCount = attentionItems.filter((item) => item.priority === 2).length;
 
     if (proofCount > 0) {
       const remainder = validateCount + strengthenCount;
-      return `${proofCount} line${proofCount === 1 ? '' : 's'} still ${proofCount === 1 ? 'needs' : 'need'} your story${remainder > 0 ? `, and ${remainder} more still need attention` : ''}.`;
+      const reusableLead = reusableAnswerCount > 0
+        ? `${reusableAnswerCount} line${reusableAnswerCount === 1 ? '' : 's'} can already be strengthened from your earlier answers, and `
+        : '';
+      return `${reusableLead}${proofCount} line${proofCount === 1 ? '' : 's'} still ${proofCount === 1 ? 'needs' : 'need'} your story${remainder > 0 ? `, and ${remainder} more still need attention` : ''}.`;
+    }
+
+    if (reusableAnswerCount > 0) {
+      return `${reusableAnswerCount} line${reusableAnswerCount === 1 ? '' : 's'} can already be strengthened from your earlier answers${validateCount > 0 ? `, and ${validateCount} still ${validateCount === 1 ? 'needs' : 'need'} a fit check` : strengthenCount > 0 ? `, and ${strengthenCount} more could be stronger` : ''}.`;
     }
 
     if (validateCount > 0) {
@@ -1182,10 +1204,13 @@ export function V2StreamingDisplay({
     }
 
     return `Your resume is looking good \u2014 ${strengthenCount} line${strengthenCount === 1 ? '' : 's'} could still be stronger.`;
-  }, [attentionItems]);
+  }, [attentionItems, rememberedAttentionItemIds]);
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
+    if (rememberedAttentionItemIds.has(topItem.id)) {
+      return `Start in ${topItem.locationLabel} and reuse an earlier confirmed answer.`;
+    }
     const nextAction = topItem.nextBestAction
       ? ({
           accept: 'leave it as is',
@@ -1197,7 +1222,7 @@ export function V2StreamingDisplay({
         } satisfies Record<NextBestAction, string>)[topItem.nextBestAction]
       : `review the bullet marked '${topItem.statusLabel.toLowerCase()}'`;
     return `Start in ${topItem.locationLabel} and ${nextAction}.`;
-  }, [attentionItems]);
+  }, [attentionItems, rememberedAttentionItemIds]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1296,7 +1321,7 @@ export function V2StreamingDisplay({
                 <RememberedEvidenceCard
                   cues={rememberedEvidenceCues}
                   onOpenCue={(cue) => {
-                    if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex);
+                    if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
                   }}
                 />
               )}
@@ -1308,7 +1333,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1458,6 +1483,7 @@ export function V2StreamingDisplay({
                             proofLevel={activeBullet.proofLevel}
                             nextBestAction={activeBullet.nextBestAction}
                             canRemove={activeBullet.canRemove ?? true}
+                            initialReuseClarificationId={activeBullet.autoReuseClarificationId}
                             gapChat={gapChat}
                             chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
                             onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
@@ -1490,7 +1516,7 @@ export function V2StreamingDisplay({
                           <RememberedEvidenceCard
                             cues={rememberedEvidenceCues}
                             onOpenCue={(cue) => {
-                              if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex);
+                              if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
                             }}
                           />
                           <div className="shell-panel px-4 py-4">

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { BulletCoachingPanel } from '../cards/BulletCoachingPanel';
 import type { GapChatContext } from '@/types/resume-v2';
@@ -274,5 +274,61 @@ describe('BulletCoachingPanel', () => {
       }),
       'partial',
     );
+  });
+
+  it('auto-reuses a remembered clarification when the panel opens from that cue', async () => {
+    const gapChat = makeGapChat();
+
+    render(
+      <BulletCoachingPanel
+        bulletText="Built and tracked performance metrics."
+        section="professional_experience"
+        bulletIndex={0}
+        requirements={['Develop and track performance metrics']}
+        reviewState="strengthen"
+        requirementSource="job_description"
+        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
+        gapChat={gapChat}
+        initialReuseClarificationId="gap_chat:performance metrics"
+        chatContext={makeChatContext({
+          lineKind: 'bullet',
+          sectionKey: 'professional_experience',
+          sectionLabel: 'Professional Experience',
+          lineText: 'Built and tracked performance metrics.',
+          primaryRequirement: 'Develop and track performance metrics',
+          relatedRequirements: ['Develop and track performance metrics'],
+          priorClarifications: [
+            {
+              id: 'gap_chat:performance metrics',
+              source: 'gap_chat',
+              topic: 'Performance metrics',
+              userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
+              appliedLanguage: 'Built weekly KPI reviews across 3 plants.',
+              primaryFamily: 'metrics',
+              families: ['metrics'],
+            },
+          ],
+        })}
+        onApplyToResume={vi.fn()}
+        onRemoveBullet={vi.fn()}
+        onClose={vi.fn()}
+        onBulletEnhance={vi.fn(async () => null)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(gapChat.sendMessage).toHaveBeenCalledWith(
+        'Develop and track performance metrics',
+        expect.stringContaining('Use my earlier confirmed detail to rewrite this line'),
+        expect.objectContaining({
+          priorClarifications: [
+            expect.objectContaining({
+              id: 'gap_chat:performance metrics',
+            }),
+          ],
+        }),
+        'partial',
+      );
+    });
   });
 });

@@ -20,7 +20,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Trash2, PencilLine, Sparkles, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage } from '@/types/resume-v2';
+import type { ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { BulletContextHeader } from './bullet-coaching/BulletContextHeader';
@@ -54,6 +54,7 @@ export interface BulletCoachingPanelProps {
   onRemoveBullet: (section: string, index: number) => void;
   onClose: () => void;
   canRemove?: boolean;
+  initialReuseClarificationId?: string;
   // New: optional AI enhancement handler
   onBulletEnhance?: (
     action: string,
@@ -155,10 +156,12 @@ export function BulletCoachingPanel({
   onRemoveBullet,
   onClose,
   canRemove = true,
+  initialReuseClarificationId,
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const autoReuseRef = useRef<string | null>(null);
 
   // ── Internal state ─────────────────────────────────────────────────────────
   const [selectedSuggestion, setSelectedSuggestion] = useState<number | null>(null);
@@ -336,14 +339,14 @@ export function BulletCoachingPanel({
     });
   }, [onApplyToResume, relatedSuggestionTargets]);
 
-  const handleReusePriorClarification = useCallback((topic: string, userInput: string, appliedLanguage?: string | null) => {
+  const handleReusePriorClarification = useCallback((entry: ClarificationMemoryEntry) => {
     if (isChatLoading) return;
     const classification = classificationForReviewState(reviewState);
     const targetRequirement = primaryRequirement ?? requirements[0] ?? 'this requirement';
     const promptParts = [
       `Use my earlier confirmed detail to rewrite this ${lineLabel} for "${targetRequirement}".`,
-      `Earlier answer: ${userInput}`,
-      appliedLanguage ? `Existing resume wording we already used: ${appliedLanguage}` : '',
+      `Earlier answer: ${entry.userInput}`,
+      entry.appliedLanguage ? `Existing resume wording we already used: ${entry.appliedLanguage}` : '',
       'Keep the rewrite truthful, specific, and aligned to the role.',
     ].filter(Boolean);
 
@@ -352,11 +355,22 @@ export function BulletCoachingPanel({
       promptParts.join('\n\n'),
       {
         ...chatContext,
-        priorClarifications: chatContext.priorClarifications?.filter((entry) => entry.topic === topic) ?? chatContext.priorClarifications,
+        priorClarifications: chatContext.priorClarifications?.filter((candidate) => candidate.id === entry.id) ?? chatContext.priorClarifications,
       },
       classification,
     );
   }, [isChatLoading, reviewState, primaryRequirement, requirements, lineLabel, gapChat, chatKey, chatContext]);
+
+  useEffect(() => {
+    if (!initialReuseClarificationId) return;
+    if (autoReuseRef.current === initialReuseClarificationId) return;
+    if (isChatLoading) return;
+    if ((itemState?.messages?.length ?? 0) > 0) return;
+    const entry = priorClarifications.find((candidate) => candidate.id === initialReuseClarificationId);
+    if (!entry) return;
+    autoReuseRef.current = initialReuseClarificationId;
+    handleReusePriorClarification(entry);
+  }, [handleReusePriorClarification, initialReuseClarificationId, isChatLoading, itemState?.messages, priorClarifications]);
 
   return (
     <div
@@ -494,7 +508,7 @@ export function BulletCoachingPanel({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleReusePriorClarification(entry.topic, entry.userInput, entry.appliedLanguage)}
+                  onClick={() => handleReusePriorClarification(entry)}
                   disabled={isChatLoading}
                   className={cn(
                     'inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
