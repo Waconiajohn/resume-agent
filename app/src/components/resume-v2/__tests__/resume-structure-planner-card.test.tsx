@@ -134,7 +134,7 @@ describe('ResumeStructurePlannerCard', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /add section/i })[0]);
 
-    expect(screen.getByText(/suggested section drafts/i)).toBeInTheDocument();
+    expect(screen.getByText(/starter drafts/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Selected Projects');
     expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
       'Led transformation and operational excellence initiatives that improved throughput by 18% (18%).',

@@ -1296,7 +1296,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Fastest Proof Upgrades').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('One Good Answer').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText('What specific product launch or delivery outcome proves this most clearly?').length,
     ).toBeGreaterThan(0);
@@ -1396,7 +1396,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('We already know this from your earlier answers').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Start with proof you already confirmed').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
 
     fireEvent.click(
@@ -1471,8 +1471,8 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.queryByText('Fastest Proof Upgrades')).not.toBeInTheDocument();
-    expect(screen.getAllByText('We already know this from your earlier answers').length).toBeGreaterThan(0);
+    expect(screen.queryByText('One Good Answer')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Start with proof you already confirmed').length).toBeGreaterThan(0);
   });
 
   it('updates the attention summary to reuse earlier confirmed answers when available', async () => {

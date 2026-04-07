@@ -736,11 +736,11 @@ function SectionCoachCard({
   if (targets.length === 0) return null;
 
   return (
-    <div className="shell-panel px-4 py-4">
-      <p className="eyebrow-label">Section Polish</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Strengthen the parts of the resume people read first</h3>
+    <div className="guide-support-panel px-4 py-4">
+      <p className="eyebrow-label">Polish Next</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Tighten the sections recruiters notice first</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        After the structure is right, polish these high-visibility sections before spending time on smaller line edits.
+        Once the structure feels right, these sections give you the fastest visible improvement.
       </p>
       <div className="mt-4 space-y-2">
         {targets.map((target) => (
@@ -776,11 +776,11 @@ function ClarificationCueCard({
   if (cues.length === 0) return null;
 
   return (
-    <div className="shell-panel px-4 py-4">
-      <p className="eyebrow-label">Fastest Proof Upgrades</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Answer one concrete question to make the resume stronger</h3>
+    <div className="guide-support-panel px-4 py-4">
+      <p className="eyebrow-label">One Good Answer</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">A single detail could strengthen multiple lines</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These are only the details we still do not know. If an earlier answer already covers the gap, reuse that first instead of answering again.
+        These are the only details we still need. If you already answered one elsewhere, reuse it instead of starting from scratch.
       </p>
       <div className="mt-4 space-y-2">
         {cues.map((cue) => (
@@ -818,11 +818,11 @@ function RememberedEvidenceCard({
   if (cues.length === 0) return null;
 
   return (
-    <div className="shell-panel px-4 py-4">
-      <p className="eyebrow-label">Already Confirmed</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">We already know this from your earlier answers</h3>
+    <div className="guide-support-panel px-4 py-4">
+      <p className="eyebrow-label">Use What We Know</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with proof you already confirmed</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These confirmed details can already strengthen the current resume. Use them before you answer anything new.
+        These details are already trustworthy. Reuse them before giving the app anything new.
       </p>
       <div className="mt-4 space-y-2">
         {cues.map((cue) => {
@@ -880,9 +880,9 @@ function GuidedStartCard({
   return (
     <div className="shell-panel px-4 py-4">
       <p className="eyebrow-label">Start Here</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take the next moves in the right order</h3>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take these moves in order</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        You do not need to guess what to do first. Start with the first step below, then come back here for the next best move.
+        Start with the first step below. The rest of the editing flow gets easier once that move is done.
       </p>
       <div className="mt-4 space-y-2">
         {steps.map((step, index) => (
@@ -1609,11 +1609,11 @@ export function V2StreamingDisplay({
 
     if (secondarySupportMode === 'queue') {
       return (
-        <div className="shell-panel px-4 py-4">
-          <p className="eyebrow-label">Editing Queue</p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with the lines that change the story fastest</h3>
+        <div className="guide-support-panel px-4 py-4">
+          <p className="eyebrow-label">Priority Lines</p>
+          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix the lines that change the story fastest</h3>
           <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-            Click any flagged line on the right, or jump into one of these top-priority fixes.
+            If you do not need structure work first, start with one of these high-impact edits.
           </p>
           {attentionItems.length > 0 ? (
             <div className="mt-4 space-y-2">
@@ -1653,7 +1653,7 @@ export function V2StreamingDisplay({
   return (
     <div ref={containerRef} className={`flex-1 overflow-y-auto relative${canShowResumeDocument && hasPassedReadyGate ? ' lg:overflow-hidden' : ''}`}>
       {/* Scoring report — three instances: one here (non-editing state), one in mobile layout, one in desktop left panel */}
-      {data.preScores && data.assembly && !(canShowResumeDocument && hasPassedReadyGate) && (
+      {data.preScores && data.assembly && !canShowResumeDocument && (
         <div className="mx-auto max-w-[900px] px-6 pt-4">
           <ScoringReport
             preScores={data.preScores}
@@ -1739,7 +1739,7 @@ export function V2StreamingDisplay({
               {renderSecondarySupportPanel()}
               {displayResume && (
                 <AnimatedCard index={0}>
-                  <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                  <div className="resume-paper-shell overflow-hidden">
                     <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
                   </div>
                 </AnimatedCard>
@@ -1796,64 +1796,62 @@ export function V2StreamingDisplay({
                   <div className="flex flex-col h-full">
                     {/* Fixed header — always visible */}
                     <div className="shrink-0 px-4 py-3 border-b border-[var(--line-soft)]">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {_preScores && _assembly && (
-                            <>
-                              <span className="text-lg font-semibold" style={{ color: 'var(--badge-green-text)' }}>
-                                {afterSnapshotScore}%
-                              </span>
-                              {delta > 0 && (() => {
-                                const label = `+${delta}`;
-                                const style: React.CSSProperties = { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' };
-                                return <span className="rounded-md px-2.5 py-1 text-xs font-bold tabular-nums" style={style}>{label}</span>;
-                              })()}
-                            </>
+                      {(() => {
+                        const flaggedCount = attentionItems.length;
+                        const leftRailHeadline = activeBullet
+                          ? 'Editing the current line'
+                          : hasStructureFirstWork
+                            ? 'Start with the structure'
+                            : flaggedCount > 0
+                              ? 'Work through the next best moves'
+                              : 'The draft is ready for final polish';
+                        const leftRailSummary = activeBullet
+                          ? 'Use the left panel to tighten the wording, confirm the fit, or add the missing detail.'
+                          : compactAttentionNextAction
+                            ?? 'Review the remaining high-impact edits before export.';
+
+                        return (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="eyebrow-label">Resume Guide</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xl font-semibold" style={{ color: 'var(--badge-green-text)' }}>
+                              {afterSnapshotScore}%
+                            </span>
+                            {delta > 0 && (() => {
+                              const label = `+${delta}`;
+                              const style: React.CSSProperties = { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' };
+                              return <span className="rounded-md px-2.5 py-1 text-xs font-bold tabular-nums" style={style}>{label}</span>;
+                            })()}
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-[var(--text-strong)]">
+                            {leftRailHeadline}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
+                            {leftRailSummary}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          {flaggedCount > 0 && (
+                            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                              {flaggedCount} {flaggedCount === 1 ? 'line to review' : 'lines to review'}
+                            </span>
+                          )}
+                          {hasStructureFirstWork && !activeBullet && (
+                            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                              Structure first
+                            </span>
                           )}
                         </div>
-                        {(() => {
-                          const redCount = attentionItems.filter(i => i.reviewState === 'code_red').length;
-                          const orangeCount = attentionItems.filter(i => i.reviewState === 'confirm_fit').length;
-                          const yellowCount = attentionItems.filter(i => i.reviewState === 'strengthen').length;
-                          const totalBullets = (displayResume?.selected_accomplishments?.length ?? 0)
-                            + (displayResume?.professional_experience?.reduce((sum, exp) => sum + (Array.isArray(exp.bullets) ? exp.bullets.length : 0), 0) ?? 0);
-                          const greenCount = Math.max(0, totalBullets - redCount - orangeCount - yellowCount);
-                          const flaggedCount = redCount + orangeCount + yellowCount;
-                          return (
-                            <div className="flex items-center gap-3 text-xs">
-                              {redCount > 0 && (
-                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
-                                  <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                                  {redCount}
-                                </span>
-                              )}
-                              {orangeCount > 0 && (
-                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
-                                  <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                                  {orangeCount}
-                                </span>
-                              )}
-                              {yellowCount > 0 && (
-                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
-                                  <span className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
-                                  {yellowCount}
-                                </span>
-                              )}
-                              {greenCount > 0 && (
-                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
-                                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                                  {greenCount}
-                                </span>
-                              )}
-                              {flaggedCount > 0 && (
-                                <span className="text-[var(--text-soft)]">— {flaggedCount} need review</span>
-                              )}
-                            </div>
-                          );
-                        })()}
                       </div>
+                        );
+                      })()}
                       {attentionItems.length > 0 && (
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <span className="text-xs text-[var(--text-soft)]">
+                            {attentionIndex + 1} of {attentionItems.length} priority {attentionItems.length === 1 ? 'line' : 'lines'}
+                          </span>
+                          <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
@@ -1861,9 +1859,6 @@ export function V2StreamingDisplay({
                           >
                             &larr; Prev
                           </button>
-                          <span className="text-xs text-[var(--text-soft)]">
-                            {attentionIndex + 1} of {attentionItems.length}
-                          </span>
                           <button
                             type="button"
                             onClick={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
@@ -1871,6 +1866,7 @@ export function V2StreamingDisplay({
                           >
                             Next &rarr;
                           </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1934,7 +1930,7 @@ export function V2StreamingDisplay({
                 <div className="mx-auto max-w-[900px]">
                   {displayResume && (
                     <AnimatedCard index={0}>
-                      <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                      <div className="resume-paper-shell overflow-hidden">
                         <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
                       </div>
                     </AnimatedCard>

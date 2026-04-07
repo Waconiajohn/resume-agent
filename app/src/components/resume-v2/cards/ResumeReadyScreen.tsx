@@ -1,5 +1,4 @@
 import { ScoreRing } from '@/components/shared/ScoreRing';
-import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 interface ResumeReadyScreenProps {
   jobMatchPercent: number;
@@ -14,8 +13,6 @@ interface ResumeReadyScreenProps {
   primaryActionLabel?: string;
   onStartEditing: () => void;
 }
-
-const LEGEND_STATES = ['code_red', 'confirm_fit', 'strengthen', 'supported'] as const;
 
 /** Placeholder ring shown when score data is absent — neutral "—" with "Calculating..." label. */
 function PendingScoreRing({ label }: { label: string }) {
@@ -53,28 +50,58 @@ export function ResumeReadyScreen({
   primaryActionLabel = 'Start Editing My Resume',
   onStartEditing,
 }: ResumeReadyScreenProps) {
+  const needsReview = flaggedBulletCount > 0;
+  const headline = needsReview ? 'Your First Draft Is Ready' : 'Your Resume Is Ready for Final Review';
+  const summary = needsReview
+    ? 'The structure is in place. Now tighten the few lines that still need proof, clearer scope, or a more honest fit.'
+    : 'The draft is in strong shape. Do one last review for tone, credibility, and final polish before export.';
+  const chips = [
+    needsReview
+      ? `${flaggedBulletCount} ${flaggedBulletCount === 1 ? 'line needs review' : 'lines need review'}`
+      : 'No flagged lines',
+    primaryActionLabel.toLowerCase().includes('structure')
+      ? 'Structure first'
+      : 'Line editing next',
+  ];
+
   return (
-    <div className="bg-[var(--surface-1)] rounded-lg shadow-[var(--shadow-mid)] p-8 space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-[22px] font-semibold text-[var(--text-strong)]">Your Resume Is Ready</h2>
+    <div className="bg-[var(--surface-1)] rounded-2xl shadow-[var(--shadow-mid)] p-8 space-y-7">
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
+          Draft Checkpoint
+        </p>
+        <div className="space-y-2">
+          <h2 className="text-[25px] font-semibold tracking-tight text-[var(--text-strong)]">{headline}</h2>
+          <p className="max-w-[600px] text-[14px] leading-6 text-[var(--text-muted)]">
+            {summary}
+          </p>
+        </div>
         {companyName && roleTitle && (
-          <p className="mt-1 text-[13px] text-[var(--text-soft)]">{roleTitle} at {companyName}</p>
+          <p className="text-[13px] text-[var(--text-soft)]">{roleTitle} at {companyName}</p>
         )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {chips.map((chip) => (
+            <span
+              key={chip}
+              className="inline-flex rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Section A: Scores */}
-      <div className="space-y-4">
-        <div className="flex justify-center gap-10">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-5 py-5">
+        <div className="flex flex-wrap items-center justify-center gap-10">
           {hasScoreData ? (
             <ScoreRing
               score={Math.round(jobMatchPercent)}
               max={100}
-              label="Resume Match"
+              label="Role Match"
               color="text-[var(--link)]"
             />
           ) : (
-            <PendingScoreRing label="Resume Match" />
+            <PendingScoreRing label="Role Match" />
           )}
           {typeof benchmarkMatchPercent === 'number' && (
             hasScoreData ? (
@@ -90,73 +117,38 @@ export function ResumeReadyScreen({
           )}
         </div>
         {strengthSummary && (
-          <p className="text-[14px] leading-relaxed text-[var(--text-muted)] text-center max-w-[520px] mx-auto">
+          <p className="mx-auto mt-4 max-w-[560px] text-center text-[14px] leading-6 text-[var(--text-muted)]">
             {strengthSummary}
           </p>
         )}
       </div>
 
-      {actionSummaryLines.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
-            Best next moves
-          </h3>
-          <div className="space-y-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-4 py-3">
-            {actionSummaryLines.map((line) => (
-              <p key={line} className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-                {line}
-              </p>
+      <div className="space-y-3">
+        <h3 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
+          What to do next
+        </h3>
+        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-5 py-4">
+          <div className="space-y-2.5">
+            {(actionSummaryLines.length > 0 ? actionSummaryLines : [summary]).slice(0, 3).map((line) => (
+              <div key={line} className="flex items-start gap-3">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--link)]" aria-hidden="true" />
+                <p className="text-[13px] leading-6 text-[var(--text-muted)]">{line}</p>
+              </div>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Section B: Color legend */}
-      <div className="space-y-3">
-        <h3 className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
-          What the colors mean
-        </h3>
-        <div className="space-y-2.5">
-          {LEGEND_STATES.map((state) => {
-            const display = REVIEW_STATE_DISPLAY[state];
-            return (
-              <div key={state} className="flex items-start gap-3">
-                <span
-                  className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: display.colorHex }}
-                  aria-hidden="true"
-                />
-                <div>
-                  <p className="text-[13px] font-semibold text-[var(--text-strong)]">
-                    {display.label}
-                  </p>
-                  <p className="text-[12px] leading-relaxed text-[var(--text-soft)]">
-                    {display.meaning}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
-      {/* Section C: CTA */}
-      <div className="text-center space-y-3 pt-2">
-        {flaggedBulletCount > 0 ? (
-          <p className="text-[14px] text-[var(--text-muted)]">
-            You have <span className="font-semibold">{flaggedBulletCount}</span>{' '}
-            {flaggedBulletCount === 1 ? 'bullet' : 'bullets'} that{' '}
-            {flaggedBulletCount === 1 ? 'needs' : 'need'} your input.
-          </p>
-        ) : (
-          <p className="text-[14px] text-[var(--text-muted)]">
-            Your resume looks great — no lines flagged.
-          </p>
-        )}
+      <div className="text-center space-y-3 pt-1">
+        <p className="text-[14px] text-[var(--text-muted)]">
+          {needsReview
+            ? 'Review the draft while the strongest improvements are still easy to make.'
+            : 'Open the draft and do a final confidence check before export.'}
+        </p>
         <button
           type="button"
           onClick={onStartEditing}
-          className="inline-flex items-center justify-center rounded-lg bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
+          className="inline-flex min-w-[220px] items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3.5 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
         >
           {primaryActionLabel}
         </button>

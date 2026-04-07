@@ -180,11 +180,11 @@ export function ResumeDocumentCard({
                   );
                 }
               } : undefined}
-              className={`rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-gray-600 ${
-                onBulletClick ? 'cursor-pointer transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
+              className={`rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
+                onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
               }${
                 activeBullet?.section === 'core_competencies' && activeBullet.index === i
-                  ? ' border-[var(--link)] bg-[var(--link)]/5 text-[var(--link)]'
+                  ? ' border-[var(--link)] bg-[var(--link)]/6 text-[var(--link)]'
                   : ''
               }`}
             >
@@ -713,7 +713,7 @@ function BulletLineContent({
                 handleActivate();
               }
             }}
-            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-slate-50/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
+            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
           >
             {globalNumber !== undefined && (
               <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
@@ -983,7 +983,7 @@ function resolveStandaloneDisplayRequirements(
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-3 text-xs font-bold tracking-[0.2em] uppercase text-gray-500 border-b border-gray-200 pb-1 sm:text-[13px]">
+    <h3 className="mb-4 border-b border-stone-200/80 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 sm:text-[12px]">
       {children}
     </h3>
   );

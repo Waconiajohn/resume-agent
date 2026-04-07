@@ -1,22 +1,3 @@
-/**
- * BulletCoachingPanel — AI-first suggestion-driven bullet coaching interface.
- *
- * Replaces BulletConversationEditor with a structured coaching flow:
- *   1. Context header   — what requirement this bullet is proving
- *   2. Before / after   — current text vs selected suggestion
- *   3. Suggestion cards — 2-3 AI-drafted alternatives to pick from
- *   4. Enhance bar      — one-click transformations (metrics / impact / specific)
- *   5. Coaching tips    — collapsible coaching text (expanded by default for code_red)
- *   6. Action bar       — Apply / Edit / Write My Own / Remove
- *
- * For code_red without existing evidence, suggestions are suppressed and the
- * coaching section expands with a context-gathering textarea rendered ABOVE
- * the collapsible (not inside it).
- *
- * Backward-compatible export: also exported as `BulletConversationEditor`
- * so the parent ResumeDocumentCard requires no changes.
- */
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Trash2, PencilLine, Sparkles, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,7 +9,6 @@ import { BulletBeforeAfter } from './bullet-coaching/BulletBeforeAfter';
 import { AISuggestionCards } from './bullet-coaching/AISuggestionCards';
 import { EnhanceButtonBar } from './bullet-coaching/EnhanceButtonBar';
 import type { EnhanceAction } from './bullet-coaching/EnhanceButtonBar';
-import { CoachingCollapsible } from './bullet-coaching/CoachingCollapsible';
 import { CustomEditArea } from './bullet-coaching/CustomEditArea';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 
@@ -67,44 +47,6 @@ export interface BulletCoachingPanelProps {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/**
- * Derive the coaching text the collapsible should display.
- * Falls back gracefully when no strategy coaching policy is available.
- */
-function buildCoachingText(
-  reviewState: ResumeReviewState,
-  requirements: string[],
-  evidenceFound: string,
-  lineKind?: GapChatContext['lineKind'],
-): string {
-  const req = requirements[0] ?? 'this requirement';
-  const evidence = evidenceFound.trim();
-  const lineLabel = lineKind === 'summary'
-    ? 'summary line'
-    : lineKind === 'competency'
-      ? 'competency'
-      : lineKind === 'section_summary'
-        ? 'section intro'
-        : lineKind === 'custom_line'
-          ? 'section line'
-          : 'line';
-
-  switch (reviewState) {
-    case 'code_red':
-      return evidence
-        ? `I found related experience in your resume: "${evidence}".\n\nIf there's a specific project, scope, or outcome behind it, share that and we'll rewrite this ${lineLabel} accurately. Or we can remove it if it truly doesn't fit.`
-        : `We need proof for "${req}" before this ${lineLabel} can stay on your resume.\n\nTell us what you've actually done in this area — even on a smaller scale or under a different title counts.`;
-    case 'confirm_fit':
-      return evidence
-        ? `This comes from the benchmark for this role. We found "${evidence}" in your background that's related. Does this honestly describe how you've worked?`
-        : `This comes from the benchmark for this role — not directly from your background. Confirm it honestly describes you, or tell us what the real story is.`;
-    case 'strengthen':
-      return `You have real experience here. This ${lineLabel} needs to connect it more clearly to "${req}".\n\nCan you quantify the outcome? Even an estimate works. Was there a notable scope or scale? A specific result you remember?`;
-    default:
-      return '';
-  }
-}
 
 function getLineLabel(lineKind?: GapChatContext['lineKind']): string {
   switch (lineKind) {
@@ -453,11 +395,12 @@ export function BulletCoachingPanel({
   // ── Derived display flags ─────────────────────────────────────────────────
   const isCodeRedNoEvidence =
     reviewState === 'code_red' && !evidenceFound.trim() && alternatives.length === 0 && !chatSuggestedLanguage;
-  const coachingText = buildCoachingText(reviewState, requirements, evidenceFound, chatContext.lineKind);
-  const coachingExpandedDefault = reviewState === 'code_red';
   const primaryRequirement = requirements[0];
   const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
   const lineLabel = getLineLabel(chatContext.lineKind);
+  const coachTitle = chatContext.sectionLabel
+    ? `Improve ${chatContext.sectionLabel}`
+    : `Improve this ${lineLabel}`;
   const topClarifyingQuestion = chatContext.clarifyingQuestions?.[0]?.trim();
   const remainingClarifyingQuestions = (chatContext.clarifyingQuestions ?? [])
     .map((question) => question.trim())
@@ -470,18 +413,6 @@ export function BulletCoachingPanel({
       return candidate ? { candidate, suggestion } : null;
     })
     .filter((value): value is NonNullable<typeof value> => value !== null);
-
-  // ── Plain-language explanation of why this bullet is being coached ─────────
-  const explanationText: string = {
-    code_red:
-      `This ${lineLabel} needs proof — we couldn't find enough evidence for this claim in your resume yet.`,
-    confirm_fit:
-      `This ${lineLabel} comes from the benchmark profile for this role — confirm it matches your experience.`,
-    strengthen:
-      `This ${lineLabel} addresses a job requirement but could be more specific and impactful.`,
-    supported: `This ${lineLabel} is backed by your resume. No changes needed.`,
-    supported_rewrite: `This ${lineLabel} is backed by your resume. No changes needed.`,
-  }[reviewState] ?? '';
 
   const handleApplyRelatedSuggestion = useCallback((sectionKey: string, targetIndex: number, text: string) => {
     onApplyToResume(sectionKey, targetIndex, text, applyMetadata());
@@ -594,10 +525,8 @@ export function BulletCoachingPanel({
     <div
       ref={panelRef}
       tabIndex={-1}
-      className="mt-3 space-y-3 rounded-xl border p-4 focus:outline-none"
+      className="panel-surface mt-3 space-y-3 p-4 focus:outline-none"
       style={{
-        background: 'var(--surface-elevated)',
-        borderColor: 'var(--line-soft)',
         animation: 'fade-slide-in 200ms ease-out forwards',
       }}
     >
@@ -607,7 +536,7 @@ export function BulletCoachingPanel({
           className="text-[11px] font-semibold uppercase tracking-[0.12em]"
           style={{ color: 'var(--text-soft)' }}
         >
-          Resume Coach
+          {coachTitle}
         </p>
         <button
           type="button"
@@ -620,35 +549,6 @@ export function BulletCoachingPanel({
         </button>
       </div>
 
-      {/* 1a. Plain-language explanation of why this bullet is flagged */}
-      {explanationText && (
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          {explanationText}
-        </p>
-      )}
-
-      {/* 1b. Job / benchmark requirement callout */}
-      {requirements.length > 0 && (
-        <div
-          className="rounded-lg px-3 py-2"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--line-soft)',
-          }}
-        >
-          <p
-            className="text-[10px] uppercase tracking-wider mb-1"
-            style={{ color: 'var(--text-soft)' }}
-          >
-            {reviewState === 'confirm_fit' ? 'Benchmark requirement' : 'Job requirement'}
-          </p>
-          <p className="text-sm" style={{ color: 'var(--text-strong)' }}>
-            {requirements[0]}
-          </p>
-        </div>
-      )}
-
-      {/* 1c. Context header */}
       {primaryRequirement && (
         <BulletContextHeader
           requirement={primaryRequirement}
@@ -704,7 +604,7 @@ export function BulletCoachingPanel({
         </div>
       )}
 
-      {remainingClarifyingQuestions.length > 0 && (
+      {remainingClarifyingQuestions.length > 0 && priorClarifications.length === 0 && !isCodeRedNoEvidence && (
         <div
           className="rounded-lg px-3 py-3"
           style={{
@@ -749,7 +649,7 @@ export function BulletCoachingPanel({
             className="text-[10px] uppercase tracking-wider"
             style={{ color: 'var(--text-soft)' }}
           >
-            From your earlier answers
+            Reuse confirmed detail
           </p>
           <div className="mt-2 space-y-2">
             {priorClarifications.map((entry) => (
@@ -905,12 +805,6 @@ export function BulletCoachingPanel({
         </div>
       )}
 
-      {/* 5b. Coaching collapsible — no children for code_red (context moved above) */}
-      <CoachingCollapsible
-        defaultExpanded={coachingExpandedDefault}
-        coachingText={coachingText}
-      />
-
       {relatedSuggestionTargets.length > 0 && (
         <div
           className="space-y-3 rounded-lg px-3 py-3"
@@ -1036,7 +930,7 @@ export function BulletCoachingPanel({
               aria-label="Apply selected suggestion to resume"
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Apply to Resume
+              Use This Version
             </button>
           )}
 
@@ -1079,9 +973,9 @@ export function BulletCoachingPanel({
                 color: 'var(--text-soft)',
                 background: 'transparent',
               }}
-              aria-label="Write a custom bullet from scratch"
+              aria-label="Rewrite this line yourself"
             >
-              Write My Own
+              Rewrite Myself
             </button>
           )}
 

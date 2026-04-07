@@ -193,9 +193,9 @@ export function ResumeStructurePlannerCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="eyebrow-label">Resume Structure</p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Choose the sections that help this resume win</h3>
+          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Shape the resume before you polish the lines</h3>
           <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-            Start here before line-by-line editing. Set the structure, reorder the story, hide weaker sections, and add role-specific proof sections while the resume shape is still easy to change.
+            Start here. Reorder the story, hide weaker sections, and add the proof sections this role will care about most.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -226,7 +226,7 @@ export function ResumeStructurePlannerCard({
             <div>
               <p className="text-sm font-semibold text-[var(--text-strong)]">Add a section with real content</p>
               <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
-                Start with a small grounded draft now. You can keep polishing the section once it is in the resume.
+                Start with a grounded mini-draft now. You can polish the section once it is in the resume.
               </p>
             </div>
           </div>
@@ -292,7 +292,7 @@ export function ResumeStructurePlannerCard({
           )}
           {selectedDraftSuggestions.length > 0 && (
             <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Suggested section drafts</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Starter drafts</p>
               <div className="mt-2 space-y-2">
                 {selectedDraftSuggestions.map((suggestion) => (
                   <button
@@ -316,7 +316,7 @@ export function ResumeStructurePlannerCard({
           )}
           {selectedPresetId !== 'custom' && selectedDraftSuggestions.length === 0 && (
             <div className="mt-3 rounded-xl border border-dashed border-[var(--line-soft)] px-3.5 py-3 text-[13px] leading-5 text-[var(--text-soft)]">
-              We do not have a strong section draft suggestion for this preset yet. Add it only if you can write a few concrete, truthful lines to anchor it.
+              We do not have a grounded starter for this preset yet. Add it only if you can anchor it with a few concrete, truthful lines.
             </div>
           )}
           <div className="mt-3 grid gap-3">
@@ -340,7 +340,7 @@ export function ResumeStructurePlannerCard({
                 className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--link)]"
               />
               <span className="text-[11px] leading-5 text-[var(--text-soft)]">
-                Use one line per highlight. We will turn each non-empty line into a starter bullet inside the new section.
+                Use one line per highlight. Each non-empty line becomes a starter bullet in the new section.
               </span>
             </label>
           </div>

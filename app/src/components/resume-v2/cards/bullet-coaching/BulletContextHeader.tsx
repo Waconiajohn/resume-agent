@@ -1,13 +1,13 @@
 /**
- * BulletContextHeader — Shows the JD requirement and evidence in 2 scannable lines.
+ * BulletContextHeader — compact proof header for the active line.
  *
- * Renders a left-bordered header that tells the user exactly which role requirement
- * this bullet is trying to prove, and what evidence the pipeline found to support it.
- * Colors track the coaching state so the urgency level is immediately legible.
+ * This is the single context block for the coach. It tells the user:
+ * - what this line needs to prove
+ * - whether that target came from the JD or benchmark
+ * - what proof we already have
+ * - what kind of move is safest next
  */
 
-import { AlertTriangle, Shield, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource } from '@/types/resume-v2';
 
 export interface BulletContextHeaderProps {
@@ -25,52 +25,48 @@ function getStateConfig(reviewState: ResumeReviewState) {
   switch (reviewState) {
     case 'strengthen':
       return {
-        borderVar: 'var(--bullet-strengthen-border)',
-        bgVar: 'var(--bullet-strengthen-bg)',
+        borderVar: 'rgba(217, 119, 6, 0.18)',
+        bgVar: 'linear-gradient(180deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--bullet-strengthen)',
-        Icon: AlertTriangle,
+        label: 'Can be sharper',
       };
     case 'confirm_fit':
       return {
-        borderVar: 'var(--bullet-confirm-border)',
-        bgVar: 'var(--bullet-confirm-bg)',
+        borderVar: 'rgba(37, 99, 235, 0.16)',
+        bgVar: 'linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--bullet-confirm)',
-        Icon: Shield,
+        label: 'Verify the fit',
       };
     case 'code_red':
       return {
-        borderVar: 'var(--bullet-code-red-border)',
-        bgVar: 'var(--bullet-code-red-bg)',
+        borderVar: 'rgba(185, 28, 28, 0.16)',
+        bgVar: 'linear-gradient(180deg, rgba(254, 242, 242, 0.92), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--bullet-code-red)',
-        Icon: XCircle,
+        label: 'Needs proof',
       };
     default:
       return {
         borderVar: 'var(--line-soft)',
-        bgVar: 'transparent',
+        bgVar: 'linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--text-muted)',
-        Icon: Shield,
+        label: 'Supported',
       };
   }
 }
 
 function getIntroLabel(reviewState: ResumeReviewState): string {
   switch (reviewState) {
-    case 'strengthen':
-      return 'This addresses:';
-    case 'confirm_fit':
-      return 'This was written to show:';
     case 'code_red':
-      return 'We need evidence for:';
+      return 'This line is trying to show';
     default:
-      return 'This addresses:';
+      return 'This line needs to show';
   }
 }
 
 function getSourceLabel(source?: RequirementSource): string {
-  if (source === 'benchmark') return 'from our analysis';
-  if (source === 'job_description') return 'from the JD';
-  return 'from the JD';
+  if (source === 'benchmark') return 'Benchmark signal';
+  if (source === 'job_description') return 'JD signal';
+  return 'JD signal';
 }
 
 function getProofLabel(proofLevel?: ProofLevel, framingGuardrail?: FramingGuardrail): string | null {
@@ -119,7 +115,7 @@ export function BulletContextHeader({
 }: BulletContextHeaderProps) {
   if (!requirement) return null;
 
-  const { borderVar, bgVar, colorVar, Icon } = getStateConfig(reviewState);
+  const { borderVar, bgVar, colorVar, label } = getStateConfig(reviewState);
   const introLabel = getIntroLabel(reviewState);
   const sourceLabel = getSourceLabel(requirementSource);
   const trimmedEvidence = evidenceFound?.trim();
@@ -129,93 +125,86 @@ export function BulletContextHeader({
 
   return (
     <div
-      className="rounded-lg border-l-2 px-3 py-2.5"
+      className="rounded-xl border px-3.5 py-3"
       style={{
-        borderLeftColor: borderVar,
+        borderColor: borderVar,
         background: bgVar,
       }}
     >
-      {/* Line 1: requirement */}
-      <div className="flex items-start gap-2">
-        <Icon
-          className="mt-0.5 h-3.5 w-3.5 shrink-0"
-          style={{ color: colorVar }}
-          aria-hidden="true"
-        />
-        <p className="text-[12px] leading-snug">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+          style={{
+            background: 'rgba(255, 255, 255, 0.88)',
+            color: colorVar,
+            border: `1px solid ${borderVar}`,
+          }}
+        >
+          {label}
+        </span>
+        <span
+          className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+          style={{
+            background: 'var(--surface-0)',
+            color: 'var(--text-soft)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          {sourceLabel}
+        </span>
+        {proofLabel && (
           <span
-            className="font-medium"
-            style={{ color: 'var(--text-muted)' }}
+            className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+            style={{
+              background: 'var(--surface-0)',
+              color: 'var(--text-soft)',
+              border: '1px solid var(--line-soft)',
+            }}
           >
-            {introLabel}&nbsp;
+            {proofLabel}
           </span>
-          <span style={{ color: 'var(--text-strong)' }}>{requirement}</span>
+        )}
+        {nextActionLabel && (
           <span
-            className={cn(
-              'ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-normal',
-            )}
+            className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{
               background: 'var(--badge-blue-bg)',
               color: 'var(--badge-blue-text)',
             }}
           >
-            {sourceLabel}
+            {nextActionLabel}
           </span>
-        </p>
+        )}
       </div>
 
-      {/* Line 2: evidence (only when present) */}
-      {trimmedEvidence && (
-        <p
-          className="mt-1 pl-5.5 text-[11px] leading-snug"
-          style={{ color: 'var(--text-soft)', paddingLeft: '22px' }}
-        >
-          <span className="font-medium" style={{ color: 'var(--text-muted)' }}>
-            Your evidence:&nbsp;
-          </span>
-          <span className="italic">&ldquo;{trimmedEvidence}&rdquo;</span>
-        </p>
-      )}
-
-      {trimmedSourceEvidence && (
-        <p
-          className="mt-1 pl-5.5 text-[11px] leading-snug"
-          style={{ color: 'var(--text-soft)', paddingLeft: '22px' }}
-        >
-          <span className="font-medium" style={{ color: 'var(--text-muted)' }}>
-            Role needs:&nbsp;
-          </span>
-          <span className="italic">&ldquo;{trimmedSourceEvidence}&rdquo;</span>
-        </p>
-      )}
-
-      {(proofLabel || nextActionLabel) && (
-        <div className="mt-2 flex flex-wrap gap-2 pl-5.5" style={{ paddingLeft: '22px' }}>
-          {proofLabel && (
-            <span
-              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-              style={{
-                background: 'var(--surface-0)',
-                color: 'var(--text-soft)',
-                border: '1px solid var(--line-soft)',
-              }}
-            >
-              {proofLabel}
-            </span>
-          )}
-          {nextActionLabel && (
-            <span
-              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-              style={{
-                background: 'var(--badge-blue-bg)',
-                color: 'var(--badge-blue-text)',
-              }}
-            >
-              {nextActionLabel}
-            </span>
-          )}
+      <div className="mt-3 space-y-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+            {introLabel}
+          </p>
+          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-strong)' }}>
+            {requirement}
+          </p>
         </div>
-      )}
+
+        {trimmedSourceEvidence && (
+          <p className="text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
+            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
+              Role signal:
+            </span>{' '}
+            <span>&ldquo;{trimmedSourceEvidence}&rdquo;</span>
+          </p>
+        )}
+
+        {trimmedEvidence && (
+          <p className="text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
+            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
+              Current proof:
+            </span>{' '}
+            <span>&ldquo;{trimmedEvidence}&rdquo;</span>
+          </p>
+        )}
+      </div>
     </div>
   );
 }
