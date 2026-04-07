@@ -179,19 +179,28 @@ describe('applySectionPlanning', () => {
   it('places recommended transformation sections before competencies and experience', () => {
     const result = applySectionPlanning(makeDraft(), makeCandidate(), makeGapAnalysis());
     const order = result.section_plan?.map((item) => item.id) ?? [];
+    const transformationSection = result.custom_sections?.find((section) => section.id === 'transformation_highlights');
 
     expect(order).toContain('transformation_highlights');
     expect(order.indexOf('transformation_highlights')).toBeLessThan(order.indexOf('core_competencies'));
     expect(order.indexOf('transformation_highlights')).toBeLessThan(order.indexOf('professional_experience'));
+    expect(transformationSection?.summary).toContain('Lead AI-enabled operations transformation');
   });
 });
 
 describe('buildWriterSectionStrategy', () => {
   it('gives the writer concrete recommended section guidance with evidence lines', () => {
     const strategy = buildWriterSectionStrategy(makeCandidate(), makeGapAnalysis());
+    const transformationSection = strategy.recommended_custom_sections.find((section) => section.id === 'transformation_highlights');
 
     expect(strategy.recommended_custom_sections.map((section) => section.id)).toEqual(
       expect.arrayContaining(['ai_highlights', 'transformation_highlights']),
+    );
+    expect(transformationSection?.summary).toContain('Lead AI-enabled operations transformation');
+    expect(transformationSection?.lines ?? []).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Used automation and data workflows'),
+      ]),
     );
     expect(strategy.guidance_lines).toEqual(
       expect.arrayContaining([

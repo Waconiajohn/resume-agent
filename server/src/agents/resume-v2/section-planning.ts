@@ -20,6 +20,30 @@ export interface ResumeWriterSectionStrategy {
   guidance_lines: string[];
 }
 
+function importanceRank(value: RequirementWorkItem['importance']): number {
+  switch (value) {
+    case 'must_have':
+      return 0;
+    case 'important':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+function proofRank(value: RequirementWorkItem['proof_level']): number {
+  switch (value) {
+    case 'direct':
+      return 0;
+    case 'adjacent':
+      return 1;
+    case 'inferable':
+      return 2;
+    default:
+      return 3;
+  }
+}
+
 function normalizeSectionTitle(value: string | undefined, fallback: string): string {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : fallback;
@@ -57,24 +81,54 @@ function findMatchingWorkItems(
   gapAnalysis: GapAnalysisOutput,
   pattern: RegExp,
 ): RequirementWorkItem[] {
-  return (gapAnalysis.requirement_work_items ?? []).filter((item) => (
+  return (gapAnalysis.requirement_work_items ?? [])
+    .filter((item) => (
     pattern.test(item.requirement)
       || (item.source_evidence ? pattern.test(item.source_evidence) : false)
       || (item.best_evidence_excerpt ? pattern.test(item.best_evidence_excerpt) : false)
       || (item.target_evidence ? pattern.test(item.target_evidence) : false)
       || item.candidate_evidence.some((evidence) => pattern.test(evidence.text))
-  ));
+    ))
+    .sort((left, right) => {
+      const importanceDelta = importanceRank(left.importance) - importanceRank(right.importance);
+      if (importanceDelta !== 0) return importanceDelta;
+      const proofDelta = proofRank(left.proof_level) - proofRank(right.proof_level);
+      if (proofDelta !== 0) return proofDelta;
+      return left.requirement.localeCompare(right.requirement);
+    });
 }
 
 function matchingEvidenceLines(items: RequirementWorkItem[], limit = 3): string[] {
   return uniqueLines(
     items.flatMap((item) => [
+      item.recommended_bullet,
       item.best_evidence_excerpt,
       item.target_evidence,
       ...item.candidate_evidence.map((evidence) => evidence.text),
     ]),
     limit,
   );
+}
+
+function topRequirementFocus(items: RequirementWorkItem[], limit = 2): string[] {
+  return uniqueLines(items.map((item) => item.requirement), limit).map((line) => line.replace(/\.$/, ''));
+}
+
+function joinHumanList(values: string[]): string {
+  if (values.length === 0) return '';
+  if (values.length === 1) return values[0];
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
+}
+
+function buildSectionPurposeSummary(
+  prefix: string,
+  items: RequirementWorkItem[],
+  fallback?: string,
+): string | undefined {
+  const focus = topRequirementFocus(items);
+  if (focus.length === 0) return fallback;
+  return `${prefix} ${joinHumanList(focus)}.`;
 }
 
 function buildTransformationSection(
@@ -105,6 +159,11 @@ function buildTransformationSection(
     title: 'Transformation Highlights',
     kind: 'bullet_list',
     lines,
+    summary: buildSectionPurposeSummary(
+      'Show transformation leadership through proof tied to',
+      matchingItems,
+      scale ? `Show transformation leadership across ${scale}.` : undefined,
+    ),
     source: 'job_match',
     recommended_for_job: true,
     rationale: 'This role rewards transformation, automation, or operating-model change leadership, so a dedicated section helps that proof stand out earlier.',
@@ -132,6 +191,10 @@ function buildBoardSection(
     title: 'Board & Advisory Experience',
     kind: 'bullet_list',
     lines,
+    summary: buildSectionPurposeSummary(
+      'Surface governance and board-facing proof connected to',
+      matchingItems,
+    ),
     source: 'job_match',
     recommended_for_job: true,
     rationale: 'Board-facing or governance-heavy roles read faster when the advisory, steering, or executive decision-support work has its own focused section.',
@@ -144,12 +207,14 @@ function buildAISection(
 ): ResumeCustomSection | null {
   const readiness = candidate.ai_readiness;
   if (!readiness || readiness.strength === 'none') return null;
+  const matchingItems = findMatchingWorkItems(gapAnalysis, AI_REQUIREMENT_RE);
 
-  const lines = readiness.signals
-    .map((signal) => signal.executive_framing?.trim() || signal.evidence?.trim())
-    .filter((line): line is string => typeof line === 'string' && line.length > 0)
-    .filter((line, index, all) => all.findIndex((candidateLine) => candidateLine.toLowerCase() === line.toLowerCase()) === index)
-    .slice(0, 3);
+  const lines = uniqueLines([
+    ...readiness.signals
+      .map((signal) => signal.executive_framing?.trim() || signal.evidence?.trim())
+      .filter((line): line is string => typeof line === 'string' && line.length > 0),
+    ...matchingEvidenceLines(matchingItems, 2),
+  ], 3);
 
   if (lines.length === 0 && readiness.summary.trim().length === 0) return null;
 
@@ -159,7 +224,11 @@ function buildAISection(
     title: roleNeedsAI ? 'AI Leadership & Transformation' : 'AI & Automation Leadership',
     kind: 'bullet_list',
     lines: lines.length > 0 ? lines : [readiness.summary.trim()],
-    summary: readiness.summary.trim() || undefined,
+    summary: buildSectionPurposeSummary(
+      roleNeedsAI ? 'Connect AI leadership proof to' : 'Show AI-adjacent leadership through',
+      matchingItems,
+      readiness.summary.trim() || undefined,
+    ),
     source: 'ai_readiness',
     recommended_for_job: roleNeedsAI,
     rationale: roleNeedsAI
