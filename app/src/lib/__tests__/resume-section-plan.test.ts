@@ -4,6 +4,7 @@ import type { CandidateIntelligence, ResumeDraft } from '@/types/resume-v2';
 import {
   addResumeCustomSection,
   addOrEnableAIHighlightsSection,
+  buildCustomSectionStarterSuggestions,
   buildResumeSectionPlan,
   getEnabledResumeSectionPlan,
 } from '../resume-section-plan';
@@ -130,5 +131,31 @@ describe('resume-section-plan', () => {
     const experienceIndex = plan.findIndex((item) => item.id === 'professional_experience');
     expect(boardIndex).toBeGreaterThan(-1);
     expect(boardIndex).toBeLessThan(experienceIndex);
+  });
+
+  it('builds grounded starter suggestions for transformation-style sections', () => {
+    const suggestions = buildCustomSectionStarterSuggestions(makeCandidate(), [
+      {
+        id: 'transform',
+        requirement: 'Lead automation and operating-model transformation',
+        source: 'job_description',
+        importance: 'important',
+        candidate_evidence: [
+          {
+            text: 'Rolled out workflow automation across operations.',
+            source_type: 'uploaded_resume',
+            evidence_strength: 'adjacent',
+          },
+        ],
+        best_evidence_excerpt: 'Rolled out workflow automation across operations.',
+        proof_level: 'adjacent',
+        framing_guardrail: 'reframe',
+        current_claim_strength: 'strengthen',
+        next_best_action: 'tighten',
+      },
+    ], 'transformation_highlights');
+
+    expect(suggestions[0]?.text).toContain('Applied automation and data workflows');
+    expect(suggestions[0]?.support).toContain('Applied automation and data workflows');
   });
 });

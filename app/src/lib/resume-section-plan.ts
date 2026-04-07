@@ -35,6 +35,11 @@ export interface ResumeCustomSectionPreset {
   rationale: string;
 }
 
+export interface ResumeSectionStarterSuggestion {
+  text: string;
+  support?: string;
+}
+
 export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
   {
     id: 'board_advisory',
@@ -90,6 +95,209 @@ function slugifySectionId(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
+}
+
+function uniqueSuggestionTexts(suggestions: ResumeSectionStarterSuggestion[]): ResumeSectionStarterSuggestion[] {
+  const seen = new Set<string>();
+  return suggestions.filter((suggestion) => {
+    const key = suggestion.text.toLowerCase().trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function stripTrailingPeriod(value: string): string {
+  return value.trim().replace(/[.]+$/, '');
+}
+
+function firstMatchingEvidence(
+  workItems: RequirementWorkItem[] | null | undefined,
+  patterns: RegExp[],
+): string | null {
+  for (const item of workItems ?? []) {
+    const texts = [
+      item.best_evidence_excerpt,
+      item.target_evidence,
+      item.recommended_bullet,
+      ...item.candidate_evidence.map((evidence) => evidence.text),
+      item.requirement,
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+    for (const text of texts) {
+      if (patterns.some((pattern) => pattern.test(text))) {
+        return stripTrailingPeriod(text);
+      }
+    }
+  }
+  return null;
+}
+
+function firstMatchingHiddenAccomplishment(
+  candidate: CandidateIntelligence | null | undefined,
+  patterns: RegExp[],
+): string | null {
+  for (const item of candidate?.hidden_accomplishments ?? []) {
+    if (patterns.some((pattern) => pattern.test(item))) {
+      return stripTrailingPeriod(item);
+    }
+  }
+  return null;
+}
+
+function topOutcomeLine(candidate: CandidateIntelligence | null | undefined): string | null {
+  const outcome = candidate?.quantified_outcomes?.[0];
+  if (!outcome?.outcome?.trim()) return null;
+  return outcome.value?.trim()
+    ? `${stripTrailingPeriod(outcome.outcome)} (${outcome.value.trim()})`
+    : stripTrailingPeriod(outcome.outcome);
+}
+
+function topExperienceBullet(candidate: CandidateIntelligence | null | undefined): string | null {
+  return candidate?.experience
+    ?.flatMap((experience) => experience.bullets)
+    .find((bullet) => bullet.trim().length > 0)
+    ?.trim() ?? null;
+}
+
+function buildProjectsSuggestion(candidate: CandidateIntelligence | null | undefined): ResumeSectionStarterSuggestion[] {
+  const outcome = topOutcomeLine(candidate);
+  const themePhrase = candidate?.career_themes?.slice(0, 2).join(' and ');
+  const experienceBullet = topExperienceBullet(candidate);
+  const suggestions: ResumeSectionStarterSuggestion[] = [];
+
+  if (outcome && themePhrase) {
+    suggestions.push({
+      text: `Led ${themePhrase.toLowerCase()} initiatives that ${outcome}.`,
+      support: outcome,
+    });
+  }
+  if (experienceBullet) {
+    suggestions.push({
+      text: stripTrailingPeriod(experienceBullet) + '.',
+      support: experienceBullet,
+    });
+  }
+  return uniqueSuggestionTexts(suggestions).slice(0, 3);
+}
+
+function buildTransformationSuggestion(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionStarterSuggestion[] {
+  const suggestions: ResumeSectionStarterSuggestion[] = [];
+  const aiFraming = candidate?.ai_readiness?.signals
+    ?.map((signal) => signal.executive_framing?.trim() || signal.evidence?.trim())
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  const outcome = topOutcomeLine(candidate);
+  const scale = candidate?.operational_scale?.trim();
+  const transformationEvidence = firstMatchingEvidence(workItems, [
+    /\btransform/i,
+    /\bmodern/i,
+    /\boperating model/i,
+    /\bautomation/i,
+    /\bdigital/i,
+  ]);
+
+  if (aiFraming?.[0]) {
+    suggestions.push({
+      text: stripTrailingPeriod(aiFraming[0]) + '.',
+      support: aiFraming[0],
+    });
+  }
+  if (transformationEvidence && scale) {
+    suggestions.push({
+      text: `Led transformation work across ${scale} while ${stripTrailingPeriod(transformationEvidence).replace(/^[A-Z]/, (char) => char.toLowerCase())}.`,
+      support: transformationEvidence,
+    });
+  }
+  if (outcome && scale) {
+    suggestions.push({
+      text: `Drove transformation initiatives across ${scale} that ${outcome}.`,
+      support: outcome,
+    });
+  }
+  return uniqueSuggestionTexts(suggestions).slice(0, 3);
+}
+
+function buildBoardSuggestion(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionStarterSuggestion[] {
+  const boardEvidence = firstMatchingEvidence(workItems, [
+    /\bboard\b/i,
+    /\badvis/i,
+    /\bsteering\b/i,
+    /\bgovernance\b/i,
+    /\boperating review\b/i,
+    /\bscorecard\b/i,
+    /\bexecutive stakeholder\b/i,
+    /\bpe-backed\b/i,
+  ]) ?? firstMatchingHiddenAccomplishment(candidate, [
+    /\bboard\b/i,
+    /\badvis/i,
+    /\bgovernance\b/i,
+    /\boperating review\b/i,
+    /\bscorecard\b/i,
+  ]);
+  const scale = candidate?.operational_scale?.trim();
+
+  if (!boardEvidence) return [];
+
+  return uniqueSuggestionTexts([
+    {
+      text: scale
+        ? `Delivered operating reviews and executive decision support across ${scale}, using ${stripTrailingPeriod(boardEvidence).replace(/^[A-Z]/, (char) => char.toLowerCase())}.`
+        : stripTrailingPeriod(boardEvidence) + '.',
+      support: boardEvidence,
+    },
+  ]);
+}
+
+function buildSpeakingSuggestion(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionStarterSuggestion[] {
+  const evidence = firstMatchingHiddenAccomplishment(candidate, [
+    /\bspeak/i,
+    /\bkeynote/i,
+    /\bpanel/i,
+    /\bpublish/i,
+    /\bpublication/i,
+    /\barticle/i,
+    /\bconference/i,
+  ]) ?? firstMatchingEvidence(workItems, [
+    /\bspeak/i,
+    /\bkeynote/i,
+    /\bpanel/i,
+    /\bpublish/i,
+    /\bpublication/i,
+    /\barticle/i,
+    /\bconference/i,
+  ]);
+
+  return evidence
+    ? [{ text: stripTrailingPeriod(evidence) + '.', support: evidence }]
+    : [];
+}
+
+export function buildCustomSectionStarterSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+  presetId: ResumeCustomSectionPresetId,
+): ResumeSectionStarterSuggestion[] {
+  switch (presetId) {
+    case 'selected_projects':
+      return buildProjectsSuggestion(candidate);
+    case 'transformation_highlights':
+      return buildTransformationSuggestion(candidate, workItems);
+    case 'board_advisory':
+      return buildBoardSuggestion(candidate, workItems);
+    case 'speaking_publications':
+      return buildSpeakingSuggestion(candidate, workItems);
+    case 'custom':
+      return [];
+  }
 }
 
 function normalizeCustomSection(section: ResumeCustomSection): ResumeCustomSection {

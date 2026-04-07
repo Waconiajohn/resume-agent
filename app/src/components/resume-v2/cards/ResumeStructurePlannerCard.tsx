@@ -4,6 +4,7 @@ import type { CandidateIntelligence, RequirementWorkItem, ResumeDraft } from '@/
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 import {
   buildAIHighlightsSection,
+  buildCustomSectionStarterSuggestions,
   buildResumeSectionPlan,
   RESUME_CUSTOM_SECTION_PRESETS,
 } from '@/lib/resume-section-plan';
@@ -56,23 +57,56 @@ export function ResumeStructurePlannerCard({
   const aiSectionCandidate = buildAIHighlightsSection(candidateIntelligence, requirementWorkItems);
   const hasAISection = plan.some((item) => item.id === 'ai_highlights');
   const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
-  const [selectedPresetId, setSelectedPresetId] = useState<ResumeCustomSectionPresetId>('board_advisory');
-  const [sectionTitle, setSectionTitle] = useState('Board & Advisory Experience');
-  const [firstLine, setFirstLine] = useState('');
   const availablePresets = useMemo(() => (
     RESUME_CUSTOM_SECTION_PRESETS.filter((preset) => !plan.some((item) => item.id === preset.id))
   ), [plan]);
+  const starterSuggestions = useMemo<Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionStarterSuggestions>>>>(() => {
+    const entries = availablePresets.map((preset) => [
+      preset.id,
+      buildCustomSectionStarterSuggestions(candidateIntelligence, requirementWorkItems, preset.id),
+    ] as const);
+    return Object.fromEntries(entries) as Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionStarterSuggestions>>>;
+  }, [availablePresets, candidateIntelligence, requirementWorkItems]);
+  const defaultPresetId = useMemo<ResumeCustomSectionPresetId>(() => (
+    availablePresets.find((preset) => (starterSuggestions[preset.id]?.length ?? 0) > 0)?.id
+      ?? availablePresets[0]?.id
+      ?? 'custom'
+  ), [availablePresets, starterSuggestions]);
+  const [selectedPresetId, setSelectedPresetId] = useState<ResumeCustomSectionPresetId>(defaultPresetId);
+  const [sectionTitle, setSectionTitle] = useState('');
+  const [firstLine, setFirstLine] = useState('');
   const selectedPreset = availablePresets.find((preset) => preset.id === selectedPresetId);
+  const selectedSuggestions = selectedPresetId !== 'custom'
+    ? starterSuggestions[selectedPresetId] ?? []
+    : [];
   const canAddSection = sectionTitle.trim().length > 0 && firstLine.trim().length > 0;
 
-  const handleSelectPreset = (presetId: ResumeCustomSectionPresetId) => {
+  const handleSelectPreset = (presetId: ResumeCustomSectionPresetId, options?: { preserveDraft?: boolean }) => {
     setSelectedPresetId(presetId);
     if (presetId === 'custom') {
-      setSectionTitle('');
+      if (!options?.preserveDraft) {
+        setSectionTitle('');
+        setFirstLine('');
+      }
       return;
     }
     const preset = RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === presetId);
     setSectionTitle(preset?.title ?? '');
+    if (!options?.preserveDraft) {
+      const suggestion = buildCustomSectionStarterSuggestions(candidateIntelligence, requirementWorkItems, presetId)[0];
+      setFirstLine(suggestion?.text ?? '');
+    }
+  };
+
+  const handleOpenComposer = () => {
+    const nextPresetId = defaultPresetId;
+    setShowAddSectionComposer((current) => {
+      const next = !current;
+      if (next) {
+        handleSelectPreset(nextPresetId);
+      }
+      return next;
+    });
   };
 
   const handleAddSection = () => {
@@ -80,7 +114,9 @@ export function ResumeStructurePlannerCard({
     onAddCustomSection(sectionTitle.trim(), firstLine.trim(), selectedPresetId === 'custom' ? undefined : selectedPresetId);
     setFirstLine('');
     setShowAddSectionComposer(false);
-    const nextDefaultPreset = availablePresets.find((preset) => preset.id !== selectedPresetId)?.id ?? 'custom';
+    const nextDefaultPreset = availablePresets.find((preset) => preset.id !== selectedPresetId && (starterSuggestions[preset.id]?.length ?? 0) > 0)?.id
+      ?? availablePresets.find((preset) => preset.id !== selectedPresetId)?.id
+      ?? 'custom';
     handleSelectPreset(nextDefaultPreset);
   };
 
@@ -97,7 +133,7 @@ export function ResumeStructurePlannerCard({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            onClick={() => setShowAddSectionComposer((current) => !current)}
+            onClick={handleOpenComposer}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-2)] transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -156,6 +192,31 @@ export function ResumeStructurePlannerCard({
           <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
             {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
           </p>
+          {selectedSuggestions.length > 0 && (
+            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Suggested starters</p>
+              <div className="mt-2 space-y-2">
+                {selectedSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.text}
+                    type="button"
+                    onClick={() => setFirstLine(suggestion.text)}
+                    className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors"
+                  >
+                    <p className="text-sm leading-6 text-[var(--text-strong)]">{suggestion.text}</p>
+                    {suggestion.support && (
+                      <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">Built from: {suggestion.support}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {selectedPresetId !== 'custom' && selectedSuggestions.length === 0 && (
+            <div className="mt-3 rounded-xl border border-dashed border-[var(--line-soft)] px-3.5 py-3 text-[13px] leading-5 text-[var(--text-soft)]">
+              We do not have a strong starter suggestion for this section yet. Add it only if you can write one concrete, truthful line to anchor it.
+            </div>
+          )}
           <div className="mt-3 grid gap-3">
             <label className="grid gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Section Title</span>
