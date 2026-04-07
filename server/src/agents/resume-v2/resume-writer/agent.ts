@@ -15,6 +15,7 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
+import { applySectionPlanning } from '../section-planning.js';
 import type {
   ResumeWriterInput,
   ResumeDraftOutput,
@@ -445,6 +446,7 @@ export async function runResumeWriter(
     input.gap_analysis.requirements,
     selectedAccomplishmentTargets,
   );
+  parsed = applySectionPlanning(parsed, input.candidate, input.gap_analysis);
 
   // Log review-state distribution summary
   const reviewStateCounts = {
