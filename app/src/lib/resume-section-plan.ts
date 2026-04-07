@@ -45,6 +45,13 @@ export interface ResumeSectionDraftSuggestion {
   support?: string[];
 }
 
+export interface ResumeCustomSectionPresetRecommendation {
+  presetId: ResumeCustomSectionPresetId;
+  title: string;
+  whyNow: string;
+  readyLineCount: number;
+}
+
 export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
   {
     id: 'board_advisory',
@@ -67,6 +74,28 @@ export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
     rationale: 'Call out cross-functional change work, operating-model redesign, or digital transformation wins above the fold.',
   },
 ];
+
+const CUSTOM_SECTION_RECOMMENDATION_RULES: Record<Exclude<ResumeCustomSectionPresetId, 'custom'>, {
+  requirementPatterns: RegExp[];
+  whyNow: string;
+}> = {
+  board_advisory: {
+    requirementPatterns: [/\bboard\b/i, /\bgovernance\b/i, /\badvis/i, /\bsteering\b/i, /\boperating review\b/i, /\bexecutive stakeholder\b/i],
+    whyNow: 'Board-facing or governance-heavy leadership can strengthen the executive story for this role.',
+  },
+  selected_projects: {
+    requirementPatterns: [/\blaunch/i, /\bprogram/i, /\binitiative/i, /\bturnaround\b/i, /\btransformation\b/i, /\bportfolio\b/i],
+    whyNow: 'This role benefits from giving major initiatives their own spotlight instead of burying them inside chronology.',
+  },
+  speaking_publications: {
+    requirementPatterns: [/\bthought leadership\b/i, /\bspeaking\b/i, /\bconference\b/i, /\bpublication\b/i, /\bmarket presence\b/i],
+    whyNow: 'Thought leadership can reinforce external credibility and executive presence for this search.',
+  },
+  transformation_highlights: {
+    requirementPatterns: [/\btransform/i, /\bautomation\b/i, /\bdigital\b/i, /\boperating model\b/i, /\bmodern/i, /\bai\b/i, /\bgenai\b/i],
+    whyNow: 'The role is signaling transformation, automation, or AI change leadership, and this section can make that proof easier to see.',
+  },
+};
 
 function hasSectionContent(resume: ResumeDraft, type: ResumeSectionType): boolean {
   switch (type) {
@@ -184,6 +213,21 @@ function normalizeDraftLines(lines: string[]): string[] {
   return lines
     .map((line) => line.trim())
     .filter((line, index, all) => line.length > 0 && all.findIndex((candidate) => candidate.toLowerCase() === line.toLowerCase()) === index);
+}
+
+function hasRequirementSignal(
+  workItems: RequirementWorkItem[] | null | undefined,
+  patterns: RegExp[],
+): boolean {
+  return (workItems ?? []).some((item) => {
+    const haystacks = [
+      item.requirement,
+      item.source_evidence,
+      item.best_evidence_excerpt,
+      item.target_evidence,
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    return haystacks.some((text) => patterns.some((pattern) => pattern.test(text)));
+  });
 }
 
 function buildProjectsSuggestion(candidate: CandidateIntelligence | null | undefined): ResumeSectionStarterSuggestion[] {
@@ -453,6 +497,42 @@ export function buildCustomSectionDraftSuggestions(
     case 'custom':
       return [];
   }
+}
+
+export function buildCustomSectionPresetRecommendations(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+  existingSectionIds: string[] = [],
+): ResumeCustomSectionPresetRecommendation[] {
+  const existingIds = new Set(existingSectionIds);
+  const recommendations: ResumeCustomSectionPresetRecommendation[] = [];
+
+  for (const preset of RESUME_CUSTOM_SECTION_PRESETS) {
+    if (preset.id === 'custom') continue;
+    if (existingIds.has(preset.id)) continue;
+
+    const draftSuggestions = buildCustomSectionDraftSuggestions(candidate, workItems, preset.id);
+    if (draftSuggestions.length === 0) continue;
+
+    const rule = CUSTOM_SECTION_RECOMMENDATION_RULES[preset.id];
+    const roleSignal = hasRequirementSignal(workItems, rule.requirementPatterns);
+    const readyLineCount = draftSuggestions[0]?.lines.length ?? 0;
+
+    if (!roleSignal && readyLineCount < 2 && preset.id !== 'board_advisory' && preset.id !== 'speaking_publications') {
+      continue;
+    }
+
+    recommendations.push({
+      presetId: preset.id,
+      title: preset.title,
+      whyNow: roleSignal
+        ? rule.whyNow
+        : `We already have enough grounded evidence to draft this section now, without asking the user to start from scratch.`,
+      readyLineCount,
+    });
+  }
+
+  return recommendations.sort((a, b) => b.readyLineCount - a.readyLineCount || a.title.localeCompare(b.title));
 }
 
 export function buildCustomSectionStarterSuggestions(

@@ -5,6 +5,7 @@ import {
   addResumeCustomSection,
   addOrEnableAIHighlightsSection,
   buildCustomSectionDraftSuggestions,
+  buildCustomSectionPresetRecommendations,
   buildCustomSectionStarterSuggestions,
   buildResumeSectionPlan,
   getEnabledResumeSectionPlan,
@@ -193,5 +194,35 @@ describe('resume-section-plan', () => {
       'Led transformation work across 3 sites while rolled out workflow automation across operations.',
     ]);
     expect(suggestions[0]?.support).toContain('Rolled out workflow automation across operations');
+  });
+
+  it('recommends grounded custom section presets when the role signals a fit', () => {
+    const recommendations = buildCustomSectionPresetRecommendations(makeCandidate(), [
+      {
+        id: 'transform',
+        requirement: 'Lead automation and operating-model transformation',
+        source: 'job_description',
+        importance: 'important',
+        candidate_evidence: [
+          {
+            text: 'Rolled out workflow automation across operations.',
+            source_type: 'uploaded_resume',
+            evidence_strength: 'adjacent',
+          },
+        ],
+        best_evidence_excerpt: 'Rolled out workflow automation across operations.',
+        proof_level: 'adjacent',
+        framing_guardrail: 'reframe',
+        current_claim_strength: 'strengthen',
+        next_best_action: 'tighten',
+      },
+    ]);
+
+    expect(recommendations).toContainEqual(
+      expect.objectContaining({
+        presetId: 'transformation_highlights',
+        readyLineCount: 2,
+      }),
+    );
   });
 });

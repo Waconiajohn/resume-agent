@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ResumeStructurePlannerCard } from '../cards/ResumeStructurePlannerCard';
-import type { CandidateIntelligence, ResumeDraft } from '@/types/resume-v2';
+import type { CandidateIntelligence, RequirementWorkItem, ResumeDraft } from '@/types/resume-v2';
 
 function makeResumeDraft(): ResumeDraft {
   return {
@@ -90,6 +90,29 @@ function makeCandidate(): CandidateIntelligence {
   };
 }
 
+function makeTransformationWorkItems(): RequirementWorkItem[] {
+  return [
+    {
+      id: 'transform-work',
+      requirement: 'Lead automation and operating-model transformation',
+      source: 'job_description',
+      importance: 'important',
+      candidate_evidence: [
+        {
+          text: 'Rolled out workflow automation across operations.',
+          source_type: 'uploaded_resume',
+          evidence_strength: 'adjacent',
+        },
+      ],
+      best_evidence_excerpt: 'Rolled out workflow automation across operations.',
+      proof_level: 'adjacent',
+      framing_guardrail: 'reframe',
+      current_claim_strength: 'strengthen',
+      next_best_action: 'tighten',
+    },
+  ];
+}
+
 describe('ResumeStructurePlannerCard', () => {
   afterEach(() => {
     cleanup();
@@ -139,6 +162,31 @@ describe('ResumeStructurePlannerCard', () => {
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Transformation Highlights');
     expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
       'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+      'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
+    ].join('\n'));
+  });
+
+  it('surfaces recommended custom sections for the role and opens the matching draft', () => {
+    render(
+      <ResumeStructurePlannerCard
+        resume={makeResumeDraft()}
+        candidateIntelligence={makeCandidate()}
+        requirementWorkItems={makeTransformationWorkItems()}
+        onMoveSection={vi.fn()}
+        onToggleSection={vi.fn()}
+        onAddAISection={vi.fn()}
+        onAddCustomSection={vi.fn()}
+        onRemoveCustomSection={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/recommended section adds/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /preview draft/i })[0]);
+
+    expect(screen.getByLabelText(/section title/i)).toHaveValue('Transformation Highlights');
+    expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
+      'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+      'Led transformation work across 3 sites while rolled out workflow automation across operations.',
       'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
     ].join('\n'));
   });

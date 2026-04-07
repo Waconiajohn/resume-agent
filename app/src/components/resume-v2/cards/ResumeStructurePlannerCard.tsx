@@ -5,6 +5,7 @@ import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 import {
   buildAIHighlightsSection,
   buildCustomSectionDraftSuggestions,
+  buildCustomSectionPresetRecommendations,
   buildResumeSectionPlan,
   RESUME_CUSTOM_SECTION_PRESETS,
 } from '@/lib/resume-section-plan';
@@ -56,10 +57,24 @@ export function ResumeStructurePlannerCard({
   const plan = buildResumeSectionPlan(resume);
   const aiSectionCandidate = buildAIHighlightsSection(candidateIntelligence, requirementWorkItems);
   const hasAISection = plan.some((item) => item.id === 'ai_highlights');
+  const recommendationList = useMemo(
+    () => buildCustomSectionPresetRecommendations(candidateIntelligence, requirementWorkItems, plan.map((item) => item.id)),
+    [candidateIntelligence, requirementWorkItems, plan],
+  );
+  const recommendationOrder = useMemo(
+    () => new Map(recommendationList.map((item, index) => [item.presetId, index])),
+    [recommendationList],
+  );
   const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
   const availablePresets = useMemo(() => (
-    RESUME_CUSTOM_SECTION_PRESETS.filter((preset) => !plan.some((item) => item.id === preset.id))
-  ), [plan]);
+    RESUME_CUSTOM_SECTION_PRESETS
+      .filter((preset) => !plan.some((item) => item.id === preset.id))
+      .sort((a, b) => {
+        const aOrder = recommendationOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = recommendationOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder || a.title.localeCompare(b.title);
+      })
+  ), [plan, recommendationOrder]);
   const draftSuggestions = useMemo<Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionDraftSuggestions>>>>(() => {
     const entries = availablePresets.map((preset) => [
       preset.id,
@@ -111,6 +126,13 @@ export function ResumeStructurePlannerCard({
       }
       return next;
     });
+  };
+
+  const handleUseRecommendedPreset = (presetId: ResumeCustomSectionPresetId) => {
+    if (!showAddSectionComposer) {
+      setShowAddSectionComposer(true);
+    }
+    handleSelectPreset(presetId);
   };
 
   const handleAddSection = () => {
@@ -276,6 +298,46 @@ export function ResumeStructurePlannerCard({
           <p className="mt-1">
             We found AI-adjacent leadership signals in the candidate profile. Add this when the role values AI, automation, or transformation leadership.
           </p>
+        </div>
+      )}
+
+      {recommendationList.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-strong)]">Recommended section adds</p>
+              <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
+                These section types already have grounded draft material and fit what this role appears to reward.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            {recommendationList.map((recommendation) => (
+              <div
+                key={recommendation.presetId}
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-[var(--text-strong)]">{recommendation.title}</p>
+                      <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
+                        {recommendation.readyLineCount} lines ready
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">{recommendation.whyNow}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleUseRecommendedPreset(recommendation.presetId)}
+                    className="shrink-0 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
+                  >
+                    Preview Draft
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
