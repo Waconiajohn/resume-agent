@@ -40,6 +40,11 @@ export interface ResumeSectionStarterSuggestion {
   support?: string;
 }
 
+export interface ResumeSectionDraftSuggestion {
+  lines: string[];
+  support?: string[];
+}
+
 export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
   {
     id: 'board_advisory',
@@ -107,6 +112,21 @@ function uniqueSuggestionTexts(suggestions: ResumeSectionStarterSuggestion[]): R
   });
 }
 
+function uniqueDraftSuggestions(suggestions: ResumeSectionDraftSuggestion[]): ResumeSectionDraftSuggestion[] {
+  const seen = new Set<string>();
+  return suggestions.filter((suggestion) => {
+    const normalizedLines = suggestion.lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const key = normalizedLines.join('\n').toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    suggestion.lines = normalizedLines;
+    suggestion.support = suggestion.support?.filter((value) => value.trim().length > 0);
+    return normalizedLines.length > 0;
+  });
+}
+
 function stripTrailingPeriod(value: string): string {
   return value.trim().replace(/[.]+$/, '');
 }
@@ -160,6 +180,12 @@ function topExperienceBullet(candidate: CandidateIntelligence | null | undefined
     ?.trim() ?? null;
 }
 
+function normalizeDraftLines(lines: string[]): string[] {
+  return lines
+    .map((line) => line.trim())
+    .filter((line, index, all) => line.length > 0 && all.findIndex((candidate) => candidate.toLowerCase() === line.toLowerCase()) === index);
+}
+
 function buildProjectsSuggestion(candidate: CandidateIntelligence | null | undefined): ResumeSectionStarterSuggestion[] {
   const outcome = topOutcomeLine(candidate);
   const themePhrase = candidate?.career_themes?.slice(0, 2).join(' and ');
@@ -179,6 +205,28 @@ function buildProjectsSuggestion(candidate: CandidateIntelligence | null | undef
     });
   }
   return uniqueSuggestionTexts(suggestions).slice(0, 3);
+}
+
+function buildProjectsDraftSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+): ResumeSectionDraftSuggestion[] {
+  const outcome = topOutcomeLine(candidate);
+  const themePhrase = candidate?.career_themes?.slice(0, 2).join(' and ');
+  const experienceBullet = topExperienceBullet(candidate);
+  const drafts: ResumeSectionDraftSuggestion[] = [];
+
+  const primaryLines = normalizeDraftLines([
+    outcome && themePhrase ? `Led ${themePhrase.toLowerCase()} initiatives that ${outcome}.` : '',
+    experienceBullet ? stripTrailingPeriod(experienceBullet) + '.' : '',
+  ]);
+  if (primaryLines.length > 0) {
+    drafts.push({
+      lines: primaryLines,
+      support: [outcome, experienceBullet].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    });
+  }
+
+  return uniqueDraftSuggestions(drafts).slice(0, 2);
 }
 
 function buildTransformationSuggestion(
@@ -220,6 +268,42 @@ function buildTransformationSuggestion(
   return uniqueSuggestionTexts(suggestions).slice(0, 3);
 }
 
+function buildTransformationDraftSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionDraftSuggestion[] {
+  const aiFraming = candidate?.ai_readiness?.signals
+    ?.map((signal) => signal.executive_framing?.trim() || signal.evidence?.trim())
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  const outcome = topOutcomeLine(candidate);
+  const scale = candidate?.operational_scale?.trim();
+  const transformationEvidence = firstMatchingEvidence(workItems, [
+    /\btransform/i,
+    /\bmodern/i,
+    /\boperating model/i,
+    /\bautomation/i,
+    /\bdigital/i,
+  ]);
+  const drafts: ResumeSectionDraftSuggestion[] = [];
+
+  const primaryLines = normalizeDraftLines([
+    aiFraming?.[0] ? stripTrailingPeriod(aiFraming[0]) + '.' : '',
+    transformationEvidence && scale
+      ? `Led transformation work across ${scale} while ${stripTrailingPeriod(transformationEvidence).replace(/^[A-Z]/, (char) => char.toLowerCase())}.`
+      : '',
+    outcome && scale ? `Drove transformation initiatives across ${scale} that ${outcome}.` : '',
+  ]);
+
+  if (primaryLines.length > 0) {
+    drafts.push({
+      lines: primaryLines,
+      support: [aiFraming?.[0], transformationEvidence, outcome].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    });
+  }
+
+  return uniqueDraftSuggestions(drafts).slice(0, 2);
+}
+
 function buildBoardSuggestion(
   candidate: CandidateIntelligence | null | undefined,
   workItems: RequirementWorkItem[] | null | undefined,
@@ -254,6 +338,45 @@ function buildBoardSuggestion(
   ]);
 }
 
+function buildBoardDraftSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionDraftSuggestion[] {
+  const boardEvidence = firstMatchingEvidence(workItems, [
+    /\bboard\b/i,
+    /\badvis/i,
+    /\bsteering\b/i,
+    /\bgovernance\b/i,
+    /\boperating review\b/i,
+    /\bscorecard\b/i,
+    /\bexecutive stakeholder\b/i,
+    /\bpe-backed\b/i,
+  ]) ?? firstMatchingHiddenAccomplishment(candidate, [
+    /\bboard\b/i,
+    /\badvis/i,
+    /\bgovernance\b/i,
+    /\boperating review\b/i,
+    /\bscorecard\b/i,
+  ]);
+  const scale = candidate?.operational_scale?.trim();
+  const outcome = topOutcomeLine(candidate);
+  if (!boardEvidence) return [];
+
+  const lines = normalizeDraftLines([
+    scale
+      ? `Delivered operating reviews and executive decision support across ${scale}, using ${stripTrailingPeriod(boardEvidence).replace(/^[A-Z]/, (char) => char.toLowerCase())}.`
+      : stripTrailingPeriod(boardEvidence) + '.',
+    outcome ? `Helped leadership teams act on performance signals that ${outcome}.` : '',
+  ]);
+
+  return uniqueDraftSuggestions([
+    {
+      lines,
+      support: [boardEvidence, outcome].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    },
+  ]);
+}
+
 function buildSpeakingSuggestion(
   candidate: CandidateIntelligence | null | undefined,
   workItems: RequirementWorkItem[] | null | undefined,
@@ -281,11 +404,72 @@ function buildSpeakingSuggestion(
     : [];
 }
 
+function buildSpeakingDraftSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+): ResumeSectionDraftSuggestion[] {
+  const evidence = firstMatchingHiddenAccomplishment(candidate, [
+    /\bspeak/i,
+    /\bkeynote/i,
+    /\bpanel/i,
+    /\bpublish/i,
+    /\bpublication/i,
+    /\barticle/i,
+    /\bconference/i,
+  ]) ?? firstMatchingEvidence(workItems, [
+    /\bspeak/i,
+    /\bkeynote/i,
+    /\bpanel/i,
+    /\bpublish/i,
+    /\bpublication/i,
+    /\barticle/i,
+    /\bconference/i,
+  ]);
+
+  if (!evidence) return [];
+
+  return uniqueDraftSuggestions([
+    {
+      lines: [stripTrailingPeriod(evidence) + '.'],
+      support: [evidence],
+    },
+  ]);
+}
+
+export function buildCustomSectionDraftSuggestions(
+  candidate: CandidateIntelligence | null | undefined,
+  workItems: RequirementWorkItem[] | null | undefined,
+  presetId: ResumeCustomSectionPresetId,
+): ResumeSectionDraftSuggestion[] {
+  switch (presetId) {
+    case 'selected_projects':
+      return buildProjectsDraftSuggestions(candidate);
+    case 'transformation_highlights':
+      return buildTransformationDraftSuggestions(candidate, workItems);
+    case 'board_advisory':
+      return buildBoardDraftSuggestions(candidate, workItems);
+    case 'speaking_publications':
+      return buildSpeakingDraftSuggestions(candidate, workItems);
+    case 'custom':
+      return [];
+  }
+}
+
 export function buildCustomSectionStarterSuggestions(
   candidate: CandidateIntelligence | null | undefined,
   workItems: RequirementWorkItem[] | null | undefined,
   presetId: ResumeCustomSectionPresetId,
 ): ResumeSectionStarterSuggestion[] {
+  const draftSuggestions = buildCustomSectionDraftSuggestions(candidate, workItems, presetId);
+  if (draftSuggestions.length > 0) {
+    return uniqueSuggestionTexts(
+      draftSuggestions.map((suggestion) => ({
+        text: suggestion.lines[0] ?? '',
+        support: suggestion.support?.[0],
+      })),
+    );
+  }
+
   switch (presetId) {
     case 'selected_projects':
       return buildProjectsSuggestion(candidate);
@@ -433,14 +617,15 @@ export function addResumeCustomSection(
   resume: ResumeDraft,
   options: {
     title: string;
-    firstLine: string;
+    firstLine?: string;
+    lines?: string[];
     presetId?: ResumeCustomSectionPresetId;
   },
 ): ResumeDraft {
   const customSections = normalizeResumeCustomSections(resume);
   const normalizedTitle = normalizeSectionTitle(options.title, 'Custom Section');
-  const normalizedFirstLine = options.firstLine.trim();
-  if (!normalizedFirstLine) return resume;
+  const normalizedLines = normalizeDraftLines(options.lines ?? (options.firstLine ? [options.firstLine] : []));
+  if (normalizedLines.length === 0) return resume;
 
   const preset = options.presetId
     ? RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === options.presetId)
@@ -452,7 +637,7 @@ export function addResumeCustomSection(
       id,
       title: normalizedTitle,
       kind: 'bullet_list' as const,
-      lines: [normalizedFirstLine],
+      lines: normalizedLines,
       source: 'user_added' as ResumeSectionPlanSource,
       rationale: preset?.rationale,
     },

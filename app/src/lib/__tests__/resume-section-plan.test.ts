@@ -4,6 +4,7 @@ import type { CandidateIntelligence, ResumeDraft } from '@/types/resume-v2';
 import {
   addResumeCustomSection,
   addOrEnableAIHighlightsSection,
+  buildCustomSectionDraftSuggestions,
   buildCustomSectionStarterSuggestions,
   buildResumeSectionPlan,
   getEnabledResumeSectionPlan,
@@ -115,14 +116,20 @@ describe('resume-section-plan', () => {
     const resume = addResumeCustomSection(makeResumeDraft(), {
       presetId: 'board_advisory',
       title: 'Board & Advisory Experience',
-      firstLine: 'Presented operating reviews and transformation progress to the board and PE sponsors.',
+      lines: [
+        'Presented operating reviews and transformation progress to the board and PE sponsors.',
+        'Helped leadership teams act on performance signals that improved throughput by 18% (18%).',
+      ],
     });
 
     expect(resume.custom_sections).toEqual([
       expect.objectContaining({
         id: 'board_advisory',
         title: 'Board & Advisory Experience',
-        lines: ['Presented operating reviews and transformation progress to the board and PE sponsors.'],
+        lines: [
+          'Presented operating reviews and transformation progress to the board and PE sponsors.',
+          'Helped leadership teams act on performance signals that improved throughput by 18% (18%).',
+        ],
       }),
     ]);
 
@@ -157,5 +164,34 @@ describe('resume-section-plan', () => {
 
     expect(suggestions[0]?.text).toContain('Applied automation and data workflows');
     expect(suggestions[0]?.support).toContain('Applied automation and data workflows');
+  });
+
+  it('builds multi-line draft suggestions for transformation-style sections', () => {
+    const suggestions = buildCustomSectionDraftSuggestions(makeCandidate(), [
+      {
+        id: 'transform',
+        requirement: 'Lead automation and operating-model transformation',
+        source: 'job_description',
+        importance: 'important',
+        candidate_evidence: [
+          {
+            text: 'Rolled out workflow automation across operations.',
+            source_type: 'uploaded_resume',
+            evidence_strength: 'adjacent',
+          },
+        ],
+        best_evidence_excerpt: 'Rolled out workflow automation across operations.',
+        proof_level: 'adjacent',
+        framing_guardrail: 'reframe',
+        current_claim_strength: 'strengthen',
+        next_best_action: 'tighten',
+      },
+    ], 'transformation_highlights');
+
+    expect(suggestions[0]?.lines).toEqual([
+      'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+      'Led transformation work across 3 sites while rolled out workflow automation across operations.',
+    ]);
+    expect(suggestions[0]?.support).toContain('Rolled out workflow automation across operations');
   });
 });

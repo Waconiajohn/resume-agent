@@ -1151,13 +1151,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   const handleAddCustomSection = useCallback((
     title: string,
-    firstLine: string,
+    lines: string[],
     presetId?: ResumeCustomSectionPresetId,
   ) => {
     setEditableResume((prev) => {
       const base = normalizeResumeDraft(prev ?? currentResume);
       if (!base) return prev;
-      return addResumeCustomSection(base, { title, firstLine, presetId });
+      return addResumeCustomSection(base, { title, lines, presetId });
     });
     markResumeArtifactsStale();
   }, [currentResume, markResumeArtifactsStale]);

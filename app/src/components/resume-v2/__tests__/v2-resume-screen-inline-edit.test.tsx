@@ -532,9 +532,12 @@ describe('V2ResumeScreen inline editing', () => {
 
     act(() => {
       const props = latestStreamingProps();
-      (props.onAddCustomSection as (title: string, firstLine: string, presetId?: string) => void)(
+      (props.onAddCustomSection as (title: string, lines: string[], presetId?: string) => void)(
         'Board & Advisory Experience',
-        'Presented operating reviews and transformation updates to the board and PE sponsors.',
+        [
+          'Presented operating reviews and transformation updates to the board and PE sponsors.',
+          'Helped leadership teams act on performance signals that improved throughput by 18% (18%).',
+        ],
         'board_advisory',
       );
     });
@@ -544,7 +547,10 @@ describe('V2ResumeScreen inline editing', () => {
       expect.objectContaining({
         id: 'board_advisory',
         title: 'Board & Advisory Experience',
-        lines: ['Presented operating reviews and transformation updates to the board and PE sponsors.'],
+        lines: [
+          'Presented operating reviews and transformation updates to the board and PE sponsors.',
+          'Helped leadership teams act on performance signals that improved throughput by 18% (18%).',
+        ],
       }),
     );
     const planIds = editableResume.section_plan?.map((item) => item.id) ?? [];

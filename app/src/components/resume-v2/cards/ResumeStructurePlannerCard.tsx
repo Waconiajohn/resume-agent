@@ -4,7 +4,7 @@ import type { CandidateIntelligence, RequirementWorkItem, ResumeDraft } from '@/
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 import {
   buildAIHighlightsSection,
-  buildCustomSectionStarterSuggestions,
+  buildCustomSectionDraftSuggestions,
   buildResumeSectionPlan,
   RESUME_CUSTOM_SECTION_PRESETS,
 } from '@/lib/resume-section-plan';
@@ -16,7 +16,7 @@ interface ResumeStructurePlannerCardProps {
   onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection: (sectionId: string, enabled: boolean) => void;
   onAddAISection: () => void;
-  onAddCustomSection: (title: string, firstLine: string, presetId?: ResumeCustomSectionPresetId) => void;
+  onAddCustomSection: (title: string, lines: string[], presetId?: ResumeCustomSectionPresetId) => void;
   onRemoveCustomSection: (sectionId: string) => void;
 }
 
@@ -60,41 +60,45 @@ export function ResumeStructurePlannerCard({
   const availablePresets = useMemo(() => (
     RESUME_CUSTOM_SECTION_PRESETS.filter((preset) => !plan.some((item) => item.id === preset.id))
   ), [plan]);
-  const starterSuggestions = useMemo<Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionStarterSuggestions>>>>(() => {
+  const draftSuggestions = useMemo<Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionDraftSuggestions>>>>(() => {
     const entries = availablePresets.map((preset) => [
       preset.id,
-      buildCustomSectionStarterSuggestions(candidateIntelligence, requirementWorkItems, preset.id),
+      buildCustomSectionDraftSuggestions(candidateIntelligence, requirementWorkItems, preset.id),
     ] as const);
-    return Object.fromEntries(entries) as Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionStarterSuggestions>>>;
+    return Object.fromEntries(entries) as Partial<Record<ResumeCustomSectionPresetId, ReturnType<typeof buildCustomSectionDraftSuggestions>>>;
   }, [availablePresets, candidateIntelligence, requirementWorkItems]);
   const defaultPresetId = useMemo<ResumeCustomSectionPresetId>(() => (
-    availablePresets.find((preset) => (starterSuggestions[preset.id]?.length ?? 0) > 0)?.id
+    availablePresets.find((preset) => (draftSuggestions[preset.id]?.length ?? 0) > 0)?.id
       ?? availablePresets[0]?.id
       ?? 'custom'
-  ), [availablePresets, starterSuggestions]);
+  ), [availablePresets, draftSuggestions]);
   const [selectedPresetId, setSelectedPresetId] = useState<ResumeCustomSectionPresetId>(defaultPresetId);
   const [sectionTitle, setSectionTitle] = useState('');
-  const [firstLine, setFirstLine] = useState('');
+  const [draftText, setDraftText] = useState('');
   const selectedPreset = availablePresets.find((preset) => preset.id === selectedPresetId);
-  const selectedSuggestions = selectedPresetId !== 'custom'
-    ? starterSuggestions[selectedPresetId] ?? []
+  const selectedDraftSuggestions = selectedPresetId !== 'custom'
+    ? draftSuggestions[selectedPresetId] ?? []
     : [];
-  const canAddSection = sectionTitle.trim().length > 0 && firstLine.trim().length > 0;
+  const draftLines = useMemo(
+    () => draftText.split('\n').map((line) => line.trim()).filter((line, index, all) => line.length > 0 && all.findIndex((candidate) => candidate.toLowerCase() === line.toLowerCase()) === index),
+    [draftText],
+  );
+  const canAddSection = sectionTitle.trim().length > 0 && draftLines.length > 0;
 
   const handleSelectPreset = (presetId: ResumeCustomSectionPresetId, options?: { preserveDraft?: boolean }) => {
     setSelectedPresetId(presetId);
     if (presetId === 'custom') {
       if (!options?.preserveDraft) {
         setSectionTitle('');
-        setFirstLine('');
+        setDraftText('');
       }
       return;
     }
     const preset = RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === presetId);
     setSectionTitle(preset?.title ?? '');
     if (!options?.preserveDraft) {
-      const suggestion = buildCustomSectionStarterSuggestions(candidateIntelligence, requirementWorkItems, presetId)[0];
-      setFirstLine(suggestion?.text ?? '');
+      const suggestion = buildCustomSectionDraftSuggestions(candidateIntelligence, requirementWorkItems, presetId)[0];
+      setDraftText(suggestion?.lines.join('\n') ?? '');
     }
   };
 
@@ -111,10 +115,10 @@ export function ResumeStructurePlannerCard({
 
   const handleAddSection = () => {
     if (!canAddSection) return;
-    onAddCustomSection(sectionTitle.trim(), firstLine.trim(), selectedPresetId === 'custom' ? undefined : selectedPresetId);
-    setFirstLine('');
+    onAddCustomSection(sectionTitle.trim(), draftLines, selectedPresetId === 'custom' ? undefined : selectedPresetId);
+    setDraftText('');
     setShowAddSectionComposer(false);
-    const nextDefaultPreset = availablePresets.find((preset) => preset.id !== selectedPresetId && (starterSuggestions[preset.id]?.length ?? 0) > 0)?.id
+    const nextDefaultPreset = availablePresets.find((preset) => preset.id !== selectedPresetId && (draftSuggestions[preset.id]?.length ?? 0) > 0)?.id
       ?? availablePresets.find((preset) => preset.id !== selectedPresetId)?.id
       ?? 'custom';
     handleSelectPreset(nextDefaultPreset);
@@ -158,7 +162,7 @@ export function ResumeStructurePlannerCard({
             <div>
               <p className="text-sm font-semibold text-[var(--text-strong)]">Add a section with real content</p>
               <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
-                Start with one strong line now. You can always add more once the section is in the resume.
+                Start with a small grounded draft now. You can keep polishing the section once it is in the resume.
               </p>
             </div>
           </div>
@@ -192,29 +196,33 @@ export function ResumeStructurePlannerCard({
           <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
             {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
           </p>
-          {selectedSuggestions.length > 0 && (
+          {selectedDraftSuggestions.length > 0 && (
             <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Suggested starters</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Suggested section drafts</p>
               <div className="mt-2 space-y-2">
-                {selectedSuggestions.map((suggestion) => (
+                {selectedDraftSuggestions.map((suggestion) => (
                   <button
-                    key={suggestion.text}
+                    key={suggestion.lines.join('|')}
                     type="button"
-                    onClick={() => setFirstLine(suggestion.text)}
+                    onClick={() => setDraftText(suggestion.lines.join('\n'))}
                     className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors"
                   >
-                    <p className="text-sm leading-6 text-[var(--text-strong)]">{suggestion.text}</p>
-                    {suggestion.support && (
-                      <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">Built from: {suggestion.support}</p>
+                    <div className="space-y-1">
+                      {suggestion.lines.map((line) => (
+                        <p key={line} className="text-sm leading-6 text-[var(--text-strong)]">• {line}</p>
+                      ))}
+                    </div>
+                    {suggestion.support && suggestion.support.length > 0 && (
+                      <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">Built from: {suggestion.support.join(' • ')}</p>
                     )}
                   </button>
                 ))}
               </div>
             </div>
           )}
-          {selectedPresetId !== 'custom' && selectedSuggestions.length === 0 && (
+          {selectedPresetId !== 'custom' && selectedDraftSuggestions.length === 0 && (
             <div className="mt-3 rounded-xl border border-dashed border-[var(--line-soft)] px-3.5 py-3 text-[13px] leading-5 text-[var(--text-soft)]">
-              We do not have a strong starter suggestion for this section yet. Add it only if you can write one concrete, truthful line to anchor it.
+              We do not have a strong section draft suggestion for this preset yet. Add it only if you can write a few concrete, truthful lines to anchor it.
             </div>
           )}
           <div className="mt-3 grid gap-3">
@@ -229,14 +237,17 @@ export function ResumeStructurePlannerCard({
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">First Highlight</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Opening Lines</span>
               <textarea
-                value={firstLine}
-                onChange={(event) => setFirstLine(event.target.value)}
-                rows={3}
-                placeholder="Example: Served as executive sponsor for a plant-network transformation that improved throughput, quality, and operating cadence."
+                value={draftText}
+                onChange={(event) => setDraftText(event.target.value)}
+                rows={5}
+                placeholder={'Example:\nServed as executive sponsor for a plant-network transformation that improved throughput, quality, and operating cadence.\nBuilt KPI reviews and operating rhythms that made turnaround progress visible to plant and executive leaders.'}
                 className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--link)]"
               />
+              <span className="text-[11px] leading-5 text-[var(--text-soft)]">
+                Use one line per highlight. We will turn each non-empty line into a starter bullet inside the new section.
+              </span>
             </label>
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">

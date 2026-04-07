@@ -128,7 +128,7 @@ interface V2StreamingDisplayProps {
   onMoveSection?: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection?: (sectionId: string, enabled: boolean) => void;
   onAddAISection?: () => void;
-  onAddCustomSection?: (title: string, firstLine: string, presetId?: ResumeCustomSectionPresetId) => void;
+  onAddCustomSection?: (title: string, lines: string[], presetId?: ResumeCustomSectionPresetId) => void;
   onRemoveCustomSection?: (sectionId: string) => void;
   /** Job application URL — when present and pipeline is complete, shows the Apply to This Job button */
   jobUrl?: string;

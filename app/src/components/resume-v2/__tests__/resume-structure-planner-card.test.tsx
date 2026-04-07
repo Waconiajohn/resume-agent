@@ -111,9 +111,12 @@ describe('ResumeStructurePlannerCard', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /add section/i })[0]);
 
-    expect(screen.getByText(/suggested starters/i)).toBeInTheDocument();
+    expect(screen.getByText(/suggested section drafts/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Selected Projects');
-    expect(screen.getByLabelText(/first highlight/i)).not.toHaveValue('');
+    expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
+      'Led transformation and operational excellence initiatives that improved throughput by 18% (18%).',
+      'Led a multi-site transformation program that modernized reporting and operating cadence.',
+    ].join('\n'));
   });
 
   it('updates the suggested starter when switching presets', () => {
@@ -134,8 +137,9 @@ describe('ResumeStructurePlannerCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /transformation highlights/i }));
 
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Transformation Highlights');
-    expect(screen.getByLabelText(/first highlight/i)).toHaveValue(
+    expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
       'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
-    );
+      'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
+    ].join('\n'));
   });
 });
