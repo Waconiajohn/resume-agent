@@ -15,7 +15,7 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
-import { applySectionPlanning } from '../section-planning.js';
+import { applySectionPlanning, buildWriterSectionStrategy } from '../section-planning.js';
 import type {
   ResumeWriterInput,
   ResumeDraftOutput,
@@ -319,11 +319,35 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "education": [
     {"degree": "Degree", "institution": "School", "year": "only if <20 years ago"}
   ],
-  "certifications": ["active, relevant certifications only — omit expired or unrelated"]
+  "certifications": ["active, relevant certifications only — omit expired or unrelated"],
+  "custom_sections": [
+    {
+      "id": "ai_highlights",
+      "title": "AI Leadership & Transformation",
+      "kind": "bullet_list",
+      "summary": "optional short framing sentence",
+      "lines": ["grounded proof line 1", "grounded proof line 2"],
+      "source": "job_match",
+      "recommended_for_job": true,
+      "rationale": "why this section belongs in this resume"
+    }
+  ],
+  "section_plan": [
+    {
+      "id": "executive_summary",
+      "type": "executive_summary",
+      "title": "Executive Summary",
+      "enabled": true,
+      "order": 0,
+      "source": "default",
+      "is_custom": false
+    }
+  ]
 }
 
 OUTPUT: Write the COMPLETE resume as a JSON object matching the schema above.
 Include ALL sections that have data. Do not truncate. This is a finished document, not an outline.
+When the section strategy clearly recommends a grounded custom section, include it in custom_sections and reflect the intended order in section_plan.
 CRITICAL — EVERY position from the candidate's experience MUST appear in the output.
 Recent positions go in professional_experience with full bullets. Older positions stay in professional_experience when they still prove the target role; move them to earlier_career only when they are both old and low relevance.
 NEVER omit a position to save space. A 2-page target is a guideline, not a hard limit — include all roles even if that means 3 pages.
@@ -589,6 +613,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     ? input.narrative.section_guidance.experience_framing
     : {};
   const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
+  const sectionStrategy = buildWriterSectionStrategy(input.candidate, input.gap_analysis);
 
   const parts: string[] = [
     '## YOUR STRATEGIC DIRECTION',
@@ -599,6 +624,30 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `Accomplishment priorities: ${accomplishmentPriorities.join('; ')}`,
     '',
   ];
+
+  parts.push(
+    '## SECTION STRATEGY',
+    ...sectionStrategy.guidance_lines.map((line) => `- ${line}`),
+    '',
+  );
+
+  if (sectionStrategy.recommended_custom_sections.length > 0) {
+    parts.push('## RECOMMENDED CUSTOM SECTIONS');
+    for (const section of sectionStrategy.recommended_custom_sections) {
+      parts.push(
+        `- ${section.title} (${section.id})`,
+        `  Placement: before Core Competencies and Professional Experience when the evidence below is genuinely strong enough to stand alone.`,
+        `  Why it belongs: ${section.rationale ?? 'Role-relevant proof should surface earlier.'}`,
+      );
+      if (section.summary?.trim()) {
+        parts.push(`  Section summary: ${section.summary.trim()}`);
+      }
+      for (const line of section.lines.slice(0, 3)) {
+        parts.push(`  Proof to reuse: ${line}`);
+      }
+    }
+    parts.push('');
+  }
 
   if (selectedAccomplishmentTargets.length > 0) {
     parts.push(

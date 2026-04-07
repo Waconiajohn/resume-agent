@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applySectionPlanning } from '../agents/resume-v2/section-planning.js';
+import { applySectionPlanning, buildWriterSectionStrategy } from '../agents/resume-v2/section-planning.js';
 import type {
   CandidateIntelligenceOutput,
   GapAnalysisOutput,
@@ -120,6 +120,37 @@ function makeGapAnalysis(): GapAnalysisOutput {
   };
 }
 
+function makeNonAIRoleGapAnalysis(): GapAnalysisOutput {
+  return {
+    requirements: [
+      {
+        requirement: 'Own KPI development, scorecards, and operating rhythm',
+        source: 'job_description',
+        importance: 'must_have',
+        classification: 'partial',
+        evidence: ['Built weekly KPI reviews across 3 sites.'],
+      },
+    ],
+    coverage_score: 82,
+    strength_summary: 'Strong operator with clear KPI and operating-rhythm evidence.',
+    critical_gaps: [],
+    requirement_work_items: [
+      {
+        id: 'wi-kpi',
+        requirement: 'Own KPI development, scorecards, and operating rhythm',
+        source: 'job_description',
+        importance: 'must_have',
+        candidate_evidence: [],
+        proof_level: 'direct',
+        framing_guardrail: 'exact',
+        current_claim_strength: 'supported',
+        next_best_action: 'accept',
+      },
+    ],
+    pending_strategies: [],
+  };
+}
+
 describe('applySectionPlanning', () => {
   it('adds an AI highlights section when the candidate has AI-readiness evidence', () => {
     const result = applySectionPlanning(makeDraft(), makeCandidate(), makeGapAnalysis());
@@ -135,5 +166,40 @@ describe('applySectionPlanning', () => {
     expect(order[0]).toBe('executive_summary');
     expect(order[1]).toBe('selected_accomplishments');
     expect(order[2]).toBe('ai_highlights');
+  });
+
+  it('keeps AI highlights below competencies when the role does not explicitly value AI', () => {
+    const result = applySectionPlanning(makeDraft(), makeCandidate(), makeNonAIRoleGapAnalysis());
+    const order = result.section_plan?.map((item) => item.id) ?? [];
+
+    expect(order).toContain('ai_highlights');
+    expect(order.indexOf('ai_highlights')).toBeGreaterThan(order.indexOf('core_competencies'));
+  });
+
+  it('places recommended transformation sections before competencies and experience', () => {
+    const result = applySectionPlanning(makeDraft(), makeCandidate(), makeGapAnalysis());
+    const order = result.section_plan?.map((item) => item.id) ?? [];
+
+    expect(order).toContain('transformation_highlights');
+    expect(order.indexOf('transformation_highlights')).toBeLessThan(order.indexOf('core_competencies'));
+    expect(order.indexOf('transformation_highlights')).toBeLessThan(order.indexOf('professional_experience'));
+  });
+});
+
+describe('buildWriterSectionStrategy', () => {
+  it('gives the writer concrete recommended section guidance with evidence lines', () => {
+    const strategy = buildWriterSectionStrategy(makeCandidate(), makeGapAnalysis());
+
+    expect(strategy.recommended_custom_sections.map((section) => section.id)).toEqual(
+      expect.arrayContaining(['ai_highlights', 'transformation_highlights']),
+    );
+    expect(strategy.guidance_lines).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Treat dedicated highlight sections as proof-above-the-fold content.'),
+        expect.stringContaining('AI Leadership & Transformation'),
+        expect.stringContaining('Transformation Highlights'),
+        expect.stringContaining('Evidence 1:'),
+      ]),
+    );
   });
 });
