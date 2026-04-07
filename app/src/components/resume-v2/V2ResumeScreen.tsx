@@ -24,7 +24,9 @@ import type {
   ResumeDraft,
   GapCoachingResponse,
   GapChatContext,
+  GapChatTargetInput,
   MasterPromotionItem,
+  ResumeReviewState,
   V2PersistedDraftState,
 } from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
@@ -144,6 +146,28 @@ function parseCustomSectionKey(section: string): string | null {
   return section.startsWith('custom_section:') ? section.slice('custom_section:'.length) : null;
 }
 
+function tokenizeForMatching(value: string | undefined): string[] {
+  return normalizeRequirement(value ?? '').split(/\s+/).filter(Boolean);
+}
+
+function overlapScore(a: string | undefined, b: string | undefined): number {
+  const aTokens = new Set(tokenizeForMatching(a));
+  const bTokens = new Set(tokenizeForMatching(b));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let shared = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) shared += 1;
+  }
+  return shared / Math.max(aTokens.size, bTokens.size);
+}
+
+function lineKindForSection(section?: string): GapChatContext['lineKind'] {
+  if (section === 'executive_summary') return 'summary';
+  if (section === 'core_competencies') return 'competency';
+  if (section?.startsWith('custom_section:')) return 'custom_line';
+  return 'bullet';
+}
+
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
@@ -219,12 +243,15 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     bulletText: string,
     requirement: string,
     evidence?: string,
+    context?: Partial<GapChatContext>,
   ) => {
     return bulletEnhance(
       action as 'show_transformation' | 'demonstrate_leadership' | 'connect_to_role' | 'show_accountability',
       bulletText,
       requirement,
       evidence,
+      undefined,
+      context,
     );
   }, [bulletEnhance]);
 
@@ -278,59 +305,181 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, [currentResume, data.jobIntelligence, data.assembly?.scores.ats_match, liveScores?.ats_score, postReviewPolish.result?.ats_score, addToast]);
 
   // Build context for per-item gap chat — memoized factory
-  const buildChatContext = useCallback((requirement: string): GapChatContext => {
+  const buildChatContext = useCallback((target: string | GapChatTargetInput): GapChatContext => {
     const ji = data.jobIntelligence;
     const ci = data.candidateIntelligence;
     const ga = data.gapAnalysis;
     const gc = data.gapCoachingCards;
     const workItems = data.requirementWorkItems ?? ga?.requirement_work_items ?? [];
+    const currentTarget = typeof target === 'string'
+      ? { requirement: target }
+      : target;
+    const explicitRequirement = currentTarget.requirement?.trim() ?? '';
+    const explicitRequirements = (currentTarget.requirements ?? [])
+      .map((requirement) => requirement.trim())
+      .filter(Boolean);
+    const lineText = currentTarget.lineText?.trim() ?? '';
+    const sectionKey = currentTarget.section;
+    const lineKind = lineKindForSection(sectionKey);
+    const normalized = normalizeRequirement(explicitRequirement || explicitRequirements[0] || '');
 
     // Find the matching requirement in gap analysis (normalized + fallback)
-    const normalized = normalizeRequirement(requirement);
-    const gapReq = ga?.requirements.find(
+    const gapReq = normalized
+      ? ga?.requirements.find(
       r => normalizeRequirement(r.requirement) === normalized,
     ) ?? ga?.requirements.find(
       r => r.requirement.toLowerCase().includes(normalized) || normalized.includes(r.requirement.toLowerCase()),
-    );
+    )
+      : undefined;
+
+    const relatedWorkItems = workItems
+      .map((item) => {
+        const requirementScore = normalized
+          ? overlapScore(item.requirement, explicitRequirement || explicitRequirements[0])
+          : 0;
+        const lineScore = lineText
+          ? Math.max(
+              overlapScore(item.requirement, lineText),
+              overlapScore(item.best_evidence_excerpt, lineText),
+              ...item.candidate_evidence.map((evidence) => overlapScore(evidence.text, lineText)),
+            )
+          : 0;
+        const explicitMatch = currentTarget.workItemId
+          ? item.id === currentTarget.workItemId
+          : false;
+        const hasRelatedRequirement = explicitRequirements.some((requirement) => (
+          normalizeRequirement(item.requirement) === normalizeRequirement(requirement)
+        ));
+
+        return {
+          item,
+          score: explicitMatch
+            ? 100
+            : hasRelatedRequirement
+              ? 10
+              : Math.max(requirementScore, lineScore),
+        };
+      })
+      .filter(({ score }) => score >= 0.18)
+      .sort((left, right) => right.score - left.score)
+      .map(({ item }) => item);
+    const workItem = currentTarget.workItemId
+      ? workItems.find((item) => item.id === currentTarget.workItemId) ?? relatedWorkItems[0]
+      : relatedWorkItems[0];
 
     // Find JD evidence for this requirement (normalized + fallback)
-    const comp = ji?.core_competencies.find(
+    const comp = normalized
+      ? ji?.core_competencies.find(
       c => normalizeRequirement(c.competency) === normalized,
     ) ?? ji?.core_competencies.find(
       c => c.competency.toLowerCase().includes(normalized) || normalized.includes(c.competency.toLowerCase()),
-    );
+    )
+      : undefined;
 
-    const coachingCard = gc?.find(
+    const coachingCard = normalized
+      ? gc?.find(
       card => normalizeRequirement(card.requirement) === normalized,
     ) ?? gc?.find(
       card => card.requirement.toLowerCase().includes(normalized) || normalized.includes(card.requirement.toLowerCase()),
-    );
-    const workItem = workItems.find(
-      item => normalizeRequirement(item.requirement) === normalized,
-    ) ?? workItems.find(
-      item => item.requirement.toLowerCase().includes(normalized) || normalized.includes(item.requirement.toLowerCase()),
-    );
+    )
+      : undefined;
+
+    const relatedRequirements = Array.from(new Set([
+      ...explicitRequirements,
+      explicitRequirement,
+      ...relatedWorkItems.map((item) => item.requirement),
+    ].filter(Boolean)));
+
+    const sectionLabel = (() => {
+      if (sectionKey === 'executive_summary') return 'Executive Summary';
+      if (sectionKey === 'core_competencies') return 'Core Competencies';
+      const customSectionId = parseCustomSectionKey(sectionKey ?? '');
+      if (customSectionId) {
+        const customSection = currentResume?.custom_sections?.find((section) => section.id === customSectionId);
+        return customSection?.title ?? 'Custom Section';
+      }
+      return 'Resume Line';
+    })();
+
+    const sourceEvidenceParts = Array.from(new Set([
+      workItem?.source_evidence,
+      gapReq?.source_evidence,
+      coachingCard?.source_evidence,
+      comp?.evidence_from_jd,
+      ...relatedWorkItems.map((item) => item.source_evidence),
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)));
+
+    const evidence = Array.from(new Set([
+      ...(gapReq?.evidence ?? []),
+      ...(workItem?.candidate_evidence.map((item) => item.text) ?? []),
+      ...relatedWorkItems.flatMap((item) => item.candidate_evidence.map((evidenceItem) => evidenceItem.text)),
+      currentTarget.evidenceFound && currentTarget.evidenceFound !== lineText ? currentTarget.evidenceFound : '',
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)));
+
+    const clarifyingQuestions = Array.from(new Set([
+      workItem?.clarifying_question,
+      ...relatedWorkItems.map((item) => item.clarifying_question),
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0))).slice(0, 3);
+
+    const coachingGoal = (() => {
+      if (lineKind === 'summary') {
+        return 'Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance.';
+      }
+      if (lineKind === 'competency') {
+        return 'Rewrite this competency as a crisp ATS-friendly keyword phrase, not a full sentence.';
+      }
+      if (sectionKey?.startsWith('custom_section:')) {
+        return sectionKey === 'custom_section:ai_highlights'
+          ? 'Sharpen this AI-focused section line so it sounds executive, credible, and aligned to transformation work.'
+          : 'Rewrite this custom-section line so it strengthens the section story and stays grounded in real experience.';
+      }
+      if (currentTarget.reviewState === 'code_red') {
+        return 'Find the safest truthful version of this line or surface the one missing detail needed to keep it.';
+      }
+      if (currentTarget.reviewState === 'strengthen') {
+        return 'Make this line more specific, sharper, and more obviously relevant to the role.';
+      }
+      return 'Improve this resume line while keeping it fully truthful and defensible.';
+    })();
+
+    const candidateSummaryParts = [
+      ci ? `${ci.career_themes.join(', ')}. ${ci.leadership_scope}. Scale: ${ci.operational_scale}.` : '',
+      lineKind === 'summary' && ci?.quantified_outcomes?.length
+        ? `Top outcomes: ${ci.quantified_outcomes.slice(0, 3).map((outcome) => `${outcome.outcome} (${outcome.value})`).join(' | ')}.`
+        : '',
+      lineKind === 'competency' && ci
+        ? `Relevant capability areas: ${[...ci.technologies.slice(0, 6), ...ci.industry_depth.slice(0, 3)].filter(Boolean).join(', ')}.`
+        : '',
+      sectionKey === 'custom_section:ai_highlights' && ci?.ai_readiness
+        ? `AI readiness: ${ci.ai_readiness.summary}`
+        : '',
+    ].filter(Boolean).join(' ');
 
     return {
       workItemId: workItem?.id,
-      evidence: gapReq?.evidence ?? workItem?.candidate_evidence.map((item) => item.text) ?? [],
-      currentStrategy: gapReq?.strategy?.positioning,
+      evidence,
+      currentStrategy: lineText || gapReq?.strategy?.positioning,
       aiReasoning: gapReq?.strategy?.ai_reasoning,
       inferredMetric: gapReq?.strategy?.inferred_metric,
       coachingPolicy: coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy,
-      jobDescriptionExcerpt: workItem?.source_evidence
-        ?? comp?.evidence_from_jd
-        ?? ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
-        ?? '',
-      candidateExperienceSummary: ci
-        ? `${ci.career_themes.join(', ')}. ${ci.leadership_scope}. Scale: ${ci.operational_scale}.`
-        : '',
+      jobDescriptionExcerpt: sourceEvidenceParts.length > 0
+        ? sourceEvidenceParts.join('\n')
+        : ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
+          ?? '',
+      candidateExperienceSummary: candidateSummaryParts,
       alternativeBullets: coachingCard?.alternative_bullets ?? [],
-      primaryRequirement: requirement,
+      primaryRequirement: explicitRequirement || relatedRequirements[0] || lineText,
       requirementSource: workItem?.source ?? gapReq?.source ?? coachingCard?.source,
-      sourceEvidence: workItem?.source_evidence ?? coachingCard?.source_evidence ?? gapReq?.source_evidence,
+      sourceEvidence: sourceEvidenceParts[0],
+      lineText: lineText || undefined,
+      lineKind,
+      sectionKey,
+      sectionLabel,
+      relatedRequirements,
+      coachingGoal,
+      clarifyingQuestions,
     };
-  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
+  }, [currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
 
   // AI assist for gap positioning cards — calls gap-chat with a single-shot prompt
   const handleGapAssist = useCallback(

@@ -894,7 +894,9 @@ RULES:
 - Never fabricate experience, ownership, metrics, credentials, or outcomes.
 - If the evidence is adjacent, say that explicitly and translate it honestly.
 - If an inferred metric is provided, use it conservatively and only when it fits the evidence.
-- suggested_resume_language must be one polished resume line, not commentary.
+- suggested_resume_language must be polished resume wording for the current line type, not commentary.
+- If the line type is a competency, keep it short and keyword-friendly rather than writing a sentence.
+- If the line type is a summary or section intro, write a concise executive line rather than a bullet fragment.
 - If you need an answer, set needs_candidate_input=true and recommended_next_action="answer_question".
 - If you provide usable language, set recommended_next_action="review_edit".
 - If the issue should remain unresolved or be removed, say so plainly.`;
@@ -961,6 +963,16 @@ function buildLineCoachContextBlock(request: LineCoachRequest): string {
   return [
     '## Line Coach Mode',
     modeInstruction(mode),
+    '',
+    '## Resume Line Context',
+    context.line_kind ? `Line type: ${context.line_kind}` : '',
+    context.section_label ? `Section: ${context.section_label}` : '',
+    context.line_text ? `Current line: ${context.line_text}` : '',
+    context.related_requirements?.length ? `Related requirements: ${context.related_requirements.join(' | ')}` : '',
+    context.coaching_goal ? `Coaching goal: ${context.coaching_goal}` : '',
+    context.clarifying_questions?.length
+      ? `Useful follow-up questions:\n${context.clarifying_questions.map((question) => `- ${question}`).join('\n')}`
+      : '',
     '',
     '## Requirement Work Item',
     `Requirement: ${context.requirement ?? item_id}`,
@@ -1192,6 +1204,13 @@ const bulletEnhanceSchema = z.object({
   requirement: z.string().max(1000),
   evidence: z.string().max(3000).optional(),
   job_context: z.string().max(2000).optional(),
+  line_kind: z.enum(['bullet', 'summary', 'competency', 'section_summary', 'custom_line']).optional(),
+  section_key: z.string().max(200).optional(),
+  section_label: z.string().max(500).optional(),
+  source_evidence: z.string().max(5000).optional(),
+  related_requirements: z.array(z.string().max(1000)).max(10).optional(),
+  coaching_goal: z.string().max(2000).optional(),
+  clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),
 });
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
@@ -1200,6 +1219,39 @@ const ACTION_DESCRIPTIONS: Record<string, string> = {
   connect_to_role: 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return 3 versions.',
   show_accountability: 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return 3 versions.',
 };
+
+function buildEnhanceLineTypeInstructions(lineKind: z.infer<typeof bulletEnhanceSchema>['line_kind'], sectionLabel?: string): string[] {
+  switch (lineKind) {
+    case 'summary':
+      return [
+        'This is an executive summary line, not a bullet.',
+        'Return concise executive positioning language that could sit near the top of the resume.',
+        'Keep the wording polished and high-signal rather than writing a long sentence.',
+      ];
+    case 'competency':
+      return [
+        'This is a core competency label, not a bullet sentence.',
+        'Return short ATS-friendly keyword phrases, usually 2-6 words, with no ending punctuation.',
+        'Do not turn it into a sentence or add unsupported claims.',
+      ];
+    case 'section_summary':
+      return [
+        `This is a section intro${sectionLabel ? ` for "${sectionLabel}"` : ''}.`,
+        'Return concise section-summary language that frames the section well before the details underneath it.',
+      ];
+    case 'custom_line':
+      return [
+        `This line lives inside ${sectionLabel ? `"${sectionLabel}"` : 'a custom section'}.`,
+        'Keep the rewrite aligned to the section theme while staying grounded in the evidence.',
+      ];
+    case 'bullet':
+    default:
+      return [
+        'This is a resume bullet line.',
+        'Return polished bullet-ready wording grounded in the supplied evidence.',
+      ];
+  }
+}
 
 resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
@@ -1225,8 +1277,22 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { action, bullet_text, requirement, evidence, job_context } = parsed.data;
+  const {
+    action,
+    bullet_text,
+    requirement,
+    evidence,
+    job_context,
+    line_kind,
+    section_key,
+    section_label,
+    source_evidence,
+    related_requirements,
+    coaching_goal,
+    clarifying_questions,
+  } = parsed.data;
   const actionDescription = ACTION_DESCRIPTIONS[action];
+  const lineTypeInstructions = buildEnhanceLineTypeInstructions(line_kind, section_label);
 
   // Read enriched context from pipeline state if available
   let narrativeContext = '';
@@ -1373,16 +1439,25 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   logger.info({ session_id: sessionId, action, bulletSnippet: bullet_text.substring(0, 60) }, 'Bullet enhance request');
 
   const prompt = [
-    `You are a senior resume coach. Rewrite this bullet for a resume.`,
+    `You are a senior resume coach. Rewrite this resume line for the strongest truthful version.`,
     ``,
     `BULLET: "${bullet_text}"`,
     `REQUIREMENT IT ADDRESSES: "${requirement}"`,
+    line_kind ? `LINE TYPE: "${line_kind}"` : '',
+    section_label ? `SECTION: "${section_label}"` : '',
+    section_key ? `SECTION KEY: "${section_key}"` : '',
+    related_requirements?.length ? `RELATED REQUIREMENTS: "${related_requirements.join(' | ')}"` : '',
+    source_evidence ? `ROLE NEEDS: "${source_evidence}"` : '',
     gapContext || '',
     evidence ? `EVIDENCE FROM RESUME: "${evidence}"` : '',
     narrativeContext || '',
     candidateContext || '',
     jobContext2 || '',
     job_context ? `JOB CONTEXT: "${job_context}"` : '',
+    coaching_goal ? `COACHING GOAL: "${coaching_goal}"` : '',
+    clarifying_questions?.length ? `OPEN QUESTIONS TO CONSIDER: "${clarifying_questions.join(' | ')}"` : '',
+    ``,
+    ...lineTypeInstructions,
     ``,
     `Action: ${actionDescription}`,
     ``,
@@ -1396,14 +1471,16 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `  ]`,
     `}`,
     ``,
-    `Each "text" value must be a complete, ready-to-use resume bullet — NOT a label or description.`,
+    `Each "text" value must be complete, ready-to-use resume wording for the requested line type — NOT a label describing what you would write.`,
     ``,
     `Rules:`,
     `- Every bullet MUST be grounded in the evidence provided`,
     `- Never fabricate experience, credentials, or outcomes`,
     `- Use conservative estimates if inferring numbers (back off 10-20%)`,
     `- Each alternative should take a genuinely different angle`,
-    `- Each bullet should be 1-2 lines, start with a strong action verb`,
+    `- For competency lines, keep each option short and keyword-based rather than sentence-based`,
+    `- For summary or section-intro lines, keep each option concise, executive, and top-of-resume appropriate`,
+    `- For bullet and custom-section lines, keep each option 1-2 lines and start with a strong action verb when it reads naturally`,
   ].filter(Boolean).join('\n');
 
   try {

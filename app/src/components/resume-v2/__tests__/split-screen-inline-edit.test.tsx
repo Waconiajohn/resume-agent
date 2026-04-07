@@ -10,8 +10,9 @@ import { render, screen, fireEvent, cleanup, act, within } from '@testing-librar
 import { ResumeDocumentCard } from '../cards/ResumeDocumentCard';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
 
-import type { ResumeDraft, V2PipelineData, JobIntelligence, GapAnalysis } from '@/types/resume-v2';
+import type { ResumeDraft, V2PipelineData, JobIntelligence, GapAnalysis, GapChatContext } from '@/types/resume-v2';
 import type { PendingEdit } from '@/hooks/useInlineEdit';
+import type { GapChatTargetInput } from '@/types/resume-v2';
 
 // ─── Global mocks ─────────────────────────────────────────────────────────────
 
@@ -338,6 +339,47 @@ function makeDisplayProps(
   };
 }
 
+function makeChatContextMock() {
+  return vi.fn((target: string | GapChatTargetInput): GapChatContext => {
+    const requirement = typeof target === 'string'
+      ? target
+      : target.requirement ?? target.requirements?.[0] ?? '';
+    const section = typeof target === 'string' ? undefined : target.section;
+    const lineKind: GapChatContext['lineKind'] = section === 'executive_summary'
+      ? 'summary'
+      : section === 'core_competencies'
+        ? 'competency'
+        : section?.startsWith('custom_section:')
+          ? 'custom_line'
+          : 'bullet';
+
+    return {
+      evidence: [],
+      currentStrategy: undefined,
+      aiReasoning: undefined,
+      inferredMetric: undefined,
+      coachingPolicy: undefined,
+      jobDescriptionExcerpt: `${requirement} from the job description`,
+      candidateExperienceSummary: '',
+      alternativeBullets: [],
+      primaryRequirement: requirement,
+      requirementSource: 'job_description' as const,
+      sourceEvidence: `${requirement} from the job description`,
+      lineKind,
+      sectionLabel: section === 'executive_summary'
+        ? 'Executive Summary'
+        : section === 'core_competencies'
+          ? 'Core Competencies'
+          : section?.startsWith('custom_section:')
+            ? 'AI Highlights'
+            : 'Resume Line',
+      relatedRequirements: typeof target === 'string'
+        ? [requirement]
+        : target.requirements ?? (requirement ? [requirement] : []),
+    };
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ResumeDocumentCard — bullet accessibility tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -609,19 +651,7 @@ describe('V2StreamingDisplay — layout modes', () => {
             hydrate: vi.fn(),
             reset: vi.fn(),
           } as never,
-          buildChatContext: vi.fn((requirement: string) => ({
-            evidence: [],
-            currentStrategy: undefined,
-            aiReasoning: undefined,
-            inferredMetric: undefined,
-            coachingPolicy: undefined,
-            jobDescriptionExcerpt: `${requirement} from the job description`,
-            candidateExperienceSummary: '',
-            alternativeBullets: [],
-            primaryRequirement: requirement,
-            requirementSource: 'job_description' as const,
-            sourceEvidence: `${requirement} from the job description`,
-          })),
+          buildChatContext: makeChatContextMock(),
           data: makePipelineDataWithResume({
             resumeDraft: attentionResume,
             assembly: {
@@ -673,19 +703,7 @@ describe('V2StreamingDisplay — layout modes', () => {
             hydrate: vi.fn(),
             reset: vi.fn(),
           } as never,
-          buildChatContext: vi.fn((requirement: string) => ({
-            evidence: [],
-            currentStrategy: undefined,
-            aiReasoning: undefined,
-            inferredMetric: undefined,
-            coachingPolicy: undefined,
-            jobDescriptionExcerpt: `${requirement} from the job description`,
-            candidateExperienceSummary: '',
-            alternativeBullets: [],
-            primaryRequirement: requirement,
-            requirementSource: 'job_description' as const,
-            sourceEvidence: `${requirement} from the job description`,
-          })),
+          buildChatContext: makeChatContextMock(),
         })}
       />,
     );
@@ -698,10 +716,170 @@ describe('V2StreamingDisplay — layout modes', () => {
       bulletText: string;
       section: string;
       canRemove?: boolean;
+      chatContext: {
+        lineKind?: string;
+        sectionLabel?: string;
+        relatedRequirements?: string[];
+      };
     };
     expect(lastCall.section).toBe('executive_summary');
     expect(lastCall.bulletText).toBe('Seasoned engineering leader driving outcomes at scale.');
     expect(lastCall.canRemove).toBe(false);
+    expect(lastCall.chatContext.lineKind).toBe('summary');
+    expect(lastCall.chatContext.sectionLabel).toBe('Executive Summary');
+    expect(lastCall.chatContext.relatedRequirements).toContain('Product delivery');
+  });
+
+  it('uses work-item requirements when opening section polish targets', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          data: makePipelineDataWithResume({
+            requirementWorkItems: [
+              {
+                id: 'work-item-summary-delivery',
+                requirement: 'Product delivery',
+                source: 'job_description',
+                importance: 'must_have',
+                candidate_evidence: [
+                  {
+                    text: 'Led product and engineering delivery across multiple launches.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'direct',
+                  },
+                ],
+                best_evidence_excerpt: 'Led product and engineering delivery across multiple launches.',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+              {
+                id: 'work-item-summary-leadership',
+                requirement: 'Executive leadership',
+                source: 'benchmark',
+                importance: 'important',
+                candidate_evidence: [
+                  {
+                    text: 'Managed multi-team engineering organizations.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'adjacent',
+                  },
+                ],
+                best_evidence_excerpt: 'Managed multi-team engineering organizations.',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    expect(screen.getAllByText(/Lead with Product delivery and Executive leadership/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen
+        .getAllByText(/Lead with Product delivery and Executive leadership/i)[0]
+        .closest('button') as HTMLButtonElement,
+    );
+
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      section: string;
+      requirements: string[];
+      requirementSource?: string;
+      evidenceFound: string;
+      chatContext: {
+        relatedRequirements?: string[];
+      };
+    };
+
+    expect(lastCall.section).toBe('executive_summary');
+    expect(lastCall.requirements).toEqual(['Product delivery', 'Executive leadership']);
+    expect(lastCall.requirementSource).toBe('job_description');
+    expect(lastCall.evidenceFound).toBe('Led product and engineering delivery across multiple launches.');
+    expect(lastCall.chatContext.relatedRequirements).toEqual(
+      expect.arrayContaining(['Product delivery', 'Executive leadership']),
+    );
+  });
+
+  it('shows clarification prompts for high-value proof upgrades and jumps to the related line', async () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          data: makePipelineDataWithResume({
+            requirementWorkItems: [
+              {
+                id: 'work-item-product-delivery',
+                requirement: 'Product delivery',
+                source: 'job_description',
+                importance: 'must_have',
+                candidate_evidence: [],
+                proof_level: 'none',
+                framing_guardrail: 'blocked',
+                current_claim_strength: 'code_red',
+                next_best_action: 'answer',
+                clarifying_question: 'What specific product launch or delivery outcome proves this most clearly?',
+              },
+            ],
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    expect(screen.getAllByText('Fastest Proof Upgrades').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('What specific product launch or delivery outcome proves this most clearly?').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen
+        .getAllByText('What specific product launch or delivery outcome proves this most clearly?')[0]
+        .closest('button') as HTMLButtonElement,
+    );
+
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      bulletText: string;
+      section: string;
+    };
+    expect(lastCall.section).toBe('professional_experience');
+    expect(lastCall.bulletText).toBe('Shipped 3 major product lines');
   });
 
   it('drops a line from the navigator once that line has changed in the working resume', async () => {

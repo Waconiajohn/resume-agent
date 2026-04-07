@@ -60,6 +60,7 @@ export interface BulletCoachingPanelProps {
     bulletText: string,
     requirement: string,
     evidence?: string,
+    context?: Partial<GapChatContext>,
   ) => Promise<EnhanceResult | null>;
 }
 
@@ -194,6 +195,7 @@ export function BulletCoachingPanel({
         bulletText,
         requirements[0] ?? '',
         evidenceFound,
+        chatContext,
       );
       if (result) {
         setEnhanceResult(result);

@@ -1,11 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
+import type { GapChatContext } from '@/types/resume-v2';
 
 export type EnhanceAction = 'show_transformation' | 'demonstrate_leadership' | 'connect_to_role' | 'show_accountability';
 
 export interface EnhanceResult {
   enhancedBullet: string;
   alternatives: Array<{ text: string; angle: string }>;
+}
+
+export interface EnhanceContext {
+  lineKind?: GapChatContext['lineKind'];
+  sectionKey?: string;
+  sectionLabel?: string;
+  sourceEvidence?: string;
+  relatedRequirements?: string[];
+  coachingGoal?: string;
+  clarifyingQuestions?: string[];
 }
 
 export function useBulletEnhance(accessToken: string | null, sessionId: string | null) {
@@ -25,6 +36,7 @@ export function useBulletEnhance(accessToken: string | null, sessionId: string |
     requirement: string,
     evidence?: string,
     jobContext?: string,
+    context?: EnhanceContext,
   ): Promise<EnhanceResult | null> => {
     if (!accessToken || !sessionId) return null;
 
@@ -43,7 +55,20 @@ export function useBulletEnhance(accessToken: string | null, sessionId: string |
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ action, bullet_text: bulletText, requirement, evidence, job_context: jobContext }),
+        body: JSON.stringify({
+          action,
+          bullet_text: bulletText,
+          requirement,
+          evidence,
+          job_context: jobContext,
+          line_kind: context?.lineKind,
+          section_key: context?.sectionKey,
+          section_label: context?.sectionLabel,
+          source_evidence: context?.sourceEvidence,
+          related_requirements: context?.relatedRequirements,
+          coaching_goal: context?.coachingGoal,
+          clarifying_questions: context?.clarifyingQuestions,
+        }),
         signal: controller.signal,
       });
 

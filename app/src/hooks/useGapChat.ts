@@ -236,6 +236,13 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             candidate_experience_summary: context.candidateExperienceSummary,
             coaching_policy: context.coachingPolicy,
             source_evidence: context.sourceEvidence,
+            line_text: context.lineText,
+            line_kind: context.lineKind,
+            section_key: context.sectionKey,
+            section_label: context.sectionLabel,
+            related_requirements: context.relatedRequirements,
+            coaching_goal: context.coachingGoal,
+            clarifying_questions: context.clarifyingQuestions,
           },
         }),
       });

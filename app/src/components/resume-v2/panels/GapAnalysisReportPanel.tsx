@@ -20,6 +20,7 @@ import type {
   PositioningAssessmentEntry,
   GapAnalysis,
   GapCoachingCard,
+  GapChatTargetInput,
   RequirementCoverageBreakdown,
   RequirementSource,
   ResumeDraft,
@@ -61,7 +62,7 @@ interface GapAnalysisReportPanelProps {
   /** Per-item coaching chat hook — enables conversational coaching on gap items */
   gapChat?: GapChatHook | null;
   /** Builds context for the gap chat endpoint */
-  buildChatContext?: (requirement: string) => GapChatContext;
+  buildChatContext?: (target: string | GapChatTargetInput) => GapChatContext;
 }
 
 // ─── Merged requirement type ─────────────────────────────────────────────────
@@ -348,7 +349,7 @@ function RequirementCard({
   positioningAssessment: PositioningAssessment | null;
   isEditing?: boolean;
   gapChat?: GapChatHook | null;
-  buildChatContext?: (requirement: string) => GapChatContext;
+  buildChatContext?: (target: string | GapChatTargetInput) => GapChatContext;
 }) {
   const [showContext, setShowContext] = useState(false);
   const [contextText, setContextText] = useState('');

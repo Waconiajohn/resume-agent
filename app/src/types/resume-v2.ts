@@ -564,6 +564,23 @@ export interface GapChatContext {
   primaryRequirement?: string;
   requirementSource?: 'job_description' | 'benchmark';
   sourceEvidence?: string;
+  lineText?: string;
+  lineKind?: 'bullet' | 'summary' | 'competency' | 'section_summary' | 'custom_line';
+  sectionKey?: string;
+  sectionLabel?: string;
+  relatedRequirements?: string[];
+  coachingGoal?: string;
+  clarifyingQuestions?: string[];
+}
+
+export interface GapChatTargetInput {
+  requirement?: string;
+  requirements?: string[];
+  lineText?: string;
+  section?: string;
+  reviewState?: ResumeReviewState;
+  evidenceFound?: string;
+  workItemId?: string;
 }
 
 export interface FinalReviewChatContext {

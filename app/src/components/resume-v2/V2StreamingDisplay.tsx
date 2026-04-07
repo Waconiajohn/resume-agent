@@ -10,7 +10,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNod
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
-import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { BulletCoachingPanel } from './cards/BulletCoachingPanel';
@@ -79,7 +79,7 @@ interface V2StreamingDisplayProps {
   ) => void;
   gapChat?: GapChatHook | null;
   gapChatSnapshot?: CoachingThreadSnapshot | null;
-  buildChatContext?: (requirement: string) => GapChatContext;
+  buildChatContext?: (target: string | GapChatTargetInput) => GapChatContext;
   finalReviewChat?: FinalReviewChatHook | null;
   finalReviewChatSnapshot?: CoachingThreadSnapshot | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
@@ -121,6 +121,7 @@ interface V2StreamingDisplayProps {
     bulletText: string,
     requirement: string,
     evidence?: string,
+    context?: Partial<GapChatContext>,
   ) => Promise<import('@/hooks/useBulletEnhance').EnhanceResult | null>;
   onMoveSection?: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection?: (sectionId: string, enabled: boolean) => void;
@@ -161,8 +162,18 @@ interface SectionCoachTarget {
   bulletText: string;
   requirements: string[];
   reviewState: ResumeReviewState;
+  requirementSource?: RequirementSource;
   evidenceFound: string;
+  workItemId?: string;
   canRemove: boolean;
+}
+
+interface ClarificationCue {
+  id: string;
+  requirement: string;
+  question: string;
+  affectedCount: number;
+  targetIndex: number | null;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -309,37 +320,177 @@ function buildAttentionReviewItems(
   return items.sort((a, b) => a.priority - b.priority || a.order - b.order);
 }
 
-function buildSectionCoachTargets(resume: ResumeDraft): SectionCoachTarget[] {
+function normalizeCueKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function overlapScore(left: string, right: string): number {
+  const leftTokens = new Set(normalizeCueKey(left).split(' ').filter(Boolean));
+  const rightTokens = new Set(normalizeCueKey(right).split(' ').filter(Boolean));
+  if (leftTokens.size === 0 || rightTokens.size === 0) return 0;
+
+  let overlapCount = 0;
+  leftTokens.forEach((token) => {
+    if (rightTokens.has(token)) overlapCount += 1;
+  });
+
+  return overlapCount / Math.max(leftTokens.size, rightTokens.size);
+}
+
+function isAIRequirement(value: string): boolean {
+  return /\b(ai|artificial intelligence|genai|llm|machine learning|automation|intelligent automation)\b/i.test(value);
+}
+
+function importancePriority(importance: 'must_have' | 'important' | 'nice_to_have'): number {
+  if (importance === 'must_have') return 0;
+  if (importance === 'important') return 1;
+  return 2;
+}
+
+function formatRequirementFocus(requirements: string[]): string {
+  if (requirements.length === 0) return '';
+  if (requirements.length === 1) return requirements[0];
+  if (requirements.length === 2) return `${requirements[0]} and ${requirements[1]}`;
+  return `${requirements[0]}, ${requirements[1]}, and ${requirements[2]}`;
+}
+
+function buildSectionCoachTargets(
+  resume: ResumeDraft,
+  workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
+): SectionCoachTarget[] {
+  const rankWorkItems = (
+    sectionId: string,
+    sectionLabel: string,
+    sectionText: string,
+  ) => {
+    const sectionCorpus = `${sectionLabel} ${sectionText}`.trim();
+
+    const ranked = workItems
+      .map((item) => {
+        const evidenceCorpus = [
+          item.requirement,
+          item.source_evidence,
+          item.best_evidence_excerpt,
+          item.target_evidence,
+          ...item.candidate_evidence.map((evidence) => evidence.text),
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        let score = Math.max(
+          overlapScore(sectionCorpus, item.requirement),
+          overlapScore(sectionCorpus, evidenceCorpus),
+        );
+
+        if (sectionId === 'executive_summary') {
+          score += item.source === 'job_description' ? 0.2 : 0.05;
+          score += item.importance === 'must_have' ? 0.18 : item.importance === 'important' ? 0.08 : 0;
+        }
+
+        if (sectionId === 'core_competencies') {
+          score += item.source === 'job_description' ? 0.18 : 0.04;
+          score += item.importance === 'must_have' ? 0.1 : 0;
+        }
+
+        if (sectionId === 'ai_highlights' && isAIRequirement(`${item.requirement} ${item.source_evidence ?? ''}`)) {
+          score += 0.4;
+        }
+
+        if (sectionId !== 'executive_summary' && sectionId !== 'core_competencies' && isAIRequirement(sectionLabel) && isAIRequirement(item.requirement)) {
+          score += 0.25;
+        }
+
+        return { item, score };
+      })
+      .filter(({ score }) => score > 0.16)
+      .sort((left, right) => (
+        right.score - left.score
+        || importancePriority(left.item.importance) - importancePriority(right.item.importance)
+        || left.item.requirement.localeCompare(right.item.requirement)
+      ));
+
+    if (ranked.length > 0) return ranked;
+
+    if (sectionId === 'executive_summary') {
+      return [...workItems]
+        .sort((left, right) => (
+          importancePriority(left.importance) - importancePriority(right.importance)
+          || Number(left.source !== 'job_description') - Number(right.source !== 'job_description')
+          || left.requirement.localeCompare(right.requirement)
+        ))
+        .slice(0, 3)
+        .map((item) => ({ item, score: 0 }));
+    }
+
+    if (sectionId === 'core_competencies') {
+      return [...workItems]
+        .filter((item) => item.source === 'job_description')
+        .sort((left, right) => (
+          importancePriority(left.importance) - importancePriority(right.importance)
+          || left.requirement.localeCompare(right.requirement)
+        ))
+        .slice(0, 3)
+        .map((item) => ({ item, score: 0 }));
+    }
+
+    if (sectionId === 'ai_highlights') {
+      return [...workItems]
+        .filter((item) => isAIRequirement(`${item.requirement} ${item.source_evidence ?? ''}`))
+        .sort((left, right) => (
+          importancePriority(left.importance) - importancePriority(right.importance)
+          || left.requirement.localeCompare(right.requirement)
+        ))
+        .slice(0, 2)
+        .map((item) => ({ item, score: 0 }));
+    }
+
+    return [];
+  };
+
   const targets: SectionCoachTarget[] = [];
 
   const summaryText = resume.executive_summary.content.trim();
   if (summaryText) {
+    const rankedItems = rankWorkItems('executive_summary', 'Executive Summary', summaryText);
+    const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
     targets.push({
       id: 'executive_summary',
       label: 'Executive Summary',
-      helperText: 'Tighten the first impression and opening story.',
+      helperText: relatedRequirements.length > 0
+        ? `Lead with ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role.`
+        : 'Tighten the first impression and opening story.',
       section: 'executive_summary',
       index: 0,
       bulletText: summaryText,
-      requirements: resume.executive_summary.addresses_requirements ?? [],
+      requirements: relatedRequirements.length > 0
+        ? relatedRequirements
+        : (resume.executive_summary.addresses_requirements ?? []),
       reviewState: 'strengthen',
-      evidenceFound: summaryText,
+      requirementSource: rankedItems[0]?.item.source,
+      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? summaryText,
+      workItemId: rankedItems[0]?.item.id,
       canRemove: false,
     });
   }
 
   const firstCompetency = resume.core_competencies.find((item) => item.trim().length > 0);
   if (firstCompetency) {
+    const rankedItems = rankWorkItems('core_competencies', 'Core Competencies', resume.core_competencies.join(' '));
+    const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
     targets.push({
       id: 'core_competencies',
       label: 'Core Competencies',
-      helperText: 'Refine the keywords recruiters see first.',
+      helperText: relatedRequirements.length > 0
+        ? `Bring the highest-value keywords forward: ${relatedRequirements.slice(0, 2).join(' and ')}.`
+        : 'Refine the keywords recruiters see first.',
       section: 'core_competencies',
       index: resume.core_competencies.findIndex((item) => item === firstCompetency),
       bulletText: firstCompetency,
-      requirements: [],
+      requirements: relatedRequirements,
       reviewState: 'strengthen',
-      evidenceFound: firstCompetency,
+      requirementSource: rankedItems[0]?.item.source,
+      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? firstCompetency,
+      workItemId: rankedItems[0]?.item.id,
       canRemove: true,
     });
   }
@@ -352,24 +503,59 @@ function buildSectionCoachTargets(resume: ResumeDraft): SectionCoachTarget[] {
     const firstLine = section.lines.find((line) => line.trim().length > 0);
     const bulletText = summary ?? firstLine;
     if (!bulletText) continue;
+    const rankedItems = rankWorkItems(sectionId, section.title, `${summary ?? ''} ${section.lines.join(' ')}`);
+    const relatedRequirements = rankedItems.slice(0, 2).map(({ item }) => item.requirement);
     targets.push({
       id: sectionId,
       label: section.title,
       helperText: sectionId === 'ai_highlights'
-        ? 'Sharpen the AI story for roles that value transformation and automation.'
-        : 'Polish this section so it strengthens the overall story.',
+        ? relatedRequirements.length > 0
+          ? `Make the AI story clearly support ${formatRequirementFocus(relatedRequirements)}.`
+          : 'Sharpen the AI story for roles that value transformation and automation.'
+        : relatedRequirements.length > 0
+          ? `Make this section reinforce ${formatRequirementFocus(relatedRequirements)}.`
+          : 'Polish this section so it strengthens the overall story.',
       section: `custom_section:${sectionId}`,
       index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
       bulletText,
-      requirements: [],
+      requirements: relatedRequirements,
       reviewState: 'strengthen',
-      evidenceFound: bulletText,
+      requirementSource: rankedItems[0]?.item.source,
+      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? bulletText,
+      workItemId: rankedItems[0]?.item.id,
       canRemove: !summary,
     });
     break;
   }
 
   return targets.slice(0, 3);
+}
+
+function buildClarificationCues(
+  workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
+  attentionItems: AttentionReviewItem[],
+): ClarificationCue[] {
+  return workItems
+    .filter((item) => item.next_best_action === 'answer' && item.clarifying_question?.trim())
+    .map((item) => {
+      const normalizedRequirement = normalizeCueKey(item.requirement);
+      const matches = attentionItems.filter((attentionItem) => (
+        (item.id && attentionItem.workItemId === item.id)
+          || attentionItem.requirements.some((requirement) => normalizeCueKey(requirement) === normalizedRequirement)
+      ));
+
+      return {
+        id: item.id,
+        requirement: item.requirement,
+        question: item.clarifying_question!.trim(),
+        affectedCount: matches.length,
+        targetIndex: matches.length > 0
+          ? attentionItems.findIndex((candidate) => candidate.id === matches[0].id)
+          : null,
+      } satisfies ClarificationCue;
+    })
+    .sort((left, right) => right.affectedCount - left.affectedCount || left.requirement.localeCompare(right.requirement))
+    .slice(0, 3);
 }
 
 function SectionCoachCard({
@@ -404,6 +590,48 @@ function SectionCoachCard({
             </p>
             <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
               {target.helperText}
+            </p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClarificationCueCard({
+  cues,
+  onOpenCue,
+}: {
+  cues: ClarificationCue[];
+  onOpenCue: (cue: ClarificationCue) => void;
+}) {
+  if (cues.length === 0) return null;
+
+  return (
+    <div className="shell-panel px-4 py-4">
+      <p className="eyebrow-label">Fastest Proof Upgrades</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Answer one concrete question to make the resume stronger</h3>
+      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+        These are the highest-value details still missing from the story. Open the related line, then answer the prompt while you rewrite.
+      </p>
+      <div className="mt-4 space-y-2">
+        {cues.map((cue) => (
+          <button
+            key={cue.id}
+            type="button"
+            onClick={() => onOpenCue(cue)}
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              {cue.affectedCount > 0
+                ? `Could strengthen ${cue.affectedCount} ${cue.affectedCount === 1 ? 'line' : 'lines'}`
+                : cue.requirement}
+            </p>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+              {cue.question}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+              {cue.requirement}
             </p>
           </button>
         ))}
@@ -557,9 +785,20 @@ export function V2StreamingDisplay({
   const attentionItems = useMemo(() => (
     displayResume ? buildAttentionReviewItems(displayResume, baselineResume) : []
   ), [baselineResume, displayResume]);
+  const clarificationCues = useMemo(() => (
+    buildClarificationCues(
+      (data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? []),
+      attentionItems,
+    )
+  ), [attentionItems, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
   const sectionCoachTargets = useMemo(() => (
-    displayResume ? buildSectionCoachTargets(displayResume) : []
-  ), [displayResume]);
+    displayResume
+      ? buildSectionCoachTargets(
+          displayResume,
+          data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [],
+        )
+      : []
+  ), [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, displayResume]);
   const [attentionIndex, setAttentionIndex] = useState(0);
 
   // Bullet click handler for cross-referencing
@@ -623,14 +862,24 @@ export function V2StreamingDisplay({
       target.index,
       target.requirements,
       target.reviewState,
-      undefined,
+      target.requirementSource,
       target.evidenceFound,
-      undefined,
+      target.workItemId,
       'adjacent',
       'tighten',
       target.canRemove,
     );
   }, [handleBulletClick]);
+
+  const openClarificationCue = useCallback((cue: ClarificationCue) => {
+    if (cue.targetIndex !== null && cue.targetIndex >= 0) {
+      openAttentionItem(cue.targetIndex);
+      return;
+    }
+    if (attentionItems.length > 0) {
+      openAttentionItem(0);
+    }
+  }, [attentionItems.length, openAttentionItem]);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
@@ -911,6 +1160,12 @@ export function V2StreamingDisplay({
                   onOpenTarget={openSectionCoachTarget}
                 />
               )}
+              {!activeBullet && (
+                <ClarificationCueCard
+                  cues={clarificationCues}
+                  onOpenCue={openClarificationCue}
+                />
+              )}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
@@ -919,7 +1174,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1070,7 +1325,7 @@ export function V2StreamingDisplay({
                             nextBestAction={activeBullet.nextBestAction}
                             canRemove={activeBullet.canRemove ?? true}
                             gapChat={gapChat}
-                            chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)}
+                            chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
                             onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
                             onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                             onClose={() => setActiveBullet(null)}
@@ -1093,6 +1348,10 @@ export function V2StreamingDisplay({
                           <SectionCoachCard
                             targets={sectionCoachTargets}
                             onOpenTarget={openSectionCoachTarget}
+                          />
+                          <ClarificationCueCard
+                            cues={clarificationCues}
+                            onOpenCue={openClarificationCue}
                           />
                           <div className="shell-panel px-4 py-4">
                             <p className="eyebrow-label">Editing Queue</p>

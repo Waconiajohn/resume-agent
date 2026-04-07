@@ -859,6 +859,55 @@ describe('POST /api/resume-v2/:sessionId/gap-chat', () => {
   });
 });
 
+describe('POST /api/resume-v2/:sessionId/bullet-enhance', () => {
+  const VALID_BULLET_ENHANCE_BODY = {
+    action: 'connect_to_role',
+    bullet_text: 'Seasoned engineering leader driving outcomes at scale.',
+    requirement: 'Product delivery',
+    evidence: 'Led a 45-person engineering organization through multi-product delivery.',
+    line_kind: 'summary',
+    section_label: 'Executive Summary',
+    source_evidence: 'Own KPI development, scorecards, and operating rhythm.',
+    related_requirements: ['Product delivery', 'Executive leadership'],
+    coaching_goal: 'Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance.',
+    clarifying_questions: ['What scale or business outcome makes this summary more concrete?'],
+  } as const;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const chain = buildSingleChain({
+      data: { id: SESSION_ID, user_id: 'test-user-123', tailored_sections: {} },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+    mockParseJsonBodyWithLimit.mockResolvedValue({ ok: true, data: VALID_BULLET_ENHANCE_BODY });
+    mockLlmChat.mockResolvedValue({
+      text: '{"enhanced_bullet":"Executive engineering leader who scales product delivery across complex organizations.","alternatives":[{"text":"Executive engineering leader scaling product delivery across multi-product teams","angle":"metric"}]}',
+    });
+    mockRepairJSON.mockReturnValue({
+      enhanced_bullet: 'Executive engineering leader who scales product delivery across complex organizations.',
+      alternatives: [{ text: 'Executive engineering leader scaling product delivery across multi-product teams', angle: 'metric' }],
+    });
+  });
+
+  it('includes section-aware line guidance in the enhancement prompt', async () => {
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/bullet-enhance`, 'POST', VALID_BULLET_ENHANCE_BODY);
+
+    expect(res.status).toBe(200);
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const prompt = llmArgs.messages[0]?.content ?? '';
+
+    expect(prompt).toContain('LINE TYPE: "summary"');
+    expect(prompt).toContain('SECTION: "Executive Summary"');
+    expect(prompt).toContain('RELATED REQUIREMENTS: "Product delivery | Executive leadership"');
+    expect(prompt).toContain('This is an executive summary line, not a bullet.');
+    expect(prompt).toContain('COACHING GOAL: "Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance."');
+  });
+});
+
 describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
   const VALID_FINAL_REVIEW_CHAT_BODY = {
     concern_id: 'concern-1',
