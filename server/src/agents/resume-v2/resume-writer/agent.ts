@@ -24,6 +24,10 @@ import type {
   CandidateExperience,
   BulletSource,
   BulletConfidence,
+  ProofLevel,
+  FramingGuardrail,
+  NextBestAction,
+  RequirementWorkItem,
   ResumePriorityTarget,
   ResumeContentOrigin,
   ResumeReviewState,
@@ -2144,11 +2148,28 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
     const confidence = inferConfidence(source, bullet.evidence_found, normalizedSupportOrigin, contentOrigin);
     const primaryTarget = bullet.primary_target_requirement ?? reqs[0];
     const requirementSource = bullet.requirement_source ?? inferReqSource(reqs);
+    const workItem = findRequirementWorkItem(input, primaryTarget, requirementSource);
     const targetEvidence = bullet.target_evidence ?? (
       primaryTarget && evidenceSupportsRequirement(bullet.evidence_found ?? '', primaryTarget)
         ? bullet.evidence_found ?? ''
         : ''
     );
+    const proofLevel = workItem?.proof_level ?? inferProofLevel({
+      confidence,
+      evidenceFound: bullet.evidence_found ?? '',
+      targetEvidence,
+      requirementSource,
+      existing: bullet.proof_level,
+    });
+    const framingGuardrail = workItem?.framing_guardrail ?? inferFramingGuardrail({
+      proofLevel,
+      existing: bullet.framing_guardrail,
+    });
+    const nextBestAction = workItem?.next_best_action ?? inferNextBestAction({
+      proofLevel,
+      requirementSource,
+      existing: bullet.next_best_action,
+    });
     return {
       ...bullet,
       source,
@@ -2159,6 +2180,8 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         contentOrigin,
         primaryTargetRequirement: primaryTarget,
         targetEvidence,
+        proofLevel,
+        framingGuardrail,
       }),
       evidence_found: bullet.evidence_found ?? '',
       requirement_source: requirementSource,
@@ -2168,6 +2191,10 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
       target_evidence: targetEvidence,
       content_origin: contentOrigin,
       support_origin: normalizedSupportOrigin,
+      work_item_id: bullet.work_item_id ?? workItem?.id,
+      proof_level: proofLevel,
+      framing_guardrail: framingGuardrail,
+      next_best_action: nextBestAction,
     };
   };
 
@@ -2186,11 +2213,28 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         ? a.primary_target_requirement
         : reqs[0];
       const requirementSource = a.requirement_source ?? inferReqSource(reqs);
+      const workItem = findRequirementWorkItem(input, primaryTarget, requirementSource);
       const targetEvidence = a.target_evidence ?? (
         primaryTarget && evidenceSupportsRequirement(a.evidence_found ?? '', primaryTarget)
           ? a.evidence_found ?? ''
           : ''
       );
+      const proofLevel = workItem?.proof_level ?? inferProofLevel({
+        confidence,
+        evidenceFound: a.evidence_found ?? '',
+        targetEvidence,
+        requirementSource,
+        existing: a.proof_level,
+      });
+      const framingGuardrail = workItem?.framing_guardrail ?? inferFramingGuardrail({
+        proofLevel,
+        existing: a.framing_guardrail,
+      });
+      const nextBestAction = workItem?.next_best_action ?? inferNextBestAction({
+        proofLevel,
+        requirementSource,
+        existing: a.next_best_action,
+      });
       return {
         ...a,
         source,
@@ -2201,6 +2245,8 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
           contentOrigin,
           primaryTargetRequirement: primaryTarget,
           targetEvidence,
+          proofLevel,
+          framingGuardrail,
         }),
         evidence_found: a.evidence_found ?? '',
         requirement_source: requirementSource,
@@ -2210,6 +2256,10 @@ function ensureBulletMetadata(draft: ResumeDraftOutput, input?: ResumeWriterInpu
         target_evidence: targetEvidence,
         content_origin: contentOrigin,
         support_origin: normalizedSupportOrigin,
+        work_item_id: a.work_item_id ?? workItem?.id,
+        proof_level: proofLevel,
+        framing_guardrail: framingGuardrail,
+        next_best_action: nextBestAction,
       };
     });
   }
@@ -2640,13 +2690,98 @@ function inferConfidenceFromSupport(options: {
   return 'partial';
 }
 
+function findRequirementWorkItem(
+  input: ResumeWriterInput | undefined,
+  requirement: string | undefined,
+  source: RequirementSource | undefined,
+): RequirementWorkItem | undefined {
+  if (!input?.gap_analysis?.requirement_work_items || !requirement) return undefined;
+  const normalizedRequirement = requirement.trim().toLowerCase();
+  return input.gap_analysis.requirement_work_items.find((item) => (
+    item.requirement.trim().toLowerCase() === normalizedRequirement
+      && (!source || item.source === source)
+  ));
+}
+
+function inferProofLevel(options: {
+  confidence: BulletConfidence;
+  evidenceFound: string;
+  targetEvidence?: string;
+  requirementSource: RequirementSource;
+  existing?: ProofLevel;
+}): ProofLevel {
+  if (options.existing === 'direct' || options.existing === 'adjacent' || options.existing === 'inferable' || options.existing === 'none') {
+    return options.existing;
+  }
+  if (options.confidence === 'strong' && (options.targetEvidence?.trim() || options.evidenceFound.trim())) {
+    return 'direct';
+  }
+  if (options.confidence === 'partial') {
+    return 'adjacent';
+  }
+  if (options.confidence === 'needs_validation' && options.evidenceFound.trim()) {
+    return options.requirementSource === 'benchmark' ? 'adjacent' : 'inferable';
+  }
+  return 'none';
+}
+
+function inferFramingGuardrail(options: {
+  proofLevel: ProofLevel;
+  existing?: FramingGuardrail;
+}): FramingGuardrail {
+  if (options.existing === 'exact' || options.existing === 'reframe' || options.existing === 'soft_inference' || options.existing === 'blocked') {
+    return options.existing;
+  }
+  if (options.proofLevel === 'direct') return 'exact';
+  if (options.proofLevel === 'adjacent') return 'reframe';
+  if (options.proofLevel === 'inferable') return 'soft_inference';
+  return 'blocked';
+}
+
+function inferNextBestAction(options: {
+  proofLevel: ProofLevel;
+  requirementSource: RequirementSource;
+  existing?: NextBestAction;
+}): NextBestAction {
+  if (
+    options.existing === 'accept'
+    || options.existing === 'tighten'
+    || options.existing === 'quantify'
+    || options.existing === 'confirm'
+    || options.existing === 'answer'
+    || options.existing === 'remove'
+  ) {
+    return options.existing;
+  }
+  if (options.proofLevel === 'direct') return 'accept';
+  if (options.proofLevel === 'adjacent') return options.requirementSource === 'benchmark' ? 'confirm' : 'tighten';
+  if (options.proofLevel === 'inferable') return 'quantify';
+  return 'answer';
+}
+
 function inferReviewState(options: {
   confidence: BulletConfidence;
   requirementSource: RequirementSource;
   contentOrigin?: ResumeContentOrigin | string;
   primaryTargetRequirement?: string;
   targetEvidence?: string;
+  proofLevel?: ProofLevel;
+  framingGuardrail?: FramingGuardrail;
 }): ResumeReviewState {
+  if (options.proofLevel || options.framingGuardrail) {
+    const proofLevel = options.proofLevel ?? 'none';
+    const framingGuardrail = options.framingGuardrail ?? inferFramingGuardrail({ proofLevel });
+    if (proofLevel === 'none' || framingGuardrail === 'blocked') {
+      return 'code_red';
+    }
+    if (options.requirementSource === 'benchmark' && proofLevel !== 'direct') {
+      return 'confirm_fit';
+    }
+    if (proofLevel === 'adjacent' || proofLevel === 'inferable') {
+      return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
+    }
+  }
+
   const contentOrigin = coerceContentOrigin(options.contentOrigin);
   const hasPrimaryTarget = typeof options.primaryTargetRequirement === 'string'
     && options.primaryTargetRequirement.trim().length > 0;

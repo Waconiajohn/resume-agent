@@ -7,6 +7,7 @@ export type LoadableV2PipelineSnapshot = {
   candidateIntelligence?: V2PipelineData['candidateIntelligence'];
   benchmarkCandidate?: V2PipelineData['benchmarkCandidate'];
   gapAnalysis?: V2PipelineData['gapAnalysis'];
+  requirementWorkItems?: V2PipelineData['requirementWorkItems'];
   gapCoachingCards?: V2PipelineData['gapCoachingCards'];
   gapQuestions?: V2PipelineData['gapQuestions'];
   preScores?: V2PipelineData['preScores'];
@@ -56,6 +57,7 @@ export function hydrateV2SessionLoad(
       candidateIntelligence: pd.candidateIntelligence ?? null,
       benchmarkCandidate: pd.benchmarkCandidate ?? null,
       gapAnalysis: pd.gapAnalysis ?? null,
+      requirementWorkItems: pd.requirementWorkItems ?? pd.gapAnalysis?.requirement_work_items ?? null,
       gapCoachingCards: pd.gapCoachingCards ?? null,
       gapQuestions: pd.gapQuestions ?? null,
       preScores: pd.preScores ?? null,

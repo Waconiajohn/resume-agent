@@ -20,7 +20,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Trash2, PencilLine, Sparkles, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ResumeReviewState, RequirementSource, GapChatContext } from '@/types/resume-v2';
+import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { BulletContextHeader } from './bullet-coaching/BulletContextHeader';
@@ -44,6 +44,10 @@ export interface BulletCoachingPanelProps {
   reviewState: ResumeReviewState;
   requirementSource?: RequirementSource;
   evidenceFound: string;
+  sourceEvidence?: string;
+  proofLevel?: ProofLevel;
+  framingGuardrail?: FramingGuardrail;
+  nextBestAction?: NextBestAction;
   gapChat: GapChatHook;
   chatContext: GapChatContext;
   onApplyToResume: (section: string, index: number, newText: string) => void;
@@ -98,6 +102,10 @@ export function BulletCoachingPanel({
   reviewState,
   requirementSource,
   evidenceFound,
+  sourceEvidence,
+  proofLevel,
+  framingGuardrail,
+  nextBestAction,
   gapChat,
   chatContext,
   onApplyToResume,
@@ -244,6 +252,7 @@ export function BulletCoachingPanel({
   const coachingText = buildCoachingText(reviewState, requirements, evidenceFound);
   const coachingExpandedDefault = reviewState === 'code_red';
   const primaryRequirement = requirements[0];
+  const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
 
   // ── Plain-language explanation of why this bullet is being coached ─────────
   const explanationText: string = {
@@ -321,7 +330,11 @@ export function BulletCoachingPanel({
           requirement={primaryRequirement}
           requirementSource={requirementSource}
           evidenceFound={evidenceFound}
+          sourceEvidence={resolvedSourceEvidence}
           reviewState={reviewState}
+          proofLevel={proofLevel}
+          framingGuardrail={framingGuardrail}
+          nextBestAction={nextBestAction}
         />
       )}
 

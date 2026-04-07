@@ -1,6 +1,9 @@
 import type {
   AssemblyResult,
   BulletConfidence,
+  FramingGuardrail,
+  NextBestAction,
+  ProofLevel,
   RequirementSource,
   ResumeContentOrigin,
   ResumeDraft,
@@ -16,6 +19,9 @@ type LooseContentOrigin = ResumeContentOrigin | string | null | undefined;
 type LooseSupportOrigin = ResumeSupportOrigin | string | null | undefined;
 type LooseReviewState = ResumeReviewState | string | null | undefined;
 type LooseBulletSource = 'original' | 'enhanced' | 'drafted' | string | null | undefined;
+type LooseProofLevel = ProofLevel | string | null | undefined;
+type LooseFramingGuardrail = FramingGuardrail | string | null | undefined;
+type LooseNextBestAction = NextBestAction | string | null | undefined;
 
 function normalizeRequirementSource(value: LooseRequirementSource): RequirementSource {
   return value === 'benchmark' ? 'benchmark' : 'job_description';
@@ -61,6 +67,8 @@ function normalizeReviewState(
     contentOrigin?: ResumeContentOrigin;
     primaryTargetRequirement?: string;
     targetEvidence?: string;
+    proofLevel?: ProofLevel;
+    framingGuardrail?: FramingGuardrail;
   },
 ): ResumeReviewState {
   if (
@@ -77,6 +85,27 @@ function normalizeReviewState(
     && options.primaryTargetRequirement.trim().length > 0;
   const hasTargetEvidence = typeof options.targetEvidence === 'string'
     && options.targetEvidence.trim().length > 0;
+
+  if (options.proofLevel || options.framingGuardrail) {
+    const proofLevel = options.proofLevel ?? 'none';
+    const framingGuardrail = options.framingGuardrail ?? (proofLevel === 'direct'
+      ? 'exact'
+      : proofLevel === 'adjacent'
+        ? 'reframe'
+        : proofLevel === 'inferable'
+          ? 'soft_inference'
+          : 'blocked');
+
+    if (proofLevel === 'none' || framingGuardrail === 'blocked') {
+      return 'code_red';
+    }
+    if (options.requirementSource === 'benchmark' && proofLevel !== 'direct') {
+      return 'confirm_fit';
+    }
+    if (proofLevel === 'adjacent' || proofLevel === 'inferable') {
+      return options.requirementSource === 'benchmark' ? 'confirm_fit' : 'strengthen';
+    }
+  }
 
   if (options.confidence === 'needs_validation' && options.requirementSource === 'benchmark') {
     return 'confirm_fit';
@@ -168,6 +197,38 @@ function normalizeSupportOrigin(value: LooseSupportOrigin, evidenceFound: string
   return 'not_found';
 }
 
+function normalizeProofLevel(value: LooseProofLevel): ProofLevel | undefined {
+  if (value === 'direct' || value === 'adjacent' || value === 'inferable' || value === 'none') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeFramingGuardrail(value: LooseFramingGuardrail): FramingGuardrail | undefined {
+  if (value === 'exact' || value === 'reframe' || value === 'soft_inference' || value === 'blocked') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeNextBestAction(value: LooseNextBestAction): NextBestAction | undefined {
+  if (
+    value === 'accept'
+    || value === 'tighten'
+    || value === 'quantify'
+    || value === 'confirm'
+    || value === 'answer'
+    || value === 'remove'
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeWorkItemId(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
 function normalizeRequirements(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
@@ -195,9 +256,13 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
       const targetEvidence = typeof bullet?.target_evidence === 'string'
         ? bullet.target_evidence
         : '';
+      const proofLevel = normalizeProofLevel((bullet as { proof_level?: LooseProofLevel })?.proof_level);
+      const framingGuardrail = normalizeFramingGuardrail((bullet as { framing_guardrail?: LooseFramingGuardrail })?.framing_guardrail);
+      const nextBestAction = normalizeNextBestAction((bullet as { next_best_action?: LooseNextBestAction })?.next_best_action);
 
       return {
         ...bullet,
+        work_item_id: normalizeWorkItemId((bullet as { work_item_id?: unknown })?.work_item_id),
         text: typeof bullet?.text === 'string' ? bullet.text : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
@@ -225,6 +290,9 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
           evidenceFound,
           confidence,
         ),
+        proof_level: proofLevel,
+        framing_guardrail: framingGuardrail,
+        next_best_action: nextBestAction,
         review_state: normalizeReviewState((bullet as { review_state?: LooseReviewState })?.review_state, {
           confidence,
           requirementSource: normalizeRequirementSource(bullet?.requirement_source),
@@ -240,6 +308,8 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
           ),
           primaryTargetRequirement,
           targetEvidence,
+          proofLevel,
+          framingGuardrail,
         }),
       };
     }),
@@ -297,9 +367,13 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
       const targetEvidence = typeof item?.target_evidence === 'string'
         ? item.target_evidence
         : '';
+      const proofLevel = normalizeProofLevel((item as { proof_level?: LooseProofLevel })?.proof_level);
+      const framingGuardrail = normalizeFramingGuardrail((item as { framing_guardrail?: LooseFramingGuardrail })?.framing_guardrail);
+      const nextBestAction = normalizeNextBestAction((item as { next_best_action?: LooseNextBestAction })?.next_best_action);
 
       return {
         ...item,
+        work_item_id: normalizeWorkItemId((item as { work_item_id?: unknown })?.work_item_id),
         content: typeof item?.content === 'string' ? item.content : '',
         is_new: isNew,
         addresses_requirements: addressesRequirements,
@@ -327,6 +401,9 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
           evidenceFound,
           confidence,
         ),
+        proof_level: proofLevel,
+        framing_guardrail: framingGuardrail,
+        next_best_action: nextBestAction,
         review_state: normalizeReviewState((item as { review_state?: LooseReviewState })?.review_state, {
           confidence,
           requirementSource: normalizeRequirementSource(item?.requirement_source),
@@ -342,6 +419,8 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
           ),
           primaryTargetRequirement,
           targetEvidence,
+          proofLevel,
+          framingGuardrail,
         }),
       };
     }),

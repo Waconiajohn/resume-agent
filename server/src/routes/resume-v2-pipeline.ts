@@ -4,8 +4,10 @@
  * POST /start — Accepts resume_text + job_description, starts pipeline
  * GET /:sessionId/stream — SSE stream of pipeline events
  *
- * The v2 pipeline has no gates (no approval steps during generation).
- * The user sees results accumulate via SSE, then edits inline afterward.
+ * The v2 pipeline streams through analysis, benchmark modeling, clarification,
+ * writing, verification, and assembly.
+ * The user sees results accumulate via SSE, passes through the resume-ready gate,
+ * and then edits inline on the working document.
  */
 
 import { z } from 'zod';
@@ -47,6 +49,7 @@ import {
   polishSchema,
   integrateKeywordSchema,
   gapChatSchema,
+  lineCoachSchema,
   structuredCoachingResponseSchema,
   finalReviewChatSchema,
   hiringManagerReviewSchema,
@@ -856,44 +859,278 @@ function normalizeGapChatResult(
   };
 }
 
-const GAP_CHAT_SYSTEM = `You are a $3,000/engagement executive resume strategist having a coaching conversation with a candidate about a specific gap on their resume.
+type StructuredCoachingResponse = z.infer<typeof structuredCoachingResponseSchema>;
+type LineCoachRequest = z.infer<typeof lineCoachSchema>;
+
+const LINE_COACH_SYSTEM = `You are the line coach inside a premium executive resume rewrite workflow.
+
+You help the candidate improve ONE requirement, bullet, or final-review concern at a time.
 
 Your job:
-1. Help them surface hidden experience they haven't articulated
-2. Find creative, TRUTHFUL ways to position their real experience against the requirement
-3. When you have enough context, propose specific resume language they can add
-4. Guide the user one step at a time so they always know whether to answer, review an edit, try another angle, or skip it
+1. Identify what the line is trying to prove
+2. Explain what proof already exists and what is still missing
+3. Ask ONE targeted clarification question when a missing detail would materially strengthen the resume
+4. When you have enough context, propose truthful, polished resume language the candidate can review
+5. Be explicit when the best move is adjacent proof, soft inference, or leaving the issue unresolved
 
 CONVERSATION STYLE:
-- Warm but direct. You're a coach, not a cheerleader.
-- Ask ONE targeted follow-up question at a time — don't overwhelm.
-- When the candidate shares new information, immediately show how you'd use it.
-- Show your math when inferring numbers (budget from team size, etc.) and back off 10-20%.
-- Speak in plain language. Tell them what the current evidence already proves, what is still missing, and what the next step is.
-- Name the actual evidence when you can. Avoid vague phrases like "related experience" unless you immediately say what experience you mean.
+- Warm, collaborative, and plain-spoken
+- Tell the candidate what the current evidence already proves before asking for more
+- Ask only ONE next question at a time
+- Name the actual evidence when you can
+- Be aggressive about reframing nearby evidence, but never bluff
 
 RESPONSE FORMAT: Return valid JSON only:
 {
-  "response": "Your conversational reply — coaching explanation, what you found, follow-up question. 2-4 sentences.",
-  "suggested_resume_language": "Ready-to-use resume bullet text if you have enough context. Omit this field if you need more information first.",
-  "follow_up_question": "A single targeted question to surface more evidence. Omit if you've proposed language and are waiting for their decision.",
-  "current_question": "Repeat the one question the candidate should answer next. Omit if no answer is needed right now.",
+  "response": "2-4 sentence coaching reply",
+  "suggested_resume_language": "Ready-to-review resume wording if enough context exists. Omit if you still need an answer.",
+  "follow_up_question": "One targeted follow-up question. Omit if no answer is needed now.",
+  "current_question": "Repeat the one question the candidate should answer next. Omit if no answer is needed now.",
   "needs_candidate_input": true,
   "recommended_next_action": "answer_question" | "review_edit" | "try_another_angle" | "skip" | "confirm"
 }
 
 RULES:
-- NEVER fabricate experience. Only position what's real.
-- When inferring metrics, back off 10-20% from calculated values.
-- suggested_resume_language should be a single, polished resume bullet — not a paragraph.
-- suggested_resume_language must sound like a real resume line, not a label or category name.
-- If an inferred metric is provided in the context, your suggested_resume_language MUST incorporate it. Never infer a number in one place while writing generic language elsewhere.
-- If the candidate's response reveals they truly don't have this experience, say so honestly and suggest they skip this gap.
-- When you ask a question, tie it to the strongest evidence we already have or the specific company/role in the background summary whenever possible.
-- Do not just restate the requirement. Explain what would make the proof believable for a recruiter.
-- If you ask a question, set needs_candidate_input=true and recommended_next_action="answer_question".
-- If you propose language, set recommended_next_action="review_edit".
-- If the candidate seems stuck, you may set recommended_next_action="try_another_angle" or "skip".`;
+- Never fabricate experience, ownership, metrics, credentials, or outcomes.
+- If the evidence is adjacent, say that explicitly and translate it honestly.
+- If an inferred metric is provided, use it conservatively and only when it fits the evidence.
+- suggested_resume_language must be one polished resume line, not commentary.
+- If you need an answer, set needs_candidate_input=true and recommended_next_action="answer_question".
+- If you provide usable language, set recommended_next_action="review_edit".
+- If the issue should remain unresolved or be removed, say so plainly.`;
+
+function modeInstruction(mode: LineCoachRequest['mode']): string {
+  switch (mode) {
+    case 'rewrite':
+      return 'Mode: rewrite. Produce a sharper but truthful bullet when the evidence already supports the claim.';
+    case 'quantify':
+      return 'Mode: quantify. Look for defensible scope, cadence, scale, or outcome language grounded in the evidence.';
+    case 'reframe':
+      return 'Mode: reframe. Translate adjacent experience into the role language honestly without overclaiming.';
+    case 'final_review_fix':
+      return 'Mode: final_review_fix. Resolve the hiring-manager concern directly and tie your advice to the concern.';
+    case 'clarify':
+    default:
+      return 'Mode: clarify. Surface the one missing detail that would make the proof believable and stronger.';
+  }
+}
+
+function buildLineCoachContextBlock(request: LineCoachRequest): string {
+  const { mode, item_id, context } = request;
+  const evidence = context.evidence ?? [];
+
+  if (mode === 'final_review_fix') {
+    return [
+      '## Line Coach Mode',
+      modeInstruction(mode),
+      '',
+      '## Final Review Concern',
+      `Concern ID: ${context.concern_id ?? item_id}`,
+      context.work_item_id ? `Work item: ${context.work_item_id}` : '',
+      context.concern_type ? `Type: ${context.concern_type}` : '',
+      context.severity ? `Severity: ${context.severity}` : '',
+      '',
+      '## Observation',
+      context.observation ?? '',
+      '',
+      '## Why It Hurts',
+      context.why_it_hurts ?? '',
+      '',
+      '## Fix Strategy',
+      context.fix_strategy ?? '',
+      context.clarifying_question ? `Candidate question: ${context.clarifying_question}` : '',
+      typeof context.requires_candidate_input === 'boolean'
+        ? `Requires candidate input: ${context.requires_candidate_input ? 'yes' : 'no'}`
+        : '',
+      context.target_section ? `Target section: ${context.target_section}` : '',
+      context.related_requirement ? `Related requirement: ${context.related_requirement}` : '',
+      context.suggested_resume_edit ? `Existing sample language: ${context.suggested_resume_edit}` : '',
+      '',
+      '## Role Context',
+      [context.role_title, context.company_name].filter(Boolean).join(' at '),
+      context.job_description_fit ? `Job fit: ${context.job_description_fit}` : '',
+      context.benchmark_alignment ? `Benchmark alignment: ${context.benchmark_alignment}` : '',
+      context.business_impact ? `Business impact: ${context.business_impact}` : '',
+      context.clarity_and_credibility ? `Clarity and credibility: ${context.clarity_and_credibility}` : '',
+      '',
+      '## Resume Excerpt',
+      context.resume_excerpt ?? '',
+    ].filter(Boolean).join('\n');
+  }
+
+  return [
+    '## Line Coach Mode',
+    modeInstruction(mode),
+    '',
+    '## Requirement Work Item',
+    `Requirement: ${context.requirement ?? item_id}`,
+    context.work_item_id ? `Work item: ${context.work_item_id}` : '',
+    context.classification ? `Classification: ${context.classification}` : '',
+    context.review_state ? `Review state: ${context.review_state}` : '',
+    context.requirement_source ? `Requirement source: ${context.requirement_source}` : '',
+    context.source_evidence ? `Source evidence: ${context.source_evidence}` : '',
+    '',
+    evidence.length > 0
+      ? `## Candidate Evidence\n${evidence.map((entry) => `- ${entry}`).join('\n')}`
+      : '## Candidate Evidence\nNone found in current resume.',
+    '',
+    context.current_strategy ? `## Current Strategy\n${context.current_strategy}` : '',
+    context.ai_reasoning ? `## AI Analysis\n${context.ai_reasoning}` : '',
+    context.inferred_metric ? `## Inferred Metric\n${context.inferred_metric}` : '',
+    context.coaching_policy
+      ? `## Shared Coaching Guidance\nWhy this matters: ${context.coaching_policy.rationale}\nWhat would make this believable: ${context.coaching_policy.lookingFor}\nBest next question: ${context.coaching_policy.clarifyingQuestion}`
+      : '',
+    context.job_description_excerpt ? `## Job Description Context\n${context.job_description_excerpt}` : '',
+    context.candidate_experience_summary ? `## Candidate Background Summary\n${context.candidate_experience_summary}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function buildLineCoachStarter(request: LineCoachRequest): StructuredCoachingResponse {
+  const { mode, item_id, context } = request;
+
+  if (mode === 'final_review_fix') {
+    const starterSubject = context.related_requirement?.trim() || context.observation?.trim() || item_id;
+    const starterQuestion = context.clarifying_question?.trim()
+      || (starterSubject
+        ? buildRequirementClarifyingQuestion(starterSubject)
+        : 'What concrete truthful detail would address this concern?');
+    const starterNeedsInput = context.requires_candidate_input ?? !context.suggested_resume_edit;
+    const starterAction = starterNeedsInput
+      ? 'answer_question'
+      : context.suggested_resume_edit
+        ? 'review_edit'
+        : 'answer_question';
+
+    return {
+      response: 'I understand the concern. I will either ask for the one missing detail that matters most or give you language that directly resolves it.',
+      recommended_next_action: starterAction,
+      needs_candidate_input: starterNeedsInput,
+      follow_up_question: starterQuestion,
+      current_question: starterQuestion,
+    };
+  }
+
+  const requirement = context.requirement ?? item_id;
+  const classification = context.classification ?? 'partial';
+  const starterQuestion = context.coaching_policy?.clarifyingQuestion?.trim()
+    || buildRequirementFallbackQuestion({
+      requirement,
+      classification,
+      evidence: context.evidence ?? [],
+      jobDescriptionExcerpt: context.job_description_excerpt ?? '',
+    });
+
+  return {
+    response: 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
+    follow_up_question: starterQuestion,
+    current_question: starterQuestion,
+    needs_candidate_input: true,
+    recommended_next_action: 'answer_question',
+  };
+}
+
+async function runLineCoachTurn(
+  sessionId: string,
+  userId: string,
+  request: LineCoachRequest,
+): Promise<StructuredCoachingResponse> {
+  const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: buildLineCoachContextBlock(request) },
+    { role: 'assistant', content: JSON.stringify(buildLineCoachStarter(request)) },
+    ...request.messages,
+  ];
+
+  const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
+    model: MODEL_MID,
+    system: LINE_COACH_SYSTEM,
+    messages: llmMessages,
+    max_tokens: 1024,
+  }));
+
+  const repaired = repairJSON<unknown>(response.text);
+  const result = structuredCoachingResponseSchema.safeParse(repaired);
+
+  if (!result.success) {
+    if (request.mode === 'final_review_fix') {
+      return {
+        response: response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim(),
+        recommended_next_action: 'answer_question',
+        needs_candidate_input: true,
+      };
+    }
+
+    const requirement = request.context.requirement ?? request.item_id;
+    const classification = request.context.classification ?? 'partial';
+    const fallbackQuestion = request.context.coaching_policy?.clarifyingQuestion?.trim()
+      || buildRequirementFallbackQuestion({
+        requirement,
+        classification,
+        evidence: request.context.evidence ?? [],
+        jobDescriptionExcerpt: request.context.job_description_excerpt ?? '',
+      });
+
+    return {
+      response: buildRequirementFallbackResponse({
+        requirement,
+        classification,
+        evidence: request.context.evidence ?? [],
+      }),
+      follow_up_question: fallbackQuestion,
+      current_question: fallbackQuestion,
+      recommended_next_action: 'answer_question',
+      needs_candidate_input: true,
+    };
+  }
+
+  if (request.mode === 'final_review_fix') {
+    return result.data;
+  }
+
+  return normalizeGapChatResult(result.data, {
+    requirement: request.context.requirement ?? request.item_id,
+    classification: request.context.classification ?? 'partial',
+    context: {
+      evidence: request.context.evidence ?? [],
+      job_description_excerpt: request.context.job_description_excerpt ?? '',
+      coaching_policy: request.context.coaching_policy,
+    },
+  });
+}
+
+resumeV2Pipeline.post('/:sessionId/line-coach', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 50_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = lineCoachSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  logger.info({ session_id: sessionId, item_id: parsed.data.item_id, mode: parsed.data.mode, turn: parsed.data.messages.length }, 'Line coach message');
+
+  try {
+    return c.json(await runLineCoachTurn(sessionId, userId, parsed.data));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, item_id: parsed.data.item_id, error: message }, 'Line coach failed');
+    return c.json({ error: 'Chat failed', message }, 500);
+  }
+});
 
 resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
@@ -919,91 +1156,30 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { requirement, classification, messages, context } = parsed.data;
+  const request: LineCoachRequest = {
+    mode: 'clarify',
+    item_id: parsed.data.requirement,
+    messages: parsed.data.messages,
+    context: {
+      requirement: parsed.data.requirement,
+      classification: parsed.data.classification,
+      evidence: parsed.data.context.evidence,
+      current_strategy: parsed.data.context.current_strategy,
+      ai_reasoning: parsed.data.context.ai_reasoning,
+      inferred_metric: parsed.data.context.inferred_metric,
+      job_description_excerpt: parsed.data.context.job_description_excerpt,
+      candidate_experience_summary: parsed.data.context.candidate_experience_summary,
+      coaching_policy: parsed.data.context.coaching_policy,
+    },
+  };
 
-  logger.info({ session_id: sessionId, requirement, turn: messages.length }, 'Gap chat message');
-
-  const starterQuestion = context.coaching_policy?.clarifyingQuestion?.trim()
-    || buildRequirementFallbackQuestion({
-      requirement,
-      classification,
-      evidence: context.evidence,
-      jobDescriptionExcerpt: context.job_description_excerpt,
-    });
-
-  // Build the context message for the first turn
-  const contextBlock = [
-    `## Gap Being Discussed`,
-    `Requirement: ${requirement}`,
-    `Classification: ${classification}`,
-    '',
-    context.evidence.length > 0
-      ? `## Candidate's Relevant Experience\n${context.evidence.map(e => `- ${e}`).join('\n')}`
-      : '## Candidate\'s Relevant Experience\nNone found in current resume.',
-    '',
-    context.current_strategy ? `## Current Positioning Strategy\n${context.current_strategy}` : '',
-    context.ai_reasoning ? `## AI Analysis\n${context.ai_reasoning}` : '',
-    context.inferred_metric ? `## Inferred Metric\n${context.inferred_metric}` : '',
-    context.coaching_policy
-      ? `## Shared Coaching Guidance\nWhy this matters: ${context.coaching_policy.rationale}\nWhat would make this believable: ${context.coaching_policy.lookingFor}\nBest next question: ${context.coaching_policy.clarifyingQuestion}`
-      : '',
-    '',
-    `## Job Description Context\n${context.job_description_excerpt}`,
-    '',
-    `## Candidate Background Summary\n${context.candidate_experience_summary}`,
-  ].filter(Boolean).join('\n');
-
-  // Build multi-turn conversation: context as first system-provided user message,
-  // then the actual conversation history
-  const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: 'user', content: contextBlock },
-    { role: 'assistant', content: JSON.stringify({
-      response: 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
-      follow_up_question: starterQuestion,
-      current_question: starterQuestion,
-      needs_candidate_input: true,
-      recommended_next_action: 'answer_question',
-    }) },
-    ...messages,
-  ];
+  logger.info({ session_id: sessionId, requirement: parsed.data.requirement, turn: parsed.data.messages.length }, 'Gap chat message');
 
   try {
-    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
-      model: MODEL_MID,
-      system: GAP_CHAT_SYSTEM,
-      messages: llmMessages,
-      max_tokens: 1024,
-    }));
-
-    const repaired = repairJSON<unknown>(response.text);
-    const result = structuredCoachingResponseSchema.safeParse(repaired);
-
-    if (!result.success) {
-      // Fallback: treat raw text as the response — log for monitoring
-      logger.warn({ session_id: sessionId, requirement, rawSnippet: response.text.substring(0, 200) }, 'Gap chat: repairJSON failed, falling back to raw text');
-      const fallbackQuestion = buildRequirementFallbackQuestion({
-        requirement,
-        classification,
-        evidence: context.evidence,
-        jobDescriptionExcerpt: context.job_description_excerpt,
-      });
-      return c.json({
-        response: buildRequirementFallbackResponse({
-          requirement,
-          classification,
-          evidence: context.evidence,
-        }),
-        follow_up_question: context.coaching_policy?.clarifyingQuestion?.trim() || fallbackQuestion,
-        current_question: context.coaching_policy?.clarifyingQuestion?.trim() || fallbackQuestion,
-        recommended_next_action: 'answer_question',
-        needs_candidate_input: true,
-      });
-    }
-
-    return c.json(normalizeGapChatResult(result.data, { requirement, classification, context }));
+    return c.json(await runLineCoachTurn(sessionId, userId, request));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    logger.error({ session_id: sessionId, requirement, error: message }, 'Gap chat failed');
+    logger.error({ session_id: sessionId, requirement: parsed.data.requirement, error: message }, 'Gap chat failed');
     return c.json({ error: 'Chat failed', message }, 500);
   }
 });
@@ -1282,35 +1458,6 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
 
 // ─── POST /:sessionId/final-review-chat ───────────────────────────
 
-const FINAL_REVIEW_CHAT_SYSTEM = `You are the follow-up coach inside the Final Review stage of a premium resume rewrite workflow.
-
-You are helping the candidate resolve ONE specific hiring-manager concern at a time.
-
-Your job:
-1. Ask one targeted clarification question when missing detail could materially strengthen the resume
-2. Turn the candidate's answer into truthful, polished resume language when you have enough context
-3. Keep the advice tightly tied to the hiring-manager concern, the target role, and the affected section
-4. If the candidate truly lacks the experience, say so plainly and suggest positioning it as partial or unresolved
-
-RESPONSE FORMAT: Return valid JSON only:
-{
-  "response": "2-4 sentence coaching reply",
-  "suggested_resume_language": "Ready-to-review resume wording if enough context exists. Omit if you still need an answer.",
-  "follow_up_question": "One targeted follow-up question. Omit if no answer is needed now.",
-  "current_question": "Repeat the one question the candidate should answer next. Omit if no answer is needed now.",
-  "needs_candidate_input": true,
-  "recommended_next_action": "answer_question" | "review_edit" | "try_another_angle" | "skip" | "confirm"
-}
-
-RULES:
-- Never fabricate experience, metrics, scope, credentials, or outcomes.
-- Keep the response grounded in the actual concern.
-- If you propose language, make it concise and executive-level.
-- If you ask a question, set needs_candidate_input=true and recommended_next_action="answer_question".
-- If you propose language, set recommended_next_action="review_edit".
-- If adjacent experience is the best available move, say that explicitly and keep it truthful.
-- If the concern should remain unresolved, recommended_next_action should be "skip" or "confirm".`;
-
 resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
@@ -1339,78 +1486,33 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 
   logger.info({ session_id: sessionId, concern_id, turn: messages.length }, 'Final review chat message');
 
-  const starterSubject = context.related_requirement?.trim() || context.observation?.trim();
-  const starterQuestion = context.clarifying_question?.trim()
-    || (starterSubject
-      ? buildRequirementClarifyingQuestion(starterSubject)
-      : 'What concrete truthful detail would address this concern?');
-  const starterNeedsInput = context.requires_candidate_input ?? !context.suggested_resume_edit;
-  const starterAction = starterNeedsInput ? 'answer_question' : context.suggested_resume_edit ? 'review_edit' : 'answer_question';
-
-  const contextBlock = [
-    '## Final Review Concern',
-    `Concern ID: ${concern_id}`,
-    `Type: ${context.concern_type}`,
-    `Severity: ${context.severity}`,
-    '',
-    `## Observation`,
-    context.observation,
-    '',
-    `## Why It Hurts`,
-    context.why_it_hurts,
-    '',
-    `## Fix Strategy`,
-    context.fix_strategy,
-    context.clarifying_question ? `Candidate question: ${context.clarifying_question}` : '',
-    `Requires candidate input: ${starterNeedsInput ? 'yes' : 'no'}`,
-    context.target_section ? `Target section: ${context.target_section}` : '',
-    context.related_requirement ? `Related requirement: ${context.related_requirement}` : '',
-    context.suggested_resume_edit ? `Existing sample language: ${context.suggested_resume_edit}` : '',
-    '',
-    `## Role Context`,
-    `${context.role_title} at ${context.company_name}`,
-    context.job_description_fit ? `Job fit: ${context.job_description_fit}` : '',
-    context.benchmark_alignment ? `Benchmark alignment: ${context.benchmark_alignment}` : '',
-    context.business_impact ? `Business impact: ${context.business_impact}` : '',
-    context.clarity_and_credibility ? `Clarity and credibility: ${context.clarity_and_credibility}` : '',
-    '',
-    '## Resume Excerpt',
-    context.resume_excerpt,
-  ].filter(Boolean).join('\n');
-
-  const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: 'user', content: contextBlock },
-    { role: 'assistant', content: JSON.stringify({
-      response: 'I understand the concern. I will either ask for the one missing detail that matters most or give you language that directly resolves it.',
-      recommended_next_action: starterAction,
-      needs_candidate_input: starterNeedsInput,
-      follow_up_question: starterQuestion,
-      current_question: starterQuestion,
-    }) },
-    ...messages,
-  ];
-
   try {
-    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
-      model: MODEL_MID,
-      system: FINAL_REVIEW_CHAT_SYSTEM,
-      messages: llmMessages,
-      max_tokens: 1024,
+    return c.json(await runLineCoachTurn(sessionId, userId, {
+      mode: 'final_review_fix',
+      item_id: concern_id,
+      messages,
+      context: {
+        concern_id,
+        work_item_id: context.related_requirement,
+        concern_type: context.concern_type,
+        severity: context.severity,
+        observation: context.observation,
+        why_it_hurts: context.why_it_hurts,
+        fix_strategy: context.fix_strategy,
+        requires_candidate_input: context.requires_candidate_input,
+        clarifying_question: context.clarifying_question,
+        target_section: context.target_section,
+        related_requirement: context.related_requirement,
+        suggested_resume_edit: context.suggested_resume_edit,
+        role_title: context.role_title,
+        company_name: context.company_name,
+        job_description_fit: context.job_description_fit,
+        benchmark_alignment: context.benchmark_alignment,
+        business_impact: context.business_impact,
+        clarity_and_credibility: context.clarity_and_credibility,
+        resume_excerpt: context.resume_excerpt,
+      },
     }));
-
-    const repaired = repairJSON<unknown>(response.text);
-    const result = structuredCoachingResponseSchema.safeParse(repaired);
-
-    if (!result.success) {
-      logger.warn({ session_id: sessionId, concern_id, rawSnippet: response.text.substring(0, 200) }, 'Final review chat: repairJSON failed, falling back to raw text');
-      return c.json({
-        response: response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim(),
-        recommended_next_action: 'answer_question',
-        needs_candidate_input: true,
-      });
-    }
-
-    return c.json(result.data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, concern_id, error: message }, 'Final review chat failed');
@@ -1473,6 +1575,11 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
   const sessionGapAnalysis = pipelineData && typeof pipelineData.gapAnalysis === 'object'
     ? pipelineData.gapAnalysis
     : null;
+  const sessionRequirementWorkItems = Array.isArray(pipelineData?.requirementWorkItems)
+    ? pipelineData.requirementWorkItems as Array<{ id?: string; requirement?: string }>
+    : sessionGapAnalysis && typeof sessionGapAnalysis === 'object' && Array.isArray((sessionGapAnalysis as { requirement_work_items?: unknown[] }).requirement_work_items)
+      ? (sessionGapAnalysis as { requirement_work_items: Array<{ id?: string; requirement?: string }> }).requirement_work_items
+      : null;
   const careerProfile = await loadCareerProfileContext(userId);
   const hardRequirementRisks = extractHardRequirementRisksFromGapAnalysis(sessionGapAnalysis);
   const materialJobFitRisks = extractMaterialJobFitRisksFromGapAnalysis(sessionGapAnalysis);
@@ -1601,6 +1708,7 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
       hardRequirementRisks,
       materialJobFitRisks,
       resumeText: resume_text,
+      requirementWorkItems: sessionRequirementWorkItems,
     });
 
     logger.info({

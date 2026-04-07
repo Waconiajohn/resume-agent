@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -139,6 +139,9 @@ interface AttentionReviewItem {
   order: number;
   requirements: string[];
   reviewState: ResumeReviewState;
+  workItemId?: string;
+  proofLevel?: ProofLevel;
+  nextBestAction?: NextBestAction;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -233,6 +236,9 @@ function buildAttentionReviewItems(
         bullet.addresses_requirements,
       ),
       reviewState,
+      workItemId: bullet.work_item_id,
+      proofLevel: bullet.proof_level,
+      nextBestAction: bullet.next_best_action,
     });
   });
 
@@ -268,6 +274,9 @@ function buildAttentionReviewItems(
           bullet.addresses_requirements,
         ),
         reviewState,
+        workItemId: bullet.work_item_id,
+        proofLevel: bullet.proof_level,
+        nextBestAction: bullet.next_best_action,
       });
     });
   });
@@ -400,6 +409,9 @@ export function V2StreamingDisplay({
     reviewState: ResumeReviewState;
     requirementSource?: RequirementSource;
     evidenceFound: string;
+    workItemId?: string;
+    proofLevel?: ProofLevel;
+    nextBestAction?: NextBestAction;
   } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
 
   useEffect(() => {
@@ -423,6 +435,9 @@ export function V2StreamingDisplay({
     reviewState: ResumeReviewState,
     requirementSource: RequirementSource | undefined,
     evidenceFound: string,
+    workItemId?: string,
+    proofLevel?: ProofLevel,
+    nextBestAction?: NextBestAction,
   ) => {
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
@@ -434,6 +449,9 @@ export function V2StreamingDisplay({
         reviewState,
         requirementSource,
         evidenceFound,
+        workItemId,
+        proofLevel,
+        nextBestAction,
       };
     });
   }, []);
@@ -449,6 +467,9 @@ export function V2StreamingDisplay({
       bulletText: item.text,
       reviewState: item.reviewState,
       evidenceFound: '',
+      workItemId: item.workItemId,
+      proofLevel: item.proofLevel,
+      nextBestAction: item.nextBestAction,
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(item.selector);
@@ -518,6 +539,11 @@ export function V2StreamingDisplay({
   useEffect(() => {
     if (isRerunning) setHasPassedReadyGate(false);
   }, [isRerunning]);
+  const handleReadyGateStartEditing = useCallback(() => {
+    queueMicrotask(() => {
+      setHasPassedReadyGate(true);
+    });
+  }, []);
 
   const jobBreakdown = data.gapAnalysis?.score_breakdown?.job_description ?? {
     addressed: 0,
@@ -533,11 +559,41 @@ export function V2StreamingDisplay({
     missing: 0,
     coverage_score: 0,
   };
+  const readyGateActionSummary = useMemo(() => {
+    const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
+    if (workItems.length === 0) return [];
+
+    const unresolved = workItems.filter((item) => (
+      item.current_claim_strength !== 'supported' && item.current_claim_strength !== 'supported_rewrite'
+    ));
+    if (unresolved.length === 0) {
+      return ['Most requirements are already grounded. Use the editor to make a final polish pass and confirm the strongest wording.'];
+    }
+
+    const answerCount = unresolved.filter((item) => item.next_best_action === 'answer').length;
+    const confirmCount = unresolved.filter((item) => item.next_best_action === 'confirm').length;
+    const quantifyCount = unresolved.filter((item) => item.next_best_action === 'quantify').length;
+    const tightenCount = unresolved.filter((item) => item.next_best_action === 'tighten').length;
+
+    const lines: string[] = [];
+    if (answerCount > 0) {
+      lines.push(`${answerCount} requirement${answerCount === 1 ? '' : 's'} still need one concrete example or missing detail before the claim is safe to keep.`);
+    }
+    if (confirmCount > 0) {
+      lines.push(`${confirmCount} benchmark-style claim${confirmCount === 1 ? '' : 's'} need an honest fit check before you keep them as written.`);
+    }
+    if (quantifyCount + tightenCount > 0) {
+      const total = quantifyCount + tightenCount;
+      lines.push(`${total} line${total === 1 ? '' : 's'} can get stronger with sharper wording, clearer scope, or one defensible metric.`);
+    }
+    return lines.slice(0, 3);
+  }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
   const rewriteQueue = useMemo(() => {
     if (!data.jobIntelligence || !data.gapAnalysis) return null;
     return buildRewriteQueue({
       jobIntelligence: data.jobIntelligence,
       gapAnalysis: data.gapAnalysis,
+      requirementWorkItems: data.requirementWorkItems,
       currentResume: displayResume,
       benchmarkCandidate: data.benchmarkCandidate,
       gapCoachingCards,
@@ -599,7 +655,17 @@ export function V2StreamingDisplay({
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
-    return `Start with the bullet marked '${topItem.statusLabel.toLowerCase()}' in ${topItem.locationLabel}.`;
+    const nextAction = topItem.nextBestAction
+      ? ({
+          accept: 'leave it as is',
+          tighten: 'tighten the wording',
+          quantify: 'add scope or a metric',
+          confirm: 'confirm the fit honestly',
+          answer: 'answer the missing question',
+          remove: 'remove it if it is not true',
+        } satisfies Record<NextBestAction, string>)[topItem.nextBestAction]
+      : `review the bullet marked '${topItem.statusLabel.toLowerCase()}'`;
+    return `Start in ${topItem.locationLabel} and ${nextAction}.`;
   }, [attentionItems]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
@@ -680,7 +746,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -827,6 +893,8 @@ export function V2StreamingDisplay({
                             reviewState={activeBullet.reviewState}
                             requirementSource={activeBullet.requirementSource}
                             evidenceFound={activeBullet.evidenceFound}
+                            proofLevel={activeBullet.proofLevel}
+                            nextBestAction={activeBullet.nextBestAction}
                             gapChat={gapChat}
                             chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)}
                             onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
@@ -871,10 +939,11 @@ export function V2StreamingDisplay({
             benchmarkMatchPercent={benchmarkBreakdown.coverage_score}
             strengthSummary={data.gapAnalysis?.strength_summary ?? ''}
             flaggedBulletCount={attentionItems.length}
+            actionSummaryLines={readyGateActionSummary}
             companyName={data.jobIntelligence?.company_name}
             roleTitle={data.jobIntelligence?.role_title}
             hasScoreData={!!data.gapAnalysis?.score_breakdown}
-            onStartEditing={() => setHasPassedReadyGate(true)}
+            onStartEditing={handleReadyGateStartEditing}
           />
         </div>
       ) : (
@@ -911,6 +980,7 @@ function getStageMessage(stage: V2Stage): string {
     case 'intake': return 'Reading your background...';
     case 'analysis': return 'Reading the role, the benchmark, and the strongest proof already on your resume...';
     case 'strategy': return 'Building the requirement map and lining it up against the current resume...';
+    case 'clarification': return 'Surfacing the missing proof, strongest nearby evidence, and the best questions to close the gaps...';
     case 'writing': return 'Improving one requirement at a time and drafting edits you can review inline...';
     case 'verification': return 'Running final review and checking tone, evidence, and accuracy...';
     case 'assembly': return 'Preparing the latest approved draft for export...';

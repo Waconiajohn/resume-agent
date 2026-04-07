@@ -124,11 +124,10 @@ function preScoresEqual(a: PreScores | undefined, b: PreScores): boolean {
 /**
  * Pending gap-question resolvers, keyed by session_id.
  *
- * When the pipeline emits `gap_questions` and pauses, it registers a resolver
- * here. The `/respond-gaps` route finds the resolver by session_id, calls it
- * with the user's responses, and the pipeline continues.
- *
- * The Map entry is removed once the resolver is called.
+ * This is retained for the legacy gap-question response path. The current
+ * clarification stage does not hard-pause the pipeline for these questions,
+ * but older flows can still register a resolver here and resume with the
+ * user's answers afterward.
  */
 export const pendingGapResolvers = new Map<
   string,
@@ -310,7 +309,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'benchmark_candidate', data: benchmark });
     emit({ type: 'stage_complete', stage: 'analysis', message: 'Analysis complete', duration_ms: Date.now() - analysisStart });
 
-    // ─── Stage 2: Strategy (Agents 4 & 5 sequential) ─────────────────
+    // ─── Stage 2: Strategy (Agent 4 — requirement workbench) ─────────
     signal?.throwIfAborted();
     state.current_stage = 'strategy';
     emit({ type: 'stage_start', stage: 'strategy', message: "Building your positioning strategy..." });
@@ -326,7 +325,11 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     }, signal);
 
     state.gap_analysis = gapAnalysis;
+    state.requirement_work_items = gapAnalysis.requirement_work_items;
     emit({ type: 'gap_analysis', data: gapAnalysis });
+    if (gapAnalysis.requirement_work_items) {
+      emit({ type: 'requirement_work_items', data: gapAnalysis.requirement_work_items });
+    }
 
     if (!options.pre_scores && state.pre_scores) {
       const enrichedPreScores = enrichPreScoresWithGapAnalysis(state.pre_scores, gapAnalysis);
@@ -336,19 +339,28 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       }
     }
 
-    // ─── Gap Coaching: build coaching cards from pending strategies ──
+    emit({ type: 'stage_complete', stage: 'strategy', message: 'Requirement map complete', duration_ms: Date.now() - strategyStart });
+
+    // ─── Stage 3: Clarification (questions + positioning lock) ───────
+    signal?.throwIfAborted();
+    state.current_stage = 'clarification';
+    emit({ type: 'stage_start', stage: 'clarification', message: "Surfacing the missing proof and best follow-up questions..." });
+
+    const clarificationStart = Date.now();
+
     // Always emit cards when strategies are present — including on "Add Context" re-runs.
     // The previously_approved flag lets the frontend indicate which strategies were
     // already approved so the user knows they can confirm quickly.
     if (gapAnalysis.pending_strategies.length > 0) {
       const coachingCards: GapCoachingCard[] = gapAnalysis.pending_strategies.map(ps => {
-        // Find the matching requirement for classification/importance
         const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
+        const workItem = gapAnalysis.requirement_work_items?.find((item) => item.requirement === ps.requirement);
         const previouslyApproved = options.gap_coaching_responses?.find(
           r => r.requirement === ps.requirement && r.action === 'approve',
         );
         return {
           requirement: ps.requirement,
+          work_item_id: workItem?.id,
           importance: req?.importance ?? 'important',
           classification: req?.classification ?? 'partial',
           ai_reasoning: ps.strategy.ai_reasoning ?? `I found adjacent experience that could work for "${ps.requirement}": ${ps.strategy.real_experience}`,
@@ -367,7 +379,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       emit({ type: 'gap_coaching', data: coachingCards });
     }
 
-    // ─── Gap Question Gate ────────────────────────────────────────────
+    // ─── Clarification Gate ───────────────────────────────────────────
     // Determine the effective approved strategies for downstream agents.
     //
     // Four cases:
@@ -416,6 +428,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
           data: {
             questions: rankedGaps.map(({ ps, req }) => ({
               id: ps.requirement,
+              work_item_id: gapAnalysis.requirement_work_items?.find((item) => item.requirement === ps.requirement)?.id,
               requirement: ps.requirement,
               importance: (req?.importance === 'must_have' ? 'critical' : req?.importance === 'nice_to_have' ? 'supporting' : 'important') as 'critical' | 'important' | 'supporting',
               classification: (req?.classification ?? 'partial') as 'partial' | 'missing',
@@ -451,9 +464,9 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     state.narrative_strategy = narrative;
     emit({ type: 'narrative_strategy', data: narrative });
-    emit({ type: 'stage_complete', stage: 'strategy', message: 'Positioning strategy complete', duration_ms: Date.now() - strategyStart });
+    emit({ type: 'stage_complete', stage: 'clarification', message: 'Clarification pass complete', duration_ms: Date.now() - clarificationStart });
 
-    // ─── Stage 3: Writing (Agent 6) ──────────────────────────────────
+    // ─── Stage 4: Writing (Agent 6) ──────────────────────────────────
     signal?.throwIfAborted();
     state.current_stage = 'writing';
     emit({ type: 'stage_start', stage: 'writing', message: "Writing your resume..." });

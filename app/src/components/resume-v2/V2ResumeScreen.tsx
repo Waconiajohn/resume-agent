@@ -273,6 +273,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const ci = data.candidateIntelligence;
     const ga = data.gapAnalysis;
     const gc = data.gapCoachingCards;
+    const workItems = data.requirementWorkItems ?? ga?.requirement_work_items ?? [];
 
     // Find the matching requirement in gap analysis (normalized + fallback)
     const normalized = normalizeRequirement(requirement);
@@ -294,14 +295,21 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     ) ?? gc?.find(
       card => card.requirement.toLowerCase().includes(normalized) || normalized.includes(card.requirement.toLowerCase()),
     );
+    const workItem = workItems.find(
+      item => normalizeRequirement(item.requirement) === normalized,
+    ) ?? workItems.find(
+      item => item.requirement.toLowerCase().includes(normalized) || normalized.includes(item.requirement.toLowerCase()),
+    );
 
     return {
-      evidence: gapReq?.evidence ?? [],
+      workItemId: workItem?.id,
+      evidence: gapReq?.evidence ?? workItem?.candidate_evidence.map((item) => item.text) ?? [],
       currentStrategy: gapReq?.strategy?.positioning,
       aiReasoning: gapReq?.strategy?.ai_reasoning,
       inferredMetric: gapReq?.strategy?.inferred_metric,
       coachingPolicy: coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy,
-      jobDescriptionExcerpt: comp?.evidence_from_jd
+      jobDescriptionExcerpt: workItem?.source_evidence
+        ?? comp?.evidence_from_jd
         ?? ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
         ?? '',
       candidateExperienceSummary: ci
@@ -309,10 +317,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         : '',
       alternativeBullets: coachingCard?.alternative_bullets ?? [],
       primaryRequirement: requirement,
-      requirementSource: gapReq?.source ?? coachingCard?.source,
-      sourceEvidence: coachingCard?.source_evidence ?? gapReq?.source_evidence,
+      requirementSource: workItem?.source ?? gapReq?.source ?? coachingCard?.source,
+      sourceEvidence: workItem?.source_evidence ?? coachingCard?.source_evidence ?? gapReq?.source_evidence,
     };
-  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards]);
+  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
 
   // AI assist for gap positioning cards — calls gap-chat with a single-shot prompt
   const handleGapAssist = useCallback(
@@ -373,9 +381,19 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
     if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;
+    const normalizedRelatedRequirement = concern.related_requirement
+      ? normalizeRequirement(concern.related_requirement)
+      : null;
+    const matchedWorkItem = normalizedRelatedRequirement
+      ? (data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? []).find((item) => (
+          normalizeRequirement(item.requirement) === normalizedRelatedRequirement
+            || item.id === concern.related_requirement
+        ))
+      : undefined;
 
     return {
       concernId: concern.id,
+      workItemId: matchedWorkItem?.id,
       concernType: concern.type,
       severity: concern.severity,
       observation: concern.observation,
@@ -394,7 +412,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       clarityAndCredibility: hiringManagerResult.fit_assessment.clarity_and_credibility,
       resumeExcerpt: extractResumeExcerptForSection(currentResume, concern.target_section),
     };
-  }, [currentResume, data.jobIntelligence, hiringManagerResult]);
+  }, [currentResume, data.gapAnalysis?.requirement_work_items, data.jobIntelligence, data.requirementWorkItems, hiringManagerResult]);
 
   // Seed initial scores from pipeline assembly
   useEffect(() => {

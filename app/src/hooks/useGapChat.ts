@@ -212,7 +212,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
     abortRef.current = controller;
 
     try {
-      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/gap-chat`, {
+      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/line-coach`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,10 +220,14 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          requirement,
-          classification,
+          mode: classification === 'strong' ? 'rewrite' : 'clarify',
+          item_id: requirement,
           messages: apiMessages,
           context: {
+            work_item_id: context.workItemId,
+            requirement,
+            classification,
+            requirement_source: context.requirementSource,
             evidence: context.evidence,
             current_strategy: context.currentStrategy,
             ai_reasoning: context.aiReasoning,
@@ -231,6 +235,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             job_description_excerpt: context.jobDescriptionExcerpt,
             candidate_experience_summary: context.candidateExperienceSummary,
             coaching_policy: context.coachingPolicy,
+            source_evidence: context.sourceEvidence,
           },
         }),
       });

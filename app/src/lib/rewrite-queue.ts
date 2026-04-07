@@ -7,6 +7,7 @@ import type {
   GapChatMessage,
   JobIntelligence,
   RequirementGap,
+  RequirementWorkItem,
   ResumeDraft,
   RewriteQueueCategory,
   RewriteQueueEvidence,
@@ -482,6 +483,7 @@ function dedupeRequirements(requirements: RequirementGap[]): RequirementGap[] {
 export function buildRewriteQueue(args: {
   jobIntelligence: JobIntelligence;
   gapAnalysis: GapAnalysis;
+  requirementWorkItems?: RequirementWorkItem[] | null;
   currentResume?: ResumeDraft | null;
   benchmarkCandidate?: BenchmarkCandidate | null;
   gapCoachingCards?: GapCoachingCard[] | null;
@@ -497,6 +499,12 @@ export function buildRewriteQueue(args: {
   const coachingLookup = new Map(
     (args.gapCoachingCards ?? []).map((card) => [normalize(card.requirement), card]),
   );
+  const workItemLookup = new Map(
+    (args.requirementWorkItems ?? args.gapAnalysis.requirement_work_items ?? []).map((item) => [
+      normalize(item.requirement),
+      item,
+    ]),
+  );
 
   const dedupedRequirements = dedupeRequirements(args.gapAnalysis.requirements);
 
@@ -504,9 +512,18 @@ export function buildRewriteQueue(args: {
     const normalizedRequirement = normalize(requirement.requirement);
     const source = requirement.source ?? (requirement.score_domain === 'benchmark' ? 'benchmark' : 'job_description');
     const coachingCard = coachingLookup.get(normalizedRequirement);
+    const workItem = workItemLookup.get(normalizedRequirement);
     const acceptedLanguage = resolvedLanguage(args.gapChatSnapshot, requirement.requirement);
     const latestAssistant = latestAssistantMessage(args.gapChatSnapshot, requirement.requirement);
     const liveEvidence = collectResumeEvidenceForRequirement(args.currentResume, requirement.requirement);
+    const workItemEvidence = (workItem?.candidate_evidence ?? []).map((item) => ({
+      text: item.text,
+      source: 'resume' as const,
+      section: item.source_section,
+      isNew: false,
+      basis: item.evidence_strength === 'direct' ? 'mapped' as const : 'nearby' as const,
+    }));
+    const mergedEvidence = liveEvidence.length > 0 ? liveEvidence : workItemEvidence;
     const inferredEvidence = Array.isArray(requirement.evidence)
       ? requirement.evidence.filter((item): item is string => (
         typeof item === 'string'
@@ -520,28 +537,87 @@ export function buildRewriteQueue(args: {
       jobIntelligence: args.jobIntelligence,
       benchmarkCandidate: args.benchmarkCandidate,
     });
-    const isHardRequirement = hardRequirementText(requirement.requirement, sourceEvidence);
+    const normalizedSourceEvidence = sourceEvidence.length > 0
+      ? sourceEvidence
+      : workItem?.source_evidence
+        ? [{
+            text: workItem.source_evidence,
+            source: workItem.source === 'benchmark' ? 'benchmark' as const : 'job_description' as const,
+            basis: 'source' as const,
+          }]
+        : [];
+    const isHardRequirement = hardRequirementText(requirement.requirement, normalizedSourceEvidence);
     const hasSuggestedLanguage = Boolean(latestAssistant?.suggestedLanguage);
     const sharedCoachingPolicy = coachingCard?.coaching_policy ?? requirement.strategy?.coaching_policy;
+    const status: RewriteQueueItem['status'] = workItem
+      ? (
+          workItem.current_claim_strength === 'supported' || workItem.current_claim_strength === 'supported_rewrite'
+            ? 'already_covered'
+            : workItem.proof_level === 'none'
+              ? 'not_addressed'
+              : 'needs_more_evidence'
+        )
+      : requirement.classification === 'strong'
+        ? 'already_covered'
+        : acceptedLanguage || mergedEvidence.some((item) => item.isNew)
+          ? 'partially_addressed'
+          : requirement.classification === 'partial' || mergedEvidence.length > 0 || latestAssistant?.needsCandidateInput || Boolean(latestAssistant?.currentQuestion)
+            ? 'needs_more_evidence'
+            : 'not_addressed';
 
-    const status: RewriteQueueItem['status'] = requirement.classification === 'strong'
-      ? 'already_covered'
-      : acceptedLanguage || liveEvidence.some((item) => item.isNew)
-        ? 'partially_addressed'
-        : requirement.classification === 'partial' || liveEvidence.length > 0 || latestAssistant?.needsCandidateInput || Boolean(latestAssistant?.currentQuestion)
-          ? 'needs_more_evidence'
-          : 'not_addressed';
+    const category = workItem
+      ? (
+          workItem.source === 'benchmark' && workItem.current_claim_strength === 'confirm_fit'
+            ? 'benchmark_stretch'
+            : workItem.proof_level === 'none' && isHardRequirement
+              ? 'hard_gap'
+              : workItem.next_best_action === 'quantify' || workItem.current_claim_strength === 'strengthen'
+                ? 'proof_upgrade'
+                : 'quick_win'
+        )
+      : categoryForRequirement({
+          source,
+          status,
+          liveEvidenceCount: mergedEvidence.length,
+          inferredEvidenceCount: inferredEvidence.length,
+          hasSuggestedLanguage,
+          isHardRequirement,
+        });
 
-    const category = categoryForRequirement({
-      source,
-      status,
-      liveEvidenceCount: liveEvidence.length,
-      inferredEvidenceCount: inferredEvidence.length,
-      hasSuggestedLanguage,
-      isHardRequirement,
-    });
-
-    const recommendedNextStep = status === 'already_covered'
+    const recommendedNextStep = workItem?.next_best_action
+      ? ({
+          accept: {
+            action: 'view_in_resume' as const,
+            label: 'Review Current Line',
+            detail: 'This line is already grounded well. Keep it only if it is still your strongest proof.',
+          },
+          tighten: {
+            action: 'review_edit' as const,
+            label: 'Sharpen This Line',
+            detail: 'The proof is there. Tighten the wording so the requirement match is unmistakable.',
+          },
+          quantify: {
+            action: 'answer_question' as const,
+            label: 'Add Scope or Metric',
+            detail: 'Add one defensible metric, scope marker, cadence, or concrete result to make the proof land harder.',
+          },
+          confirm: {
+            action: 'verify' as const,
+            label: 'Confirm Honest Fit',
+            detail: 'Decide whether this benchmark-style claim truly fits your background or needs a more honest reframe.',
+          },
+          answer: {
+            action: 'answer_question' as const,
+            label: 'Answer 1 Question',
+            detail: 'We need one concrete detail before this claim should stay on the resume.',
+          },
+          remove: {
+            action: 'verify' as const,
+            label: 'Decide Whether It Stays',
+            detail: 'If this line does not fit your real experience, remove it instead of forcing it.',
+          },
+        } satisfies Record<NonNullable<RequirementWorkItem['next_best_action']>, RewriteQueueItem['recommendedNextStep']>)[workItem.next_best_action]
+      : status === 'already_covered'
       ? {
           action: 'view_in_resume' as const,
           label: 'Check Current Proof',
@@ -559,10 +635,10 @@ export function buildRewriteQueue(args: {
               label: 'Review Edit',
               detail: 'A stronger line is ready. Review it and only accept it if it is fully true.',
             }
-          : {
-              action: 'answer_question' as const,
-              label: 'Answer 1 Question',
-              detail: category === 'benchmark_stretch'
+      : {
+          action: 'answer_question' as const,
+          label: 'Answer 1 Question',
+          detail: category === 'benchmark_stretch'
                 ? 'Answer one targeted question so we can decide whether this stretch item is really supportable.'
                 : status === 'not_addressed'
                   ? 'Answer one targeted question so we can find truthful proof for this job requirement and draft the right edit.'
@@ -572,7 +648,7 @@ export function buildRewriteQueue(args: {
     const aiPlan = aiPlanForRequirement({
       category,
       status,
-      liveEvidenceCount: liveEvidence.length,
+      liveEvidenceCount: mergedEvidence.length,
       inferredEvidenceCount: inferredEvidence.length,
       hasSuggestedLanguage,
     });
@@ -583,7 +659,7 @@ export function buildRewriteQueue(args: {
       requirement: requirement.requirement,
       category,
       status,
-      liveEvidenceCount: liveEvidence.length,
+      liveEvidenceCount: mergedEvidence.length,
       inferredEvidenceCount: inferredEvidence.length,
       hasSuggestedLanguage,
     });
@@ -596,12 +672,13 @@ export function buildRewriteQueue(args: {
       requirement: requirement.requirement,
       category,
       source,
-      currentEvidenceText: liveEvidence[0]?.text ?? inferredEvidence[0] ?? null,
-      sourceEvidenceText: sourceEvidence[0]?.text ?? null,
+      currentEvidenceText: mergedEvidence[0]?.text ?? inferredEvidence[0] ?? null,
+      sourceEvidenceText: normalizedSourceEvidence[0]?.text ?? null,
     });
     const starterQuestion = looksLikeTargetedStarterQuestion(latestAssistant?.currentQuestion, requirement.requirement)
       ? latestAssistant?.currentQuestion?.trim()
-      : sharedCoachingPolicy?.clarifyingQuestion?.trim()
+      : workItem?.clarifying_question?.trim()
+        || sharedCoachingPolicy?.clarifyingQuestion?.trim()
         || fallbackStarterQuestion;
 
     return {
@@ -613,18 +690,18 @@ export function buildRewriteQueue(args: {
       status,
       bucket: bucketForItem(status, category),
       isResolved: status === 'already_covered',
-      whyItMatters: whyRequirementMatters(source, sourceEvidence),
+      whyItMatters: whyRequirementMatters(source, normalizedSourceEvidence),
       aiPlan,
       userInstruction,
-      currentEvidence: liveEvidence.length > 0
-        ? liveEvidence
+      currentEvidence: mergedEvidence.length > 0
+        ? mergedEvidence
         : inferredEvidence.map((text) => ({ text, source: 'resume' as const, basis: 'nearby' as const })),
-      sourceEvidence,
+      sourceEvidence: normalizedSourceEvidence,
       recommendedNextStep,
       requirement: requirement.requirement,
       importance: requirement.importance,
       classification: requirement.classification,
-      candidateInputNeeded: latestAssistant?.needsCandidateInput ?? false,
+      candidateInputNeeded: (workItem?.next_best_action === 'answer') || (latestAssistant?.needsCandidateInput ?? false),
       coachingReasoning: coachingCard?.ai_reasoning ?? requirement.strategy?.ai_reasoning,
       coachingPolicy: sharedCoachingPolicy,
       starterQuestion,
@@ -633,6 +710,8 @@ export function buildRewriteQueue(args: {
         : undefined,
       suggestedDraft: looksLikeResumeRewrite(latestAssistant?.suggestedLanguage)
         ? latestAssistant?.suggestedLanguage
+        : looksLikeResumeRewrite(workItem?.recommended_bullet)
+          ? workItem?.recommended_bullet
         : looksLikeResumeRewrite(requirement.strategy?.positioning)
           ? requirement.strategy?.positioning
           : undefined,

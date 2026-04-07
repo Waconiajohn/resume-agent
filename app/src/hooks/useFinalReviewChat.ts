@@ -187,7 +187,7 @@ export function useFinalReviewChat(accessToken: string | null, sessionId: string
     abortRef.current = controller;
 
     try {
-      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/final-review-chat`, {
+      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/line-coach`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,9 +195,12 @@ export function useFinalReviewChat(accessToken: string | null, sessionId: string
         },
         signal: controller.signal,
         body: JSON.stringify({
-          concern_id: concernId,
+          mode: 'final_review_fix',
+          item_id: concernId,
           messages: apiMessages,
           context: {
+            work_item_id: context.workItemId,
+            concern_id: concernId,
             concern_type: context.concernType,
             severity: context.severity,
             observation: context.observation,

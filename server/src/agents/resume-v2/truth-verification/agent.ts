@@ -83,7 +83,7 @@ export async function runTruthVerification(
     });
 
     const parsed = repairJSON<TruthVerificationOutput>(response.text);
-    if (parsed) return attachCanonicalEvidence(parsed);
+    if (parsed) return attachCanonicalEvidence(attachClaimWorkItemIds(parsed, input));
 
     logger.warn(
       { rawSnippet: response.text.substring(0, 500) },
@@ -109,7 +109,7 @@ export async function runTruthVerification(
     });
 
     const retryParsed = repairJSON<TruthVerificationOutput>(retry.text);
-    if (retryParsed) return attachCanonicalEvidence(retryParsed);
+    if (retryParsed) return attachCanonicalEvidence(attachClaimWorkItemIds(retryParsed, input));
 
     logger.error(
       { rawSnippet: retry.text.substring(0, 500) },
@@ -242,24 +242,48 @@ function attachCanonicalEvidence(output: TruthVerificationOutput): TruthVerifica
   };
 }
 
-function collectDraftClaims(input: TruthVerificationInput): Array<{ claim: string; section: string }> {
-  const claims: Array<{ claim: string; section: string }> = [];
-  const pushClaim = (claim: string, section: string) => {
+function collectDraftClaims(input: TruthVerificationInput): Array<{ claim: string; section: string; work_item_id?: string }> {
+  const claims: Array<{ claim: string; section: string; work_item_id?: string }> = [];
+  const pushClaim = (claim: string, section: string, workItemId?: string) => {
     const trimmed = claim.trim();
     if (!trimmed) return;
-    claims.push({ claim: trimmed, section });
+    claims.push({ claim: trimmed, section, work_item_id: workItemId });
   };
 
   pushClaim(input.draft.executive_summary.content, 'executive_summary');
-  input.draft.selected_accomplishments.forEach((item) => pushClaim(item.content, 'selected_accomplishments'));
+  input.draft.selected_accomplishments.forEach((item) => pushClaim(item.content, 'selected_accomplishments', item.work_item_id));
   input.draft.professional_experience.forEach((experience) => {
     pushClaim(experience.scope_statement, `${experience.company} scope_statement`);
-    experience.bullets.forEach((bullet) => pushClaim(bullet.text, `${experience.company} bullet`));
+    experience.bullets.forEach((bullet) => pushClaim(bullet.text, `${experience.company} bullet`, bullet.work_item_id));
   });
   input.draft.education.forEach((education) => pushClaim(`${education.degree} ${education.institution} ${education.year ?? ''}`.trim(), 'education'));
   input.draft.certifications.forEach((certification) => pushClaim(certification, 'certifications'));
 
   return claims.slice(0, 40);
+}
+
+function attachClaimWorkItemIds(
+  output: TruthVerificationOutput,
+  input: TruthVerificationInput,
+): TruthVerificationOutput {
+  const draftClaims = collectDraftClaims(input);
+  const byClaimAndSection = new Map(
+    draftClaims.map((item) => [`${normalizeText(item.claim)}::${normalizeText(item.section)}`, item.work_item_id]),
+  );
+  const byClaim = new Map(
+    draftClaims.map((item) => [normalizeText(item.claim), item.work_item_id]),
+  );
+
+  return {
+    ...output,
+    claims: output.claims.map((claim) => ({
+      ...claim,
+      work_item_id: claim.work_item_id
+        ?? byClaimAndSection.get(`${normalizeText(claim.claim)}::${normalizeText(claim.section)}`)
+        ?? byClaim.get(normalizeText(claim.claim))
+        ?? undefined,
+    })),
+  };
 }
 
 function classifyConfidence(

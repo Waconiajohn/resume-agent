@@ -26,7 +26,7 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
         Building Your Tailored Resume
       </p>
 
-      {/* 5-step stepper */}
+      {/* 6-step stepper */}
       <div className="flex items-center justify-between mb-6" role="list" aria-label="Pipeline progress">
         {PIPELINE_STAGE_LABELS.map((step, i) => {
           const isDone = i < activeIndex;

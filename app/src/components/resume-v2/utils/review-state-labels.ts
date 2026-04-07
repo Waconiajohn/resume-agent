@@ -56,32 +56,35 @@ export const REVIEW_STATE_DISPLAY: Record<
 };
 
 /**
- * Pipeline stage labels for the 5-step user-facing progress indicator.
+ * Pipeline stage labels for the 6-step user-facing progress indicator.
  */
 export const PIPELINE_STAGE_LABELS = [
   { key: 'analyzing', label: 'Analyzing' },
   { key: 'benchmark', label: 'Researching Benchmark' },
+  { key: 'clarifying', label: 'Clarifying' },
   { key: 'writing', label: 'Writing' },
   { key: 'verifying', label: 'Verifying' },
   { key: 'finishing', label: 'Finishing' },
 ] as const;
 
-/** Map internal V2Stage to the 0-based index in the 5-step progress indicator. */
+/** Map internal V2Stage to the 0-based index in the 6-step progress indicator. */
 export function stageToProgressIndex(stage: V2Stage, isComplete: boolean): number {
-  if (isComplete) return 4;
+  if (isComplete) return PIPELINE_STAGE_LABELS.length - 1;
   switch (stage) {
     case 'intake':
     case 'analysis':
       return 0;
     case 'strategy':
       return 1;
-    case 'writing':
+    case 'clarification':
       return 2;
-    case 'verification':
+    case 'writing':
       return 3;
+    case 'verification':
+      return 4;
     case 'assembly':
     case 'complete':
-      return 4;
+      return 5;
   }
 }
 
@@ -94,6 +97,8 @@ export function stageStatusMessage(stage: V2Stage, isComplete: boolean): string 
       return 'Reading your resume and the role\u2026';
     case 'strategy':
       return 'Researching what the ideal candidate looks like\u2026';
+    case 'clarification':
+      return 'Asking what we still need to make the resume stronger\u2026';
     case 'writing':
       return 'Writing your resume now\u2026';
     case 'verification':

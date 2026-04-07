@@ -23,6 +23,7 @@ const INITIAL_DATA: V2PipelineData = {
   candidateIntelligence: null,
   benchmarkCandidate: null,
   gapAnalysis: null,
+  requirementWorkItems: null,
   gapCoachingCards: null,
   gapQuestions: null,
   preScores: null,
@@ -84,7 +85,14 @@ export function useV2Pipeline(accessToken: string | null) {
           return { ...prev, benchmarkCandidate: event.data };
 
         case 'gap_analysis':
-          return { ...prev, gapAnalysis: event.data };
+          return {
+            ...prev,
+            gapAnalysis: event.data,
+            requirementWorkItems: event.data.requirement_work_items ?? prev.requirementWorkItems,
+          };
+
+        case 'requirement_work_items':
+          return { ...prev, requirementWorkItems: event.data };
 
         case 'pre_scores':
           return { ...prev, preScores: event.data };

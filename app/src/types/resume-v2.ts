@@ -11,6 +11,7 @@ export type V2Stage =
   | 'intake'
   | 'analysis'
   | 'strategy'
+  | 'clarification'
   | 'writing'
   | 'verification'
   | 'assembly'
@@ -152,6 +153,45 @@ export interface RequirementCoverageBreakdown {
   coverage_score: number;
 }
 
+export type ProofLevel = 'direct' | 'adjacent' | 'inferable' | 'none';
+export type FramingGuardrail = 'exact' | 'reframe' | 'soft_inference' | 'blocked';
+export type NextBestAction = 'accept' | 'tighten' | 'quantify' | 'confirm' | 'answer' | 'remove';
+
+export interface RequirementEvidence {
+  text: string;
+  source_type: 'uploaded_resume' | 'master_resume' | 'interview_context' | 'profile' | 'inference';
+  source_section?: string;
+  evidence_strength: 'direct' | 'adjacent' | 'contextual';
+}
+
+export interface RequirementLineAnchor {
+  section?: GapPlacementTarget | 'final_review';
+  company?: string;
+  bullet_index?: number;
+}
+
+export interface RequirementWorkItem {
+  id: string;
+  requirement: string;
+  source: RequirementSource;
+  category?: RequirementCategory;
+  score_domain?: RequirementScoreDomain;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  source_evidence?: string;
+  candidate_evidence: RequirementEvidence[];
+  best_evidence_excerpt?: string;
+  proof_level: ProofLevel;
+  framing_guardrail: FramingGuardrail;
+  current_claim_strength: ResumeReviewState;
+  recommended_bullet?: string;
+  target_evidence?: string;
+  clarifying_question?: string;
+  looking_for?: string;
+  missing_detail?: string;
+  next_best_action: NextBestAction;
+  line_anchor?: RequirementLineAnchor;
+}
+
 export interface GapAnalysis {
   requirements: RequirementGap[];
   coverage_score: number;
@@ -161,6 +201,7 @@ export interface GapAnalysis {
   };
   strength_summary: string;
   critical_gaps: string[];
+  requirement_work_items?: RequirementWorkItem[];
   pending_strategies: Array<{
     requirement: string;
     strategy: GapStrategy;
@@ -178,6 +219,7 @@ export interface GapAnalysis {
 
 export interface GapQuestion {
   id: string;
+  work_item_id?: string;
   requirement: string;
   importance: 'critical' | 'important' | 'supporting';
   classification: 'partial' | 'missing';
@@ -191,6 +233,7 @@ export interface GapQuestion {
 
 export interface GapCoachingCard {
   requirement: string;
+  work_item_id?: string;
   importance: 'must_have' | 'important' | 'nice_to_have';
   classification: GapClassification;
   ai_reasoning: string;
@@ -341,6 +384,11 @@ export interface ResumeBullet {
   requirement_source: RequirementSource;
   content_origin?: ResumeContentOrigin;
   support_origin?: ResumeSupportOrigin;
+  /** Canonical work item tying this line back to one requirement/proof story */
+  work_item_id?: string;
+  proof_level?: ProofLevel;
+  framing_guardrail?: FramingGuardrail;
+  next_best_action?: NextBestAction;
 }
 
 export interface ResumeExperience {
@@ -385,6 +433,11 @@ export interface ResumeDraft {
     requirement_source: RequirementSource;
     content_origin?: ResumeContentOrigin;
     support_origin?: ResumeSupportOrigin;
+    /** Canonical work item tying this line back to one requirement/proof story */
+    work_item_id?: string;
+    proof_level?: ProofLevel;
+    framing_guardrail?: FramingGuardrail;
+    next_best_action?: NextBestAction;
   }>;
   selected_accomplishment_targets?: ResumePriorityTarget[];
   professional_experience: ResumeExperience[];
@@ -448,6 +501,7 @@ export interface GapChatMessage {
 }
 
 export interface GapChatContext {
+  workItemId?: string;
   evidence: string[];
   currentStrategy?: string;
   aiReasoning?: string;
@@ -463,6 +517,7 @@ export interface GapChatContext {
 
 export interface FinalReviewChatContext {
   concernId: string;
+  workItemId?: string;
   concernType: FinalReviewConcern['type'];
   severity: FinalReviewConcern['severity'];
   observation: string;
@@ -526,6 +581,7 @@ export interface FinalReviewTopWin {
 
 export interface FinalReviewConcern {
   id: string;
+  work_item_id?: string;
   severity: 'critical' | 'moderate' | 'minor';
   type:
     | 'missing_evidence'
@@ -716,6 +772,7 @@ export interface TruthVerificationDetail {
   claims: Array<{
     claim: string;
     section: string;
+    work_item_id?: string;
     source_found: boolean;
     confidence: 'verified' | 'plausible' | 'unverified' | 'fabricated';
     source_text?: string;
@@ -766,6 +823,7 @@ export interface V2PipelineData {
   candidateIntelligence: CandidateIntelligence | null;
   benchmarkCandidate: BenchmarkCandidate | null;
   gapAnalysis: GapAnalysis | null;
+  requirementWorkItems?: RequirementWorkItem[] | null;
   gapCoachingCards: GapCoachingCard[] | null;
   gapQuestions: GapQuestion[] | null;
   preScores: PreScores | null;
@@ -788,6 +846,7 @@ export type V2SSEEvent =
   | { type: 'candidate_intelligence'; data: CandidateIntelligence }
   | { type: 'benchmark_candidate'; data: BenchmarkCandidate }
   | { type: 'gap_analysis'; data: GapAnalysis }
+  | { type: 'requirement_work_items'; data: RequirementWorkItem[] }
   | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'gap_questions'; data: { questions: GapQuestion[] } }

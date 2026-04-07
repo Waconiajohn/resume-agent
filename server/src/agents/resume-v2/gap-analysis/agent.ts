@@ -28,10 +28,13 @@ import type {
   GapAnalysisOutput,
   GapClassification,
   GapStrategy,
+  NextBestAction,
+  RequirementEvidence,
   RequirementCategory,
   RequirementCoverageBreakdown,
   RequirementGap,
   RequirementSource,
+  RequirementWorkItem,
 } from '../types.js';
 
 const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
@@ -648,6 +651,121 @@ function requirementKey(
   return `${requirement.source}:${normalizeForSet(requirement.requirement)}`;
 }
 
+function classifyProofLevel(requirement: RequirementGap): RequirementWorkItem['proof_level'] {
+  const hasEvidence = requirement.evidence.length > 0;
+  const hasStrategy = Boolean(requirement.strategy);
+  const hasInference = Boolean(requirement.strategy?.inferred_metric)
+    || /\bworking knowledge\b|\bpartnered with\b|\bsupported\b|\broughly\b|~/.test(requirement.strategy?.positioning ?? '');
+
+  if (requirement.classification === 'strong' && hasEvidence) return 'direct';
+  if (requirement.classification === 'partial' && hasEvidence) {
+    return hasInference ? 'inferable' : 'adjacent';
+  }
+  if (requirement.classification === 'missing' && hasStrategy && hasEvidence) {
+    return hasInference ? 'inferable' : 'adjacent';
+  }
+  return 'none';
+}
+
+function classifyFramingGuardrail(requirement: RequirementGap): RequirementWorkItem['framing_guardrail'] {
+  const hardRequirement = isHardRequirement(requirement.requirement, requirement.source_evidence);
+  const proofLevel = classifyProofLevel(requirement);
+
+  if (proofLevel === 'direct') return 'exact';
+  if (proofLevel === 'adjacent') return hardRequirement ? 'blocked' : 'reframe';
+  if (proofLevel === 'inferable') return hardRequirement ? 'blocked' : 'soft_inference';
+  return 'blocked';
+}
+
+function classifyNextBestAction(
+  requirement: RequirementGap,
+  proofLevel: RequirementWorkItem['proof_level'],
+): NextBestAction {
+  const hardRequirement = isHardRequirement(requirement.requirement, requirement.source_evidence);
+  if (proofLevel === 'direct') return requirement.classification === 'strong' ? 'accept' : 'tighten';
+  if (proofLevel === 'adjacent') return requirement.source === 'benchmark' ? 'confirm' : 'tighten';
+  if (proofLevel === 'inferable') return hardRequirement ? 'answer' : 'quantify';
+  return hardRequirement ? 'remove' : 'answer';
+}
+
+function classifyCurrentClaimStrength(
+  requirement: RequirementGap,
+  proofLevel: RequirementWorkItem['proof_level'],
+): RequirementWorkItem['current_claim_strength'] {
+  if (proofLevel === 'none') return 'code_red';
+  if (requirement.source === 'benchmark' && proofLevel !== 'direct') return 'confirm_fit';
+  if (proofLevel === 'direct' && requirement.classification === 'strong') return 'supported';
+  return 'strengthen';
+}
+
+function buildRequirementEvidence(requirement: RequirementGap): RequirementEvidence[] {
+  return requirement.evidence.map((text) => ({
+    text,
+    source_type: 'uploaded_resume',
+    source_section: undefined,
+    evidence_strength: requirement.classification === 'strong' ? 'direct' : 'adjacent',
+  }));
+}
+
+function inferMissingDetail(requirement: RequirementGap): string | undefined {
+  if (requirement.classification === 'strong') return undefined;
+  if (requirement.strategy?.interview_questions?.[0]?.looking_for) {
+    return requirement.strategy.interview_questions[0].looking_for.trim();
+  }
+  if (requirement.classification === 'missing') {
+    return `A concrete truthful example proving ${requirement.requirement}.`;
+  }
+  return `A more specific metric, scope detail, or outcome for ${requirement.requirement}.`;
+}
+
+function buildRequirementWorkItems(
+  requirements: RequirementGap[],
+  pendingStrategies: GapAnalysisOutput['pending_strategies'],
+): RequirementWorkItem[] {
+  const pendingByKey = new Map(
+    pendingStrategies.map((item) => [
+      `${item.requirement.toLowerCase().trim()}`,
+      item.strategy,
+    ]),
+  );
+
+  return requirements.map((requirement) => {
+    const strategy = requirement.strategy ?? pendingByKey.get(requirement.requirement.toLowerCase().trim());
+    const enrichedRequirement: RequirementGap = strategy && !requirement.strategy
+      ? { ...requirement, strategy }
+      : requirement;
+    const proofLevel = classifyProofLevel(enrichedRequirement);
+    const framingGuardrail = classifyFramingGuardrail(enrichedRequirement);
+    const currentClaimStrength = classifyCurrentClaimStrength(enrichedRequirement, proofLevel);
+    const nextBestAction = classifyNextBestAction(enrichedRequirement, proofLevel);
+    const bestEvidenceExcerpt = enrichedRequirement.evidence[0] ?? undefined;
+    const recommendedBullet = framingGuardrail === 'blocked'
+      ? undefined
+      : enrichedRequirement.strategy?.positioning;
+
+    return {
+      id: requirementKey(enrichedRequirement),
+      requirement: enrichedRequirement.requirement,
+      source: enrichedRequirement.source,
+      category: enrichedRequirement.category,
+      score_domain: enrichedRequirement.score_domain,
+      importance: enrichedRequirement.importance,
+      source_evidence: enrichedRequirement.source_evidence,
+      candidate_evidence: buildRequirementEvidence(enrichedRequirement),
+      best_evidence_excerpt: bestEvidenceExcerpt,
+      proof_level: proofLevel,
+      framing_guardrail: framingGuardrail,
+      current_claim_strength: currentClaimStrength,
+      recommended_bullet: recommendedBullet,
+      target_evidence: bestEvidenceExcerpt,
+      clarifying_question: enrichedRequirement.strategy?.interview_questions?.[0]?.question,
+      looking_for: enrichedRequirement.strategy?.interview_questions?.[0]?.looking_for,
+      missing_detail: inferMissingDetail(enrichedRequirement),
+      next_best_action: nextBestAction,
+    };
+  });
+}
+
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const requirements = Array.isArray(output.requirements)
     ? output.requirements.map(normalizeRequirement)
@@ -699,6 +817,7 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
     coverage_score: total > 0 ? Math.round((addressed / total) * 100) : 0,
     critical_gaps: criticalGaps,
     pending_strategies: pendingStrategies,
+    requirement_work_items: buildRequirementWorkItems(requirements, pendingStrategies),
     score_breakdown: {
       job_description: jobBreakdown,
       benchmark: benchmarkBreakdown,

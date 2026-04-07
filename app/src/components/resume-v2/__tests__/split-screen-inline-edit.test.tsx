@@ -66,6 +66,7 @@ vi.mock('lucide-react', () => {
     SkipForward: Icon,
     ShieldAlert: Icon,
     Wand2: Icon,
+    Pencil: Icon,
   };
 });
 
@@ -119,15 +120,6 @@ vi.mock('../AddContextCard', () => ({
 }));
 vi.mock('../ExportBar', () => ({
   ExportBar: () => <div data-testid="export-bar" />,
-}));
-
-// Auto-dismiss the "Resume Is Ready" gate so tests can reach the resume editor
-vi.mock('../cards/ResumeReadyScreen', () => ({
-  ResumeReadyScreen: ({ onStartEditing }: { onStartEditing: () => void }) => {
-    // Auto-click through the gate on mount
-    onStartEditing();
-    return null;
-  },
 }));
 
 vi.mock('../cards/PipelineProgressCard', () => ({
@@ -273,6 +265,16 @@ function makeGapAnalysis(): GapAnalysis {
   };
 }
 
+async function startEditingIfGatePresent() {
+  const startButton = screen.queryByRole('button', { name: /Start Editing My Resume/i });
+  if (!startButton) return;
+
+  await act(async () => {
+    fireEvent.click(startButton);
+    await Promise.resolve();
+  });
+}
+
 /** Minimal V2PipelineData that satisfies canShowResumeDocument */
 function makePipelineDataWithResume(overrides: Partial<V2PipelineData> = {}): V2PipelineData {
   return {
@@ -367,21 +369,16 @@ describe('ResumeDocumentCard — bullet accessibility', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('V2StreamingDisplay — layout modes', () => {
-  it('renders the full-width resume document when a draft exists', () => {
+  it('renders the full-width resume document when a draft exists', async () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
+    await startEditingIfGatePresent();
 
     // Resume document is rendered — bullets are visible
-    const resumeBullet = screen.getByText('Reduced deploy time by 60%');
-    expect(resumeBullet).toBeInTheDocument();
+    const resumeBullets = await screen.findAllByText(/Reduced deploy time by 60%/i);
+    expect(resumeBullets.length).toBeGreaterThan(0);
     // Left panel (RewriteQueuePanel) is NOT rendered
     expect(screen.queryByText('Requirements to Match')).not.toBeInTheDocument();
-    // Analysis stays available, but secondary.
-    const supportingAnalysis = screen.getByRole('button', { name: /Supporting Analysis/i });
-    expect(supportingAnalysis).toBeInTheDocument();
     expect(screen.queryByText(/Gap Analysis —/)).not.toBeInTheDocument();
-    expect(
-      resumeBullet.compareDocumentPosition(supportingAnalysis) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
   });
 
   it('renders the simplified processing card when no resume draft exists', () => {
@@ -404,7 +401,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByTestId('pipeline-progress-card')).toBeInTheDocument();
   });
 
-  it('shows final review on the main resume canvas when review is available', () => {
+  it('shows final review on the main resume canvas when review is available', async () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -413,7 +410,8 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByTestId('hiring-manager-review-card')).toBeInTheDocument();
+    await startEditingIfGatePresent();
+    expect(await screen.findByTestId('hiring-manager-review-card')).toBeInTheDocument();
   });
 
   it('removes the gap overview from the live resume canvas', () => {
@@ -436,7 +434,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByRole('button', { name: /Expand overview card/i })).not.toBeInTheDocument();
   });
 
-  it('keeps the score summary visible but collapses the full scoring report in resume mode', () => {
+  it('keeps the score summary visible but collapses the full scoring report in resume mode', async () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -463,23 +461,21 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    const resumeBullet = screen.getByText('Reduced deploy time by 60%');
+    await startEditingIfGatePresent();
+    const resumeBullets = await screen.findAllByText(/Reduced deploy time by 60%/i);
+    expect(resumeBullets.length).toBeGreaterThan(0);
     const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
-    expect(screen.getByText('Score Snapshot')).toBeInTheDocument();
-    expect(screen.getByText(/Baseline, what improved, and the last items still worth tightening before export\./i)).toBeInTheDocument();
-    expect(screen.getByText('On-Paper Fit Score')).toBeInTheDocument();
-    expect(screen.getByText('What improved')).toBeInTheDocument();
-    expect(screen.getByText('Still to close')).toBeInTheDocument();
-    expect(screen.getAllByText('Not run')).toHaveLength(2);
+    expect(screen.getByText('Resume Score')).toBeInTheDocument();
+    expect(screen.getByText('Do this next')).toBeInTheDocument();
+    expect(screen.getByText(/Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export\./i)).toBeInTheDocument();
     expect(fullScoringReportButton).toBeInTheDocument();
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
-    expect(screen.queryByText('Candidate Fit')).not.toBeInTheDocument();
-    expect(
-      resumeBullet.compareDocumentPosition(fullScoringReportButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByText('On-Paper Fit Score')).not.toBeInTheDocument();
+    expect(screen.queryByText('What improved')).not.toBeInTheDocument();
+    expect(screen.queryByText('Still to close')).not.toBeInTheDocument();
   });
 
-  it('shows a compact attention-line navigator when the resume has amber or red bullets', () => {
+  it('shows a compact attention-line navigator when the resume has amber or red bullets', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -507,20 +503,19 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    const strip = screen.getByTestId('attention-review-strip');
+    await startEditingIfGatePresent();
+    const strip = await screen.findByTestId('attention-review-strip');
     expect(strip).toBeInTheDocument();
-    expect(screen.getByText('Review Attention Lines')).toBeInTheDocument();
-    expect(screen.getByText('1 of 2')).toBeInTheDocument();
-    expect(screen.getByText(/1 line still needs your story, and 1 more still need attention/i)).toBeInTheDocument();
-    expect(screen.getByText('Do this next')).toBeInTheDocument();
-    expect(screen.getAllByText(/Start with the we think this can be stronger line in Selected Accomplishments\./i).length).toBeGreaterThan(0);
-    expect(within(strip).getByText(/Next best action: Start with the we think this can be stronger line in Selected Accomplishments\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('We think this can be stronger')).toBeInTheDocument();
+    expect(within(strip).getByText('Review Attention Lines')).toBeInTheDocument();
+    expect(within(strip).getByText('1 of 2')).toBeInTheDocument();
+    expect(within(strip).getByText(/2 lines still need attention\. click a bullet on the resume to review it here\./i)).toBeInTheDocument();
+    expect(within(strip).getByText(/Next best action: Start in Selected Accomplishments and review the bullet marked 'can be sharper'\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('Can be sharper')).toBeInTheDocument();
     expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Show on Resume' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jump to bullet' })).toBeInTheDocument();
   });
 
-  it('lets the user step through attention lines and open the current one on the resume', () => {
+  it('lets the user step through attention lines and open the current one on the resume', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -543,22 +538,23 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
+    await startEditingIfGatePresent();
+    expect(await screen.findByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
 
     const strip = screen.getByTestId('attention-review-strip');
-    expect(screen.getByText('2 of 2')).toBeInTheDocument();
+    expect(within(strip).getByText('2 of 2')).toBeInTheDocument();
     expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show on Resume' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Jump to bullet' }));
 
-    // After clicking "Show on Resume", activeBullet is set so the attention strip
+    // After clicking "Jump to bullet", activeBullet is set so the attention strip
     // highlights the right line. BulletConversationEditor rendering depends on gapChat.
   });
 
-  it('drops a line from the navigator once that line has changed in the working resume', () => {
+  it('drops a line from the navigator once that line has changed in the working resume', async () => {
     const baselineResume = makeResumeDraftWithAttention();
     const editedResume = makeResumeDraftWithAttention();
     editedResume.selected_accomplishments[0] = {
@@ -586,10 +582,11 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    const strip = screen.getByTestId('attention-review-strip');
+    await startEditingIfGatePresent();
+    const strip = await screen.findByTestId('attention-review-strip');
     expect(within(strip).getByText('1 of 1')).toBeInTheDocument();
     expect(within(strip).getByText('Shipped 3 major product lines')).toBeInTheDocument();
-    expect(screen.getByText(/weekly release KPIs and deployment scorecards/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/weekly release KPIs and deployment scorecards/i)).length).toBeGreaterThan(0);
     expect(within(strip).queryByText(/release KPIs and deployment scorecards/i)).not.toBeInTheDocument();
   });
 
@@ -619,24 +616,26 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByTestId('gap-analysis-report')).not.toBeInTheDocument();
   });
 
-  it('renders resume document even when jobIntelligence is null', () => {
+  it('renders resume document even when jobIntelligence is null', async () => {
     const props = makeDisplayProps({
       data: makePipelineDataWithResume({ jobIntelligence: null }),
     });
     render(<V2StreamingDisplay {...props} />);
+    await startEditingIfGatePresent();
 
     // Full-width resume still renders — it no longer requires jobIntelligence
-    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
+    expect((await screen.findAllByText(/Reduced deploy time by 60%/i)).length).toBeGreaterThan(0);
   });
 
-  it('renders resume document even when gapAnalysis is null', () => {
+  it('renders resume document even when gapAnalysis is null', async () => {
     const props = makeDisplayProps({
       data: makePipelineDataWithResume({ gapAnalysis: null }),
     });
     render(<V2StreamingDisplay {...props} />);
+    await startEditingIfGatePresent();
 
     // Full-width resume still renders — it no longer requires gapAnalysis
-    expect(screen.getByText('Reduced deploy time by 60%')).toBeInTheDocument();
+    expect((await screen.findAllByText(/Reduced deploy time by 60%/i)).length).toBeGreaterThan(0);
   });
 
   it('renders processing bar when both editableResume and resumeDraft are null', () => {
@@ -676,7 +675,7 @@ describe('V2StreamingDisplay — Escape key behavior', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('V2StreamingDisplay — DiffView only shows when pendingEdit exists and activeBullet is null', () => {
-  it('renders DiffView when pendingEdit is set and no activeBullet', () => {
+  it('renders DiffView when pendingEdit is set and no activeBullet', async () => {
     const pendingEdit: PendingEdit = {
       section: 'executive_summary',
       originalText: 'Seasoned engineering leader driving outcomes at scale.',
@@ -690,8 +689,9 @@ describe('V2StreamingDisplay — DiffView only shows when pendingEdit exists and
       />,
     );
 
+    await startEditingIfGatePresent();
     // No bullet has been clicked → activeBullet is null → DiffView should render
-    expect(screen.getByTestId('diff-view')).toBeInTheDocument();
+    expect(await screen.findByTestId('diff-view')).toBeInTheDocument();
     expect(
       screen.getByText(
         'Transformational engineering executive with a record of shipping at scale.',

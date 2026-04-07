@@ -56,6 +56,7 @@ export type StoredV2PipelineData = {
   candidateIntelligence: unknown | null;
   benchmarkCandidate: unknown | null;
   gapAnalysis: unknown | null;
+  requirementWorkItems?: unknown[] | null;
   gapCoachingCards: unknown[] | null;
   preScores: unknown | null;
   narrativeStrategy: unknown | null;
@@ -90,6 +91,7 @@ function createInitialPipelineData(): StoredV2PipelineData {
     candidateIntelligence: null,
     benchmarkCandidate: null,
     gapAnalysis: null,
+    requirementWorkItems: null,
     gapCoachingCards: null,
     preScores: null,
     narrativeStrategy: null,
@@ -201,6 +203,11 @@ export function enrichStoredPipelineDataForClient(pipelineData: StoredV2Pipeline
   return {
     ...pipelineData,
     gapAnalysis: enrichGapAnalysisForClient(pipelineData.gapAnalysis),
+    requirementWorkItems: Array.isArray(pipelineData.requirementWorkItems)
+      ? pipelineData.requirementWorkItems
+      : Array.isArray((pipelineData.gapAnalysis as Record<string, unknown> | null | undefined)?.requirement_work_items)
+        ? ((pipelineData.gapAnalysis as Record<string, unknown>).requirement_work_items as unknown[])
+        : null,
     gapCoachingCards: enrichGapCoachingCardsForClient(pipelineData.gapCoachingCards) as unknown[] | null,
   };
 }
@@ -302,6 +309,13 @@ export function applyEventToSnapshot(snapshot: StoredV2Snapshot, event: V2Pipeli
 
     case 'gap_analysis':
       pipelineData.gapAnalysis = event.data;
+      pipelineData.requirementWorkItems = Array.isArray(((event.data as unknown) as Record<string, unknown>).requirement_work_items)
+        ? ((((event.data as unknown) as Record<string, unknown>).requirement_work_items) as unknown[])
+        : pipelineData.requirementWorkItems;
+      break;
+
+    case 'requirement_work_items':
+      pipelineData.requirementWorkItems = event.data;
       break;
 
     case 'pre_scores':
@@ -471,13 +485,25 @@ export const integrateKeywordSchema = z.object({
   job_description: z.string().min(50, 'Job description is required'),
 });
 
+const coachingMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().max(2000),
+});
+
+const coachingPolicySchema = z.object({
+  primaryFamily: z.string().nullable(),
+  families: z.array(z.string()),
+  clarifyingQuestion: z.string().max(2000),
+  proofActionRequiresInput: z.string().max(3000),
+  proofActionDirect: z.string().max(3000),
+  rationale: z.string().max(2000),
+  lookingFor: z.string().max(2000),
+});
+
 export const gapChatSchema = z.object({
   requirement: z.string().min(1).max(1000).trim(),
   classification: z.enum(['partial', 'missing', 'strong']),
-  messages: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string().max(2000),
-  })).max(20),
+  messages: z.array(coachingMessageSchema).max(20),
   context: z.object({
     evidence: z.array(z.string().max(1000)).max(20),
     current_strategy: z.string().max(2000).optional(),
@@ -485,15 +511,7 @@ export const gapChatSchema = z.object({
     inferred_metric: z.string().max(500).optional(),
     job_description_excerpt: z.string().max(5000),
     candidate_experience_summary: z.string().max(3000),
-    coaching_policy: z.object({
-      primaryFamily: z.string().nullable(),
-      families: z.array(z.string()),
-      clarifyingQuestion: z.string().max(2000),
-      proofActionRequiresInput: z.string().max(3000),
-      proofActionDirect: z.string().max(3000),
-      rationale: z.string().max(2000),
-      lookingFor: z.string().max(2000),
-    }).optional(),
+    coaching_policy: coachingPolicySchema.optional(),
   }),
 });
 
@@ -506,12 +524,48 @@ export const structuredCoachingResponseSchema = z.object({
   recommended_next_action: z.enum(['answer_question', 'review_edit', 'try_another_angle', 'skip', 'confirm']).optional(),
 });
 
+export const lineCoachSchema = z.object({
+  mode: z.enum(['clarify', 'rewrite', 'quantify', 'reframe', 'final_review_fix']),
+  item_id: z.string().min(1).max(200).trim(),
+  messages: z.array(coachingMessageSchema).max(20),
+  context: z.object({
+    work_item_id: z.string().max(200).optional(),
+    requirement: z.string().max(1000).optional(),
+    classification: z.enum(['partial', 'missing', 'strong']).optional(),
+    review_state: z.enum(['supported', 'supported_rewrite', 'strengthen', 'confirm_fit', 'code_red']).optional(),
+    requirement_source: z.enum(['job_description', 'benchmark']).optional(),
+    evidence: z.array(z.string().max(1000)).max(20).optional(),
+    current_strategy: z.string().max(2000).optional(),
+    ai_reasoning: z.string().max(2000).optional(),
+    inferred_metric: z.string().max(500).optional(),
+    job_description_excerpt: z.string().max(5000).optional(),
+    candidate_experience_summary: z.string().max(3000).optional(),
+    coaching_policy: coachingPolicySchema.optional(),
+    source_evidence: z.string().max(5000).optional(),
+    concern_id: z.string().max(200).optional(),
+    concern_type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']).optional(),
+    severity: z.enum(['critical', 'moderate', 'minor']).optional(),
+    observation: z.string().max(2000).optional(),
+    why_it_hurts: z.string().max(2000).optional(),
+    fix_strategy: z.string().max(3000).optional(),
+    requires_candidate_input: z.boolean().optional(),
+    clarifying_question: z.string().max(2000).optional(),
+    target_section: z.string().max(500).optional(),
+    related_requirement: z.string().max(1000).optional(),
+    suggested_resume_edit: z.string().max(3000).optional(),
+    role_title: z.string().max(500).optional(),
+    company_name: z.string().max(500).optional(),
+    job_description_fit: z.enum(['strong', 'moderate', 'weak']).optional(),
+    benchmark_alignment: z.enum(['strong', 'moderate', 'weak']).optional(),
+    business_impact: z.enum(['strong', 'moderate', 'weak']).optional(),
+    clarity_and_credibility: z.enum(['strong', 'moderate', 'weak']).optional(),
+    resume_excerpt: z.string().max(6000).optional(),
+  }),
+});
+
 export const finalReviewChatSchema = z.object({
   concern_id: z.string().min(1).max(200).trim(),
-  messages: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string().max(2000),
-  })).max(20),
+  messages: z.array(coachingMessageSchema).max(20),
   context: z.object({
     concern_type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']),
     severity: z.enum(['critical', 'moderate', 'minor']),
@@ -578,6 +632,7 @@ export const finalReviewResultSchema = z.object({
   })).default([]),
   concerns: z.array(z.object({
     id: z.string().catch('concern'),
+    work_item_id: z.string().optional(),
     severity: z.enum(['critical', 'moderate', 'minor']).catch('moderate'),
     type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']).catch('missing_evidence'),
     observation: z.string(),
@@ -1287,7 +1342,12 @@ function sanitizeConcernGuidance(
 
 export function stabilizeFinalReviewResult(
   result: FinalReviewResult,
-  options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[]; resumeText?: string },
+  options?: {
+    hardRequirementRisks?: string[];
+    materialJobFitRisks?: string[];
+    resumeText?: string;
+    requirementWorkItems?: Array<{ id?: string; requirement?: string }> | null;
+  },
 ): FinalReviewResult {
   const normalized: FinalReviewResult = {
     ...result,
@@ -1310,7 +1370,15 @@ export function stabilizeFinalReviewResult(
   const evidenceCorpus = buildResumeEvidenceCorpus(normalized, options?.resumeText);
   normalized.concerns = normalized.concerns
     .map((concern) => sanitizeConcernSuggestedEdit(concern, evidenceCorpus))
-    .map((concern) => sanitizeConcernGuidance(concern));
+    .map((concern) => sanitizeConcernGuidance(concern))
+    .map((concern) => ({
+      ...concern,
+      work_item_id: concern.work_item_id ?? findConcernWorkItemId(
+        concern.related_requirement,
+        concern.observation,
+        options?.requirementWorkItems,
+      ),
+    }));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   const recruiterSignalCandidates: RecruiterSignal[] = [
@@ -1550,6 +1618,29 @@ export function stabilizeFinalReviewResult(
   normalized.improvement_summary = buildImprovementSummaryFromConcerns(normalized);
 
   return normalized;
+}
+
+function findConcernWorkItemId(
+  relatedRequirement: string | undefined,
+  observation: string | undefined,
+  workItems?: Array<{ id?: string; requirement?: string }> | null,
+): string | undefined {
+  if (!Array.isArray(workItems) || workItems.length === 0) return undefined;
+
+  const normalizedRequirement = normalizeReviewText(relatedRequirement ?? '');
+  const normalizedObservation = normalizeReviewText(observation ?? '');
+
+  const directMatch = workItems.find((item) => {
+    const requirement = normalizeReviewText(item.requirement ?? '');
+    if (!requirement) return false;
+    return requirement === normalizedRequirement
+      || (normalizedRequirement.length > 0 && requirement.includes(normalizedRequirement))
+      || (normalizedObservation.length > 0 && normalizedObservation.includes(requirement));
+  });
+
+  return typeof directMatch?.id === 'string' && directMatch.id.trim().length > 0
+    ? directMatch.id
+    : undefined;
 }
 
 export function getEffectiveHardRequirementRisks(

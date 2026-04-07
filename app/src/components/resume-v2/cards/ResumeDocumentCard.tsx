@@ -2,6 +2,8 @@ import { Pencil } from 'lucide-react';
 import type {
   ResumeDraft,
   BulletConfidence,
+  NextBestAction,
+  ProofLevel,
   RequirementSource,
   ResumeReviewState,
 } from '@/types/resume-v2';
@@ -22,6 +24,9 @@ interface ResumeDocumentCardProps {
     reviewState: ResumeReviewState,
     requirementSource: RequirementSource | undefined,
     evidenceFound: string,
+    workItemId?: string,
+    proofLevel?: ProofLevel,
+    nextBestAction?: NextBestAction,
   ) => void;
   /** Direct edit callback — saves edited text back into the resume */
   onBulletEdit?: (section: string, index: number, newText: string) => void;
@@ -201,6 +206,9 @@ export function ResumeDocumentCard({
                     requirements={accomplishmentDisplayTargets}
                     resolvedState={resolvedState}
                     evidenceFound={a.evidence_found}
+                    workItemId={a.work_item_id}
+                    proofLevel={a.proof_level}
+                    nextBestAction={a.next_best_action}
                     isActive={isActive}
                     onBulletClick={onBulletClick}
                   />
@@ -276,6 +284,9 @@ export function ResumeDocumentCard({
                           requirements={bulletDisplayTargets}
                           resolvedState={resolvedState}
                           evidenceFound={bullet.evidence_found}
+                          workItemId={bullet.work_item_id}
+                          proofLevel={bullet.proof_level}
+                          nextBestAction={bullet.next_best_action}
                           isActive={isActive}
                           onBulletClick={onBulletClick}
                         />
@@ -349,6 +360,9 @@ interface BulletLineContentProps {
   requirements: string[];
   resolvedState: ResumeReviewState;
   evidenceFound?: string;
+  workItemId?: string;
+  proofLevel?: ProofLevel;
+  nextBestAction?: NextBestAction;
   /** Whether this bullet is currently selected for editing in the left panel. */
   isActive?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
@@ -360,6 +374,9 @@ interface BulletLineContentProps {
     reviewState: ResumeReviewState,
     requirementSource: RequirementSource | undefined,
     evidenceFound: string,
+    workItemId?: string,
+    proofLevel?: ProofLevel,
+    nextBestAction?: NextBestAction,
   ) => void;
 }
 
@@ -374,6 +391,9 @@ function BulletLineContent({
   requirements,
   resolvedState,
   evidenceFound,
+  workItemId,
+  proofLevel,
+  nextBestAction,
   isActive = false,
   onBulletClick,
 }: BulletLineContentProps) {
@@ -384,7 +404,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '');
+      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction);
     }
   };
 

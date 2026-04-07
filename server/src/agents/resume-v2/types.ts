@@ -256,6 +256,45 @@ export interface RequirementCoverageBreakdown {
   coverage_score: number;
 }
 
+export type ProofLevel = 'direct' | 'adjacent' | 'inferable' | 'none';
+export type FramingGuardrail = 'exact' | 'reframe' | 'soft_inference' | 'blocked';
+export type NextBestAction = 'accept' | 'tighten' | 'quantify' | 'confirm' | 'answer' | 'remove';
+
+export interface RequirementEvidence {
+  text: string;
+  source_type: 'uploaded_resume' | 'master_resume' | 'interview_context' | 'profile' | 'inference';
+  source_section?: string;
+  evidence_strength: 'direct' | 'adjacent' | 'contextual';
+}
+
+export interface RequirementLineAnchor {
+  section?: GapPlacementTarget | 'final_review';
+  company?: string;
+  bullet_index?: number;
+}
+
+export interface RequirementWorkItem {
+  id: string;
+  requirement: string;
+  source: RequirementSource;
+  category?: RequirementCategory;
+  score_domain?: RequirementScoreDomain;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  source_evidence?: string;
+  candidate_evidence: RequirementEvidence[];
+  best_evidence_excerpt?: string;
+  proof_level: ProofLevel;
+  framing_guardrail: FramingGuardrail;
+  current_claim_strength: ResumeReviewState;
+  recommended_bullet?: string;
+  target_evidence?: string;
+  clarifying_question?: string;
+  looking_for?: string;
+  missing_detail?: string;
+  next_best_action: NextBestAction;
+  line_anchor?: RequirementLineAnchor;
+}
+
 export interface GapAnalysisOutput {
   requirements: RequirementGap[];
   coverage_score: number;
@@ -265,6 +304,7 @@ export interface GapAnalysisOutput {
   };
   strength_summary: string;
   critical_gaps: string[];
+  requirement_work_items?: RequirementWorkItem[];
   /**
    * Authoritative source for strategies requiring user confirmation before use.
    * These are the strategies the orchestrator passes to the Narrative Strategy agent.
@@ -414,6 +454,11 @@ export interface ResumeBullet {
   content_origin?: ResumeContentOrigin;
   /** Where the current support comes from */
   support_origin?: ResumeSupportOrigin;
+  /** Canonical work item tying this line back to one requirement/proof story */
+  work_item_id?: string;
+  proof_level?: ProofLevel;
+  framing_guardrail?: FramingGuardrail;
+  next_best_action?: NextBestAction;
 }
 
 export interface ResumeExperienceEntry {
@@ -466,6 +511,11 @@ export interface ResumeDraftOutput {
     content_origin?: ResumeContentOrigin;
     /** Where the current support comes from */
     support_origin?: ResumeSupportOrigin;
+    /** Canonical work item tying this line back to one requirement/proof story */
+    work_item_id?: string;
+    proof_level?: ProofLevel;
+    framing_guardrail?: FramingGuardrail;
+    next_best_action?: NextBestAction;
   }>;
   /** The top job needs the agent selected for the Selected Accomplishments section */
   selected_accomplishment_targets?: ResumePriorityTarget[];
@@ -505,6 +555,7 @@ export interface TruthVerificationInput {
 export interface ClaimVerification {
   claim: string;
   section: string;
+  work_item_id?: string;
   source_found: boolean;
   source_text?: string;
   confidence: 'verified' | 'plausible' | 'unverified' | 'fabricated';
@@ -652,6 +703,7 @@ export interface PreScores {
 
 export interface GapCoachingCard {
   requirement: string;
+  work_item_id?: string;
   importance: 'must_have' | 'important' | 'nice_to_have';
   classification: GapClassification;
   /** Conversational AI explanation of why adjacent experience works */
@@ -719,7 +771,8 @@ export interface FeedbackMetadata {
 export type V2PipelineStage =
   | 'intake'
   | 'analysis'      // Agents 1-3 (parallel)
-  | 'strategy'      // Agents 4-5 (sequential)
+  | 'strategy'      // Agent 4
+  | 'clarification' // Requirement workbench + user context harvesting
   | 'writing'       // Agent 6
   | 'verification'  // Agents 7-9 (parallel)
   | 'assembly'      // Agent 10
@@ -743,6 +796,7 @@ export interface V2PipelineState {
   role_profile?: RoleProfile;
   benchmark_candidate?: BenchmarkCandidateOutput;
   gap_analysis?: GapAnalysisOutput;
+  requirement_work_items?: RequirementWorkItem[];
   narrative_strategy?: NarrativeStrategyOutput;
   resume_draft?: ResumeDraftOutput;
   truth_verification?: TruthVerificationOutput;
@@ -775,6 +829,7 @@ export interface V2PipelineState {
 export interface GapQuestion {
   /** Unique identifier — equal to the requirement string */
   id: string;
+  work_item_id?: string;
   requirement: string;
   importance: 'critical' | 'important' | 'supporting';
   /** Only 'partial' or 'missing' gaps are gated */
@@ -799,6 +854,7 @@ export type V2PipelineSSEEvent =
   | { type: 'benchmark_candidate'; data: BenchmarkCandidateOutput }
   | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_analysis'; data: GapAnalysisOutput }
+  | { type: 'requirement_work_items'; data: RequirementWorkItem[] }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'gap_questions'; data: { questions: GapQuestion[] } }
   | { type: 'narrative_strategy'; data: NarrativeStrategyOutput }

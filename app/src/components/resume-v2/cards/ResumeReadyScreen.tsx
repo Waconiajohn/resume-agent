@@ -6,6 +6,7 @@ interface ResumeReadyScreenProps {
   benchmarkMatchPercent?: number;
   strengthSummary: string;
   flaggedBulletCount: number;
+  actionSummaryLines?: string[];
   companyName?: string;
   roleTitle?: string;
   /** True when score_breakdown was present in gap analysis. Distinguishes genuine 0% from missing data. */
@@ -44,6 +45,7 @@ export function ResumeReadyScreen({
   benchmarkMatchPercent,
   strengthSummary,
   flaggedBulletCount,
+  actionSummaryLines = [],
   companyName,
   roleTitle,
   hasScoreData = true,
@@ -72,6 +74,18 @@ export function ResumeReadyScreen({
           ) : (
             <PendingScoreRing label="Resume Match" />
           )}
+          {typeof benchmarkMatchPercent === 'number' && (
+            hasScoreData ? (
+              <ScoreRing
+                score={Math.round(benchmarkMatchPercent)}
+                max={100}
+                label="Benchmark Fit"
+                color="text-[var(--badge-blue-text)]"
+              />
+            ) : (
+              <PendingScoreRing label="Benchmark Fit" />
+            )
+          )}
         </div>
         {strengthSummary && (
           <p className="text-[14px] leading-relaxed text-[var(--text-muted)] text-center max-w-[520px] mx-auto">
@@ -79,6 +93,21 @@ export function ResumeReadyScreen({
           </p>
         )}
       </div>
+
+      {actionSummaryLines.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">
+            Best next moves
+          </h3>
+          <div className="space-y-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-4 py-3">
+            {actionSummaryLines.map((line) => (
+              <p key={line} className="text-[13px] leading-relaxed text-[var(--text-muted)]">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Section B: Color legend */}
       <div className="space-y-3">

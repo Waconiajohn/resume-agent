@@ -29,6 +29,7 @@ function getStageStatusLabel(stage: V2Stage, isComplete: boolean): string {
     case 'intake':
     case 'analysis': return 'Reading your resume...';
     case 'strategy': return 'Building your positioning strategy...';
+    case 'clarification': return 'Tightening the proof and context before drafting...';
     case 'writing': return 'Drafting your resume...';
     case 'verification': return 'Running quality checks...';
     case 'assembly': return 'Preparing your working resume...';
@@ -41,9 +42,10 @@ function getStageProgressPercent(stage: V2Stage): number {
   switch (stage) {
     case 'intake': return 8;
     case 'analysis': return 25;
-    case 'strategy': return 50;
-    case 'writing': return 70;
-    case 'verification': return 87;
+    case 'strategy': return 42;
+    case 'clarification': return 58;
+    case 'writing': return 74;
+    case 'verification': return 89;
     case 'assembly': return 95;
     case 'complete': return 100;
     default: return 0;
