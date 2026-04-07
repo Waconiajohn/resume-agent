@@ -525,19 +525,24 @@ export function BulletCoachingPanel({
     <div
       ref={panelRef}
       tabIndex={-1}
-      className="panel-surface mt-3 space-y-3 p-4 focus:outline-none"
+      className="panel-surface mt-3 space-y-3 p-3 focus:outline-none sm:p-4"
       style={{
         animation: 'fade-slide-in 200ms ease-out forwards',
       }}
     >
       {/* ── Close button ───────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3">
-        <p
-          className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: 'var(--text-soft)' }}
-        >
-          {coachTitle}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'var(--text-soft)' }}
+          >
+            {coachTitle}
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-[var(--text-soft)]">
+            Live on resume · {chatContext.sectionLabel ?? lineLabel}
+          </p>
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -671,9 +676,9 @@ export function BulletCoachingPanel({
                   onClick={() => handleReusePriorClarification(entry)}
                   disabled={isChatLoading}
                   className={cn(
-                    'inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-                    isChatLoading && 'opacity-50 cursor-not-allowed',
-                  )}
+                  'inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                  isChatLoading && 'opacity-50 cursor-not-allowed',
+                )}
                   style={{
                     borderColor: 'var(--line-soft)',
                     color: 'var(--text-strong)',

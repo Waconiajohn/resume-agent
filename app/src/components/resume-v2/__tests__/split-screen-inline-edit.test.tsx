@@ -908,7 +908,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.section).toBe('custom_section:transformation_highlights');
     expect(lastCall.bulletText).toBe('Applied automation and data workflows to tighten operating rhythm across multiple sites.');
     expect(lastCall.requirements).toContain('Lead automation and operating-model transformation');
-    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-section="transformation_highlights"]');
+    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="custom_section:transformation_highlights:0"]');
   });
 
   it('opens coaching immediately after adding the AI section', async () => {
@@ -1049,7 +1049,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.section).toBe('custom_section:ai_highlights');
     expect(lastCall.bulletText).toBe('Applied AI and automation to improve operating rhythm across multiple sites.');
     expect(lastCall.requirements).toContain('Lead AI automation and operating-model change');
-    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-section="ai_highlights"]');
+    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="custom_section:ai_highlights:-1"]');
   });
 
   it('opens the summary in coaching mode without offering remove', async () => {

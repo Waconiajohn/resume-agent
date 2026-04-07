@@ -38,6 +38,10 @@ interface ResumeDocumentCardProps {
   onBulletRemove?: (section: string, index: number) => void;
 }
 
+function getResumeLineToken(section: string, index: number): string {
+  return `${section}:${index}`;
+}
+
 export function ResumeDocumentCard({
   resume,
   requirementCatalog = [],
@@ -70,16 +74,18 @@ export function ResumeDocumentCard({
       <SectionHeading>Executive Summary</SectionHeading>
       {onBulletClick ? (
         <div
-          className={`group relative cursor-pointer rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+          data-resume-line={getResumeLineToken('executive_summary', 0)}
+          data-active-line={activeBullet?.section === 'executive_summary' && activeBullet.index === 0 ? 'true' : undefined}
+          className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
             activeBullet?.section === 'executive_summary' && activeBullet.index === 0
-              ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+              ? 'resume-line-active'
               : ''
           }`}
         >
           <p
             role="button"
             tabIndex={0}
-            className="text-sm leading-relaxed text-gray-800"
+            className="resume-document-copy text-sm leading-relaxed text-gray-800"
             title="Click to edit the executive summary"
             onClick={() => onBulletClick(
               resume.executive_summary.content,
@@ -127,11 +133,11 @@ export function ResumeDocumentCard({
             <Pencil className="h-3.5 w-3.5 text-gray-400" />
           </span>
           {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
-            <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+            <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
           )}
         </div>
       ) : (
-        <p className="text-sm leading-relaxed text-gray-800">
+        <p className="resume-document-copy text-sm leading-relaxed text-gray-800">
           {resume.executive_summary.content}
         </p>
       )}
@@ -146,6 +152,8 @@ export function ResumeDocumentCard({
           {coreCompetencies.map((comp, i) => (
             <span
               key={i}
+              data-resume-line={getResumeLineToken('core_competencies', i)}
+              data-active-line={activeBullet?.section === 'core_competencies' && activeBullet.index === i ? 'true' : undefined}
               role={onBulletClick ? 'button' : undefined}
               tabIndex={onBulletClick ? 0 : undefined}
               title={onBulletClick ? 'Click to review and edit this competency' : undefined}
@@ -180,11 +188,11 @@ export function ResumeDocumentCard({
                   );
                 }
               } : undefined}
-              className={`rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
+              className={`resume-competency-chip rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
                 onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
               }${
                 activeBullet?.section === 'core_competencies' && activeBullet.index === i
-                  ? ' border-[var(--link)] bg-[var(--link)]/6 text-[var(--link)]'
+                  ? ' resume-line-active border-[var(--link)] bg-[var(--link)]/6 text-[var(--link)]'
                   : ''
               }`}
             >
@@ -221,10 +229,12 @@ export function ResumeDocumentCard({
               <li
                 key={i}
                 data-bullet-id={`selected_accomplishments-${i}`}
+                data-resume-line={getResumeLineToken('selected_accomplishments', i)}
+                data-active-line={isActive ? 'true' : undefined}
                 data-confidence={a.confidence}
                 className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                   getConfidenceLineClass(a.review_state, a.confidence, a.requirement_source)
-                }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
+                }${isActive ? ' resume-line-active' : ''}`}
                 {...(hasStrategy
                   ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
                   : {})}
@@ -263,17 +273,17 @@ export function ResumeDocumentCard({
             <div key={i}>
               <div className="flex items-baseline justify-between gap-2">
                 <div>
-                  <span className="text-sm font-bold text-gray-900">{exp.title}</span>
-                  <span className="text-sm text-gray-500"> · {exp.company}</span>
+                  <span className="resume-role-title text-sm font-bold text-gray-900">{exp.title}</span>
+                  <span className="resume-role-company text-sm text-gray-500"> · {exp.company}</span>
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
+                <span className="resume-role-date text-xs text-gray-500 whitespace-nowrap shrink-0">
                   {exp.start_date} — {exp.end_date}
                 </span>
               </div>
               {exp.scope_statement && (
                 <p
                   data-scope-id={`professional_experience-${i}-scope`}
-                  className="mt-1 text-xs text-gray-500 italic pl-1"
+                  className="resume-scope-note mt-1 text-xs text-gray-500 italic pl-1"
                 >
                   {exp.scope_statement}
                 </p>
@@ -300,10 +310,12 @@ export function ResumeDocumentCard({
                     <li
                       key={j}
                       data-bullet-id={`professional_experience-${bulletIndex}`}
+                      data-resume-line={getResumeLineToken('professional_experience', bulletIndex)}
+                      data-active-line={isActive ? 'true' : undefined}
                       data-confidence={bullet.confidence}
                       className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
                         getConfidenceLineClass(bullet.review_state, bullet.confidence, bullet.requirement_source)
-                      }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
+                      }${isActive ? ' resume-line-active' : ''}`}
                       {...(hasStrategy
                         ? { 'data-addresses': JSON.stringify(bulletRequirements) }
                         : {})}
@@ -343,11 +355,11 @@ export function ResumeDocumentCard({
         <div className="space-y-1">
           {earlierCareer.map((ec, i) => (
             <div key={i} className="flex items-baseline justify-between text-sm">
-              <span className="text-gray-600">
+              <span className="resume-document-copy text-gray-600">
                 {ec.title}{' '}
-                <span className="text-gray-500">· {ec.company}</span>
+                <span className="resume-role-company text-gray-500">· {ec.company}</span>
               </span>
-              <span className="text-xs text-gray-500">{ec.dates}</span>
+              <span className="resume-role-date text-xs text-gray-500">{ec.dates}</span>
             </div>
           ))}
         </div>
@@ -361,9 +373,9 @@ export function ResumeDocumentCard({
         <SectionHeading>Education</SectionHeading>
         <div className="space-y-1">
           {education.map((edu, i) => (
-            <div key={i} className="text-sm text-gray-800">
+            <div key={i} className="resume-document-copy text-sm text-gray-800">
               {edu.degree} — {edu.institution}
-              {edu.year && <span className="text-gray-500"> ({edu.year})</span>}
+              {edu.year && <span className="resume-role-date text-gray-500"> ({edu.year})</span>}
             </div>
           ))}
         </div>
@@ -377,7 +389,7 @@ export function ResumeDocumentCard({
         <SectionHeading>Certifications</SectionHeading>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {certifications.map((cert, i) => (
-            <span key={i} className="text-sm text-gray-600">{cert}</span>
+            <span key={i} className="resume-document-copy text-sm text-gray-600">{cert}</span>
           ))}
         </div>
       </section>
@@ -394,16 +406,18 @@ export function ResumeDocumentCard({
         {summaryText && (
           onBulletClick ? (
             <div
-              className={`group relative mb-2 rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+              data-resume-line={getResumeLineToken(customSectionKey, -1)}
+              data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === -1 ? 'true' : undefined}
+              className={`resume-line-card group relative mb-2 rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
                 activeBullet?.section === customSectionKey && activeBullet.index === -1
-                  ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                  ? 'resume-line-active'
                   : ''
               }`}
             >
               <p
                 role="button"
                 tabIndex={0}
-                className="text-sm leading-relaxed text-gray-700"
+                className="resume-document-copy text-sm leading-relaxed text-gray-700"
                 title={`Click to edit the ${section.title} summary`}
                 onClick={() => onBulletClick(
                   summaryText,
@@ -443,11 +457,11 @@ export function ResumeDocumentCard({
                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
               </span>
               {activeBullet?.section === customSectionKey && activeBullet.index === -1 && (
-                <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+                <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
               )}
             </div>
           ) : (
-            <p className="mb-2 text-sm leading-relaxed text-gray-700">{summaryText}</p>
+            <p className="resume-document-copy mb-2 text-sm leading-relaxed text-gray-700">{summaryText}</p>
           )
         )}
         <div className="space-y-1.5">
@@ -456,16 +470,18 @@ export function ResumeDocumentCard({
               onBulletClick ? (
                 <div
                   key={index}
-                  className={`group relative rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+                  data-resume-line={getResumeLineToken(customSectionKey, index)}
+                  data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
+                  className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
                     activeBullet?.section === customSectionKey && activeBullet.index === index
-                      ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                      ? 'resume-line-active'
                       : ''
                   }`}
                 >
                   <p
                     role="button"
                     tabIndex={0}
-                    className="text-sm leading-relaxed text-gray-800"
+                    className="resume-document-copy text-sm leading-relaxed text-gray-800"
                     title={`Click to review and edit this ${section.title} line`}
                     onClick={() => onBulletClick(
                       line,
@@ -505,11 +521,11 @@ export function ResumeDocumentCard({
                     <Pencil className="h-3.5 w-3.5 text-gray-400" />
                   </span>
                   {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                    <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+                    <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
                   )}
                 </div>
               ) : (
-                <p key={index} className="text-sm leading-relaxed text-gray-800">{line}</p>
+                <p key={index} className="resume-document-copy text-sm leading-relaxed text-gray-800">{line}</p>
               )
             ))
             : (
@@ -517,15 +533,19 @@ export function ResumeDocumentCard({
                 {section.lines.map((line, index) => (
                   <li key={index} className="text-sm leading-relaxed text-gray-800">
                     {onBulletClick ? (
-                      <div className={`group relative rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+                      <div
+                        data-resume-line={getResumeLineToken(customSectionKey, index)}
+                        data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
+                        className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
                         activeBullet?.section === customSectionKey && activeBullet.index === index
-                          ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                          ? 'resume-line-active'
                           : ''
-                      }`}>
+                      }`}
+                      >
                         <p
                           role="button"
                           tabIndex={0}
-                          className="text-sm leading-relaxed text-gray-800"
+                          className="resume-document-copy text-sm leading-relaxed text-gray-800"
                           title={`Click to review and edit this ${section.title} line`}
                           onClick={() => onBulletClick(
                             line,
@@ -565,11 +585,11 @@ export function ResumeDocumentCard({
                           <Pencil className="h-3.5 w-3.5 text-gray-400" />
                         </span>
                         {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                          <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+                          <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
                         )}
                       </div>
                     ) : (
-                      line
+                      <span className="resume-document-copy">{line}</span>
                     )}
                   </li>
                 ))}
@@ -585,14 +605,14 @@ export function ResumeDocumentCard({
     .filter((id) => sectionNodes.has(id));
 
   return (
-    <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
+    <div className="resume-document-shell space-y-5 p-5 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text sm:space-y-6 sm:p-8">
       {/* Header */}
-      <div data-section="header" className="text-center border-b border-gray-200 pb-5">
-        <h2 className="text-2xl font-bold tracking-wide text-gray-900">{resume.header.name}</h2>
-        <p className="text-base text-blue-700 font-medium tracking-wider uppercase mt-1.5">
+      <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-4 sm:pb-5">
+        <h2 className="resume-document-name text-[1.7rem] font-bold tracking-[0.02em] text-gray-900 sm:text-2xl">{resume.header.name}</h2>
+        <p className="resume-document-title mt-1.5 text-[0.78rem] font-semibold tracking-[0.22em] text-blue-700 uppercase sm:text-base">
           {resume.header.branded_title}
         </p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-xs text-gray-500 sm:flex-row">
+        <div className="resume-document-contact mt-3 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11px] text-gray-500 sm:flex-row sm:text-xs">
           {resume.header.phone && (
             <>
               <span className="px-2 sm:first:pl-0">{resume.header.phone}</span>
@@ -983,7 +1003,7 @@ function resolveStandaloneDisplayRequirements(
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-4 border-b border-stone-200/80 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 sm:text-[12px]">
+    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 sm:text-[12px]">
       {children}
     </h3>
   );

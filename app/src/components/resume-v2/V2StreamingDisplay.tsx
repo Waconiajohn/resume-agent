@@ -726,6 +726,10 @@ function buildRememberedEvidenceCues(
     .slice(0, 3);
 }
 
+function buildResumeLineSelector(section: string, index: number): string {
+  return `[data-resume-line="${section}:${index}"]`;
+}
+
 function SectionCoachCard({
   targets,
   onOpenTarget,
@@ -736,19 +740,19 @@ function SectionCoachCard({
   if (targets.length === 0) return null;
 
   return (
-    <div className="guide-support-panel px-4 py-4">
+    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
       <p className="eyebrow-label">Polish Next</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Tighten the sections recruiters notice first</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
         Once the structure feels right, these sections give you the fastest visible improvement.
       </p>
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 space-y-2 sm:mt-4">
         {targets.map((target) => (
           <button
             key={target.id}
             type="button"
             onClick={() => onOpenTarget(target)}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
               {target.label}
@@ -776,19 +780,19 @@ function ClarificationCueCard({
   if (cues.length === 0) return null;
 
   return (
-    <div className="guide-support-panel px-4 py-4">
+    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
       <p className="eyebrow-label">One Good Answer</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">A single detail could strengthen multiple lines</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
         These are the only details we still need. If you already answered one elsewhere, reuse it instead of starting from scratch.
       </p>
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 space-y-2 sm:mt-4">
         {cues.map((cue) => (
           <button
             key={cue.id}
             type="button"
             onClick={() => onOpenCue(cue)}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
               {cue.affectedCount > 0
@@ -818,13 +822,13 @@ function RememberedEvidenceCard({
   if (cues.length === 0) return null;
 
   return (
-    <div className="guide-support-panel px-4 py-4">
+    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
       <p className="eyebrow-label">Use What We Know</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with proof you already confirmed</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
         These details are already trustworthy. Reuse them before giving the app anything new.
       </p>
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 space-y-2 sm:mt-4">
         {cues.map((cue) => {
           const content = (
             <>
@@ -847,7 +851,7 @@ function RememberedEvidenceCard({
             return (
               <div
                 key={cue.id}
-                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3"
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 sm:px-3.5 sm:py-3"
               >
                 {content}
               </div>
@@ -859,7 +863,7 @@ function RememberedEvidenceCard({
               key={cue.id}
               type="button"
               onClick={() => onOpenCue(cue)}
-              className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+              className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
             >
               {content}
             </button>
@@ -878,19 +882,19 @@ function GuidedStartCard({
   if (steps.length === 0) return null;
 
   return (
-    <div className="shell-panel px-4 py-4">
+    <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
       <p className="eyebrow-label">Start Here</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take these moves in order</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
         Start with the first step below. The rest of the editing flow gets easier once that move is done.
       </p>
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 space-y-2 sm:mt-4">
         {steps.map((step, index) => (
           <button
             key={step.id}
             type="button"
             onClick={step.onSelect}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
               Step {index + 1} · {step.label}
@@ -1163,7 +1167,7 @@ export function V2StreamingDisplay({
       autoReuseClarificationId: options?.autoReuseClarificationId,
     });
     window.requestAnimationFrame(() => {
-      scrollToAndFocusTarget(item.selector);
+      scrollToAndFocusTarget(buildResumeLineSelector(item.section, item.index));
     });
   }, [attentionItems]);
 
@@ -1281,6 +1285,7 @@ export function V2StreamingDisplay({
   // M3: Scroll to coaching panel when a bullet is activated
   useEffect(() => {
     if (activeBullet && coachingPanelRef.current) {
+      scrollToAndFocusTarget(buildResumeLineSelector(activeBullet.section, activeBullet.index));
       coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [activeBullet]);
@@ -1609,14 +1614,14 @@ export function V2StreamingDisplay({
 
     if (secondarySupportMode === 'queue') {
       return (
-        <div className="guide-support-panel px-4 py-4">
+        <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
           <p className="eyebrow-label">Priority Lines</p>
           <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix the lines that change the story fastest</h3>
           <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
             If you do not need structure work first, start with one of these high-impact edits.
           </p>
           {attentionItems.length > 0 ? (
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 space-y-2 sm:mt-4">
               {attentionItems.slice(0, 3).map((item) => {
                 const itemIndex = attentionItems.findIndex((candidate) => candidate.id === item.id);
                 return (
@@ -1624,7 +1629,7 @@ export function V2StreamingDisplay({
                     key={item.id}
                     type="button"
                     onClick={() => openAttentionItem(itemIndex)}
-                    className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+                    className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
                   >
                     <span className={item.statusClassName}>{item.statusLabel}</span>
                     <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
@@ -1638,7 +1643,7 @@ export function V2StreamingDisplay({
               })}
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-sm text-[var(--text-soft)]">
+            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-sm text-[var(--text-soft)] sm:mt-4 sm:px-3.5 sm:py-3">
               The strongest version is already visible. Use the structure planner above if you want to change the section story before export.
             </div>
           )}
@@ -1699,7 +1704,7 @@ export function V2StreamingDisplay({
                 </button>
               </div>
             )}
-            <div className="mx-auto max-w-[900px] px-6 py-8 space-y-6">
+            <div className="mx-auto max-w-[900px] px-4 py-5 space-y-4 sm:px-6 sm:py-8 sm:space-y-6">
               {error && (
                 <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
                   <AlertCircle className="h-4 w-4 shrink-0" />{error}
@@ -1942,7 +1947,7 @@ export function V2StreamingDisplay({
         </>
       ) : canShowResumeDocument && !hasPassedReadyGate ? (
         /* Beat 2 — "Your Resume Is Ready" gate screen */
-        <div className="mx-auto max-w-[720px] px-6 py-8">
+        <div className="mx-auto max-w-[720px] px-4 py-5 sm:px-6 sm:py-8">
           <ResumeReadyScreen
             jobMatchPercent={jobBreakdown.coverage_score}
             benchmarkMatchPercent={benchmarkBreakdown.coverage_score}
@@ -1958,7 +1963,7 @@ export function V2StreamingDisplay({
         </div>
       ) : (
         /* Processing layout (pipeline running, no resume yet) */
-        <div className="mx-auto max-w-[720px] px-6 py-8">
+        <div className="mx-auto max-w-[720px] px-4 py-6 sm:px-6 sm:py-8">
           {/* Connection lost notice */}
           {!isComplete && !isConnected && data.stage !== 'intake' && (
             <div className="flex items-center gap-2 text-xs text-[var(--badge-amber-text)]/70 mb-4" role="status">

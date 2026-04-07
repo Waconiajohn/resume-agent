@@ -189,7 +189,7 @@ export function ResumeStructurePlannerCard({
   };
 
   return (
-    <div className="shell-panel px-4 py-4">
+    <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="eyebrow-label">Resume Structure</p>
@@ -221,7 +221,7 @@ export function ResumeStructurePlannerCard({
       </div>
 
       {showAddSectionComposer && (
-        <div className="mt-4 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
+        <div className="mt-3 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 sm:mt-4 sm:px-4 sm:py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[var(--text-strong)]">Add a section with real content</p>
@@ -261,7 +261,7 @@ export function ResumeStructurePlannerCard({
             {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
           </p>
           {selectedRecommendation && (
-            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
+            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 sm:px-3.5 sm:py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
                   {selectedRecommendation.readyLineCount} lines ready
@@ -291,7 +291,7 @@ export function ResumeStructurePlannerCard({
             </div>
           )}
           {selectedDraftSuggestions.length > 0 && (
-            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
+            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 sm:px-3.5 sm:py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Starter drafts</p>
               <div className="mt-2 space-y-2">
                 {selectedDraftSuggestions.map((suggestion) => (
@@ -315,7 +315,7 @@ export function ResumeStructurePlannerCard({
             </div>
           )}
           {selectedPresetId !== 'custom' && selectedDraftSuggestions.length === 0 && (
-            <div className="mt-3 rounded-xl border border-dashed border-[var(--line-soft)] px-3.5 py-3 text-[13px] leading-5 text-[var(--text-soft)]">
+            <div className="mt-3 rounded-xl border border-dashed border-[var(--line-soft)] px-3 py-2.5 text-[13px] leading-5 text-[var(--text-soft)] sm:px-3.5 sm:py-3">
               We do not have a grounded starter for this preset yet. Add it only if you can anchor it with a few concrete, truthful lines.
             </div>
           )}

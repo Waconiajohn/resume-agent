@@ -65,13 +65,13 @@ export function ResumeReadyScreen({
   ];
 
   return (
-    <div className="bg-[var(--surface-1)] rounded-2xl shadow-[var(--shadow-mid)] p-8 space-y-7">
+    <div className="bg-[var(--surface-1)] rounded-2xl shadow-[var(--shadow-mid)] p-6 space-y-6 sm:p-8 sm:space-y-7">
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
           Draft Checkpoint
         </p>
         <div className="space-y-2">
-          <h2 className="text-[25px] font-semibold tracking-tight text-[var(--text-strong)]">{headline}</h2>
+          <h2 className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)] sm:text-[25px]">{headline}</h2>
           <p className="max-w-[600px] text-[14px] leading-6 text-[var(--text-muted)]">
             {summary}
           </p>
@@ -91,8 +91,8 @@ export function ResumeReadyScreen({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-5 py-5">
-        <div className="flex flex-wrap items-center justify-center gap-10">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-4 py-4 sm:px-5 sm:py-5">
+        <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
           {hasScoreData ? (
             <ScoreRing
               score={Math.round(jobMatchPercent)}
@@ -127,7 +127,7 @@ export function ResumeReadyScreen({
         <h3 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
           What to do next
         </h3>
-        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-5 py-4">
+        <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-4 py-4 sm:px-5">
           <div className="space-y-2.5">
             {(actionSummaryLines.length > 0 ? actionSummaryLines : [summary]).slice(0, 3).map((line) => (
               <div key={line} className="flex items-start gap-3">
@@ -148,7 +148,7 @@ export function ResumeReadyScreen({
         <button
           type="button"
           onClick={onStartEditing}
-          className="inline-flex min-w-[220px] items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3.5 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3.5 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors sm:min-w-[220px] sm:w-auto"
         >
           {primaryActionLabel}
         </button>
