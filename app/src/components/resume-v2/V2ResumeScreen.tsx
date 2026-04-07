@@ -140,6 +140,10 @@ function extractResumeExcerptForSection(resume: ResumeDraft, section: string | u
   return resumeToPlainText(resume);
 }
 
+function parseCustomSectionKey(section: string): string | null {
+  return section.startsWith('custom_section:') ? section.slice('custom_section:'.length) : null;
+}
+
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
@@ -609,6 +613,26 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       const base = normalizeResumeDraft(prev ?? currentResume);
       if (!base) return prev;
 
+      if (section === 'executive_summary') {
+        return {
+          ...base,
+          executive_summary: {
+            ...base.executive_summary,
+            content: newText,
+          },
+        };
+      }
+
+      if (section === 'core_competencies') {
+        if (!base.core_competencies[index]) return base;
+        return {
+          ...base,
+          core_competencies: base.core_competencies.map((item, itemIndex) => (
+            itemIndex === index ? newText : item
+          )),
+        };
+      }
+
       if (section === 'selected_accomplishments') {
         if (!base.selected_accomplishments[index]) return base;
         return {
@@ -644,6 +668,33 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         };
       }
 
+      const customSectionId = parseCustomSectionKey(section);
+      if (customSectionId) {
+        const customSections = Array.isArray(base.custom_sections) ? base.custom_sections : [];
+        const customSection = customSections.find((item) => item.id === customSectionId);
+        if (!customSection) return base;
+
+        return {
+          ...base,
+          custom_sections: customSections.map((item) => {
+            if (item.id !== customSectionId) return item;
+            if (index < 0) {
+              return {
+                ...item,
+                summary: newText,
+              };
+            }
+            if (!item.lines[index]) return item;
+            return {
+              ...item,
+              lines: item.lines.map((line, lineIndex) => (
+                lineIndex === index ? newText : line
+              )),
+            };
+          }),
+        };
+      }
+
       return base;
     });
     if (hiringManagerResult) {
@@ -659,6 +710,14 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume((prev) => {
       const base = normalizeResumeDraft(prev ?? currentResume);
       if (!base) return prev;
+
+      if (section === 'core_competencies') {
+        if (!base.core_competencies[index]) return base;
+        return {
+          ...base,
+          core_competencies: base.core_competencies.filter((_, itemIndex) => itemIndex !== index),
+        };
+      }
 
       if (section === 'selected_accomplishments') {
         if (!base.selected_accomplishments[index]) return base;
@@ -683,6 +742,31 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
                   bullets: entry.bullets.filter((_, currentBulletIndex) => currentBulletIndex !== bulletIndex),
                 }
               : entry
+          )),
+        };
+      }
+
+      const customSectionId = parseCustomSectionKey(section);
+      if (customSectionId) {
+        if (index < 0) return base;
+        const customSections = Array.isArray(base.custom_sections) ? base.custom_sections : [];
+        const customSection = customSections.find((item) => item.id === customSectionId);
+        if (!customSection?.lines[index]) return base;
+
+        const nextLines = customSection.lines.filter((_, lineIndex) => lineIndex !== index);
+        if (nextLines.length === 0 && !customSection.summary?.trim()) {
+          return removeResumeCustomSection(base, customSectionId);
+        }
+
+        return {
+          ...base,
+          custom_sections: customSections.map((item) => (
+            item.id === customSectionId
+              ? {
+                  ...item,
+                  lines: nextLines,
+                }
+              : item
           )),
         };
       }

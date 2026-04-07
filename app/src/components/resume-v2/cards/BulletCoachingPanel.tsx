@@ -53,6 +53,7 @@ export interface BulletCoachingPanelProps {
   onApplyToResume: (section: string, index: number, newText: string) => void;
   onRemoveBullet: (section: string, index: number) => void;
   onClose: () => void;
+  canRemove?: boolean;
   // New: optional AI enhancement handler
   onBulletEnhance?: (
     action: string,
@@ -80,13 +81,13 @@ function buildCoachingText(
     case 'code_red':
       return evidence
         ? `I found related experience in your resume: "${evidence}".\n\nIf there's a specific project or outcome behind this, share it and we'll rewrite accurately. Or we can remove this line if it truly doesn't fit.`
-        : `We need proof for "${req}" before this bullet can stay on your resume.\n\nTell us what you've actually done in this area — even on a smaller scale or under a different title counts.`;
+        : `We need proof for "${req}" before this line can stay on your resume.\n\nTell us what you've actually done in this area — even on a smaller scale or under a different title counts.`;
     case 'confirm_fit':
       return evidence
         ? `This comes from the benchmark for this role. We found "${evidence}" in your background that's related. Does this honestly describe how you've worked?`
         : `This comes from the benchmark for this role — not directly from your background. Confirm it honestly describes you, or tell us what the real story is.`;
     case 'strengthen':
-      return `You have real experience here. The bullet needs to connect it more clearly to "${req}".\n\nCan you quantify the outcome? Even an estimate works. Was there a notable scope or scale? A specific result you remember?`;
+      return `You have real experience here. This line needs to connect it more clearly to "${req}".\n\nCan you quantify the outcome? Even an estimate works. Was there a notable scope or scale? A specific result you remember?`;
     default:
       return '';
   }
@@ -111,6 +112,7 @@ export function BulletCoachingPanel({
   onApplyToResume,
   onRemoveBullet,
   onClose,
+  canRemove = true,
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -257,13 +259,13 @@ export function BulletCoachingPanel({
   // ── Plain-language explanation of why this bullet is being coached ─────────
   const explanationText: string = {
     code_red:
-      "This bullet needs proof — we couldn't find evidence for this claim in your resume.",
+      "This line needs proof — we couldn't find evidence for this claim in your resume.",
     confirm_fit:
-      'This comes from the benchmark profile for this role — confirm it matches your experience.',
+      'This line comes from the benchmark profile for this role — confirm it matches your experience.',
     strengthen:
-      'This addresses a job requirement but could be more specific and impactful.',
-    supported: 'This bullet is backed by your resume. No changes needed.',
-    supported_rewrite: 'This bullet is backed by your resume. No changes needed.',
+      'This line addresses a job requirement but could be more specific and impactful.',
+    supported: 'This line is backed by your resume. No changes needed.',
+    supported_rewrite: 'This line is backed by your resume. No changes needed.',
   }[reviewState] ?? '';
 
   return (
@@ -283,14 +285,14 @@ export function BulletCoachingPanel({
           className="text-[11px] font-semibold uppercase tracking-[0.12em]"
           style={{ color: 'var(--text-soft)' }}
         >
-          Bullet Coach
+          Resume Coach
         </p>
         <button
           type="button"
           onClick={onClose}
           className="shrink-0 rounded-md p-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2"
           style={{ color: 'var(--text-soft)' }}
-          aria-label="Close bullet coach"
+          aria-label="Close resume coach"
         >
           <X className="h-4 w-4" />
         </button>
@@ -556,52 +558,54 @@ export function BulletCoachingPanel({
         </div>
 
         {/* Right: destructive action with confirmation (Fix 6) */}
-        <button
-          type="button"
-          onClick={() => {
-            if (confirmRemove) {
-              onRemoveBullet(section, bulletIndex);
-              onClose();
-            } else {
-              setConfirmRemove(true);
-              confirmTimeoutRef.current = setTimeout(() => setConfirmRemove(false), 3000);
+        {canRemove && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmRemove) {
+                onRemoveBullet(section, bulletIndex);
+                onClose();
+              } else {
+                setConfirmRemove(true);
+                confirmTimeoutRef.current = setTimeout(() => setConfirmRemove(false), 3000);
+              }
+            }}
+            disabled={isEnhancing || isChatLoading}
+            className={cn(
+              'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12px] font-medium',
+              'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
+              (isEnhancing || isChatLoading) && 'opacity-50 cursor-not-allowed',
+              confirmRemove
+                ? 'border'
+                : '',
+            )}
+            style={
+              confirmRemove
+                ? {
+                    background: 'var(--badge-red-bg)',
+                    color: 'var(--badge-red-text)',
+                    borderColor: 'var(--bullet-code-red-border)',
+                  }
+                : { color: 'var(--text-soft)' }
             }
-          }}
-          disabled={isEnhancing || isChatLoading}
-          className={cn(
-            'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12px] font-medium',
-            'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
-            (isEnhancing || isChatLoading) && 'opacity-50 cursor-not-allowed',
-            confirmRemove
-              ? 'border'
-              : '',
-          )}
-          style={
-            confirmRemove
-              ? {
-                  background: 'var(--badge-red-bg)',
-                  color: 'var(--badge-red-text)',
-                  borderColor: 'var(--bullet-code-red-border)',
-                }
-              : { color: 'var(--text-soft)' }
-          }
-          onMouseEnter={(e) => {
-            if (!confirmRemove) {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--badge-red-text)';
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--badge-red-bg)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!confirmRemove) {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-soft)';
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            }
-          }}
-          aria-label={confirmRemove ? 'Confirm removal of this bullet' : 'Remove this bullet from the resume'}
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          {confirmRemove ? 'Confirm removal' : 'Remove this bullet'}
-        </button>
+            onMouseEnter={(e) => {
+              if (!confirmRemove) {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--badge-red-text)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--badge-red-bg)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!confirmRemove) {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-soft)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+              }
+            }}
+            aria-label={confirmRemove ? 'Confirm removal of this line' : 'Remove this line from the resume'}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            {confirmRemove ? 'Confirm removal' : 'Remove this line'}
+          </button>
+        )}
       </div>
     </div>
   );

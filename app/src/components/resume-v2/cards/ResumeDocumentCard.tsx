@@ -29,6 +29,7 @@ interface ResumeDocumentCardProps {
     workItemId?: string,
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
+    canRemove?: boolean,
   ) => void;
   /** Direct edit callback — saves edited text back into the resume */
   onBulletEdit?: (section: string, index: number, newText: string) => void;
@@ -83,10 +84,18 @@ export function ResumeDocumentCard({
               resume.executive_summary.content,
               'executive_summary',
               0,
-              [],
+              resolveStandaloneDisplayRequirements(
+                resume.executive_summary.addresses_requirements ?? [],
+                requirementCatalog,
+                resume.executive_summary.content,
+              ),
               'strengthen' as ResumeReviewState,
               undefined,
-              '',
+              resume.executive_summary.content,
+              undefined,
+              'adjacent',
+              'tighten',
+              false,
             )}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -95,10 +104,18 @@ export function ResumeDocumentCard({
                   resume.executive_summary.content,
                   'executive_summary',
                   0,
-                  [],
+                  resolveStandaloneDisplayRequirements(
+                    resume.executive_summary.addresses_requirements ?? [],
+                    requirementCatalog,
+                    resume.executive_summary.content,
+                  ),
                   'strengthen' as ResumeReviewState,
                   undefined,
-                  '',
+                  resume.executive_summary.content,
+                  undefined,
+                  'adjacent',
+                  'tighten',
+                  false,
                 );
               }
             }}
@@ -128,7 +145,47 @@ export function ResumeDocumentCard({
           {coreCompetencies.map((comp, i) => (
             <span
               key={i}
-              className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-gray-600"
+              role={onBulletClick ? 'button' : undefined}
+              tabIndex={onBulletClick ? 0 : undefined}
+              title={onBulletClick ? 'Click to review and edit this competency' : undefined}
+              onClick={onBulletClick ? () => onBulletClick(
+                comp,
+                'core_competencies',
+                i,
+                resolveStandaloneDisplayRequirements([], requirementCatalog, comp),
+                'strengthen',
+                undefined,
+                comp,
+                undefined,
+                'adjacent',
+                'tighten',
+                true,
+              ) : undefined}
+              onKeyDown={onBulletClick ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onBulletClick(
+                    comp,
+                    'core_competencies',
+                    i,
+                    resolveStandaloneDisplayRequirements([], requirementCatalog, comp),
+                    'strengthen',
+                    undefined,
+                    comp,
+                    undefined,
+                    'adjacent',
+                    'tighten',
+                    true,
+                  );
+                }
+              } : undefined}
+              className={`rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-gray-600 ${
+                onBulletClick ? 'cursor-pointer transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
+              }${
+                activeBullet?.section === 'core_competencies' && activeBullet.index === i
+                  ? ' border-[var(--link)] bg-[var(--link)]/5 text-[var(--link)]'
+                  : ''
+              }`}
             >
               {comp}
             </span>
@@ -328,22 +385,191 @@ export function ResumeDocumentCard({
 
   for (const [sectionId, section] of customSections.entries()) {
     if (section.lines.length === 0 && !section.summary) continue;
+    const customSectionKey = `custom_section:${sectionId}`;
+    const summaryText = section.summary;
     sectionNodes.set(sectionId, (
       <section key={sectionId} data-section={sectionId}>
         <SectionHeading>{section.title}</SectionHeading>
-        {section.summary && (
-          <p className="mb-2 text-sm leading-relaxed text-gray-700">{section.summary}</p>
+        {summaryText && (
+          onBulletClick ? (
+            <div
+              className={`group relative mb-2 rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+                activeBullet?.section === customSectionKey && activeBullet.index === -1
+                  ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                  : ''
+              }`}
+            >
+              <p
+                role="button"
+                tabIndex={0}
+                className="text-sm leading-relaxed text-gray-700"
+                title={`Click to edit the ${section.title} summary`}
+                onClick={() => onBulletClick(
+                  summaryText,
+                  customSectionKey,
+                  -1,
+                  resolveStandaloneDisplayRequirements([], requirementCatalog, summaryText),
+                  'strengthen',
+                  undefined,
+                  summaryText,
+                  undefined,
+                  'adjacent',
+                  'tighten',
+                  false,
+                )}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onBulletClick(
+                      summaryText,
+                      customSectionKey,
+                      -1,
+                      resolveStandaloneDisplayRequirements([], requirementCatalog, summaryText),
+                      'strengthen',
+                      undefined,
+                      summaryText,
+                      undefined,
+                      'adjacent',
+                      'tighten',
+                      false,
+                    );
+                  }
+                }}
+              >
+                {summaryText}
+              </p>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Pencil className="h-3.5 w-3.5 text-gray-400" />
+              </span>
+              {activeBullet?.section === customSectionKey && activeBullet.index === -1 && (
+                <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+              )}
+            </div>
+          ) : (
+            <p className="mb-2 text-sm leading-relaxed text-gray-700">{summaryText}</p>
+          )
         )}
         <div className="space-y-1.5">
           {section.kind === 'paragraph'
             ? section.lines.map((line, index) => (
-              <p key={index} className="text-sm leading-relaxed text-gray-800">{line}</p>
+              onBulletClick ? (
+                <div
+                  key={index}
+                  className={`group relative rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+                    activeBullet?.section === customSectionKey && activeBullet.index === index
+                      ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                      : ''
+                  }`}
+                >
+                  <p
+                    role="button"
+                    tabIndex={0}
+                    className="text-sm leading-relaxed text-gray-800"
+                    title={`Click to review and edit this ${section.title} line`}
+                    onClick={() => onBulletClick(
+                      line,
+                      customSectionKey,
+                      index,
+                      resolveStandaloneDisplayRequirements([], requirementCatalog, line),
+                      'strengthen',
+                      undefined,
+                      line,
+                      undefined,
+                      'adjacent',
+                      'tighten',
+                      true,
+                    )}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onBulletClick(
+                          line,
+                          customSectionKey,
+                          index,
+                          resolveStandaloneDisplayRequirements([], requirementCatalog, line),
+                          'strengthen',
+                          undefined,
+                          line,
+                          undefined,
+                          'adjacent',
+                          'tighten',
+                          true,
+                        );
+                      }
+                    }}
+                  >
+                    {line}
+                  </p>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                  </span>
+                  {activeBullet?.section === customSectionKey && activeBullet.index === index && (
+                    <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+                  )}
+                </div>
+              ) : (
+                <p key={index} className="text-sm leading-relaxed text-gray-800">{line}</p>
+              )
             ))
             : (
               <ul className="resume-proof-list space-y-2 list-none pl-0">
                 {section.lines.map((line, index) => (
                   <li key={index} className="text-sm leading-relaxed text-gray-800">
-                    {line}
+                    {onBulletClick ? (
+                      <div className={`group relative rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+                        activeBullet?.section === customSectionKey && activeBullet.index === index
+                          ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                          : ''
+                      }`}>
+                        <p
+                          role="button"
+                          tabIndex={0}
+                          className="text-sm leading-relaxed text-gray-800"
+                          title={`Click to review and edit this ${section.title} line`}
+                          onClick={() => onBulletClick(
+                            line,
+                            customSectionKey,
+                            index,
+                            resolveStandaloneDisplayRequirements([], requirementCatalog, line),
+                            'strengthen',
+                            undefined,
+                            line,
+                            undefined,
+                            'adjacent',
+                            'tighten',
+                            true,
+                          )}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onBulletClick(
+                                line,
+                                customSectionKey,
+                                index,
+                                resolveStandaloneDisplayRequirements([], requirementCatalog, line),
+                                'strengthen',
+                                undefined,
+                                line,
+                                undefined,
+                                'adjacent',
+                                'tighten',
+                                true,
+                              );
+                            }
+                          }}
+                        >
+                          {line}
+                        </p>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                        </span>
+                        {activeBullet?.section === customSectionKey && activeBullet.index === index && (
+                          <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+                        )}
+                      </div>
+                    ) : (
+                      line
+                    )}
                   </li>
                 ))}
               </ul>
@@ -422,6 +648,7 @@ interface BulletLineContentProps {
     workItemId?: string,
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
+    canRemove?: boolean,
   ) => void;
 }
 
@@ -449,7 +676,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction);
+      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true);
     }
   };
 
@@ -721,6 +948,36 @@ function resolvePrimaryDisplayRequirement(
   );
 
   return resolved[0] ?? null;
+}
+
+function resolveStandaloneDisplayRequirements(
+  rawRequirements: string[],
+  requirementCatalog: Array<{ requirement: string; source?: RequirementSource }>,
+  lineText?: string,
+): string[] {
+  const cleaned = rawRequirements
+    .map((requirement) => requirement.trim())
+    .filter(Boolean);
+
+  if (cleaned.length > 0) {
+    return Array.from(new Set(cleaned));
+  }
+
+  if (!lineText?.trim() || requirementCatalog.length === 0) {
+    return [];
+  }
+
+  let bestMatch: string | null = null;
+  let bestScore = 0;
+  for (const entry of requirementCatalog) {
+    const score = getTokenOverlapScore(lineText, entry.requirement);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = entry.requirement;
+    }
+  }
+
+  return bestMatch && bestScore >= 0.18 ? [bestMatch] : [];
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

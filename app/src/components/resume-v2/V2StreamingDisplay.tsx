@@ -32,6 +32,7 @@ import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
+import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -149,6 +150,19 @@ interface AttentionReviewItem {
   workItemId?: string;
   proofLevel?: ProofLevel;
   nextBestAction?: NextBestAction;
+}
+
+interface SectionCoachTarget {
+  id: string;
+  label: string;
+  helperText: string;
+  section: string;
+  index: number;
+  bulletText: string;
+  requirements: string[];
+  reviewState: ResumeReviewState;
+  evidenceFound: string;
+  canRemove: boolean;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -295,6 +309,109 @@ function buildAttentionReviewItems(
   return items.sort((a, b) => a.priority - b.priority || a.order - b.order);
 }
 
+function buildSectionCoachTargets(resume: ResumeDraft): SectionCoachTarget[] {
+  const targets: SectionCoachTarget[] = [];
+
+  const summaryText = resume.executive_summary.content.trim();
+  if (summaryText) {
+    targets.push({
+      id: 'executive_summary',
+      label: 'Executive Summary',
+      helperText: 'Tighten the first impression and opening story.',
+      section: 'executive_summary',
+      index: 0,
+      bulletText: summaryText,
+      requirements: resume.executive_summary.addresses_requirements ?? [],
+      reviewState: 'strengthen',
+      evidenceFound: summaryText,
+      canRemove: false,
+    });
+  }
+
+  const firstCompetency = resume.core_competencies.find((item) => item.trim().length > 0);
+  if (firstCompetency) {
+    targets.push({
+      id: 'core_competencies',
+      label: 'Core Competencies',
+      helperText: 'Refine the keywords recruiters see first.',
+      section: 'core_competencies',
+      index: resume.core_competencies.findIndex((item) => item === firstCompetency),
+      bulletText: firstCompetency,
+      requirements: [],
+      reviewState: 'strengthen',
+      evidenceFound: firstCompetency,
+      canRemove: true,
+    });
+  }
+
+  const enabledSectionIds = new Set(getEnabledResumeSectionPlan(resume).map((item) => item.id));
+  const customSections = getResumeCustomSectionMap(resume);
+  for (const [sectionId, section] of customSections.entries()) {
+    if (!enabledSectionIds.has(sectionId)) continue;
+    const summary = section.summary?.trim();
+    const firstLine = section.lines.find((line) => line.trim().length > 0);
+    const bulletText = summary ?? firstLine;
+    if (!bulletText) continue;
+    targets.push({
+      id: sectionId,
+      label: section.title,
+      helperText: sectionId === 'ai_highlights'
+        ? 'Sharpen the AI story for roles that value transformation and automation.'
+        : 'Polish this section so it strengthens the overall story.',
+      section: `custom_section:${sectionId}`,
+      index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
+      bulletText,
+      requirements: [],
+      reviewState: 'strengthen',
+      evidenceFound: bulletText,
+      canRemove: !summary,
+    });
+    break;
+  }
+
+  return targets.slice(0, 3);
+}
+
+function SectionCoachCard({
+  targets,
+  onOpenTarget,
+}: {
+  targets: SectionCoachTarget[];
+  onOpenTarget: (target: SectionCoachTarget) => void;
+}) {
+  if (targets.length === 0) return null;
+
+  return (
+    <div className="shell-panel px-4 py-4">
+      <p className="eyebrow-label">Section Polish</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Strengthen the parts of the resume people read first</h3>
+      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+        These lines may not show up in the flagged queue, but they shape the overall story and positioning.
+      </p>
+      <div className="mt-4 space-y-2">
+        {targets.map((target) => (
+          <button
+            key={target.id}
+            type="button"
+            onClick={() => onOpenTarget(target)}
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              {target.label}
+            </p>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+              {target.bulletText}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+              {target.helperText}
+            </p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AttentionReviewStrip({
   items,
   currentIndex,
@@ -427,6 +544,7 @@ export function V2StreamingDisplay({
     workItemId?: string;
     proofLevel?: ProofLevel;
     nextBestAction?: NextBestAction;
+    canRemove?: boolean;
   } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
 
   useEffect(() => {
@@ -439,6 +557,9 @@ export function V2StreamingDisplay({
   const attentionItems = useMemo(() => (
     displayResume ? buildAttentionReviewItems(displayResume, baselineResume) : []
   ), [baselineResume, displayResume]);
+  const sectionCoachTargets = useMemo(() => (
+    displayResume ? buildSectionCoachTargets(displayResume) : []
+  ), [displayResume]);
   const [attentionIndex, setAttentionIndex] = useState(0);
 
   // Bullet click handler for cross-referencing
@@ -453,6 +574,7 @@ export function V2StreamingDisplay({
     workItemId?: string,
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
+    canRemove?: boolean,
   ) => {
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
@@ -467,6 +589,7 @@ export function V2StreamingDisplay({
         workItemId,
         proofLevel,
         nextBestAction,
+        canRemove,
       };
     });
   }, []);
@@ -486,11 +609,28 @@ export function V2StreamingDisplay({
       workItemId: item.workItemId,
       proofLevel: item.proofLevel,
       nextBestAction: item.nextBestAction,
+      canRemove: true,
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(item.selector);
     });
   }, [attentionItems]);
+
+  const openSectionCoachTarget = useCallback((target: SectionCoachTarget) => {
+    handleBulletClick(
+      target.bulletText,
+      target.section,
+      target.index,
+      target.requirements,
+      target.reviewState,
+      undefined,
+      target.evidenceFound,
+      undefined,
+      'adjacent',
+      'tighten',
+      target.canRemove,
+    );
+  }, [handleBulletClick]);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
@@ -765,6 +905,12 @@ export function V2StreamingDisplay({
                   onRemoveCustomSection={onRemoveCustomSection}
                 />
               )}
+              {!activeBullet && (
+                <SectionCoachCard
+                  targets={sectionCoachTargets}
+                  onOpenTarget={openSectionCoachTarget}
+                />
+              )}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
@@ -773,7 +919,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -922,6 +1068,7 @@ export function V2StreamingDisplay({
                             evidenceFound={activeBullet.evidenceFound}
                             proofLevel={activeBullet.proofLevel}
                             nextBestAction={activeBullet.nextBestAction}
+                            canRemove={activeBullet.canRemove ?? true}
                             gapChat={gapChat}
                             chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)}
                             onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
@@ -943,6 +1090,10 @@ export function V2StreamingDisplay({
                               onRemoveCustomSection={onRemoveCustomSection}
                             />
                           )}
+                          <SectionCoachCard
+                            targets={sectionCoachTargets}
+                            onOpenTarget={openSectionCoachTarget}
+                          />
                           <div className="shell-panel px-4 py-4">
                             <p className="eyebrow-label">Editing Queue</p>
                             <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with the lines that change the story fastest</h3>

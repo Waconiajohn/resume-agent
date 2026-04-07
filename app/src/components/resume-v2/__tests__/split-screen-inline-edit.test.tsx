@@ -164,6 +164,7 @@ function makeResumeDraft(): ResumeDraft {
     executive_summary: {
       content: 'Seasoned engineering leader driving outcomes at scale.',
       is_new: false,
+      addresses_requirements: ['Product delivery'],
     },
     core_competencies: ['Team Leadership', 'Cloud Architecture'],
     selected_accomplishments: [
@@ -369,6 +370,76 @@ describe('ResumeDocumentCard — bullet accessibility', () => {
       .filter((el) => el.tagName === 'SPAN');
     // Strong/green bullets are not clickable — they render as plain text spans
     expect(bulletButtons.length).toBe(0);
+  });
+
+  it('lets users click summary, competency, and custom-section lines for coaching', () => {
+    const resume = makeResumeDraft();
+    resume.custom_sections = [
+      {
+        id: 'ai_highlights',
+        title: 'AI Highlights',
+        kind: 'bullet_list',
+        lines: ['Applied AI workflow automation to speed cross-functional planning'],
+        summary: 'Built an AI-forward transformation story from real operating work.',
+      },
+    ];
+    const onBulletClick = vi.fn();
+
+    render(
+      <ResumeDocumentCard
+        resume={resume}
+        requirementCatalog={[
+          { requirement: 'Product delivery', source: 'job_description' },
+          { requirement: 'AI workflow automation', source: 'job_description' },
+        ]}
+        onBulletClick={onBulletClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Seasoned engineering leader driving outcomes at scale.'));
+    expect(onBulletClick).toHaveBeenLastCalledWith(
+      'Seasoned engineering leader driving outcomes at scale.',
+      'executive_summary',
+      0,
+      ['Product delivery'],
+      'strengthen',
+      undefined,
+      'Seasoned engineering leader driving outcomes at scale.',
+      undefined,
+      'adjacent',
+      'tighten',
+      false,
+    );
+
+    fireEvent.click(screen.getByText('Team Leadership'));
+    expect(onBulletClick).toHaveBeenLastCalledWith(
+      'Team Leadership',
+      'core_competencies',
+      0,
+      [],
+      'strengthen',
+      undefined,
+      'Team Leadership',
+      undefined,
+      'adjacent',
+      'tighten',
+      true,
+    );
+
+    fireEvent.click(screen.getByText('Applied AI workflow automation to speed cross-functional planning'));
+    expect(onBulletClick).toHaveBeenLastCalledWith(
+      'Applied AI workflow automation to speed cross-functional planning',
+      'custom_section:ai_highlights',
+      0,
+      ['AI workflow automation'],
+      'strengthen',
+      undefined,
+      'Applied AI workflow automation to speed cross-functional planning',
+      undefined,
+      'adjacent',
+      'tighten',
+      true,
+    );
   });
 });
 
@@ -588,6 +659,49 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.bulletText).toBe('Reduced deploy time by 60%');
     expect(lastCall.evidenceFound).toBe('Improved deployment workflow across engineering teams');
     expect(lastCall.requirementSource).toBe('job_description');
+  });
+
+  it('opens the summary in coaching mode without offering remove', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: vi.fn((requirement: string) => ({
+            evidence: [],
+            currentStrategy: undefined,
+            aiReasoning: undefined,
+            inferredMetric: undefined,
+            coachingPolicy: undefined,
+            jobDescriptionExcerpt: `${requirement} from the job description`,
+            candidateExperienceSummary: '',
+            alternativeBullets: [],
+            primaryRequirement: requirement,
+            requirementSource: 'job_description' as const,
+            sourceEvidence: `${requirement} from the job description`,
+          })),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    fireEvent.click(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.')[0]);
+
+    expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      bulletText: string;
+      section: string;
+      canRemove?: boolean;
+    };
+    expect(lastCall.section).toBe('executive_summary');
+    expect(lastCall.bulletText).toBe('Seasoned engineering leader driving outcomes at scale.');
+    expect(lastCall.canRemove).toBe(false);
   });
 
   it('drops a line from the navigator once that line has changed in the working resume', async () => {
