@@ -691,6 +691,81 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.requirementSource).toBe('job_description');
   });
 
+  it('keeps the strongest two custom sections visible in Section Polish', async () => {
+    const resume = makeResumeDraft();
+    resume.custom_sections = [
+      {
+        id: 'ai_highlights',
+        title: 'AI Highlights',
+        kind: 'bullet_list',
+        lines: ['Applied AI workflow automation to speed cross-functional planning'],
+        summary: 'Built an AI-forward transformation story from real operating work.',
+        recommended_for_job: true,
+      },
+      {
+        id: 'transformation_highlights',
+        title: 'Transformation Highlights',
+        kind: 'bullet_list',
+        lines: [
+          'Led plant-network transformation work across three sites.',
+          'Built KPI reviews and operating cadence improvements that reduced defects by 25%.',
+        ],
+        recommended_for_job: true,
+      },
+    ];
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: resume,
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+            requirementWorkItems: [
+              {
+                id: 'work-ai',
+                requirement: 'Lead AI automation and operating-model change',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [],
+                best_evidence_excerpt: 'Applied AI workflow automation to speed cross-functional planning',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+              {
+                id: 'work-transform',
+                requirement: 'Drive transformation across multiple sites',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [],
+                best_evidence_excerpt: 'Led plant-network transformation work across three sites',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+
+    expect(screen.getAllByRole('button', { name: /AI Highlights/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Transformation Highlights/i }).length).toBeGreaterThan(0);
+  });
+
   it('opens the summary in coaching mode without offering remove', async () => {
     render(
       <V2StreamingDisplay

@@ -508,8 +508,11 @@ function buildSectionCoachTargets(
     });
   }
 
-  const enabledSectionIds = new Set(getEnabledResumeSectionPlan(resume).map((item) => item.id));
+  const enabledPlan = getEnabledResumeSectionPlan(resume);
+  const enabledSectionIds = new Set(enabledPlan.map((item) => item.id));
+  const planById = new Map(enabledPlan.map((item) => [item.id, item]));
   const customSections = getResumeCustomSectionMap(resume);
+  const customTargets: Array<{ target: SectionCoachTarget; score: number }> = [];
   for (const [sectionId, section] of customSections.entries()) {
     if (!enabledSectionIds.has(sectionId)) continue;
     const summary = section.summary?.trim();
@@ -518,30 +521,37 @@ function buildSectionCoachTargets(
     if (!bulletText) continue;
     const rankedItems = rankWorkItems(sectionId, section.title, `${summary ?? ''} ${section.lines.join(' ')}`);
     const relatedRequirements = rankedItems.slice(0, 2).map(({ item }) => item.requirement);
-    targets.push({
-      id: sectionId,
-      label: section.title,
-      helperText: sectionId === 'ai_highlights'
-        ? relatedRequirements.length > 0
-          ? `Make the AI story clearly support ${formatRequirementFocus(relatedRequirements)}.`
-          : 'Sharpen the AI story for roles that value transformation and automation.'
-        : relatedRequirements.length > 0
-          ? `Make this section reinforce ${formatRequirementFocus(relatedRequirements)}.`
-          : 'Polish this section so it strengthens the overall story.',
-      section: `custom_section:${sectionId}`,
-      index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
-      bulletText,
-      requirements: relatedRequirements,
-      reviewState: 'strengthen',
-      requirementSource: rankedItems[0]?.item.source,
-      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? bulletText,
-      workItemId: rankedItems[0]?.item.id,
-      canRemove: !summary,
+    customTargets.push({
+      target: {
+        id: sectionId,
+        label: section.title,
+        helperText: sectionId === 'ai_highlights'
+          ? relatedRequirements.length > 0
+            ? `Make the AI story clearly support ${formatRequirementFocus(relatedRequirements)}.`
+            : 'Sharpen the AI story for roles that value transformation and automation.'
+          : relatedRequirements.length > 0
+            ? `Make this section reinforce ${formatRequirementFocus(relatedRequirements)}.`
+            : 'Polish this section so it strengthens the overall story.',
+        section: `custom_section:${sectionId}`,
+        index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
+        bulletText,
+        requirements: relatedRequirements,
+        reviewState: 'strengthen',
+        requirementSource: rankedItems[0]?.item.source,
+        evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? bulletText,
+        workItemId: rankedItems[0]?.item.id,
+        canRemove: !summary,
+      },
+      score: (rankedItems[0]?.score ?? 0) + (planById.get(sectionId)?.recommended_for_job ? 0.25 : 0),
     });
-    break;
   }
 
-  return targets.slice(0, 3);
+  customTargets
+    .sort((left, right) => right.score - left.score || left.target.label.localeCompare(right.target.label))
+    .slice(0, 2)
+    .forEach(({ target }) => targets.push(target));
+
+  return targets.slice(0, 4);
 }
 
 function buildClarificationCues(
