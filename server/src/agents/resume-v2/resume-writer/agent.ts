@@ -113,12 +113,22 @@ Bullet count is governed by JD-relevance and available evidence — not by minim
 
 ## EXECUTIVE SUMMARY
 
-- Open with the narrative positioning, not generic accomplishments
-- The first sentence must immediately establish who this person is through the lens of the Why Me narrative angle
-- Name the specific role being targeted — not a generic "senior leader" statement
-- Accomplishments come after — once the reader knows WHY this candidate is the one
-- Never open with "Results-driven leader," "Seasoned professional," or any equivalent. Open with the positioning.
-- Altitude: every sentence should sound like it was written by the candidate, not about them
+CRITICAL — the executive summary is the first thing a hiring manager reads. Get it right or lose the reader.
+
+STRUCTURE (follow this order exactly):
+1. FIRST SENTENCE: "[Title/Identity] with [X] years of experience [doing what they do best]." — establishes who they are. Do NOT lead with a metric, a revenue figure, or an accomplishment. Lead with identity.
+2. SECOND SENTENCE: The core capability pattern — what they consistently deliver across roles.
+3. REMAINING SENTENCES: Key proof points (metrics, scope, outcomes) that back up sentences 1 and 2.
+4. FINAL SENTENCE (optional): Forward-looking positioning for the target role.
+
+RULES:
+- NEVER open with a metric or dollar figure. "Generated $250K..." is a bullet point, not an opening.
+- NEVER smash two titles together without punctuation. "Transformational leader Customer Operations Leader" is wrong.
+- NEVER say "strategic growth of delivering" or any similar nonsensical phrase. Read it aloud — if it doesn't make sense spoken, rewrite it.
+- NEVER name the target company in the summary. The summary must work for any application.
+- NEVER use "Results-driven," "Seasoned professional," "Transformational leader," or any equivalent filler.
+- Every sentence must be grammatically correct. Proofread for missing punctuation, doubled nouns, and awkward phrasing.
+- The summary should sound like it was written by the candidate, not about them.
 
 ## CORE COMPETENCIES
 

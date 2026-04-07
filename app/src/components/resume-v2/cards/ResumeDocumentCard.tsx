@@ -75,12 +75,60 @@ export function ResumeDocumentCard({
         </div>
       </div>
 
-      {/* Executive Summary */}
+      {/* Executive Summary — clickable for editing */}
       <section data-section="executive_summary">
         <SectionHeading>Executive Summary</SectionHeading>
-        <p className="text-sm leading-relaxed text-gray-800">
-          {resume.executive_summary.content}
-        </p>
+        {onBulletClick ? (
+          <div
+            className={`group relative cursor-pointer rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+              activeBullet?.section === 'executive_summary' && activeBullet.index === 0
+                ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+                : ''
+            }`}
+          >
+            <p
+              role="button"
+              tabIndex={0}
+              className="text-sm leading-relaxed text-gray-800"
+              title="Click to edit the executive summary"
+              onClick={() => onBulletClick(
+                resume.executive_summary.content,
+                'executive_summary',
+                0,
+                [],
+                'strengthen' as ResumeReviewState,
+                undefined,
+                '',
+              )}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onBulletClick(
+                    resume.executive_summary.content,
+                    'executive_summary',
+                    0,
+                    [],
+                    'strengthen' as ResumeReviewState,
+                    undefined,
+                    '',
+                  );
+                }
+              }}
+            >
+              {resume.executive_summary.content}
+            </p>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Pencil className="h-3.5 w-3.5 text-gray-400" />
+            </span>
+            {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
+              <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-gray-800">
+            {resume.executive_summary.content}
+          </p>
+        )}
       </section>
 
       {/* Core Competencies */}
