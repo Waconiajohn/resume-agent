@@ -918,6 +918,67 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(within(strip).queryByText(/release KPIs and deployment scorecards/i)).not.toBeInTheDocument();
   });
 
+  it('surfaces remembered evidence in the left rail and opens the matching line', async () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          clarificationMemory: [
+            {
+              id: 'gap_chat:product delivery',
+              source: 'gap_chat',
+              topic: 'Product delivery',
+              userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
+              appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
+              primaryFamily: 'metrics',
+              families: ['metrics'],
+            },
+          ],
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          data: makePipelineDataWithResume({
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    expect(screen.getAllByText('We already know this from your earlier answers').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen
+        .getAllByText(/Led weekly KPI reviews across three plants and used them to cut defects\./i)[0]
+        .closest('button') as HTMLButtonElement,
+    );
+
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      bulletText: string;
+      section: string;
+    };
+    expect(lastCall.section).toBe('professional_experience');
+    expect(lastCall.bulletText).toBe('Shipped 3 major product lines');
+  });
+
   it('shows the PipelineProgressCard for each pipeline stage', () => {
     const stages = ['strategy', 'writing', 'verification', 'assembly'] as const;
 

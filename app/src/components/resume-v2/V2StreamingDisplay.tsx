@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -131,6 +131,7 @@ interface V2StreamingDisplayProps {
   jobUrl?: string;
   /** Access token for the link-resume API call in ExportBar */
   accessToken?: string | null;
+  clarificationMemory?: ClarificationMemoryEntry[];
 }
 
 interface AttentionReviewItem {
@@ -172,6 +173,15 @@ interface ClarificationCue {
   id: string;
   requirement: string;
   question: string;
+  affectedCount: number;
+  targetIndex: number | null;
+}
+
+interface RememberedEvidenceCue {
+  id: string;
+  topic: string;
+  answer: string;
+  primaryFamily?: string | null;
   affectedCount: number;
   targetIndex: number | null;
 }
@@ -558,6 +568,40 @@ function buildClarificationCues(
     .slice(0, 3);
 }
 
+function buildRememberedEvidenceCues(
+  clarificationMemory: ClarificationMemoryEntry[],
+  attentionItems: AttentionReviewItem[],
+): RememberedEvidenceCue[] {
+  return clarificationMemory
+    .map((entry) => {
+      const matches = attentionItems.filter((item) => {
+        const requirementHit = item.requirements.some((requirement) => (
+          overlapScore(requirement, entry.topic) >= 0.35
+            || overlapScore(requirement, entry.userInput) >= 0.24
+        ));
+        const evidenceHit = item.evidenceFound
+          ? overlapScore(item.evidenceFound, entry.userInput) >= 0.24
+          : false;
+        const lineHit = overlapScore(item.text, entry.userInput) >= 0.24;
+        return requirementHit || evidenceHit || lineHit;
+      });
+
+      return {
+        id: entry.id,
+        topic: entry.topic,
+        answer: entry.userInput,
+        primaryFamily: entry.primaryFamily,
+        affectedCount: matches.length,
+        targetIndex: matches.length > 0
+          ? attentionItems.findIndex((candidate) => candidate.id === matches[0].id)
+          : null,
+      } satisfies RememberedEvidenceCue;
+    })
+    .filter((cue) => cue.affectedCount > 0)
+    .sort((left, right) => right.affectedCount - left.affectedCount || left.topic.localeCompare(right.topic))
+    .slice(0, 3);
+}
+
 function SectionCoachCard({
   targets,
   onOpenTarget,
@@ -635,6 +679,68 @@ function ClarificationCueCard({
             </p>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function RememberedEvidenceCard({
+  cues,
+  onOpenCue,
+}: {
+  cues: RememberedEvidenceCue[];
+  onOpenCue: (cue: RememberedEvidenceCue) => void;
+}) {
+  if (cues.length === 0) return null;
+
+  return (
+    <div className="shell-panel px-4 py-4">
+      <p className="eyebrow-label">Already Confirmed</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">We already know this from your earlier answers</h3>
+      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+        These confirmed details can already strengthen the current resume. Open the best matching line and reuse them instead of answering the same question again.
+      </p>
+      <div className="mt-4 space-y-2">
+        {cues.map((cue) => {
+          const content = (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                {cue.affectedCount > 0
+                  ? `Could strengthen ${cue.affectedCount} ${cue.affectedCount === 1 ? 'line' : 'lines'}`
+                  : cue.topic}
+              </p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+                {cue.topic}
+                {cue.primaryFamily ? ` • ${cue.primaryFamily}` : ''}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+                {cue.answer}
+              </p>
+            </>
+          );
+
+          if (cue.targetIndex === null) {
+            return (
+              <div
+                key={cue.id}
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3"
+              >
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={cue.id}
+              type="button"
+              onClick={() => onOpenCue(cue)}
+              className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+            >
+              {content}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -756,6 +862,7 @@ export function V2StreamingDisplay({
   onRemoveCustomSection,
   jobUrl,
   accessToken,
+  clarificationMemory = [],
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coachingPanelRef = useRef<HTMLDivElement | null>(null);
@@ -791,6 +898,9 @@ export function V2StreamingDisplay({
       attentionItems,
     )
   ), [attentionItems, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
+  const rememberedEvidenceCues = useMemo(() => (
+    buildRememberedEvidenceCues(clarificationMemory, attentionItems)
+  ), [attentionItems, clarificationMemory]);
   const sectionCoachTargets = useMemo(() => (
     displayResume
       ? buildSectionCoachTargets(
@@ -1166,6 +1276,14 @@ export function V2StreamingDisplay({
                   onOpenCue={openClarificationCue}
                 />
               )}
+              {!activeBullet && (
+                <RememberedEvidenceCard
+                  cues={rememberedEvidenceCues}
+                  onOpenCue={(cue) => {
+                    if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex);
+                  }}
+                />
+              )}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
@@ -1352,6 +1470,12 @@ export function V2StreamingDisplay({
                           <ClarificationCueCard
                             cues={clarificationCues}
                             onOpenCue={openClarificationCue}
+                          />
+                          <RememberedEvidenceCard
+                            cues={rememberedEvidenceCues}
+                            onOpenCue={(cue) => {
+                              if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex);
+                            }}
                           />
                           <div className="shell-panel px-4 py-4">
                             <p className="eyebrow-label">Editing Queue</p>

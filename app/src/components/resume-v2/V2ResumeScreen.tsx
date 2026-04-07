@@ -2008,6 +2008,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onRemoveCustomSection={handleRemoveCustomSection}
         jobUrl={activeJobUrl ?? undefined}
         accessToken={accessToken}
+        clarificationMemory={currentClarificationMemory}
       />
     </div>
   );
