@@ -746,9 +746,46 @@ export function V2StreamingDisplay({
                             </>
                           )}
                         </div>
-                        <span className="text-xs text-[var(--text-muted)]">
-                          {attentionItems.length} bullet{attentionItems.length !== 1 ? 's' : ''} to review
-                        </span>
+                        {(() => {
+                          const redCount = attentionItems.filter(i => i.reviewState === 'code_red').length;
+                          const orangeCount = attentionItems.filter(i => i.reviewState === 'confirm_fit').length;
+                          const yellowCount = attentionItems.filter(i => i.reviewState === 'strengthen').length;
+                          const totalBullets = (displayResume?.selected_accomplishments?.length ?? 0)
+                            + (displayResume?.professional_experience?.reduce((sum, exp) => sum + (Array.isArray(exp.bullets) ? exp.bullets.length : 0), 0) ?? 0);
+                          const greenCount = Math.max(0, totalBullets - redCount - orangeCount - yellowCount);
+                          const flaggedCount = redCount + orangeCount + yellowCount;
+                          return (
+                            <div className="flex items-center gap-3 text-xs">
+                              {redCount > 0 && (
+                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
+                                  <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                  {redCount}
+                                </span>
+                              )}
+                              {orangeCount > 0 && (
+                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
+                                  <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                                  {orangeCount}
+                                </span>
+                              )}
+                              {yellowCount > 0 && (
+                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
+                                  <span className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
+                                  {yellowCount}
+                                </span>
+                              )}
+                              {greenCount > 0 && (
+                                <span className="flex items-center gap-1 text-[var(--text-muted)]">
+                                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                                  {greenCount}
+                                </span>
+                              )}
+                              {flaggedCount > 0 && (
+                                <span className="text-[var(--text-soft)]">— {flaggedCount} need review</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       {attentionItems.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
@@ -801,10 +838,10 @@ export function V2StreamingDisplay({
                       ) : (
                         <div className="flex flex-col items-center justify-center h-64 text-center">
                           <p className="text-sm text-[var(--text-muted)] mb-2">
-                            Click a highlighted bullet on the resume to start editing.
+                            Click any bullet on the resume to review and edit it.
                           </p>
                           <p className="text-xs text-[var(--text-soft)]">
-                            Bullets marked with colored indicators need your review.
+                            Colored dots show which bullets need attention.
                           </p>
                         </div>
                       )}

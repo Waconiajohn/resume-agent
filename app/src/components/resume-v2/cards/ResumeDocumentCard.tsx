@@ -44,6 +44,15 @@ export function ResumeDocumentCard({
   const education = Array.isArray(resume.education) ? resume.education : [];
   const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
 
+  // Continuous global bullet numbering: Selected Accomplishments first (1…n),
+  // then each company's bullets in document order.
+  const expBulletOffsets: number[] = [];
+  let runningBulletIndex = 1 + selectedAccomplishments.length;
+  for (const exp of professionalExperience) {
+    expBulletOffsets.push(runningBulletIndex);
+    runningBulletIndex += Array.isArray(exp.bullets) ? exp.bullets.length : 0;
+  }
+
   return (
     <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
       {/* Header */}
@@ -152,7 +161,7 @@ export function ResumeDocumentCard({
       {selectedAccomplishments.length > 0 && (
         <section data-section="selected_accomplishments">
           <SectionHeading>Selected Accomplishments</SectionHeading>
-          <ol className="resume-proof-list space-y-2 list-decimal pl-6">
+          <ul className="resume-proof-list space-y-2 list-none pl-0">
             {selectedAccomplishments.map((a, i) => {
               const accomplishmentRequirements = canonicalRequirementSignals(
                 a.primary_target_requirement,
@@ -188,6 +197,7 @@ export function ResumeDocumentCard({
                     requirementSource={a.requirement_source}
                     section="selected_accomplishments"
                     bulletIndex={i}
+                    globalNumber={i + 1}
                     requirements={accomplishmentDisplayTargets}
                     resolvedState={resolvedState}
                     evidenceFound={a.evidence_found}
@@ -197,7 +207,7 @@ export function ResumeDocumentCard({
                 </li>
               );
             })}
-          </ol>
+          </ul>
         </section>
       )}
 
@@ -225,7 +235,7 @@ export function ResumeDocumentCard({
                     {exp.scope_statement}
                   </p>
                 )}
-                <ol className="resume-proof-list mt-2 space-y-2 list-decimal pl-6">
+                <ul className="resume-proof-list mt-2 space-y-2 list-none pl-0">
                   {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
                     const bulletRequirements = canonicalRequirementSignals(
                       bullet.primary_target_requirement,
@@ -262,6 +272,7 @@ export function ResumeDocumentCard({
                           requirementSource={bullet.requirement_source}
                           section="professional_experience"
                           bulletIndex={bulletIndex}
+                          globalNumber={expBulletOffsets[i] + j}
                           requirements={bulletDisplayTargets}
                           resolvedState={resolvedState}
                           evidenceFound={bullet.evidence_found}
@@ -271,7 +282,7 @@ export function ResumeDocumentCard({
                       </li>
                     );
                   })}
-                </ol>
+                </ul>
               </div>
             ))}
           </div>
@@ -333,12 +344,14 @@ interface BulletLineContentProps {
   requirementSource?: RequirementSource;
   section: string;
   bulletIndex: number;
+  /** Continuous 1-based number across all bullets in the resume. */
+  globalNumber?: number;
   requirements: string[];
   resolvedState: ResumeReviewState;
   evidenceFound?: string;
   /** Whether this bullet is currently selected for editing in the left panel. */
   isActive?: boolean;
-  /** Click handler — marks this bullet active, surfacing coaching in the left panel. Not provided for supported bullets. */
+  /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
   onBulletClick?: (
     text: string,
     section: string,
@@ -357,6 +370,7 @@ function BulletLineContent({
   requirementSource,
   section,
   bulletIndex,
+  globalNumber,
   requirements,
   resolvedState,
   evidenceFound,
@@ -408,6 +422,9 @@ function BulletLineContent({
             }}
             className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-lg px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-slate-50/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
           >
+            {globalNumber !== undefined && (
+              <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
+            )}
             {text}
           </span>
           <span className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
@@ -416,6 +433,9 @@ function BulletLineContent({
         </span>
       ) : (
         <span className="block font-normal text-gray-800">
+          {globalNumber !== undefined && (
+            <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
+          )}
           {text}
         </span>
       )}

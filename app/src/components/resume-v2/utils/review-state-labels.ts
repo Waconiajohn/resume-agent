@@ -19,7 +19,7 @@ export const REVIEW_STATE_DISPLAY: Record<
     label: 'Needs proof',
     meaning:
       'We wrote this bullet but couldn\u2019t find proof in your resume. Add the real experience or remove it.',
-    colorHex: '#dc2626',
+    colorHex: '#ef4444',
     cssModifier: 'code-red',
     priority: 0,
   },
@@ -27,7 +27,7 @@ export const REVIEW_STATE_DISPLAY: Record<
     label: 'Verify fit',
     meaning:
       'This comes from the benchmark for this role. Confirm it honestly describes your background.',
-    colorHex: '#0ea5e9',
+    colorHex: '#f97316',
     cssModifier: 'benchmark',
     priority: 1,
   },
@@ -35,21 +35,21 @@ export const REVIEW_STATE_DISPLAY: Record<
     label: 'Can be sharper',
     meaning:
       'You have real experience here, but the bullet could land harder. Click to improve it.',
-    colorHex: '#6366f1',
+    colorHex: '#eab308',
     cssModifier: 'partial',
     priority: 2,
   },
   supported: {
     label: 'Good to go',
     meaning: 'This bullet is solid. No action needed.',
-    colorHex: 'var(--bullet-strengthen)',
+    colorHex: '#22c55e',
     cssModifier: 'neutral',
     priority: 3,
   },
   supported_rewrite: {
     label: 'Good to go',
     meaning: 'This bullet is solid. No action needed.',
-    colorHex: 'var(--bullet-strengthen)',
+    colorHex: '#22c55e',
     cssModifier: 'neutral',
     priority: 3,
   },
