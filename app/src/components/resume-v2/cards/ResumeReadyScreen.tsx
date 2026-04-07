@@ -11,6 +11,7 @@ interface ResumeReadyScreenProps {
   roleTitle?: string;
   /** True when score_breakdown was present in gap analysis. Distinguishes genuine 0% from missing data. */
   hasScoreData?: boolean;
+  primaryActionLabel?: string;
   onStartEditing: () => void;
 }
 
@@ -49,6 +50,7 @@ export function ResumeReadyScreen({
   companyName,
   roleTitle,
   hasScoreData = true,
+  primaryActionLabel = 'Start Editing My Resume',
   onStartEditing,
 }: ResumeReadyScreenProps) {
   return (
@@ -156,7 +158,7 @@ export function ResumeReadyScreen({
           onClick={onStartEditing}
           className="inline-flex items-center justify-center rounded-lg bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
         >
-          Start Editing My Resume
+          {primaryActionLabel}
         </button>
       </div>
     </div>

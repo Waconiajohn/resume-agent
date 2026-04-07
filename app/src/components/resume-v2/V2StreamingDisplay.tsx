@@ -1377,6 +1377,9 @@ export function V2StreamingDisplay({
     hiddenRecommendedSections,
     missingStructureRecommendations,
   ]);
+  const readyGatePrimaryActionLabel = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0
+    ? 'Review Structure First'
+    : 'Start Editing My Resume';
   const rewriteQueue = useMemo(() => {
     if (!data.jobIntelligence || !data.gapAnalysis) return null;
     return buildRewriteQueue({
@@ -1930,6 +1933,7 @@ export function V2StreamingDisplay({
             companyName={data.jobIntelligence?.company_name}
             roleTitle={data.jobIntelligence?.role_title}
             hasScoreData={!!data.gapAnalysis?.score_breakdown}
+            primaryActionLabel={readyGatePrimaryActionLabel}
             onStartEditing={handleReadyGateStartEditing}
           />
         </div>
