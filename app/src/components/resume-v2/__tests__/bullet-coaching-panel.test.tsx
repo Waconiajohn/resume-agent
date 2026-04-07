@@ -5,9 +5,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { BulletCoachingPanel } from '../cards/BulletCoachingPanel';
 import type { GapChatContext } from '@/types/resume-v2';
 
-function makeGapChat() {
+function makeGapChat(itemState?: Record<string, unknown>) {
   return {
-    getItemState: vi.fn(() => ({ isLoading: false })),
+    getItemState: vi.fn(() => ({ isLoading: false, ...itemState })),
     sendMessage: vi.fn(() => Promise.resolve()),
     resolveLanguage: vi.fn(),
     clearResolution: vi.fn(),
@@ -109,5 +109,99 @@ describe('BulletCoachingPanel', () => {
 
     fireEvent.change(textarea, { target: { value: 'Owned weekly KPI reviews across 3 plants.' } });
     expect(textarea).toHaveValue('Owned weekly KPI reviews across 3 plants.');
+  });
+
+  it('shows related line suggestions from one clarification answer and applies them safely', () => {
+    const onApplyToResume = vi.fn();
+
+    render(
+      <BulletCoachingPanel
+        bulletText="Built and tracked performance metrics."
+        section="professional_experience"
+        bulletIndex={0}
+        requirements={['Develop and track performance metrics']}
+        reviewState="strengthen"
+        requirementSource="job_description"
+        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
+        gapChat={makeGapChat({
+          messages: [
+            {
+              role: 'assistant',
+              content: 'That answer gives us enough to strengthen this claim and a couple of nearby lines too.',
+              suggestedLanguage: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+              relatedLineSuggestions: [
+                {
+                  candidateId: 'selected_accomplishments:0',
+                  lineText: 'Reduced defects by 50% through Agile ceremonies',
+                  suggestedLanguage: 'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
+                  rationale: 'The same KPI ownership answer gives this accomplishment a clearer operating-mechanism story.',
+                  requirement: 'Develop and track performance metrics',
+                },
+                {
+                  candidateId: 'executive_summary:0',
+                  lineText: 'Seasoned engineering leader driving outcomes at scale.',
+                  suggestedLanguage: 'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
+                  rationale: 'The KPI detail also sharpens the opening positioning.',
+                  requirement: 'Own KPI development and scorecards',
+                },
+              ],
+            },
+          ],
+        })}
+        chatContext={makeChatContext({
+          lineKind: 'bullet',
+          sectionKey: 'professional_experience',
+          sectionLabel: 'Professional Experience',
+          lineText: 'Built and tracked performance metrics.',
+          primaryRequirement: 'Develop and track performance metrics',
+          relatedRequirements: ['Develop and track performance metrics'],
+          relatedLineCandidates: [
+            {
+              id: 'selected_accomplishments:0',
+              section: 'selected_accomplishments',
+              index: 0,
+              lineText: 'Reduced defects by 50% through Agile ceremonies',
+              lineKind: 'bullet',
+              label: 'Selected Accomplishments',
+              requirements: ['Develop and track performance metrics'],
+              evidenceFound: 'Introduced KPI reviews and release checklists.',
+            },
+            {
+              id: 'executive_summary:0',
+              section: 'executive_summary',
+              index: 0,
+              lineText: 'Seasoned engineering leader driving outcomes at scale.',
+              lineKind: 'summary',
+              label: 'Executive Summary',
+              requirements: ['Own KPI development and scorecards'],
+              evidenceFound: 'Led plant-wide KPI reviews and performance cadences.',
+            },
+          ],
+        })}
+        onApplyToResume={onApplyToResume}
+        onRemoveBullet={vi.fn()}
+        onClose={vi.fn()}
+        onBulletEnhance={vi.fn(async () => null)}
+      />,
+    );
+
+    expect(screen.getByText('One answer can strengthen nearby lines too')).toBeInTheDocument();
+    expect(screen.getByText(/this detail also gives us stronger footing for 2 other lines/i)).toBeInTheDocument();
+    expect(screen.getByText('Apply all nearby lines')).toBeInTheDocument();
+    expect(screen.getByText('Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByText('Apply to this line')[0]);
+    expect(onApplyToResume).toHaveBeenCalledWith(
+      'selected_accomplishments',
+      0,
+      'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
+    );
+
+    fireEvent.click(screen.getByText('Apply all nearby lines'));
+    expect(onApplyToResume).toHaveBeenCalledWith(
+      'executive_summary',
+      0,
+      'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
+    );
   });
 });

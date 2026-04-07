@@ -24,6 +24,7 @@ import type {
   ResumeDraft,
   GapCoachingResponse,
   GapChatContext,
+  GapChatRelatedLineCandidate,
   GapChatTargetInput,
   MasterPromotionItem,
   ResumeReviewState,
@@ -166,6 +167,145 @@ function lineKindForSection(section?: string): GapChatContext['lineKind'] {
   if (section === 'core_competencies') return 'competency';
   if (section?.startsWith('custom_section:')) return 'custom_line';
   return 'bullet';
+}
+
+function buildRelatedLineCandidates(args: {
+  resume: ResumeDraft | null;
+  target: GapChatTargetInput;
+  relatedRequirements: string[];
+}): GapChatRelatedLineCandidate[] {
+  const { resume, target, relatedRequirements } = args;
+  if (!resume) return [];
+
+  const normalizedRequirements = Array.from(new Set(
+    relatedRequirements
+      .map((requirement) => normalizeRequirement(requirement))
+      .filter(Boolean),
+  ));
+
+  const candidates: GapChatRelatedLineCandidate[] = [];
+  const currentSection = target.section;
+  const currentIndex = typeof target.index === 'number' ? target.index : undefined;
+  const currentText = target.lineText?.trim() ?? '';
+
+  const pushCandidate = (candidate: GapChatRelatedLineCandidate) => {
+    const sameSection = candidate.section === currentSection;
+    const sameIndex = typeof currentIndex === 'number' && candidate.index === currentIndex;
+    const sameText = candidate.lineText.trim() === currentText;
+    if (sameSection && (sameIndex || sameText)) return;
+    if (!candidate.lineText.trim()) return;
+    candidates.push(candidate);
+  };
+
+  if (resume.executive_summary.content.trim()) {
+    pushCandidate({
+      id: 'executive_summary:0',
+      section: 'executive_summary',
+      index: 0,
+      lineText: resume.executive_summary.content.trim(),
+      lineKind: 'summary',
+      label: 'Executive Summary',
+      requirements: resume.executive_summary.addresses_requirements ?? [],
+      evidenceFound: resume.executive_summary.content.trim(),
+    });
+  }
+
+  resume.core_competencies.forEach((item, index) => {
+    if (!item.trim()) return;
+    pushCandidate({
+      id: `core_competencies:${index}`,
+      section: 'core_competencies',
+      index,
+      lineText: item.trim(),
+      lineKind: 'competency',
+      label: 'Core Competencies',
+      requirements: [],
+      evidenceFound: item.trim(),
+    });
+  });
+
+  resume.selected_accomplishments.forEach((item, index) => {
+    if (!item.content.trim()) return;
+    pushCandidate({
+      id: `selected_accomplishments:${index}`,
+      section: 'selected_accomplishments',
+      index,
+      lineText: item.content.trim(),
+      lineKind: 'bullet',
+      label: 'Selected Accomplishments',
+      requirements: item.addresses_requirements ?? [],
+      evidenceFound: item.evidence_found,
+      workItemId: item.work_item_id,
+    });
+  });
+
+  resume.professional_experience.forEach((experience, experienceIndex) => {
+    experience.bullets.forEach((bullet, bulletIndex) => {
+      if (!bullet.text.trim()) return;
+      pushCandidate({
+        id: `professional_experience:${experienceIndex * 100 + bulletIndex}`,
+        section: 'professional_experience',
+        index: experienceIndex * 100 + bulletIndex,
+        lineText: bullet.text.trim(),
+        lineKind: 'bullet',
+        label: `${experience.title} · ${experience.company}`,
+        requirements: bullet.addresses_requirements ?? [],
+        evidenceFound: bullet.evidence_found,
+        workItemId: bullet.work_item_id,
+      });
+    });
+  });
+
+  for (const section of resume.custom_sections ?? []) {
+    const sectionKey = `custom_section:${section.id}`;
+    if (section.summary?.trim()) {
+      pushCandidate({
+        id: `${sectionKey}:-1`,
+        section: sectionKey,
+        index: -1,
+        lineText: section.summary.trim(),
+        lineKind: 'section_summary',
+        label: section.title,
+        requirements: [],
+        evidenceFound: section.summary.trim(),
+      });
+    }
+    section.lines.forEach((line, index) => {
+      if (!line.trim()) return;
+      pushCandidate({
+        id: `${sectionKey}:${index}`,
+        section: sectionKey,
+        index,
+        lineText: line.trim(),
+        lineKind: 'custom_line',
+        label: section.title,
+        requirements: [],
+        evidenceFound: line.trim(),
+      });
+    });
+  }
+
+  return candidates
+    .map((candidate) => {
+      const workItemMatch = target.workItemId && candidate.workItemId === target.workItemId ? 1 : 0;
+      const requirementScore = candidate.requirements.reduce((best, requirement) => (
+        Math.max(
+          best,
+          ...normalizedRequirements.map((relatedRequirement) => overlapScore(requirement, relatedRequirement)),
+        )
+      ), 0);
+      const textScore = currentText ? overlapScore(candidate.lineText, currentText) * 0.25 : 0;
+      const evidenceScore = target.evidenceFound ? overlapScore(candidate.evidenceFound, target.evidenceFound) * 0.2 : 0;
+
+      return {
+        candidate,
+        score: workItemMatch ? 1 : Math.max(requirementScore, textScore, evidenceScore),
+      };
+    })
+    .filter(({ score }) => score >= 0.18)
+    .sort((left, right) => right.score - left.score || left.candidate.label.localeCompare(right.candidate.label))
+    .slice(0, 3)
+    .map(({ candidate }) => candidate);
 }
 
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
@@ -389,6 +529,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       explicitRequirement,
       ...relatedWorkItems.map((item) => item.requirement),
     ].filter(Boolean)));
+    const relatedLineCandidates = buildRelatedLineCandidates({
+      resume: currentResume,
+      target: currentTarget,
+      relatedRequirements,
+    });
 
     const sectionLabel = (() => {
       if (sectionKey === 'executive_summary') return 'Executive Summary';
@@ -478,6 +623,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       relatedRequirements,
       coachingGoal,
       clarifyingQuestions,
+      relatedLineCandidates,
     };
   }, [currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
 

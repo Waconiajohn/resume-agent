@@ -243,6 +243,17 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             related_requirements: context.relatedRequirements,
             coaching_goal: context.coachingGoal,
             clarifying_questions: context.clarifyingQuestions,
+            related_line_candidates: context.relatedLineCandidates?.map((candidate) => ({
+              id: candidate.id,
+              section: candidate.section,
+              index: candidate.index,
+              line_text: candidate.lineText,
+              line_kind: candidate.lineKind,
+              label: candidate.label,
+              requirements: candidate.requirements,
+              evidence_found: candidate.evidenceFound,
+              work_item_id: candidate.workItemId,
+            })),
           },
         }),
       });
@@ -259,6 +270,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
         current_question?: string;
         needs_candidate_input?: boolean;
         recommended_next_action?: GapChatMessage['recommendedNextAction'];
+        related_line_suggestions?: GapChatMessage['relatedLineSuggestions'];
       };
 
       dispatch({
@@ -273,6 +285,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
           currentQuestion: result.current_question,
           needsCandidateInput: result.needs_candidate_input,
           recommendedNextAction: result.recommended_next_action,
+          relatedLineSuggestions: result.related_line_suggestions,
         },
       });
     } catch (err) {

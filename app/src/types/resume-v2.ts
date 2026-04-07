@@ -540,6 +540,26 @@ export type CoachingRecommendedAction =
   | 'skip'
   | 'confirm';
 
+export interface GapChatRelatedLineCandidate {
+  id: string;
+  section: string;
+  index: number;
+  lineText: string;
+  lineKind?: 'bullet' | 'summary' | 'competency' | 'section_summary' | 'custom_line';
+  label: string;
+  requirements: string[];
+  evidenceFound?: string;
+  workItemId?: string;
+}
+
+export interface GapChatRelatedLineSuggestion {
+  candidateId: string;
+  lineText: string;
+  suggestedLanguage: string;
+  rationale?: string;
+  requirement?: string;
+}
+
 export interface GapChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -549,6 +569,7 @@ export interface GapChatMessage {
   needsCandidateInput?: boolean;
   recommendedNextAction?: CoachingRecommendedAction;
   candidateInputUsed?: boolean;
+  relatedLineSuggestions?: GapChatRelatedLineSuggestion[];
 }
 
 export interface GapChatContext {
@@ -571,6 +592,7 @@ export interface GapChatContext {
   relatedRequirements?: string[];
   coachingGoal?: string;
   clarifyingQuestions?: string[];
+  relatedLineCandidates?: GapChatRelatedLineCandidate[];
 }
 
 export interface GapChatTargetInput {
@@ -578,6 +600,7 @@ export interface GapChatTargetInput {
   requirements?: string[];
   lineText?: string;
   section?: string;
+  index?: number;
   reviewState?: ResumeReviewState;
   evidenceFound?: string;
   workItemId?: string;

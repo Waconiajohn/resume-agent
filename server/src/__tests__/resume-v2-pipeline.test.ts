@@ -909,6 +909,92 @@ describe('POST /api/resume-v2/:sessionId/bullet-enhance', () => {
   });
 });
 
+describe('POST /api/resume-v2/:sessionId/line-coach', () => {
+  const VALID_LINE_COACH_BODY = {
+    mode: 'clarify',
+    item_id: 'Product delivery',
+    messages: [
+      { role: 'user', content: 'I led weekly KPI reviews across three plants and used them to cut defects.' },
+    ],
+    context: {
+      work_item_id: 'work-item-product-delivery',
+      requirement: 'Product delivery',
+      classification: 'missing',
+      requirement_source: 'job_description',
+      evidence: ['Built weekly KPI reviews and line-performance meetings across three plants.'],
+      line_text: 'Built and tracked plant performance metrics.',
+      line_kind: 'bullet',
+      section_label: 'Professional Experience',
+      related_requirements: ['Product delivery', 'Own KPI development and scorecards'],
+      related_line_candidates: [
+        {
+          id: 'selected_accomplishments:0',
+          section: 'selected_accomplishments',
+          index: 0,
+          line_text: 'Reduced defects by 50% through Agile ceremonies',
+          line_kind: 'bullet',
+          label: 'Selected Accomplishments',
+          requirements: ['Product delivery'],
+          evidence_found: 'Introduced KPI reviews and release checklists.',
+        },
+      ],
+      coaching_goal: 'Use the new KPI detail to make this line and any nearby related lines more concrete.',
+      clarifying_questions: ['What KPI review or operating rhythm did you actually own?'],
+      job_description_excerpt: 'Own KPI development, scorecards, and operating rhythm.',
+      candidate_experience_summary: 'Led plant operations and KPI review cadence across multiple sites.',
+    },
+  } as const;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const chain = buildSingleChain({
+      data: { id: SESSION_ID, user_id: 'test-user-123' },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+    mockParseJsonBodyWithLimit.mockResolvedValue({ ok: true, data: VALID_LINE_COACH_BODY });
+    mockLlmChat.mockResolvedValue({
+      text: JSON.stringify({
+        response: 'That answer gives us enough to strengthen the main line and one nearby accomplishment.',
+        suggested_resume_language: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+        recommended_next_action: 'review_edit',
+        needs_candidate_input: false,
+        related_line_suggestions: [
+          {
+            candidate_id: 'selected_accomplishments:0',
+            line_text: 'Reduced defects by 50% through Agile ceremonies',
+            suggested_resume_language: 'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
+            rationale: 'The KPI detail sharpens the mechanism behind the accomplishment.',
+            requirement: 'Product delivery',
+          },
+        ],
+      }),
+    });
+    mockRepairJSON.mockImplementation((value: string) => JSON.parse(value));
+  });
+
+  it('includes nearby line candidates in the prompt and returns related line suggestions', async () => {
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/line-coach`, 'POST', VALID_LINE_COACH_BODY);
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      related_line_suggestions?: Array<{ candidate_id: string; suggested_resume_language: string }>;
+      suggested_resume_language?: string;
+    };
+    expect(body.suggested_resume_language).toContain('Built and tracked plant performance metrics');
+    expect(body.related_line_suggestions?.[0]?.candidate_id).toBe('selected_accomplishments:0');
+
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const prompt = llmArgs.messages[0]?.content ?? '';
+    expect(prompt).toContain('Nearby lines that could also improve with the same answer:');
+    expect(prompt).toContain('candidate_id=selected_accomplishments:0');
+    expect(prompt).toContain('Reduced defects by 50% through Agile ceremonies');
+  });
+});
+
 describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
   const VALID_FINAL_REVIEW_CHAT_BODY = {
     concern_id: 'concern-1',

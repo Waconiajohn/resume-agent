@@ -490,6 +490,26 @@ const coachingMessageSchema = z.object({
   content: z.string().max(2000),
 });
 
+const relatedLineCandidateSchema = z.object({
+  id: z.string().min(1).max(200).trim(),
+  section: z.string().min(1).max(200).trim(),
+  index: z.number().int().min(-1).max(10000),
+  line_text: z.string().min(1).max(2000),
+  line_kind: z.enum(['bullet', 'summary', 'competency', 'section_summary', 'custom_line']).optional(),
+  label: z.string().min(1).max(500),
+  requirements: z.array(z.string().max(1000)).max(10).default([]),
+  evidence_found: z.string().max(3000).optional(),
+  work_item_id: z.string().max(200).optional(),
+});
+
+const relatedLineSuggestionSchema = z.object({
+  candidate_id: z.string().min(1).max(200).trim(),
+  line_text: z.string().min(1).max(2000),
+  suggested_resume_language: z.string().min(1).max(3000),
+  rationale: z.string().max(1000).optional(),
+  requirement: z.string().max(1000).optional(),
+});
+
 const coachingPolicySchema = z.object({
   primaryFamily: z.string().nullable(),
   families: z.array(z.string()),
@@ -522,6 +542,7 @@ export const structuredCoachingResponseSchema = z.object({
   current_question: z.string().optional(),
   needs_candidate_input: z.boolean().optional(),
   recommended_next_action: z.enum(['answer_question', 'review_edit', 'try_another_angle', 'skip', 'confirm']).optional(),
+  related_line_suggestions: z.array(relatedLineSuggestionSchema).max(3).optional(),
 });
 
 export const lineCoachSchema = z.object({
@@ -549,6 +570,7 @@ export const lineCoachSchema = z.object({
     related_requirements: z.array(z.string().max(1000)).max(10).optional(),
     coaching_goal: z.string().max(2000).optional(),
     clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),
+    related_line_candidates: z.array(relatedLineCandidateSchema).max(5).optional(),
     concern_id: z.string().max(200).optional(),
     concern_type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']).optional(),
     severity: z.enum(['critical', 'moderate', 'minor']).optional(),

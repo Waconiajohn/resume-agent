@@ -808,6 +808,13 @@ function normalizeGapChatResult(
     current_question?: string;
     needs_candidate_input?: boolean;
     recommended_next_action?: 'answer_question' | 'review_edit' | 'try_another_angle' | 'skip' | 'confirm';
+    related_line_suggestions?: Array<{
+      candidate_id: string;
+      line_text: string;
+      suggested_resume_language: string;
+      rationale?: string;
+      requirement?: string;
+    }>;
   },
   args: {
     requirement: string;
@@ -847,6 +854,7 @@ function normalizeGapChatResult(
       suggested_resume_language: undefined,
       needs_candidate_input: true,
       recommended_next_action: 'answer_question' as const,
+      related_line_suggestions: result.related_line_suggestions,
     };
   }
 
@@ -887,7 +895,16 @@ RESPONSE FORMAT: Return valid JSON only:
   "follow_up_question": "One targeted follow-up question. Omit if no answer is needed now.",
   "current_question": "Repeat the one question the candidate should answer next. Omit if no answer is needed now.",
   "needs_candidate_input": true,
-  "recommended_next_action": "answer_question" | "review_edit" | "try_another_angle" | "skip" | "confirm"
+  "recommended_next_action": "answer_question" | "review_edit" | "try_another_angle" | "skip" | "confirm",
+  "related_line_suggestions": [
+    {
+      "candidate_id": "candidate id from the provided context",
+      "line_text": "The nearby line this answer can also improve",
+      "suggested_resume_language": "Sharper truthful rewrite for that nearby line",
+      "rationale": "Why the same answer helps here",
+      "requirement": "Optional requirement this nearby line reinforces"
+    }
+  ]
 }
 
 RULES:
@@ -899,6 +916,9 @@ RULES:
 - If the line type is a summary or section intro, write a concise executive line rather than a bullet fragment.
 - If you need an answer, set needs_candidate_input=true and recommended_next_action="answer_question".
 - If you provide usable language, set recommended_next_action="review_edit".
+- Only include related_line_suggestions when the same answer would materially improve nearby lines from the provided context.
+- Never invent nearby lines. Use only candidate_id values provided in the context block.
+- Keep related_line_suggestions to at most 3 items and only when each suggestion is genuinely strengthened by the new answer.
 - If the issue should remain unresolved or be removed, say so plainly.`;
 
 function modeInstruction(mode: LineCoachRequest['mode']): string {
@@ -972,6 +992,11 @@ function buildLineCoachContextBlock(request: LineCoachRequest): string {
     context.coaching_goal ? `Coaching goal: ${context.coaching_goal}` : '',
     context.clarifying_questions?.length
       ? `Useful follow-up questions:\n${context.clarifying_questions.map((question) => `- ${question}`).join('\n')}`
+      : '',
+    context.related_line_candidates?.length
+      ? `Nearby lines that could also improve with the same answer:\n${context.related_line_candidates.map((candidate) => (
+          `- candidate_id=${candidate.id}; label=${candidate.label}; line="${candidate.line_text}"; requirements=${candidate.requirements.join(' | ') || 'none'}${candidate.evidence_found ? `; evidence=${candidate.evidence_found}` : ''}`
+        )).join('\n')}`
       : '',
     '',
     '## Requirement Work Item',
@@ -1068,6 +1093,7 @@ async function runLineCoachTurn(
         response: response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim(),
         recommended_next_action: 'answer_question',
         needs_candidate_input: true,
+        related_line_suggestions: undefined,
       };
     }
 
@@ -1091,6 +1117,7 @@ async function runLineCoachTurn(
       current_question: fallbackQuestion,
       recommended_next_action: 'answer_question',
       needs_candidate_input: true,
+      related_line_suggestions: undefined,
     };
   }
 

@@ -20,7 +20,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Trash2, PencilLine, Sparkles, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext } from '@/types/resume-v2';
+import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { BulletContextHeader } from './bullet-coaching/BulletContextHeader';
@@ -119,6 +119,16 @@ function getLineLabel(lineKind?: GapChatContext['lineKind']): string {
   }
 }
 
+function latestAssistantMessage(messages: GapChatMessage[] | undefined): GapChatMessage | null {
+  if (!messages?.length) return null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === 'assistant') {
+      return messages[index];
+    }
+  }
+  return null;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function BulletCoachingPanel({
@@ -174,16 +184,18 @@ export function BulletCoachingPanel({
   const chatKey = requirements[0] ?? bulletText;
   const itemState = gapChat.getItemState(chatKey);
   const isChatLoading = itemState?.isLoading ?? false;
+  const latestAssistant = latestAssistantMessage(itemState?.messages);
 
   // ── Alternative bullets — prefer enhance results, fall back to chatContext ─
   const chatAlternatives = chatContext.alternativeBullets ?? [];
   const alternatives = enhanceResult?.alternatives ?? chatAlternatives;
+  const chatSuggestedLanguage = latestAssistant?.suggestedLanguage ?? itemState?.resolvedLanguage ?? null;
 
   // ── Determine the currently displayed suggestion ───────────────────────────
   const primarySuggestion =
     selectedSuggestion !== null && alternatives[selectedSuggestion]
       ? alternatives[selectedSuggestion].text
-      : enhanceResult?.enhancedBullet ?? null;
+      : enhanceResult?.enhancedBullet ?? chatSuggestedLanguage ?? null;
 
   // ── When new alternatives arrive, auto-select the first ───────────────────
   const prevAlternativesRef = useRef(alternatives);
@@ -277,7 +289,7 @@ export function BulletCoachingPanel({
 
   // ── Derived display flags ─────────────────────────────────────────────────
   const isCodeRedNoEvidence =
-    reviewState === 'code_red' && !evidenceFound.trim() && alternatives.length === 0;
+    reviewState === 'code_red' && !evidenceFound.trim() && alternatives.length === 0 && !chatSuggestedLanguage;
   const coachingText = buildCoachingText(reviewState, requirements, evidenceFound, chatContext.lineKind);
   const coachingExpandedDefault = reviewState === 'code_red';
   const primaryRequirement = requirements[0];
@@ -288,6 +300,12 @@ export function BulletCoachingPanel({
     .map((question) => question.trim())
     .filter(Boolean)
     .slice(0, 2);
+  const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
+    .map((suggestion) => {
+      const candidate = chatContext.relatedLineCandidates?.find((item) => item.id === suggestion.candidateId);
+      return candidate ? { candidate, suggestion } : null;
+    })
+    .filter((value): value is NonNullable<typeof value> => value !== null);
 
   // ── Plain-language explanation of why this bullet is being coached ─────────
   const explanationText: string = {
@@ -300,6 +318,16 @@ export function BulletCoachingPanel({
     supported: `This ${lineLabel} is backed by your resume. No changes needed.`,
     supported_rewrite: `This ${lineLabel} is backed by your resume. No changes needed.`,
   }[reviewState] ?? '';
+
+  const handleApplyRelatedSuggestion = useCallback((sectionKey: string, targetIndex: number, text: string) => {
+    onApplyToResume(sectionKey, targetIndex, text);
+  }, [onApplyToResume]);
+
+  const handleApplyAllRelatedSuggestions = useCallback(() => {
+    relatedSuggestionTargets.forEach(({ candidate, suggestion }) => {
+      onApplyToResume(candidate.section, candidate.index, suggestion.suggestedLanguage);
+    });
+  }, [onApplyToResume, relatedSuggestionTargets]);
 
   return (
     <div
@@ -527,6 +555,93 @@ export function BulletCoachingPanel({
         defaultExpanded={coachingExpandedDefault}
         coachingText={coachingText}
       />
+
+      {relatedSuggestionTargets.length > 0 && (
+        <div
+          className="space-y-3 rounded-lg px-3 py-3"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p
+                className="text-[10px] uppercase tracking-wider"
+                style={{ color: 'var(--text-soft)' }}
+              >
+                One answer can strengthen nearby lines too
+              </p>
+              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                This detail also gives us stronger footing for {relatedSuggestionTargets.length} other {relatedSuggestionTargets.length === 1 ? 'line' : 'lines'}.
+              </p>
+            </div>
+            {relatedSuggestionTargets.length > 1 && (
+              <button
+                type="button"
+                onClick={handleApplyAllRelatedSuggestions}
+                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
+                style={{
+                  borderColor: 'var(--line-soft)',
+                  color: 'var(--text-strong)',
+                  background: 'var(--surface-elevated)',
+                }}
+              >
+                Apply all nearby lines
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {relatedSuggestionTargets.map(({ candidate, suggestion }) => (
+              <div
+                key={candidate.id}
+                className="rounded-lg border px-3 py-3"
+                style={{
+                  borderColor: 'var(--line-soft)',
+                  background: 'var(--surface-elevated)',
+                }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-soft)' }}>
+                      {candidate.label}
+                    </p>
+                    {suggestion.requirement && (
+                      <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                        Supports: {suggestion.requirement}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyRelatedSuggestion(candidate.section, candidate.index, suggestion.suggestedLanguage)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+                    style={{
+                      background: 'var(--badge-blue-bg)',
+                      color: 'var(--badge-blue-text)',
+                      border: '1px solid var(--badge-blue-text)',
+                    }}
+                  >
+                    Apply to this line
+                  </button>
+                </div>
+                <p className="mt-2 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                  Current: {candidate.lineText}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
+                  {suggestion.suggestedLanguage}
+                </p>
+                {suggestion.rationale && (
+                  <p className="mt-2 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                    Why this also improves: {suggestion.rationale}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 6. Custom edit area (conditional) */}
       {showCustomEdit && (
