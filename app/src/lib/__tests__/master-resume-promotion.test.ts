@@ -163,4 +163,51 @@ describe('master-resume-promotion', () => {
     expect(result.raw_text).toBe('RAW TEXT');
     expect(resumeToTextMock).toHaveBeenCalledOnce();
   });
+
+  it('adds clarification memory as interview evidence for future runs', () => {
+    const result = buildMasterResumePromotionPayload({
+      draft: makeDraft(),
+      baseResume: makeBaseResume(),
+      selectedItems: [],
+      clarificationMemory: [
+        {
+          id: 'gap_chat:platform leadership',
+          source: 'gap_chat',
+          topic: 'Platform leadership',
+          userInput: 'I led platform modernization across four business units.',
+          suggestedLanguage: 'Led platform modernization across 4 business units.',
+        },
+        {
+          id: 'final_review:leadership scope',
+          source: 'final_review',
+          topic: 'Leadership scope',
+          userInput: 'The org was about 45 engineers across 5 managers.',
+          appliedLanguage: 'Led an organization of 45 engineers across 5 managers.',
+        },
+      ],
+      sourceSessionId: 'session-123',
+      companyName: 'TargetCo',
+      jobTitle: 'VP Operations',
+      atsScore: 93,
+    });
+
+    expect(result.evidence_items).toEqual([
+      expect.objectContaining({
+        text: 'Stabilized plant output and improved fill rate by 14%.',
+        source: 'upgraded',
+      }),
+      expect.objectContaining({
+        text: 'Platform leadership: I led platform modernization across four business units.',
+        source: 'interview',
+        category: 'clarification_response',
+        source_session_id: 'session-123',
+      }),
+      expect.objectContaining({
+        text: 'Leadership scope: The org was about 45 engineers across 5 managers.',
+        source: 'interview',
+        category: 'final_review_clarification',
+        source_session_id: 'session-123',
+      }),
+    ]);
+  });
 });

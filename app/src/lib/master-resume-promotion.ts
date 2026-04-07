@@ -8,7 +8,7 @@ import type {
   MasterResumeEvidenceItem,
   MasterResumeExperience,
 } from '@/types/resume';
-import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
+import type { ClarificationMemoryEntry, MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
 
 function normalizeText(value: string): string {
   return value
@@ -160,10 +160,21 @@ function selectedAccomplishmentText(items: MasterPromotionItem[]): string | unde
   return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
+function clarificationEvidenceText(entry: ClarificationMemoryEntry): string {
+  const topic = entry.topic.trim();
+  const userInput = entry.userInput.trim();
+  return topic ? `${topic}: ${userInput}` : userInput;
+}
+
+function clarificationEvidenceCategory(entry: ClarificationMemoryEntry): string {
+  return entry.source === 'final_review' ? 'final_review_clarification' : 'clarification_response';
+}
+
 export function buildMasterResumePromotionPayload(args: {
   draft: ResumeDraft;
   baseResume: MasterResume | null;
   selectedItems: MasterPromotionItem[];
+  clarificationMemory?: ClarificationMemoryEntry[];
   sourceSessionId?: string | null;
   companyName?: string;
   jobTitle?: string;
@@ -182,6 +193,7 @@ export function buildMasterResumePromotionPayload(args: {
     draft,
     baseResume,
     selectedItems,
+    clarificationMemory,
     sourceSessionId,
     companyName,
     jobTitle,
@@ -225,6 +237,24 @@ export function buildMasterResumePromotionPayload(args: {
       text: item.text,
       source: 'upgraded',
       category: item.category,
+      source_session_id: sourceSessionId,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  for (const entry of clarificationMemory ?? []) {
+    if (!sourceSessionId) continue;
+
+    const text = clarificationEvidenceText(entry);
+    if (!text || text.trim().length < 10) continue;
+
+    const exists = evidenceItems.some((item) => normalizeText(item.text) === normalizeText(text));
+    if (exists) continue;
+
+    evidenceItems.push({
+      text,
+      source: 'interview',
+      category: clarificationEvidenceCategory(entry),
       source_session_id: sourceSessionId,
       created_at: new Date().toISOString(),
     });

@@ -81,6 +81,7 @@ interface V2ResumeScreenProps {
       jobTitle?: string;
       atsScore?: number;
       promotionItems?: MasterPromotionItem[];
+      clarificationMemory?: ClarificationMemoryEntry[];
     },
   ) => Promise<MasterResumeSaveResult>;
 }
@@ -1163,7 +1164,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         tone: 'neutral',
         message: selectedPromotableItems.length > 0
           ? `Auto-sync is on. ${selectedPromotableItems.length} selected edit${selectedPromotableItems.length === 1 ? '' : 's'} can be promoted to your master resume.`
-          : 'Auto-sync is on, but no accepted draft edits are selected for master resume promotion yet.',
+          : currentClarificationMemory.length > 0
+            ? `Auto-sync is on. ${currentClarificationMemory.length} clarification insight${currentClarificationMemory.length === 1 ? '' : 's'} will be saved to your master resume evidence library.`
+            : 'Auto-sync is on, but no accepted draft edits are selected for master resume promotion yet.',
       });
       return;
     }
@@ -1176,7 +1179,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
             message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
           }
     ));
-  }, [masterSaveMode, selectedPromotableItems.length]);
+  }, [currentClarificationMemory.length, masterSaveMode, selectedPromotableItems.length]);
 
   const persistResumeToMaster = useCallback(async (
     draft: ResumeDraft,
@@ -1184,7 +1187,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   ) => {
     if (!onSyncToMasterResume || isSavingToMaster) return false;
 
-    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0) {
+    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0 && currentClarificationMemory.length === 0) {
       setMasterSaveStatus({
         tone: 'neutral',
         message: 'Select at least one accepted draft edit before promoting content to the master resume.',
@@ -1206,6 +1209,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       jobTitle: data.jobIntelligence?.role_title,
       atsScore: liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? undefined,
       promotionItems: selectedPromotableItems,
+      clarificationMemory: currentClarificationMemory,
     });
 
     setIsSavingToMaster(false);
@@ -1231,6 +1235,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     lastMasterSnapshotRef.current = JSON.stringify({
       resume: resumeToPlainText(draft),
       promotion_ids: selectedPromotableItems.map((item) => item.id),
+      clarification_ids: currentClarificationMemory.map((item) => item.id),
     });
     setMasterSaveStatus({
       tone: 'success',
@@ -1252,15 +1257,17 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     onSyncToMasterResume,
     promotableMasterItems.length,
     selectedPromotableItems,
+    currentClarificationMemory,
   ]);
 
   useEffect(() => {
     if (masterSaveMode !== 'master_resume' || !editableResume || isSavingToMaster) return;
-    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0) return;
+    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0 && currentClarificationMemory.length === 0) return;
 
     const snapshot = JSON.stringify({
       resume: resumeToPlainText(editableResume),
       promotion_ids: selectedPromotableItems.map((item) => item.id),
+      clarification_ids: currentClarificationMemory.map((item) => item.id),
     });
     if (snapshot === lastMasterSnapshotRef.current) return;
 
@@ -1274,6 +1281,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     isSavingToMaster,
     masterSaveMode,
     persistResumeToMaster,
+    currentClarificationMemory,
     promotableMasterItems.length,
     selectedPromotableItems,
   ]);

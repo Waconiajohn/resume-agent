@@ -348,4 +348,43 @@ describe('V2ResumeScreen inline editing', () => {
       }),
     );
   });
+
+  it('passes clarification memory through when syncing the working resume to master', async () => {
+    mockGapChatSnapshot.items = {
+      'Platform leadership': {
+        messages: [
+          { role: 'assistant', content: 'What was the scale?', currentQuestion: 'What was the scale?' },
+          { role: 'user', content: 'I led platform modernization across four business units.' },
+          { role: 'assistant', content: 'Great.', suggestedLanguage: 'Led platform modernization across 4 business units.' },
+        ],
+        resolvedLanguage: null,
+        error: null,
+      },
+    };
+
+    const syncToMaster = vi.fn().mockResolvedValue({
+      success: true,
+      message: 'Synced to master resume.',
+    });
+
+    render(<V2ResumeScreen accessToken={null} onBack={vi.fn()} onSyncToMasterResume={syncToMaster} />);
+
+    await act(async () => {
+      const props = latestStreamingProps();
+      await (props.onSaveCurrentToMaster as () => Promise<void>)();
+    });
+
+    expect(syncToMaster).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        clarificationMemory: [
+          expect.objectContaining({
+            id: 'gap_chat:platform leadership',
+            topic: 'Platform leadership',
+            userInput: 'I led platform modernization across four business units.',
+          }),
+        ],
+      }),
+    );
+  });
 });

@@ -35,7 +35,7 @@ import {
   RESUME_BUILDER_SESSION_ROUTE,
   resolveNavigationTarget,
 } from '@/lib/app-routing';
-import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
+import type { ClarificationMemoryEntry, MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
 
 export default function App() {
   const location = useLocation();
@@ -321,6 +321,7 @@ export default function App() {
         jobTitle?: string;
         atsScore?: number;
         promotionItems?: MasterPromotionItem[];
+        clarificationMemory?: ClarificationMemoryEntry[];
       },
     ) => {
       const finalResume = resumeDraftToFinalResume(draft, {
@@ -330,6 +331,7 @@ export default function App() {
       });
       const rawText = resumeToText(finalResume);
       const selectedPromotionItems = options?.promotionItems ?? [];
+      const clarificationMemory = options?.clarificationMemory ?? [];
 
       let targetResumeId = intakeDefaultResumeId ?? resumes.find((item) => item.is_default)?.id ?? null;
       let defaultResume = await getDefaultResume();
@@ -338,11 +340,12 @@ export default function App() {
       }
 
       if (targetResumeId) {
-        const changes = selectedPromotionItems.length > 0
+        const changes = selectedPromotionItems.length > 0 || clarificationMemory.length > 0
           ? buildMasterResumePromotionPayload({
               draft,
               baseResume: defaultResume,
               selectedItems: selectedPromotionItems,
+              clarificationMemory,
               sourceSessionId: options?.sourceSessionId ?? null,
               companyName: options?.companyName,
               jobTitle: options?.jobTitle,
@@ -373,8 +376,8 @@ export default function App() {
         return {
           success: true,
           resumeId: updated.id,
-          message: selectedPromotionItems.length > 0
-            ? `Promoted ${selectedPromotionItems.length} selected edit${selectedPromotionItems.length === 1 ? '' : 's'} to your master resume.`
+          message: selectedPromotionItems.length > 0 || clarificationMemory.length > 0
+            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your master resume.`
             : 'Master resume updated.',
         };
       }
@@ -392,11 +395,12 @@ export default function App() {
 
       const createdResumeId = created.resumeId ?? null;
 
-      if (createdResumeId && selectedPromotionItems.length > 0) {
+      if (createdResumeId && (selectedPromotionItems.length > 0 || clarificationMemory.length > 0)) {
         const changes = buildMasterResumePromotionPayload({
           draft,
           baseResume: null,
           selectedItems: selectedPromotionItems,
+          clarificationMemory,
           sourceSessionId: options?.sourceSessionId ?? null,
           companyName: options?.companyName,
           jobTitle: options?.jobTitle,
