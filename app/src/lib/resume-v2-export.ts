@@ -4,6 +4,24 @@
 
 import type { ResumeDraft } from '@/types/resume-v2';
 import type { FinalResume, ContactInfo, MasterResumeExperience, MasterResumeEducation } from '@/types/resume';
+import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+
+function mapSectionIdToExportKey(sectionId: string): string {
+  switch (sectionId) {
+    case 'executive_summary':
+      return 'summary';
+    case 'core_competencies':
+      return 'skills';
+    case 'selected_accomplishments':
+      return 'selected_accomplishments';
+    case 'professional_experience':
+      return 'experience';
+    case 'earlier_career':
+      return 'earlier_career';
+    default:
+      return sectionId;
+  }
+}
 
 export function resumeDraftToFinalResume(draft: ResumeDraft, opts?: {
   companyName?: string;
@@ -76,10 +94,23 @@ export function resumeDraftToFinalResume(draft: ResumeDraft, opts?: {
       .join('\n');
   }
 
+  const customSections = getResumeCustomSectionMap(draft);
+  for (const [sectionId, section] of customSections.entries()) {
+    const body = section.lines
+      .map((line) => (section.kind === 'bullet_list' ? `• ${line}` : line))
+      .join('\n');
+    const content = [section.summary, body].filter(Boolean).join('\n');
+    if (content.trim().length > 0) {
+      rawSections[sectionId] = content;
+    }
+  }
+
   const skills: Record<string, string[]> = {};
   if (draft.core_competencies.length > 0) {
     skills['Core Competencies'] = draft.core_competencies;
   }
+
+  const sectionOrder = getEnabledResumeSectionPlan(draft).map((item) => mapSectionIdToExportKey(item.id));
 
   return {
     summary: draft.executive_summary.content,
@@ -94,6 +125,7 @@ export function resumeDraftToFinalResume(draft: ResumeDraft, opts?: {
     contact_info: contact,
     company_name: opts?.companyName,
     job_title: opts?.jobTitle,
+    section_order: sectionOrder,
     _raw_sections: rawSections,
   };
 }

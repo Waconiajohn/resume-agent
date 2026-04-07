@@ -71,6 +71,16 @@ export interface CandidateIntelligence {
   education: Array<{ degree: string; institution: string; year?: string }>;
   certifications: string[];
   hidden_accomplishments: string[];
+  ai_readiness?: {
+    strength: 'strong' | 'moderate' | 'minimal' | 'none';
+    signals: Array<{
+      family: string;
+      evidence: string;
+      source_role?: string;
+      executive_framing: string;
+    }>;
+    summary: string;
+  };
 }
 
 export interface BenchmarkCandidate {
@@ -156,6 +166,45 @@ export interface RequirementCoverageBreakdown {
 export type ProofLevel = 'direct' | 'adjacent' | 'inferable' | 'none';
 export type FramingGuardrail = 'exact' | 'reframe' | 'soft_inference' | 'blocked';
 export type NextBestAction = 'accept' | 'tighten' | 'quantify' | 'confirm' | 'answer' | 'remove';
+export type ResumeSectionType =
+  | 'executive_summary'
+  | 'core_competencies'
+  | 'selected_accomplishments'
+  | 'professional_experience'
+  | 'earlier_career'
+  | 'education'
+  | 'certifications'
+  | 'ai_highlights'
+  | 'custom';
+export type ResumeSectionPlanSource =
+  | 'default'
+  | 'job_match'
+  | 'benchmark'
+  | 'ai_readiness'
+  | 'user_added';
+
+export interface ResumeCustomSection {
+  id: string;
+  title: string;
+  kind: 'bullet_list' | 'paragraph';
+  lines: string[];
+  summary?: string;
+  source?: ResumeSectionPlanSource;
+  recommended_for_job?: boolean;
+  rationale?: string;
+}
+
+export interface ResumeSectionPlanItem {
+  id: string;
+  type: ResumeSectionType;
+  title: string;
+  enabled: boolean;
+  order: number;
+  source?: ResumeSectionPlanSource;
+  recommended_for_job?: boolean;
+  rationale?: string;
+  is_custom?: boolean;
+}
 
 export interface RequirementEvidence {
   text: string;
@@ -448,6 +497,8 @@ export interface ResumeDraft {
   }>;
   education: Array<{ degree: string; institution: string; year?: string }>;
   certifications: string[];
+  custom_sections?: ResumeCustomSection[];
+  section_plan?: ResumeSectionPlanItem[];
 }
 
 export interface VerificationScores {

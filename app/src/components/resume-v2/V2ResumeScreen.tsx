@@ -37,6 +37,12 @@ import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
+import {
+  addOrEnableAIHighlightsSection,
+  moveResumeSection,
+  removeResumeCustomSection,
+  setResumeSectionEnabled,
+} from '@/lib/resume-section-plan';
 import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
 import {
   buildAuthScopedStorageKey,
@@ -691,6 +697,52 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       resetPostReviewPolish();
     }
   }, [currentResume, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  const markResumeArtifactsStale = useCallback(() => {
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  const handleMoveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return moveResumeSection(base, sectionId, direction);
+    });
+    markResumeArtifactsStale();
+  }, [currentResume, markResumeArtifactsStale]);
+
+  const handleToggleSection = useCallback((sectionId: string, enabled: boolean) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return setResumeSectionEnabled(base, sectionId, enabled);
+    });
+    markResumeArtifactsStale();
+  }, [currentResume, markResumeArtifactsStale]);
+
+  const handleAddAISection = useCallback(() => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return addOrEnableAIHighlightsSection(base, data.candidateIntelligence, data.requirementWorkItems);
+    });
+    markResumeArtifactsStale();
+  }, [currentResume, data.candidateIntelligence, data.requirementWorkItems, markResumeArtifactsStale]);
+
+  const handleRemoveCustomSection = useCallback((sectionId: string) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return removeResumeCustomSection(base, sectionId);
+    });
+    markResumeArtifactsStale();
+  }, [currentResume, markResumeArtifactsStale]);
 
   // Trigger the post-review polish pass only after an accepted Final Review fix.
   useEffect(() => {
@@ -1470,6 +1522,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onClearMasterPromotionItems={handleClearMasterPromotionItems}
         onGapAssist={handleGapAssist}
         onBulletEnhance={handleBulletEnhance}
+        onMoveSection={handleMoveSection}
+        onToggleSection={handleToggleSection}
+        onAddAISection={handleAddAISection}
+        onRemoveCustomSection={handleRemoveCustomSection}
         jobUrl={activeJobUrl ?? undefined}
         accessToken={accessToken}
       />

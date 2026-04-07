@@ -206,9 +206,36 @@ const sectionComponents: Record<string, React.ComponentType<{ resume: FinalResum
   certifications: CertificationsSection,
 };
 
+function RawSection({ sectionName, content }: { sectionName: string; content: string }) {
+  const rows = content.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (rows.length === 0) return null;
+  const heading = sectionName.replace(/_/g, ' ');
+  return (
+    <section className="mb-5">
+      <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
+        {heading}
+      </h2>
+      <div className="space-y-1.5">
+        {rows.map((row, index) => (
+          /^[•\-*]\s/.test(row) ? (
+            <div key={`${sectionName}-${index}`} className="pl-4 text-sm text-gray-800">
+              <span className="list-disc">{stripHtml(row.replace(/^[•\-*]\s*/, ''))}</span>
+            </div>
+          ) : (
+            <p key={`${sectionName}-${index}`} className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
+              {stripHtml(row)}
+            </p>
+          )
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
   const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
   const rendered = new Set<string>();
+  const rawSections = resume._raw_sections ?? {};
 
   const orderedSections: React.ReactNode[] = [];
 
@@ -216,6 +243,9 @@ export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
     const Component = sectionComponents[sectionName];
     if (Component) {
       orderedSections.push(<Component key={sectionName} resume={resume} />);
+      rendered.add(sectionName);
+    } else if (rawSections[sectionName]) {
+      orderedSections.push(<RawSection key={sectionName} sectionName={sectionName} content={rawSections[sectionName]!} />);
       rendered.add(sectionName);
     } else if (import.meta.env.DEV) {
       // experience_role_*, earlier_career, education_and_certifications are handled

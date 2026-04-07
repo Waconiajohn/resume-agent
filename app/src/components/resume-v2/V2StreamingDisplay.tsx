@@ -27,6 +27,7 @@ import { ScoringReport } from './ScoringReport';
 import { ResumeEditorLayout } from './ResumeEditorLayout';
 import { PipelineProgressCard } from './cards/PipelineProgressCard';
 import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
+import { ResumeStructurePlannerCard } from './cards/ResumeStructurePlannerCard';
 import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
@@ -120,6 +121,10 @@ interface V2StreamingDisplayProps {
     requirement: string,
     evidence?: string,
   ) => Promise<import('@/hooks/useBulletEnhance').EnhanceResult | null>;
+  onMoveSection?: (sectionId: string, direction: 'up' | 'down') => void;
+  onToggleSection?: (sectionId: string, enabled: boolean) => void;
+  onAddAISection?: () => void;
+  onRemoveCustomSection?: (sectionId: string) => void;
   /** Job application URL — when present and pipeline is complete, shows the Apply to This Job button */
   jobUrl?: string;
   /** Access token for the link-resume API call in ExportBar */
@@ -400,6 +405,10 @@ export function V2StreamingDisplay({
   onGapAssist,
   initialActiveBullet = null,
   onBulletEnhance,
+  onMoveSection,
+  onToggleSection,
+  onAddAISection,
+  onRemoveCustomSection,
   jobUrl,
   accessToken,
 }: V2StreamingDisplayProps) {
@@ -745,6 +754,17 @@ export function V2StreamingDisplay({
               {attentionItems.length > 0 && (
                 <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
               )}
+              {displayResume && onMoveSection && onToggleSection && onAddAISection && onRemoveCustomSection && !activeBullet && (
+                <ResumeStructurePlannerCard
+                  resume={displayResume}
+                  candidateIntelligence={data.candidateIntelligence}
+                  requirementWorkItems={data.requirementWorkItems}
+                  onMoveSection={onMoveSection}
+                  onToggleSection={onToggleSection}
+                  onAddAISection={onAddAISection}
+                  onRemoveCustomSection={onRemoveCustomSection}
+                />
+              )}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
@@ -911,13 +931,52 @@ export function V2StreamingDisplay({
                           />
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-64 text-center">
-                          <p className="text-sm text-[var(--text-muted)] mb-2">
-                            Click any bullet on the resume to review and edit it.
-                          </p>
-                          <p className="text-xs text-[var(--text-soft)]">
-                            Colored dots show which bullets need attention.
-                          </p>
+                        <div className="space-y-4">
+                          {displayResume && onMoveSection && onToggleSection && onAddAISection && onRemoveCustomSection && (
+                            <ResumeStructurePlannerCard
+                              resume={displayResume}
+                              candidateIntelligence={data.candidateIntelligence}
+                              requirementWorkItems={data.requirementWorkItems}
+                              onMoveSection={onMoveSection}
+                              onToggleSection={onToggleSection}
+                              onAddAISection={onAddAISection}
+                              onRemoveCustomSection={onRemoveCustomSection}
+                            />
+                          )}
+                          <div className="shell-panel px-4 py-4">
+                            <p className="eyebrow-label">Editing Queue</p>
+                            <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with the lines that change the story fastest</h3>
+                            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+                              Click any flagged line on the right, or jump into one of these top-priority fixes.
+                            </p>
+                            {attentionItems.length > 0 ? (
+                              <div className="mt-4 space-y-2">
+                                {attentionItems.slice(0, 3).map((item) => {
+                                  const itemIndex = attentionItems.findIndex((candidate) => candidate.id === item.id);
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      onClick={() => openAttentionItem(itemIndex)}
+                                      className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+                                    >
+                                      <span className={item.statusClassName}>{item.statusLabel}</span>
+                                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                        {item.locationLabel}
+                                      </p>
+                                      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
+                                        {item.text}
+                                      </p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-sm text-[var(--text-soft)]">
+                                The strongest version is already visible. Use the structure planner above if you want to change the section story before export.
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

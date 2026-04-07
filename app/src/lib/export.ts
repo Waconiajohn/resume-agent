@@ -163,21 +163,21 @@ export function resumeToText(resume: FinalResume): string {
     (Array.isArray(resume.certifications) && resume.certifications.length > 0);
 
   // Fallback path: raw section text only when structured content is unavailable.
-  const rawSections = resume._raw_sections;
-  if (!hasStructuredContent && rawSections && Object.keys(rawSections).length > 0) {
-    const order = resume.section_order ?? Object.keys(rawSections);
+  const rawSectionsFallback = resume._raw_sections;
+  if (!hasStructuredContent && rawSectionsFallback && Object.keys(rawSectionsFallback).length > 0) {
+    const order = resume.section_order ?? Object.keys(rawSectionsFallback);
     let renderedCombinedEducation = false;
     return sanitizeAtsSeparators(order
       .map((name) => {
         if (
           !renderedCombinedEducation
           && (name === 'education' || name === 'certifications')
-          && rawSections.education_and_certifications
+          && rawSectionsFallback.education_and_certifications
         ) {
           renderedCombinedEducation = true;
-          return rawSections.education_and_certifications;
+          return rawSectionsFallback.education_and_certifications;
         }
-        return rawSections[name];
+        return rawSectionsFallback[name];
       })
       .filter(Boolean)
       .join('\n\n'));
@@ -185,6 +185,7 @@ export function resumeToText(resume: FinalResume): string {
 
   // Preferred path: structured resume data.
   const lines: string[] = [];
+  const rawSections = resume._raw_sections ?? {};
 
   // Contact header
   if (resume.contact_info?.name) {
@@ -209,6 +210,11 @@ export function resumeToText(resume: FinalResume): string {
     const renderer = textSectionRenderers[sectionName];
     if (renderer) {
       lines.push(...renderer(resume));
+      rendered.add(sectionName);
+    } else if (rawSections[sectionName]) {
+      lines.push(sectionName.replace(/_/g, ' ').toUpperCase());
+      lines.push(rawSections[sectionName]);
+      lines.push('');
       rendered.add(sectionName);
     } else {
       console.warn(`[export] Unknown section in section_order: ${sectionName}`);

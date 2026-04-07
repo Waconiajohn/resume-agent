@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pencil } from 'lucide-react';
 import type {
   ResumeDraft,
@@ -8,6 +9,7 @@ import type {
   ResumeReviewState,
 } from '@/types/resume-v2';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
+import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 interface ResumeDocumentCardProps {
@@ -58,6 +60,303 @@ export function ResumeDocumentCard({
     runningBulletIndex += Array.isArray(exp.bullets) ? exp.bullets.length : 0;
   }
 
+  const customSections = getResumeCustomSectionMap(resume);
+  const sectionNodes = new Map<string, ReactNode>();
+
+  sectionNodes.set('executive_summary', (
+    <section key="executive_summary" data-section="executive_summary">
+      <SectionHeading>Executive Summary</SectionHeading>
+      {onBulletClick ? (
+        <div
+          className={`group relative cursor-pointer rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
+            activeBullet?.section === 'executive_summary' && activeBullet.index === 0
+              ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
+              : ''
+          }`}
+        >
+          <p
+            role="button"
+            tabIndex={0}
+            className="text-sm leading-relaxed text-gray-800"
+            title="Click to edit the executive summary"
+            onClick={() => onBulletClick(
+              resume.executive_summary.content,
+              'executive_summary',
+              0,
+              [],
+              'strengthen' as ResumeReviewState,
+              undefined,
+              '',
+            )}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onBulletClick(
+                  resume.executive_summary.content,
+                  'executive_summary',
+                  0,
+                  [],
+                  'strengthen' as ResumeReviewState,
+                  undefined,
+                  '',
+                );
+              }
+            }}
+          >
+            {resume.executive_summary.content}
+          </p>
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Pencil className="h-3.5 w-3.5 text-gray-400" />
+          </span>
+          {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
+            <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm leading-relaxed text-gray-800">
+          {resume.executive_summary.content}
+        </p>
+      )}
+    </section>
+  ));
+
+  if (coreCompetencies.length > 0) {
+    sectionNodes.set('core_competencies', (
+      <section key="core_competencies" data-section="core_competencies">
+        <SectionHeading>Core Competencies</SectionHeading>
+        <div className="flex flex-wrap gap-2">
+          {coreCompetencies.map((comp, i) => (
+            <span
+              key={i}
+              className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-gray-600"
+            >
+              {comp}
+            </span>
+          ))}
+        </div>
+      </section>
+    ));
+  }
+
+  if (selectedAccomplishments.length > 0) {
+    sectionNodes.set('selected_accomplishments', (
+      <section key="selected_accomplishments" data-section="selected_accomplishments">
+        <SectionHeading>Selected Accomplishments</SectionHeading>
+        <ul className="resume-proof-list space-y-2 list-none pl-0">
+          {selectedAccomplishments.map((a, i) => {
+            const accomplishmentRequirements = canonicalRequirementSignals(
+              a.primary_target_requirement,
+              a.addresses_requirements,
+            );
+            const accomplishmentPrimaryTarget = resolvePrimaryDisplayRequirement(
+              accomplishmentRequirements,
+              requirementCatalog,
+              a.primary_target_source ?? a.requirement_source,
+              a.content,
+            );
+            const accomplishmentDisplayTargets = accomplishmentPrimaryTarget ? [accomplishmentPrimaryTarget] : [];
+            const hasStrategy = accomplishmentRequirements.length > 0;
+            const resolvedState = resolveReviewState(a.review_state, a.confidence, a.requirement_source);
+            const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
+
+            return (
+              <li
+                key={i}
+                data-bullet-id={`selected_accomplishments-${i}`}
+                data-confidence={a.confidence}
+                className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
+                  getConfidenceLineClass(a.review_state, a.confidence, a.requirement_source)
+                }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
+                {...(hasStrategy
+                  ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
+                  : {})}
+              >
+                <BulletLineContent
+                  text={a.content}
+                  confidence={a.confidence}
+                  reviewState={a.review_state}
+                  requirementSource={a.requirement_source}
+                  section="selected_accomplishments"
+                  bulletIndex={i}
+                  globalNumber={i + 1}
+                  requirements={accomplishmentDisplayTargets}
+                  resolvedState={resolvedState}
+                  evidenceFound={a.evidence_found}
+                  workItemId={a.work_item_id}
+                  proofLevel={a.proof_level}
+                  nextBestAction={a.next_best_action}
+                  isActive={isActive}
+                  onBulletClick={onBulletClick}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ));
+  }
+
+  if (professionalExperience.length > 0) {
+    sectionNodes.set('professional_experience', (
+      <section key="professional_experience" data-section="professional_experience">
+        <SectionHeading>Professional Experience</SectionHeading>
+        <div className="space-y-5">
+          {professionalExperience.map((exp, i) => (
+            <div key={i}>
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <span className="text-sm font-bold text-gray-900">{exp.title}</span>
+                  <span className="text-sm text-gray-500"> · {exp.company}</span>
+                </div>
+                <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
+                  {exp.start_date} — {exp.end_date}
+                </span>
+              </div>
+              {exp.scope_statement && (
+                <p
+                  data-scope-id={`professional_experience-${i}-scope`}
+                  className="mt-1 text-xs text-gray-500 italic pl-1"
+                >
+                  {exp.scope_statement}
+                </p>
+              )}
+              <ul className="resume-proof-list mt-2 space-y-2 list-none pl-0">
+                {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
+                  const bulletRequirements = canonicalRequirementSignals(
+                    bullet.primary_target_requirement,
+                    bullet.addresses_requirements,
+                  );
+                  const bulletPrimaryTarget = resolvePrimaryDisplayRequirement(
+                    bulletRequirements,
+                    requirementCatalog,
+                    bullet.primary_target_source ?? bullet.requirement_source,
+                    bullet.text,
+                  );
+                  const bulletDisplayTargets = bulletPrimaryTarget ? [bulletPrimaryTarget] : [];
+                  const hasStrategy = bulletRequirements.length > 0;
+                  const bulletIndex = i * 100 + j;
+                  const resolvedState = resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source);
+                  const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
+
+                  return (
+                    <li
+                      key={j}
+                      data-bullet-id={`professional_experience-${bulletIndex}`}
+                      data-confidence={bullet.confidence}
+                      className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
+                        getConfidenceLineClass(bullet.review_state, bullet.confidence, bullet.requirement_source)
+                      }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
+                      {...(hasStrategy
+                        ? { 'data-addresses': JSON.stringify(bulletRequirements) }
+                        : {})}
+                    >
+                      <BulletLineContent
+                        text={bullet.text}
+                        confidence={bullet.confidence}
+                        reviewState={bullet.review_state}
+                        requirementSource={bullet.requirement_source}
+                        section="professional_experience"
+                        bulletIndex={bulletIndex}
+                        globalNumber={expBulletOffsets[i] + j}
+                        requirements={bulletDisplayTargets}
+                        resolvedState={resolvedState}
+                        evidenceFound={bullet.evidence_found}
+                        workItemId={bullet.work_item_id}
+                        proofLevel={bullet.proof_level}
+                        nextBestAction={bullet.next_best_action}
+                        isActive={isActive}
+                        onBulletClick={onBulletClick}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+    ));
+  }
+
+  if (earlierCareer.length > 0) {
+    sectionNodes.set('earlier_career', (
+      <section key="earlier_career" data-section="earlier_career">
+        <SectionHeading>Earlier Career</SectionHeading>
+        <div className="space-y-1">
+          {earlierCareer.map((ec, i) => (
+            <div key={i} className="flex items-baseline justify-between text-sm">
+              <span className="text-gray-600">
+                {ec.title}{' '}
+                <span className="text-gray-500">· {ec.company}</span>
+              </span>
+              <span className="text-xs text-gray-500">{ec.dates}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    ));
+  }
+
+  if (education.length > 0) {
+    sectionNodes.set('education', (
+      <section key="education" data-section="education">
+        <SectionHeading>Education</SectionHeading>
+        <div className="space-y-1">
+          {education.map((edu, i) => (
+            <div key={i} className="text-sm text-gray-800">
+              {edu.degree} — {edu.institution}
+              {edu.year && <span className="text-gray-500"> ({edu.year})</span>}
+            </div>
+          ))}
+        </div>
+      </section>
+    ));
+  }
+
+  if (certifications.length > 0) {
+    sectionNodes.set('certifications', (
+      <section key="certifications" data-section="certifications">
+        <SectionHeading>Certifications</SectionHeading>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {certifications.map((cert, i) => (
+            <span key={i} className="text-sm text-gray-600">{cert}</span>
+          ))}
+        </div>
+      </section>
+    ));
+  }
+
+  for (const [sectionId, section] of customSections.entries()) {
+    if (section.lines.length === 0 && !section.summary) continue;
+    sectionNodes.set(sectionId, (
+      <section key={sectionId} data-section={sectionId}>
+        <SectionHeading>{section.title}</SectionHeading>
+        {section.summary && (
+          <p className="mb-2 text-sm leading-relaxed text-gray-700">{section.summary}</p>
+        )}
+        <div className="space-y-1.5">
+          {section.kind === 'paragraph'
+            ? section.lines.map((line, index) => (
+              <p key={index} className="text-sm leading-relaxed text-gray-800">{line}</p>
+            ))
+            : (
+              <ul className="resume-proof-list space-y-2 list-none pl-0">
+                {section.lines.map((line, index) => (
+                  <li key={index} className="text-sm leading-relaxed text-gray-800">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )}
+        </div>
+      </section>
+    ));
+  }
+
+  const orderedSectionIds = getEnabledResumeSectionPlan(resume)
+    .map((item) => item.id)
+    .filter((id) => sectionNodes.has(id));
+
   return (
     <div className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text p-8">
       {/* Header */}
@@ -89,261 +388,7 @@ export function ResumeDocumentCard({
         </div>
       </div>
 
-      {/* Executive Summary — clickable for editing */}
-      <section data-section="executive_summary">
-        <SectionHeading>Executive Summary</SectionHeading>
-        {onBulletClick ? (
-          <div
-            className={`group relative cursor-pointer rounded px-2 py-1 -mx-2 transition-colors hover:bg-blue-50 ${
-              activeBullet?.section === 'executive_summary' && activeBullet.index === 0
-                ? 'bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2'
-                : ''
-            }`}
-          >
-            <p
-              role="button"
-              tabIndex={0}
-              className="text-sm leading-relaxed text-gray-800"
-              title="Click to edit the executive summary"
-              onClick={() => onBulletClick(
-                resume.executive_summary.content,
-                'executive_summary',
-                0,
-                [],
-                'strengthen' as ResumeReviewState,
-                undefined,
-                '',
-              )}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onBulletClick(
-                    resume.executive_summary.content,
-                    'executive_summary',
-                    0,
-                    [],
-                    'strengthen' as ResumeReviewState,
-                    undefined,
-                    '',
-                  );
-                }
-              }}
-            >
-              {resume.executive_summary.content}
-            </p>
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Pencil className="h-3.5 w-3.5 text-gray-400" />
-            </span>
-            {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
-              <p className="mt-1 text-[10px] text-blue-500">← Editing in left panel</p>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm leading-relaxed text-gray-800">
-            {resume.executive_summary.content}
-          </p>
-        )}
-      </section>
-
-      {/* Core Competencies */}
-      {coreCompetencies.length > 0 && (
-        <section data-section="core_competencies">
-          <SectionHeading>Core Competencies</SectionHeading>
-          <div className="flex flex-wrap gap-2">
-            {coreCompetencies.map((comp, i) => (
-              <span
-                key={i}
-                className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-gray-600"
-              >
-                {comp}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Selected Accomplishments */}
-      {selectedAccomplishments.length > 0 && (
-        <section data-section="selected_accomplishments">
-          <SectionHeading>Selected Accomplishments</SectionHeading>
-          <ul className="resume-proof-list space-y-2 list-none pl-0">
-            {selectedAccomplishments.map((a, i) => {
-              const accomplishmentRequirements = canonicalRequirementSignals(
-                a.primary_target_requirement,
-                a.addresses_requirements,
-              );
-              const accomplishmentPrimaryTarget = resolvePrimaryDisplayRequirement(
-                accomplishmentRequirements,
-                requirementCatalog,
-                a.primary_target_source ?? a.requirement_source,
-                a.content,
-              );
-              const accomplishmentDisplayTargets = accomplishmentPrimaryTarget ? [accomplishmentPrimaryTarget] : [];
-              const hasStrategy = accomplishmentRequirements.length > 0;
-              const resolvedState = resolveReviewState(a.review_state, a.confidence, a.requirement_source);
-              const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
-
-              return (
-                <li
-                  key={i}
-                  data-bullet-id={`selected_accomplishments-${i}`}
-                  data-confidence={a.confidence}
-                  className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
-                    getConfidenceLineClass(a.review_state, a.confidence, a.requirement_source)
-                  }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
-                  {...(hasStrategy
-                    ? { 'data-addresses': JSON.stringify(accomplishmentRequirements) }
-                    : {})}
-                >
-                  <BulletLineContent
-                    text={a.content}
-                    confidence={a.confidence}
-                    reviewState={a.review_state}
-                    requirementSource={a.requirement_source}
-                    section="selected_accomplishments"
-                    bulletIndex={i}
-                    globalNumber={i + 1}
-                    requirements={accomplishmentDisplayTargets}
-                    resolvedState={resolvedState}
-                    evidenceFound={a.evidence_found}
-                    workItemId={a.work_item_id}
-                    proofLevel={a.proof_level}
-                    nextBestAction={a.next_best_action}
-                    isActive={isActive}
-                    onBulletClick={onBulletClick}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* Professional Experience */}
-      {professionalExperience.length > 0 && (
-        <section data-section="professional_experience">
-          <SectionHeading>Professional Experience</SectionHeading>
-          <div className="space-y-5">
-            {professionalExperience.map((exp, i) => (
-              <div key={i}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <div>
-                    <span className="text-sm font-bold text-gray-900">{exp.title}</span>
-                    <span className="text-sm text-gray-500"> · {exp.company}</span>
-                  </div>
-                  <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
-                    {exp.start_date} — {exp.end_date}
-                  </span>
-                </div>
-                {exp.scope_statement && (
-                  <p
-                    data-scope-id={`professional_experience-${i}-scope`}
-                    className="mt-1 text-xs text-gray-500 italic pl-1"
-                  >
-                    {exp.scope_statement}
-                  </p>
-                )}
-                <ul className="resume-proof-list mt-2 space-y-2 list-none pl-0">
-                  {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
-                    const bulletRequirements = canonicalRequirementSignals(
-                      bullet.primary_target_requirement,
-                      bullet.addresses_requirements,
-                    );
-                    const bulletPrimaryTarget = resolvePrimaryDisplayRequirement(
-                      bulletRequirements,
-                      requirementCatalog,
-                      bullet.primary_target_source ?? bullet.requirement_source,
-                      bullet.text,
-                    );
-                    const bulletDisplayTargets = bulletPrimaryTarget ? [bulletPrimaryTarget] : [];
-                    const hasStrategy = bulletRequirements.length > 0;
-                    const bulletIndex = i * 100 + j;
-                    const resolvedState = resolveReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source);
-                    const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
-
-                    return (
-                      <li
-                        key={j}
-                        data-bullet-id={`professional_experience-${bulletIndex}`}
-                        data-confidence={bullet.confidence}
-                        className={`resume-proof-line text-sm leading-relaxed text-gray-800 ${
-                          getConfidenceLineClass(bullet.review_state, bullet.confidence, bullet.requirement_source)
-                        }${isActive ? ' bg-[var(--link)]/5 border-l-2 border-l-[var(--link)] -ml-2 pl-2' : ''}`}
-                        {...(hasStrategy
-                          ? { 'data-addresses': JSON.stringify(bulletRequirements) }
-                          : {})}
-                      >
-                        <BulletLineContent
-                          text={bullet.text}
-                          confidence={bullet.confidence}
-                          reviewState={bullet.review_state}
-                          requirementSource={bullet.requirement_source}
-                          section="professional_experience"
-                          bulletIndex={bulletIndex}
-                          globalNumber={expBulletOffsets[i] + j}
-                          requirements={bulletDisplayTargets}
-                          resolvedState={resolvedState}
-                          evidenceFound={bullet.evidence_found}
-                          workItemId={bullet.work_item_id}
-                          proofLevel={bullet.proof_level}
-                          nextBestAction={bullet.next_best_action}
-                          isActive={isActive}
-                          onBulletClick={onBulletClick}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Earlier Career */}
-      {earlierCareer.length > 0 && (
-        <section data-section="earlier_career">
-          <SectionHeading>Earlier Career</SectionHeading>
-          <div className="space-y-1">
-            {earlierCareer.map((ec, i) => (
-              <div key={i} className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-600">
-                  {ec.title}{' '}
-                  <span className="text-gray-500">· {ec.company}</span>
-                </span>
-                <span className="text-xs text-gray-500">{ec.dates}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Education */}
-      {education.length > 0 && (
-        <section data-section="education">
-          <SectionHeading>Education</SectionHeading>
-          <div className="space-y-1">
-            {education.map((edu, i) => (
-              <div key={i} className="text-sm text-gray-800">
-                {edu.degree} — {edu.institution}
-                {edu.year && <span className="text-gray-500"> ({edu.year})</span>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Certifications */}
-      {certifications.length > 0 && (
-        <section data-section="certifications">
-          <SectionHeading>Certifications</SectionHeading>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {certifications.map((cert, i) => (
-              <span key={i} className="text-sm text-gray-600">{cert}</span>
-            ))}
-          </div>
-        </section>
-      )}
+      {orderedSectionIds.map((sectionId) => sectionNodes.get(sectionId))}
     </div>
   );
 }

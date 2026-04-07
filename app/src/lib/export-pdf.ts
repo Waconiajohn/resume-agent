@@ -348,6 +348,7 @@ function buildPdfLines(resume: FinalResume, templateId: TemplateId = 'ats-classi
 
   const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
   const rendered = new Set<string>();
+  const rawSections = resume._raw_sections ?? {};
   let experienceRendered = false;
 
   for (const sectionName of order) {
@@ -366,6 +367,26 @@ function buildPdfLines(resume: FinalResume, templateId: TemplateId = 'ats-classi
     if (sectionName === 'experience') lines.push(...renderExperience(resume));
     if (sectionName === 'education') lines.push(...renderEducation(resume));
     if (sectionName === 'certifications') lines.push(...renderCertifications(resume));
+    if (
+      sectionName !== 'summary'
+      && sectionName !== 'selected_accomplishments'
+      && sectionName !== 'skills'
+      && sectionName !== 'experience'
+      && sectionName !== 'education'
+      && sectionName !== 'certifications'
+      && rawSections[sectionName]
+    ) {
+      const heading = sectionName.replace(/_/g, ' ').toUpperCase();
+      lines.push({ text: heading, style: 'heading' });
+      for (const row of rawSections[sectionName].split('\n').map((line) => line.trim()).filter(Boolean)) {
+        if (/^[•\-*]\s/.test(row)) {
+          lines.push({ text: row.replace(/^[•\-*]\s*/, ''), style: 'bullet' });
+        } else {
+          lines.push({ text: row, style: 'body' });
+        }
+      }
+      lines.push({ text: '', style: 'blank' });
+    }
     rendered.add(sectionName);
   }
 

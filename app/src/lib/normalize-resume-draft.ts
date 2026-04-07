@@ -12,6 +12,7 @@ import type {
   ResumeReviewState,
   ResumeSupportOrigin,
 } from '@/types/resume-v2';
+import { buildResumeSectionPlan, normalizeResumeCustomSections } from '@/lib/resume-section-plan';
 
 type LooseRequirementSource = RequirementSource | string | null | undefined;
 type LooseBulletConfidence = BulletConfidence | string | null | undefined;
@@ -339,7 +340,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
   const professionalExperience = Array.isArray(resume.professional_experience) ? resume.professional_experience : [];
 
-  return {
+  const normalizedBase: ResumeDraft = {
     ...resume,
     header: {
       name: typeof resume.header?.name === 'string' ? resume.header.name : '',
@@ -443,6 +444,12 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
     certifications: Array.isArray(resume.certifications)
       ? resume.certifications.filter((item): item is string => typeof item === 'string')
       : [],
+    custom_sections: normalizeResumeCustomSections(resume),
+  };
+
+  return {
+    ...normalizedBase,
+    section_plan: buildResumeSectionPlan(normalizedBase),
   };
 }
 

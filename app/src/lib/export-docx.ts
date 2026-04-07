@@ -731,10 +731,14 @@ async function _exportDocxInner(
     // Preferred path: structured resume data produces consistent ATS-safe layout.
     const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
     const rendered = new Set<string>();
+    const rawSections = resume._raw_sections ?? {};
     for (const sectionName of order) {
       const renderer = sectionRenderers[sectionName];
       if (renderer) {
         children.push(...renderer(resume, templateId));
+        rendered.add(sectionName);
+      } else if (rawSections[sectionName]) {
+        children.push(...rawSectionToParagraphs(sectionName, rawSections[sectionName]));
         rendered.add(sectionName);
       }
     }
