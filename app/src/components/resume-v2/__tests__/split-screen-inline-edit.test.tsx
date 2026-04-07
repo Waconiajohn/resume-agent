@@ -9,6 +9,7 @@ import { render, screen, fireEvent, cleanup, act, within } from '@testing-librar
 
 import { ResumeDocumentCard } from '../cards/ResumeDocumentCard';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
+import { scrollToAndFocusTarget } from '../useStrategyThread';
 
 import type { ResumeDraft, V2PipelineData, JobIntelligence, GapAnalysis, GapChatContext } from '@/types/resume-v2';
 import type { PendingEdit } from '@/hooks/useInlineEdit';
@@ -151,6 +152,10 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   HTMLElement.prototype.scrollTo = vi.fn();
   window.scrollTo = vi.fn() as typeof window.scrollTo;
+  window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  }) as typeof window.requestAnimationFrame;
 });
 
 afterEach(() => {
@@ -889,7 +894,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+      await Promise.resolve();
+    });
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -900,6 +908,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.section).toBe('custom_section:transformation_highlights');
     expect(lastCall.bulletText).toBe('Applied automation and data workflows to tighten operating rhythm across multiple sites.');
     expect(lastCall.requirements).toContain('Lead automation and operating-model transformation');
+    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-section="transformation_highlights"]');
   });
 
   it('opens coaching immediately after adding the AI section', async () => {
@@ -1026,7 +1035,10 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    fireEvent.click(screen.getAllByRole('button', { name: /add ai section/i })[0]);
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: /add ai section/i })[0]);
+      await Promise.resolve();
+    });
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -1037,6 +1049,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.section).toBe('custom_section:ai_highlights');
     expect(lastCall.bulletText).toBe('Applied AI and automation to improve operating rhythm across multiple sites.');
     expect(lastCall.requirements).toContain('Lead AI automation and operating-model change');
+    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-section="ai_highlights"]');
   });
 
   it('opens the summary in coaching mode without offering remove', async () => {

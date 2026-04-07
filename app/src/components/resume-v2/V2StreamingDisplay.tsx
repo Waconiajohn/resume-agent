@@ -1052,6 +1052,9 @@ export function V2StreamingDisplay({
 
     if (target) {
       openSectionCoachTarget(target);
+      window.requestAnimationFrame(() => {
+        scrollToAndFocusTarget(`[data-section="${result.sectionId}"]`);
+      });
       return;
     }
 
@@ -1070,6 +1073,9 @@ export function V2StreamingDisplay({
       'tighten',
       true,
     );
+    window.requestAnimationFrame(() => {
+      scrollToAndFocusTarget(`[data-section="${result.sectionId}"]`);
+    });
   }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, handleBulletClick, openSectionCoachTarget]);
 
   const handleAddAISectionAndOpen = useCallback(() => {
