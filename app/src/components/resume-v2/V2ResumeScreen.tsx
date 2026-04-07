@@ -44,6 +44,7 @@ import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 import { extractClarificationMemory, mergeClarificationMemory } from '@/lib/resume-clarification-memory';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import {
+  addResumeCustomSection,
   addOrEnableAIHighlightsSection,
   moveResumeSection,
   removeResumeCustomSection,
@@ -62,6 +63,7 @@ import {
   applyOptimisticRequirementWorkItemProgress,
   applyOptimisticResumeEdit,
 } from '@/lib/resume-edit-progress';
+import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -1147,6 +1149,19 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     markResumeArtifactsStale();
   }, [currentResume, data.candidateIntelligence, effectiveRequirementWorkItems, markResumeArtifactsStale]);
 
+  const handleAddCustomSection = useCallback((
+    title: string,
+    firstLine: string,
+    presetId?: ResumeCustomSectionPresetId,
+  ) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return addResumeCustomSection(base, { title, firstLine, presetId });
+    });
+    markResumeArtifactsStale();
+  }, [currentResume, markResumeArtifactsStale]);
+
   const handleRemoveCustomSection = useCallback((sectionId: string) => {
     setEditableResume((prev) => {
       const base = normalizeResumeDraft(prev ?? currentResume);
@@ -1963,6 +1978,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onMoveSection={handleMoveSection}
         onToggleSection={handleToggleSection}
         onAddAISection={handleAddAISection}
+        onAddCustomSection={handleAddCustomSection}
         onRemoveCustomSection={handleRemoveCustomSection}
         jobUrl={activeJobUrl ?? undefined}
         accessToken={accessToken}

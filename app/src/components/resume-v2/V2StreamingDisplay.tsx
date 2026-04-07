@@ -34,6 +34,7 @@ import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
+import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -127,6 +128,7 @@ interface V2StreamingDisplayProps {
   onMoveSection?: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection?: (sectionId: string, enabled: boolean) => void;
   onAddAISection?: () => void;
+  onAddCustomSection?: (title: string, firstLine: string, presetId?: ResumeCustomSectionPresetId) => void;
   onRemoveCustomSection?: (sectionId: string) => void;
   /** Job application URL — when present and pipeline is complete, shows the Apply to This Job button */
   jobUrl?: string;
@@ -880,6 +882,7 @@ export function V2StreamingDisplay({
   onMoveSection,
   onToggleSection,
   onAddAISection,
+  onAddCustomSection,
   onRemoveCustomSection,
   jobUrl,
   accessToken,
@@ -1295,7 +1298,7 @@ export function V2StreamingDisplay({
               {attentionItems.length > 0 && (
                 <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
               )}
-              {displayResume && onMoveSection && onToggleSection && onAddAISection && onRemoveCustomSection && !activeBullet && (
+              {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet && (
                 <ResumeStructurePlannerCard
                   resume={displayResume}
                   candidateIntelligence={data.candidateIntelligence}
@@ -1303,6 +1306,7 @@ export function V2StreamingDisplay({
                   onMoveSection={onMoveSection}
                   onToggleSection={onToggleSection}
                   onAddAISection={onAddAISection}
+                  onAddCustomSection={onAddCustomSection}
                   onRemoveCustomSection={onRemoveCustomSection}
                 />
               )}
@@ -1495,7 +1499,7 @@ export function V2StreamingDisplay({
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {displayResume && onMoveSection && onToggleSection && onAddAISection && onRemoveCustomSection && (
+                          {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && (
                             <ResumeStructurePlannerCard
                               resume={displayResume}
                               candidateIntelligence={data.candidateIntelligence}
@@ -1503,6 +1507,7 @@ export function V2StreamingDisplay({
                               onMoveSection={onMoveSection}
                               onToggleSection={onToggleSection}
                               onAddAISection={onAddAISection}
+                              onAddCustomSection={onAddCustomSection}
                               onRemoveCustomSection={onRemoveCustomSection}
                             />
                           )}

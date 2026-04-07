@@ -1,6 +1,12 @@
+import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, BrainCircuit, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import type { CandidateIntelligence, RequirementWorkItem, ResumeDraft } from '@/types/resume-v2';
-import { buildAIHighlightsSection, buildResumeSectionPlan } from '@/lib/resume-section-plan';
+import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
+import {
+  buildAIHighlightsSection,
+  buildResumeSectionPlan,
+  RESUME_CUSTOM_SECTION_PRESETS,
+} from '@/lib/resume-section-plan';
 
 interface ResumeStructurePlannerCardProps {
   resume: ResumeDraft;
@@ -9,6 +15,7 @@ interface ResumeStructurePlannerCardProps {
   onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection: (sectionId: string, enabled: boolean) => void;
   onAddAISection: () => void;
+  onAddCustomSection: (title: string, firstLine: string, presetId?: ResumeCustomSectionPresetId) => void;
   onRemoveCustomSection: (sectionId: string) => void;
 }
 
@@ -42,11 +49,40 @@ export function ResumeStructurePlannerCard({
   onMoveSection,
   onToggleSection,
   onAddAISection,
+  onAddCustomSection,
   onRemoveCustomSection,
 }: ResumeStructurePlannerCardProps) {
   const plan = buildResumeSectionPlan(resume);
   const aiSectionCandidate = buildAIHighlightsSection(candidateIntelligence, requirementWorkItems);
   const hasAISection = plan.some((item) => item.id === 'ai_highlights');
+  const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<ResumeCustomSectionPresetId>('board_advisory');
+  const [sectionTitle, setSectionTitle] = useState('Board & Advisory Experience');
+  const [firstLine, setFirstLine] = useState('');
+  const availablePresets = useMemo(() => (
+    RESUME_CUSTOM_SECTION_PRESETS.filter((preset) => !plan.some((item) => item.id === preset.id))
+  ), [plan]);
+  const selectedPreset = availablePresets.find((preset) => preset.id === selectedPresetId);
+  const canAddSection = sectionTitle.trim().length > 0 && firstLine.trim().length > 0;
+
+  const handleSelectPreset = (presetId: ResumeCustomSectionPresetId) => {
+    setSelectedPresetId(presetId);
+    if (presetId === 'custom') {
+      setSectionTitle('');
+      return;
+    }
+    const preset = RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === presetId);
+    setSectionTitle(preset?.title ?? '');
+  };
+
+  const handleAddSection = () => {
+    if (!canAddSection) return;
+    onAddCustomSection(sectionTitle.trim(), firstLine.trim(), selectedPresetId === 'custom' ? undefined : selectedPresetId);
+    setFirstLine('');
+    setShowAddSectionComposer(false);
+    const nextDefaultPreset = availablePresets.find((preset) => preset.id !== selectedPresetId)?.id ?? 'custom';
+    handleSelectPreset(nextDefaultPreset);
+  };
 
   return (
     <div className="shell-panel px-4 py-4">
@@ -58,17 +94,109 @@ export function ResumeStructurePlannerCard({
             Reorder the story, hide weaker sections, and add an AI-focused section when the role calls for it.
           </p>
         </div>
-        {aiSectionCandidate && !hasAISection && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onAddAISection}
+            onClick={() => setShowAddSectionComposer((current) => !current)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-2)] transition-colors"
           >
-            <BrainCircuit className="h-3.5 w-3.5" />
-            Add AI Section
+            <Plus className="h-3.5 w-3.5" />
+            Add Section
           </button>
-        )}
+          {aiSectionCandidate && !hasAISection && (
+            <button
+              type="button"
+              onClick={onAddAISection}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-2)] transition-colors"
+            >
+              <BrainCircuit className="h-3.5 w-3.5" />
+              Add AI Section
+            </button>
+          )}
+        </div>
       </div>
+
+      {showAddSectionComposer && (
+        <div className="mt-4 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-strong)]">Add a section with real content</p>
+              <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
+                Start with one strong line now. You can always add more once the section is in the resume.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {availablePresets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleSelectPreset(preset.id)}
+                className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                  selectedPresetId === preset.id
+                    ? 'border-[var(--link)] bg-[var(--badge-blue-bg)] text-[var(--link)]'
+                    : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+                }`}
+              >
+                {preset.title}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => handleSelectPreset('custom')}
+              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                selectedPresetId === 'custom'
+                  ? 'border-[var(--link)] bg-[var(--badge-blue-bg)] text-[var(--link)]'
+                  : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+              }`}
+            >
+              Custom
+            </button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
+            {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
+          </p>
+          <div className="mt-3 grid gap-3">
+            <label className="grid gap-1">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Section Title</span>
+              <input
+                type="text"
+                value={sectionTitle}
+                onChange={(event) => setSectionTitle(event.target.value)}
+                placeholder="Board & Advisory Experience"
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--link)]"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">First Highlight</span>
+              <textarea
+                value={firstLine}
+                onChange={(event) => setFirstLine(event.target.value)}
+                rows={3}
+                placeholder="Example: Served as executive sponsor for a plant-network transformation that improved throughput, quality, and operating cadence."
+                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--link)]"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddSectionComposer(false)}
+              className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-xs font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddSection}
+              disabled={!canAddSection}
+              className="rounded-lg bg-[var(--link)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              Add Section
+            </button>
+          </div>
+        </div>
+      )}
 
       {aiSectionCandidate && !hasAISection && (
         <div className="mt-3 rounded-xl border border-[var(--badge-blue-text)]/20 bg-[var(--badge-blue-bg)] px-3.5 py-3 text-[13px] text-[var(--badge-blue-text)]/90">

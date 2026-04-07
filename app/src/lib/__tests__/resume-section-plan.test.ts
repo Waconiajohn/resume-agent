@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CandidateIntelligence, ResumeDraft } from '@/types/resume-v2';
 import {
+  addResumeCustomSection,
   addOrEnableAIHighlightsSection,
   buildResumeSectionPlan,
   getEnabledResumeSectionPlan,
@@ -107,5 +108,27 @@ describe('resume-section-plan', () => {
 
     expect(finalResume.section_order).toEqual(enabledOrder);
     expect(finalResume._raw_sections?.ai_highlights).toContain('Applied automation and data workflows');
+  });
+
+  it('adds custom preset sections before professional experience with real starter content', () => {
+    const resume = addResumeCustomSection(makeResumeDraft(), {
+      presetId: 'board_advisory',
+      title: 'Board & Advisory Experience',
+      firstLine: 'Presented operating reviews and transformation progress to the board and PE sponsors.',
+    });
+
+    expect(resume.custom_sections).toEqual([
+      expect.objectContaining({
+        id: 'board_advisory',
+        title: 'Board & Advisory Experience',
+        lines: ['Presented operating reviews and transformation progress to the board and PE sponsors.'],
+      }),
+    ]);
+
+    const plan = buildResumeSectionPlan(resume);
+    const boardIndex = plan.findIndex((item) => item.id === 'board_advisory');
+    const experienceIndex = plan.findIndex((item) => item.id === 'professional_experience');
+    expect(boardIndex).toBeGreaterThan(-1);
+    expect(boardIndex).toBeLessThan(experienceIndex);
   });
 });

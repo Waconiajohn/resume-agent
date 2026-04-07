@@ -526,4 +526,29 @@ describe('V2ResumeScreen inline editing', () => {
       }),
     );
   });
+
+  it('adds a custom section with starter content from the structure planner', () => {
+    render(<V2ResumeScreen accessToken={null} onBack={vi.fn()} />);
+
+    act(() => {
+      const props = latestStreamingProps();
+      (props.onAddCustomSection as (title: string, firstLine: string, presetId?: string) => void)(
+        'Board & Advisory Experience',
+        'Presented operating reviews and transformation updates to the board and PE sponsors.',
+        'board_advisory',
+      );
+    });
+
+    const editableResume = latestStreamingProps().editableResume as ResumeDraft;
+    expect(editableResume.custom_sections).toContainEqual(
+      expect.objectContaining({
+        id: 'board_advisory',
+        title: 'Board & Advisory Experience',
+        lines: ['Presented operating reviews and transformation updates to the board and PE sponsors.'],
+      }),
+    );
+    const planIds = editableResume.section_plan?.map((item) => item.id) ?? [];
+    expect(planIds.indexOf('board_advisory')).toBeGreaterThan(-1);
+    expect(planIds.indexOf('board_advisory')).toBeLessThan(planIds.indexOf('professional_experience'));
+  });
 });

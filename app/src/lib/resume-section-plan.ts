@@ -22,6 +22,41 @@ const STANDARD_SECTION_ORDER: Array<{
   { id: 'certifications', type: 'certifications', title: 'Certifications' },
 ];
 type AIReadinessSignal = NonNullable<CandidateIntelligence['ai_readiness']>['signals'][number];
+export type ResumeCustomSectionPresetId =
+  | 'board_advisory'
+  | 'selected_projects'
+  | 'speaking_publications'
+  | 'transformation_highlights'
+  | 'custom';
+
+export interface ResumeCustomSectionPreset {
+  id: ResumeCustomSectionPresetId;
+  title: string;
+  rationale: string;
+}
+
+export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
+  {
+    id: 'board_advisory',
+    title: 'Board & Advisory Experience',
+    rationale: 'Highlight board-facing work, governance leadership, or advisory roles that strengthen executive credibility.',
+  },
+  {
+    id: 'selected_projects',
+    title: 'Selected Projects',
+    rationale: 'Create a home for transformations, turnarounds, launches, or strategic initiatives that deserve their own spotlight.',
+  },
+  {
+    id: 'speaking_publications',
+    title: 'Speaking & Publications',
+    rationale: 'Show conferences, thought leadership, media, or publications that reinforce market credibility.',
+  },
+  {
+    id: 'transformation_highlights',
+    title: 'Transformation Highlights',
+    rationale: 'Call out cross-functional change work, operating-model redesign, or digital transformation wins above the fold.',
+  },
+];
 
 function hasSectionContent(resume: ResumeDraft, type: ResumeSectionType): boolean {
   switch (type) {
@@ -48,6 +83,13 @@ function hasSectionContent(resume: ResumeDraft, type: ResumeSectionType): boolea
 function normalizeSectionTitle(value: string | undefined, fallback: string): string {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : fallback;
+}
+
+function slugifySectionId(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function normalizeCustomSection(section: ResumeCustomSection): ResumeCustomSection {
@@ -157,6 +199,87 @@ export function removeResumeCustomSection(resume: ResumeDraft, sectionId: string
     .filter((item) => item.id !== sectionId)
     .map((item, index) => ({ ...item, order: index }));
   return cloneResume(resume, nextPlan, customSections);
+}
+
+function buildUniqueCustomSectionId(
+  customSections: ResumeCustomSection[],
+  title: string,
+  presetId?: ResumeCustomSectionPresetId,
+): string {
+  const preferredId = presetId && presetId !== 'custom'
+    ? presetId
+    : slugifySectionId(title) || 'custom_section';
+  const existingIds = new Set(customSections.map((section) => section.id));
+  if (!existingIds.has(preferredId)) return preferredId;
+
+  let suffix = 2;
+  let candidate = `${preferredId}_${suffix}`;
+  while (existingIds.has(candidate)) {
+    suffix += 1;
+    candidate = `${preferredId}_${suffix}`;
+  }
+  return candidate;
+}
+
+export function addResumeCustomSection(
+  resume: ResumeDraft,
+  options: {
+    title: string;
+    firstLine: string;
+    presetId?: ResumeCustomSectionPresetId;
+  },
+): ResumeDraft {
+  const customSections = normalizeResumeCustomSections(resume);
+  const normalizedTitle = normalizeSectionTitle(options.title, 'Custom Section');
+  const normalizedFirstLine = options.firstLine.trim();
+  if (!normalizedFirstLine) return resume;
+
+  const preset = options.presetId
+    ? RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === options.presetId)
+    : undefined;
+  const id = buildUniqueCustomSectionId(customSections, normalizedTitle, options.presetId);
+  const nextCustomSections = [
+    ...customSections,
+    {
+      id,
+      title: normalizedTitle,
+      kind: 'bullet_list' as const,
+      lines: [normalizedFirstLine],
+      source: 'user_added' as ResumeSectionPlanSource,
+      rationale: preset?.rationale,
+    },
+  ];
+
+  const seededPlan = buildResumeSectionPlan({
+    ...resume,
+    custom_sections: nextCustomSections,
+  });
+  const insertedIndex = seededPlan.findIndex((item) => item.id === id);
+  const professionalExperienceIndex = seededPlan.findIndex((item) => item.id === 'professional_experience');
+
+  if (insertedIndex === -1) {
+    return cloneResume({ ...resume, custom_sections: nextCustomSections }, seededPlan, nextCustomSections);
+  }
+
+  const nextPlan = [...seededPlan];
+  const [insertedItem] = nextPlan.splice(insertedIndex, 1);
+  nextPlan.splice(
+    professionalExperienceIndex === -1 ? nextPlan.length : professionalExperienceIndex,
+    0,
+    {
+      ...insertedItem,
+      enabled: true,
+      title: normalizedTitle,
+      source: 'user_added',
+      rationale: preset?.rationale ?? insertedItem.rationale,
+    },
+  );
+
+  return cloneResume(
+    { ...resume, custom_sections: nextCustomSections },
+    nextPlan.map((item, index) => ({ ...item, order: index })),
+    nextCustomSections,
+  );
 }
 
 function inferAISectionTitle(requirementWorkItems?: RequirementWorkItem[] | null): string {
