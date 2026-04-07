@@ -864,6 +864,7 @@ describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
     concern_id: 'concern-1',
     messages: [],
     context: {
+      work_item_id: 'work-item-1',
       concern_type: 'missing_evidence',
       severity: 'critical',
       observation: 'Azure or GCP experience is not explicit.',
@@ -920,6 +921,7 @@ describe('POST /api/resume-v2/:sessionId/final-review-chat', () => {
       'Where have you used Azure or GCP, what did you personally own, and what outcome came from that work?',
     );
     expect(seededAssistant.recommended_next_action).toBe('answer_question');
+    expect(llmArgs.messages[0]?.content).toContain('Work item: work-item-1');
   });
 
   it('uses the observation as the shared fallback subject when related_requirement is missing', async () => {

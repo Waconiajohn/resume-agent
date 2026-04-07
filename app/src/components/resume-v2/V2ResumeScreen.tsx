@@ -381,19 +381,26 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
     if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;
+    const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
     const normalizedRelatedRequirement = concern.related_requirement
       ? normalizeRequirement(concern.related_requirement)
       : null;
-    const matchedWorkItem = normalizedRelatedRequirement
-      ? (data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? []).find((item) => (
-          normalizeRequirement(item.requirement) === normalizedRelatedRequirement
-            || item.id === concern.related_requirement
-        ))
-      : undefined;
+    const matchedWorkItem = (
+      concern.work_item_id
+        ? workItems.find((item) => item.id === concern.work_item_id)
+        : undefined
+    ) ?? (
+      normalizedRelatedRequirement
+        ? workItems.find((item) => (
+            normalizeRequirement(item.requirement) === normalizedRelatedRequirement
+              || item.id === concern.related_requirement
+          ))
+        : undefined
+    );
 
     return {
       concernId: concern.id,
-      workItemId: matchedWorkItem?.id,
+      workItemId: concern.work_item_id ?? matchedWorkItem?.id,
       concernType: concern.type,
       severity: concern.severity,
       observation: concern.observation,

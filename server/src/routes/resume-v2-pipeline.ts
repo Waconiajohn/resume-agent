@@ -1493,7 +1493,7 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
       messages,
       context: {
         concern_id,
-        work_item_id: context.related_requirement,
+        work_item_id: context.work_item_id,
         concern_type: context.concern_type,
         severity: context.severity,
         observation: context.observation,

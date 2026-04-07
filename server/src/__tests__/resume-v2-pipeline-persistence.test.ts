@@ -160,6 +160,16 @@ function buildUpdateChain(result: { error: unknown }) {
   return chain;
 }
 
+function buildMaybeSingleChain(result: { data: unknown; error: unknown }) {
+  const chain: Record<string, unknown> = {};
+  const methods = ['select', 'eq', 'limit', 'maybeSingle'];
+  for (const m of methods) {
+    chain[m] = vi.fn().mockReturnValue(chain);
+  }
+  (chain['maybeSingle'] as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+  return chain;
+}
+
 /** The full v2 pipeline snapshot as the POST /start route builds it. */
 const FULL_V2_SNAPSHOT = {
   version: 'v2' as const,
@@ -168,6 +178,7 @@ const FULL_V2_SNAPSHOT = {
     candidateIntelligence: { summary: 'Experienced engineering leader' },
     benchmarkCandidate: { archetype: 'Strategic executive' },
     gapAnalysis: { critical_gaps: [], coaching_angles: [] },
+    requirementWorkItems: null,
     preScores: { ats_score: 72, fit_score: 80 },
     narrativeStrategy: { positioning_angle: 'Transformational leader' },
     resumeDraft: { summary: 'Results-driven VP...', experience: [] },
@@ -601,13 +612,14 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
   it('persists a snapshot with version === "v2" after a successful pipeline run', async () => {
     // Session insert returns a session id
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
+    const masterResumeChain = buildMaybeSingleChain({ data: null, error: null });
     // Capture the update call made after pipeline completion
     const updateChain = buildUpdateChain({ error: null });
 
-    // First call to mockFrom is the INSERT (session creation).
-    // Second call is the UPDATE (snapshot persistence).
+    // Calls: session insert -> master resume evidence lookup -> snapshot persistence.
     mockFrom
       .mockReturnValueOnce(insertChain)
+      .mockReturnValueOnce(masterResumeChain)
       .mockReturnValueOnce(updateChain);
 
     mockRunV2Pipeline.mockResolvedValue({
@@ -629,9 +641,9 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
     // Allow the background IIFE to complete
     await new Promise<void>((resolve) => setTimeout(resolve, 20));
 
-    // Confirm the update was called
-    expect(mockFrom).toHaveBeenCalledTimes(2);
-    expect(mockFrom).toHaveBeenNthCalledWith(2, 'coach_sessions');
+    expect(mockFrom).toHaveBeenCalledTimes(3);
+    expect(mockFrom).toHaveBeenNthCalledWith(2, 'master_resumes');
+    expect(mockFrom).toHaveBeenNthCalledWith(3, 'coach_sessions');
 
     const updateCall = updateChain['update'] as ReturnType<typeof vi.fn>;
     expect(updateCall).toHaveBeenCalledOnce();
@@ -646,10 +658,12 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
 
   it('snapshot contains all eight pipeline_data keys mapped from runV2Pipeline result', async () => {
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
+    const masterResumeChain = buildMaybeSingleChain({ data: null, error: null });
     const updateChain = buildUpdateChain({ error: null });
 
     mockFrom
       .mockReturnValueOnce(insertChain)
+      .mockReturnValueOnce(masterResumeChain)
       .mockReturnValueOnce(updateChain);
 
     mockRunV2Pipeline.mockResolvedValue({
@@ -680,16 +694,22 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
 
     expect(snapshot.version).toBe('v2');
 
-    // All eight camelCase keys must be present
+    // Key pipeline fields should be present, including the new work-item snapshot.
     const expectedKeys = [
+      'stage',
       'jobIntelligence',
       'candidateIntelligence',
       'benchmarkCandidate',
       'gapAnalysis',
+      'requirementWorkItems',
+      'gapCoachingCards',
       'preScores',
       'narrativeStrategy',
       'resumeDraft',
       'assembly',
+      'feedbackMetadata',
+      'error',
+      'stageMessages',
     ];
     for (const key of expectedKeys) {
       expect(snapshot.pipeline_data).toHaveProperty(key);
@@ -698,14 +718,17 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
     // Verify the camelCase key mapping is correct
     expect(snapshot.pipeline_data['jobIntelligence']).toEqual({ role_title: 'Director' });
     expect(snapshot.pipeline_data['assembly']).toEqual({ summary: 'Final here' });
+    expect(snapshot.pipeline_data['requirementWorkItems']).toBeNull();
   });
 
   it('snapshot inputs contain resume_text and job_description from the original request', async () => {
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
+    const masterResumeChain = buildMaybeSingleChain({ data: null, error: null });
     const updateChain = buildUpdateChain({ error: null });
 
     mockFrom
       .mockReturnValueOnce(insertChain)
+      .mockReturnValueOnce(masterResumeChain)
       .mockReturnValueOnce(updateChain);
 
     mockRunV2Pipeline.mockResolvedValue({ final_resume: { summary: 'done' } });
@@ -736,10 +759,12 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
     // runV2Pipeline may not produce every field (e.g., partial run / early error).
     // The snapshot must use null (not undefined) for missing keys.
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
+    const masterResumeChain = buildMaybeSingleChain({ data: null, error: null });
     const updateChain = buildUpdateChain({ error: null });
 
     mockFrom
       .mockReturnValueOnce(insertChain)
+      .mockReturnValueOnce(masterResumeChain)
       .mockReturnValueOnce(updateChain);
 
     // Only final_resume is present; all other output fields are absent
@@ -762,6 +787,7 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
     expect(snapshot.pipeline_data['jobIntelligence']).toBeNull();
     expect(snapshot.pipeline_data['candidateIntelligence']).toBeNull();
     expect(snapshot.pipeline_data['gapAnalysis']).toBeNull();
+    expect(snapshot.pipeline_data['requirementWorkItems']).toBeNull();
     expect(snapshot.pipeline_data['preScores']).toBeNull();
     // assembly maps from final_resume which IS present
     expect(snapshot.pipeline_data['assembly']).toEqual({ summary: 'done' });
@@ -769,13 +795,15 @@ describe('POST /api/resume-v2/start — pipeline snapshot structure', () => {
 
   it('sets pipeline_status to "error" and persists error snapshot when pipeline throws', async () => {
     const insertChain = buildSingleChain({ data: { id: SESSION_ID }, error: null });
+    const masterResumeChain = buildMaybeSingleChain({ data: null, error: null });
     // The error path calls queueSnapshotPersist (snapshot update) then a separate
-    // error_message update — both use mockFrom so we need three chains.
+    // error_message update — plus the master resume lookup before the pipeline run.
     const snapshotErrorChain = buildUpdateChain({ error: null });
     const errorMessageChain = buildUpdateChain({ error: null });
 
     mockFrom
       .mockReturnValueOnce(insertChain)
+      .mockReturnValueOnce(masterResumeChain)
       .mockReturnValueOnce(snapshotErrorChain)
       .mockReturnValueOnce(errorMessageChain);
 

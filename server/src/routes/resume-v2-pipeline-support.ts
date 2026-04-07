@@ -567,6 +567,7 @@ export const finalReviewChatSchema = z.object({
   concern_id: z.string().min(1).max(200).trim(),
   messages: z.array(coachingMessageSchema).max(20),
   context: z.object({
+    work_item_id: z.string().max(200).optional(),
     concern_type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']),
     severity: z.enum(['critical', 'moderate', 'minor']),
     observation: z.string().max(2000),

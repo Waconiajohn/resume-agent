@@ -98,6 +98,12 @@ vi.mock('../lib/logger.js', () => ({
   },
 }));
 
+vi.mock('../lib/supabase.js', () => ({
+  supabaseAdmin: {
+    from: vi.fn(),
+  },
+}));
+
 // ─── Import under test (after mocks) ─────────────────────────────────────────
 
 import { runV2Pipeline } from '../agents/resume-v2/orchestrator.js';
@@ -780,16 +786,16 @@ describe('SSE event emission — ordering', () => {
     expect(analysisCompleteIdx).toBeLessThan(strategyStartIdx);
   });
 
-  it('emits narrative_strategy before stage_complete:strategy', async () => {
+  it('emits narrative_strategy before stage_complete:clarification', async () => {
     const { options, emitted } = makeOptions();
     await runV2Pipeline(options);
 
     const narrativeIdx = emitted.findIndex(e => e.type === 'narrative_strategy');
-    const strategyCompleteIdx = emitted.findIndex(
-      e => e.type === 'stage_complete' && (e as Extract<V2PipelineSSEEvent, { type: 'stage_complete' }>).stage === 'strategy',
+    const clarificationCompleteIdx = emitted.findIndex(
+      e => e.type === 'stage_complete' && (e as Extract<V2PipelineSSEEvent, { type: 'stage_complete' }>).stage === 'clarification',
     );
 
-    expect(narrativeIdx).toBeLessThan(strategyCompleteIdx);
+    expect(narrativeIdx).toBeLessThan(clarificationCompleteIdx);
   });
 
   it('emits pipeline_complete as the last event', async () => {
@@ -804,7 +810,7 @@ describe('SSE event emission — ordering', () => {
     const { options, emitted } = makeOptions();
     await runV2Pipeline(options);
 
-    // Verify the stage boundary ordering: analysis → strategy → writing → verification → assembly → complete
+    // Verify the stage boundary ordering: analysis → strategy → clarification → writing → verification → assembly → complete
     const stageEvents = emitted.filter(
       e => e.type === 'stage_start' || e.type === 'stage_complete',
     ) as Array<Extract<V2PipelineSSEEvent, { type: 'stage_start' | 'stage_complete' }>>;
@@ -815,6 +821,8 @@ describe('SSE event emission — ordering', () => {
       'complete:analysis',
       'start:strategy',
       'complete:strategy',
+      'start:clarification',
+      'complete:clarification',
       'start:writing',
       'complete:writing',
       'start:verification',

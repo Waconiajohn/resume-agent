@@ -139,6 +139,8 @@ interface AttentionReviewItem {
   order: number;
   requirements: string[];
   reviewState: ResumeReviewState;
+  requirementSource?: RequirementSource;
+  evidenceFound: string;
   workItemId?: string;
   proofLevel?: ProofLevel;
   nextBestAction?: NextBestAction;
@@ -236,6 +238,8 @@ function buildAttentionReviewItems(
         bullet.addresses_requirements,
       ),
       reviewState,
+      requirementSource: bullet.requirement_source,
+      evidenceFound: bullet.evidence_found ?? '',
       workItemId: bullet.work_item_id,
       proofLevel: bullet.proof_level,
       nextBestAction: bullet.next_best_action,
@@ -274,6 +278,8 @@ function buildAttentionReviewItems(
           bullet.addresses_requirements,
         ),
         reviewState,
+        requirementSource: bullet.requirement_source,
+        evidenceFound: bullet.evidence_found ?? '',
         workItemId: bullet.work_item_id,
         proofLevel: bullet.proof_level,
         nextBestAction: bullet.next_best_action,
@@ -281,7 +287,7 @@ function buildAttentionReviewItems(
     });
   });
 
-  return items.sort((a, b) => a.order - b.order);
+  return items.sort((a, b) => a.priority - b.priority || a.order - b.order);
 }
 
 function AttentionReviewStrip({
@@ -466,7 +472,8 @@ export function V2StreamingDisplay({
       requirements: item.requirements,
       bulletText: item.text,
       reviewState: item.reviewState,
-      evidenceFound: '',
+      requirementSource: item.requirementSource,
+      evidenceFound: item.evidenceFound,
       workItemId: item.workItemId,
       proofLevel: item.proofLevel,
       nextBestAction: item.nextBestAction,

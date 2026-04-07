@@ -15,6 +15,8 @@ import type { PendingEdit } from '@/hooks/useInlineEdit';
 
 // ─── Global mocks ─────────────────────────────────────────────────────────────
 
+const mockBulletCoachingPanel = vi.hoisted(() => vi.fn());
+
 vi.mock('../useStrategyThread', () => ({
   scrollToBullet: vi.fn(),
   scrollToAndHighlight: vi.fn(),
@@ -127,8 +129,14 @@ vi.mock('../cards/PipelineProgressCard', () => ({
 }));
 
 vi.mock('../cards/BulletCoachingPanel', () => ({
-  BulletCoachingPanel: () => <div data-testid="bullet-coaching-panel" />,
-  BulletConversationEditor: () => <div data-testid="bullet-coaching-panel" />,
+  BulletCoachingPanel: (props: unknown) => {
+    mockBulletCoachingPanel(props);
+    return <div data-testid="bullet-coaching-panel" />;
+  },
+  BulletConversationEditor: (props: unknown) => {
+    mockBulletCoachingPanel(props);
+    return <div data-testid="bullet-coaching-panel" />;
+  },
 }));
 
 // jsdom does not implement scrollIntoView or scrollTo — stub them globally
@@ -509,9 +517,9 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(within(strip).getByText('Review Attention Lines')).toBeInTheDocument();
     expect(within(strip).getByText('1 of 2')).toBeInTheDocument();
     expect(within(strip).getByText(/2 lines still need attention\. click a bullet on the resume to review it here\./i)).toBeInTheDocument();
-    expect(within(strip).getByText(/Next best action: Start in Selected Accomplishments and review the bullet marked 'can be sharper'\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Can be sharper')).toBeInTheDocument();
-    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
+    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp and review the bullet marked 'needs proof'\./i)).toBeInTheDocument();
+    expect(within(strip).getByText('Needs proof')).toBeInTheDocument();
+    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Jump to bullet' })).toBeInTheDocument();
   });
 
@@ -522,6 +530,27 @@ describe('V2StreamingDisplay — layout modes', () => {
       <V2StreamingDisplay
         {...makeDisplayProps({
           editableResume: attentionResume,
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: vi.fn((requirement: string) => ({
+            evidence: [],
+            currentStrategy: undefined,
+            aiReasoning: undefined,
+            inferredMetric: undefined,
+            coachingPolicy: undefined,
+            jobDescriptionExcerpt: `${requirement} from the job description`,
+            candidateExperienceSummary: '',
+            alternativeBullets: [],
+            primaryRequirement: requirement,
+            requirementSource: 'job_description' as const,
+            sourceEvidence: `${requirement} from the job description`,
+          })),
           data: makePipelineDataWithResume({
             resumeDraft: attentionResume,
             assembly: {
@@ -539,19 +568,26 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(await screen.findByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
+    expect(await screen.findByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
 
     const strip = screen.getByTestId('attention-review-strip');
     expect(within(strip).getByText('2 of 2')).toBeInTheDocument();
-    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
+    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
+    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jump to bullet' }));
 
-    // After clicking "Jump to bullet", activeBullet is set so the attention strip
-    // highlights the right line. BulletConversationEditor rendering depends on gapChat.
+    expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      bulletText: string;
+      evidenceFound: string;
+      requirementSource?: string;
+    };
+    expect(lastCall.bulletText).toBe('Reduced deploy time by 60%');
+    expect(lastCall.evidenceFound).toBe('Improved deployment workflow across engineering teams');
+    expect(lastCall.requirementSource).toBe('job_description');
   });
 
   it('drops a line from the navigator once that line has changed in the working resume', async () => {
