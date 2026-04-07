@@ -44,9 +44,10 @@ import { normalizeResumeDraft } from '@/lib/normalize-resume-draft';
 import { extractClarificationMemory, mergeClarificationMemory } from '@/lib/resume-clarification-memory';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import {
-  addResumeCustomSection,
   addOrEnableAIHighlightsSection,
+  buildAIHighlightsSection,
   moveResumeSection,
+  prepareResumeCustomSectionAddition,
   removeResumeCustomSection,
   setResumeSectionEnabled,
 } from '@/lib/resume-section-plan';
@@ -1141,26 +1142,41 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, [currentResume, markResumeArtifactsStale]);
 
   const handleAddAISection = useCallback(() => {
-    setEditableResume((prev) => {
-      const base = normalizeResumeDraft(prev ?? currentResume);
-      if (!base) return prev;
-      return addOrEnableAIHighlightsSection(base, data.candidateIntelligence, effectiveRequirementWorkItems);
-    });
+    const base = normalizeResumeDraft(editableResume ?? currentResume);
+    if (!base) return null;
+    const nextResume = addOrEnableAIHighlightsSection(base, data.candidateIntelligence, effectiveRequirementWorkItems);
+    const aiSection = nextResume.custom_sections?.find((section) => section.id === 'ai_highlights')
+      ?? buildAIHighlightsSection(data.candidateIntelligence, effectiveRequirementWorkItems);
+    setEditableResume(nextResume);
     markResumeArtifactsStale();
-  }, [currentResume, data.candidateIntelligence, effectiveRequirementWorkItems, markResumeArtifactsStale]);
+    if (!aiSection) return null;
+    return {
+      sectionId: 'ai_highlights',
+      title: aiSection.title,
+      lines: aiSection.lines,
+      resume: nextResume,
+    };
+  }, [currentResume, data.candidateIntelligence, editableResume, effectiveRequirementWorkItems, markResumeArtifactsStale]);
 
   const handleAddCustomSection = useCallback((
     title: string,
     lines: string[],
     presetId?: ResumeCustomSectionPresetId,
   ) => {
-    setEditableResume((prev) => {
-      const base = normalizeResumeDraft(prev ?? currentResume);
-      if (!base) return prev;
-      return addResumeCustomSection(base, { title, lines, presetId });
-    });
+    const base = normalizeResumeDraft(editableResume ?? currentResume);
+    if (!base) return null;
+    const prepared = prepareResumeCustomSectionAddition(base, { title, lines, presetId });
+    if (!prepared) return null;
+    setEditableResume(prepared.resume);
     markResumeArtifactsStale();
-  }, [currentResume, markResumeArtifactsStale]);
+    return {
+      sectionId: prepared.sectionId,
+      title: prepared.title,
+      lines: prepared.lines,
+      presetId: prepared.presetId,
+      resume: prepared.resume,
+    };
+  }, [currentResume, editableResume, markResumeArtifactsStale]);
 
   const handleRemoveCustomSection = useCallback((sectionId: string) => {
     setEditableResume((prev) => {

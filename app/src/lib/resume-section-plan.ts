@@ -52,6 +52,14 @@ export interface ResumeCustomSectionPresetRecommendation {
   readyLineCount: number;
 }
 
+export interface ResumeCustomSectionAddition {
+  sectionId: string;
+  resume: ResumeDraft;
+  lines: string[];
+  title: string;
+  presetId?: ResumeCustomSectionPresetId;
+}
+
 export const RESUME_CUSTOM_SECTION_PRESETS: ResumeCustomSectionPreset[] = [
   {
     id: 'board_advisory',
@@ -693,7 +701,7 @@ function buildUniqueCustomSectionId(
   return candidate;
 }
 
-export function addResumeCustomSection(
+export function prepareResumeCustomSectionAddition(
   resume: ResumeDraft,
   options: {
     title: string;
@@ -701,11 +709,11 @@ export function addResumeCustomSection(
     lines?: string[];
     presetId?: ResumeCustomSectionPresetId;
   },
-): ResumeDraft {
+): ResumeCustomSectionAddition | null {
   const customSections = normalizeResumeCustomSections(resume);
   const normalizedTitle = normalizeSectionTitle(options.title, 'Custom Section');
   const normalizedLines = normalizeDraftLines(options.lines ?? (options.firstLine ? [options.firstLine] : []));
-  if (normalizedLines.length === 0) return resume;
+  if (normalizedLines.length === 0) return null;
 
   const preset = options.presetId
     ? RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === options.presetId)
@@ -731,7 +739,13 @@ export function addResumeCustomSection(
   const professionalExperienceIndex = seededPlan.findIndex((item) => item.id === 'professional_experience');
 
   if (insertedIndex === -1) {
-    return cloneResume({ ...resume, custom_sections: nextCustomSections }, seededPlan, nextCustomSections);
+    return {
+      sectionId: id,
+      resume: cloneResume({ ...resume, custom_sections: nextCustomSections }, seededPlan, nextCustomSections),
+      lines: normalizedLines,
+      title: normalizedTitle,
+      presetId: options.presetId,
+    };
   }
 
   const nextPlan = [...seededPlan];
@@ -748,11 +762,29 @@ export function addResumeCustomSection(
     },
   );
 
-  return cloneResume(
-    { ...resume, custom_sections: nextCustomSections },
-    nextPlan.map((item, index) => ({ ...item, order: index })),
-    nextCustomSections,
-  );
+  return {
+    sectionId: id,
+    resume: cloneResume(
+      { ...resume, custom_sections: nextCustomSections },
+      nextPlan.map((item, index) => ({ ...item, order: index })),
+      nextCustomSections,
+    ),
+    lines: normalizedLines,
+    title: normalizedTitle,
+    presetId: options.presetId,
+  };
+}
+
+export function addResumeCustomSection(
+  resume: ResumeDraft,
+  options: {
+    title: string;
+    firstLine?: string;
+    lines?: string[];
+    presetId?: ResumeCustomSectionPresetId;
+  },
+): ResumeDraft {
+  return prepareResumeCustomSectionAddition(resume, options)?.resume ?? resume;
 }
 
 function inferAISectionTitle(requirementWorkItems?: RequirementWorkItem[] | null): string {

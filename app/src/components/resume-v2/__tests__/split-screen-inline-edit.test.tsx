@@ -70,6 +70,12 @@ vi.mock('lucide-react', () => {
     ShieldAlert: Icon,
     Wand2: Icon,
     Pencil: Icon,
+    ArrowUp: Icon,
+    ArrowDown: Icon,
+    BrainCircuit: Icon,
+    EyeOff: Icon,
+    Plus: Icon,
+    Trash2: Icon,
   };
 });
 
@@ -764,6 +770,136 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     expect(screen.getAllByRole('button', { name: /AI Highlights/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Transformation Highlights/i }).length).toBeGreaterThan(0);
+  });
+
+  it('opens coaching immediately after adding a recommended custom section', async () => {
+    const resume = makeResumeDraft();
+    const nextResume: ResumeDraft = {
+      ...resume,
+      custom_sections: [
+        {
+          id: 'transformation_highlights',
+          title: 'Transformation Highlights',
+          kind: 'bullet_list',
+          lines: [
+            'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+            'Led transformation work across 3 sites while rolled out workflow automation across operations.',
+            'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
+          ],
+        },
+      ],
+      section_plan: [
+        ...(resume.section_plan ?? []),
+        {
+          id: 'transformation_highlights',
+          type: 'custom',
+          title: 'Transformation Highlights',
+          enabled: true,
+          order: 7,
+          source: 'user_added',
+          recommended_for_job: true,
+          is_custom: true,
+        },
+      ],
+    };
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: resume,
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
+          onAddCustomSection: vi.fn(() => ({
+            sectionId: 'transformation_highlights',
+            title: 'Transformation Highlights',
+            lines: [
+              'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
+              'Led transformation work across 3 sites while rolled out workflow automation across operations.',
+              'Drove transformation initiatives across 3 sites that improved throughput by 18% (18%).',
+            ],
+            presetId: 'transformation_highlights' as const,
+            resume: nextResume,
+          })),
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            candidateIntelligence: {
+              contact: {
+                name: 'Jane Doe',
+                email: 'jane@example.com',
+                phone: '555-0100',
+              },
+              career_themes: ['Transformation'],
+              leadership_scope: 'Regional operations',
+              quantified_outcomes: [
+                { outcome: 'improved throughput by 18%', metric_type: 'scope', value: '18%' },
+              ],
+              industry_depth: ['Manufacturing'],
+              technologies: ['SAP'],
+              operational_scale: '3 sites',
+              career_span_years: 18,
+              experience: [],
+              education: [],
+              certifications: [],
+              hidden_accomplishments: [],
+              ai_readiness: undefined,
+            },
+            requirementWorkItems: [
+              {
+                id: 'work-transform',
+                requirement: 'Lead automation and operating-model transformation',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [
+                  {
+                    text: 'Rolled out workflow automation across operations.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'adjacent',
+                  },
+                ],
+                best_evidence_excerpt: 'Rolled out workflow automation across operations.',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'tighten',
+              },
+            ],
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+
+    expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      section: string;
+      bulletText: string;
+      requirements: string[];
+    };
+    expect(lastCall.section).toBe('custom_section:transformation_highlights');
+    expect(lastCall.bulletText).toBe('Applied automation and data workflows to tighten operating rhythm across multiple sites.');
+    expect(lastCall.requirements).toContain('Lead automation and operating-model transformation');
   });
 
   it('opens the summary in coaching mode without offering remove', async () => {

@@ -127,8 +127,23 @@ interface V2StreamingDisplayProps {
   ) => Promise<import('@/hooks/useBulletEnhance').EnhanceResult | null>;
   onMoveSection?: (sectionId: string, direction: 'up' | 'down') => void;
   onToggleSection?: (sectionId: string, enabled: boolean) => void;
-  onAddAISection?: () => void;
-  onAddCustomSection?: (title: string, lines: string[], presetId?: ResumeCustomSectionPresetId) => void;
+  onAddAISection?: () => {
+    sectionId: string;
+    title: string;
+    lines: string[];
+    resume: ResumeDraft;
+  } | null;
+  onAddCustomSection?: (
+    title: string,
+    lines: string[],
+    presetId?: ResumeCustomSectionPresetId,
+  ) => {
+    sectionId: string;
+    title: string;
+    lines: string[];
+    presetId?: ResumeCustomSectionPresetId;
+    resume: ResumeDraft;
+  } | null;
   onRemoveCustomSection?: (sectionId: string) => void;
   /** Job application URL — when present and pipeline is complete, shows the Apply to This Job button */
   jobUrl?: string;
@@ -1025,6 +1040,52 @@ export function V2StreamingDisplay({
     );
   }, [handleBulletClick]);
 
+  const openNewCustomSectionInCoach = useCallback((result: {
+    sectionId: string;
+    title: string;
+    lines: string[];
+    resume: ResumeDraft;
+  }) => {
+    const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
+    const target = buildSectionCoachTargets(result.resume, workItems)
+      .find((candidate) => candidate.section === `custom_section:${result.sectionId}`);
+
+    if (target) {
+      openSectionCoachTarget(target);
+      return;
+    }
+
+    const firstLine = result.lines.find((line) => line.trim().length > 0);
+    const bulletText = firstLine ?? result.title;
+    handleBulletClick(
+      bulletText,
+      `custom_section:${result.sectionId}`,
+      firstLine ? result.lines.findIndex((line) => line === firstLine) : -1,
+      [],
+      'strengthen',
+      undefined,
+      bulletText,
+      undefined,
+      'adjacent',
+      'tighten',
+      true,
+    );
+  }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, handleBulletClick, openSectionCoachTarget]);
+
+  const handleAddAISectionAndOpen = useCallback(() => {
+    const result = onAddAISection?.();
+    if (result) {
+      openNewCustomSectionInCoach(result);
+    }
+  }, [onAddAISection, openNewCustomSectionInCoach]);
+
+  const handleAddCustomSectionAndOpen = useCallback((title: string, lines: string[], presetId?: ResumeCustomSectionPresetId) => {
+    const result = onAddCustomSection?.(title, lines, presetId);
+    if (result) {
+      openNewCustomSectionInCoach(result);
+    }
+  }, [onAddCustomSection, openNewCustomSectionInCoach]);
+
   const openClarificationCue = useCallback((cue: ClarificationCue) => {
     if (cue.targetIndex !== null && cue.targetIndex >= 0) {
       openAttentionItem(cue.targetIndex);
@@ -1315,8 +1376,8 @@ export function V2StreamingDisplay({
                   requirementWorkItems={data.requirementWorkItems}
                   onMoveSection={onMoveSection}
                   onToggleSection={onToggleSection}
-                  onAddAISection={onAddAISection}
-                  onAddCustomSection={onAddCustomSection}
+                  onAddAISection={handleAddAISectionAndOpen}
+                  onAddCustomSection={handleAddCustomSectionAndOpen}
                   onRemoveCustomSection={onRemoveCustomSection}
                 />
               )}
@@ -1516,8 +1577,8 @@ export function V2StreamingDisplay({
                               requirementWorkItems={data.requirementWorkItems}
                               onMoveSection={onMoveSection}
                               onToggleSection={onToggleSection}
-                              onAddAISection={onAddAISection}
-                              onAddCustomSection={onAddCustomSection}
+                              onAddAISection={handleAddAISectionAndOpen}
+                              onAddCustomSection={handleAddCustomSectionAndOpen}
                               onRemoveCustomSection={onRemoveCustomSection}
                             />
                           )}
