@@ -58,12 +58,26 @@ function makeCandidate(): CandidateIntelligenceOutput {
     },
     career_themes: ['Operations'],
     leadership_scope: 'Regional operations',
-    quantified_outcomes: [],
+    quantified_outcomes: [
+      {
+        outcome: 'improved throughput by 18%',
+        metric_type: 'scope',
+        value: '18%',
+      },
+    ],
     industry_depth: ['Manufacturing'],
     technologies: ['SAP'],
     operational_scale: '3 sites',
     career_span_years: 20,
-    experience: [],
+    experience: [
+      {
+        company: 'Acme',
+        title: 'COO',
+        start_date: '2020',
+        end_date: 'Present',
+        bullets: ['Led enterprise operating-model redesign across three sites.'],
+      },
+    ],
     education: [],
     certifications: [],
     hidden_accomplishments: [],
@@ -99,6 +113,13 @@ function makeGapAnalysis(): GapAnalysisOutput {
         classification: 'missing',
         evidence: [],
       },
+      {
+        requirement: 'Lead enterprise-wide transformation programs and critical initiatives',
+        source: 'job_description',
+        importance: 'important',
+        classification: 'partial',
+        evidence: ['Led enterprise operating-model redesign across three sites.'],
+      },
     ],
     coverage_score: 70,
     strength_summary: 'Strong operator with room to sharpen AI transformation story.',
@@ -114,6 +135,25 @@ function makeGapAnalysis(): GapAnalysisOutput {
         framing_guardrail: 'soft_inference',
         current_claim_strength: 'confirm_fit',
         next_best_action: 'confirm',
+      },
+      {
+        id: 'wi-projects',
+        requirement: 'Lead enterprise-wide transformation programs and critical initiatives',
+        source: 'job_description',
+        importance: 'important',
+        candidate_evidence: [
+          {
+            text: 'Led enterprise operating-model redesign across three sites.',
+            source_type: 'uploaded_resume',
+            evidence_strength: 'direct',
+          },
+        ],
+        best_evidence_excerpt: 'Led enterprise operating-model redesign across three sites.',
+        recommended_bullet: 'Led enterprise-wide transformation programs across three sites.',
+        proof_level: 'direct',
+        framing_guardrail: 'exact',
+        current_claim_strength: 'supported',
+        next_best_action: 'accept',
       },
     ],
     pending_strategies: [],
@@ -186,6 +226,19 @@ describe('applySectionPlanning', () => {
     expect(order.indexOf('transformation_highlights')).toBeLessThan(order.indexOf('professional_experience'));
     expect(transformationSection?.summary).toContain('Lead AI-enabled operations transformation');
   });
+
+  it('adds selected projects when the role emphasizes initiatives and launches', () => {
+    const result = applySectionPlanning(makeDraft(), makeCandidate(), makeGapAnalysis());
+    const projectSection = result.custom_sections?.find((section) => section.id === 'selected_projects');
+
+    expect(projectSection).toBeTruthy();
+    expect(projectSection?.summary).toContain('Lead enterprise-wide transformation programs and critical initiatives');
+    expect(projectSection?.lines ?? []).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Led enterprise-wide transformation programs across three sites'),
+      ]),
+    );
+  });
 });
 
 describe('buildWriterSectionStrategy', () => {
@@ -194,7 +247,7 @@ describe('buildWriterSectionStrategy', () => {
     const transformationSection = strategy.recommended_custom_sections.find((section) => section.id === 'transformation_highlights');
 
     expect(strategy.recommended_custom_sections.map((section) => section.id)).toEqual(
-      expect.arrayContaining(['ai_highlights', 'transformation_highlights']),
+      expect.arrayContaining(['ai_highlights', 'transformation_highlights', 'selected_projects']),
     );
     expect(transformationSection?.summary).toContain('Lead AI-enabled operations transformation');
     expect(transformationSection?.lines ?? []).toEqual(

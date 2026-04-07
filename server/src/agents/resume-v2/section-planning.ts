@@ -11,8 +11,10 @@ import type {
 const AI_SECTION_ID = 'ai_highlights';
 const AI_REQUIREMENT_RE = /\b(ai|artificial intelligence|genai|machine learning|llm|automation|intelligent systems)\b/i;
 const TRANSFORMATION_SECTION_ID = 'transformation_highlights';
+const PROJECTS_SECTION_ID = 'selected_projects';
 const BOARD_SECTION_ID = 'board_advisory';
 const TRANSFORMATION_REQUIREMENT_RE = /\b(transform|transformation|automation|digital|modern|operating model|ai|genai)\b/i;
+const PROJECTS_REQUIREMENT_RE = /\b(launch|program|initiative|turnaround|portfolio|project|transformation)\b/i;
 const BOARD_REQUIREMENT_RE = /\b(board|governance|advis|steering|operating review|executive stakeholder|scorecard)\b/i;
 
 export interface ResumeWriterSectionStrategy {
@@ -75,6 +77,13 @@ function firstQuantifiedOutcome(candidate: CandidateIntelligenceOutput): string 
   return topOutcome.value?.trim()
     ? `${topOutcome.outcome.trim()} (${topOutcome.value.trim()})`
     : topOutcome.outcome.trim();
+}
+
+function firstExperienceBullet(candidate: CandidateIntelligenceOutput): string | null {
+  return candidate.experience
+    ?.flatMap((experience) => experience.bullets ?? [])
+    .find((bullet) => bullet?.trim().length > 0)
+    ?.trim() ?? null;
 }
 
 function findMatchingWorkItems(
@@ -170,6 +179,41 @@ function buildTransformationSection(
   };
 }
 
+function buildProjectsSection(
+  candidate: CandidateIntelligenceOutput,
+  gapAnalysis: GapAnalysisOutput,
+): ResumeCustomSection | null {
+  const matchingItems = findMatchingWorkItems(gapAnalysis, PROJECTS_REQUIREMENT_RE);
+  const roleSignal = matchingItems.length > 0
+    || gapAnalysis.requirements.some((item) => PROJECTS_REQUIREMENT_RE.test(item.requirement));
+  const themePhrase = candidate.career_themes.slice(0, 2).join(' and ');
+  const quantifiedOutcome = firstQuantifiedOutcome(candidate);
+  const experienceBullet = firstExperienceBullet(candidate);
+
+  const lines = uniqueLines([
+    ...matchingEvidenceLines(matchingItems, 2),
+    themePhrase && quantifiedOutcome ? `Led ${themePhrase.toLowerCase()} initiatives that ${quantifiedOutcome}` : undefined,
+    experienceBullet,
+  ], 3);
+
+  if (!roleSignal || lines.length === 0) return null;
+
+  return {
+    id: PROJECTS_SECTION_ID,
+    title: 'Selected Projects',
+    kind: 'bullet_list',
+    lines,
+    summary: buildSectionPurposeSummary(
+      'Use project proof to show strength in',
+      matchingItems,
+      quantifiedOutcome ? `Surface strategic initiatives that ${quantifiedOutcome}.` : undefined,
+    ),
+    source: 'job_match',
+    recommended_for_job: true,
+    rationale: 'This role benefits from surfacing strategic initiatives, launches, or turnaround work outside pure chronology.',
+  };
+}
+
 function buildBoardSection(
   candidate: CandidateIntelligenceOutput,
   gapAnalysis: GapAnalysisOutput,
@@ -244,6 +288,7 @@ function buildRecommendedCustomSections(
   return [
     buildAISection(candidate, gapAnalysis),
     buildTransformationSection(candidate, gapAnalysis),
+    buildProjectsSection(candidate, gapAnalysis),
     buildBoardSection(candidate, gapAnalysis),
   ].filter((section): section is ResumeCustomSection => Boolean(section));
 }

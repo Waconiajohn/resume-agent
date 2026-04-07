@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
@@ -32,7 +32,7 @@ import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
-import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+import { buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 
@@ -183,8 +183,21 @@ interface SectionCoachTarget {
   reviewState: ResumeReviewState;
   requirementSource?: RequirementSource;
   evidenceFound: string;
+  sourceEvidence?: string;
   workItemId?: string;
+  proofLevel?: ProofLevel;
+  framingGuardrail?: FramingGuardrail;
+  nextBestAction?: NextBestAction;
   canRemove: boolean;
+}
+
+interface GuidedStartStep {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  onSelect: () => void;
 }
 
 interface ClarificationCue {
@@ -382,6 +395,29 @@ function formatRequirementFocus(requirements: string[]): string {
   return `${requirements[0]}, ${requirements[1]}, and ${requirements[2]}`;
 }
 
+function reviewStateNeedsAttention(value: ResumeReviewState | undefined): boolean {
+  return value === 'code_red' || value === 'confirm_fit' || value === 'strengthen';
+}
+
+function describeNextBestAction(action: NextBestAction | undefined, lineLabel: string): string {
+  switch (action) {
+    case 'answer':
+      return `Answer one concrete question before this ${lineLabel} is safe to keep.`;
+    case 'confirm':
+      return `Make sure this ${lineLabel} is the most honest fit before you keep it.`;
+    case 'quantify':
+      return `Add scope, business impact, or one defensible metric to this ${lineLabel}.`;
+    case 'tighten':
+      return `Sharpen this ${lineLabel} so the role fit is obvious right away.`;
+    case 'accept':
+      return `The structure is right — make the wording stronger only if it improves clarity.`;
+    case 'remove':
+      return `Remove this ${lineLabel} if it does not hold up truthfully.`;
+    default:
+      return `Polish this ${lineLabel} so it reads as intentional and role-relevant.`;
+  }
+}
+
 function buildSectionCoachTargets(
   resume: ResumeDraft,
   workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
@@ -478,29 +514,57 @@ function buildSectionCoachTargets(
     return [];
   };
 
+  const derivePrimaryGuidance = (
+    rankedItems: Array<{ item: NonNullable<V2PipelineData['requirementWorkItems']>[number]; score: number }>,
+    fallbackText: string,
+    lineLabel: string,
+  ) => {
+    const primaryRanked = rankedItems.find(({ item }) => reviewStateNeedsAttention(item.current_claim_strength)) ?? rankedItems[0];
+    const primaryItem = primaryRanked?.item;
+    return {
+      primaryItem,
+      reviewState: primaryItem?.current_claim_strength ?? 'strengthen' as ResumeReviewState,
+      requirementSource: primaryItem?.source,
+      evidenceFound: primaryItem?.best_evidence_excerpt
+        ?? primaryItem?.target_evidence
+        ?? primaryItem?.candidate_evidence[0]?.text
+        ?? fallbackText,
+      sourceEvidence: primaryItem?.source_evidence,
+      proofLevel: primaryItem?.proof_level,
+      framingGuardrail: primaryItem?.framing_guardrail,
+      nextBestAction: primaryItem?.next_best_action,
+      nextMoveText: describeNextBestAction(primaryItem?.next_best_action, lineLabel),
+    };
+  };
+
   const targets: SectionCoachTarget[] = [];
 
   const summaryText = resume.executive_summary.content.trim();
   if (summaryText) {
     const rankedItems = rankWorkItems('executive_summary', 'Executive Summary', summaryText);
+    const primaryGuidance = derivePrimaryGuidance(rankedItems, summaryText, 'summary');
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
     const sectionPlanItem = planById.get('executive_summary');
     targets.push({
       id: 'executive_summary',
       label: 'Executive Summary',
       helperText: relatedRequirements.length > 0
-        ? `${sectionPlanItem?.rationale ?? 'Lead with identity and fit.'} Bring forward ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role.`
-        : (sectionPlanItem?.rationale ?? 'Tighten the first impression and opening story.'),
+        ? `${sectionPlanItem?.rationale ?? 'Lead with identity and fit.'} Bring forward ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role. ${primaryGuidance.nextMoveText}`
+        : `${sectionPlanItem?.rationale ?? 'Tighten the first impression and opening story.'} ${primaryGuidance.nextMoveText}`,
       section: 'executive_summary',
       index: 0,
       bulletText: summaryText,
       requirements: relatedRequirements.length > 0
         ? relatedRequirements
         : (resume.executive_summary.addresses_requirements ?? []),
-      reviewState: 'strengthen',
-      requirementSource: rankedItems[0]?.item.source,
-      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? summaryText,
-      workItemId: rankedItems[0]?.item.id,
+      reviewState: primaryGuidance.reviewState,
+      requirementSource: primaryGuidance.requirementSource,
+      evidenceFound: primaryGuidance.evidenceFound,
+      sourceEvidence: primaryGuidance.sourceEvidence,
+      workItemId: primaryGuidance.primaryItem?.id,
+      proofLevel: primaryGuidance.proofLevel,
+      framingGuardrail: primaryGuidance.framingGuardrail,
+      nextBestAction: primaryGuidance.nextBestAction,
       canRemove: false,
     });
   }
@@ -508,22 +572,27 @@ function buildSectionCoachTargets(
   const firstCompetency = resume.core_competencies.find((item) => item.trim().length > 0);
   if (firstCompetency) {
     const rankedItems = rankWorkItems('core_competencies', 'Core Competencies', resume.core_competencies.join(' '));
+    const primaryGuidance = derivePrimaryGuidance(rankedItems, firstCompetency, 'competency');
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
     const sectionPlanItem = planById.get('core_competencies');
     targets.push({
       id: 'core_competencies',
       label: 'Core Competencies',
       helperText: relatedRequirements.length > 0
-        ? `${sectionPlanItem?.rationale ?? 'Keep ATS language visible early.'} Bring forward ${relatedRequirements.slice(0, 2).join(' and ')}.`
-        : (sectionPlanItem?.rationale ?? 'Refine the keywords recruiters see first.'),
+        ? `${sectionPlanItem?.rationale ?? 'Keep ATS language visible early.'} Bring forward ${relatedRequirements.slice(0, 2).join(' and ')}. ${primaryGuidance.nextMoveText}`
+        : `${sectionPlanItem?.rationale ?? 'Refine the keywords recruiters see first.'} ${primaryGuidance.nextMoveText}`,
       section: 'core_competencies',
       index: resume.core_competencies.findIndex((item) => item === firstCompetency),
       bulletText: firstCompetency,
       requirements: relatedRequirements,
-      reviewState: 'strengthen',
-      requirementSource: rankedItems[0]?.item.source,
-      evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? firstCompetency,
-      workItemId: rankedItems[0]?.item.id,
+      reviewState: primaryGuidance.reviewState,
+      requirementSource: primaryGuidance.requirementSource,
+      evidenceFound: primaryGuidance.evidenceFound,
+      sourceEvidence: primaryGuidance.sourceEvidence,
+      workItemId: primaryGuidance.primaryItem?.id,
+      proofLevel: primaryGuidance.proofLevel,
+      framingGuardrail: primaryGuidance.framingGuardrail,
+      nextBestAction: primaryGuidance.nextBestAction,
       canRemove: true,
     });
   }
@@ -537,6 +606,7 @@ function buildSectionCoachTargets(
     const bulletText = summary ?? firstLine;
     if (!bulletText) continue;
     const rankedItems = rankWorkItems(sectionId, section.title, `${summary ?? ''} ${section.lines.join(' ')}`);
+    const primaryGuidance = derivePrimaryGuidance(rankedItems, bulletText, 'section');
     const relatedRequirements = rankedItems.slice(0, 2).map(({ item }) => item.requirement);
     customTargets.push({
       target: {
@@ -544,19 +614,23 @@ function buildSectionCoachTargets(
         label: section.title,
         helperText: sectionId === 'ai_highlights'
           ? relatedRequirements.length > 0
-            ? `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story.'} Make it clearly support ${formatRequirementFocus(relatedRequirements)}.`
-            : (planById.get(sectionId)?.rationale ?? 'Sharpen the AI story for roles that value transformation and automation.')
+            ? `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story.'} Make it clearly support ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
+            : `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story for roles that value transformation and automation.'} ${primaryGuidance.nextMoveText}`
           : relatedRequirements.length > 0
-            ? `${planById.get(sectionId)?.rationale ?? 'Use this section to reinforce the role story.'} Make it reinforce ${formatRequirementFocus(relatedRequirements)}.`
-            : (planById.get(sectionId)?.rationale ?? 'Polish this section so it strengthens the overall story.'),
+            ? `${planById.get(sectionId)?.rationale ?? 'Use this section to reinforce the role story.'} Make it reinforce ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
+            : `${planById.get(sectionId)?.rationale ?? 'Polish this section so it strengthens the overall story.'} ${primaryGuidance.nextMoveText}`,
         section: `custom_section:${sectionId}`,
         index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
         bulletText,
         requirements: relatedRequirements,
-        reviewState: 'strengthen',
-        requirementSource: rankedItems[0]?.item.source,
-        evidenceFound: rankedItems[0]?.item.best_evidence_excerpt ?? bulletText,
-        workItemId: rankedItems[0]?.item.id,
+        reviewState: primaryGuidance.reviewState,
+        requirementSource: primaryGuidance.requirementSource,
+        evidenceFound: primaryGuidance.evidenceFound,
+        sourceEvidence: primaryGuidance.sourceEvidence,
+        workItemId: primaryGuidance.primaryItem?.id,
+        proofLevel: primaryGuidance.proofLevel,
+        framingGuardrail: primaryGuidance.framingGuardrail,
+        nextBestAction: primaryGuidance.nextBestAction,
         canRemove: !summary,
       },
       score: (rankedItems[0]?.score ?? 0) + (planById.get(sectionId)?.recommended_for_job ? 0.25 : 0),
@@ -796,6 +870,47 @@ function RememberedEvidenceCard({
   );
 }
 
+function GuidedStartCard({
+  steps,
+}: {
+  steps: GuidedStartStep[];
+}) {
+  if (steps.length === 0) return null;
+
+  return (
+    <div className="shell-panel px-4 py-4">
+      <p className="eyebrow-label">Start Here</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take the next few moves in the right order</h3>
+      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+        You do not need to guess what to do first. These steps are ordered to improve the resume fastest.
+      </p>
+      <div className="mt-4 space-y-2">
+        {steps.map((step, index) => (
+          <button
+            key={step.id}
+            type="button"
+            onClick={step.onSelect}
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              Step {index + 1} · {step.label}
+            </p>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+              {step.title}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+              {step.description}
+            </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
+              {step.actionLabel}
+            </p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AttentionReviewStrip({
   items,
   currentIndex,
@@ -917,6 +1032,7 @@ export function V2StreamingDisplay({
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coachingPanelRef = useRef<HTMLDivElement | null>(null);
+  const structurePlannerRef = useRef<HTMLDivElement | null>(null);
 
   // Active bullet for inline editing
   const [activeBullet, setActiveBullet] = useState<{
@@ -927,8 +1043,10 @@ export function V2StreamingDisplay({
     reviewState: ResumeReviewState;
     requirementSource?: RequirementSource;
     evidenceFound: string;
+    sourceEvidence?: string;
     workItemId?: string;
     proofLevel?: ProofLevel;
+    framingGuardrail?: FramingGuardrail;
     nextBestAction?: NextBestAction;
     canRemove?: boolean;
     autoReuseClarificationId?: string;
@@ -969,6 +1087,27 @@ export function V2StreamingDisplay({
         )
       : []
   ), [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, displayResume]);
+  const fullSectionPlan = useMemo(() => (
+    displayResume ? buildResumeSectionPlan(displayResume) : []
+  ), [displayResume]);
+  const hiddenRecommendedSections = useMemo(() => (
+    fullSectionPlan.filter((item) => item.recommended_for_job && item.enabled === false)
+  ), [fullSectionPlan]);
+  const missingStructureRecommendations = useMemo(() => (
+    displayResume
+      ? buildCustomSectionPresetRecommendations(
+          data.candidateIntelligence,
+          data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [],
+          fullSectionPlan.map((item) => item.id),
+        )
+      : []
+  ), [
+    data.candidateIntelligence,
+    data.gapAnalysis?.requirement_work_items,
+    data.requirementWorkItems,
+    displayResume,
+    fullSectionPlan,
+  ]);
   const [attentionIndex, setAttentionIndex] = useState(0);
 
   // Bullet click handler for cross-referencing
@@ -1015,8 +1154,10 @@ export function V2StreamingDisplay({
       reviewState: item.reviewState,
       requirementSource: item.requirementSource,
       evidenceFound: item.evidenceFound,
+      sourceEvidence: undefined,
       workItemId: item.workItemId,
       proofLevel: item.proofLevel,
+      framingGuardrail: undefined,
       nextBestAction: item.nextBestAction,
       canRemove: true,
       autoReuseClarificationId: options?.autoReuseClarificationId,
@@ -1027,20 +1168,22 @@ export function V2StreamingDisplay({
   }, [attentionItems]);
 
   const openSectionCoachTarget = useCallback((target: SectionCoachTarget) => {
-    handleBulletClick(
-      target.bulletText,
-      target.section,
-      target.index,
-      target.requirements,
-      target.reviewState,
-      target.requirementSource,
-      target.evidenceFound,
-      target.workItemId,
-      'adjacent',
-      'tighten',
-      target.canRemove,
-    );
-  }, [handleBulletClick]);
+    setActiveBullet({
+      section: target.section,
+      index: target.index,
+      requirements: target.requirements,
+      bulletText: target.bulletText,
+      reviewState: target.reviewState,
+      requirementSource: target.requirementSource,
+      evidenceFound: target.evidenceFound,
+      sourceEvidence: target.sourceEvidence,
+      workItemId: target.workItemId,
+      proofLevel: target.proofLevel,
+      framingGuardrail: target.framingGuardrail,
+      nextBestAction: target.nextBestAction,
+      canRemove: target.canRemove,
+    });
+  }, []);
 
   const openNewCustomSectionInCoach = useCallback((result: {
     sectionId: string;
@@ -1062,23 +1205,25 @@ export function V2StreamingDisplay({
 
     const firstLine = result.lines.find((line) => line.trim().length > 0);
     const bulletText = firstLine ?? result.title;
-    handleBulletClick(
+    setActiveBullet({
+      section: `custom_section:${result.sectionId}`,
+      index: firstLine ? result.lines.findIndex((line) => line === firstLine) : -1,
+      requirements: [],
       bulletText,
-      `custom_section:${result.sectionId}`,
-      firstLine ? result.lines.findIndex((line) => line === firstLine) : -1,
-      [],
-      'strengthen',
-      undefined,
-      bulletText,
-      undefined,
-      'adjacent',
-      'tighten',
-      true,
-    );
+      reviewState: 'strengthen',
+      requirementSource: undefined,
+      evidenceFound: bulletText,
+      sourceEvidence: undefined,
+      workItemId: undefined,
+      proofLevel: undefined,
+      framingGuardrail: undefined,
+      nextBestAction: 'tighten',
+      canRemove: true,
+    });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(`[data-section="${result.sectionId}"]`);
     });
-  }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, handleBulletClick, openSectionCoachTarget]);
+  }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, openSectionCoachTarget]);
 
   const handleAddAISectionAndOpen = useCallback(() => {
     const result = onAddAISection?.();
@@ -1103,6 +1248,10 @@ export function V2StreamingDisplay({
       openAttentionItem(0);
     }
   }, [attentionItems.length, openAttentionItem]);
+
+  const focusStructurePlanner = useCallback(() => {
+    structurePlannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
@@ -1189,21 +1338,28 @@ export function V2StreamingDisplay({
   };
   const readyGateActionSummary = useMemo(() => {
     const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
-    if (workItems.length === 0) return [];
+    const lines: string[] = [];
+
+    if (hiddenRecommendedSections.length > 0) {
+      lines.push(`Before line editing, re-enable ${hiddenRecommendedSections.slice(0, 2).map((item) => item.title).join(' and ')} so the strongest proof shows up earlier in the resume.`);
+    } else if (missingStructureRecommendations.length > 0) {
+      lines.push(`Before line editing, review whether ${missingStructureRecommendations.slice(0, 2).map((item) => item.title).join(' and ')} should be added so the story is structured for this role from the start.`);
+    }
+
+    if (workItems.length === 0) return lines.slice(0, 3);
 
     const unresolved = workItems.filter((item) => (
       item.current_claim_strength !== 'supported' && item.current_claim_strength !== 'supported_rewrite'
     ));
     if (unresolved.length === 0) {
-      return ['Most requirements are already grounded. Use the editor to make a final polish pass and confirm the strongest wording.'];
+      lines.push('Most requirements are already grounded. Use the editor to make a final polish pass and confirm the strongest wording.');
+      return lines.slice(0, 3);
     }
 
     const answerCount = unresolved.filter((item) => item.next_best_action === 'answer').length;
     const confirmCount = unresolved.filter((item) => item.next_best_action === 'confirm').length;
     const quantifyCount = unresolved.filter((item) => item.next_best_action === 'quantify').length;
     const tightenCount = unresolved.filter((item) => item.next_best_action === 'tighten').length;
-
-    const lines: string[] = [];
     if (answerCount > 0) {
       lines.push(`${answerCount} requirement${answerCount === 1 ? '' : 's'} still need one concrete example or missing detail before the claim is safe to keep.`);
     }
@@ -1215,7 +1371,12 @@ export function V2StreamingDisplay({
       lines.push(`${total} line${total === 1 ? '' : 's'} can get stronger with sharper wording, clearer scope, or one defensible metric.`);
     }
     return lines.slice(0, 3);
-  }, [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
+  }, [
+    data.gapAnalysis?.requirement_work_items,
+    data.requirementWorkItems,
+    hiddenRecommendedSections,
+    missingStructureRecommendations,
+  ]);
   const rewriteQueue = useMemo(() => {
     if (!data.jobIntelligence || !data.gapAnalysis) return null;
     return buildRewriteQueue({
@@ -1306,6 +1467,95 @@ export function V2StreamingDisplay({
       : `review the bullet marked '${topItem.statusLabel.toLowerCase()}'`;
     return `Start in ${topItem.locationLabel} and ${nextAction}.`;
   }, [attentionItems, rememberedAttentionItemIds]);
+  const guidedStartSteps = useMemo<GuidedStartStep[]>(() => {
+    const steps: GuidedStartStep[] = [];
+
+    if (hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0) {
+      const hiddenTitles = hiddenRecommendedSections.slice(0, 2).map((item) => item.title);
+      const missingTitles = missingStructureRecommendations.slice(0, 2).map((item) => item.title);
+      const titles = hiddenTitles.length > 0 ? hiddenTitles : missingTitles;
+      steps.push({
+        id: 'structure',
+        label: 'Structure',
+        title: hiddenRecommendedSections.length > 0 ? 'Review the structure first' : 'Check the recommended sections first',
+        description: hiddenRecommendedSections.length > 0
+          ? `Turn ${titles.join(' and ')} back on before polishing lines so the strongest proof shows up earlier.`
+          : `Consider adding ${titles.join(' and ')} before line editing so the first draft is shaped for this role from the start.`,
+        actionLabel: 'Jump to structure planner',
+        onSelect: focusStructurePlanner,
+      });
+    }
+
+    const rememberedCue = rememberedEvidenceCues[0];
+    if (rememberedCue) {
+      steps.push({
+        id: 'remembered-proof',
+        label: 'Reuse proof',
+        title: `Reuse your earlier answer about ${rememberedCue.topic}`,
+        description: `This confirmed detail can already strengthen ${rememberedCue.affectedCount} ${rememberedCue.affectedCount === 1 ? 'line' : 'lines'} without asking you anything new.`,
+        actionLabel: 'Open matching line',
+        onSelect: () => {
+          if (rememberedCue.targetIndex !== null) {
+            openAttentionItem(rememberedCue.targetIndex, { autoReuseClarificationId: rememberedCue.id });
+          }
+        },
+      });
+    }
+
+    const clarificationCue = clarificationCues[0];
+    if (clarificationCue) {
+      steps.push({
+        id: 'clarification',
+        label: 'Missing proof',
+        title: 'Answer one question with real business detail',
+        description: `${clarificationCue.question} ${clarificationCue.affectedCount > 0 ? `This could strengthen ${clarificationCue.affectedCount} ${clarificationCue.affectedCount === 1 ? 'line' : 'lines'}.` : ''}`.trim(),
+        actionLabel: 'Go to the right line',
+        onSelect: () => openClarificationCue(clarificationCue),
+      });
+    }
+
+    const sectionTarget = sectionCoachTargets[0];
+    if (sectionTarget) {
+      steps.push({
+        id: `section-${sectionTarget.id}`,
+        label: 'Section polish',
+        title: `Polish ${sectionTarget.label}`,
+        description: sectionTarget.helperText,
+        actionLabel: 'Open section coach',
+        onSelect: () => openSectionCoachTarget(sectionTarget),
+      });
+    }
+
+    const attentionItem = attentionItems[0];
+    if (attentionItem && steps.length < 4) {
+      steps.push({
+        id: `line-${attentionItem.id}`,
+        label: 'Priority line',
+        title: `Fix ${attentionItem.locationLabel} next`,
+        description: `${attentionItem.statusLabel}: ${attentionItem.text}`,
+        actionLabel: 'Jump to line',
+        onSelect: () => openAttentionItem(0),
+      });
+    }
+
+    const seen = new Set<string>();
+    return steps.filter((step) => {
+      if (seen.has(step.id)) return false;
+      seen.add(step.id);
+      return true;
+    }).slice(0, 3);
+  }, [
+    attentionItems,
+    clarificationCues,
+    focusStructurePlanner,
+    hiddenRecommendedSections,
+    missingStructureRecommendations,
+    openAttentionItem,
+    openClarificationCue,
+    openSectionCoachTarget,
+    rememberedEvidenceCues,
+    sectionCoachTargets,
+  ]);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1377,17 +1627,22 @@ export function V2StreamingDisplay({
               {attentionItems.length > 0 && (
                 <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
               )}
+              {!activeBullet && (
+                <GuidedStartCard steps={guidedStartSteps} />
+              )}
               {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet && (
-                <ResumeStructurePlannerCard
-                  resume={displayResume}
-                  candidateIntelligence={data.candidateIntelligence}
-                  requirementWorkItems={data.requirementWorkItems}
-                  onMoveSection={onMoveSection}
-                  onToggleSection={onToggleSection}
-                  onAddAISection={handleAddAISectionAndOpen}
-                  onAddCustomSection={handleAddCustomSectionAndOpen}
-                  onRemoveCustomSection={onRemoveCustomSection}
-                />
+                <div ref={structurePlannerRef}>
+                  <ResumeStructurePlannerCard
+                    resume={displayResume}
+                    candidateIntelligence={data.candidateIntelligence}
+                    requirementWorkItems={data.requirementWorkItems}
+                    onMoveSection={onMoveSection}
+                    onToggleSection={onToggleSection}
+                    onAddAISection={handleAddAISectionAndOpen}
+                    onAddCustomSection={handleAddCustomSectionAndOpen}
+                    onRemoveCustomSection={onRemoveCustomSection}
+                  />
+                </div>
               )}
               {!activeBullet && (
                 <SectionCoachCard
@@ -1417,7 +1672,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1564,7 +1819,9 @@ export function V2StreamingDisplay({
                             reviewState={activeBullet.reviewState}
                             requirementSource={activeBullet.requirementSource}
                             evidenceFound={activeBullet.evidenceFound}
+                            sourceEvidence={activeBullet.sourceEvidence}
                             proofLevel={activeBullet.proofLevel}
+                            framingGuardrail={activeBullet.framingGuardrail}
                             nextBestAction={activeBullet.nextBestAction}
                             canRemove={activeBullet.canRemove ?? true}
                             initialReuseClarificationId={activeBullet.autoReuseClarificationId}
@@ -1578,17 +1835,20 @@ export function V2StreamingDisplay({
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          <GuidedStartCard steps={guidedStartSteps} />
                           {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && (
-                            <ResumeStructurePlannerCard
-                              resume={displayResume}
-                              candidateIntelligence={data.candidateIntelligence}
-                              requirementWorkItems={data.requirementWorkItems}
-                              onMoveSection={onMoveSection}
-                              onToggleSection={onToggleSection}
-                              onAddAISection={handleAddAISectionAndOpen}
-                              onAddCustomSection={handleAddCustomSectionAndOpen}
-                              onRemoveCustomSection={onRemoveCustomSection}
-                            />
+                            <div ref={structurePlannerRef}>
+                              <ResumeStructurePlannerCard
+                                resume={displayResume}
+                                candidateIntelligence={data.candidateIntelligence}
+                                requirementWorkItems={data.requirementWorkItems}
+                                onMoveSection={onMoveSection}
+                                onToggleSection={onToggleSection}
+                                onAddAISection={handleAddAISectionAndOpen}
+                                onAddCustomSection={handleAddCustomSectionAndOpen}
+                                onRemoveCustomSection={onRemoveCustomSection}
+                              />
+                            </div>
                           )}
                           <SectionCoachCard
                             targets={sectionCoachTargets}

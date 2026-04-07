@@ -1160,8 +1160,11 @@ describe('V2StreamingDisplay — layout modes', () => {
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       section: string;
       requirements: string[];
+      reviewState?: string;
       requirementSource?: string;
       evidenceFound: string;
+      proofLevel?: string;
+      nextBestAction?: string;
       chatContext: {
         relatedRequirements?: string[];
       };
@@ -1171,9 +1174,77 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.requirements).toEqual(['Product delivery', 'Executive leadership']);
     expect(lastCall.requirementSource).toBe('job_description');
     expect(lastCall.evidenceFound).toBe('Led product and engineering delivery across multiple launches.');
+    expect(lastCall.reviewState).toBe('strengthen');
+    expect(lastCall.proofLevel).toBe('adjacent');
+    expect(lastCall.nextBestAction).toBe('tighten');
     expect(lastCall.chatContext.relatedRequirements).toEqual(
       expect.arrayContaining(['Product delivery', 'Executive leadership']),
     );
+  });
+
+  it('surfaces a start-here structure step when a recommended section is still missing', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          data: makePipelineDataWithResume({
+            candidateIntelligence: {
+              contact: {
+                name: 'Jane Doe',
+                email: 'jane@example.com',
+                phone: '555-0100',
+              },
+              career_themes: ['Transformation', 'Operations'],
+              leadership_scope: 'Regional operations',
+              quantified_outcomes: [
+                { outcome: 'improved throughput by 18%', metric_type: 'scope', value: '18%' },
+              ],
+              industry_depth: ['Manufacturing'],
+              technologies: ['SAP'],
+              operational_scale: '3 sites',
+              career_span_years: 18,
+              experience: [
+                {
+                  company: 'Acme',
+                  title: 'COO',
+                  start_date: '2020',
+                  end_date: 'Present',
+                  bullets: ['Led enterprise operating-model redesign across three sites.'],
+                },
+              ],
+              education: [],
+              certifications: [],
+              hidden_accomplishments: [],
+              ai_readiness: undefined,
+            },
+            requirementWorkItems: [
+              {
+                id: 'work-item-projects',
+                requirement: 'Lead enterprise transformation programs and major initiatives',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [
+                  {
+                    text: 'Led enterprise operating-model redesign across three sites.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'direct',
+                  },
+                ],
+                best_evidence_excerpt: 'Led enterprise operating-model redesign across three sites.',
+                proof_level: 'direct',
+                framing_guardrail: 'exact',
+                current_claim_strength: 'supported',
+                next_best_action: 'accept',
+              },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Check the recommended sections first/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Selected Projects/i).length).toBeGreaterThan(0);
   });
 
   it('shows clarification prompts for high-value proof upgrades and jumps to the related line', async () => {
