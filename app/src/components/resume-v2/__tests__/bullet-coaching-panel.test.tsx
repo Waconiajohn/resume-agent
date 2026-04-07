@@ -205,6 +205,10 @@ describe('BulletCoachingPanel', () => {
       'selected_accomplishments',
       0,
       'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
+      expect.objectContaining({
+        requirement: 'Develop and track performance metrics',
+        reviewState: 'strengthen',
+      }),
     );
 
     fireEvent.click(screen.getByText('Apply all nearby lines'));
@@ -212,6 +216,10 @@ describe('BulletCoachingPanel', () => {
       'executive_summary',
       0,
       'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
+      expect.objectContaining({
+        requirement: 'Develop and track performance metrics',
+        reviewState: 'strengthen',
+      }),
     );
   });
 

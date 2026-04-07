@@ -447,6 +447,7 @@ export const draftStateSchema = z.object({
     editable_resume: z.unknown().nullable(),
     master_save_mode: z.enum(['session_only', 'master_resume']),
     clarification_memory: z.array(clarificationMemoryEntrySchema).max(20).nullable().optional(),
+    requirement_work_items: z.array(z.unknown()).max(500).nullable().optional(),
     gap_chat_state: z.object({
       items: z.record(z.string(), z.object({
         messages: z.array(z.object({

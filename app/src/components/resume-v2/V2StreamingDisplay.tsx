@@ -33,6 +33,7 @@ import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -47,7 +48,7 @@ interface V2StreamingDisplayProps {
   editError: string | null;
   undoCount: number;
   redoCount: number;
-  onBulletEdit?: (section: string, index: number, newText: string) => void;
+  onBulletEdit?: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
   onBulletRemove?: (section: string, index: number) => void;
   onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: import('@/hooks/useInlineEdit').EditContext) => void;
   onAcceptEdit: (editedText: string) => void;
@@ -1333,7 +1334,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} proofLevel={activeBullet.proofLevel} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1486,7 +1487,7 @@ export function V2StreamingDisplay({
                             initialReuseClarificationId={activeBullet.autoReuseClarificationId}
                             gapChat={gapChat}
                             chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
-                            onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
+                            onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
                             onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
                             onClose={() => setActiveBullet(null)}
                             onBulletEnhance={onBulletEnhance}

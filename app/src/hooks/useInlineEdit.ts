@@ -11,11 +11,13 @@
 import { useState, useCallback, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
 import type { ResumeDraft } from '@/types/resume-v2';
+import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
+import { applyOptimisticResumeEdit } from '@/lib/resume-edit-progress';
 
 export type EditAction = 'strengthen' | 'add_metrics' | 'shorten' | 'add_keywords' | 'rewrite' | 'custom' | 'not_my_voice';
 
 /** Context about the job requirement this edit addresses */
-export interface EditContext {
+export interface EditContext extends OptimisticResumeEditMetadata {
   requirement?: string;
   evidence?: string[];
   strategy?: string;
@@ -275,129 +277,10 @@ function extractSectionContext(r: ResumeDraft, section: string): string | null {
 
 /** Apply a targeted text replacement and preserve provenance metadata */
 function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, newText: string): ResumeDraft {
-  const requirement = pendingEdit.editContext?.requirement;
-  const requirementTag = requirement?.trim();
-  const sectionLower = pendingEdit.section.toLowerCase();
-  const oldText = pendingEdit.originalText;
-
-  const addRequirement = (requirements: string[]): string[] => {
-    if (!requirementTag) return requirements;
-    return requirements.includes(requirementTag) ? requirements : [...requirements, requirementTag];
-  };
-
-  const markEditedText = (value: string) => value === oldText ? newText : value;
-
-  if (sectionLower.includes('executive summary') || sectionLower.includes('summary')) {
-    if (resume.executive_summary.content === oldText) {
-      return {
-        ...resume,
-        executive_summary: {
-          ...resume.executive_summary,
-          content: newText,
-          is_new: true,
-          addresses_requirements: addRequirement(resume.executive_summary.addresses_requirements ?? []),
-        },
-      };
-    }
-  }
-
-  if (sectionLower.includes('selected accomplishments') || sectionLower.includes('accomplishments')) {
-    return {
-      ...resume,
-      selected_accomplishments: resume.selected_accomplishments.map((accomplishment) => (
-        accomplishment.content === oldText
-          ? {
-              ...accomplishment,
-              content: newText,
-              is_new: true,
-              addresses_requirements: addRequirement(accomplishment.addresses_requirements),
-            }
-          : accomplishment
-      )),
-    };
-  }
-
-  if (sectionLower.includes('professional experience')) {
-    return {
-      ...resume,
-      professional_experience: resume.professional_experience.map((experience) => {
-        const matchesSection = sectionLower.includes(experience.company.toLowerCase()) || sectionLower === 'professional_experience';
-        if (!matchesSection) return experience;
-
-        if (experience.scope_statement === oldText) {
-          return {
-            ...experience,
-            scope_statement: newText,
-            scope_statement_is_new: true,
-            scope_statement_addresses_requirements: addRequirement(experience.scope_statement_addresses_requirements ?? []),
-          };
-        }
-
-        return {
-          ...experience,
-          bullets: experience.bullets.map((bullet) => (
-            bullet.text === oldText
-              ? {
-                  ...bullet,
-                  text: newText,
-                  is_new: true,
-                  addresses_requirements: addRequirement(bullet.addresses_requirements),
-                }
-              : bullet
-          )),
-        };
-      }),
-    };
-  }
-
-  return {
-    ...resume,
-    header: {
-      ...resume.header,
-      branded_title: markEditedText(resume.header.branded_title),
-    },
-    executive_summary: {
-      ...resume.executive_summary,
-      content: markEditedText(resume.executive_summary.content),
-      is_new: resume.executive_summary.content === oldText ? true : resume.executive_summary.is_new,
-      addresses_requirements: resume.executive_summary.content === oldText
-        ? addRequirement(resume.executive_summary.addresses_requirements ?? [])
-        : resume.executive_summary.addresses_requirements,
-    },
-    core_competencies: resume.core_competencies.map(markEditedText),
-    selected_accomplishments: resume.selected_accomplishments.map((accomplishment) => (
-      accomplishment.content === oldText
-        ? {
-            ...accomplishment,
-            content: newText,
-            is_new: true,
-            addresses_requirements: addRequirement(accomplishment.addresses_requirements),
-          }
-        : accomplishment
-    )),
-    professional_experience: resume.professional_experience.map((experience) => ({
-      ...experience,
-      scope_statement: experience.scope_statement === oldText ? newText : experience.scope_statement,
-      scope_statement_is_new: experience.scope_statement === oldText ? true : experience.scope_statement_is_new,
-      scope_statement_addresses_requirements: experience.scope_statement === oldText
-        ? addRequirement(experience.scope_statement_addresses_requirements ?? [])
-        : experience.scope_statement_addresses_requirements,
-      bullets: experience.bullets.map((bullet) => (
-        bullet.text === oldText
-          ? {
-              ...bullet,
-              text: newText,
-              is_new: true,
-              addresses_requirements: addRequirement(bullet.addresses_requirements),
-            }
-          : bullet
-      )),
-    })),
-    education: resume.education.map((education) => ({
-      ...education,
-      degree: markEditedText(education.degree),
-      institution: markEditedText(education.institution),
-    })),
-    certifications: resume.certifications.map(markEditedText),
-  };
+  return applyOptimisticResumeEdit(resume, {
+    section: pendingEdit.section,
+    originalText: pendingEdit.originalText,
+    newText,
+    metadata: pendingEdit.editContext,
+  });
 }

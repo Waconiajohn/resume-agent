@@ -863,6 +863,7 @@ export interface V2PersistedDraftState {
   editable_resume: ResumeDraft | null;
   master_save_mode: 'session_only' | 'master_resume';
   clarification_memory?: ClarificationMemoryEntry[] | null;
+  requirement_work_items?: RequirementWorkItem[] | null;
   gap_chat_state?: CoachingThreadSnapshot | null;
   final_review_state?: FinalReviewPersistedState | null;
   final_review_chat_state?: CoachingThreadSnapshot | null;

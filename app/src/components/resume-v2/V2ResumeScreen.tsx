@@ -22,6 +22,7 @@ import { scrollToAndFocusTarget } from './useStrategyThread';
 import type {
   ClarificationMemoryEntry,
   FinalReviewChatContext,
+  RequirementWorkItem,
   ResumeDraft,
   GapCoachingResponse,
   GapChatContext,
@@ -56,6 +57,11 @@ import {
   removeLocalStorageKey,
   writeJsonToLocalStorage,
 } from '@/lib/auth-scoped-storage';
+import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
+import {
+  applyOptimisticRequirementWorkItemProgress,
+  applyOptimisticResumeEdit,
+} from '@/lib/resume-edit-progress';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -319,11 +325,16 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   // Track the editable resume separately — starts as the pipeline output,
   // then gets mutated by inline edits
   const [editableResume, setEditableResume] = useState<ResumeDraft | null>(null);
+  const [optimisticRequirementWorkItems, setOptimisticRequirementWorkItems] = useState<RequirementWorkItem[] | null>(null);
 
   // The resume to use: user-edited version takes precedence over pipeline output
   const currentResume = useMemo(
     () => normalizeResumeDraft(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null),
     [editableResume, data.assembly?.final_resume, data.resumeDraft],
+  );
+  const effectiveRequirementWorkItems = useMemo(
+    () => optimisticRequirementWorkItems ?? data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? null,
+    [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, optimisticRequirementWorkItems],
   );
 
   // Store inputs for inline edit context and re-runs
@@ -499,6 +510,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       topicFamilies: clarificationTopicFamilies,
     }),
   );
+  const promoteRequirementWorkItems = useCallback((newText: string, metadata?: OptimisticResumeEditMetadata) => {
+    setOptimisticRequirementWorkItems((previous) => applyOptimisticRequirementWorkItemProgress(
+      previous ?? effectiveRequirementWorkItems,
+      newText,
+      metadata,
+    ));
+  }, [effectiveRequirementWorkItems]);
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((target: string | GapChatTargetInput): GapChatContext => {
@@ -506,7 +524,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const ci = data.candidateIntelligence;
     const ga = data.gapAnalysis;
     const gc = data.gapCoachingCards;
-    const workItems = data.requirementWorkItems ?? ga?.requirement_work_items ?? [];
+    const workItems = effectiveRequirementWorkItems ?? [];
     const currentTarget = typeof target === 'string'
       ? { requirement: target }
       : target;
@@ -706,7 +724,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       priorClarifications: matchedPriorClarifications,
       relatedLineCandidates,
     };
-  }, [currentClarificationMemory, currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
+  }, [currentClarificationMemory, currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, effectiveRequirementWorkItems]);
 
   // AI assist for gap positioning cards — calls gap-chat with a single-shot prompt
   const handleGapAssist = useCallback(
@@ -767,7 +785,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
     if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;
-    const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
+    const workItems = effectiveRequirementWorkItems ?? [];
     const normalizedRelatedRequirement = concern.related_requirement
       ? normalizeRequirement(concern.related_requirement)
       : null;
@@ -805,7 +823,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       clarityAndCredibility: hiringManagerResult.fit_assessment.clarity_and_credibility,
       resumeExcerpt: extractResumeExcerptForSection(currentResume, concern.target_section),
     };
-  }, [currentResume, data.gapAnalysis?.requirement_work_items, data.jobIntelligence, data.requirementWorkItems, hiringManagerResult]);
+  }, [currentResume, data.jobIntelligence, effectiveRequirementWorkItems, hiringManagerResult]);
 
   // Seed initial scores from pipeline assembly
   useEffect(() => {
@@ -825,6 +843,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     setPreviousResume(null);
     setClarificationMemory([]);
+    setOptimisticRequirementWorkItems(null);
     lastMasterSnapshotRef.current = '';
     lastPersistedDraftRef.current = 'null';
     setMasterSaveMode('session_only');
@@ -912,6 +931,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         setJobDescription(result.job_description);
         setEditableResume(normalizeResumeDraft(resolvedDraftState?.editable_resume ?? null));
         setClarificationMemory(resolvedDraftState?.clarification_memory ?? []);
+        setOptimisticRequirementWorkItems(resolvedDraftState?.requirement_work_items ?? null);
         setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
         hydrateGapChatSnapshot(resolvedDraftState?.gap_chat_state ?? null);
         hydrateHiringManagerReview(resolvedDraftState?.final_review_state?.result ?? null);
@@ -956,6 +976,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const candidateInputUsed = pendingEdit?.editContext?.candidateInputUsed ?? false;
 
     rawAcceptEdit(editedText);
+    promoteRequirementWorkItems(editedText, pendingEdit?.editContext);
     if (acceptedRequirement) {
       acceptGapLanguage(acceptedRequirement, editedText);
     }
@@ -980,101 +1001,30 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, [
     pendingEdit,
     rawAcceptEdit,
+    promoteRequirementWorkItems,
     acceptGapLanguage,
     acceptFinalReviewLanguage,
     addToast,
     hiringManagerResult,
   ]);
 
-  const handleDirectBulletEdit = useCallback((section: string, index: number, newText: string) => {
+  const handleDirectBulletEdit = useCallback((
+    section: string,
+    index: number,
+    newText: string,
+    metadata?: OptimisticResumeEditMetadata,
+  ) => {
     setEditableResume((prev) => {
       const base = normalizeResumeDraft(prev ?? currentResume);
       if (!base) return prev;
-
-      if (section === 'executive_summary') {
-        return {
-          ...base,
-          executive_summary: {
-            ...base.executive_summary,
-            content: newText,
-          },
-        };
-      }
-
-      if (section === 'core_competencies') {
-        if (!base.core_competencies[index]) return base;
-        return {
-          ...base,
-          core_competencies: base.core_competencies.map((item, itemIndex) => (
-            itemIndex === index ? newText : item
-          )),
-        };
-      }
-
-      if (section === 'selected_accomplishments') {
-        if (!base.selected_accomplishments[index]) return base;
-        return {
-          ...base,
-          selected_accomplishments: base.selected_accomplishments.map((item, itemIndex) => (
-            itemIndex === index
-              ? { ...item, content: newText }
-              : item
-          )),
-        };
-      }
-
-      if (section === 'professional_experience') {
-        const experienceIndex = Math.floor(index / 100);
-        const bulletIndex = index % 100;
-        const experience = base.professional_experience[experienceIndex];
-        if (!experience?.bullets?.[bulletIndex]) return base;
-
-        return {
-          ...base,
-          professional_experience: base.professional_experience.map((entry, entryIndex) => (
-            entryIndex === experienceIndex
-              ? {
-                  ...entry,
-                  bullets: entry.bullets.map((bullet, currentBulletIndex) => (
-                    currentBulletIndex === bulletIndex
-                      ? { ...bullet, text: newText }
-                      : bullet
-                  )),
-                }
-              : entry
-          )),
-        };
-      }
-
-      const customSectionId = parseCustomSectionKey(section);
-      if (customSectionId) {
-        const customSections = Array.isArray(base.custom_sections) ? base.custom_sections : [];
-        const customSection = customSections.find((item) => item.id === customSectionId);
-        if (!customSection) return base;
-
-        return {
-          ...base,
-          custom_sections: customSections.map((item) => {
-            if (item.id !== customSectionId) return item;
-            if (index < 0) {
-              return {
-                ...item,
-                summary: newText,
-              };
-            }
-            if (!item.lines[index]) return item;
-            return {
-              ...item,
-              lines: item.lines.map((line, lineIndex) => (
-                lineIndex === index ? newText : line
-              )),
-            };
-          }),
-        };
-      }
-
-      return base;
+      return applyOptimisticResumeEdit(base, {
+        section,
+        index,
+        newText,
+        metadata,
+      });
     });
+    promoteRequirementWorkItems(newText, metadata);
     if (hiringManagerResult) {
       setIsFinalReviewStale(true);
       setFinalReviewWarningsAcknowledged(false);
@@ -1082,7 +1032,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     if (postReviewPolish.status !== 'idle') {
       resetPostReviewPolish();
     }
-  }, [currentResume, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+  }, [currentResume, hiringManagerResult, postReviewPolish.status, promoteRequirementWorkItems, resetPostReviewPolish]);
 
   const handleDirectBulletRemove = useCallback((section: string, index: number) => {
     setEditableResume((prev) => {
@@ -1192,10 +1142,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume((prev) => {
       const base = normalizeResumeDraft(prev ?? currentResume);
       if (!base) return prev;
-      return addOrEnableAIHighlightsSection(base, data.candidateIntelligence, data.requirementWorkItems);
+      return addOrEnableAIHighlightsSection(base, data.candidateIntelligence, effectiveRequirementWorkItems);
     });
     markResumeArtifactsStale();
-  }, [currentResume, data.candidateIntelligence, data.requirementWorkItems, markResumeArtifactsStale]);
+  }, [currentResume, data.candidateIntelligence, effectiveRequirementWorkItems, markResumeArtifactsStale]);
 
   const handleRemoveCustomSection = useCallback((sectionId: string) => {
     setEditableResume((prev) => {
@@ -1479,11 +1429,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       || hasFinalReviewChatState
       || hasPostReviewPolish
       || currentClarificationMemory.length > 0
+      || Boolean(optimisticRequirementWorkItems?.length)
       || promotableMasterItems.length > 0
       ? {
           editable_resume: normalizeResumeDraft(editableResume),
           master_save_mode: masterSaveMode,
           clarification_memory: currentClarificationMemory.length > 0 ? currentClarificationMemory : null,
+          requirement_work_items: optimisticRequirementWorkItems,
           gap_chat_state: hasGapChatState ? gapChatSnapshot : null,
           final_review_state: hasFinalReviewState
             ? {
@@ -1529,6 +1481,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     isFinalReviewStale,
     isComplete,
     masterSaveMode,
+    optimisticRequirementWorkItems,
     promotableMasterItems.length,
     postReviewPolish,
     resolvedFinalReviewConcernIds,
@@ -1539,6 +1492,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   ]);
 
   const isPipelineActive = data.sessionId !== '';
+  const displayData = useMemo(() => (
+    effectiveRequirementWorkItems === data.requirementWorkItems
+      ? data
+      : { ...data, requirementWorkItems: effectiveRequirementWorkItems }
+  ), [data, effectiveRequirementWorkItems]);
 
   const handleSubmit = useCallback((rt: string, jd: string) => {
     setResumeText(rt);
@@ -1945,7 +1903,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
       {/* Streaming display with inline editing */}
       <V2StreamingDisplay
-        data={data}
+        data={displayData}
         isComplete={isComplete}
         isConnected={isConnected}
         error={error}
@@ -1966,9 +1924,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         isRerunning={isStarting}
         liveScores={liveScores}
         isScoring={isScoring}
-        gapCoachingCards={data.gapCoachingCards}
+        gapCoachingCards={displayData.gapCoachingCards}
         onRespondGapCoaching={handleGapCoachingRespond}
-        preScores={data.preScores}
+        preScores={displayData.preScores}
         onIntegrateKeyword={handleIntegrateKeyword}
         previousResume={previousResume}
         onDismissChanges={handleDismissChanges}

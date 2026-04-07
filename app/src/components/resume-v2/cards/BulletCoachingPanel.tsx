@@ -30,6 +30,7 @@ import { EnhanceButtonBar } from './bullet-coaching/EnhanceButtonBar';
 import type { EnhanceAction } from './bullet-coaching/EnhanceButtonBar';
 import { CoachingCollapsible } from './bullet-coaching/CoachingCollapsible';
 import { CustomEditArea } from './bullet-coaching/CustomEditArea';
+import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ export interface BulletCoachingPanelProps {
   nextBestAction?: NextBestAction;
   gapChat: GapChatHook;
   chatContext: GapChatContext;
-  onApplyToResume: (section: string, index: number, newText: string) => void;
+  onApplyToResume: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
   onRemoveBullet: (section: string, index: number) => void;
   onClose: () => void;
   canRemove?: boolean;
@@ -176,6 +177,25 @@ export function BulletCoachingPanel({
   const [isSubmittingContext, setIsSubmittingContext] = useState(false);
   // Remove confirmation state
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const applyMetadata = useCallback((overrides?: Partial<OptimisticResumeEditMetadata>): OptimisticResumeEditMetadata => ({
+    requirement: requirements[0],
+    requirements,
+    reviewState,
+    requirementSource,
+    evidenceFound,
+    proofLevel,
+    framingGuardrail,
+    nextBestAction,
+    ...overrides,
+  }), [
+    evidenceFound,
+    framingGuardrail,
+    nextBestAction,
+    proofLevel,
+    requirementSource,
+    requirements,
+    reviewState,
+  ]);
 
   // ── Focus panel on mount (Fix 10) ─────────────────────────────────────────
   useEffect(() => {
@@ -260,17 +280,17 @@ export function BulletCoachingPanel({
 
   // ── Accept suggestion shortcut ─────────────────────────────────────────────
   const handleAcceptSuggestion = useCallback((text: string) => {
-    onApplyToResume(section, bulletIndex, text);
+    onApplyToResume(section, bulletIndex, text, applyMetadata());
     onClose();
-  }, [onApplyToResume, onClose, section, bulletIndex]);
+  }, [applyMetadata, onApplyToResume, onClose, section, bulletIndex]);
 
   // ── Apply from custom edit area ────────────────────────────────────────────
   const handleApplyEdit = useCallback(() => {
     const text = editDraft.trim();
     if (!text) return;
-    onApplyToResume(section, bulletIndex, text);
+    onApplyToResume(section, bulletIndex, text, applyMetadata());
     onClose();
-  }, [editDraft, onApplyToResume, onClose, section, bulletIndex]);
+  }, [applyMetadata, editDraft, onApplyToResume, onClose, section, bulletIndex]);
 
   // ── Open "Edit" — pre-populate with selected suggestion ───────────────────
   const handleOpenEdit = useCallback(() => {
@@ -330,14 +350,14 @@ export function BulletCoachingPanel({
   }[reviewState] ?? '';
 
   const handleApplyRelatedSuggestion = useCallback((sectionKey: string, targetIndex: number, text: string) => {
-    onApplyToResume(sectionKey, targetIndex, text);
-  }, [onApplyToResume]);
+    onApplyToResume(sectionKey, targetIndex, text, applyMetadata());
+  }, [applyMetadata, onApplyToResume]);
 
   const handleApplyAllRelatedSuggestions = useCallback(() => {
     relatedSuggestionTargets.forEach(({ candidate, suggestion }) => {
-      onApplyToResume(candidate.section, candidate.index, suggestion.suggestedLanguage);
+      onApplyToResume(candidate.section, candidate.index, suggestion.suggestedLanguage, applyMetadata());
     });
-  }, [onApplyToResume, relatedSuggestionTargets]);
+  }, [applyMetadata, onApplyToResume, relatedSuggestionTargets]);
 
   const handleReusePriorClarification = useCallback((entry: ClarificationMemoryEntry) => {
     if (isChatLoading) return;

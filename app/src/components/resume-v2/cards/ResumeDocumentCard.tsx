@@ -8,6 +8,7 @@ import type {
   RequirementSource,
   ResumeReviewState,
 } from '@/types/resume-v2';
+import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
@@ -32,7 +33,7 @@ interface ResumeDocumentCardProps {
     canRemove?: boolean,
   ) => void;
   /** Direct edit callback — saves edited text back into the resume */
-  onBulletEdit?: (section: string, index: number, newText: string) => void;
+  onBulletEdit?: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
   /** Remove a bullet from the resume */
   onBulletRemove?: (section: string, index: number) => void;
 }

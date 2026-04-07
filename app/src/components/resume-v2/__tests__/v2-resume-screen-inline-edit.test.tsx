@@ -444,4 +444,86 @@ describe('V2ResumeScreen inline editing', () => {
       }),
     ]);
   });
+
+  it('optimistically promotes work-item state after a coached line edit', () => {
+    mockPipelineState.data = {
+      ...makePipelineData(),
+      requirementWorkItems: [
+        {
+          id: 'work-item-product-delivery',
+          requirement: 'Product delivery',
+          source: 'job_description',
+          importance: 'important',
+          candidate_evidence: [],
+          proof_level: 'none',
+          framing_guardrail: 'blocked',
+          current_claim_strength: 'code_red',
+          next_best_action: 'answer',
+        },
+      ],
+      resumeDraft: {
+        ...makeResumeDraft(),
+        professional_experience: [
+          {
+            ...makeResumeDraft().professional_experience[0],
+            bullets: [
+              {
+                ...makeResumeDraft().professional_experience[0].bullets[0],
+                confidence: 'needs_validation',
+                review_state: 'code_red',
+                work_item_id: 'work-item-product-delivery',
+                proof_level: 'none',
+                framing_guardrail: 'blocked',
+                next_best_action: 'answer',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    render(<V2ResumeScreen accessToken={null} onBack={vi.fn()} />);
+
+    act(() => {
+      const props = latestStreamingProps();
+      (props.onBulletEdit as (
+        section: string,
+        index: number,
+        text: string,
+        metadata?: Record<string, unknown>,
+      ) => void)(
+        'professional_experience',
+        0,
+        'Delivered product roadmap milestones across three product lines with weekly operating reviews.',
+        {
+          requirement: 'Product delivery',
+          requirements: ['Product delivery'],
+          reviewState: 'code_red',
+          requirementSource: 'job_description',
+          evidenceFound: '',
+          workItemId: 'work-item-product-delivery',
+          proofLevel: 'none',
+          nextBestAction: 'answer',
+        },
+      );
+    });
+
+    expect((latestStreamingProps().editableResume as ResumeDraft).professional_experience[0].bullets[0]).toEqual(
+      expect.objectContaining({
+        text: 'Delivered product roadmap milestones across three product lines with weekly operating reviews.',
+        review_state: 'strengthen',
+        confidence: 'partial',
+        proof_level: 'adjacent',
+        next_best_action: 'tighten',
+      }),
+    );
+    expect(((latestStreamingProps().data as V2PipelineData).requirementWorkItems ?? [])[0]).toEqual(
+      expect.objectContaining({
+        id: 'work-item-product-delivery',
+        current_claim_strength: 'strengthen',
+        proof_level: 'adjacent',
+        next_best_action: 'tighten',
+      }),
+    );
+  });
 });

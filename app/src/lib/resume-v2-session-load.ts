@@ -76,6 +76,7 @@ export function hydrateV2SessionLoad(
       ? {
           ...body.draft_state,
           editable_resume: normalizeResumeDraft(body.draft_state.editable_resume),
+          requirement_work_items: body.draft_state.requirement_work_items ?? null,
         }
       : null,
   };
