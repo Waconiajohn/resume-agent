@@ -6,7 +6,7 @@
  *   2. Resume mode — full-width centered document with inline editing
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
@@ -701,69 +701,117 @@ export function V2StreamingDisplay({
           {/* ── Desktop: two-panel layout ── */}
           <div className="hidden lg:flex h-full">
             <ResumeEditorLayout
-              leftPanel={
-                <div className="space-y-4 px-3">
-                  {data.preScores && data.assembly && (
-                    <ScoringReport
-                      preScores={data.preScores}
-                      assembly={data.assembly}
-                      verificationDetail={data.verificationDetail ?? null}
-                      gapAnalysis={data.gapAnalysis ?? null}
-                      compact
-                      compactReviewStatusLabel={compactReviewStatusLabel}
-                      compactAttentionSummary={compactAttentionSummary}
-                      compactAttentionNextAction={compactAttentionNextAction}
-                    />
-                  )}
-                  {error && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
-                      <AlertCircle className="h-4 w-4 shrink-0" />{error}
+              leftPanel={(() => {
+                // Score computation (mirrors ScoringReport compact snapshot logic)
+                const _preScores = data.preScores;
+                const _assembly = data.assembly;
+                let afterSnapshotScore = 0;
+                let beforeSnapshotScore = 0;
+                if (_preScores && _assembly) {
+                  const beforeKeywordScore = _preScores.keyword_match_score ?? _preScores.ats_match;
+                  const afterAts = _assembly.scores.ats_match;
+                  const jdBreakdown = data.gapAnalysis?.score_breakdown?.job_description;
+                  const coveredRequirements = jdBreakdown?.addressed ?? null;
+                  const totalRequirements = jdBreakdown?.total ?? null;
+                  const beforeRequirementScore = _preScores.job_requirement_coverage_score ?? jdBreakdown?.coverage_score ?? null;
+                  const afterRequirementScore = coveredRequirements !== null && totalRequirements
+                    ? Math.round((coveredRequirements / totalRequirements) * 100)
+                    : null;
+                  beforeSnapshotScore = _preScores.overall_fit_score ?? (beforeRequirementScore !== null
+                    ? Math.round((beforeKeywordScore * 0.35) + (beforeRequirementScore * 0.65))
+                    : beforeKeywordScore);
+                  const rawAfterScore = afterRequirementScore !== null
+                    ? Math.max(afterAts, afterRequirementScore)
+                    : afterAts;
+                  afterSnapshotScore = rawAfterScore;
+                }
+                const delta = afterSnapshotScore - beforeSnapshotScore;
+
+                return (
+                  <div className="flex flex-col h-full">
+                    {/* Fixed header — always visible */}
+                    <div className="shrink-0 px-4 py-3 border-b border-[var(--line-soft)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {_preScores && _assembly && (
+                            <>
+                              <span className="text-lg font-semibold" style={{ color: 'var(--badge-green-text)' }}>
+                                {afterSnapshotScore}%
+                              </span>
+                              {delta > 0 && (() => {
+                                const label = `+${delta}`;
+                                const style: React.CSSProperties = { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' };
+                                return <span className="rounded-md px-2.5 py-1 text-xs font-bold tabular-nums" style={style}>{label}</span>;
+                              })()}
+                            </>
+                          )}
+                        </div>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          {attentionItems.length} bullet{attentionItems.length !== 1 ? 's' : ''} to review
+                        </span>
+                      </div>
+                      {attentionItems.length > 0 && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
+                            className="text-xs px-2 py-1 rounded border border-[var(--line-soft)] text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
+                          >
+                            &larr; Prev
+                          </button>
+                          <span className="text-xs text-[var(--text-soft)]">
+                            {attentionIndex + 1} of {attentionItems.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
+                            className="text-xs px-2 py-1 rounded border border-[var(--line-soft)] text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
+                          >
+                            Next &rarr;
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {editError && (
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
-                      <AlertCircle className="h-4 w-4 shrink-0" />{editError}
+
+                    {/* Main content — one thing at a time */}
+                    <div className="flex-1 overflow-y-auto px-3 py-3">
+                      {(error || editError) && (
+                        <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-3" role="alert">
+                          <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
+                        </div>
+                      )}
+                      {activeBullet && gapChat && buildChatContext ? (
+                        <div ref={coachingPanelRef}>
+                          <BulletCoachingPanel
+                            bulletText={activeBullet.bulletText}
+                            section={activeBullet.section}
+                            bulletIndex={activeBullet.index}
+                            requirements={activeBullet.requirements}
+                            reviewState={activeBullet.reviewState}
+                            requirementSource={activeBullet.requirementSource}
+                            evidenceFound={activeBullet.evidenceFound}
+                            gapChat={gapChat}
+                            chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)}
+                            onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)}
+                            onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
+                            onClose={() => setActiveBullet(null)}
+                            onBulletEnhance={onBulletEnhance}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-center">
+                          <p className="text-sm text-[var(--text-muted)] mb-2">
+                            Click a highlighted bullet on the resume to start editing.
+                          </p>
+                          <p className="text-xs text-[var(--text-soft)]">
+                            Bullets marked with colored indicators need your review.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {!isComplete && isConnected && (
-                    <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
-                      <Loader2 className="h-3 w-3 motion-safe:animate-spin" /><span>{getStageMessage(data.stage)}</span>
-                    </div>
-                  )}
-                  {canShowUndoBar && (
-                    <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-[var(--surface-1)] border border-[var(--line-soft)]">
-                      <button type="button" onClick={onUndo} disabled={undoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Undo">
-                        <Undo2 className="h-3 w-3" /><span>Undo</span>
-                        {undoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{undoCount}</span>}
-                      </button>
-                      <button type="button" onClick={onRedo} disabled={redoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Redo">
-                        <Redo2 className="h-3 w-3" /><span>Redo</span>
-                        {redoCount > 0 && <span className="rounded-sm bg-[var(--surface-1)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--text-soft)]">{redoCount}</span>}
-                      </button>
-                    </div>
-                  )}
-                  {attentionItems.length > 0 && (
-                    <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
-                  )}
-                  {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-                  <div ref={coachingPanelRef}>
-                    {activeBullet && gapChat && buildChatContext && (
-                      <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} gapChat={gapChat} chatContext={buildChatContext(activeBullet.requirements[0] ?? activeBullet.bulletText)} onApplyToResume={(s, idx, newText) => onBulletEdit?.(s, idx, newText)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
-                    )}
                   </div>
-                  {pendingEdit && !activeBullet && (
-                    <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
-                  )}
-                  {isComplete && displayResume && (
-                    <ResumeFinalReviewPanel hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} isHiringManagerLoading={isHiringManagerLoading} hiringManagerError={hiringManagerError} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} onRequestHiringManagerReview={onRequestHiringManagerReview} onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation} finalReviewChat={finalReviewChat} buildFinalReviewChatContext={buildFinalReviewChatContext} resolveConcernTarget={resolveFinalReviewTarget} onPreviewConcernTarget={onPreviewFinalReviewTarget} isEditing={isEditing} />
-                  )}
-                  {isComplete && data.assembly && displayResume && (
-                    <CollapsibleWorkspaceRail>
-                      <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
-                    </CollapsibleWorkspaceRail>
-                  )}
-                </div>
-              }
+                );
+              })()}
               rightPanel={
                 <div className="mx-auto max-w-[900px]">
                   {displayResume && (

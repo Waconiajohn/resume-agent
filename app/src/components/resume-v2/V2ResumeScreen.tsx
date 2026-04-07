@@ -1321,6 +1321,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const gapChatSnapshot = isComplete ? getGapChatSnapshot() : null;
   const finalReviewChatSnapshot = isComplete ? getFinalReviewChatSnapshot() : null;
 
+  const stepLabel = !isComplete
+    ? 'Building your resume...'
+    : hiringManagerResult && !isFinalReviewStale
+      ? 'Step 7 — Ready to export'
+      : 'Step 6 — Review and refine';
+
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
@@ -1340,6 +1346,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
             {data.jobIntelligence.role_title} at {data.jobIntelligence.company_name}
           </span>
         )}
+
+        <span className="text-xs text-[var(--text-soft)] shrink-0">{stepLabel}</span>
 
         {/* Live scores + DOCX download in header */}
         {isComplete && (displayAtsScore !== null || currentResume) && (
