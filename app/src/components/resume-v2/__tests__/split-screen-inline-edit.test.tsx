@@ -979,6 +979,66 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.bulletText).toBe('Shipped 3 major product lines');
   });
 
+  it('hides redundant clarification cues when remembered evidence already covers the gap', async () => {
+    const attentionResume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: attentionResume,
+          clarificationMemory: [
+            {
+              id: 'gap_chat:product delivery',
+              source: 'gap_chat',
+              topic: 'Product delivery',
+              userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
+              appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
+              primaryFamily: 'metrics',
+              families: ['metrics'],
+            },
+          ],
+          data: makePipelineDataWithResume({
+            requirementWorkItems: [
+              {
+                id: 'work-item-product-delivery',
+                requirement: 'Product delivery',
+                source: 'job_description',
+                importance: 'must_have',
+                candidate_evidence: [
+                  {
+                    text: 'Built weekly KPI reviews and line-performance meetings across three plants.',
+                    source_type: 'uploaded_resume',
+                    evidence_strength: 'adjacent',
+                  },
+                ],
+                best_evidence_excerpt: 'Built weekly KPI reviews and line-performance meetings across three plants.',
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'strengthen',
+                next_best_action: 'answer',
+                clarifying_question: 'What specific product launch or delivery outcome proves this most clearly?',
+              },
+            ],
+            resumeDraft: attentionResume,
+            assembly: {
+              final_resume: attentionResume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    expect(screen.queryByText('Fastest Proof Upgrades')).not.toBeInTheDocument();
+    expect(screen.getAllByText('We already know this from your earlier answers').length).toBeGreaterThan(0);
+  });
+
   it('shows the PipelineProgressCard for each pipeline stage', () => {
     const stages = ['strategy', 'writing', 'verification', 'assembly'] as const;
 

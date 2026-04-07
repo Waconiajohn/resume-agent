@@ -544,6 +544,7 @@ function buildSectionCoachTargets(
 function buildClarificationCues(
   workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
   attentionItems: AttentionReviewItem[],
+  clarificationMemory: ClarificationMemoryEntry[],
 ): ClarificationCue[] {
   return workItems
     .filter((item) => item.next_best_action === 'answer' && item.clarifying_question?.trim())
@@ -563,6 +564,20 @@ function buildClarificationCues(
           ? attentionItems.findIndex((candidate) => candidate.id === matches[0].id)
           : null,
       } satisfies ClarificationCue;
+    })
+    .filter((cue) => {
+      const relatedItem = workItems.find((item) => item.id === cue.id);
+      return !clarificationMemory.some((entry) => {
+        const requirementHit = overlapScore(entry.topic, cue.requirement) >= 0.35;
+        const answerHit = relatedItem
+          ? (
+              overlapScore(entry.userInput, relatedItem.requirement) >= 0.24
+              || (relatedItem.best_evidence_excerpt ? overlapScore(entry.userInput, relatedItem.best_evidence_excerpt) >= 0.24 : false)
+              || relatedItem.candidate_evidence.some((evidence) => overlapScore(entry.userInput, evidence.text) >= 0.24)
+            )
+          : false;
+        return requirementHit || answerHit;
+      });
     })
     .sort((left, right) => right.affectedCount - left.affectedCount || left.requirement.localeCompare(right.requirement))
     .slice(0, 3);
@@ -896,8 +911,9 @@ export function V2StreamingDisplay({
     buildClarificationCues(
       (data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? []),
       attentionItems,
+      clarificationMemory,
     )
-  ), [attentionItems, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
+  ), [attentionItems, clarificationMemory, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
   const rememberedEvidenceCues = useMemo(() => (
     buildRememberedEvidenceCues(clarificationMemory, attentionItems)
   ), [attentionItems, clarificationMemory]);
