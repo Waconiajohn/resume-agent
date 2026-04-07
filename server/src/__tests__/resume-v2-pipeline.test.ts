@@ -966,6 +966,15 @@ describe('POST /api/resume-v2/:sessionId/line-coach', () => {
       line_kind: 'bullet',
       section_label: 'Professional Experience',
       related_requirements: ['Product delivery', 'Own KPI development and scorecards'],
+      prior_clarifications: [
+        {
+          topic: 'Develop and track performance metrics',
+          user_input: 'I owned weekly KPI reviews across three plants and used them to improve throughput and safety.',
+          applied_language: 'Owned weekly KPI reviews across 3 plants.',
+          primary_family: 'metrics',
+          families: ['metrics'],
+        },
+      ],
       related_line_candidates: [
         {
           id: 'selected_accomplishments:0',
@@ -1030,6 +1039,8 @@ describe('POST /api/resume-v2/:sessionId/line-coach', () => {
     };
     const prompt = llmArgs.messages[0]?.content ?? '';
     expect(prompt).toContain('Nearby lines that could also improve with the same answer:');
+    expect(prompt).toContain('Previously confirmed candidate clarifications:');
+    expect(prompt).toContain('family=metrics');
     expect(prompt).toContain('candidate_id=selected_accomplishments:0');
     expect(prompt).toContain('Reduced defects by 50% through Agile ceremonies');
   });

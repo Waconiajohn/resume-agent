@@ -167,7 +167,8 @@ function clarificationEvidenceText(entry: ClarificationMemoryEntry): string {
 }
 
 function clarificationEvidenceCategory(entry: ClarificationMemoryEntry): string {
-  return entry.source === 'final_review' ? 'final_review_clarification' : 'clarification_response';
+  const prefix = entry.source === 'final_review' ? 'final_review_clarification' : 'clarification_response';
+  return entry.primaryFamily ? `${prefix}:${entry.primaryFamily}` : prefix;
 }
 
 export function buildMasterResumePromotionPayload(args: {

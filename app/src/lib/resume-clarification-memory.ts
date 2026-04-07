@@ -29,6 +29,7 @@ function buildEntry(
   topic: string,
   item: CoachingThreadSnapshot['items'][string],
   currentResumeText: string,
+  topicFamilies?: { primaryFamily?: string | null; families?: string[] },
 ): ClarificationMemoryEntry | null {
   const normalizedTopic = normalizeTopic(topic);
   if (!normalizedTopic) return null;
@@ -61,6 +62,8 @@ function buildEntry(
     userInput,
     suggestedLanguage,
     appliedLanguage,
+    primaryFamily: topicFamilies?.primaryFamily ?? null,
+    families: topicFamilies?.families ?? [],
   };
 }
 
@@ -90,23 +93,25 @@ export function extractClarificationMemory({
   finalReviewChatSnapshot,
   currentResumeText,
   finalReviewConcernTopics,
+  topicFamilies,
 }: {
   gapChatSnapshot?: CoachingThreadSnapshot | null;
   finalReviewChatSnapshot?: CoachingThreadSnapshot | null;
   currentResumeText?: string | null;
   finalReviewConcernTopics?: Record<string, string>;
+  topicFamilies?: Record<string, { primaryFamily?: string | null; families?: string[] }>;
 }): ClarificationMemoryEntry[] {
   const nextEntries: ClarificationMemoryEntry[] = [];
   const resumeText = currentResumeText ?? '';
 
   for (const [topic, item] of Object.entries(gapChatSnapshot?.items ?? {})) {
-    const entry = buildEntry('gap_chat', topic, item, resumeText);
+    const entry = buildEntry('gap_chat', topic, item, resumeText, topicFamilies?.[normalizeTopic(topic)]);
     if (entry) nextEntries.push(entry);
   }
 
   for (const [concernId, item] of Object.entries(finalReviewChatSnapshot?.items ?? {})) {
     const topic = finalReviewConcernTopics?.[normalizeTopic(concernId)] ?? concernId;
-    const entry = buildEntry('final_review', topic, item, resumeText);
+    const entry = buildEntry('final_review', topic, item, resumeText, topicFamilies?.[normalizeTopic(topic)]);
     if (entry) nextEntries.push(entry);
   }
 

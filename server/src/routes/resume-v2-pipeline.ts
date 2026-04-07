@@ -1000,6 +1000,11 @@ function buildLineCoachContextBlock(request: LineCoachRequest): string {
     context.clarifying_questions?.length
       ? `Useful follow-up questions:\n${context.clarifying_questions.map((question) => `- ${question}`).join('\n')}`
       : '',
+    context.prior_clarifications?.length
+      ? `Previously confirmed candidate clarifications:\n${context.prior_clarifications.map((entry) => (
+          `- topic="${entry.topic}"; answer="${entry.user_input}"${entry.applied_language ? `; applied_language="${entry.applied_language}"` : ''}${entry.primary_family ? `; family=${entry.primary_family}` : ''}`
+        )).join('\n')}`
+      : '',
     context.related_line_candidates?.length
       ? `Nearby lines that could also improve with the same answer:\n${context.related_line_candidates.map((candidate) => (
           `- candidate_id=${candidate.id}; label=${candidate.label}; line="${candidate.line_text}"; requirements=${candidate.requirements.join(' | ') || 'none'}${candidate.evidence_found ? `; evidence=${candidate.evidence_found}` : ''}`

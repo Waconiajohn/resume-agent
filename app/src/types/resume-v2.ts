@@ -549,6 +549,8 @@ export interface ClarificationMemoryEntry {
   userInput: string;
   suggestedLanguage?: string;
   appliedLanguage?: string;
+  primaryFamily?: string | null;
+  families?: string[];
 }
 
 export interface GapChatRelatedLineCandidate {
@@ -603,6 +605,7 @@ export interface GapChatContext {
   relatedRequirements?: string[];
   coachingGoal?: string;
   clarifyingQuestions?: string[];
+  priorClarifications?: ClarificationMemoryEntry[];
   relatedLineCandidates?: GapChatRelatedLineCandidate[];
 }
 

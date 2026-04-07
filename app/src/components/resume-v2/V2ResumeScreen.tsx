@@ -412,6 +412,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     tone: 'neutral',
     message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
   });
+  const [clarificationMemory, setClarificationMemory] = useState<ClarificationMemoryEntry[]>([]);
   const lastMasterSnapshotRef = useRef('');
   const lastPersistedDraftRef = useRef<string>('null');
   const pendingPostReviewPolishRef = useRef<{
@@ -446,6 +447,58 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       setIsExportingDocx(false);
     }
   }, [currentResume, data.jobIntelligence, data.assembly?.scores.ats_match, liveScores?.ats_score, postReviewPolish.result?.ats_score, addToast]);
+
+  const gapChatSnapshot = getGapChatSnapshot();
+  const finalReviewChatSnapshot = getFinalReviewChatSnapshot();
+  const finalReviewConcernTopics = useMemo(() => (
+    Object.fromEntries(
+      (hiringManagerResult?.concerns ?? []).map((concern) => [
+        concern.id.trim().toLowerCase(),
+        concern.observation,
+      ]),
+    )
+  ), [hiringManagerResult]);
+  const clarificationTopicFamilies = useMemo(() => {
+    const gapCoachingPolicies = new Map(
+      (data.gapCoachingCards ?? [])
+        .filter((card) => card.coaching_policy)
+        .map((card) => [
+          normalizeRequirement(card.requirement),
+          {
+            primaryFamily: card.coaching_policy?.primaryFamily ?? null,
+            families: card.coaching_policy?.families ?? [],
+          },
+        ]),
+    );
+
+    const topicFamilies: Record<string, { primaryFamily?: string | null; families?: string[] }> = {};
+
+    for (const [normalizedRequirement, families] of gapCoachingPolicies.entries()) {
+      topicFamilies[normalizedRequirement] = families;
+    }
+
+    for (const concern of hiringManagerResult?.concerns ?? []) {
+      const normalizedTopic = normalizeRequirement(concern.observation);
+      if (!normalizedTopic) continue;
+      const relatedFamilies = concern.related_requirement
+        ? gapCoachingPolicies.get(normalizeRequirement(concern.related_requirement))
+        : undefined;
+      if (!relatedFamilies) continue;
+      topicFamilies[normalizedTopic] = relatedFamilies;
+    }
+
+    return topicFamilies;
+  }, [data.gapCoachingCards, hiringManagerResult]);
+  const currentClarificationMemory = mergeClarificationMemory(
+    clarificationMemory,
+    extractClarificationMemory({
+      gapChatSnapshot,
+      finalReviewChatSnapshot,
+      currentResumeText: currentResume ? resumeToPlainText(currentResume) : '',
+      finalReviewConcernTopics,
+      topicFamilies: clarificationTopicFamilies,
+    }),
+  );
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((target: string | GapChatTargetInput): GapChatContext => {
@@ -527,6 +580,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     )
       : undefined;
 
+    const coachingPolicy = coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy;
+
     const relatedRequirements = Array.from(new Set([
       ...explicitRequirements,
       explicitRequirement,
@@ -569,6 +624,28 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       ...relatedWorkItems.map((item) => item.clarifying_question),
     ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0))).slice(0, 3);
 
+    const normalizedRelatedRequirements = relatedRequirements
+      .map((requirement) => normalizeRequirement(requirement))
+      .filter(Boolean);
+    const currentFamilies = coachingPolicy?.families ?? [];
+    const matchedPriorClarifications = currentClarificationMemory
+      .map((entry) => {
+        const familyOverlap = entry.families?.some((family) => currentFamilies.includes(family)) ?? false;
+        const requirementOverlap = normalizedRelatedRequirements.some((requirement) => {
+          const topic = normalizeRequirement(entry.topic);
+          return topic === requirement || overlapScore(topic, requirement) >= 0.4;
+        });
+        const textOverlap = lineText ? overlapScore(entry.userInput, lineText) >= 0.32 : false;
+        return {
+          entry,
+          score: familyOverlap ? 10 : requirementOverlap ? 5 : textOverlap ? 2 : 0,
+        };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((left, right) => right.score - left.score)
+      .map(({ entry }) => entry)
+      .slice(0, 2);
+
     const coachingGoal = (() => {
       if (lineKind === 'summary') {
         return 'Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance.';
@@ -609,7 +686,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       currentStrategy: lineText || gapReq?.strategy?.positioning,
       aiReasoning: gapReq?.strategy?.ai_reasoning,
       inferredMetric: gapReq?.strategy?.inferred_metric,
-      coachingPolicy: coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy,
+      coachingPolicy,
       jobDescriptionExcerpt: sourceEvidenceParts.length > 0
         ? sourceEvidenceParts.join('\n')
         : ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
@@ -626,9 +703,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       relatedRequirements,
       coachingGoal,
       clarifyingQuestions,
+      priorClarifications: matchedPriorClarifications,
       relatedLineCandidates,
     };
-  }, [currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
+  }, [currentClarificationMemory, currentResume, data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis, data.gapCoachingCards, data.requirementWorkItems]);
 
   // AI assist for gap positioning cards — calls gap-chat with a single-shot prompt
   const handleGapAssist = useCallback(
@@ -739,7 +817,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const [attemptedHistoricalSessionKey, setAttemptedHistoricalSessionKey] = useState<string | null>(null);
   const [activeHistoricalSessionKey, setActiveHistoricalSessionKey] = useState<string | null>(null);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
-  const [clarificationMemory, setClarificationMemory] = useState<ClarificationMemoryEntry[]>([]);
   const requestedHistoricalSessionKey = useMemo(() => (
     initialSessionId ? `${storageUserId ?? 'anon'}:${initialSessionId}` : null
   ), [initialSessionId, storageUserId]);
@@ -908,26 +985,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     addToast,
     hiringManagerResult,
   ]);
-
-  const gapChatSnapshot = getGapChatSnapshot();
-  const finalReviewChatSnapshot = getFinalReviewChatSnapshot();
-  const finalReviewConcernTopics = useMemo(() => (
-    Object.fromEntries(
-      (hiringManagerResult?.concerns ?? []).map((concern) => [
-        concern.id.trim().toLowerCase(),
-        concern.observation,
-      ]),
-    )
-  ), [hiringManagerResult]);
-  const currentClarificationMemory = mergeClarificationMemory(
-    clarificationMemory,
-    extractClarificationMemory({
-      gapChatSnapshot,
-      finalReviewChatSnapshot,
-      currentResumeText: currentResume ? resumeToPlainText(currentResume) : '',
-      finalReviewConcernTopics,
-    }),
-  );
 
   const handleDirectBulletEdit = useCallback((section: string, index: number, newText: string) => {
     setEditableResume((prev) => {

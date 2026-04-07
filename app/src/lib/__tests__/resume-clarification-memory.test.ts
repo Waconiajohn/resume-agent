@@ -33,6 +33,16 @@ describe('resume-clarification-memory', () => {
       finalReviewConcernTopics: {
         concern_scope: 'Leadership scope needs to be more concrete.',
       },
+      topicFamilies: {
+        'platform leadership': {
+          primaryFamily: 'platformScale',
+          families: ['platformScale', 'executiveScope'],
+        },
+        'leadership scope needs to be more concrete': {
+          primaryFamily: 'executiveScope',
+          families: ['executiveScope'],
+        },
+      },
     });
 
     expect(memory).toEqual([
@@ -42,6 +52,7 @@ describe('resume-clarification-memory', () => {
         topic: 'Leadership scope needs to be more concrete.',
         userInput: 'The org was about 45 engineers across 5 managers.',
         appliedLanguage: 'Led an organization of 45 engineers across 5 managers.',
+        primaryFamily: 'executiveScope',
       }),
       expect.objectContaining({
         id: 'gap_chat:platform leadership',
@@ -49,6 +60,8 @@ describe('resume-clarification-memory', () => {
         topic: 'Platform leadership',
         userInput: 'I led platform modernization across four business units.',
         suggestedLanguage: 'Led platform modernization across 4 business units.',
+        primaryFamily: 'platformScale',
+        families: ['platformScale', 'executiveScope'],
       }),
     ]);
   });

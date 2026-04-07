@@ -176,6 +176,7 @@ describe('master-resume-promotion', () => {
           topic: 'Platform leadership',
           userInput: 'I led platform modernization across four business units.',
           suggestedLanguage: 'Led platform modernization across 4 business units.',
+          primaryFamily: 'platformScale',
         },
         {
           id: 'final_review:leadership scope',
@@ -183,6 +184,7 @@ describe('master-resume-promotion', () => {
           topic: 'Leadership scope',
           userInput: 'The org was about 45 engineers across 5 managers.',
           appliedLanguage: 'Led an organization of 45 engineers across 5 managers.',
+          primaryFamily: 'executiveScope',
         },
       ],
       sourceSessionId: 'session-123',
@@ -199,13 +201,13 @@ describe('master-resume-promotion', () => {
       expect.objectContaining({
         text: 'Platform leadership: I led platform modernization across four business units.',
         source: 'interview',
-        category: 'clarification_response',
+        category: 'clarification_response:platformScale',
         source_session_id: 'session-123',
       }),
       expect.objectContaining({
         text: 'Leadership scope: The org was about 45 engineers across 5 managers.',
         source: 'interview',
-        category: 'final_review_clarification',
+        category: 'final_review_clarification:executiveScope',
         source_session_id: 'session-123',
       }),
     ]);

@@ -204,4 +204,47 @@ describe('BulletCoachingPanel', () => {
       'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
     );
   });
+
+  it('shows matching prior clarifications from earlier answers', () => {
+    render(
+      <BulletCoachingPanel
+        bulletText="Built and tracked performance metrics."
+        section="professional_experience"
+        bulletIndex={0}
+        requirements={['Develop and track performance metrics']}
+        reviewState="strengthen"
+        requirementSource="job_description"
+        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
+        gapChat={makeGapChat()}
+        chatContext={makeChatContext({
+          lineKind: 'bullet',
+          sectionKey: 'professional_experience',
+          sectionLabel: 'Professional Experience',
+          lineText: 'Built and tracked performance metrics.',
+          primaryRequirement: 'Develop and track performance metrics',
+          relatedRequirements: ['Develop and track performance metrics'],
+          priorClarifications: [
+            {
+              id: 'gap_chat:performance metrics',
+              source: 'gap_chat',
+              topic: 'Performance metrics',
+              userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
+              appliedLanguage: 'Built weekly KPI reviews across 3 plants.',
+              primaryFamily: 'metrics',
+              families: ['metrics'],
+            },
+          ],
+        })}
+        onApplyToResume={vi.fn()}
+        onRemoveBullet={vi.fn()}
+        onClose={vi.fn()}
+        onBulletEnhance={vi.fn(async () => null)}
+      />,
+    );
+
+    expect(screen.getByText('From your earlier answers')).toBeInTheDocument();
+    expect(screen.getByText('Performance metrics • metrics')).toBeInTheDocument();
+    expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resume wording used: Built weekly KPI reviews across 3 plants\./i)).toBeInTheDocument();
+  });
 });

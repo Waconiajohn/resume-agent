@@ -387,4 +387,61 @@ describe('V2ResumeScreen inline editing', () => {
       }),
     );
   });
+
+  it('surfaces matching prior clarifications in buildChatContext for related requirements', () => {
+    mockPipelineState.data = {
+      ...makePipelineData(),
+      gapCoachingCards: [
+        {
+          requirement: 'Develop and track performance metrics',
+          importance: 'must_have',
+          classification: 'partial',
+          ai_reasoning: 'Need clearer KPI ownership.',
+          proposed_strategy: 'Frame KPI cadence and operating rhythm more clearly.',
+          evidence_found: ['Built weekly KPI reviews and line-performance meetings across 3 plants.'],
+          coaching_policy: {
+            primaryFamily: 'metrics',
+            families: ['metrics'],
+            clarifyingQuestion: 'Which metrics or scorecards did you personally track, how often did you review them, and what decision or improvement did they drive?',
+            proofActionRequiresInput: 'Explain which metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.',
+            proofActionDirect: 'Name the metrics, cadence, and improvement directly.',
+            rationale: 'Specific metrics and cadence make the claim believable.',
+            lookingFor: 'Named metrics, cadence, and resulting decisions.',
+          },
+        },
+      ],
+    };
+    mockGapChatSnapshot.items = {
+      'Develop and track performance metrics': {
+        messages: [
+          { role: 'assistant', content: 'What KPI rhythm did you own?', currentQuestion: 'What KPI rhythm did you own?' },
+          { role: 'user', content: 'I owned weekly KPI reviews across three plants and used them to improve throughput and safety.' },
+          { role: 'assistant', content: 'Great.', suggestedLanguage: 'Owned weekly KPI reviews across 3 plants.' },
+        ],
+        resolvedLanguage: null,
+        error: null,
+      },
+    };
+
+    render(<V2ResumeScreen accessToken={null} onBack={vi.fn()} />);
+
+    const props = latestStreamingProps();
+    const chatContext = (props.buildChatContext as (target: Record<string, unknown>) => Record<string, unknown>)({
+      requirement: 'Develop and track performance metrics',
+      requirements: ['Develop and track performance metrics'],
+      lineText: 'Built and tracked performance metrics.',
+      section: 'professional_experience',
+      index: 0,
+      reviewState: 'strengthen',
+      evidenceFound: 'Built weekly KPI reviews and line-performance meetings across 3 plants.',
+    });
+
+    expect(chatContext.priorClarifications).toEqual([
+      expect.objectContaining({
+        topic: 'Develop and track performance metrics',
+        primaryFamily: 'metrics',
+        userInput: 'I owned weekly KPI reviews across three plants and used them to improve throughput and safety.',
+      }),
+    ]);
+  });
 });

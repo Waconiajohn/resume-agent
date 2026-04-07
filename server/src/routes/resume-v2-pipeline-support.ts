@@ -15,6 +15,17 @@ const clarificationMemoryEntrySchema = z.object({
   userInput: z.string().min(1).max(4000),
   suggestedLanguage: z.string().max(4000).optional(),
   appliedLanguage: z.string().max(4000).optional(),
+  primaryFamily: z.string().max(100).nullable().optional(),
+  families: z.array(z.string().max(100)).max(8).optional(),
+});
+
+const priorClarificationSchema = z.object({
+  topic: z.string().max(500),
+  user_input: z.string().max(4000),
+  suggested_language: z.string().max(4000).optional(),
+  applied_language: z.string().max(4000).optional(),
+  primary_family: z.string().max(100).optional(),
+  families: z.array(z.string().max(100)).max(8).optional(),
 });
 
 export const startSchema = z.object({
@@ -623,6 +634,7 @@ export const lineCoachSchema = z.object({
     related_requirements: z.array(z.string().max(1000)).max(10).optional(),
     coaching_goal: z.string().max(2000).optional(),
     clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),
+    prior_clarifications: z.array(priorClarificationSchema).max(5).optional(),
     related_line_candidates: z.array(relatedLineCandidateSchema).max(5).optional(),
     concern_id: z.string().max(200).optional(),
     concern_type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']).optional(),

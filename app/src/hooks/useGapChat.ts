@@ -243,6 +243,14 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             related_requirements: context.relatedRequirements,
             coaching_goal: context.coachingGoal,
             clarifying_questions: context.clarifyingQuestions,
+            prior_clarifications: context.priorClarifications?.map((entry) => ({
+              topic: entry.topic,
+              user_input: entry.userInput,
+              suggested_language: entry.suggestedLanguage,
+              applied_language: entry.appliedLanguage,
+              primary_family: entry.primaryFamily,
+              families: entry.families,
+            })),
             related_line_candidates: context.relatedLineCandidates?.map((candidate) => ({
               id: candidate.id,
               section: candidate.section,

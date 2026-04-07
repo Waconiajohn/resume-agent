@@ -300,6 +300,7 @@ export function BulletCoachingPanel({
     .map((question) => question.trim())
     .filter(Boolean)
     .slice(0, 2);
+  const priorClarifications = (chatContext.priorClarifications ?? []).slice(0, 2);
   const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
     .map((suggestion) => {
       const candidate = chatContext.relatedLineCandidates?.find((item) => item.id === suggestion.candidateId);
@@ -431,6 +432,41 @@ export function BulletCoachingPanel({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {priorClarifications.length > 0 && (
+        <div
+          className="rounded-lg px-3 py-3"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          <p
+            className="text-[10px] uppercase tracking-wider"
+            style={{ color: 'var(--text-soft)' }}
+          >
+            From your earlier answers
+          </p>
+          <div className="mt-2 space-y-2">
+            {priorClarifications.map((entry) => (
+              <div key={entry.id} className="space-y-1">
+                <p className="text-xs font-medium" style={{ color: 'var(--text-strong)' }}>
+                  {entry.topic}
+                  {entry.primaryFamily ? ` • ${entry.primaryFamily}` : ''}
+                </p>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  {entry.userInput}
+                </p>
+                {entry.appliedLanguage && (
+                  <p className="text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                    Resume wording used: {entry.appliedLanguage}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
