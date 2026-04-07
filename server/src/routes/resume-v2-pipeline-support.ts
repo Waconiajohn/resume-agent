@@ -632,6 +632,8 @@ export const lineCoachSchema = z.object({
     line_kind: z.enum(['bullet', 'summary', 'competency', 'section_summary', 'custom_line']).optional(),
     section_key: z.string().max(200).optional(),
     section_label: z.string().max(500).optional(),
+    section_rationale: z.string().max(2000).optional(),
+    section_recommended_for_job: z.boolean().optional(),
     related_requirements: z.array(z.string().max(1000)).max(10).optional(),
     coaching_goal: z.string().max(2000).optional(),
     clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),

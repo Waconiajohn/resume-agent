@@ -386,6 +386,9 @@ function buildSectionCoachTargets(
   resume: ResumeDraft,
   workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
 ): SectionCoachTarget[] {
+  const enabledPlan = getEnabledResumeSectionPlan(resume);
+  const enabledSectionIds = new Set(enabledPlan.map((item) => item.id));
+  const planById = new Map(enabledPlan.map((item) => [item.id, item]));
   const rankWorkItems = (
     sectionId: string,
     sectionLabel: string,
@@ -481,12 +484,13 @@ function buildSectionCoachTargets(
   if (summaryText) {
     const rankedItems = rankWorkItems('executive_summary', 'Executive Summary', summaryText);
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
+    const sectionPlanItem = planById.get('executive_summary');
     targets.push({
       id: 'executive_summary',
       label: 'Executive Summary',
       helperText: relatedRequirements.length > 0
-        ? `Lead with ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role.`
-        : 'Tighten the first impression and opening story.',
+        ? `${sectionPlanItem?.rationale ?? 'Lead with identity and fit.'} Bring forward ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role.`
+        : (sectionPlanItem?.rationale ?? 'Tighten the first impression and opening story.'),
       section: 'executive_summary',
       index: 0,
       bulletText: summaryText,
@@ -505,12 +509,13 @@ function buildSectionCoachTargets(
   if (firstCompetency) {
     const rankedItems = rankWorkItems('core_competencies', 'Core Competencies', resume.core_competencies.join(' '));
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
+    const sectionPlanItem = planById.get('core_competencies');
     targets.push({
       id: 'core_competencies',
       label: 'Core Competencies',
       helperText: relatedRequirements.length > 0
-        ? `Bring the highest-value keywords forward: ${relatedRequirements.slice(0, 2).join(' and ')}.`
-        : 'Refine the keywords recruiters see first.',
+        ? `${sectionPlanItem?.rationale ?? 'Keep ATS language visible early.'} Bring forward ${relatedRequirements.slice(0, 2).join(' and ')}.`
+        : (sectionPlanItem?.rationale ?? 'Refine the keywords recruiters see first.'),
       section: 'core_competencies',
       index: resume.core_competencies.findIndex((item) => item === firstCompetency),
       bulletText: firstCompetency,
@@ -523,9 +528,6 @@ function buildSectionCoachTargets(
     });
   }
 
-  const enabledPlan = getEnabledResumeSectionPlan(resume);
-  const enabledSectionIds = new Set(enabledPlan.map((item) => item.id));
-  const planById = new Map(enabledPlan.map((item) => [item.id, item]));
   const customSections = getResumeCustomSectionMap(resume);
   const customTargets: Array<{ target: SectionCoachTarget; score: number }> = [];
   for (const [sectionId, section] of customSections.entries()) {
@@ -542,11 +544,11 @@ function buildSectionCoachTargets(
         label: section.title,
         helperText: sectionId === 'ai_highlights'
           ? relatedRequirements.length > 0
-            ? `Make the AI story clearly support ${formatRequirementFocus(relatedRequirements)}.`
-            : 'Sharpen the AI story for roles that value transformation and automation.'
+            ? `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story.'} Make it clearly support ${formatRequirementFocus(relatedRequirements)}.`
+            : (planById.get(sectionId)?.rationale ?? 'Sharpen the AI story for roles that value transformation and automation.')
           : relatedRequirements.length > 0
-            ? `Make this section reinforce ${formatRequirementFocus(relatedRequirements)}.`
-            : 'Polish this section so it strengthens the overall story.',
+            ? `${planById.get(sectionId)?.rationale ?? 'Use this section to reinforce the role story.'} Make it reinforce ${formatRequirementFocus(relatedRequirements)}.`
+            : (planById.get(sectionId)?.rationale ?? 'Polish this section so it strengthens the overall story.'),
         section: `custom_section:${sectionId}`,
         index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
         bulletText,
@@ -664,7 +666,7 @@ function SectionCoachCard({
       <p className="eyebrow-label">Section Polish</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Strengthen the parts of the resume people read first</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These lines may not show up in the flagged queue, but they shape the overall story and positioning.
+        After the structure is right, polish these high-visibility sections before spending time on smaller line edits.
       </p>
       <div className="mt-4 space-y-2">
         {targets.map((target) => (
@@ -704,7 +706,7 @@ function ClarificationCueCard({
       <p className="eyebrow-label">Fastest Proof Upgrades</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Answer one concrete question to make the resume stronger</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These are the highest-value details still missing from the story. Open the related line, then answer the prompt while you rewrite.
+        These are only the details we still do not know. If an earlier answer already covers the gap, reuse that first instead of answering again.
       </p>
       <div className="mt-4 space-y-2">
         {cues.map((cue) => (
@@ -746,7 +748,7 @@ function RememberedEvidenceCard({
       <p className="eyebrow-label">Already Confirmed</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">We already know this from your earlier answers</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These confirmed details can already strengthen the current resume. Open the best matching line and reuse them instead of answering the same question again.
+        These confirmed details can already strengthen the current resume. Use them before you answer anything new.
       </p>
       <div className="mt-4 space-y-2">
         {cues.map((cue) => {
@@ -1394,17 +1396,17 @@ export function V2StreamingDisplay({
                 />
               )}
               {!activeBullet && (
-                <ClarificationCueCard
-                  cues={clarificationCues}
-                  onOpenCue={openClarificationCue}
-                />
-              )}
-              {!activeBullet && (
                 <RememberedEvidenceCard
                   cues={rememberedEvidenceCues}
                   onOpenCue={(cue) => {
                     if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
                   }}
+                />
+              )}
+              {!activeBullet && (
+                <ClarificationCueCard
+                  cues={clarificationCues}
+                  onOpenCue={openClarificationCue}
                 />
               )}
               {displayResume && (
@@ -1592,15 +1594,15 @@ export function V2StreamingDisplay({
                             targets={sectionCoachTargets}
                             onOpenTarget={openSectionCoachTarget}
                           />
-                          <ClarificationCueCard
-                            cues={clarificationCues}
-                            onOpenCue={openClarificationCue}
-                          />
                           <RememberedEvidenceCard
                             cues={rememberedEvidenceCues}
                             onOpenCue={(cue) => {
                               if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
                             }}
+                          />
+                          <ClarificationCueCard
+                            cues={clarificationCues}
+                            onOpenCue={openClarificationCue}
                           />
                           <div className="shell-panel px-4 py-4">
                             <p className="eyebrow-label">Editing Queue</p>

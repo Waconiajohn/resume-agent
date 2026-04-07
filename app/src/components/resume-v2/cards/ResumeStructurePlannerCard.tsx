@@ -44,6 +44,34 @@ function sectionSecondaryCopy(sectionId: string): string {
   }
 }
 
+function recommendationSignalLabel(signalSource: 'job_description' | 'benchmark' | 'mixed' | 'grounded_draft'): string {
+  switch (signalSource) {
+    case 'job_description':
+      return 'JD signal';
+    case 'benchmark':
+      return 'Benchmark signal';
+    case 'mixed':
+      return 'Mixed signal';
+    case 'grounded_draft':
+    default:
+      return 'Grounded draft';
+  }
+}
+
+function recommendationSignalTone(signalSource: 'job_description' | 'benchmark' | 'mixed' | 'grounded_draft'): string {
+  switch (signalSource) {
+    case 'job_description':
+      return 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]';
+    case 'benchmark':
+      return 'bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]';
+    case 'mixed':
+      return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
+    case 'grounded_draft':
+    default:
+      return 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]';
+  }
+}
+
 export function ResumeStructurePlannerCard({
   resume,
   candidateIntelligence,
@@ -63,6 +91,10 @@ export function ResumeStructurePlannerCard({
   );
   const recommendationOrder = useMemo(
     () => new Map(recommendationList.map((item, index) => [item.presetId, index])),
+    [recommendationList],
+  );
+  const recommendationByPresetId = useMemo(
+    () => new Map(recommendationList.map((item) => [item.presetId, item])),
     [recommendationList],
   );
   const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
@@ -91,6 +123,9 @@ export function ResumeStructurePlannerCard({
   const [sectionTitle, setSectionTitle] = useState('');
   const [draftText, setDraftText] = useState('');
   const selectedPreset = availablePresets.find((preset) => preset.id === selectedPresetId);
+  const selectedRecommendation = selectedPresetId !== 'custom'
+    ? recommendationByPresetId.get(selectedPresetId)
+    : undefined;
   const selectedDraftSuggestions = selectedPresetId !== 'custom'
     ? draftSuggestions[selectedPresetId] ?? []
     : [];
@@ -160,7 +195,7 @@ export function ResumeStructurePlannerCard({
           <p className="eyebrow-label">Resume Structure</p>
           <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Choose the sections that help this resume win</h3>
           <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-            Reorder the story, hide weaker sections, and add an AI-focused section when the role calls for it.
+            Start here before line-by-line editing. Set the structure, reorder the story, hide weaker sections, and add role-specific proof sections while the resume shape is still easy to change.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -225,6 +260,36 @@ export function ResumeStructurePlannerCard({
           <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
             {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
           </p>
+          {selectedRecommendation && (
+            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
+                  {selectedRecommendation.readyLineCount} lines ready
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${recommendationSignalTone(selectedRecommendation.signalSource)}`}>
+                  {recommendationSignalLabel(selectedRecommendation.signalSource)}
+                </span>
+              </div>
+              <p className="mt-2 text-[13px] leading-5 text-[var(--text-soft)]">{selectedRecommendation.whyNow}</p>
+              {selectedRecommendation.matchedRequirements.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedRecommendation.matchedRequirements.map((requirement) => (
+                    <span
+                      key={requirement}
+                      className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-strong)]"
+                    >
+                      {requirement}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {selectedRecommendation.supportPreview.length > 0 && (
+                <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+                  Grounded by: {selectedRecommendation.supportPreview.join(' • ')}
+                </p>
+              )}
+            </div>
+          )}
           {selectedDraftSuggestions.length > 0 && (
             <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Suggested section drafts</p>
@@ -331,8 +396,28 @@ export function ResumeStructurePlannerCard({
                       <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
                         {recommendation.readyLineCount} lines ready
                       </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${recommendationSignalTone(recommendation.signalSource)}`}>
+                        {recommendationSignalLabel(recommendation.signalSource)}
+                      </span>
                     </div>
                     <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">{recommendation.whyNow}</p>
+                    {recommendation.matchedRequirements.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {recommendation.matchedRequirements.map((requirement) => (
+                          <span
+                            key={requirement}
+                            className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-strong)]"
+                          >
+                            {requirement}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {recommendation.supportPreview.length > 0 && (
+                      <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+                        Grounded by: {recommendation.supportPreview.join(' • ')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button

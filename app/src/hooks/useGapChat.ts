@@ -240,6 +240,8 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
             line_kind: context.lineKind,
             section_key: context.sectionKey,
             section_label: context.sectionLabel,
+            section_rationale: context.sectionRationale,
+            section_recommended_for_job: context.sectionRecommendedForJob,
             related_requirements: context.relatedRequirements,
             coaching_goal: context.coachingGoal,
             clarifying_questions: context.clarifyingQuestions,

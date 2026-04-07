@@ -222,6 +222,9 @@ describe('resume-section-plan', () => {
       expect.objectContaining({
         presetId: 'transformation_highlights',
         readyLineCount: 2,
+        signalSource: 'job_description',
+        matchedRequirements: ['Lead automation and operating-model transformation'],
+        supportPreview: expect.arrayContaining(['Rolled out workflow automation across operations.']),
       }),
     );
   });

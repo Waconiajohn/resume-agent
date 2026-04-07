@@ -1149,11 +1149,11 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText(/Lead with Product delivery and Executive leadership/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Lead with identity and fit\. Bring forward Product delivery and Executive leadership/i).length).toBeGreaterThan(0);
 
     fireEvent.click(
       screen
-        .getAllByText(/Lead with Product delivery and Executive leadership/i)[0]
+        .getAllByText(/Lead with identity and fit\. Bring forward Product delivery and Executive leadership/i)[0]
         .closest('button') as HTMLButtonElement,
     );
 

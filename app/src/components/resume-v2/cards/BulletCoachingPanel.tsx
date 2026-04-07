@@ -137,6 +137,139 @@ function latestAssistantMessage(messages: GapChatMessage[] | undefined): GapChat
   return null;
 }
 
+type BestFirstMoveAction =
+  | 'focus_question'
+  | 'reuse_prior'
+  | 'tighten_rewrite'
+  | 'quantify_rewrite'
+  | 'rewrite_honestly'
+  | 'apply_suggestion'
+  | 'write_own';
+
+interface BestFirstMoveConfig {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  action?: BestFirstMoveAction;
+}
+
+function buildBestFirstMove(args: {
+  reviewState: ResumeReviewState;
+  nextBestAction?: NextBestAction;
+  lineKind?: GapChatContext['lineKind'];
+  lineLabel: string;
+  topClarifyingQuestion?: string;
+  hasPriorClarifications: boolean;
+  hasSuggestion: boolean;
+  sectionLabel?: string;
+  sectionRationale?: string;
+  sectionRecommendedForJob?: boolean;
+}): BestFirstMoveConfig | null {
+  const {
+    reviewState,
+    nextBestAction,
+    lineKind,
+    lineLabel,
+    topClarifyingQuestion,
+    hasPriorClarifications,
+    hasSuggestion,
+    sectionLabel,
+    sectionRationale,
+    sectionRecommendedForJob,
+  } = args;
+
+  const sectionContext = sectionRecommendedForJob
+    ? `${sectionLabel ?? 'This section'} is worth polishing early for this role.`
+    : sectionRationale
+      ? sectionRationale
+      : '';
+
+  if (hasPriorClarifications) {
+    return {
+      title: 'Best first move',
+      body: [sectionContext, `You already shared a useful answer for this ${lineLabel}. Reuse that confirmed detail before asking or typing anything new.`]
+        .filter(Boolean)
+        .join(' '),
+      actionLabel: 'Rewrite from earlier answer',
+      action: 'reuse_prior',
+    };
+  }
+
+  if (reviewState === 'code_red') {
+    return {
+      title: 'Best first move',
+      body: topClarifyingQuestion
+        ? `${sectionContext ? `${sectionContext} ` : ''}We still need one concrete truth before this ${lineLabel} is safe to keep. Start by answering: ${topClarifyingQuestion}`
+        : `${sectionContext ? `${sectionContext} ` : ''}We still need one concrete truth before this ${lineLabel} is safe to keep.`,
+      actionLabel: 'Answer the question below',
+      action: 'focus_question',
+    };
+  }
+
+  if (nextBestAction === 'answer') {
+    return {
+      title: 'Best first move',
+      body: topClarifyingQuestion
+        ? `${sectionContext ? `${sectionContext} ` : ''}The next gain comes from adding one missing concrete detail to this ${lineLabel}. Use this prompt while you rewrite: ${topClarifyingQuestion}`
+        : `${sectionContext ? `${sectionContext} ` : ''}The next gain comes from adding one missing concrete detail to this ${lineLabel}.`,
+      actionLabel: 'Rewrite with the missing detail',
+      action: 'write_own',
+    };
+  }
+
+  if (nextBestAction === 'quantify') {
+    return {
+      title: 'Best first move',
+      body: `${sectionContext ? `${sectionContext} ` : ''}The proof is already here. The fastest win is adding business impact, scale, or one defensible metric so this ${lineLabel} lands harder.`,
+      actionLabel: 'Run impact rewrite',
+      action: 'quantify_rewrite',
+    };
+  }
+
+  if (nextBestAction === 'confirm' || reviewState === 'confirm_fit') {
+    return {
+      title: 'Best first move',
+      body: `${sectionContext ? `${sectionContext} ` : ''}This is directionally right, but it needs the most honest version of the truth before you keep it as-is.`,
+      actionLabel: 'Rewrite it honestly',
+      action: 'rewrite_honestly',
+    };
+  }
+
+  if (hasSuggestion && nextBestAction === 'accept') {
+    return {
+      title: 'Best first move',
+      body: `${sectionContext ? `${sectionContext} ` : ''}The strongest suggestion is already ready to apply. If it reads true, take the quick win and move on.`,
+      actionLabel: 'Apply strongest version',
+      action: 'apply_suggestion',
+    };
+  }
+
+  if (nextBestAction === 'tighten' || reviewState === 'strengthen') {
+    return {
+      title: 'Best first move',
+      body: `${sectionContext ? `${sectionContext} ` : ''}The evidence is real. The fastest win is a sharper rewrite that makes the fit and impact obvious right away.`,
+      actionLabel: lineKind === 'summary' ? 'Run opening rewrite' : 'Run role-fit rewrite',
+      action: 'tighten_rewrite',
+    };
+  }
+
+  if (hasSuggestion) {
+    return {
+      title: 'Best first move',
+      body: `${sectionContext ? `${sectionContext} ` : ''}You already have enough here to move this ${lineLabel} forward right now.`,
+      actionLabel: 'Apply strongest version',
+      action: 'apply_suggestion',
+    };
+  }
+
+  return {
+    title: 'Best first move',
+    body: `${sectionContext ? `${sectionContext} ` : ''}Start by rewriting this ${lineLabel} in your own words, then use AI upgrades once the truth is anchored.`,
+    actionLabel: 'Write my own version',
+    action: 'write_own',
+  };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function BulletCoachingPanel({
@@ -163,6 +296,7 @@ export function BulletCoachingPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const autoReuseRef = useRef<string | null>(null);
+  const codeRedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Internal state ─────────────────────────────────────────────────────────
   const [selectedSuggestion, setSelectedSuggestion] = useState<number | null>(null);
@@ -328,7 +462,7 @@ export function BulletCoachingPanel({
   const remainingClarifyingQuestions = (chatContext.clarifyingQuestions ?? [])
     .map((question) => question.trim())
     .filter(Boolean)
-    .slice(0, 2);
+    .slice(topClarifyingQuestion ? 1 : 0, topClarifyingQuestion ? 3 : 2);
   const priorClarifications = (chatContext.priorClarifications ?? []).slice(0, 2);
   const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
     .map((suggestion) => {
@@ -391,6 +525,70 @@ export function BulletCoachingPanel({
     autoReuseRef.current = initialReuseClarificationId;
     handleReusePriorClarification(entry);
   }, [handleReusePriorClarification, initialReuseClarificationId, isChatLoading, itemState?.messages, priorClarifications]);
+
+  const bestFirstMove = buildBestFirstMove({
+    reviewState,
+    nextBestAction,
+    lineKind: chatContext.lineKind,
+    lineLabel,
+    topClarifyingQuestion,
+    hasPriorClarifications: priorClarifications.length > 0,
+    hasSuggestion: Boolean(primarySuggestion),
+    sectionLabel: chatContext.sectionLabel,
+    sectionRationale: chatContext.sectionRationale,
+    sectionRecommendedForJob: chatContext.sectionRecommendedForJob,
+  });
+
+  const handleBestFirstMove = useCallback(() => {
+    switch (bestFirstMove?.action) {
+      case 'focus_question':
+        codeRedTextareaRef.current?.focus();
+        break;
+      case 'reuse_prior':
+        if (priorClarifications[0]) {
+          handleReusePriorClarification(priorClarifications[0]);
+        }
+        break;
+      case 'quantify_rewrite':
+        if (onBulletEnhance) {
+          void handleEnhance('show_accountability');
+        } else {
+          handleWriteMyOwn();
+        }
+        break;
+      case 'tighten_rewrite':
+        if (onBulletEnhance) {
+          void handleEnhance(chatContext.lineKind === 'summary' ? 'show_transformation' : 'connect_to_role');
+        } else {
+          handleOpenEdit();
+        }
+        break;
+      case 'rewrite_honestly':
+        handleWriteMyOwn();
+        break;
+      case 'apply_suggestion':
+        if (primarySuggestion) {
+          handleAcceptSuggestion(primarySuggestion);
+        }
+        break;
+      case 'write_own':
+        handleWriteMyOwn();
+        break;
+      default:
+        break;
+    }
+  }, [
+    bestFirstMove?.action,
+    chatContext.lineKind,
+    handleAcceptSuggestion,
+    handleEnhance,
+    handleOpenEdit,
+    handleReusePriorClarification,
+    handleWriteMyOwn,
+    onBulletEnhance,
+    primarySuggestion,
+    priorClarifications,
+  ]);
 
   return (
     <div
@@ -462,6 +660,48 @@ export function BulletCoachingPanel({
           framingGuardrail={framingGuardrail}
           nextBestAction={nextBestAction}
         />
+      )}
+
+      {bestFirstMove && (
+        <div
+          className="rounded-lg px-3 py-3"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-[10px] uppercase tracking-wider"
+                style={{ color: 'var(--text-soft)' }}
+              >
+                {bestFirstMove.title}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
+                {bestFirstMove.body}
+              </p>
+            </div>
+            {bestFirstMove.actionLabel && (
+              <button
+                type="button"
+                onClick={handleBestFirstMove}
+                disabled={isChatLoading || isEnhancing}
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                  (isChatLoading || isEnhancing) && 'opacity-50 cursor-not-allowed',
+                )}
+                style={{
+                  borderColor: 'var(--line-soft)',
+                  color: 'var(--text-strong)',
+                  background: 'var(--surface-elevated)',
+                }}
+              >
+                {bestFirstMove.actionLabel}
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {remainingClarifyingQuestions.length > 0 && (
@@ -614,6 +854,7 @@ export function BulletCoachingPanel({
           )}
           <div className="flex items-end gap-2">
             <textarea
+              ref={codeRedTextareaRef}
               value={codeRedContext}
               onChange={(e) => setCodeRedContext(e.target.value)}
               onKeyDown={(e) => {

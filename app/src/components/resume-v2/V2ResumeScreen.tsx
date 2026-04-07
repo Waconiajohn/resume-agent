@@ -46,6 +46,7 @@ import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import {
   addOrEnableAIHighlightsSection,
   buildAIHighlightsSection,
+  buildResumeSectionPlan,
   moveResumeSection,
   prepareResumeCustomSectionAddition,
   removeResumeCustomSection,
@@ -624,6 +625,18 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       }
       return 'Resume Line';
     })();
+    const sectionPlanItem = (() => {
+      if (!currentResume || !sectionKey) return undefined;
+      const plan = buildResumeSectionPlan(currentResume);
+      if (sectionKey === 'executive_summary' || sectionKey === 'core_competencies') {
+        return plan.find((item) => item.id === sectionKey);
+      }
+      const customSectionId = parseCustomSectionKey(sectionKey);
+      if (customSectionId) {
+        return plan.find((item) => item.id === customSectionId);
+      }
+      return undefined;
+    })();
 
     const sourceEvidenceParts = Array.from(new Set([
       workItem?.source_evidence,
@@ -721,6 +734,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       lineKind,
       sectionKey,
       sectionLabel,
+      sectionRationale: sectionPlanItem?.rationale,
+      sectionRecommendedForJob: sectionPlanItem?.recommended_for_job,
       relatedRequirements,
       coachingGoal,
       clarifyingQuestions,

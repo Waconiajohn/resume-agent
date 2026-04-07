@@ -50,6 +50,9 @@ export interface ResumeCustomSectionPresetRecommendation {
   title: string;
   whyNow: string;
   readyLineCount: number;
+  matchedRequirements: string[];
+  signalSource: 'job_description' | 'benchmark' | 'mixed' | 'grounded_draft';
+  supportPreview: string[];
 }
 
 export interface ResumeCustomSectionAddition {
@@ -236,6 +239,65 @@ function hasRequirementSignal(
     ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
     return haystacks.some((text) => patterns.some((pattern) => pattern.test(text)));
   });
+}
+
+function importanceRank(importance: RequirementWorkItem['importance']): number {
+  switch (importance) {
+    case 'must_have':
+      return 0;
+    case 'important':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+function uniqueStringList(values: Array<string | null | undefined>, maxItems = Number.MAX_SAFE_INTEGER): string[] {
+  const seen = new Set<string>();
+  const results: string[] = [];
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push(trimmed);
+    if (results.length >= maxItems) break;
+  }
+  return results;
+}
+
+function findMatchingWorkItems(
+  workItems: RequirementWorkItem[] | null | undefined,
+  patterns: RegExp[],
+): RequirementWorkItem[] {
+  return (workItems ?? [])
+    .filter((item) => {
+      const haystacks = [
+        item.requirement,
+        item.source_evidence,
+        item.best_evidence_excerpt,
+        item.target_evidence,
+        ...item.candidate_evidence.map((evidence) => evidence.text),
+      ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+      return haystacks.some((text) => patterns.some((pattern) => pattern.test(text)));
+    })
+    .sort((left, right) => (
+      importanceRank(left.importance) - importanceRank(right.importance)
+      || Number(left.source !== 'job_description') - Number(right.source !== 'job_description')
+      || left.requirement.localeCompare(right.requirement)
+    ));
+}
+
+function getRecommendationSignalSource(
+  matchedItems: RequirementWorkItem[],
+): ResumeCustomSectionPresetRecommendation['signalSource'] {
+  if (matchedItems.length === 0) return 'grounded_draft';
+
+  const sources = new Set(matchedItems.map((item) => item.source));
+  if (sources.size > 1) return 'mixed';
+  return sources.has('benchmark') ? 'benchmark' : 'job_description';
 }
 
 function buildProjectsSuggestion(candidate: CandidateIntelligence | null | undefined): ResumeSectionStarterSuggestion[] {
@@ -523,7 +585,8 @@ export function buildCustomSectionPresetRecommendations(
     if (draftSuggestions.length === 0) continue;
 
     const rule = CUSTOM_SECTION_RECOMMENDATION_RULES[preset.id];
-    const roleSignal = hasRequirementSignal(workItems, rule.requirementPatterns);
+    const matchedItems = findMatchingWorkItems(workItems, rule.requirementPatterns);
+    const roleSignal = matchedItems.length > 0 || hasRequirementSignal(workItems, rule.requirementPatterns);
     const readyLineCount = draftSuggestions[0]?.lines.length ?? 0;
 
     if (!roleSignal && readyLineCount < 2 && preset.id !== 'board_advisory' && preset.id !== 'speaking_publications') {
@@ -537,6 +600,16 @@ export function buildCustomSectionPresetRecommendations(
         ? rule.whyNow
         : `We already have enough grounded evidence to draft this section now, without asking the user to start from scratch.`,
       readyLineCount,
+      matchedRequirements: uniqueStringList(matchedItems.map((item) => item.requirement), 2),
+      signalSource: getRecommendationSignalSource(matchedItems),
+      supportPreview: uniqueStringList([
+        ...matchedItems.flatMap((item) => [
+          item.best_evidence_excerpt,
+          item.target_evidence,
+          ...item.candidate_evidence.map((evidence) => evidence.text),
+        ]),
+        ...(draftSuggestions[0]?.support ?? []),
+      ], 2),
     });
   }
 

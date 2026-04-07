@@ -76,8 +76,8 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByText('Show leadership scope')).toBeInTheDocument();
     expect(screen.getByText('Match this role')).toBeInTheDocument();
     expect(screen.getByText('Add business impact')).toBeInTheDocument();
-    expect(screen.getByText('Fastest way to strengthen this summary line')).toBeInTheDocument();
-    expect(screen.getByText('What scale or business outcome makes this summary more concrete?')).toBeInTheDocument();
+    expect(screen.getByText('Best first move')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /run opening rewrite/i })).toBeInTheDocument();
   });
 
   it('uses the top clarifying question as the code-red placeholder when evidence is missing', () => {
@@ -110,6 +110,7 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByText(/start with this:/i)).toHaveTextContent(
       'Start with this: What KPI review, scorecard, or operating rhythm did you actually own?',
     );
+    expect(screen.getByRole('button', { name: /answer the question below/i })).toBeInTheDocument();
 
     const textarea = screen.getByLabelText('Provide context about your experience');
     expect(textarea).toHaveAttribute(

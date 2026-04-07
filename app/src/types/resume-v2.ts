@@ -602,6 +602,8 @@ export interface GapChatContext {
   lineKind?: 'bullet' | 'summary' | 'competency' | 'section_summary' | 'custom_line';
   sectionKey?: string;
   sectionLabel?: string;
+  sectionRationale?: string;
+  sectionRecommendedForJob?: boolean;
   relatedRequirements?: string[];
   coachingGoal?: string;
   clarifyingQuestions?: string[];

@@ -13,6 +13,8 @@ export interface EnhanceContext {
   lineKind?: GapChatContext['lineKind'];
   sectionKey?: string;
   sectionLabel?: string;
+  sectionRationale?: string;
+  sectionRecommendedForJob?: boolean;
   sourceEvidence?: string;
   relatedRequirements?: string[];
   coachingGoal?: string;
@@ -64,6 +66,8 @@ export function useBulletEnhance(accessToken: string | null, sessionId: string |
           line_kind: context?.lineKind,
           section_key: context?.sectionKey,
           section_label: context?.sectionLabel,
+          section_rationale: context?.sectionRationale,
+          section_recommended_for_job: context?.sectionRecommendedForJob,
           source_evidence: context?.sourceEvidence,
           related_requirements: context?.relatedRequirements,
           coaching_goal: context?.coachingGoal,
