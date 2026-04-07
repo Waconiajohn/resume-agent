@@ -208,7 +208,7 @@ export function ResumeDocumentCard({
     sectionNodes.set('selected_accomplishments', (
       <section key="selected_accomplishments" data-section="selected_accomplishments">
         <SectionHeading>Selected Accomplishments</SectionHeading>
-        <ul className="resume-proof-list space-y-2 list-none pl-0">
+        <ul className="resume-proof-list space-y-3 list-none pl-0">
           {selectedAccomplishments.map((a, i) => {
             const accomplishmentRequirements = canonicalRequirementSignals(
               a.primary_target_requirement,
@@ -268,27 +268,27 @@ export function ResumeDocumentCard({
     sectionNodes.set('professional_experience', (
       <section key="professional_experience" data-section="professional_experience">
         <SectionHeading>Professional Experience</SectionHeading>
-        <div className="space-y-5">
+        <div className="space-y-6">
           {professionalExperience.map((exp, i) => (
             <div key={i}>
-              <div className="flex items-baseline justify-between gap-2">
+              <div className="flex items-baseline justify-between gap-3">
                 <div>
-                  <span className="resume-role-title text-sm font-bold text-gray-900">{exp.title}</span>
-                  <span className="resume-role-company text-sm text-gray-500"> · {exp.company}</span>
+                  <span className="resume-role-title text-[0.96rem] font-semibold text-gray-900">{exp.title}</span>
+                  <span className="resume-role-company ml-1 text-[0.92rem] text-gray-500">· {exp.company}</span>
                 </div>
-                <span className="resume-role-date text-xs text-gray-500 whitespace-nowrap shrink-0">
+                <span className="resume-role-date whitespace-nowrap shrink-0 text-[0.84rem] text-gray-500">
                   {exp.start_date} — {exp.end_date}
                 </span>
               </div>
               {exp.scope_statement && (
                 <p
                   data-scope-id={`professional_experience-${i}-scope`}
-                  className="resume-scope-note mt-1 text-xs text-gray-500 italic pl-1"
+                  className="resume-scope-note mt-1.5 pl-1 text-[0.92rem] text-gray-500 italic"
                 >
                   {exp.scope_statement}
                 </p>
               )}
-              <ul className="resume-proof-list mt-2 space-y-2 list-none pl-0">
+              <ul className="resume-proof-list mt-2.5 space-y-3 list-none pl-0">
                 {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {
                   const bulletRequirements = canonicalRequirementSignals(
                     bullet.primary_target_requirement,
@@ -373,7 +373,7 @@ export function ResumeDocumentCard({
         <SectionHeading>Education</SectionHeading>
         <div className="space-y-1">
           {education.map((edu, i) => (
-            <div key={i} className="resume-document-copy text-sm text-gray-800">
+            <div key={i} className="resume-document-copy text-[0.95rem] text-gray-800">
               {edu.degree} — {edu.institution}
               {edu.year && <span className="resume-role-date text-gray-500"> ({edu.year})</span>}
             </div>
@@ -389,7 +389,7 @@ export function ResumeDocumentCard({
         <SectionHeading>Certifications</SectionHeading>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {certifications.map((cert, i) => (
-            <span key={i} className="resume-document-copy text-sm text-gray-600">{cert}</span>
+            <span key={i} className="resume-document-copy text-[0.95rem] text-gray-600">{cert}</span>
           ))}
         </div>
       </section>
@@ -605,14 +605,14 @@ export function ResumeDocumentCard({
     .filter((id) => sectionNodes.has(id));
 
   return (
-    <div className="resume-document-shell space-y-5 p-5 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text sm:space-y-6 sm:p-8">
+    <div className="resume-document-shell space-y-6 p-6 font-['Georgia','Times_New_Roman',serif] leading-[1.85] select-text cursor-text sm:space-y-7 sm:p-9">
       {/* Header */}
-      <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-4 sm:pb-5">
-        <h2 className="resume-document-name text-[1.7rem] font-bold tracking-[0.02em] text-gray-900 sm:text-2xl">{resume.header.name}</h2>
-        <p className="resume-document-title mt-1.5 text-[0.78rem] font-semibold tracking-[0.22em] text-blue-700 uppercase sm:text-base">
+      <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-5 sm:pb-6">
+        <h2 className="resume-document-name text-[1.95rem] font-bold tracking-[0.015em] text-gray-900 sm:text-[2.35rem]">{resume.header.name}</h2>
+        <p className="resume-document-title mt-2 text-[0.8rem] font-semibold tracking-[0.2em] text-blue-700 uppercase sm:text-[0.94rem]">
           {resume.header.branded_title}
         </p>
-        <div className="resume-document-contact mt-3 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11px] text-gray-500 sm:flex-row sm:text-xs">
+        <div className="resume-document-contact mt-3.5 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11px] text-gray-500 sm:flex-row sm:text-xs">
           {resume.header.phone && (
             <>
               <span className="px-2 sm:first:pl-0">{resume.header.phone}</span>
@@ -733,7 +733,7 @@ function BulletLineContent({
                 handleActivate();
               }
             }}
-            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-medium text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
+            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
           >
             {globalNumber !== undefined && (
               <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
@@ -753,7 +753,7 @@ function BulletLineContent({
         </span>
       )}
       {isActive && (
-        <p className="mt-1 text-[10px] text-blue-500">&#8592; Editing in left panel</p>
+        <span className="resume-line-active-note mt-2 inline-flex">Open in coach</span>
       )}
     </span>
   );
@@ -1003,7 +1003,7 @@ function resolveStandaloneDisplayRequirements(
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 sm:text-[12px]">
+    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2.5 text-[10.5px] font-bold uppercase tracking-[0.24em] text-stone-500 sm:text-[11.5px]">
       {children}
     </h3>
   );

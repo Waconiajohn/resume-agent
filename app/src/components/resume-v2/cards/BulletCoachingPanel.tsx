@@ -63,6 +63,11 @@ function getLineLabel(lineKind?: GapChatContext['lineKind']): string {
   }
 }
 
+function truncatePreview(text: string, maxLength = 118): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function classificationForReviewState(reviewState: ResumeReviewState): 'partial' | 'missing' | 'strong' {
   if (reviewState === 'code_red') return 'missing';
   if (reviewState === 'strengthen' || reviewState === 'confirm_fit') return 'partial';
@@ -542,6 +547,20 @@ export function BulletCoachingPanel({
           <p className="mt-1 text-[11px] leading-5 text-[var(--text-soft)]">
             Live on resume · {chatContext.sectionLabel ?? lineLabel}
           </p>
+          <div
+            className="mt-2 rounded-xl px-3 py-2"
+            style={{
+              background: 'var(--surface-1)',
+              border: '1px solid var(--line-soft)',
+            }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              Active line
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-strong)]">
+              {truncatePreview(bulletText)}
+            </p>
+          </div>
         </div>
         <button
           type="button"

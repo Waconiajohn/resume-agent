@@ -57,11 +57,11 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
   return (
     <div
       ref={containerRef}
-      className={`flex h-full w-full overflow-hidden ${isDragging ? 'select-none' : ''}`}
+      className={`resume-editor-shell flex h-full w-full overflow-hidden ${isDragging ? 'select-none' : ''}`}
     >
       {/* Left panel */}
       <div
-        className="shrink-0 overflow-y-auto border-r border-[var(--line-soft)]"
+        className="resume-editor-guide-pane shrink-0 overflow-y-auto border-r border-[var(--line-soft)]"
         style={{ width: `${leftPercent}%` }}
       >
         {leftPanel}
@@ -69,7 +69,7 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
 
       {/* Draggable divider */}
       <div
-        className={`w-1 shrink-0 cursor-col-resize transition-colors hover:bg-[var(--link)]/30 ${isDragging ? 'bg-[var(--link)]/40' : 'bg-transparent'}`}
+        className={`resume-editor-divider w-1 shrink-0 cursor-col-resize transition-colors hover:bg-[var(--link)]/24 ${isDragging ? 'bg-[var(--link)]/30' : 'bg-transparent'}`}
         onMouseDown={handleMouseDown}
         role="separator"
         aria-orientation="vertical"
@@ -77,7 +77,7 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
       />
 
       {/* Right panel */}
-      <div className="flex-1 overflow-y-auto bg-[var(--bg-1)]">
+      <div className="resume-editor-document-pane flex-1 overflow-y-auto">
         {rightPanel}
       </div>
     </div>

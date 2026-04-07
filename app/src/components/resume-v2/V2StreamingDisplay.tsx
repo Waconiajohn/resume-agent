@@ -228,6 +228,37 @@ function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: nu
   );
 }
 
+function dedupePhraseList(items: string[] | null | undefined): string[] {
+  if (!items?.length) return [];
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const normalized = item.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function truncatePreview(text: string, maxLength = 120): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function chatContextLabelForSection(section: string): string {
+  switch (section) {
+    case 'executive_summary':
+      return 'Executive summary';
+    case 'core_competencies':
+      return 'Core competencies';
+    case 'selected_accomplishments':
+      return 'Selected accomplishments';
+    case 'professional_experience':
+      return 'Professional experience';
+    default:
+      return section.startsWith('custom_section:') ? 'Custom section' : 'Resume line';
+  }
+}
+
 function getAttentionStatusMeta(
   reviewState: ResumeReviewState | undefined,
   confidence: BulletConfidence,
@@ -1341,6 +1372,24 @@ export function V2StreamingDisplay({
     missing: 0,
     coverage_score: 0,
   };
+  const keywordMatchPercent = Math.round(
+    postReviewPolish?.result?.ats_score
+      ?? data.verificationDetail?.ats.match_score
+      ?? data.assembly?.scores.ats_match
+      ?? 0,
+  );
+  const keywordPhrasesFound = dedupePhraseList(
+    postReviewPolish?.result?.keywords_found
+      ?? data.verificationDetail?.ats.keywords_found
+      ?? data.preScores?.keywords_found
+      ?? [],
+  );
+  const keywordPhrasesMissing = dedupePhraseList(
+    postReviewPolish?.result?.keywords_missing
+      ?? data.verificationDetail?.ats.keywords_missing
+      ?? data.preScores?.keywords_missing
+      ?? [],
+  );
   const readyGateActionSummary = useMemo(() => {
     const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
     const lines: string[] = [];
@@ -1769,38 +1818,19 @@ export function V2StreamingDisplay({
           </div>
 
           {/* ── Desktop: two-panel layout ── */}
-          <div className="hidden lg:flex h-full">
+          <div className="hidden h-full px-4 py-4 lg:flex xl:px-5 xl:py-5">
             <ResumeEditorLayout
               leftPanel={(() => {
-                // Score computation (mirrors ScoringReport compact snapshot logic)
-                const _preScores = data.preScores;
-                const _assembly = data.assembly;
-                let afterSnapshotScore = 0;
-                let beforeSnapshotScore = 0;
-                if (_preScores && _assembly) {
-                  const beforeKeywordScore = _preScores.keyword_match_score ?? _preScores.ats_match;
-                  const afterAts = _assembly.scores.ats_match;
-                  const jdBreakdown = data.gapAnalysis?.score_breakdown?.job_description;
-                  const coveredRequirements = jdBreakdown?.addressed ?? null;
-                  const totalRequirements = jdBreakdown?.total ?? null;
-                  const beforeRequirementScore = _preScores.job_requirement_coverage_score ?? jdBreakdown?.coverage_score ?? null;
-                  const afterRequirementScore = coveredRequirements !== null && totalRequirements
-                    ? Math.round((coveredRequirements / totalRequirements) * 100)
-                    : null;
-                  beforeSnapshotScore = _preScores.overall_fit_score ?? (beforeRequirementScore !== null
-                    ? Math.round((beforeKeywordScore * 0.35) + (beforeRequirementScore * 0.65))
-                    : beforeKeywordScore);
-                  const rawAfterScore = afterRequirementScore !== null
-                    ? Math.max(afterAts, afterRequirementScore)
-                    : afterAts;
-                  afterSnapshotScore = rawAfterScore;
-                }
-                const delta = afterSnapshotScore - beforeSnapshotScore;
+                const activeLinePreview = activeBullet ? truncatePreview(activeBullet.bulletText) : null;
+                const activeLineContext = activeBullet?.requirements[0]
+                  ?? activeBullet?.sourceEvidence
+                  ?? activeBullet?.evidenceFound
+                  ?? null;
 
                 return (
                   <div className="flex flex-col h-full">
                     {/* Fixed header — always visible */}
-                    <div className="shrink-0 px-4 py-3 border-b border-[var(--line-soft)]">
+                    <div className="shrink-0 border-b border-[var(--line-soft)] px-4 py-4">
                       {(() => {
                         const flaggedCount = attentionItems.length;
                         const leftRailHeadline = activeBullet
@@ -1816,61 +1846,96 @@ export function V2StreamingDisplay({
                             ?? 'Review the remaining high-impact edits before export.';
 
                         return (
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                          <p className="eyebrow-label">Resume Guide</p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="text-xl font-semibold" style={{ color: 'var(--badge-green-text)' }}>
-                              {afterSnapshotScore}%
-                            </span>
-                            {delta > 0 && (() => {
-                              const label = `+${delta}`;
-                              const style: React.CSSProperties = { color: 'var(--badge-green-text)', backgroundColor: 'var(--badge-green-bg)', border: '1px solid color-mix(in srgb, var(--badge-green-text) 28%, transparent)' };
-                              return <span className="rounded-md px-2.5 py-1 text-xs font-bold tabular-nums" style={style}>{label}</span>;
-                            })()}
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <p className="eyebrow-label">Resume Guide</p>
+                              <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                                <p className="text-base font-semibold text-[var(--text-strong)]">
+                                  {leftRailHeadline}
+                                </p>
+                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                  Keyword &amp; phrasing match {keywordMatchPercent}%
+                                </span>
+                              </div>
+                              <p className="text-sm leading-6 text-[var(--text-soft)]">
+                                {leftRailSummary}
+                              </p>
+                            </div>
+
+                            <div className="resume-guide-snapshot-grid">
+                              <div className="resume-guide-snapshot-card">
+                                <p className="resume-guide-snapshot-card__label">Matched phrases</p>
+                                <p className="resume-guide-snapshot-card__value">{keywordPhrasesFound.length}</p>
+                              </div>
+                              <div className="resume-guide-snapshot-card">
+                                <p className="resume-guide-snapshot-card__label">Still light</p>
+                                <p className="resume-guide-snapshot-card__value">{keywordPhrasesMissing.length}</p>
+                              </div>
+                              <div className="resume-guide-snapshot-card">
+                                <p className="resume-guide-snapshot-card__label">Role coverage</p>
+                                <p className="resume-guide-snapshot-card__value">{Math.round(jobBreakdown.coverage_score)}%</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {flaggedCount > 0 && (
+                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                  {flaggedCount} {flaggedCount === 1 ? 'line to review' : 'lines to review'}
+                                </span>
+                              )}
+                              {hasStructureFirstWork && !activeBullet && (
+                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                  Structure first
+                                </span>
+                              )}
+                              {keywordPhrasesMissing.length > 0 && (
+                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                  Missing: {keywordPhrasesMissing.slice(0, 2).join(', ')}
+                                </span>
+                              )}
+                            </div>
+
+                            {activeBullet && activeLinePreview && (
+                              <div className="resume-guide-focus-card">
+                                <p className="resume-guide-focus-card__label">
+                                  {chatContextLabelForSection(activeBullet.section)}
+                                </p>
+                                <p className="resume-guide-focus-card__title">{activeLinePreview}</p>
+                                {activeLineContext && (
+                                  <p className="resume-guide-focus-card__body">
+                                    Closest target: {truncatePreview(activeLineContext, 96)}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <p className="mt-3 text-sm font-semibold text-[var(--text-strong)]">
-                            {leftRailHeadline}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
-                            {leftRailSummary}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2">
-                          {flaggedCount > 0 && (
-                            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                              {flaggedCount} {flaggedCount === 1 ? 'line to review' : 'lines to review'}
-                            </span>
-                          )}
-                          {hasStructureFirstWork && !activeBullet && (
-                            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                              Structure first
-                            </span>
-                          )}
-                        </div>
-                      </div>
                         );
                       })()}
                       {attentionItems.length > 0 && (
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className="text-xs text-[var(--text-soft)]">
-                            {attentionIndex + 1} of {attentionItems.length} priority {attentionItems.length === 1 ? 'line' : 'lines'}
-                          </span>
+                        <div className="resume-guide-queue-bar mt-4">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
+                              Priority queue
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--text-soft)]">
+                              {attentionIndex + 1} of {attentionItems.length} priority {attentionItems.length === 1 ? 'line' : 'lines'}
+                            </p>
+                          </div>
                           <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
-                            className="text-xs px-2 py-1 rounded border border-[var(--line-soft)] text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
-                          >
-                            &larr; Prev
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
-                            className="text-xs px-2 py-1 rounded border border-[var(--line-soft)] text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
-                          >
-                            Next &rarr;
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
+                              className="rounded-lg border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
+                              className="rounded-lg border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+                            >
+                              Next
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1932,7 +1997,7 @@ export function V2StreamingDisplay({
                 );
               })()}
               rightPanel={
-                <div className="mx-auto max-w-[900px]">
+                <div className="mx-auto max-w-[940px]">
                   {displayResume && (
                     <AnimatedCard index={0}>
                       <div className="resume-paper-shell overflow-hidden">
@@ -1947,10 +2012,13 @@ export function V2StreamingDisplay({
         </>
       ) : canShowResumeDocument && !hasPassedReadyGate ? (
         /* Beat 2 — "Your Resume Is Ready" gate screen */
-        <div className="mx-auto max-w-[720px] px-4 py-5 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-[980px] px-4 py-5 sm:px-6 sm:py-8">
           <ResumeReadyScreen
-            jobMatchPercent={jobBreakdown.coverage_score}
+            keywordMatchPercent={keywordMatchPercent}
+            requirementCoveragePercent={jobBreakdown.coverage_score}
             benchmarkMatchPercent={benchmarkBreakdown.coverage_score}
+            keywordsFound={keywordPhrasesFound}
+            keywordsMissing={keywordPhrasesMissing}
             strengthSummary={data.gapAnalysis?.strength_summary ?? ''}
             flaggedBulletCount={attentionItems.length}
             actionSummaryLines={readyGateActionSummary}
