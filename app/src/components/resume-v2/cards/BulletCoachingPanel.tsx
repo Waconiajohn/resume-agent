@@ -119,6 +119,12 @@ function getLineLabel(lineKind?: GapChatContext['lineKind']): string {
   }
 }
 
+function classificationForReviewState(reviewState: ResumeReviewState): 'partial' | 'missing' | 'strong' {
+  if (reviewState === 'code_red') return 'missing';
+  if (reviewState === 'strengthen' || reviewState === 'confirm_fit') return 'partial';
+  return 'strong';
+}
+
 function latestAssistantMessage(messages: GapChatMessage[] | undefined): GapChatMessage | null {
   if (!messages?.length) return null;
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -280,12 +286,12 @@ export function BulletCoachingPanel({
     const text = codeRedContext.trim();
     if (!text || isChatLoading) return;
     setIsSubmittingContext(true);
-    const classification = 'missing';
+    const classification = classificationForReviewState(reviewState);
     gapChat.sendMessage(chatKey, text, chatContext, classification).finally(() => {
       setIsSubmittingContext(false);
       setCodeRedContext('');
     });
-  }, [codeRedContext, isChatLoading, gapChat, chatKey, chatContext]);
+  }, [codeRedContext, isChatLoading, gapChat, chatKey, chatContext, reviewState]);
 
   // ── Derived display flags ─────────────────────────────────────────────────
   const isCodeRedNoEvidence =
@@ -329,6 +335,28 @@ export function BulletCoachingPanel({
       onApplyToResume(candidate.section, candidate.index, suggestion.suggestedLanguage);
     });
   }, [onApplyToResume, relatedSuggestionTargets]);
+
+  const handleReusePriorClarification = useCallback((topic: string, userInput: string, appliedLanguage?: string | null) => {
+    if (isChatLoading) return;
+    const classification = classificationForReviewState(reviewState);
+    const targetRequirement = primaryRequirement ?? requirements[0] ?? 'this requirement';
+    const promptParts = [
+      `Use my earlier confirmed detail to rewrite this ${lineLabel} for "${targetRequirement}".`,
+      `Earlier answer: ${userInput}`,
+      appliedLanguage ? `Existing resume wording we already used: ${appliedLanguage}` : '',
+      'Keep the rewrite truthful, specific, and aligned to the role.',
+    ].filter(Boolean);
+
+    gapChat.sendMessage(
+      chatKey,
+      promptParts.join('\n\n'),
+      {
+        ...chatContext,
+        priorClarifications: chatContext.priorClarifications?.filter((entry) => entry.topic === topic) ?? chatContext.priorClarifications,
+      },
+      classification,
+    );
+  }, [isChatLoading, reviewState, primaryRequirement, requirements, lineLabel, gapChat, chatKey, chatContext]);
 
   return (
     <div
@@ -464,6 +492,22 @@ export function BulletCoachingPanel({
                     Resume wording used: {entry.appliedLanguage}
                   </p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleReusePriorClarification(entry.topic, entry.userInput, entry.appliedLanguage)}
+                  disabled={isChatLoading}
+                  className={cn(
+                    'inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    isChatLoading && 'opacity-50 cursor-not-allowed',
+                  )}
+                  style={{
+                    borderColor: 'var(--line-soft)',
+                    color: 'var(--text-strong)',
+                    background: 'var(--surface-elevated)',
+                  }}
+                >
+                  Rewrite from this answer
+                </button>
               </div>
             ))}
           </div>

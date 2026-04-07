@@ -894,6 +894,8 @@ CONVERSATION STYLE:
 - Ask only ONE next question at a time
 - Name the actual evidence when you can
 - Be aggressive about reframing nearby evidence, but never bluff
+- If earlier confirmed clarifications already answer the gap, reuse them before asking anything new
+- When earlier confirmed clarifications are relevant, say so plainly instead of making the candidate repeat themselves
 
 RESPONSE FORMAT: Return valid JSON only:
 {
@@ -940,7 +942,7 @@ function modeInstruction(mode: LineCoachRequest['mode']): string {
       return 'Mode: final_review_fix. Resolve the hiring-manager concern directly and tie your advice to the concern.';
     case 'clarify':
     default:
-      return 'Mode: clarify. Surface the one missing detail that would make the proof believable and stronger.';
+      return 'Mode: clarify. Surface the one missing detail that would make the proof believable and stronger, but first reuse any earlier confirmed clarifications that already cover part of the gap.';
   }
 }
 
@@ -1061,6 +1063,7 @@ function buildLineCoachStarter(request: LineCoachRequest): StructuredCoachingRes
 
   const requirement = context.requirement ?? item_id;
   const classification = context.classification ?? 'partial';
+  const hasPriorClarifications = (context.prior_clarifications?.length ?? 0) > 0;
   const starterQuestion = context.coaching_policy?.clarifyingQuestion?.trim()
     || buildRequirementFallbackQuestion({
       requirement,
@@ -1070,11 +1073,13 @@ function buildLineCoachStarter(request: LineCoachRequest): StructuredCoachingRes
     });
 
   return {
-    response: 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
-    follow_up_question: starterQuestion,
-    current_question: starterQuestion,
-    needs_candidate_input: true,
-    recommended_next_action: 'answer_question',
+    response: hasPriorClarifications
+      ? 'I will first reuse the strongest confirmed details you already shared earlier. I will only ask a new question if one critical detail is still missing after that.'
+      : 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
+    follow_up_question: hasPriorClarifications ? undefined : starterQuestion,
+    current_question: hasPriorClarifications ? undefined : starterQuestion,
+    needs_candidate_input: hasPriorClarifications ? false : true,
+    recommended_next_action: hasPriorClarifications ? 'review_edit' : 'answer_question',
   };
 }
 

@@ -1038,11 +1038,23 @@ describe('POST /api/resume-v2/:sessionId/line-coach', () => {
       messages: Array<{ role: string; content: string }>;
     };
     const prompt = llmArgs.messages[0]?.content ?? '';
+    const seededAssistant = JSON.parse(llmArgs.messages[1]?.content ?? '{}') as {
+      response?: string;
+      follow_up_question?: string;
+      current_question?: string;
+      recommended_next_action?: string;
+      needs_candidate_input?: boolean;
+    };
     expect(prompt).toContain('Nearby lines that could also improve with the same answer:');
     expect(prompt).toContain('Previously confirmed candidate clarifications:');
     expect(prompt).toContain('family=metrics');
     expect(prompt).toContain('candidate_id=selected_accomplishments:0');
     expect(prompt).toContain('Reduced defects by 50% through Agile ceremonies');
+    expect(seededAssistant.response).toContain('reuse the strongest confirmed details you already shared earlier');
+    expect(seededAssistant.recommended_next_action).toBe('review_edit');
+    expect(seededAssistant.needs_candidate_input).toBe(false);
+    expect(seededAssistant.follow_up_question).toBeUndefined();
+    expect(seededAssistant.current_question).toBeUndefined();
   });
 });
 

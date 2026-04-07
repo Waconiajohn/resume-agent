@@ -4,16 +4,26 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { BulletCoachingPanel } from '../cards/BulletCoachingPanel';
 import type { GapChatContext } from '@/types/resume-v2';
+import type { GapChatHook } from '@/hooks/useGapChat';
 
-function makeGapChat(itemState?: Record<string, unknown>) {
-  return {
+function makeGapChat(itemState?: Record<string, unknown>): GapChatHook & { sendMessage: ReturnType<typeof vi.fn> } {
+  const mock = {
     getItemState: vi.fn(() => ({ isLoading: false, ...itemState })),
     sendMessage: vi.fn(() => Promise.resolve()),
     resolveLanguage: vi.fn(),
     clearResolution: vi.fn(),
     hydrate: vi.fn(),
     reset: vi.fn(),
-  } as never;
+    acceptLanguage: vi.fn(),
+    clearResolvedLanguage: vi.fn(),
+    getSnapshot: vi.fn(),
+    hydrateSnapshot: vi.fn(),
+    resetChat: vi.fn(),
+    resolvedCount: 0,
+    isAnyLoading: false,
+  };
+
+  return mock as unknown as GapChatHook & { sendMessage: ReturnType<typeof vi.fn> };
 }
 
 function makeChatContext(overrides: Partial<GapChatContext> = {}): GapChatContext {
@@ -206,6 +216,8 @@ describe('BulletCoachingPanel', () => {
   });
 
   it('shows matching prior clarifications from earlier answers', () => {
+    const gapChat = makeGapChat();
+
     render(
       <BulletCoachingPanel
         bulletText="Built and tracked performance metrics."
@@ -215,7 +227,7 @@ describe('BulletCoachingPanel', () => {
         reviewState="strengthen"
         requirementSource="job_description"
         evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
-        gapChat={makeGapChat()}
+        gapChat={gapChat}
         chatContext={makeChatContext({
           lineKind: 'bullet',
           sectionKey: 'professional_experience',
@@ -246,5 +258,21 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByText('Performance metrics • metrics')).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
     expect(screen.getByText(/Resume wording used: Built weekly KPI reviews across 3 plants\./i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /rewrite from this answer/i }));
+
+    expect(gapChat.sendMessage).toHaveBeenCalledWith(
+      'Develop and track performance metrics',
+      expect.stringContaining('Use my earlier confirmed detail to rewrite this line'),
+      expect.objectContaining({
+        priorClarifications: [
+          expect.objectContaining({
+            topic: 'Performance metrics',
+            userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
+          }),
+        ],
+      }),
+      'partial',
+    );
   });
 });
