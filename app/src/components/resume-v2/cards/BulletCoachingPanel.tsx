@@ -74,23 +74,48 @@ function buildCoachingText(
   reviewState: ResumeReviewState,
   requirements: string[],
   evidenceFound: string,
+  lineKind?: GapChatContext['lineKind'],
 ): string {
   const req = requirements[0] ?? 'this requirement';
   const evidence = evidenceFound.trim();
+  const lineLabel = lineKind === 'summary'
+    ? 'summary line'
+    : lineKind === 'competency'
+      ? 'competency'
+      : lineKind === 'section_summary'
+        ? 'section intro'
+        : lineKind === 'custom_line'
+          ? 'section line'
+          : 'line';
 
   switch (reviewState) {
     case 'code_red':
       return evidence
-        ? `I found related experience in your resume: "${evidence}".\n\nIf there's a specific project or outcome behind this, share it and we'll rewrite accurately. Or we can remove this line if it truly doesn't fit.`
-        : `We need proof for "${req}" before this line can stay on your resume.\n\nTell us what you've actually done in this area — even on a smaller scale or under a different title counts.`;
+        ? `I found related experience in your resume: "${evidence}".\n\nIf there's a specific project, scope, or outcome behind it, share that and we'll rewrite this ${lineLabel} accurately. Or we can remove it if it truly doesn't fit.`
+        : `We need proof for "${req}" before this ${lineLabel} can stay on your resume.\n\nTell us what you've actually done in this area — even on a smaller scale or under a different title counts.`;
     case 'confirm_fit':
       return evidence
         ? `This comes from the benchmark for this role. We found "${evidence}" in your background that's related. Does this honestly describe how you've worked?`
         : `This comes from the benchmark for this role — not directly from your background. Confirm it honestly describes you, or tell us what the real story is.`;
     case 'strengthen':
-      return `You have real experience here. This line needs to connect it more clearly to "${req}".\n\nCan you quantify the outcome? Even an estimate works. Was there a notable scope or scale? A specific result you remember?`;
+      return `You have real experience here. This ${lineLabel} needs to connect it more clearly to "${req}".\n\nCan you quantify the outcome? Even an estimate works. Was there a notable scope or scale? A specific result you remember?`;
     default:
       return '';
+  }
+}
+
+function getLineLabel(lineKind?: GapChatContext['lineKind']): string {
+  switch (lineKind) {
+    case 'summary':
+      return 'summary line';
+    case 'competency':
+      return 'competency';
+    case 'section_summary':
+      return 'section intro';
+    case 'custom_line':
+      return 'section line';
+    default:
+      return 'line';
   }
 }
 
@@ -253,21 +278,27 @@ export function BulletCoachingPanel({
   // ── Derived display flags ─────────────────────────────────────────────────
   const isCodeRedNoEvidence =
     reviewState === 'code_red' && !evidenceFound.trim() && alternatives.length === 0;
-  const coachingText = buildCoachingText(reviewState, requirements, evidenceFound);
+  const coachingText = buildCoachingText(reviewState, requirements, evidenceFound, chatContext.lineKind);
   const coachingExpandedDefault = reviewState === 'code_red';
   const primaryRequirement = requirements[0];
   const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
+  const lineLabel = getLineLabel(chatContext.lineKind);
+  const topClarifyingQuestion = chatContext.clarifyingQuestions?.[0]?.trim();
+  const remainingClarifyingQuestions = (chatContext.clarifyingQuestions ?? [])
+    .map((question) => question.trim())
+    .filter(Boolean)
+    .slice(0, 2);
 
   // ── Plain-language explanation of why this bullet is being coached ─────────
   const explanationText: string = {
     code_red:
-      "This line needs proof — we couldn't find evidence for this claim in your resume.",
+      `This ${lineLabel} needs proof — we couldn't find enough evidence for this claim in your resume yet.`,
     confirm_fit:
-      'This line comes from the benchmark profile for this role — confirm it matches your experience.',
+      `This ${lineLabel} comes from the benchmark profile for this role — confirm it matches your experience.`,
     strengthen:
-      'This line addresses a job requirement but could be more specific and impactful.',
-    supported: 'This line is backed by your resume. No changes needed.',
-    supported_rewrite: 'This line is backed by your resume. No changes needed.',
+      `This ${lineLabel} addresses a job requirement but could be more specific and impactful.`,
+    supported: `This ${lineLabel} is backed by your resume. No changes needed.`,
+    supported_rewrite: `This ${lineLabel} is backed by your resume. No changes needed.`,
   }[reviewState] ?? '';
 
   return (
@@ -342,6 +373,39 @@ export function BulletCoachingPanel({
         />
       )}
 
+      {remainingClarifyingQuestions.length > 0 && (
+        <div
+          className="rounded-lg px-3 py-3"
+          style={{
+            background: 'var(--surface-1)',
+            border: '1px solid var(--line-soft)',
+          }}
+        >
+          <p
+            className="text-[10px] uppercase tracking-wider"
+            style={{ color: 'var(--text-soft)' }}
+          >
+            Fastest way to strengthen this {lineLabel}
+          </p>
+          {chatContext.coachingGoal && (
+            <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+              {chatContext.coachingGoal}
+            </p>
+          )}
+          <ul className="mt-2 space-y-1.5">
+            {remainingClarifyingQuestions.map((question) => (
+              <li
+                key={question}
+                className="text-sm leading-relaxed"
+                style={{ color: 'var(--text-strong)' }}
+              >
+                {question}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* 2. Before / after — suppressed for code_red with no evidence */}
       {!isCodeRedNoEvidence && (
         <BulletBeforeAfter
@@ -370,6 +434,8 @@ export function BulletCoachingPanel({
           isEnhancing={isEnhancing}
           activeAction={enhanceAction}
           disabled={isChatLoading}
+          lineKind={chatContext.lineKind}
+          sectionLabel={chatContext.sectionLabel}
         />
       )}
 
@@ -396,6 +462,14 @@ export function BulletCoachingPanel({
             </span>
             . Even a small-scale or adjacent example gives us something to work with.
           </p>
+          {topClarifyingQuestion && (
+            <p
+              className="text-[12px] leading-relaxed"
+              style={{ color: 'var(--text-soft)' }}
+            >
+              Start with this: {topClarifyingQuestion}
+            </p>
+          )}
           <div className="flex items-end gap-2">
             <textarea
               value={codeRedContext}
@@ -406,7 +480,7 @@ export function BulletCoachingPanel({
                   handleSubmitCodeRedContext();
                 }
               }}
-              placeholder="Describe what you've actually done in this area…"
+              placeholder={topClarifyingQuestion ?? 'Describe what you\'ve actually done in this area…'}
               rows={3}
               disabled={isChatLoading || isSubmittingContext}
               aria-label="Provide context about your experience"

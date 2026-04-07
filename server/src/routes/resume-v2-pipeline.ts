@@ -1213,12 +1213,62 @@ const bulletEnhanceSchema = z.object({
   clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),
 });
 
-const ACTION_DESCRIPTIONS: Record<string, string> = {
-  show_transformation: 'Rewrite this bullet to show transformation: the before-state (what was broken or challenging), the action taken (HOW — through people, process, creativity, not just what), and the after-state (what became possible, not just the metric). Structure: inherited/faced → did → resulted in. Return 3 versions with different angles.',
-  demonstrate_leadership: 'Rewrite this bullet to demonstrate leadership through people — empowerment, delegation, team development, growing others into leaders. Show who was developed, how they were empowered, what they accomplished as a result. The best leaders are measured by what their people achieved. Return 3 versions.',
-  connect_to_role: 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return 3 versions.',
-  show_accountability: 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return 3 versions.',
-};
+function buildEnhanceActionDescription(
+  action: z.infer<typeof bulletEnhanceSchema>['action'],
+  lineKind: z.infer<typeof bulletEnhanceSchema>['line_kind'],
+  sectionLabel?: string,
+): string {
+  if (lineKind === 'summary') {
+    switch (action) {
+      case 'show_transformation':
+        return 'Rewrite this executive summary line so the opening tells a sharper transformation story: what kind of change this leader drives, at what level, and why it matters. Keep it concise, executive, and credible. Return 3 versions with different angles.';
+      case 'demonstrate_leadership':
+        return 'Rewrite this executive summary line to foreground leadership scope through people, scale, and operating cadence. Make the leadership signal unmistakable in concise executive language. Return 3 versions.';
+      case 'connect_to_role':
+        return 'Rewrite this executive summary line to mirror the target role more directly. Bridge the candidate\'s background to the hiring company\'s language, priorities, and problem space. Return 3 concise versions.';
+      case 'show_accountability':
+        return 'Rewrite this executive summary line to foreground ownership, standards, and business impact. Make it sound like a leader trusted with meaningful outcomes, not just activity. Return 3 concise versions.';
+    }
+  }
+
+  if (lineKind === 'competency') {
+    switch (action) {
+      case 'show_transformation':
+        return 'Rewrite this competency as a sharper ATS-friendly keyword phrase that signals transformation or change capability. Return 3 short versions with no ending punctuation.';
+      case 'demonstrate_leadership':
+        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals leadership through people, organizational influence, or executive ownership. Return 3 short versions with no ending punctuation.';
+      case 'connect_to_role':
+        return 'Rewrite this competency in language that more closely matches the target role and job description. Return 3 ATS-friendly keyword phrases with no ending punctuation.';
+      case 'show_accountability':
+        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals operating rigor, accountability, governance, or disciplined execution. Return 3 short versions with no ending punctuation.';
+    }
+  }
+
+  if (lineKind === 'section_summary' || lineKind === 'custom_line') {
+    const sectionPhrase = sectionLabel ? `"${sectionLabel}"` : 'this section';
+    switch (action) {
+      case 'show_transformation':
+        return `Rewrite this resume line so it sharpens the story inside ${sectionPhrase}. Show the change, upgrade, or transformation the candidate drove, while staying grounded in real evidence. Return 3 versions.`;
+      case 'demonstrate_leadership':
+        return `Rewrite this resume line so it shows leadership more clearly inside ${sectionPhrase}. Emphasize influence, ownership, and how the candidate led people or decisions. Return 3 versions.`;
+      case 'connect_to_role':
+        return `Rewrite this resume line so it connects ${sectionPhrase} more directly to the target role. Translate the experience into the hiring company\'s language and priorities. Return 3 versions.`;
+      case 'show_accountability':
+        return `Rewrite this resume line so it shows accountability, standards, or business impact inside ${sectionPhrase}. Make the line sound trusted, concrete, and outcome-oriented. Return 3 versions.`;
+    }
+  }
+
+  switch (action) {
+    case 'show_transformation':
+      return 'Rewrite this bullet to show transformation: the before-state (what was broken or challenging), the action taken (HOW — through people, process, creativity, not just what), and the after-state (what became possible, not just the metric). Structure: inherited/faced → did → resulted in. Return 3 versions with different angles.';
+    case 'demonstrate_leadership':
+      return 'Rewrite this bullet to demonstrate leadership through people — empowerment, delegation, team development, growing others into leaders. Show who was developed, how they were empowered, what they accomplished as a result. The best leaders are measured by what their people achieved. Return 3 versions.';
+    case 'connect_to_role':
+      return 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return 3 versions.';
+    case 'show_accountability':
+      return 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return 3 versions.';
+  }
+}
 
 function buildEnhanceLineTypeInstructions(lineKind: z.infer<typeof bulletEnhanceSchema>['line_kind'], sectionLabel?: string): string[] {
   switch (lineKind) {
@@ -1291,7 +1341,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     coaching_goal,
     clarifying_questions,
   } = parsed.data;
-  const actionDescription = ACTION_DESCRIPTIONS[action];
+  const actionDescription = buildEnhanceActionDescription(action, line_kind, section_label);
   const lineTypeInstructions = buildEnhanceLineTypeInstructions(line_kind, section_label);
 
   // Read enriched context from pipeline state if available

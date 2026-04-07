@@ -904,6 +904,7 @@ describe('POST /api/resume-v2/:sessionId/bullet-enhance', () => {
     expect(prompt).toContain('SECTION: "Executive Summary"');
     expect(prompt).toContain('RELATED REQUIREMENTS: "Product delivery | Executive leadership"');
     expect(prompt).toContain('This is an executive summary line, not a bullet.');
+    expect(prompt).toContain('Rewrite this executive summary line to mirror the target role more directly.');
     expect(prompt).toContain('COACHING GOAL: "Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance."');
   });
 });
