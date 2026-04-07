@@ -880,9 +880,9 @@ function GuidedStartCard({
   return (
     <div className="shell-panel px-4 py-4">
       <p className="eyebrow-label">Start Here</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take the next few moves in the right order</h3>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take the next moves in the right order</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        You do not need to guess what to do first. These steps are ordered to improve the resume fastest.
+        You do not need to guess what to do first. Start with the first step below, then come back here for the next best move.
       </p>
       <div className="mt-4 space-y-2">
         {steps.map((step, index) => (
@@ -1559,6 +1559,95 @@ export function V2StreamingDisplay({
     rememberedEvidenceCues,
     sectionCoachTargets,
   ]);
+  const hasStructureFirstWork = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0;
+  const canShowStructurePlanner = Boolean(
+    displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
+  );
+  const secondarySupportMode = !activeBullet && !hasStructureFirstWork
+    ? rememberedEvidenceCues.length > 0
+      ? 'remembered'
+      : clarificationCues.length > 0
+        ? 'clarification'
+        : sectionCoachTargets.length > 0
+          ? 'section'
+          : attentionItems.length > 0
+            ? 'queue'
+            : null
+    : null;
+
+  const renderSecondarySupportPanel = () => {
+    if (activeBullet) return null;
+
+    if (secondarySupportMode === 'remembered') {
+      return (
+        <RememberedEvidenceCard
+          cues={rememberedEvidenceCues}
+          onOpenCue={(cue) => {
+            if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
+          }}
+        />
+      );
+    }
+
+    if (secondarySupportMode === 'clarification') {
+      return (
+        <ClarificationCueCard
+          cues={clarificationCues}
+          onOpenCue={openClarificationCue}
+        />
+      );
+    }
+
+    if (secondarySupportMode === 'section') {
+      return (
+        <SectionCoachCard
+          targets={sectionCoachTargets}
+          onOpenTarget={openSectionCoachTarget}
+        />
+      );
+    }
+
+    if (secondarySupportMode === 'queue') {
+      return (
+        <div className="shell-panel px-4 py-4">
+          <p className="eyebrow-label">Editing Queue</p>
+          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with the lines that change the story fastest</h3>
+          <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+            Click any flagged line on the right, or jump into one of these top-priority fixes.
+          </p>
+          {attentionItems.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              {attentionItems.slice(0, 3).map((item) => {
+                const itemIndex = attentionItems.findIndex((candidate) => candidate.id === item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAttentionItem(itemIndex)}
+                    className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
+                  >
+                    <span className={item.statusClassName}>{item.statusLabel}</span>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                      {item.locationLabel}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
+                      {item.text}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-sm text-[var(--text-soft)]">
+              The strongest version is already visible. Use the structure planner above if you want to change the section story before export.
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1633,40 +1722,21 @@ export function V2StreamingDisplay({
               {!activeBullet && (
                 <GuidedStartCard steps={guidedStartSteps} />
               )}
-              {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet && (
+              {canShowStructurePlanner && (
                 <div ref={structurePlannerRef}>
                   <ResumeStructurePlannerCard
-                    resume={displayResume}
+                    resume={displayResume!}
                     candidateIntelligence={data.candidateIntelligence}
                     requirementWorkItems={data.requirementWorkItems}
-                    onMoveSection={onMoveSection}
-                    onToggleSection={onToggleSection}
+                    onMoveSection={onMoveSection!}
+                    onToggleSection={onToggleSection!}
                     onAddAISection={handleAddAISectionAndOpen}
                     onAddCustomSection={handleAddCustomSectionAndOpen}
-                    onRemoveCustomSection={onRemoveCustomSection}
+                    onRemoveCustomSection={onRemoveCustomSection!}
                   />
                 </div>
               )}
-              {!activeBullet && (
-                <SectionCoachCard
-                  targets={sectionCoachTargets}
-                  onOpenTarget={openSectionCoachTarget}
-                />
-              )}
-              {!activeBullet && (
-                <RememberedEvidenceCard
-                  cues={rememberedEvidenceCues}
-                  onOpenCue={(cue) => {
-                    if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
-                  }}
-                />
-              )}
-              {!activeBullet && (
-                <ClarificationCueCard
-                  cues={clarificationCues}
-                  onOpenCue={openClarificationCue}
-                />
-              )}
+              {renderSecondarySupportPanel()}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="bg-white rounded-lg shadow-[0_4px_32px_rgba(0,0,0,0.45)] overflow-hidden">
@@ -1839,68 +1909,21 @@ export function V2StreamingDisplay({
                       ) : (
                         <div className="space-y-4">
                           <GuidedStartCard steps={guidedStartSteps} />
-                          {displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && (
+                          {canShowStructurePlanner && (
                             <div ref={structurePlannerRef}>
                               <ResumeStructurePlannerCard
-                                resume={displayResume}
+                                resume={displayResume!}
                                 candidateIntelligence={data.candidateIntelligence}
                                 requirementWorkItems={data.requirementWorkItems}
-                                onMoveSection={onMoveSection}
-                                onToggleSection={onToggleSection}
+                                onMoveSection={onMoveSection!}
+                                onToggleSection={onToggleSection!}
                                 onAddAISection={handleAddAISectionAndOpen}
                                 onAddCustomSection={handleAddCustomSectionAndOpen}
-                                onRemoveCustomSection={onRemoveCustomSection}
+                                onRemoveCustomSection={onRemoveCustomSection!}
                               />
                             </div>
                           )}
-                          <SectionCoachCard
-                            targets={sectionCoachTargets}
-                            onOpenTarget={openSectionCoachTarget}
-                          />
-                          <RememberedEvidenceCard
-                            cues={rememberedEvidenceCues}
-                            onOpenCue={(cue) => {
-                              if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
-                            }}
-                          />
-                          <ClarificationCueCard
-                            cues={clarificationCues}
-                            onOpenCue={openClarificationCue}
-                          />
-                          <div className="shell-panel px-4 py-4">
-                            <p className="eyebrow-label">Editing Queue</p>
-                            <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with the lines that change the story fastest</h3>
-                            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-                              Click any flagged line on the right, or jump into one of these top-priority fixes.
-                            </p>
-                            {attentionItems.length > 0 ? (
-                              <div className="mt-4 space-y-2">
-                                {attentionItems.slice(0, 3).map((item) => {
-                                  const itemIndex = attentionItems.findIndex((candidate) => candidate.id === item.id);
-                                  return (
-                                    <button
-                                      key={item.id}
-                                      type="button"
-                                      onClick={() => openAttentionItem(itemIndex)}
-                                      className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-left hover:bg-[var(--surface-0)] transition-colors"
-                                    >
-                                      <span className={item.statusClassName}>{item.statusLabel}</span>
-                                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                        {item.locationLabel}
-                                      </p>
-                                      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
-                                        {item.text}
-                                      </p>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3.5 py-3 text-sm text-[var(--text-soft)]">
-                                The strongest version is already visible. Use the structure planner above if you want to change the section story before export.
-                              </div>
-                            )}
-                          </div>
+                          {renderSecondarySupportPanel()}
                         </div>
                       )}
                     </div>

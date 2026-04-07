@@ -1245,6 +1245,8 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Check the recommended sections first/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Selected Projects/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Section Polish')).not.toBeInTheDocument();
+    expect(screen.queryByText('Editing Queue')).not.toBeInTheDocument();
   });
 
   it('shows clarification prompts for high-value proof upgrades and jumps to the related line', async () => {
