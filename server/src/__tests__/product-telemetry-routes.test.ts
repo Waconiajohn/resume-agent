@@ -132,6 +132,13 @@ describe('product telemetry routes', () => {
         },
         {
           user_id: 'user-c',
+          event_name: 'profile_setup_retry_needed',
+          occurred_at: '2026-03-30T10:08:30.000Z',
+          path: '/profile-setup',
+          payload: { session_id: 'setup-1', source: 'initial_complete' },
+        },
+        {
+          user_id: 'user-c',
           event_name: 'profile_setup_retry_requested',
           occurred_at: '2026-03-30T10:09:00.000Z',
           path: '/profile-setup',
@@ -143,6 +150,24 @@ describe('product telemetry routes', () => {
           occurred_at: '2026-03-30T10:10:00.000Z',
           path: '/profile-setup',
           payload: { session_id: 'setup-1', master_resume_id: 'resume-1' },
+        },
+        {
+          user_id: 'user-d',
+          event_name: 'profile_setup_retry_needed',
+          occurred_at: '2026-03-30T10:11:00.000Z',
+          path: '/profile-setup',
+          payload: { session_id: 'setup-2', source: 'retry' },
+        },
+        {
+          user_id: 'user-d',
+          event_name: 'profile_setup_retry_failed',
+          occurred_at: '2026-03-30T10:12:00.000Z',
+          path: '/profile-setup',
+          payload: {
+            session_id: 'setup-2',
+            reason: 'master_resume_not_created',
+            message: 'Automatic retry still did not create the master resume.',
+          },
         },
       ],
       error: null,
@@ -167,15 +192,34 @@ describe('product telemetry routes', () => {
         id: string;
         rate_pct: number | null;
       }>;
-      path_breakdown: { smart_referrals: Record<string, number> };
+      path_breakdown: {
+        smart_referrals: Record<string, number>;
+        profile_setup_retries: {
+          needed_initial: number;
+          needed_after_retry: number;
+          requested: number;
+          succeeded: number;
+          failed: number;
+          failures_by_reason: {
+            request_failed: number;
+            master_resume_not_created: number;
+          };
+        };
+      };
     };
 
     expect(body.days).toBe(7);
-    expect(body.active_users).toBe(3);
-    expect(body.total_events).toBe(5);
+    expect(body.active_users).toBe(4);
+    expect(body.total_events).toBe(8);
     expect(body.event_counts.resume_builder_session_started).toBe(1);
     expect(body.event_counts.job_board_search_run).toBe(1);
     expect(body.path_breakdown.smart_referrals.bonus).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.needed_initial).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.needed_after_retry).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.requested).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.succeeded).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.failed).toBe(1);
+    expect(body.path_breakdown.profile_setup_retries.failures_by_reason.master_resume_not_created).toBe(1);
     expect(body.watch_metrics.some((metric) => metric.id === 'smart_referrals_network_share')).toBe(true);
     expect(body.watch_metrics.some((metric) => metric.id === 'profile_setup_retry_success')).toBe(true);
   });

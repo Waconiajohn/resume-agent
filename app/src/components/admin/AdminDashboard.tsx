@@ -96,6 +96,17 @@ interface ProductFunnelResponse {
     smart_referrals: Record<string, number>;
     shortlist_entry_points: Record<string, number>;
     boolean_copy_targets: Record<string, number>;
+    profile_setup_retries: {
+      needed_initial: number;
+      needed_after_retry: number;
+      requested: number;
+      succeeded: number;
+      failed: number;
+      failures_by_reason: {
+        request_failed: number;
+        master_resume_not_created: number;
+      };
+    };
   };
 }
 
@@ -120,6 +131,12 @@ function formatDate(iso: string): string {
 function formatRate(value: number | null): string {
   if (value === null) return '—';
   return `${value}%`;
+}
+
+function statusRank(status: ProductFunnelWatchMetric['status']): number {
+  if (status === 'needs_attention') return 0;
+  if (status === 'watch') return 1;
+  return 2;
 }
 
 function StatCard({
@@ -469,6 +486,15 @@ export function AdminDashboard() {
   const renderFunnel = () => {
     if (!funnel) return null;
 
+    const orderedWatchMetrics = [...funnel.watch_metrics].sort((a, b) => {
+      const statusDiff = statusRank(a.status) - statusRank(b.status);
+      if (statusDiff !== 0) return statusDiff;
+      return (b.rate_pct ?? 0) - (a.rate_pct ?? 0);
+    });
+
+    const primaryAlert = orderedWatchMetrics.find((metric) => metric.status !== 'healthy') ?? null;
+    const retryRecovery = funnel.path_breakdown.profile_setup_retries;
+
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -493,10 +519,52 @@ export function AdminDashboard() {
           />
         </div>
 
+        <GlassCard
+          className={cn(
+            'p-4 border',
+            primaryAlert?.status === 'needs_attention'
+              ? 'border-[var(--badge-red-text)]/25'
+              : primaryAlert?.status === 'watch'
+                ? 'border-[var(--badge-amber-text)]/25'
+                : 'border-[var(--line-soft)]',
+          )}
+        >
+          <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-2">Attention Right Now</p>
+          {primaryAlert ? (
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">{primaryAlert.label}</p>
+                <p className="text-xs text-[var(--text-soft)] mt-1">{primaryAlert.note}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p
+                  className={cn(
+                    'text-lg font-semibold',
+                    primaryAlert.status === 'healthy'
+                      ? 'text-[var(--badge-green-text)]'
+                      : primaryAlert.status === 'watch'
+                        ? 'text-[var(--badge-amber-text)]'
+                        : 'text-[var(--badge-red-text)]',
+                  )}
+                >
+                  {formatRate(primaryAlert.rate_pct)}
+                </p>
+                <p className="text-xs text-[var(--text-soft)]">
+                  {primaryAlert.numerator}/{primaryAlert.denominator}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)]">
+              No watch metrics are asking for attention in the last {funnel.days} days.
+            </p>
+          )}
+        </GlassCard>
+
         <GlassCard className="p-4">
           <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Watch Daily</p>
           <div className="space-y-2">
-            {funnel.watch_metrics.map((metric) => (
+            {orderedWatchMetrics.map((metric) => (
               <div key={metric.id} className="flex items-start justify-between gap-4 text-sm">
                 <div className="min-w-0">
                   <p className="text-[var(--text-muted)]">{metric.label}</p>
@@ -521,6 +589,52 @@ export function AdminDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-4">
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="min-w-0">
+              <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider">Profile Setup Recovery</p>
+              <p className="text-sm text-[var(--text-muted)] mt-1">
+                Monitor whether reveal-screen retry is being used and whether it actually recovers master-resume creation.
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-lg font-semibold text-white">{retryRecovery.succeeded}</p>
+              <p className="text-xs text-[var(--text-soft)]">recovered</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Needed</p>
+              <p className="mt-1 text-lg font-semibold text-white">{retryRecovery.needed_initial}</p>
+              <p className="text-xs text-[var(--text-soft)]">after first build</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Retry Clicked</p>
+              <p className="mt-1 text-lg font-semibold text-white">{retryRecovery.requested}</p>
+              <p className="text-xs text-[var(--text-soft)]">from reveal screen</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Succeeded</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--badge-green-text)]">{retryRecovery.succeeded}</p>
+              <p className="text-xs text-[var(--text-soft)]">master resume recovered</p>
+            </div>
+            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Still Failing</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--badge-red-text)]">
+                {retryRecovery.failures_by_reason.master_resume_not_created}
+              </p>
+              <p className="text-xs text-[var(--text-soft)]">after retry response</p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--text-soft)]">
+            <span>Retry request failures: {retryRecovery.failures_by_reason.request_failed}</span>
+            <span>Needed again after retry: {retryRecovery.needed_after_retry}</span>
+            <span>Total failed retry attempts: {retryRecovery.failed}</span>
           </div>
         </GlassCard>
 

@@ -38,6 +38,17 @@ export interface ProductTelemetrySummary {
     smart_referrals: Record<string, number>;
     shortlist_entry_points: Record<string, number>;
     boolean_copy_targets: Record<string, number>;
+    profile_setup_retries: {
+      needed_initial: number;
+      needed_after_retry: number;
+      requested: number;
+      succeeded: number;
+      failed: number;
+      failures_by_reason: {
+        request_failed: number;
+        master_resume_not_created: number;
+      };
+    };
   };
 }
 
@@ -112,6 +123,17 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
   const smartReferralsBreakdown: Record<string, number> = { network: 0, bonus: 0 };
   const shortlistEntryBreakdown: Record<string, number> = { overview_cta: 0, board_target: 0 };
   const booleanCopyBreakdown: Record<string, number> = { linkedin: 0, indeed: 0, titles: 0 };
+  const profileSetupRetryBreakdown = {
+    needed_initial: 0,
+    needed_after_retry: 0,
+    requested: 0,
+    succeeded: 0,
+    failed: 0,
+    failures_by_reason: {
+      request_failed: 0,
+      master_resume_not_created: 0,
+    },
+  };
 
   for (const row of rows) {
     activeUsers.add(row.user_id);
@@ -135,6 +157,31 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
       const target = typeof row.payload?.target === 'string' ? row.payload.target : null;
       if (target === 'linkedin' || target === 'indeed' || target === 'titles') {
         booleanCopyBreakdown[target] = (booleanCopyBreakdown[target] ?? 0) + 1;
+      }
+    }
+
+    if (row.event_name === 'profile_setup_retry_needed') {
+      const source = typeof row.payload?.source === 'string' ? row.payload.source : null;
+      if (source === 'initial_complete') {
+        profileSetupRetryBreakdown.needed_initial += 1;
+      } else if (source === 'retry') {
+        profileSetupRetryBreakdown.needed_after_retry += 1;
+      }
+    }
+
+    if (row.event_name === 'profile_setup_retry_requested') {
+      profileSetupRetryBreakdown.requested += 1;
+    }
+
+    if (row.event_name === 'profile_setup_retry_succeeded') {
+      profileSetupRetryBreakdown.succeeded += 1;
+    }
+
+    if (row.event_name === 'profile_setup_retry_failed') {
+      profileSetupRetryBreakdown.failed += 1;
+      const reason = typeof row.payload?.reason === 'string' ? row.payload.reason : null;
+      if (reason === 'request_failed' || reason === 'master_resume_not_created') {
+        profileSetupRetryBreakdown.failures_by_reason[reason] += 1;
       }
     }
   }
@@ -258,6 +305,7 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
       smart_referrals: smartReferralsBreakdown,
       shortlist_entry_points: shortlistEntryBreakdown,
       boolean_copy_targets: booleanCopyBreakdown,
+      profile_setup_retries: profileSetupRetryBreakdown,
     },
   };
 }
