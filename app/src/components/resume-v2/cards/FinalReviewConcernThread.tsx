@@ -32,7 +32,7 @@ function isGenericConcernQuestion(value: string | undefined): boolean {
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+      <div className="max-w-[88%] rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] sm:max-w-[85%] sm:px-4">
         <p className="text-sm leading-6 text-[var(--text-strong)]">{content}</p>
       </div>
     </div>
@@ -66,8 +66,8 @@ function AssistantBubble({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[92%] space-y-2">
-        <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+      <div className="max-w-[96%] space-y-2 sm:max-w-[92%]">
+        <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-3 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)] sm:px-4">
           <p className="text-sm leading-6 text-[var(--text-muted)]">{message.content}</p>
           {visibleQuestion && (
             <p className="mt-2 text-xs italic text-[var(--badge-amber-text)]/85">
@@ -77,7 +77,7 @@ function AssistantBubble({
         </div>
 
         {message.suggestedLanguage && (
-          <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-4 py-3">
+          <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-3 py-3 sm:px-4">
             <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--badge-green-text)]">
               Suggested Resume Language
             </span>
@@ -89,7 +89,7 @@ function AssistantBubble({
               onChange={(event) => setDraftValue(event.target.value)}
               rows={6}
               aria-label="Edit final review draft"
-              className="mt-3 min-h-[160px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
+              className="mt-3 min-h-[144px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)] sm:min-h-[160px]"
             />
             <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <button
@@ -254,8 +254,8 @@ export function FinalReviewConcernThread({
   return (
     <div className="room-shell mt-3 overflow-hidden border-[var(--link)]/12 bg-black/15" data-testid="final-review-thread">
       {messages.length === 0 && (
-        <div className="space-y-3 border-b border-[var(--line-soft)] px-4 py-4">
-          <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
+        <div className="space-y-3 border-b border-[var(--line-soft)] px-3 py-3 sm:px-4 sm:py-4">
+          <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 sm:px-4">
             <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
               What needs to be fixed
             </p>
@@ -264,7 +264,7 @@ export function FinalReviewConcernThread({
             </p>
           </div>
 
-          <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-4 py-3">
+          <div className="rounded-md border border-[var(--link)]/12 bg-[var(--badge-blue-bg)] px-3 py-3 sm:px-4">
             <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--link)]">
               Best next detail to add
             </p>
@@ -274,7 +274,7 @@ export function FinalReviewConcernThread({
           </div>
 
           {context.suggestedResumeEdit && (
-            <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-4 py-3">
+            <div className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)] px-3 py-3 sm:px-4">
               <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[var(--badge-green-text)]">
                 Suggested rewrite to start from
               </p>
@@ -286,7 +286,7 @@ export function FinalReviewConcernThread({
                 onChange={(event) => setStarterDraftValue(event.target.value)}
                 rows={5}
                 aria-label="Edit the suggested final review rewrite"
-                className="mt-3 min-h-[150px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
+                className="mt-3 min-h-[136px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)] sm:min-h-[150px]"
               />
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <button
@@ -305,7 +305,7 @@ export function FinalReviewConcernThread({
       )}
 
       {messages.length > 0 && (
-        <div className="max-h-[360px] space-y-3 overflow-y-auto px-4 py-3" role="log" aria-live="polite">
+        <div className="max-h-[360px] space-y-3 overflow-y-auto px-3 py-3 sm:px-4" role="log" aria-live="polite">
           {messages.map((message, index) => (
             message.role === 'user'
               ? <UserBubble key={index} content={message.content} />
@@ -332,7 +332,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-3 py-1.5 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/10 disabled:opacity-40"
+            className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/10 disabled:opacity-40 sm:px-3 sm:text-[13px]"
           >
             Ask AI what detail is missing
           </button>
@@ -340,7 +340,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestDraft}
             disabled={isLoading}
-            className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-1.5 text-[13px] font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:opacity-40"
+            className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:opacity-40 sm:px-3 sm:text-[13px]"
           >
             Draft a stronger version
           </button>
@@ -349,7 +349,7 @@ export function FinalReviewConcernThread({
               type="button"
               onClick={requestAlternative}
               disabled={isLoading}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-40"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-40 sm:px-3 sm:text-[13px]"
             >
               Try another version
             </button>
@@ -358,7 +358,7 @@ export function FinalReviewConcernThread({
             <button
               type="button"
               onClick={onCloseThread}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)] sm:px-3 sm:text-[13px]"
             >
               Skip for now
             </button>
@@ -400,7 +400,7 @@ export function FinalReviewConcernThread({
           rows={1}
           disabled={isLoading}
           className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-sm leading-6 text-[var(--text-strong)] transition-colors focus:outline-none disabled:opacity-50"
-          style={{ minHeight: 84, maxHeight: 220 }}
+          style={{ minHeight: 72, maxHeight: 220 }}
         />
         <button
           type="button"

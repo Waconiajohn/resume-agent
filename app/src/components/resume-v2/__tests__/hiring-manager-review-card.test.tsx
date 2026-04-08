@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HiringManagerReviewCard } from '../cards/HiringManagerReviewCard';
 import type { HiringManagerReviewResult } from '@/hooks/useHiringManagerReview';
+import type { FinalReviewChatContext } from '@/types/resume-v2';
 
 function makeResult(): HiringManagerReviewResult {
   return {
@@ -46,7 +47,34 @@ function makeResult(): HiringManagerReviewResult {
   } as HiringManagerReviewResult;
 }
 
+function makeFinalReviewContext(): FinalReviewChatContext {
+  return {
+    concernId: 'concern-1',
+    concernType: 'missing_evidence',
+    severity: 'critical',
+    observation: 'Performance metrics ownership is still too vague.',
+    whyItHurts: 'The hiring manager may not trust that the candidate owned the KPI system.',
+    fixStrategy: 'Tie the claim to a concrete metrics line that is already on the resume.',
+    requiresCandidateInput: false,
+    clarifyingQuestion: 'What operating metric or scorecard detail makes the ownership clear?',
+    targetSection: 'Professional Experience - Acme Manufacturing',
+    relatedRequirement: 'Develop and track performance metrics',
+    suggestedResumeEdit: 'Built and tracked weekly plant scorecards across safety, throughput, and labor efficiency targets.',
+    roleTitle: 'VP Operations',
+    companyName: 'Acme Manufacturing',
+    jobDescriptionFit: 'moderate',
+    benchmarkAlignment: 'moderate',
+    businessImpact: 'strong',
+    clarityAndCredibility: 'moderate',
+    resumeExcerpt: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+  };
+}
+
 describe('HiringManagerReviewCard', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('shows the resolved resume target preview for an expanded concern', () => {
     const onPreviewConcernTarget = vi.fn();
 
@@ -68,7 +96,7 @@ describe('HiringManagerReviewCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Performance metrics ownership is still too vague/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Performance metrics ownership is still too vague/i })[0]);
 
     expect(screen.getByText('Resume line to edit')).toBeInTheDocument();
     expect(screen.getAllByText('Professional Experience - Acme Manufacturing')).toHaveLength(2);
@@ -77,5 +105,50 @@ describe('HiringManagerReviewCard', () => {
     expect(onPreviewConcernTarget).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: /Show on Resume/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Review Edit on Resume/i })).toBeInTheDocument();
+  });
+
+  it('scrolls the coaching thread into view on mobile when a concern coach opens', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 640px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as typeof window.matchMedia;
+    window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    }) as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = vi.fn();
+
+    render(
+      <HiringManagerReviewCard
+        result={makeResult()}
+        isLoading={false}
+        error={null}
+        companyName="Acme Manufacturing"
+        roleTitle="VP Operations"
+        onRequestReview={vi.fn()}
+        onApplyRecommendation={vi.fn()}
+        finalReviewChat={{
+          getItemState: vi.fn(() => ({ messages: [], isLoading: false, error: null, resolvedLanguage: null })),
+          sendMessage: vi.fn(),
+          hydrate: vi.fn(),
+          reset: vi.fn(),
+        } as never}
+        buildFinalReviewChatContext={() => makeFinalReviewContext()}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Performance metrics ownership is still too vague/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /coach this fix|brainstorm another fix/i }));
+
+    expect(screen.getByTestId('final-review-thread')).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -265,6 +265,18 @@ export function HiringManagerReviewCard({
   const [expandedConcern, setExpandedConcern] = useState<string | null>(null);
   const [threadConcernId, setThreadConcernId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!threadConcernId || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 640px)').matches) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const thread = document.querySelector<HTMLElement>(`[data-final-review-thread="${CSS.escape(threadConcernId)}"]`);
+      thread?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [threadConcernId]);
+
   if (!result && !isLoading && !error) {
     return (
       <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
@@ -373,6 +385,7 @@ export function HiringManagerReviewCard({
             return (
               <div
                 key={concern.id}
+                data-final-review-concern={concern.id}
                 className="overflow-hidden rounded-xl border"
                 style={{ borderColor: severityTone.border }}
               >
@@ -417,7 +430,7 @@ export function HiringManagerReviewCard({
                     isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
                   )}
                 >
-                  <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-3.5 pt-3">
+                  <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-3 pt-3 sm:pb-3.5">
                     <div className="final-review-note">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
                         Why this matters
@@ -487,7 +500,7 @@ export function HiringManagerReviewCard({
                       </div>
                     )}
 
-                    <div className="final-review-actions">
+                    <div className="final-review-actions gap-2 sm:gap-2.5">
                       {resolvedTarget && onPreviewConcernTarget && (
                         <button
                           type="button"
@@ -529,21 +542,23 @@ export function HiringManagerReviewCard({
                     </div>
 
                     {finalReviewChat && chatContext && isThreadOpen && (
-                      <FinalReviewConcernThread
-                        concernId={concern.id}
-                        messages={chatState?.messages ?? []}
-                        isLoading={chatState?.isLoading ?? false}
-                        error={chatState?.error ?? null}
-                        resolvedLanguage={isResolved ? (chatState?.resolvedLanguage ?? null) : null}
-                        onSendMessage={finalReviewChat.sendMessage}
-                        onReviewEdit={(concernId, language, candidateInputUsed) => {
-                          if (concernId !== concern.id || !onApplyRecommendation) return;
-                          onApplyRecommendation(concern, language, Boolean(candidateInputUsed));
-                        }}
-                        context={chatContext}
-                        isEditing={isEditing}
-                        onCloseThread={() => setThreadConcernId(null)}
-                      />
+                      <div data-final-review-thread={concern.id}>
+                        <FinalReviewConcernThread
+                          concernId={concern.id}
+                          messages={chatState?.messages ?? []}
+                          isLoading={chatState?.isLoading ?? false}
+                          error={chatState?.error ?? null}
+                          resolvedLanguage={isResolved ? (chatState?.resolvedLanguage ?? null) : null}
+                          onSendMessage={finalReviewChat.sendMessage}
+                          onReviewEdit={(concernId, language, candidateInputUsed) => {
+                            if (concernId !== concern.id || !onApplyRecommendation) return;
+                            onApplyRecommendation(concern, language, Boolean(candidateInputUsed));
+                          }}
+                          context={chatContext}
+                          isEditing={isEditing}
+                          onCloseThread={() => setThreadConcernId(null)}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

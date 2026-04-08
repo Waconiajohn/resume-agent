@@ -1491,13 +1491,6 @@ export function V2StreamingDisplay({
   }, [attentionIndex, attentionItems.length]);
 
   // M3: Scroll to coaching panel when a bullet is activated
-  useEffect(() => {
-    if (activeBullet && coachingPanelRef.current) {
-      scrollToAndFocusTarget(buildResumeLineSelector(activeBullet.section, activeBullet.index));
-      coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [activeBullet]);
-
   // B3: Escape key closes inline edit panel
   useEffect(() => {
     if (!activeBullet) return;
@@ -1533,6 +1526,12 @@ export function V2StreamingDisplay({
       setShowMobileFullScoringReport(false);
     }
   }, [isRerunning]);
+  useEffect(() => {
+    if (activeBullet && hasPassedReadyGate && coachingPanelRef.current) {
+      scrollToAndFocusTarget(buildResumeLineSelector(activeBullet.section, activeBullet.index));
+      coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeBullet, hasPassedReadyGate]);
   const handleReadyGateStartEditing = useCallback(() => {
     queueMicrotask(() => {
       setHasPassedReadyGate(true);

@@ -702,6 +702,48 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.requirementSource).toBe('job_description');
   });
 
+  it('scrolls the active resume line into view after the ready gate opens when coaching is already targeted', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          initialActiveBullet: {
+            section: 'selected_accomplishments',
+            index: 0,
+            requirements: ['CI/CD experience'],
+          },
+          data: makePipelineDataWithResume({
+            assembly: {
+              final_resume: makeResumeDraftWithAttention(),
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+          editableResume: makeResumeDraftWithAttention(),
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+        })}
+      />,
+    );
+
+    expect(scrollToAndFocusTarget).not.toHaveBeenCalled();
+
+    await startEditingIfGatePresent();
+
+    expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
+    expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="selected_accomplishments:0"]');
+  });
+
   it('keeps the strongest two custom sections visible in Section Polish', async () => {
     const resume = makeResumeDraft();
     resume.custom_sections = [
