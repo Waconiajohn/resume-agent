@@ -24,8 +24,8 @@ export function RuleOfFourCoachingBar({ groups: rawGroups, onFixGap }: RuleOfFou
         </span>
       </div>
       <div className="space-y-2">
-        {incomplete.slice(0, 5).map((group) => (
-          <div key={group.application.id} className="flex items-center gap-3 text-[12px]">
+        {incomplete.slice(0, 5).map((group, index) => (
+          <div key={`${group.application.id}-${index}`} className="flex items-center gap-3 text-[12px]">
             <span className="text-[var(--text-soft)] font-medium min-w-[120px] truncate">
               {group.application.company_name}
             </span>
