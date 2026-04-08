@@ -133,7 +133,7 @@ export function ResumeDocumentCard({
             <Pencil className="h-3.5 w-3.5 text-gray-400" />
           </span>
           {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
-            <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
+            <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
           )}
         </div>
       ) : (
@@ -268,22 +268,22 @@ export function ResumeDocumentCard({
     sectionNodes.set('professional_experience', (
       <section key="professional_experience" data-section="professional_experience">
         <SectionHeading>Professional Experience</SectionHeading>
-        <div className="space-y-6">
+        <div className="space-y-7">
           {professionalExperience.map((exp, i) => (
             <div key={i}>
               <div className="flex items-baseline justify-between gap-3">
-                <div>
-                  <span className="resume-role-title text-[0.96rem] font-semibold text-gray-900">{exp.title}</span>
-                  <span className="resume-role-company ml-1 text-[0.92rem] text-gray-500">· {exp.company}</span>
+                <div className="min-w-0">
+                  <span className="resume-role-title text-[1rem] font-semibold text-gray-900">{exp.title}</span>
+                  <span className="resume-role-company ml-1.5 text-[0.93rem] text-gray-500">· {exp.company}</span>
                 </div>
-                <span className="resume-role-date whitespace-nowrap shrink-0 text-[0.84rem] text-gray-500">
+                <span className="resume-role-date whitespace-nowrap shrink-0 text-[0.82rem] text-gray-500">
                   {exp.start_date} — {exp.end_date}
                 </span>
               </div>
               {exp.scope_statement && (
                 <p
                   data-scope-id={`professional_experience-${i}-scope`}
-                  className="resume-scope-note mt-1.5 pl-1 text-[0.92rem] text-gray-500 italic"
+                  className="resume-scope-note mt-1.5 pl-0.5 text-[0.94rem] text-gray-500 italic"
                 >
                   {exp.scope_statement}
                 </p>
@@ -457,7 +457,7 @@ export function ResumeDocumentCard({
                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
               </span>
               {activeBullet?.section === customSectionKey && activeBullet.index === -1 && (
-                <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
+                <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
               )}
             </div>
           ) : (
@@ -521,7 +521,7 @@ export function ResumeDocumentCard({
                     <Pencil className="h-3.5 w-3.5 text-gray-400" />
                   </span>
                   {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                    <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
+                    <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
                   )}
                 </div>
               ) : (
@@ -585,7 +585,7 @@ export function ResumeDocumentCard({
                           <Pencil className="h-3.5 w-3.5 text-gray-400" />
                         </span>
                         {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                          <span className="resume-line-active-note mt-2 inline-flex">Editing now</span>
+                          <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
                         )}
                       </div>
                     ) : (
@@ -607,12 +607,12 @@ export function ResumeDocumentCard({
   return (
     <div className="resume-document-shell space-y-6 p-6 font-['Georgia','Times_New_Roman',serif] leading-[1.85] select-text cursor-text sm:space-y-7 sm:p-9">
       {/* Header */}
-      <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-5 sm:pb-6">
-        <h2 className="resume-document-name text-[1.95rem] font-bold tracking-[0.015em] text-gray-900 sm:text-[2.35rem]">{resume.header.name}</h2>
-        <p className="resume-document-title mt-2 text-[0.8rem] font-semibold tracking-[0.2em] text-blue-700 uppercase sm:text-[0.94rem]">
+      <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-6 sm:pb-7">
+        <h2 className="resume-document-name text-[2.08rem] font-semibold tracking-[-0.028em] text-gray-900 sm:text-[2.62rem]">{resume.header.name}</h2>
+        <p className="resume-document-title mt-2.5 text-[0.76rem] font-semibold tracking-[0.24em] text-blue-700 uppercase sm:text-[0.9rem]">
           {resume.header.branded_title}
         </p>
-        <div className="resume-document-contact mt-3.5 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11px] text-gray-500 sm:flex-row sm:text-xs">
+        <div className="resume-document-contact mt-4 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11.5px] text-gray-500 sm:flex-row sm:text-[12.5px]">
           {resume.header.phone && (
             <>
               <span className="px-2 sm:first:pl-0">{resume.header.phone}</span>
@@ -753,7 +753,7 @@ function BulletLineContent({
         </span>
       )}
       {isActive && (
-        <span className="resume-line-active-note mt-2 inline-flex">Open in coach</span>
+        <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
       )}
     </span>
   );
@@ -1003,7 +1003,7 @@ function resolveStandaloneDisplayRequirements(
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2.5 text-[10.5px] font-bold uppercase tracking-[0.24em] text-stone-500 sm:text-[11.5px]">
+    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2.5 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-stone-500 sm:text-[11.5px]">
       {children}
     </h3>
   );

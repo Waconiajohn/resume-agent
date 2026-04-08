@@ -122,10 +122,11 @@ export function BulletContextHeader({
   const trimmedSourceEvidence = sourceEvidence?.trim();
   const proofLabel = getProofLabel(proofLevel, framingGuardrail);
   const nextActionLabel = getNextActionLabel(nextBestAction);
+  const metaTrail = [sourceLabel, proofLabel, nextActionLabel].filter(Boolean) as string[];
 
   return (
     <div
-      className="rounded-xl border px-3.5 py-3"
+      className="rounded-2xl border px-4 py-3.5"
       style={{
         borderColor: borderVar,
         background: bgVar,
@@ -142,67 +143,59 @@ export function BulletContextHeader({
         >
           {label}
         </span>
-        <span
-          className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
-          style={{
-            background: 'var(--surface-0)',
-            color: 'var(--text-soft)',
-            border: '1px solid var(--line-soft)',
-          }}
-        >
-          {sourceLabel}
-        </span>
-        {proofLabel && (
-          <span
-            className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
-            style={{
-              background: 'var(--surface-0)',
-              color: 'var(--text-soft)',
-              border: '1px solid var(--line-soft)',
-            }}
-          >
-            {proofLabel}
-          </span>
-        )}
-        {nextActionLabel && (
-          <span
-            className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
-            style={{
-              background: 'var(--badge-blue-bg)',
-              color: 'var(--badge-blue-text)',
-            }}
-          >
-            {nextActionLabel}
-          </span>
-        )}
       </div>
 
-      <div className="mt-3 space-y-2">
+      {metaTrail.length > 0 && (
+        <p
+          className="mt-2 text-[10.5px] font-semibold uppercase tracking-[0.15em]"
+          style={{ color: 'var(--text-soft)' }}
+        >
+          {metaTrail.join(' · ')}
+        </p>
+      )}
+
+      <div className="mt-3 space-y-2.5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
             {introLabel}
           </p>
-          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-strong)' }}>
+          <p className="mt-1.5 text-[15px] leading-6" style={{ color: 'var(--text-strong)' }}>
             {requirement}
           </p>
         </div>
 
         {trimmedSourceEvidence && (
-          <p className="text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
-            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
-              Role signal:
-            </span>{' '}
-            <span>&ldquo;{trimmedSourceEvidence}&rdquo;</span>
-          </p>
+          <div
+            className="rounded-xl px-3 py-2"
+            style={{
+              background: 'rgba(255, 255, 255, 0.74)',
+              border: '1px solid rgba(148, 163, 184, 0.14)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+              Role signal
+            </p>
+            <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
+              &ldquo;{trimmedSourceEvidence}&rdquo;
+            </p>
+          </div>
         )}
 
         {trimmedEvidence && (
-          <p className="text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
-            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
-              Current proof:
-            </span>{' '}
-            <span>&ldquo;{trimmedEvidence}&rdquo;</span>
-          </p>
+          <div
+            className="rounded-xl px-3 py-2"
+            style={{
+              background: 'rgba(255, 255, 255, 0.84)',
+              border: '1px solid rgba(148, 163, 184, 0.14)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+              Current proof
+            </p>
+            <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
+              &ldquo;{trimmedEvidence}&rdquo;
+            </p>
+          </div>
         )}
       </div>
     </div>

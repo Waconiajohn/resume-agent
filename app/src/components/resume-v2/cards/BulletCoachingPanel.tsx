@@ -539,26 +539,29 @@ export function BulletCoachingPanel({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p
-            className="text-[11px] font-semibold uppercase tracking-[0.12em]"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: 'var(--text-soft)' }}
           >
             {coachTitle}
           </p>
-          <p className="mt-1 text-[11px] leading-5 text-[var(--text-soft)]">
-            Live on resume · {chatContext.sectionLabel ?? lineLabel}
-          </p>
           <div
-            className="mt-2 rounded-xl px-3 py-2"
+            className="mt-2 rounded-2xl px-3.5 py-3"
             style={{
-              background: 'var(--surface-1)',
-              border: '1px solid var(--line-soft)',
+              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 252, 0.9))',
+              border: '1px solid rgba(203, 213, 225, 0.58)',
+              boxShadow: '0 8px 18px rgba(15, 23, 42, 0.04)',
             }}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              Active line
-            </p>
-            <p className="mt-1 text-sm leading-6 text-[var(--text-strong)]">
-              {truncatePreview(bulletText)}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                Active on resume
+              </p>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                {chatContext.sectionLabel ?? lineLabel}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[15px] leading-6 text-[var(--text-strong)]">
+              {truncatePreview(bulletText, 148)}
             </p>
           </div>
         </div>
@@ -588,21 +591,21 @@ export function BulletCoachingPanel({
 
       {bestFirstMove && (
         <div
-          className="rounded-lg px-3 py-3"
+          className="rounded-2xl px-3.5 py-3.5"
           style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--line-soft)',
+            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.92))',
+            border: '1px solid rgba(203, 213, 225, 0.52)',
           }}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[10px] uppercase tracking-wider"
+                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
                 style={{ color: 'var(--text-soft)' }}
               >
                 {bestFirstMove.title}
               </p>
-              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
+              <p className="mt-1.5 text-[14px] leading-6" style={{ color: 'var(--text-strong)' }}>
                 {bestFirstMove.body}
               </p>
             </div>

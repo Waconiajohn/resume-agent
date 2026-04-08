@@ -411,10 +411,11 @@
     border-radius: 1.2rem;
     border: 1px solid rgba(231, 234, 239, 0.92);
     background:
+      radial-gradient(circle at top, rgba(250, 250, 249, 0.98), rgba(255, 255, 255, 0) 40%),
       linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(250, 249, 247, 0.99));
     box-shadow:
-      0 26px 58px rgba(8, 12, 20, 0.14),
-      0 3px 10px rgba(8, 12, 20, 0.06);
+      0 22px 46px rgba(8, 12, 20, 0.12),
+      0 3px 8px rgba(8, 12, 20, 0.05);
   }
 
   @media (max-width: 767px) {
@@ -450,19 +451,22 @@
 
   .resume-document-shell {
     color: #1f2937;
+    font-feature-settings: "liga" 1, "kern" 1;
   }
 
   .resume-document-header {
-    border-bottom-color: rgba(214, 211, 209, 0.82);
+    border-bottom-color: rgba(214, 211, 209, 0.74);
   }
 
   .resume-document-name {
     color: #111827;
     text-rendering: optimizeLegibility;
+    line-height: 0.98;
   }
 
   .resume-document-title {
     color: #1d4ed8;
+    text-wrap: balance;
   }
 
   .resume-document-contact {
@@ -470,12 +474,12 @@
   }
 
   .resume-section-heading {
-    color: #6b7280;
-    border-bottom-color: rgba(214, 211, 209, 0.72);
+    color: #57534e;
+    border-bottom-color: rgba(214, 211, 209, 0.64);
   }
 
   .resume-role-title {
-    letter-spacing: 0.01em;
+    letter-spacing: 0.005em;
     color: #111827;
   }
 
@@ -492,38 +496,39 @@
 
   .resume-line-card {
     position: relative;
+    border: 1px solid transparent;
   }
 
   .resume-line-active {
     background:
-      linear-gradient(180deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.99));
-    border-color: rgba(37, 99, 235, 0.2) !important;
+      linear-gradient(180deg, rgba(243, 248, 255, 0.97), rgba(255, 255, 255, 0.995));
+    border-color: rgba(37, 99, 235, 0.16) !important;
     box-shadow:
-      0 0 0 1px rgba(96, 165, 250, 0.2),
-      0 10px 22px rgba(37, 99, 235, 0.08);
+      0 0 0 1px rgba(96, 165, 250, 0.16),
+      0 14px 26px rgba(37, 99, 235, 0.07);
   }
 
   .resume-line-active::before {
     content: '';
     position: absolute;
-    left: 0.2rem;
-    top: 0.85rem;
-    bottom: 0.85rem;
-    width: 3px;
+    left: 0.32rem;
+    top: 0.75rem;
+    bottom: 0.75rem;
+    width: 2px;
     border-radius: 999px;
-    background: linear-gradient(180deg, rgba(59, 130, 246, 0.85), rgba(147, 197, 253, 0.85));
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(191, 219, 254, 0.92));
   }
 
   .resume-line-active-note {
     border-radius: 999px;
-    border: 1px solid rgba(37, 99, 235, 0.18);
-    background: rgba(219, 234, 254, 0.55);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    background: rgba(239, 246, 255, 0.92);
     color: #1d4ed8;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     line-height: 1;
-    padding: 0.38rem 0.62rem;
+    padding: 0.36rem 0.64rem;
     text-transform: uppercase;
   }
 
@@ -1181,12 +1186,12 @@
   .resume-line-card.resume-line-active,
   .resume-competency-chip.resume-line-active {
     background:
-      linear-gradient(180deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.99)) !important;
-    border-color: rgba(37, 99, 235, 0.22) !important;
+      linear-gradient(180deg, rgba(243, 248, 255, 0.97), rgba(255, 255, 255, 0.995)) !important;
+    border-color: rgba(37, 99, 235, 0.16) !important;
     box-shadow:
-      inset 4px 0 0 rgba(59, 130, 246, 0.8),
-      0 0 0 1px rgba(96, 165, 250, 0.22),
-      0 10px 22px rgba(37, 99, 235, 0.08) !important;
+      inset 3px 0 0 rgba(59, 130, 246, 0.82),
+      0 0 0 1px rgba(96, 165, 250, 0.16),
+      0 14px 26px rgba(37, 99, 235, 0.07) !important;
   }
 
   .resume-proof-meta-row {
