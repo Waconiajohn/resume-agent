@@ -744,7 +744,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="selected_accomplishments:0"]');
   });
 
-  it('keeps the strongest two custom sections visible in Section Polish', async () => {
+  it('surfaces one section-polish step at a time in Start Here', async () => {
     const resume = makeResumeDraft();
     resume.custom_sections = [
       {
@@ -815,8 +815,9 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
 
-    expect(screen.getAllByRole('button', { name: /AI Highlights/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /Transformation Highlights/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Polish Executive Summary/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Polish AI Highlights/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Polish Transformation Highlights/i)).not.toBeInTheDocument();
   });
 
   it('opens coaching immediately after adding a recommended custom section', async () => {
@@ -1338,17 +1339,14 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('One Good Answer').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Answer one question with real business detail').length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText('What specific product launch or delivery outcome proves this most clearly?').length,
+      screen.getAllByText(/What specific product launch or delivery outcome proves this most clearly\?/i).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
 
-    fireEvent.click(
-      screen
-        .getAllByText('What specific product launch or delivery outcome proves this most clearly?')[0]
-        .closest('button') as HTMLButtonElement,
-    );
+    fireEvent.click(screen.getAllByRole('button', { name: /Answer one question with real business detail/i })[0]);
 
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       bulletText: string;
@@ -1438,13 +1436,11 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Start with proof you already confirmed').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Reuse your earlier answer about Product delivery/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/This confirmed detail can already strengthen 1 line without asking you anything new\./i).length).toBeGreaterThan(0);
 
     fireEvent.click(
-      screen
-        .getAllByText(/Led weekly KPI reviews across three plants and used them to cut defects\./i)[0]
-        .closest('button') as HTMLButtonElement,
+      screen.getAllByRole('button', { name: /Reuse your earlier answer about Product delivery/i })[0],
     );
 
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -1514,7 +1510,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     expect(screen.queryByText('One Good Answer')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Start with proof you already confirmed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Reuse your earlier answer about Product delivery/i).length).toBeGreaterThan(0);
   });
 
   it('updates the attention summary to reuse earlier confirmed answers when available', async () => {

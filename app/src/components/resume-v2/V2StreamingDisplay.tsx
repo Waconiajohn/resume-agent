@@ -968,9 +968,9 @@ function GuidedStartCard({
   return (
     <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
       <p className="eyebrow-label">Start Here</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take these moves in order</h3>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Do this first</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        Start with the first move. The rest gets easier once that one is done.
+        Start with the first move. Once that is done, the next step will be easier and more obvious.
       </p>
       <div className="mt-3 space-y-2 sm:mt-4">
         {steps.length > 0 && (
@@ -980,7 +980,7 @@ function GuidedStartCard({
             className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              Step 1 · {steps[0].label}
+              First move · {steps[0].label}
             </p>
             <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
               {steps[0].title}
@@ -993,28 +993,35 @@ function GuidedStartCard({
             </p>
           </button>
         )}
-        {steps.slice(1).map((step, index) => (
-          <button
-            key={step.id}
-            type="button"
-            onClick={step.onSelect}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                  Step {index + 2} · {step.label}
-                </p>
-                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-                  {step.title}
-                </p>
-              </div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
-                {step.actionLabel}
-              </span>
+        {steps.length > 1 && (
+          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 sm:px-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              After that
+            </p>
+            <div className="mt-2 space-y-2">
+              {steps.slice(1).map((step) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={step.onSelect}
+                  className="flex w-full items-start justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--surface-0)]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                      {step.label}
+                    </p>
+                    <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+                      {step.title}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
+                    {step.actionLabel}
+                  </span>
+                </button>
+              ))}
             </div>
-          </button>
-        ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1881,6 +1888,7 @@ export function V2StreamingDisplay({
 
   const renderSecondarySupportPanel = () => {
     if (activeBullet) return null;
+    if (guidedStartSteps.length > 0) return null;
 
     if (secondarySupportMode === 'remembered') {
       return (
