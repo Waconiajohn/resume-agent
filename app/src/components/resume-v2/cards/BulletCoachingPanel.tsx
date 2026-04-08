@@ -529,6 +529,7 @@ export function BulletCoachingPanel({
   return (
     <div
       ref={panelRef}
+      data-testid="bullet-coaching-panel"
       tabIndex={-1}
       className="panel-surface mt-3 space-y-3 p-3 focus:outline-none sm:p-4"
       style={{

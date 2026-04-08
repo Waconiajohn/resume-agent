@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import type { FinalReviewConcern, ResumeDraft } from '@/types/resume-v2';
+import type { FinalReviewConcern, GapChatContext, GapChatMessage, GapChatTargetInput, ResumeDraft } from '@/types/resume-v2';
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
+import type { GapChatHook } from '@/hooks/useGapChat';
+import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
 import { scrollToAndFocusTarget } from '../useStrategyThread';
 import { findResumeTargetForFinalReviewConcern } from '../utils/final-review-target';
@@ -13,6 +15,10 @@ import {
 
 function cloneResume(resume: ResumeDraft): ResumeDraft {
   return JSON.parse(JSON.stringify(resume)) as ResumeDraft;
+}
+
+function normalizeHarnessChatKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
 function parseScenario(search: string): ResumeV2VisualScenarioId {
@@ -93,6 +99,78 @@ function buildHarnessReplacement(baseText: string, action: EditAction): string {
   }
 }
 
+function getHarnessLineText(resume: ResumeDraft, section?: string, index?: number): string {
+  if (!section) return '';
+  if (section === 'executive_summary') {
+    return resume.executive_summary.content;
+  }
+  if (section === 'core_competencies' && typeof index === 'number' && index >= 0) {
+    return resume.core_competencies[index] ?? '';
+  }
+  if (section === 'selected_accomplishments' && typeof index === 'number' && index >= 0) {
+    return resume.selected_accomplishments[index]?.content ?? '';
+  }
+  if (section === 'professional_experience' && typeof index === 'number' && index >= 0) {
+    const experienceIndex = Math.floor(index / 100);
+    const bulletOffset = index % 100;
+    return resume.professional_experience[experienceIndex]?.bullets[bulletOffset]?.text ?? '';
+  }
+  if (section.startsWith('custom_section:') && typeof index === 'number') {
+    const customSectionId = section.replace('custom_section:', '');
+    const customSection = resume.custom_sections?.find((item) => item.id === customSectionId);
+    if (!customSection) return '';
+    if (index === -1) return customSection.summary ?? '';
+    return customSection.lines[index] ?? '';
+  }
+  return '';
+}
+
+function getHarnessLineKind(section?: string): GapChatContext['lineKind'] {
+  if (section === 'executive_summary') return 'summary';
+  if (section === 'core_competencies') return 'competency';
+  if (section?.startsWith('custom_section:')) return 'custom_line';
+  return 'bullet';
+}
+
+function getHarnessSectionLabel(section: string | undefined, resume: ResumeDraft): string {
+  if (section === 'executive_summary') return 'Executive Summary';
+  if (section === 'core_competencies') return 'Core Competencies';
+  if (section === 'selected_accomplishments') return 'Selected Accomplishments';
+  if (section === 'professional_experience') return 'Professional Experience';
+  if (section?.startsWith('custom_section:')) {
+    const customSectionId = section.replace('custom_section:', '');
+    return resume.custom_sections?.find((item) => item.id === customSectionId)?.title ?? 'Custom Section';
+  }
+  return 'Resume Line';
+}
+
+function buildHarnessAssistantMessage(args: {
+  requirement: string;
+  context: GapChatContext;
+  userMessage: string;
+  classification: 'partial' | 'missing' | 'strong';
+}): GapChatMessage {
+  const { requirement, context, userMessage, classification } = args;
+  const baseText = context.lineText?.trim() || requirement;
+  const suggestion = buildHarnessReplacement(
+    baseText,
+    classification === 'missing' ? 'rewrite' : userMessage.toLowerCase().includes('metric') ? 'add_metrics' : 'strengthen',
+  );
+  const responseLead = classification === 'missing'
+    ? 'Use the real evidence you already have, soften the claim, and anchor it in a more believable operating story.'
+    : 'Tighten the claim so the role fit and business impact land faster.';
+
+  return {
+    role: 'assistant',
+    content: `${responseLead} Start from the strongest truthful version below, then keep only the detail that you could defend in an interview.`,
+    suggestedLanguage: suggestion,
+    followUpQuestion: context.clarifyingQuestions?.[0],
+    currentQuestion: context.clarifyingQuestions?.[0],
+    needsCandidateInput: classification === 'missing',
+    recommendedNextAction: classification === 'missing' ? 'answer_question' : 'review_edit',
+  };
+}
+
 export function ResumeV2VisualHarness() {
   const location = useLocation();
   const scenarioId = parseScenario(location.search);
@@ -100,12 +178,188 @@ export function ResumeV2VisualHarness() {
   const [editableResume, setEditableResume] = useState<ResumeDraft>(() => cloneResume(scenario.editableResume));
   const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(scenario.initialPendingEdit ?? null);
   const [isEditing, setIsEditing] = useState(false);
+  const [harnessChatItems, setHarnessChatItems] = useState<Record<string, {
+    messages: GapChatMessage[];
+    isLoading: boolean;
+    resolvedLanguage: string | null;
+    error: string | null;
+  }>>({});
 
   useEffect(() => {
     setEditableResume(cloneResume(scenario.editableResume));
     setPendingEdit(scenario.initialPendingEdit ?? null);
     setIsEditing(false);
+    setHarnessChatItems({});
   }, [scenario]);
+
+  const buildChatContext = useCallback((target: string | GapChatTargetInput): GapChatContext => {
+    const currentTarget = typeof target === 'string'
+      ? { requirement: target }
+      : target;
+    const requirement = currentTarget.requirement?.trim()
+      || currentTarget.requirements?.[0]?.trim()
+      || '';
+    const lineText = currentTarget.lineText?.trim()
+      || getHarnessLineText(editableResume, currentTarget.section, currentTarget.index)
+      || '';
+    const gapRequirement = scenario.data.gapAnalysis?.requirements.find((item) => (
+      item.requirement.toLowerCase() === requirement.toLowerCase()
+      || item.requirement.toLowerCase().includes(requirement.toLowerCase())
+      || requirement.toLowerCase().includes(item.requirement.toLowerCase())
+    ));
+    const evidence = Array.from(new Set([
+      currentTarget.evidenceFound ?? '',
+      ...(gapRequirement?.evidence ?? []),
+    ].filter((value) => typeof value === 'string' && value.trim().length > 0)));
+    const lineKind = getHarnessLineKind(currentTarget.section);
+    const clarifyingQuestion = gapRequirement?.classification === 'missing'
+      ? `Where did you use ${requirement || 'this capability'} in a way that changed decisions or outcomes?`
+      : `What concrete metric, scope, or business result would make ${requirement || 'this claim'} easier to trust right away?`;
+
+    return {
+      evidence,
+      currentStrategy: lineText || requirement,
+      jobDescriptionExcerpt: gapRequirement?.source_evidence
+        ?? scenario.data.jobIntelligence?.core_competencies[0]?.evidence_from_jd
+        ?? '',
+      candidateExperienceSummary: 'Visual harness coaching context for the Resume V2 editor.',
+      alternativeBullets: lineText
+        ? [
+            { text: buildHarnessReplacement(lineText, 'strengthen'), angle: 'impact' },
+            { text: buildHarnessReplacement(lineText, 'add_metrics'), angle: 'metric' },
+          ]
+        : [],
+      primaryRequirement: requirement || lineText,
+      requirementSource: gapRequirement?.source ?? 'job_description',
+      sourceEvidence: gapRequirement?.source_evidence,
+      lineText: lineText || undefined,
+      lineKind,
+      sectionKey: currentTarget.section,
+      sectionLabel: getHarnessSectionLabel(currentTarget.section, editableResume),
+      relatedRequirements: currentTarget.requirements ?? (requirement ? [requirement] : []),
+      coachingGoal: lineKind === 'summary'
+        ? 'Sharpen the opening story so role fit and executive scope are obvious immediately.'
+        : 'Rewrite this line so it feels more specific, more credible, and more obviously relevant to the role.',
+      clarifyingQuestions: [clarifyingQuestion],
+      priorClarifications: [],
+      relatedLineCandidates: [],
+    };
+  }, [editableResume, scenario.data.gapAnalysis?.requirements, scenario.data.jobIntelligence?.core_competencies]);
+
+  const harnessGapChat = useMemo<GapChatHook>(() => ({
+    getItemState: (requirement: string) => harnessChatItems[normalizeHarnessChatKey(requirement)],
+    sendMessage: async (
+      requirement: string,
+      message: string,
+      context: GapChatContext,
+      classification: 'partial' | 'missing' | 'strong',
+    ) => {
+      const key = normalizeHarnessChatKey(requirement);
+      setHarnessChatItems((current) => {
+        const item = current[key] ?? { messages: [], isLoading: false, resolvedLanguage: null, error: null };
+        return {
+          ...current,
+          [key]: {
+            ...item,
+            isLoading: true,
+            messages: [...item.messages, { role: 'user', content: message }],
+            error: null,
+          },
+        };
+      });
+
+      await Promise.resolve();
+
+      const assistantMessage = buildHarnessAssistantMessage({
+        requirement,
+        context,
+        userMessage: message,
+        classification,
+      });
+
+      setHarnessChatItems((current) => {
+        const item = current[key] ?? { messages: [], isLoading: false, resolvedLanguage: null, error: null };
+        return {
+          ...current,
+          [key]: {
+            ...item,
+            isLoading: false,
+            messages: [...item.messages, assistantMessage],
+          },
+        };
+      });
+    },
+    acceptLanguage: (requirement: string, language: string) => {
+      const key = normalizeHarnessChatKey(requirement);
+      setHarnessChatItems((current) => {
+        const item = current[key] ?? { messages: [], isLoading: false, resolvedLanguage: null, error: null };
+        return {
+          ...current,
+          [key]: {
+            ...item,
+            resolvedLanguage: language,
+          },
+        };
+      });
+    },
+    clearResolvedLanguage: (requirement: string) => {
+      const key = normalizeHarnessChatKey(requirement);
+      setHarnessChatItems((current) => {
+        const item = current[key] ?? { messages: [], isLoading: false, resolvedLanguage: null, error: null };
+        return {
+          ...current,
+          [key]: {
+            ...item,
+            resolvedLanguage: null,
+          },
+        };
+      });
+    },
+    getSnapshot: () => ({
+      items: Object.fromEntries(
+        Object.entries(harnessChatItems).map(([key, item]) => [key, {
+          messages: item.messages,
+          resolvedLanguage: item.resolvedLanguage,
+          error: item.error,
+        }]),
+      ),
+    }),
+    hydrateSnapshot: (snapshot) => {
+      setHarnessChatItems(Object.fromEntries(
+        Object.entries(snapshot?.items ?? {}).map(([key, item]) => [key, {
+          messages: item.messages ?? [],
+          isLoading: false,
+          resolvedLanguage: item.resolvedLanguage ?? null,
+          error: item.error ?? null,
+        }]),
+      ));
+    },
+    resetChat: () => setHarnessChatItems({}),
+    resolvedCount: Object.values(harnessChatItems).filter((item) => item.resolvedLanguage !== null).length,
+    isAnyLoading: Object.values(harnessChatItems).some((item) => item.isLoading),
+  }), [harnessChatItems]);
+
+  const handleHarnessEnhance = useCallback(async (
+    action: string,
+    bulletText: string,
+    requirement: string,
+  ): Promise<EnhanceResult | null> => {
+    const mappedAction: EditAction = action === 'show_accountability'
+      ? 'add_metrics'
+      : action === 'connect_to_role'
+        ? 'strengthen'
+        : action === 'show_transformation'
+          ? 'rewrite'
+          : 'strengthen';
+    const baseText = bulletText.trim() || requirement.trim() || 'Rewrite this line';
+    return {
+      enhancedBullet: buildHarnessReplacement(baseText, mappedAction),
+      alternatives: [
+        { text: buildHarnessReplacement(baseText, 'strengthen'), angle: 'impact' },
+        { text: buildHarnessReplacement(baseText, 'add_metrics'), angle: 'metric' },
+      ],
+    };
+  }, []);
 
   const handleBulletEdit = useCallback((section: string, index: number, newText: string) => {
     setEditableResume((current) => {
@@ -304,6 +558,9 @@ export function ResumeV2VisualHarness() {
           onApplyHiringManagerRecommendation={() => {}}
           resolveFinalReviewTarget={resolveConcernTarget}
           onPreviewFinalReviewTarget={previewConcernTarget}
+          gapChat={harnessGapChat}
+          buildChatContext={buildChatContext}
+          onBulletEnhance={handleHarnessEnhance}
           postReviewPolish={undefined}
           initialActiveBullet={scenario.initialActiveBullet ?? null}
         />

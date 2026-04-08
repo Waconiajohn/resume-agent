@@ -1190,6 +1190,57 @@ export function V2StreamingDisplay({
         )
       : []
   ), [data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, displayResume]);
+  useEffect(() => {
+    if (!activeBullet || activeBullet.bulletText.trim().length > 0) return;
+
+    const attentionMatch = attentionItems.find((item) => (
+      item.section === activeBullet.section && item.index === activeBullet.index
+    ));
+    if (attentionMatch) {
+      setActiveBullet((prev) => {
+        if (!prev || prev.section !== attentionMatch.section || prev.index !== attentionMatch.index || prev.bulletText.trim().length > 0) {
+          return prev;
+        }
+        return {
+          ...prev,
+          requirements: prev.requirements.length > 0 ? prev.requirements : attentionMatch.requirements,
+          bulletText: attentionMatch.text,
+          reviewState: attentionMatch.reviewState,
+          requirementSource: attentionMatch.requirementSource,
+          evidenceFound: attentionMatch.evidenceFound,
+          workItemId: attentionMatch.workItemId,
+          proofLevel: attentionMatch.proofLevel,
+          nextBestAction: attentionMatch.nextBestAction,
+        };
+      });
+      return;
+    }
+
+    const sectionMatch = sectionCoachTargets.find((target) => (
+      target.section === activeBullet.section && target.index === activeBullet.index
+    ));
+    if (!sectionMatch) return;
+
+    setActiveBullet((prev) => {
+      if (!prev || prev.section !== sectionMatch.section || prev.index !== sectionMatch.index || prev.bulletText.trim().length > 0) {
+        return prev;
+      }
+      return {
+        ...prev,
+        requirements: prev.requirements.length > 0 ? prev.requirements : sectionMatch.requirements,
+        bulletText: sectionMatch.bulletText,
+        reviewState: sectionMatch.reviewState,
+        requirementSource: sectionMatch.requirementSource,
+        evidenceFound: sectionMatch.evidenceFound,
+        sourceEvidence: sectionMatch.sourceEvidence,
+        workItemId: sectionMatch.workItemId,
+        proofLevel: sectionMatch.proofLevel,
+        framingGuardrail: sectionMatch.framingGuardrail,
+        nextBestAction: sectionMatch.nextBestAction,
+        canRemove: sectionMatch.canRemove,
+      };
+    });
+  }, [activeBullet, attentionItems, sectionCoachTargets]);
   const fullSectionPlan = useMemo(() => (
     displayResume ? buildResumeSectionPlan(displayResume) : []
   ), [displayResume]);
@@ -1936,14 +1987,14 @@ export function V2StreamingDisplay({
                       {(() => {
                         const flaggedCount = attentionItems.length;
                         const leftRailHeadline = activeBullet
-                          ? 'Editing the current line'
+                          ? 'Work this line to a stronger finish'
                           : hasStructureFirstWork
                             ? 'Start with the structure'
                             : flaggedCount > 0
                               ? 'Work through the next best moves'
                               : 'The draft is ready for final polish';
                         const leftRailSummary = activeBullet
-                          ? 'Use the left panel to tighten the wording, confirm the fit, or add the missing detail.'
+                          ? 'Use the coach to tighten the wording, add proof, or confirm the safest truthful version.'
                           : compactAttentionNextAction
                             ?? 'Review the remaining high-impact edits before export.';
 
@@ -1964,23 +2015,36 @@ export function V2StreamingDisplay({
                               </p>
                             </div>
 
-                            <div className="resume-guide-metric-row">
-                              <div className="resume-guide-metric-pill">
-                                <span className="resume-guide-metric-pill__label">Matched</span>
-                                <span className="resume-guide-metric-pill__value">{keywordPhrasesFound.length}</span>
+                            {activeBullet ? (
+                              <div className="flex flex-wrap gap-2">
+                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                  Match {keywordMatchPercent}%
+                                </span>
+                                {flaggedCount > 0 && (
+                                  <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                    {flaggedCount} open {flaggedCount === 1 ? 'line' : 'lines'}
+                                  </span>
+                                )}
                               </div>
-                              <div className="resume-guide-metric-pill">
-                                <span className="resume-guide-metric-pill__label">Still light</span>
-                                <span className="resume-guide-metric-pill__value">{keywordPhrasesMissing.length}</span>
+                            ) : (
+                              <div className="resume-guide-metric-row">
+                                <div className="resume-guide-metric-pill">
+                                  <span className="resume-guide-metric-pill__label">Matched</span>
+                                  <span className="resume-guide-metric-pill__value">{keywordPhrasesFound.length}</span>
+                                </div>
+                                <div className="resume-guide-metric-pill">
+                                  <span className="resume-guide-metric-pill__label">Still light</span>
+                                  <span className="resume-guide-metric-pill__value">{keywordPhrasesMissing.length}</span>
+                                </div>
+                                <div className="resume-guide-metric-pill">
+                                  <span className="resume-guide-metric-pill__label">Role coverage</span>
+                                  <span className="resume-guide-metric-pill__value">{Math.round(jobBreakdown.coverage_score)}%</span>
+                                </div>
                               </div>
-                              <div className="resume-guide-metric-pill">
-                                <span className="resume-guide-metric-pill__label">Role coverage</span>
-                                <span className="resume-guide-metric-pill__value">{Math.round(jobBreakdown.coverage_score)}%</span>
-                              </div>
-                            </div>
+                            )}
 
                             <div className="flex flex-wrap gap-2">
-                              {flaggedCount > 0 && (
+                              {flaggedCount > 0 && !activeBullet && (
                                 <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                                   {flaggedCount} {flaggedCount === 1 ? 'line to review' : 'lines to review'}
                                 </span>
@@ -1990,7 +2054,7 @@ export function V2StreamingDisplay({
                                   Structure first
                                 </span>
                               )}
-                              {keywordPhrasesMissing.length > 0 && (
+                              {keywordPhrasesMissing.length > 0 && !activeBullet && (
                                 <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
                                   Missing: {keywordPhrasesMissing.slice(0, 2).join(', ')}
                                 </span>
@@ -2000,12 +2064,12 @@ export function V2StreamingDisplay({
                             {activeBullet && activeLinePreview && (
                               <div className="resume-guide-focus-card">
                                 <p className="resume-guide-focus-card__label">
-                                  {chatContextLabelForSection(activeBullet.section)}
+                                  Current line · {chatContextLabelForSection(activeBullet.section)}
                                 </p>
                                 <p className="resume-guide-focus-card__title">{activeLinePreview}</p>
                                 {activeLineContext && (
                                   <p className="resume-guide-focus-card__body">
-                                    Closest target: {truncatePreview(activeLineContext, 96)}
+                                    Closest job need: {truncatePreview(activeLineContext, 96)}
                                   </p>
                                 )}
                               </div>

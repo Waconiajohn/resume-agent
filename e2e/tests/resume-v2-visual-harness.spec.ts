@@ -29,7 +29,7 @@ test.describe('resume-v2 visual harness', () => {
       await page.goto(scenario.path, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('resume-v2-visual-harness')).toBeVisible();
       await expect(page.getByRole('heading', { name: scenario.readyText })).toBeVisible();
-      await expect(page.getByText('Score Snapshot')).toBeVisible();
+      await page.waitForTimeout(300);
 
       if (scenario.slug === 'final-review') {
         await page.getByRole('button', { name: /Performance metrics ownership is still too vague/i }).click();

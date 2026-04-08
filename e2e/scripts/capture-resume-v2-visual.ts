@@ -62,7 +62,15 @@ async function main() {
     for (const scenario of scenarios) {
       await page.goto(`${baseUrl}${scenario.path}`, { waitUntil: 'domcontentloaded' });
       await page.getByTestId('resume-v2-visual-harness').waitFor();
-      await page.getByText('Score Snapshot', { exact: true }).waitFor();
+      await page.waitForTimeout(300);
+
+      if (scenario.slug.startsWith('action-')) {
+        const startButton = page.getByRole('button', { name: /start editing|review structure first/i }).first();
+        if (await startButton.isVisible().catch(() => false)) {
+          await startButton.click();
+          await page.getByTestId('bullet-coaching-panel').first().waitFor();
+        }
+      }
 
       if (scenario.expandConcern) {
         await page.getByRole('button', { name: scenario.expandConcern }).click();
@@ -75,7 +83,11 @@ async function main() {
 
       if ('detailSelector' in scenario && scenario.detailSelector && scenario.detailScreenshot) {
         const detailPath = resolve(outputDir, scenario.detailScreenshot);
-        await page.locator(scenario.detailSelector).screenshot({ path: detailPath });
+        if (scenario.slug.startsWith('action-')) {
+          await page.getByTestId('bullet-coaching-panel').first().screenshot({ path: detailPath });
+        } else {
+          await page.locator(scenario.detailSelector).screenshot({ path: detailPath });
+        }
         console.log(`${scenario.slug}-detail: ${detailPath}`);
       }
     }
