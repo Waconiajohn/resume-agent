@@ -64,16 +64,20 @@ async function main() {
       await page.getByTestId('resume-v2-visual-harness').waitFor();
       await page.waitForTimeout(300);
 
-      if (scenario.slug.startsWith('action-')) {
+      if (scenario.slug.startsWith('action-') || scenario.slug === 'final-review') {
         const startButton = page.getByRole('button', { name: /start editing|review structure first/i }).first();
         if (await startButton.isVisible().catch(() => false)) {
           await startButton.click();
-          await page.getByTestId('bullet-coaching-panel').first().waitFor();
+          if (scenario.slug.startsWith('action-')) {
+            await page.getByTestId('bullet-coaching-panel').first().waitFor();
+          } else {
+            await page.getByText('Priority Fixes', { exact: true }).filter({ visible: true }).first().waitFor();
+          }
         }
       }
 
       if (scenario.expandConcern) {
-        await page.getByRole('button', { name: scenario.expandConcern }).click();
+        await page.getByRole('button', { name: scenario.expandConcern }).filter({ visible: true }).first().click();
         await page.getByText('Resume line to edit').first().waitFor();
       }
 

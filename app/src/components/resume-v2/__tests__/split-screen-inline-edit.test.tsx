@@ -543,7 +543,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(await screen.findByTestId('hiring-manager-review-card')).toBeInTheDocument();
+    expect((await screen.findAllByTestId('hiring-manager-review-card')).length).toBeGreaterThan(0);
   });
 
   it('removes the gap overview from the live resume canvas', () => {

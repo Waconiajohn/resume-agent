@@ -452,12 +452,21 @@ async function submitPipeline(page: Page): Promise<void> {
 async function waitForPipelineCompletion(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: /Build Your Tailored Resume/i })).not.toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Score Snapshot')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: /Full Scoring Report/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: /Your First Draft Is Ready|Your Resume Is Ready for Final Review/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Keyword & Key Phrasing Report')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Start Editing My Resume|Review Structure First/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /^New Resume$/i })).toBeVisible({ timeout: 15_000 });
+}
+
+async function enterEditingWorkspace(page: Page): Promise<void> {
+  const startEditing = page.getByRole('button', { name: /Start Editing My Resume|Review Structure First/i });
+  await expect(startEditing).toBeVisible({ timeout: 15_000 });
+  await startEditing.click();
+
+  await expect(page.getByText('Match: 85%')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Run Final Review/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Export & Details/i })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: /^New Resume$/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Selected Accomplishments' })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('Resume Builder session flow', () => {
@@ -489,31 +498,27 @@ test.describe('Resume Builder session flow', () => {
     await submitPipeline(page);
 
     await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Sarah Mitchell')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Score Snapshot')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Your First Draft Is Ready/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Keyword & Key Phrasing Report')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /Start Editing My Resume|Review Structure First/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test('completed session shows the current review and export surfaces', async ({ page }) => {
     await openResumeBuilderSession(page);
     await submitPipeline(page);
     await waitForPipelineCompletion(page);
+    await enterEditingWorkspace(page);
 
     await expect(page.getByText('Match: 85%')).toBeVisible();
     await expect(page.getByText('Accuracy: 92%')).toBeVisible();
     await expect(page.getByText('Tone: 88%')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Full Scoring Report/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export & Details/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Run Final Review/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Download resume as DOCX/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Export & Details/i }).click();
     await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Download PDF/i })).toBeVisible();
-
-    await page.getByRole('button', { name: /Full Scoring Report/i }).click();
-
-    await expect(page.getByText('Before Report')).toBeVisible();
-    await expect(page.getByText('After Report')).toBeVisible();
-    await expect(page.getByText('Original Keyword Match', { exact: true })).toBeVisible();
   });
 
   test('New Resume resets the user back to the intake form', async ({ page }) => {
@@ -531,9 +536,11 @@ test.describe('Resume Builder session flow', () => {
     await openResumeBuilderSession(page);
     await submitPipeline(page);
     await waitForPipelineCompletion(page);
+    await enterEditingWorkspace(page);
 
     await expect(page.getByRole('heading', { name: 'Selected Accomplishments' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Professional Experience' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Supporting Analysis/i })).toBeVisible();
+    await expect(page.getByText('Match: 85%')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Export & Details/i })).toBeVisible();
   });
 });

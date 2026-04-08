@@ -32,8 +32,13 @@ test.describe('resume-v2 visual harness', () => {
       await page.waitForTimeout(300);
 
       if (scenario.slug === 'final-review') {
-        await page.getByRole('button', { name: /Performance metrics ownership is still too vague/i }).click();
-        await expect(page.getByText('Will revise on the resume')).toBeVisible();
+        const startButton = page.getByRole('button', { name: /start editing|review structure first/i }).first();
+        if (await startButton.isVisible().catch(() => false)) {
+          await startButton.click();
+        }
+        await expect(page.getByText('Priority Fixes', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+        await page.getByRole('button', { name: /Performance metrics ownership is still too vague/i }).filter({ visible: true }).first().click();
+        await expect(page.getByText('Resume line to edit', { exact: true }).filter({ visible: true }).first()).toBeVisible();
       }
 
       await page.screenshot({

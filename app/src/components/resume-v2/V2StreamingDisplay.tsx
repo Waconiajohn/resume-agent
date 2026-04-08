@@ -2156,6 +2156,44 @@ export function V2StreamingDisplay({
                             </div>
                           )}
                           {renderSecondarySupportPanel()}
+                          {isComplete && displayResume && (
+                            <ResumeFinalReviewPanel
+                              hiringManagerResult={hiringManagerResult ?? null}
+                              resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                              isFinalReviewStale={isFinalReviewStale}
+                              isHiringManagerLoading={isHiringManagerLoading}
+                              hiringManagerError={hiringManagerError}
+                              companyName={data.jobIntelligence?.company_name}
+                              jobTitle={data.jobIntelligence?.role_title}
+                              onRequestHiringManagerReview={onRequestHiringManagerReview}
+                              onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
+                              finalReviewChat={finalReviewChat}
+                              buildFinalReviewChatContext={buildFinalReviewChatContext}
+                              resolveConcernTarget={resolveFinalReviewTarget}
+                              onPreviewConcernTarget={onPreviewFinalReviewTarget}
+                              isEditing={isEditing}
+                            />
+                          )}
+                          {isComplete && data.assembly && displayResume && (
+                            <CollapsibleWorkspaceRail>
+                              <ResumeWorkspaceRail
+                                displayResume={displayResume}
+                                companyName={data.jobIntelligence?.company_name}
+                                jobTitle={data.jobIntelligence?.role_title}
+                                atsScore={data.assembly.scores.ats_match}
+                                hiringManagerResult={hiringManagerResult ?? null}
+                                resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                                isFinalReviewStale={isFinalReviewStale}
+                                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                                finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
+                                onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
+                                jobUrl={jobUrl}
+                                sessionId={data.sessionId}
+                                accessToken={accessToken}
+                              />
+                            </CollapsibleWorkspaceRail>
+                          )}
                         </div>
                       )}
                     </div>
