@@ -917,30 +917,98 @@ function GuidedStartCard({
       <p className="eyebrow-label">Start Here</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Take these moves in order</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        Start with the first step below. The rest of the editing flow gets easier once that move is done.
+        Start with the first move. The rest gets easier once that one is done.
       </p>
       <div className="mt-3 space-y-2 sm:mt-4">
-        {steps.map((step, index) => (
+        {steps.length > 0 && (
+          <button
+            type="button"
+            onClick={steps[0].onSelect}
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-4"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              Step 1 · {steps[0].label}
+            </p>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+              {steps[0].title}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
+              {steps[0].description}
+            </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
+              {steps[0].actionLabel}
+            </p>
+          </button>
+        )}
+        {steps.slice(1).map((step, index) => (
           <button
             key={step.id}
             type="button"
             onClick={step.onSelect}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
+            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              Step {index + 1} · {step.label}
-            </p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-              {step.title}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-              {step.description}
-            </p>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
-              {step.actionLabel}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                  Step {index + 2} · {step.label}
+                </p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
+                  {step.title}
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
+                {step.actionLabel}
+              </span>
+            </div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileResumeScoreSummary({
+  resumeScore,
+  nextAction,
+  flaggedCount,
+  onToggleFullReport,
+  isExpanded,
+}: {
+  resumeScore: number;
+  nextAction: string;
+  flaggedCount: number;
+  onToggleFullReport: () => void;
+  isExpanded: boolean;
+}) {
+  return (
+    <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow-label">Resume Score</p>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="text-[2rem] font-semibold leading-none text-[var(--text-strong)]">
+              {resumeScore}%
+            </span>
+            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              {flaggedCount > 0 ? `${flaggedCount} lines still need review` : 'Ready for final review'}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggleFullReport}
+          className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+        >
+          {isExpanded ? 'Hide Full Report' : 'Full Scoring Report'}
+        </button>
+      </div>
+      <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+          Do this next
+        </p>
+        <p className="mt-1.5 text-sm leading-6 text-[var(--text-muted)]">
+          {nextAction}
+        </p>
       </div>
     </div>
   );
@@ -1347,10 +1415,14 @@ export function V2StreamingDisplay({
 
   // Beat 2 gate — user must click through the "Resume Is Ready" screen before editing
   const [hasPassedReadyGate, setHasPassedReadyGate] = useState(false);
+  const [showMobileFullScoringReport, setShowMobileFullScoringReport] = useState(false);
 
   // Reset gate when re-running
   useEffect(() => {
-    if (isRerunning) setHasPassedReadyGate(false);
+    if (isRerunning) {
+      setHasPassedReadyGate(false);
+      setShowMobileFullScoringReport(false);
+    }
   }, [isRerunning]);
   const handleReadyGateStartEditing = useCallback(() => {
     queueMicrotask(() => {
@@ -1524,6 +1596,8 @@ export function V2StreamingDisplay({
       : `review the bullet marked '${topItem.statusLabel.toLowerCase()}'`;
     return `Start in ${topItem.locationLabel} and ${nextAction}.`;
   }, [attentionItems, rememberedAttentionItemIds]);
+  const mobileNextActionSummary = compactAttentionNextAction
+    ?? 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.';
   const guidedStartSteps = useMemo<GuidedStartStep[]>(() => {
     const steps: GuidedStartStep[] = [];
 
@@ -1727,18 +1801,29 @@ export function V2StreamingDisplay({
         <>
           {/* ── Mobile / tablet: single-column layout (existing behavior) ── */}
           <div className="flex flex-col lg:hidden">
-            {data.preScores && data.assembly && (
+            {!activeBullet && data.preScores && data.assembly && (
               <div className="mx-auto max-w-[900px] px-6 pt-4">
-                <ScoringReport
-                  preScores={data.preScores}
-                  assembly={data.assembly}
-                  verificationDetail={data.verificationDetail ?? null}
-                  gapAnalysis={data.gapAnalysis ?? null}
-                  compact
-                  compactReviewStatusLabel={compactReviewStatusLabel}
-                  compactAttentionSummary={compactAttentionSummary}
-                  compactAttentionNextAction={compactAttentionNextAction}
-                />
+                <div className="space-y-3">
+                  <MobileResumeScoreSummary
+                    resumeScore={keywordMatchPercent}
+                    nextAction={mobileNextActionSummary}
+                    flaggedCount={attentionItems.length}
+                    isExpanded={showMobileFullScoringReport}
+                    onToggleFullReport={() => setShowMobileFullScoringReport((current) => !current)}
+                  />
+                  {showMobileFullScoringReport && (
+                    <ScoringReport
+                      preScores={data.preScores}
+                      assembly={data.assembly}
+                      verificationDetail={data.verificationDetail ?? null}
+                      gapAnalysis={data.gapAnalysis ?? null}
+                      compact
+                      compactReviewStatusLabel={compactReviewStatusLabel}
+                      compactAttentionSummary={compactAttentionSummary}
+                      compactAttentionNextAction={compactAttentionNextAction}
+                    />
+                  )}
+                </div>
               </div>
             )}
             {canShowUndoBar && (
