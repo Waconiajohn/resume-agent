@@ -1096,6 +1096,62 @@ function AttentionReviewStrip({
   );
 }
 
+function DesktopPriorityLineCard({
+  item,
+  index,
+  total,
+  onOpen,
+  onNext,
+}: {
+  item: AttentionReviewItem;
+  index: number;
+  total: number;
+  onOpen: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="resume-guide-queue-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
+            Next priority line
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-soft)]">
+            {index + 1} of {total} flagged {total === 1 ? 'line' : 'lines'}
+          </p>
+        </div>
+        <span className={item.statusClassName}>{item.statusLabel}</span>
+      </div>
+
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        {item.locationLabel}
+      </p>
+      <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-strong)]">
+        {item.text}
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="rounded-lg bg-[var(--accent-muted)] px-3.5 py-2 text-xs font-semibold text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-0)]"
+        >
+          Open this line
+        </button>
+        {total > 1 && (
+          <button
+            type="button"
+            onClick={onNext}
+            className="rounded-lg border border-[var(--line-soft)] px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+          >
+            Show next line
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
@@ -1154,6 +1210,7 @@ export function V2StreamingDisplay({
     canRemove?: boolean;
     autoReuseClarificationId?: string;
   } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
+  const [showDesktopScoringDetails, setShowDesktopScoringDetails] = useState(false);
 
   useEffect(() => {
     setActiveBullet(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
@@ -1263,6 +1320,7 @@ export function V2StreamingDisplay({
     fullSectionPlan,
   ]);
   const [attentionIndex, setAttentionIndex] = useState(0);
+  const currentDesktopPriorityItem = attentionItems[attentionIndex] ?? null;
 
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((
@@ -2002,13 +2060,24 @@ export function V2StreamingDisplay({
                           <div className="space-y-4">
                             <div className="space-y-2">
                               <p className="eyebrow-label">Resume Guide</p>
-                              <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-                                <p className="text-base font-semibold text-[var(--text-strong)]">
-                                  {leftRailHeadline}
-                                </p>
-                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  Keyword &amp; phrasing match {keywordMatchPercent}%
-                                </span>
+                              <div className="flex flex-wrap items-end justify-between gap-3">
+                                <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                                  <p className="text-base font-semibold text-[var(--text-strong)]">
+                                    {leftRailHeadline}
+                                  </p>
+                                  <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                                    Resume score {keywordMatchPercent}%
+                                  </span>
+                                </div>
+                                {!activeBullet && data.preScores && data.assembly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowDesktopScoringDetails((current) => !current)}
+                                    className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
+                                  >
+                                    {showDesktopScoringDetails ? 'Hide scoring details' : 'View scoring details'}
+                                  </button>
+                                )}
                               </div>
                               <p className="text-sm leading-6 text-[var(--text-soft)]">
                                 {leftRailSummary}
@@ -2077,32 +2146,15 @@ export function V2StreamingDisplay({
                           </div>
                         );
                       })()}
-                      {attentionItems.length > 0 && (
-                        <div className="resume-guide-queue-bar mt-4">
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
-                              Priority queue
-                            </p>
-                            <p className="mt-1 text-xs text-[var(--text-soft)]">
-                              {attentionIndex + 1} of {attentionItems.length} priority {attentionItems.length === 1 ? 'line' : 'lines'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)}
-                              className="rounded-lg border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-                            >
-                              Previous
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
-                              className="rounded-lg border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-                            >
-                              Next
-                            </button>
-                          </div>
+                      {!activeBullet && currentDesktopPriorityItem && (
+                        <div className="mt-4">
+                          <DesktopPriorityLineCard
+                            item={currentDesktopPriorityItem}
+                            index={attentionIndex}
+                            total={attentionItems.length}
+                            onOpen={() => openAttentionItem(attentionIndex)}
+                            onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
+                          />
                         </div>
                       )}
                     </div>
@@ -2140,6 +2192,24 @@ export function V2StreamingDisplay({
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {showDesktopScoringDetails && data.preScores && data.assembly && (
+                            <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
+                              <p className="eyebrow-label">Scoring details</p>
+                              <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">See the full keyword, fit, and before/after report</p>
+                              <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+                                Use the full report when you want the detailed keyword and phrasing breakdown behind the current score.
+                              </p>
+                              <div className="mt-4">
+                                <ScoringReport
+                                  preScores={data.preScores}
+                                  assembly={data.assembly}
+                                  verificationDetail={data.verificationDetail ?? null}
+                                  gapAnalysis={data.gapAnalysis ?? null}
+                                  renderSummary={false}
+                                />
+                              </div>
+                            </div>
+                          )}
                           <GuidedStartCard steps={guidedStartSteps} />
                           {canShowStructurePlanner && (
                             <div ref={structurePlannerRef}>

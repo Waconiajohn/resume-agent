@@ -645,6 +645,13 @@
     padding: 0.75rem 0.9rem;
   }
 
+  .resume-guide-queue-card {
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--line-soft) 92%, white 8%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+    padding: 0.95rem 1rem;
+  }
+
   .ready-checkpoint-shell {
     border-radius: 28px;
     border: 1px solid color-mix(in srgb, var(--line-strong) 88%, white 12%);
