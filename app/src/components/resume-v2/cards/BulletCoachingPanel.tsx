@@ -629,90 +629,92 @@ export function BulletCoachingPanel({
               </button>
             )}
           </div>
-        </div>
-      )}
-
-      {remainingClarifyingQuestions.length > 0 && priorClarifications.length === 0 && !isCodeRedNoEvidence && (
-        <div
-          className="rounded-lg px-3 py-3"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--line-soft)',
-          }}
-        >
-          <p
-            className="text-[10px] uppercase tracking-wider"
-            style={{ color: 'var(--text-soft)' }}
-          >
-            Fastest way to strengthen this {lineLabel}
-          </p>
-          {chatContext.coachingGoal && (
-            <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
-              {chatContext.coachingGoal}
-            </p>
-          )}
-          <ul className="mt-2 space-y-1.5">
-            {remainingClarifyingQuestions.map((question) => (
-              <li
-                key={question}
-                className="text-sm leading-relaxed"
-                style={{ color: 'var(--text-strong)' }}
+          {priorClarifications.length > 0 && (
+            <div
+              className="mt-3 border-t pt-3"
+              style={{ borderColor: 'rgba(203, 213, 225, 0.52)' }}
+            >
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: 'var(--text-soft)' }}
               >
-                {question}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {priorClarifications.length > 0 && (
-        <div
-          className="rounded-lg px-3 py-3"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--line-soft)',
-          }}
-        >
-          <p
-            className="text-[10px] uppercase tracking-wider"
-            style={{ color: 'var(--text-soft)' }}
-          >
-            Reuse confirmed detail
-          </p>
-          <div className="mt-2 space-y-2">
-            {priorClarifications.map((entry) => (
-              <div key={entry.id} className="space-y-1">
-                <p className="text-xs font-medium" style={{ color: 'var(--text-strong)' }}>
-                  {entry.topic}
-                  {entry.primaryFamily ? ` • ${entry.primaryFamily}` : ''}
-                </p>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  {entry.userInput}
-                </p>
-                {entry.appliedLanguage && (
-                  <p className="text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
-                    Resume wording used: {entry.appliedLanguage}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleReusePriorClarification(entry)}
-                  disabled={isChatLoading}
-                  className={cn(
-                  'inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-                  isChatLoading && 'opacity-50 cursor-not-allowed',
-                )}
-                  style={{
-                    borderColor: 'var(--line-soft)',
-                    color: 'var(--text-strong)',
-                    background: 'var(--surface-elevated)',
-                  }}
-                >
-                  Rewrite from this answer
-                </button>
+                Confirmed detail you can reuse
+              </p>
+              <div className="mt-2 space-y-2">
+                {priorClarifications.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl px-3 py-2.5"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.76)',
+                      border: '1px solid rgba(203, 213, 225, 0.4)',
+                    }}
+                  >
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-strong)' }}>
+                      {entry.topic}
+                      {entry.primaryFamily ? ` • ${entry.primaryFamily}` : ''}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                      {entry.userInput}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      {entry.appliedLanguage ? (
+                        <p className="text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                          Resume wording used: {entry.appliedLanguage}
+                        </p>
+                      ) : <span />}
+                      <button
+                        type="button"
+                        onClick={() => handleReusePriorClarification(entry)}
+                        disabled={isChatLoading}
+                        className={cn(
+                          'inline-flex min-h-[34px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                          isChatLoading && 'opacity-50 cursor-not-allowed',
+                        )}
+                        style={{
+                          borderColor: 'var(--line-soft)',
+                          color: 'var(--text-strong)',
+                          background: 'var(--surface-elevated)',
+                        }}
+                      >
+                        Rewrite from this answer
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {remainingClarifyingQuestions.length > 0 && priorClarifications.length === 0 && !isCodeRedNoEvidence && (
+            <div
+              className="mt-3 border-t pt-3"
+              style={{ borderColor: 'rgba(203, 213, 225, 0.52)' }}
+            >
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: 'var(--text-soft)' }}
+              >
+                If you have 30 seconds, add one of these details
+              </p>
+              {chatContext.coachingGoal && (
+                <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-soft)' }}>
+                  {chatContext.coachingGoal}
+                </p>
+              )}
+              <ul className="mt-2 space-y-1.5">
+                {remainingClarifyingQuestions.map((question) => (
+                  <li
+                    key={question}
+                    className="text-sm leading-relaxed"
+                    style={{ color: 'var(--text-strong)' }}
+                  >
+                    {question}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

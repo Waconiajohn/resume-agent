@@ -263,7 +263,7 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Reuse confirmed detail')).toBeInTheDocument();
+    expect(screen.getByText('Confirmed detail you can reuse')).toBeInTheDocument();
     expect(screen.getByText('Performance metrics • metrics')).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
     expect(screen.getByText(/Resume wording used: Built weekly KPI reviews across 3 plants\./i)).toBeInTheDocument();

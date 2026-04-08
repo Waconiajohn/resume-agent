@@ -338,6 +338,222 @@ export function HiringManagerReviewCard({
   const recruiterTone = result.six_second_scan?.decision
     ? SCAN_CONFIG[result.six_second_scan.decision] ?? FALLBACK_SCAN
     : FALLBACK_SCAN;
+  const unresolvedConcerns = result.concerns.filter((concern) => !resolvedConcernIds.includes(concern.id));
+  const criticalConcernCount = unresolvedConcerns.filter((concern) => concern.severity === 'critical').length;
+  const moderateConcernCount = unresolvedConcerns.filter((concern) => concern.severity === 'moderate').length;
+  const minorConcernCount = unresolvedConcerns.filter((concern) => concern.severity === 'minor').length;
+  const finalReviewSummary = criticalConcernCount > 0
+    ? `Start with the ${criticalConcernCount} critical ${criticalConcernCount === 1 ? 'fix' : 'fixes'} below. Those are the issues most likely to change the interview decision.`
+    : moderateConcernCount > 0
+      ? `The biggest risk is now in the ${moderateConcernCount} moderate ${moderateConcernCount === 1 ? 'fix' : 'fixes'} below. Tighten those before export.`
+      : unresolvedConcerns.length > 0
+        ? `Only smaller fixes remain. Clean up the last ${unresolvedConcerns.length} ${unresolvedConcerns.length === 1 ? 'issue' : 'issues'} before export.`
+        : 'The major concerns are resolved. You can use the rest of this review as a final confidence check before export.';
+
+  const renderPriorityFixes = () => {
+    if (result.concerns.length === 0) return null;
+
+    return (
+      <section>
+        <SectionHeader
+          icon={Sparkles}
+          title="Priority Fixes"
+          description="These are the issues most likely to change the interview decision."
+        />
+        <div className="space-y-2">
+          {result.concerns.map((concern) => {
+            const severityTone = SEVERITY_CONFIG[concern.severity];
+            const isExpanded = expandedConcern === concern.id;
+            const isResolved = resolvedConcernIds.includes(concern.id);
+            const isThreadOpen = threadConcernId === concern.id;
+            const chatState = finalReviewChat?.getItemState(concern.id);
+            const chatContext = buildFinalReviewChatContext?.(concern) ?? null;
+            const resolvedTarget = resolveConcernTarget?.(concern) ?? null;
+
+            return (
+              <div
+                key={concern.id}
+                className="overflow-hidden rounded-xl border"
+                style={{ borderColor: severityTone.border }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isExpanded) {
+                      setExpandedConcern(null);
+                      if (threadConcernId === concern.id) {
+                        setThreadConcernId(null);
+                      }
+                      return;
+                    }
+                    setExpandedConcern(concern.id);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-[var(--accent-muted)]"
+                  aria-expanded={isExpanded}
+                >
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0 text-[var(--text-soft)] transition-transform duration-200',
+                      isExpanded ? 'rotate-0' : '-rotate-90',
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-[var(--text-muted)]">{concern.observation}</p>
+                    <p className="mt-1 text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">
+                      {CONCERN_LABELS[concern.type]}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isResolved && (
+                      <ToneBadge label="Resolved on Resume" tone={ASSESSMENT_CONFIG.strong} />
+                    )}
+                    <ToneBadge label={concern.severity} tone={severityTone} />
+                  </div>
+                </button>
+
+                <div
+                  className={cn(
+                    'overflow-hidden transition-all duration-300',
+                    isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
+                  )}
+                >
+                  <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-3.5 pt-3">
+                    <div className="final-review-note">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
+                        Why this matters
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">{concern.why_it_hurts}</p>
+                    </div>
+
+                    {(concern.target_section || concern.related_requirement) && (
+                      <div className="final-review-meta-strip">
+                        {concern.target_section && (
+                          <ReviewMetaChip label="Section" value={concern.target_section} />
+                        )}
+                        {concern.related_requirement && (
+                          <ReviewMetaChip label="Requirement" value={concern.related_requirement} />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="final-review-callout-grid">
+                      {resolvedTarget && (
+                        <ReviewCallout
+                          title="Resume line to edit"
+                          titleClassName="text-[var(--link)]"
+                          className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
+                        >
+                          <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                            {resolvedTarget.section}
+                          </p>
+                          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+                            &ldquo;{truncatePreview(resolvedTarget.text)}&rdquo;
+                          </p>
+                        </ReviewCallout>
+                      )}
+
+                      <ReviewCallout
+                        title="What to change"
+                        titleClassName="text-[var(--link)]"
+                        className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
+                      >
+                        {concern.fix_strategy}
+                      </ReviewCallout>
+                    </div>
+
+                    {concern.suggested_resume_edit && (
+                      <ReviewCallout
+                        title="Suggested wording"
+                        titleClassName="text-[var(--badge-green-text)]"
+                        className="border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)]"
+                      >
+                        {concern.suggested_resume_edit}
+                      </ReviewCallout>
+                    )}
+
+                    {concern.clarifying_question && (
+                      <ReviewCallout
+                        title="Question to answer"
+                        titleClassName="text-[var(--badge-amber-text)]"
+                        className="border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)]"
+                      >
+                        {concern.clarifying_question}
+                      </ReviewCallout>
+                    )}
+
+                    {isResolved && (
+                      <div className="support-callout final-review-status-note border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)] px-3 py-2 text-xs text-[var(--text-muted)]">
+                        This concern already has an accepted resume edit. If you undo that change, it will show up as unresolved again.
+                      </div>
+                    )}
+
+                    <div className="final-review-actions">
+                      {resolvedTarget && onPreviewConcernTarget && (
+                        <button
+                          type="button"
+                          onClick={() => onPreviewConcernTarget(concern)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/20"
+                        >
+                          <Target className="h-3 w-3" />
+                          Show on Resume
+                        </button>
+                      )}
+
+                      {onApplyRecommendation && (
+                        <button
+                          type="button"
+                          onClick={() => onApplyRecommendation(concern)}
+                          disabled={isEditing}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
+                          style={{
+                            color: severityTone.color,
+                            backgroundColor: severityTone.bg,
+                            border: `1px solid ${severityTone.border}`,
+                          }}
+                        >
+                          <Wrench className="h-3 w-3" />
+                          {getConcernReviewButtonLabel(concern)}
+                        </button>
+                      )}
+
+                      {finalReviewChat && chatContext && (
+                        <button
+                          type="button"
+                          onClick={() => setThreadConcernId(isThreadOpen ? null : concern.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          {isThreadOpen ? 'Hide coaching' : concern.requires_candidate_input ? 'Coach this fix' : 'Brainstorm another fix'}
+                        </button>
+                      )}
+                    </div>
+
+                    {finalReviewChat && chatContext && isThreadOpen && (
+                      <FinalReviewConcernThread
+                        concernId={concern.id}
+                        messages={chatState?.messages ?? []}
+                        isLoading={chatState?.isLoading ?? false}
+                        error={chatState?.error ?? null}
+                        resolvedLanguage={isResolved ? (chatState?.resolvedLanguage ?? null) : null}
+                        onSendMessage={finalReviewChat.sendMessage}
+                        onReviewEdit={(concernId, language, candidateInputUsed) => {
+                          if (concernId !== concern.id || !onApplyRecommendation) return;
+                          onApplyRecommendation(concern, language, Boolean(candidateInputUsed));
+                        }}
+                        context={chatContext}
+                        isEditing={isEditing}
+                        onCloseThread={() => setThreadConcernId(null)}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <GlassCard className="p-4 animate-[card-enter_500ms_ease-out_forwards]">
@@ -358,6 +574,26 @@ export function HiringManagerReviewCard({
       </div>
 
       <div className="space-y-5">
+        <div className="support-callout rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3.5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
+                Start here
+              </p>
+              <p className="mt-1.5 text-sm leading-6 text-[var(--text-muted)]">
+                {finalReviewSummary}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ReviewMetaChip label="Critical" value={String(criticalConcernCount)} />
+              <ReviewMetaChip label="Moderate" value={String(moderateConcernCount)} />
+              <ReviewMetaChip label="Minor" value={String(minorConcernCount)} />
+            </div>
+          </div>
+        </div>
+
+        {renderPriorityFixes()}
+
         <section>
           <SectionHeader
             icon={Search}
@@ -465,207 +701,6 @@ export function HiringManagerReviewCard({
                   )}
                 </div>
               ))}
-            </div>
-          </section>
-        )}
-
-        {result.concerns.length > 0 && (
-          <section>
-            <SectionHeader
-              icon={Sparkles}
-              title="Priority Fixes"
-              description="These are the issues most likely to change the interview decision."
-            />
-            <div className="space-y-2">
-              {result.concerns.map((concern) => {
-                const severityTone = SEVERITY_CONFIG[concern.severity];
-                const isExpanded = expandedConcern === concern.id;
-                const isResolved = resolvedConcernIds.includes(concern.id);
-                const isThreadOpen = threadConcernId === concern.id;
-                const chatState = finalReviewChat?.getItemState(concern.id);
-                const chatContext = buildFinalReviewChatContext?.(concern) ?? null;
-                const resolvedTarget = resolveConcernTarget?.(concern) ?? null;
-
-                return (
-                  <div
-                    key={concern.id}
-                    className="overflow-hidden rounded-xl border"
-                    style={{ borderColor: severityTone.border }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isExpanded) {
-                          setExpandedConcern(null);
-                          if (threadConcernId === concern.id) {
-                            setThreadConcernId(null);
-                          }
-                          return;
-                        }
-                        setExpandedConcern(concern.id);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-[var(--accent-muted)]"
-                      aria-expanded={isExpanded}
-                    >
-                      <ChevronDown
-                        className={cn(
-                          'h-3.5 w-3.5 shrink-0 text-[var(--text-soft)] transition-transform duration-200',
-                          isExpanded ? 'rotate-0' : '-rotate-90',
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-[var(--text-muted)]">{concern.observation}</p>
-                        <p className="mt-1 text-[13px] uppercase tracking-[0.18em] text-[var(--text-soft)]">
-                          {CONCERN_LABELS[concern.type]}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isResolved && (
-                          <ToneBadge label="Resolved on Resume" tone={ASSESSMENT_CONFIG.strong} />
-                        )}
-                        <ToneBadge label={concern.severity} tone={severityTone} />
-                      </div>
-                    </button>
-
-                    <div
-                      className={cn(
-                        'overflow-hidden transition-all duration-300',
-                        isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
-                      )}
-                    >
-                      <div className="final-review-concern-body border-t border-[var(--line-soft)] px-3 pb-3.5 pt-3">
-                        <div className="final-review-note">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
-                            Why this matters
-                          </p>
-                          <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">{concern.why_it_hurts}</p>
-                        </div>
-
-                        {(concern.target_section || concern.related_requirement) && (
-                          <div className="final-review-meta-strip">
-                            {concern.target_section && (
-                              <ReviewMetaChip label="Section" value={concern.target_section} />
-                            )}
-                            {concern.related_requirement && (
-                              <ReviewMetaChip label="Requirement" value={concern.related_requirement} />
-                            )}
-                          </div>
-                        )}
-
-                        <div className="final-review-callout-grid">
-                          {resolvedTarget && (
-                            <ReviewCallout
-                              title="Resume line to edit"
-                              titleClassName="text-[var(--link)]"
-                              className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
-                            >
-                              <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                                {resolvedTarget.section}
-                              </p>
-                              <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-                                &ldquo;{truncatePreview(resolvedTarget.text)}&rdquo;
-                              </p>
-                            </ReviewCallout>
-                          )}
-
-                          <ReviewCallout
-                            title="What to change"
-                            titleClassName="text-[var(--link)]"
-                            className="border border-[var(--link)]/15 bg-[var(--badge-blue-bg)]"
-                          >
-                            {concern.fix_strategy}
-                          </ReviewCallout>
-                        </div>
-
-                        {concern.suggested_resume_edit && (
-                          <ReviewCallout
-                            title="Suggested wording"
-                            titleClassName="text-[var(--badge-green-text)]"
-                            className="border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-bg)]"
-                          >
-                            {concern.suggested_resume_edit}
-                          </ReviewCallout>
-                        )}
-
-                        {concern.clarifying_question && (
-                          <ReviewCallout
-                            title="Question to answer"
-                            titleClassName="text-[var(--badge-amber-text)]"
-                            className="border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-bg)]"
-                          >
-                            {concern.clarifying_question}
-                          </ReviewCallout>
-                        )}
-
-                        {isResolved && (
-                          <div className="support-callout final-review-status-note border border-[var(--badge-green-text)]/18 bg-[var(--badge-green-bg)] px-3 py-2 text-xs text-[var(--text-muted)]">
-                            This concern already has an accepted resume edit. If you undo that change, it will show up as unresolved again.
-                          </div>
-                        )}
-
-                        <div className="final-review-actions">
-                          {resolvedTarget && onPreviewConcernTarget && (
-                            <button
-                              type="button"
-                              onClick={() => onPreviewConcernTarget(concern)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] px-3 py-2 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/20"
-                            >
-                              <Target className="h-3 w-3" />
-                              Show on Resume
-                            </button>
-                          )}
-
-                          {onApplyRecommendation && (
-                            <button
-                              type="button"
-                              onClick={() => onApplyRecommendation(concern)}
-                              disabled={isEditing}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
-                              style={{
-                                color: severityTone.color,
-                                backgroundColor: severityTone.bg,
-                                border: `1px solid ${severityTone.border}`,
-                              }}
-                            >
-                              <Wrench className="h-3 w-3" />
-                              {getConcernReviewButtonLabel(concern)}
-                            </button>
-                          )}
-
-                          {finalReviewChat && chatContext && (
-                            <button
-                              type="button"
-                              onClick={() => setThreadConcernId(isThreadOpen ? null : concern.id)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
-                            >
-                              <Sparkles className="h-3 w-3" />
-                              {isThreadOpen ? 'Hide Coaching Thread' : concern.requires_candidate_input ? 'Open Coaching Thread' : 'Brainstorm Another Fix'}
-                            </button>
-                          )}
-                        </div>
-
-                        {finalReviewChat && chatContext && isThreadOpen && (
-                          <FinalReviewConcernThread
-                            concernId={concern.id}
-                            messages={chatState?.messages ?? []}
-                            isLoading={chatState?.isLoading ?? false}
-                            error={chatState?.error ?? null}
-                            resolvedLanguage={isResolved ? (chatState?.resolvedLanguage ?? null) : null}
-                            onSendMessage={finalReviewChat.sendMessage}
-                            onReviewEdit={(concernId, language, candidateInputUsed) => {
-                              if (concernId !== concern.id || !onApplyRecommendation) return;
-                              onApplyRecommendation(concern, language, Boolean(candidateInputUsed));
-                            }}
-                            context={chatContext}
-                            isEditing={isEditing}
-                            onCloseThread={() => setThreadConcernId(null)}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </section>
         )}

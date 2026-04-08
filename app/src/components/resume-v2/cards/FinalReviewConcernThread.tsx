@@ -92,10 +92,10 @@ function AssistantBubble({
               className="mt-3 min-h-[160px] w-full resize-y rounded-md border border-[var(--line-strong)] bg-[var(--surface-1)] px-3 py-3 text-sm leading-6 text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--line-strong)]"
             />
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!disabled) {
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!disabled) {
                     onReviewEdit(
                       concernId,
                       draftValue.trim() || message.suggestedLanguage!,
@@ -104,10 +104,10 @@ function AssistantBubble({
                   }
                 }}
                 disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isEditing ? 'Sending to Review...' : 'Send to Review'}
+                {isEditing ? 'Applying...' : 'Apply this fix'}
               </button>
             </div>
           </div>
@@ -292,14 +292,14 @@ export function FinalReviewConcernThread({
                 <button
                   type="button"
                   onClick={handleStarterApply}
-                  disabled={isEditing || !starterDraftValue.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {isEditing ? 'Sending to Review...' : 'Send to Review'}
-                </button>
-              </div>
+                disabled={isEditing || !starterDraftValue.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-xs font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {isEditing ? 'Applying...' : 'Apply this fix'}
+              </button>
             </div>
+          </div>
           )}
         </div>
       )}
@@ -332,35 +332,35 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={requestGuidance}
             disabled={isLoading}
-            className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--link)] transition-colors hover:bg-[var(--link)]/10 disabled:opacity-40"
+            className="rounded-md border border-[var(--link)]/16 bg-[var(--badge-blue-bg)] px-3 py-1.5 text-[13px] font-medium text-[var(--link)] transition-colors hover:bg-[var(--link)]/10 disabled:opacity-40"
           >
-            Ask What Detail Is Missing
+            Ask AI what detail is missing
           </button>
           <button
             type="button"
             onClick={requestDraft}
             disabled={isLoading}
-            className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:opacity-40"
+            className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-1.5 text-[13px] font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:opacity-40"
           >
-            Draft Stronger Version
+            Draft a stronger version
           </button>
           {messages.length > 0 && (
             <button
               type="button"
               onClick={requestAlternative}
               disabled={isLoading}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-40"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] disabled:opacity-40"
             >
-              Try Another Version
+              Try another version
             </button>
           )}
           {onCloseThread && (
             <button
               type="button"
               onClick={onCloseThread}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[13px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
             >
-              Skip for Now
+              Skip for now
             </button>
           )}
         </div>
@@ -400,7 +400,7 @@ export function FinalReviewConcernThread({
           rows={1}
           disabled={isLoading}
           className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-sm leading-6 text-[var(--text-strong)] transition-colors focus:outline-none disabled:opacity-50"
-          style={{ minHeight: 110, maxHeight: 220 }}
+          style={{ minHeight: 84, maxHeight: 220 }}
         />
         <button
           type="button"
