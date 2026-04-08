@@ -566,7 +566,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByRole('button', { name: /Expand overview card/i })).not.toBeInTheDocument();
   });
 
-  it('keeps the score summary visible but collapses the full scoring report in resume mode', async () => {
+  it('drops the mobile score summary once the user enters resume editing mode', async () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -596,18 +596,15 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
     const resumeBullets = await screen.findAllByText(/Reduced deploy time by 60%/i);
     expect(resumeBullets.length).toBeGreaterThan(0);
-    const fullScoringReportButtons = screen.getAllByRole('button', { name: /Full Scoring Report|See full scoring report/i });
-    expect(screen.getByText('Resume Score')).toBeInTheDocument();
-    expect(screen.getByText('Do this next')).toBeInTheDocument();
-    expect(screen.getByText(/Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export\./i)).toBeInTheDocument();
-    expect(fullScoringReportButtons.length).toBeGreaterThan(0);
+    expect(screen.queryByText('Resume Score')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Full Scoring Report|See full scoring report/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
     expect(screen.queryByText('On-Paper Fit Score')).not.toBeInTheDocument();
     expect(screen.queryByText('What improved')).not.toBeInTheDocument();
     expect(screen.queryByText('Still to close')).not.toBeInTheDocument();
   });
 
-  it('shows a compact attention-line navigator when the resume has amber or red bullets', async () => {
+  it('keeps mobile focused on the resume itself when coaching hooks are unavailable', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -636,18 +633,13 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    const strip = await screen.findByTestId('attention-review-strip');
-    expect(strip).toBeInTheDocument();
-    expect(within(strip).getByText('Fix These Lines')).toBeInTheDocument();
-    expect(within(strip).getByText('1 of 2')).toBeInTheDocument();
-    expect(within(strip).getByText(/2 lines still need work\. open them one at a time and we will tighten them up together\./i)).toBeInTheDocument();
-    expect(within(strip).getByText(/Open the line in VP Engineering · Acme Corp\. We are strengthening how this resume shows Product delivery\. Open this line and let the coach suggest the cleanest truthful version\./i)).toBeInTheDocument();
-    expect(within(strip).getByText('Needs proof')).toBeInTheDocument();
-    expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open coach' })).toBeInTheDocument();
+    expect(screen.queryByText('Resume Score')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Full Scoring Report|See full scoring report/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Reduced deploy time by 60%/i).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('attention-review-strip')).not.toBeInTheDocument();
   });
 
-  it('lets the user step through attention lines and open the current one on the resume', async () => {
+  it('lets the user step through the new coach queue and open the current area on the resume', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -680,16 +672,13 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(await screen.findByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
+    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Area 1 of 4/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next area' })[0]);
+    expect(screen.getAllByText('Working in Core Competencies').length).toBeGreaterThan(0);
 
-    const strip = screen.getByTestId('attention-review-strip');
-    expect(within(strip).getByText('2 of 2')).toBeInTheDocument();
-    expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
-    expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open coach' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Show on resume' })[0]);
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -697,9 +686,9 @@ describe('V2StreamingDisplay — layout modes', () => {
       evidenceFound: string;
       requirementSource?: string;
     };
-    expect(lastCall.bulletText).toBe('Reduced deploy time by 60%');
-    expect(lastCall.evidenceFound).toBe('Improved deployment workflow across engineering teams');
-    expect(lastCall.requirementSource).toBe('job_description');
+    expect(lastCall.bulletText).toBe('Team Leadership');
+    expect(lastCall.evidenceFound).toBe('Team Leadership');
+    expect(lastCall.requirementSource).toBeUndefined();
   });
 
   it('scrolls the active resume line into view after the ready gate opens when coaching is already targeted', async () => {
@@ -744,7 +733,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="selected_accomplishments:0"]');
   });
 
-  it('surfaces one section-polish step at a time in Start Here', async () => {
+  it('shows one coach target at a time instead of the old stacked section cards', async () => {
     const resume = makeResumeDraft();
     resume.custom_sections = [
       {
@@ -771,6 +760,15 @@ describe('V2StreamingDisplay — layout modes', () => {
       <V2StreamingDisplay
         {...makeDisplayProps({
           editableResume: resume,
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
           data: makePipelineDataWithResume({
             resumeDraft: resume,
             assembly: {
@@ -815,7 +813,9 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
 
-    expect(screen.getAllByText(/Polish Executive Summary/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Resume Coach').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Area 1 of \d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish AI Highlights/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish Transformation Highlights/i)).not.toBeInTheDocument();
   });
@@ -1134,7 +1134,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.chatContext.relatedRequirements).toContain('Product delivery');
   });
 
-  it('uses work-item requirements when opening section polish targets', async () => {
+  it('threads work-item requirements into the first requirement-coach target', async () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -1192,13 +1192,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText(/Lead with identity and fit\. Bring forward Product delivery and Executive leadership/i).length).toBeGreaterThan(0);
-
-    fireEvent.click(
-      screen
-        .getAllByText(/Lead with identity and fit\. Bring forward Product delivery and Executive leadership/i)[0]
-        .closest('button') as HTMLButtonElement,
-    );
+    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
 
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       section: string;
@@ -1285,15 +1279,20 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Check the recommended sections first/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Structure First').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Fix the sections before rewriting lines/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Selected Projects/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Start Here')).not.toBeInTheDocument();
     expect(screen.queryByText('Section Polish')).not.toBeInTheDocument();
-    expect(screen.queryByText('Editing Queue')).not.toBeInTheDocument();
   });
 
-  it('shows clarification prompts for high-value proof upgrades and jumps to the related line', async () => {
+  it('threads clarification prompts directly into the active requirement coach', async () => {
     const attentionResume = makeResumeDraftWithAttention();
+    const baseBuildChatContext = makeChatContextMock();
+    const buildChatContext = vi.fn((target: string | GapChatTargetInput) => ({
+      ...baseBuildChatContext(target),
+      clarifyingQuestions: ['What specific product launch or delivery outcome proves this most clearly?'],
+    }));
 
     render(
       <V2StreamingDisplay
@@ -1307,7 +1306,7 @@ describe('V2StreamingDisplay — layout modes', () => {
             hydrate: vi.fn(),
             reset: vi.fn(),
           } as never,
-          buildChatContext: makeChatContextMock(),
+          buildChatContext,
           data: makePipelineDataWithResume({
             requirementWorkItems: [
               {
@@ -1339,24 +1338,21 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Answer one question with real business detail').length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(/What specific product launch or delivery outcome proves this most clearly\?/i).length,
-    ).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Could strengthen 1 line/i).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getAllByRole('button', { name: /Answer one question with real business detail/i })[0]);
-
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
-      bulletText: string;
       section: string;
+      reviewState: string;
+      chatContext: {
+        clarifyingQuestions?: string[];
+      };
     };
-    expect(lastCall.section).toBe('professional_experience');
-    expect(lastCall.bulletText).toBe('Shipped 3 major product lines');
+    expect(lastCall.section).toBe('executive_summary');
+    expect(lastCall.reviewState).toBe('code_red');
+    expect(lastCall.chatContext.clarifyingQuestions).toEqual([
+      'What specific product launch or delivery outcome proves this most clearly?',
+    ]);
   });
 
-  it('drops a line from the navigator once that line has changed in the working resume', async () => {
+  it('keeps mobile focused on the edited resume when one flagged line has already been fixed', async () => {
     const baselineResume = makeResumeDraftWithAttention();
     const editedResume = makeResumeDraftWithAttention();
     editedResume.selected_accomplishments[0] = {
@@ -1369,6 +1365,11 @@ describe('V2StreamingDisplay — layout modes', () => {
         {...makeDisplayProps({
           editableResume: editedResume,
           data: makePipelineDataWithResume({
+            preScores: {
+              ats_match: 48,
+              keywords_found: ['Operations'],
+              keywords_missing: ['Performance metrics'],
+            },
             resumeDraft: baselineResume,
             assembly: {
               final_resume: baselineResume,
@@ -1385,31 +1386,34 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    const strip = await screen.findByTestId('attention-review-strip');
-    expect(within(strip).getByText('1 of 1')).toBeInTheDocument();
-    expect(within(strip).getByText('Shipped 3 major product lines')).toBeInTheDocument();
+    expect(screen.queryByText(/1 lines? still need review/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Open the line in VP Engineering · Acme Corp\./i)).not.toBeInTheDocument();
     expect((await screen.findAllByText(/weekly release KPIs and deployment scorecards/i)).length).toBeGreaterThan(0);
-    expect(within(strip).queryByText(/release KPIs and deployment scorecards/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Open the line in Selected Accomplishments/i)).not.toBeInTheDocument();
   });
 
-  it('surfaces remembered evidence in the left rail and opens the matching line', async () => {
+  it('threads remembered evidence into the active coach instead of showing a separate left-rail card', async () => {
     const attentionResume = makeResumeDraftWithAttention();
+    const rememberedClarification = {
+      id: 'gap_chat:product delivery',
+      source: 'gap_chat' as const,
+      topic: 'Product delivery',
+      userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
+      appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
+      primaryFamily: 'metrics',
+      families: ['metrics'],
+    };
+    const baseBuildChatContext = makeChatContextMock();
+    const buildChatContext = vi.fn((target: string | GapChatTargetInput) => ({
+      ...baseBuildChatContext(target),
+      priorClarifications: [rememberedClarification],
+    }));
 
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
           editableResume: attentionResume,
-          clarificationMemory: [
-            {
-              id: 'gap_chat:product delivery',
-              source: 'gap_chat',
-              topic: 'Product delivery',
-              userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
-              appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
-              primaryFamily: 'metrics',
-              families: ['metrics'],
-            },
-          ],
+          clarificationMemory: [rememberedClarification],
           gapChat: {
             getItemState: vi.fn(),
             sendMessage: vi.fn(),
@@ -1418,7 +1422,7 @@ describe('V2StreamingDisplay — layout modes', () => {
             hydrate: vi.fn(),
             reset: vi.fn(),
           } as never,
-          buildChatContext: makeChatContextMock(),
+          buildChatContext,
           data: makePipelineDataWithResume({
             resumeDraft: attentionResume,
             assembly: {
@@ -1436,41 +1440,52 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText(/Reuse your earlier answer about Product delivery/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/This confirmed detail can already strengthen 1 line without asking you anything new\./i).length).toBeGreaterThan(0);
-
-    fireEvent.click(
-      screen.getAllByRole('button', { name: /Reuse your earlier answer about Product delivery/i })[0],
-    );
-
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
-      bulletText: string;
-      section: string;
-      initialReuseClarificationId?: string;
+      chatContext: {
+        priorClarifications?: Array<{ id: string; topic: string; userInput: string }>;
+      };
     };
-    expect(lastCall.section).toBe('professional_experience');
-    expect(lastCall.bulletText).toBe('Shipped 3 major product lines');
-    expect(lastCall.initialReuseClarificationId).toBe('gap_chat:product delivery');
+    expect(lastCall.chatContext.priorClarifications).toEqual([
+      expect.objectContaining({
+        id: 'gap_chat:product delivery',
+        topic: 'Product delivery',
+        userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
+      }),
+    ]);
   });
 
-  it('hides redundant clarification cues when remembered evidence already covers the gap', async () => {
+  it('keeps remembered evidence in the coach and removes the old clarification card path', async () => {
     const attentionResume = makeResumeDraftWithAttention();
+    const rememberedClarification = {
+      id: 'gap_chat:product delivery',
+      source: 'gap_chat' as const,
+      topic: 'Product delivery',
+      userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
+      appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
+      primaryFamily: 'metrics',
+      families: ['metrics'],
+    };
+    const baseBuildChatContext = makeChatContextMock();
+    const buildChatContext = vi.fn((target: string | GapChatTargetInput) => ({
+      ...baseBuildChatContext(target),
+      priorClarifications: [rememberedClarification],
+      clarifyingQuestions: ['What specific product launch or delivery outcome proves this most clearly?'],
+    }));
 
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
           editableResume: attentionResume,
-          clarificationMemory: [
-            {
-              id: 'gap_chat:product delivery',
-              source: 'gap_chat',
-              topic: 'Product delivery',
-              userInput: 'Led weekly KPI reviews across three plants and used them to cut defects.',
-              appliedLanguage: 'Led weekly KPI reviews across 3 plants.',
-              primaryFamily: 'metrics',
-              families: ['metrics'],
-            },
-          ],
+          clarificationMemory: [rememberedClarification],
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext,
           data: makePipelineDataWithResume({
             requirementWorkItems: [
               {
@@ -1510,10 +1525,21 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     expect(screen.queryByText('One Good Answer')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Reuse your earlier answer about Product delivery/i).length).toBeGreaterThan(0);
+    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
+      chatContext: {
+        priorClarifications?: Array<{ id: string }>;
+        clarifyingQuestions?: string[];
+      };
+    };
+    expect(lastCall.chatContext.priorClarifications).toEqual([
+      expect.objectContaining({ id: 'gap_chat:product delivery' }),
+    ]);
+    expect(lastCall.chatContext.clarifyingQuestions).toEqual(
+      expect.arrayContaining(['What specific product launch or delivery outcome proves this most clearly?']),
+    );
   });
 
-  it('updates the attention summary to reuse earlier confirmed answers when available', async () => {
+  it('does not bring back the old attention summary even when remembered answers exist', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -1553,9 +1579,9 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    const strip = await screen.findByTestId('attention-review-strip');
-    expect(within(strip).getByText(/Open the line in VP Engineering · Acme Corp\. We already have a useful detail for Product delivery from an earlier answer\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Open the line in VP Engineering · Acme Corp\. We already have a useful detail for Product delivery from an earlier answer\./i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Open the line in VP Engineering · Acme Corp\. We already have a useful detail for Product delivery from an earlier answer\./i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Resume Score/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('attention-review-strip')).not.toBeInTheDocument();
   });
 
   it('shows the PipelineProgressCard for each pipeline stage', () => {

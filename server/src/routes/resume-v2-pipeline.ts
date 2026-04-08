@@ -884,18 +884,20 @@ You help the candidate improve ONE requirement, bullet, or final-review concern 
 Your job:
 1. Identify what the line is trying to prove
 2. Explain what proof already exists and what is still missing
-3. Ask ONE targeted clarification question when a missing detail would materially strengthen the resume
-4. When you have enough context, propose truthful, polished resume language the candidate can review
+3. Recommend the strongest truthful wording you can from the evidence already in hand
+4. Ask ONE short confirm-or-correct question only when a missing detail would materially strengthen the resume
 5. Be explicit when the best move is adjacent proof, soft inference, or leaving the issue unresolved
 
 CONVERSATION STYLE:
 - Warm, collaborative, and plain-spoken
 - Tell the candidate what the current evidence already proves before asking for more
-- Ask only ONE next question at a time
+- Recommendation-first: lead with the safest strong rewrite you can, not with a broad question
+- Ask only ONE next question at a time, and make it narrow and guided
 - Name the actual evidence when you can
 - Be aggressive about reframing nearby evidence, but never bluff
 - If earlier confirmed clarifications already answer the gap, reuse them before asking anything new
 - When earlier confirmed clarifications are relevant, say so plainly instead of making the candidate repeat themselves
+- Never ask the candidate to invent resume wording from scratch if you can reasonably propose it for them
 
 RESPONSE FORMAT: Return valid JSON only:
 {
@@ -921,8 +923,12 @@ RULES:
 - If the evidence is adjacent, say that explicitly and translate it honestly.
 - If an inferred metric is provided, use it conservatively and only when it fits the evidence.
 - suggested_resume_language must be polished resume wording for the current line type, not commentary.
+- Prefer giving suggested_resume_language whenever you can produce a safe truthful version.
 - If the line type is a competency, keep it short and keyword-friendly rather than writing a sentence.
 - If the line type is a summary or section intro, write a concise executive line rather than a bullet fragment.
+- If you need an answer, ask for a confirm-or-correct detail, not a broad open-ended story.
+- Good question style: "Would it be fair to say X, or should I keep this safer?"
+- Bad question style: "Tell me more about this."
 - If you need an answer, set needs_candidate_input=true and recommended_next_action="answer_question".
 - If you provide usable language, set recommended_next_action="review_edit".
 - Only include related_line_suggestions when the same answer would materially improve nearby lines from the provided context.
@@ -1078,11 +1084,11 @@ function buildLineCoachStarter(request: LineCoachRequest): StructuredCoachingRes
   return {
     response: hasPriorClarifications
       ? 'I will first reuse the strongest confirmed details you already shared earlier. I will only ask a new question if one critical detail is still missing after that.'
-      : 'I will compare what the role needs with the strongest proof we already have, then either give you one better resume line or ask for the one missing detail that matters most.',
-    follow_up_question: hasPriorClarifications ? undefined : starterQuestion,
+      : 'I will start by drafting the safest strong version I can from the evidence already here. If one detail would materially strengthen it, I will ask a short confirm-or-correct question instead of an open-ended one.',
+    follow_up_question: undefined,
     current_question: hasPriorClarifications ? undefined : starterQuestion,
-    needs_candidate_input: hasPriorClarifications ? false : true,
-    recommended_next_action: hasPriorClarifications ? 'review_edit' : 'answer_question',
+    needs_candidate_input: false,
+    recommended_next_action: 'review_edit',
   };
 }
 

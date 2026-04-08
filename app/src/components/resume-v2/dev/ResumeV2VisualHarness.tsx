@@ -175,6 +175,7 @@ export function ResumeV2VisualHarness() {
   const location = useLocation();
   const scenarioId = parseScenario(location.search);
   const scenario = useMemo(() => getResumeV2VisualScenario(scenarioId), [scenarioId]);
+  const enableHarnessCoach = scenarioId !== 'final-review';
   const [editableResume, setEditableResume] = useState<ResumeDraft>(() => cloneResume(scenario.editableResume));
   const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(scenario.initialPendingEdit ?? null);
   const [isEditing, setIsEditing] = useState(false);
@@ -558,8 +559,8 @@ export function ResumeV2VisualHarness() {
           onApplyHiringManagerRecommendation={() => {}}
           resolveFinalReviewTarget={resolveConcernTarget}
           onPreviewFinalReviewTarget={previewConcernTarget}
-          gapChat={harnessGapChat}
-          buildChatContext={buildChatContext}
+          gapChat={enableHarnessCoach ? harnessGapChat : undefined}
+          buildChatContext={enableHarnessCoach ? buildChatContext : undefined}
           onBulletEnhance={handleHarnessEnhance}
           postReviewPolish={undefined}
           initialActiveBullet={scenario.initialActiveBullet ?? null}

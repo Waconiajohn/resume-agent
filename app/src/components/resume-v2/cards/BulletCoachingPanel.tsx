@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Trash2, PencilLine, Sparkles, Send, Loader2 } from 'lucide-react';
+import { X, Trash2, PencilLine, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
@@ -34,6 +34,7 @@ export interface BulletCoachingPanelProps {
   onClose: () => void;
   canRemove?: boolean;
   initialReuseClarificationId?: string;
+  showCloseButton?: boolean;
   // New: optional AI enhancement handler
   onBulletEnhance?: (
     action: string,
@@ -84,6 +85,7 @@ function latestAssistantMessage(messages: GapChatMessage[] | undefined): GapChat
 
 type BestFirstMoveAction =
   | 'focus_question'
+  | 'safe_rewrite'
   | 'reuse_prior'
   | 'tighten_rewrite'
   | 'quantify_rewrite'
@@ -152,10 +154,10 @@ function buildBestFirstMove(args: {
     return {
       title: 'Best first move',
       body: topClarifyingQuestion
-        ? `${sectionContext ? `${sectionContext} ` : ''}We still need one concrete truth before this ${lineLabel} is safe to keep. Start by answering: ${topClarifyingQuestion}`
-        : `${sectionContext ? `${sectionContext} ` : ''}We still need one concrete truth before this ${lineLabel} is safe to keep.`,
-      actionLabel: 'Answer the question below',
-      action: 'focus_question',
+        ? `${sectionContext ? `${sectionContext} ` : ''}I can keep this honest right now by rewriting it conservatively. If you later confirm more detail, we can strengthen it further. The one thing that would help most is: ${topClarifyingQuestion}`
+        : `${sectionContext ? `${sectionContext} ` : ''}I can keep this honest right now by rewriting it conservatively, then strengthen it later only if we confirm more detail.`,
+      actionLabel: 'Show safest version',
+      action: 'safe_rewrite',
     };
   }
 
@@ -163,10 +165,10 @@ function buildBestFirstMove(args: {
     return {
       title: 'Best first move',
       body: topClarifyingQuestion
-        ? `${sectionContext ? `${sectionContext} ` : ''}The next gain comes from adding one missing concrete detail to this ${lineLabel}. Use this prompt while you rewrite: ${topClarifyingQuestion}`
-        : `${sectionContext ? `${sectionContext} ` : ''}The next gain comes from adding one missing concrete detail to this ${lineLabel}.`,
-      actionLabel: 'Rewrite with the missing detail',
-      action: 'write_own',
+        ? `${sectionContext ? `${sectionContext} ` : ''}I can give you a safe version now, and this is the one detail that would make it stronger later: ${topClarifyingQuestion}`
+        : `${sectionContext ? `${sectionContext} ` : ''}I can give you a safe version now, then we can strengthen it later if needed.`,
+      actionLabel: 'Show safe version',
+      action: 'safe_rewrite',
     };
   }
 
@@ -328,28 +330,32 @@ function buildSuggestedWordingOptions(args: {
     : Math.min(uniqueTexts.length - 1, 1);
 
   const selected = uniqueTexts.slice(0, 3);
-  const labels = ['Option A', 'Option B', 'Option C'];
 
   return selected.map((text, index) => {
     const alternative = alternatives.find((candidate) => candidate.text.trim().toLowerCase() === text.trim().toLowerCase());
     const isRecommended = index === recommendedIndex;
+    const label = (() => {
+      if (selected.length === 1) return 'Recommended version';
+      if (selected.length === 2) return index === 0 ? 'Safer version' : 'Recommended version';
+      return index === 0 ? 'Safer version' : index === 1 ? 'Recommended version' : 'Stronger version';
+    })();
     let helper = index === 0
       ? 'Closest to what you already have'
       : alternative?.angle === 'metric'
-        ? 'Shows business impact more clearly'
+        ? 'Adds clearer business impact'
         : alternative?.angle === 'scope'
-          ? 'Shows scale or leadership scope'
+          ? 'Shows more scale or leadership scope'
           : alternative?.angle === 'impact'
-            ? 'Shows the outcome more directly'
-            : 'Another solid way to say it';
+            ? 'Shows the business outcome more directly'
+            : 'Another truthful way to say it';
 
     if (isRecommended) {
       helper = 'Recommended';
     }
 
     return {
-      id: `${labels[index]}-${text.slice(0, 24)}`,
-      label: labels[index],
+      id: `${label}-${text.slice(0, 24)}`,
+      label,
       helper,
       text,
       isRecommended,
@@ -378,12 +384,12 @@ export function BulletCoachingPanel({
   onClose,
   canRemove = true,
   initialReuseClarificationId,
+  showCloseButton = true,
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const autoReuseRef = useRef<string | null>(null);
-  const codeRedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Internal state ─────────────────────────────────────────────────────────
   const [enhanceAction, setEnhanceAction] = useState<string | null>(null);
@@ -392,9 +398,7 @@ export function BulletCoachingPanel({
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const [showCustomEdit, setShowCustomEdit] = useState(false);
-  // code_red context-gathering input
-  const [codeRedContext, setCodeRedContext] = useState('');
-  const [isSubmittingContext, setIsSubmittingContext] = useState(false);
+  const [showAdvancedAI, setShowAdvancedAI] = useState(false);
   // Remove confirmation state
   const [confirmRemove, setConfirmRemove] = useState(false);
   const applyMetadata = useCallback((overrides?: Partial<OptimisticResumeEditMetadata>): OptimisticResumeEditMetadata => ({
@@ -445,6 +449,12 @@ export function BulletCoachingPanel({
 
   // ── Determine the currently displayed suggestion ───────────────────────────
   const primarySuggestion = enhanceResult?.enhancedBullet ?? chatSuggestedLanguage ?? alternatives[0]?.text ?? null;
+  const primaryRequirement = requirements[0];
+  const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
+  const lineLabel = getLineLabel(chatContext.lineKind);
+  const coachTitle = chatContext.sectionLabel ?? `This ${lineLabel}`;
+  const topClarifyingQuestion = chatContext.clarifyingQuestions?.[0]?.trim();
+  const priorClarifications = (chatContext.priorClarifications ?? []).slice(0, 2);
 
   // ── Escape to close ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -512,27 +522,38 @@ export function BulletCoachingPanel({
     setShowCustomEdit(true);
   }, [bulletText]);
 
-  // ── code_red context submit — sends to gap-chat for rewrite ───────────────
-  const handleSubmitCodeRedContext = useCallback(() => {
-    const text = codeRedContext.trim();
-    if (!text || isChatLoading) return;
-    setIsSubmittingContext(true);
+  const handleGenerateSafeRewrite = useCallback(() => {
+    if (isChatLoading) return;
     const classification = classificationForReviewState(reviewState);
-    gapChat.sendMessage(chatKey, text, chatContext, classification).finally(() => {
-      setIsSubmittingContext(false);
-      setCodeRedContext('');
-    });
-  }, [codeRedContext, isChatLoading, gapChat, chatKey, chatContext, reviewState]);
+    const targetRequirement = primaryRequirement ?? requirements[0] ?? 'this requirement';
+    const promptParts = [
+      `Rewrite this ${lineLabel} in the safest truthful way using only evidence we already have.`,
+      `Requirement: ${targetRequirement}`,
+      `Current line: ${bulletText}`,
+      evidenceFound ? `Evidence already found: ${evidenceFound}` : '',
+      resolvedSourceEvidence ? `What the job needs: ${resolvedSourceEvidence}` : '',
+      chatContext.candidateExperienceSummary ? `Candidate background summary: ${chatContext.candidateExperienceSummary}` : '',
+      'Do not ask me another question. Give me conservative, polished resume wording I can review right now.',
+    ].filter(Boolean);
+
+    gapChat.sendMessage(chatKey, promptParts.join('\n\n'), chatContext, classification);
+  }, [
+    bulletText,
+    chatContext,
+    evidenceFound,
+    gapChat,
+    chatKey,
+    isChatLoading,
+    lineLabel,
+    primaryRequirement,
+    requirements,
+    resolvedSourceEvidence,
+    reviewState,
+  ]);
 
   // ── Derived display flags ─────────────────────────────────────────────────
   const isCodeRedNoEvidence =
     reviewState === 'code_red' && !evidenceFound.trim() && alternatives.length === 0 && !chatSuggestedLanguage;
-  const primaryRequirement = requirements[0];
-  const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
-  const lineLabel = getLineLabel(chatContext.lineKind);
-  const coachTitle = chatContext.sectionLabel ?? `This ${lineLabel}`;
-  const topClarifyingQuestion = chatContext.clarifyingQuestions?.[0]?.trim();
-  const priorClarifications = (chatContext.priorClarifications ?? []).slice(0, 2);
   const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
     .map((suggestion) => {
       const candidate = chatContext.relatedLineCandidates?.find((item) => item.id === suggestion.candidateId);
@@ -619,7 +640,10 @@ export function BulletCoachingPanel({
   const handleBestFirstMove = useCallback(() => {
     switch (bestFirstMove?.action) {
       case 'focus_question':
-        codeRedTextareaRef.current?.focus();
+        handleGenerateSafeRewrite();
+        break;
+      case 'safe_rewrite':
+        handleGenerateSafeRewrite();
         break;
       case 'reuse_prior':
         if (priorClarifications[0]) {
@@ -659,6 +683,7 @@ export function BulletCoachingPanel({
     chatContext.lineKind,
     handleAcceptSuggestion,
     handleEnhance,
+    handleGenerateSafeRewrite,
     handleOpenEdit,
     handleReusePriorClarification,
     handleWriteMyOwn,
@@ -704,15 +729,17 @@ export function BulletCoachingPanel({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-md p-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2"
-          style={{ color: 'var(--text-soft)' }}
-          aria-label="Close resume coach"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {showCloseButton && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md p-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2"
+            style={{ color: 'var(--text-soft)' }}
+            aria-label="Close resume coach"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {primaryRequirement && (
@@ -749,6 +776,16 @@ export function BulletCoachingPanel({
               <p className="mt-1.5 text-[14px] leading-6" style={{ color: 'var(--text-strong)' }}>
                 {recommendationSummary}
               </p>
+              {priorClarifications.length > 0 && (
+                <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
+                  I am also using an earlier confirmed detail here: &ldquo;{priorClarifications[0].userInput}&rdquo;
+                </p>
+              )}
+              {topClarifyingQuestion && !priorClarifications.length && (
+                <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
+                  If you want to make the stronger version even more specific later, this is the one detail I would confirm next: {topClarifyingQuestion}
+                </p>
+              )}
             </div>
             {bestFirstMove?.actionLabel && (isCodeRedNoEvidence || !suggestedOptions.length) && (
               <button
@@ -769,64 +806,6 @@ export function BulletCoachingPanel({
               </button>
             )}
           </div>
-
-          {topClarifyingQuestion && (
-            <div
-              className="rounded-xl px-3 py-2.5"
-              style={{
-                background: 'rgba(255, 255, 255, 0.76)',
-                border: '1px solid rgba(203, 213, 225, 0.4)',
-              }}
-            >
-              <p
-                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-                style={{ color: 'var(--text-soft)' }}
-              >
-                Quick check
-              </p>
-              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
-                {topClarifyingQuestion}
-              </p>
-            </div>
-          )}
-
-          {priorClarifications.length > 0 && (
-            <div
-              className="rounded-xl px-3 py-2.5"
-              style={{
-                background: 'rgba(255, 255, 255, 0.76)',
-                border: '1px solid rgba(203, 213, 225, 0.4)',
-              }}
-            >
-              <p
-                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-                style={{ color: 'var(--text-soft)' }}
-              >
-                Already confirmed
-              </p>
-              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
-                {priorClarifications[0].userInput}
-              </p>
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => handleReusePriorClarification(priorClarifications[0])}
-                  disabled={isChatLoading}
-                  className={cn(
-                    'inline-flex min-h-[34px] items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-                    isChatLoading && 'opacity-50 cursor-not-allowed',
-                  )}
-                  style={{
-                    borderColor: 'var(--line-soft)',
-                    color: 'var(--text-strong)',
-                    background: 'var(--surface-elevated)',
-                  }}
-                >
-                  Use this answer in the rewrite
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -847,7 +826,7 @@ export function BulletCoachingPanel({
                 Suggested wording
               </p>
               <p className="mt-1.5 text-[14px] leading-6" style={{ color: 'var(--text-strong)' }}>
-                Pick the version that feels most true. I recommend the one marked below.
+                Pick the version that feels most true. Start with the recommended version, use the safer one if you want to stay cautious, or use the stronger one only if it is fully accurate.
               </p>
             </div>
             {bestFirstMove?.actionLabel && (
@@ -945,16 +924,39 @@ export function BulletCoachingPanel({
         </div>
       )}
 
-      {/* 4. Enhance button bar — suppressed for code_red with no evidence */}
+      {/* 4. Optional advanced AI actions */}
       {!isCodeRedNoEvidence && onBulletEnhance && (
-        <EnhanceButtonBar
-          onEnhance={handleEnhance}
-          isEnhancing={isEnhancing}
-          activeAction={enhanceAction}
-          disabled={isChatLoading}
-          lineKind={chatContext.lineKind}
-          sectionLabel={chatContext.sectionLabel}
-        />
+        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                More AI help
+              </p>
+              <p className="mt-1 text-[12px] leading-5 text-[var(--text-soft)]">
+                If none of the suggested versions feel right, I can take another angle.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedAI((current) => !current)}
+              className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-elevated)] hover:text-[var(--text-strong)]"
+            >
+              {showAdvancedAI ? 'Hide extra AI help' : 'Show extra AI help'}
+            </button>
+          </div>
+          {showAdvancedAI && (
+            <div className="mt-3">
+              <EnhanceButtonBar
+                onEnhance={handleEnhance}
+                isEnhancing={isEnhancing}
+                activeAction={enhanceAction}
+                disabled={isChatLoading}
+                lineKind={chatContext.lineKind}
+                sectionLabel={chatContext.sectionLabel}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {/* 4a. Enhance error message */}
@@ -971,72 +973,64 @@ export function BulletCoachingPanel({
             className="text-[12px] leading-relaxed"
             style={{ color: 'var(--text-muted)' }}
           >
-            Tell us about your experience with{' '}
+            I will keep this truthful and conservative first. If you later want to make it stronger, the most helpful extra detail would be around{' '}
             <span
               className="font-medium"
               style={{ color: 'var(--text-strong)' }}
             >
               {primaryRequirement ?? 'this requirement'}
             </span>
-            . Even a small-scale or adjacent example gives us something to work with.
+            .
           </p>
           {topClarifyingQuestion && (
             <p
               className="text-[12px] leading-relaxed"
               style={{ color: 'var(--text-soft)' }}
             >
-              Start with this: {topClarifyingQuestion}
+              If you ever want a stronger version, this is what I would want to confirm: {topClarifyingQuestion}
             </p>
           )}
-          <div className="flex items-end gap-2">
-            <textarea
-              ref={codeRedTextareaRef}
-              value={codeRedContext}
-              onChange={(e) => setCodeRedContext(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitCodeRedContext();
-                }
-              }}
-              placeholder={topClarifyingQuestion ?? 'Describe what you\'ve actually done in this area…'}
-              rows={3}
-              disabled={isChatLoading || isSubmittingContext}
-              aria-label="Provide context about your experience"
-              className={cn(
-                'flex-1 resize-none rounded-lg border px-3 py-2 text-[13px] leading-relaxed',
-                'transition-colors duration-150 focus:outline-none',
-                (isChatLoading || isSubmittingContext) && 'opacity-50 cursor-not-allowed',
-              )}
-              style={{
-                background: 'var(--surface-1)',
-                borderColor: 'var(--line-soft)',
-                color: 'var(--text-strong)',
-              }}
-            />
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={handleSubmitCodeRedContext}
-              disabled={!codeRedContext.trim() || isChatLoading || isSubmittingContext}
+              onClick={handleGenerateSafeRewrite}
+              disabled={isChatLoading}
               className={cn(
-                'shrink-0 min-h-[44px] rounded-lg px-3 py-2 transition-colors duration-150',
+                'min-h-[40px] rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-150',
                 'focus-visible:outline-none focus-visible:ring-2',
-                (!codeRedContext.trim() || isChatLoading || isSubmittingContext) &&
-                  'opacity-40 cursor-not-allowed',
+                isChatLoading && 'opacity-40 cursor-not-allowed',
               )}
               style={{
-                background: 'var(--badge-blue-bg)',
-                color: 'var(--badge-blue-text)',
-                border: '1px solid var(--badge-blue-text)',
+                background: 'var(--btn-primary-bg)',
+                color: 'var(--btn-primary-text)',
+                border: '1px solid var(--btn-primary-border)',
               }}
-              aria-label="Submit context to coach"
+              aria-label="Generate the safest truthful version"
             >
-              {isChatLoading || isSubmittingContext ? (
+              {isChatLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                'Show safest version'
               )}
             </button>
+            {!showCustomEdit && (
+              <button
+                type="button"
+                onClick={handleWriteMyOwn}
+                disabled={isChatLoading}
+                className={cn(
+                  'min-h-[40px] rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors duration-150',
+                  isChatLoading && 'opacity-40 cursor-not-allowed',
+                )}
+                style={{
+                  borderColor: 'var(--line-soft)',
+                  color: 'var(--text-soft)',
+                  background: 'transparent',
+                }}
+              >
+                Write my own version
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1166,7 +1160,7 @@ export function BulletCoachingPanel({
               aria-label="Apply selected suggestion to resume"
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Use This Version
+              Use recommended version
             </button>
           )}
 
@@ -1189,7 +1183,7 @@ export function BulletCoachingPanel({
               aria-label="Edit the selected suggestion"
             >
               <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
-              Edit
+              Tweak recommended
             </button>
           )}
 
@@ -1211,7 +1205,7 @@ export function BulletCoachingPanel({
               }}
               aria-label="Rewrite this line yourself"
             >
-              Rewrite Myself
+              Write my version
             </button>
           )}
 

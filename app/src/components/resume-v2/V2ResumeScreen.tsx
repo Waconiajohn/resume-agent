@@ -604,11 +604,43 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
     const coachingPolicy = coachingCard?.coaching_policy ?? gapReq?.strategy?.coaching_policy;
 
-    const relatedRequirements = Array.from(new Set([
-      ...explicitRequirements,
-      explicitRequirement,
-      ...relatedWorkItems.map((item) => item.requirement),
-    ].filter(Boolean)));
+    const importanceRank = (importance: 'must_have' | 'important' | 'nice_to_have' | undefined): number => {
+      switch (importance) {
+        case 'must_have':
+          return 3;
+        case 'important':
+          return 2;
+        case 'nice_to_have':
+          return 1;
+        default:
+          return 0;
+      }
+    };
+
+    const relatedRequirements = Array.from(new Map([
+      ...explicitRequirements.map((requirement, index) => ([
+        normalizeRequirement(requirement),
+        {
+          requirement,
+          score: 100 - index,
+        },
+      ] as const)),
+      ...(explicitRequirement
+        ? [[normalizeRequirement(explicitRequirement), { requirement: explicitRequirement, score: 120 }] as const]
+        : []),
+      ...relatedWorkItems.map((item, index) => ([
+        normalizeRequirement(item.requirement),
+        {
+          requirement: item.requirement,
+          score: importanceRank(item.importance) * 10 + Math.max(0, 10 - index),
+        },
+      ] as const)),
+    ]
+      .filter((entry): entry is readonly [string, { requirement: string; score: number }] => Boolean(entry[0]))
+      .sort((left, right) => right[1].score - left[1].score))
+      .values())
+      .map((entry) => entry.requirement)
+      .slice(0, 3);
     const relatedLineCandidates = buildRelatedLineCandidates({
       resume: currentResume,
       target: currentTarget,

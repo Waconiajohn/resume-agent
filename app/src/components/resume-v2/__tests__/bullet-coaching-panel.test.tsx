@@ -71,6 +71,8 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: /show extra ai help/i }));
+
     expect(screen.getByText('AI summary upgrades')).toBeInTheDocument();
     expect(screen.getByText('Sharpen opening story')).toBeInTheDocument();
     expect(screen.getByText('Show leadership scope')).toBeInTheDocument();
@@ -81,7 +83,9 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByRole('button', { name: /run opening rewrite/i })).toBeInTheDocument();
   });
 
-  it('uses the top clarifying question as the code-red placeholder when evidence is missing', () => {
+  it('offers a safe rewrite first when a code-red line is missing proof', () => {
+    const gapChat = makeGapChat();
+
     render(
       <BulletCoachingPanel
         bulletText="Built and tracked performance metrics."
@@ -91,7 +95,7 @@ describe('BulletCoachingPanel', () => {
         reviewState="code_red"
         requirementSource="job_description"
         evidenceFound=""
-        gapChat={makeGapChat()}
+        gapChat={gapChat}
         chatContext={makeChatContext({
           lineKind: 'bullet',
           sectionKey: 'professional_experience',
@@ -108,18 +112,21 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getAllByText('Quick check').length).toBeGreaterThan(0);
-    expect(screen.getByText('What KPI review, scorecard, or operating rhythm did you actually own?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /answer the question below/i })).toBeInTheDocument();
+    expect(screen.queryByText('Quick check')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/If you want to make the stronger version even more specific later/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /show safest version/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /write my own version/i })).toBeInTheDocument();
 
-    const textarea = screen.getByLabelText('Provide context about your experience');
-    expect(textarea).toHaveAttribute(
-      'placeholder',
-      'What KPI review, scorecard, or operating rhythm did you actually own?',
+    fireEvent.click(screen.getByRole('button', { name: /show safest version/i }));
+
+    expect(gapChat.sendMessage).toHaveBeenCalledWith(
+      'Develop and track performance metrics',
+      expect.stringContaining('Rewrite this line in the safest truthful way using only evidence we already have.'),
+      expect.objectContaining({
+        primaryRequirement: 'Develop and track performance metrics',
+      }),
+      'missing',
     );
-
-    fireEvent.change(textarea, { target: { value: 'Owned weekly KPI reviews across 3 plants.' } });
-    expect(textarea).toHaveValue('Owned weekly KPI reviews across 3 plants.');
   });
 
   it('shows related line suggestions from one clarification answer and applies them safely', () => {
@@ -263,10 +270,11 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Already confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('Already confirmed')).not.toBeInTheDocument();
+    expect(screen.getByText(/I am also using an earlier confirmed detail here/i)).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /use this answer in the rewrite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /rewrite from earlier answer/i }));
 
     expect(gapChat.sendMessage).toHaveBeenCalledWith(
       'Develop and track performance metrics',

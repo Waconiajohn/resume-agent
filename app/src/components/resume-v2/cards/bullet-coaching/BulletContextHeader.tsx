@@ -66,8 +66,8 @@ function getIntroLabel(reviewState: ResumeReviewState): string {
 }
 
 function getSourceLabel(source?: RequirementSource): string {
-  if (source === 'benchmark') return 'This is especially important for the benchmark candidate.';
-  return 'This comes straight from the job description.';
+  if (source === 'benchmark') return 'A strong candidate for this role would show this clearly.';
+  return 'The job is asking for this directly.';
 }
 
 function dedupeRequirements(requirement: string | undefined, requirements: string[] | undefined): string[] {
@@ -241,7 +241,7 @@ export function BulletContextHeader({
               Why this matters for the job
             </p>
             <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
-              {sourceLabel} &ldquo;{trimmedSourceEvidence}&rdquo;
+              {sourceLabel} {trimmedSourceEvidence}
             </p>
           </div>
         )}

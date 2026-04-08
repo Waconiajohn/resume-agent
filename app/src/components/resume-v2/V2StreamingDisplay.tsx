@@ -191,30 +191,23 @@ interface SectionCoachTarget {
   canRemove: boolean;
 }
 
-interface GuidedStartStep {
+interface CoachTarget {
   id: string;
-  label: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  onSelect: () => void;
-}
-
-interface ClarificationCue {
-  id: string;
-  requirement: string;
-  question: string;
-  affectedCount: number;
-  targetIndex: number | null;
-}
-
-interface RememberedEvidenceCue {
-  id: string;
-  topic: string;
-  answer: string;
-  primaryFamily?: string | null;
-  affectedCount: number;
-  targetIndex: number | null;
+  section: string;
+  index: number;
+  requirements: string[];
+  bulletText: string;
+  reviewState: ResumeReviewState;
+  requirementSource?: RequirementSource;
+  evidenceFound: string;
+  sourceEvidence?: string;
+  workItemId?: string;
+  proofLevel?: ProofLevel;
+  framingGuardrail?: FramingGuardrail;
+  nextBestAction?: NextBestAction;
+  canRemove: boolean;
+  locationLabel: string;
+  autoReuseClarificationId?: string;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -447,40 +440,6 @@ function describeNextBestAction(action: NextBestAction | undefined, lineLabel: s
     default:
       return `Polish this ${lineLabel} so it reads as intentional and role-relevant.`;
   }
-}
-
-function summarizeEvidencePreview(text: string | undefined): string {
-  const trimmed = text?.trim();
-  if (!trimmed) return 'We still need stronger proof from the resume or interview.';
-  return truncatePreview(trimmed, 140);
-}
-
-function describeMissingPlain(args: {
-  nextBestAction?: NextBestAction;
-  reviewState: ResumeReviewState;
-}): string {
-  const { nextBestAction, reviewState } = args;
-  switch (nextBestAction) {
-    case 'answer':
-      return 'One concrete detail, example, or number before this line is safe to keep.';
-    case 'quantify':
-      return 'A metric, budget, team size, timeline, or business result.';
-    case 'confirm':
-      return 'A safer version of the claim unless the strongest wording is definitely true.';
-    case 'tighten':
-      return 'A cleaner, sharper connection to what the job is asking for.';
-    case 'accept':
-      return 'Nothing major. This line may already be okay.';
-    case 'remove':
-      return 'A truthful reason to keep this line. If not, it should come out.';
-    default:
-      break;
-  }
-
-  if (reviewState === 'code_red') return 'A real proof point before this line is safe.';
-  if (reviewState === 'confirm_fit') return 'A safer way to phrase the claim.';
-  if (reviewState === 'strengthen') return 'A clearer scope marker, impact statement, or stronger wording.';
-  return 'A quick polish pass.';
 }
 
 function describeRecommendationPlain(item: AttentionReviewItem): string {
@@ -729,46 +688,70 @@ function buildSectionCoachTargets(
   return targets.slice(0, 4);
 }
 
-function buildClarificationCues(
-  workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
-  attentionItems: AttentionReviewItem[],
-  clarificationMemory: ClarificationMemoryEntry[],
-): ClarificationCue[] {
-  return workItems
-    .filter((item) => item.next_best_action === 'answer' && item.clarifying_question?.trim())
-    .map((item) => {
-      const normalizedRequirement = normalizeCueKey(item.requirement);
-      const matches = attentionItems.filter((attentionItem) => (
-        (item.id && attentionItem.workItemId === item.id)
-          || attentionItem.requirements.some((requirement) => normalizeCueKey(requirement) === normalizedRequirement)
-      ));
+function sectionCoachTargetToCoachTarget(target: SectionCoachTarget): CoachTarget {
+  return {
+    id: `section-target:${target.section}:${target.index}`,
+    section: target.section,
+    index: target.index,
+    requirements: target.requirements,
+    bulletText: target.bulletText,
+    reviewState: target.reviewState,
+    requirementSource: target.requirementSource,
+    evidenceFound: target.evidenceFound,
+    sourceEvidence: target.sourceEvidence,
+    workItemId: target.workItemId,
+    proofLevel: target.proofLevel,
+    framingGuardrail: target.framingGuardrail,
+    nextBestAction: target.nextBestAction,
+    canRemove: target.canRemove,
+    locationLabel: target.label,
+  };
+}
 
-      return {
-        id: item.id,
-        requirement: item.requirement,
-        question: item.clarifying_question!.trim(),
-        affectedCount: matches.length,
-        targetIndex: matches.length > 0
-          ? attentionItems.findIndex((candidate) => candidate.id === matches[0].id)
-          : null,
-      } satisfies ClarificationCue;
-    })
-    .filter((cue) => {
-      const relatedItem = workItems.find((item) => item.id === cue.id);
-      return !clarificationMemory.some((entry) => {
-        const requirementHit = overlapScore(entry.topic, cue.requirement) >= 0.35;
-        const answerHit = relatedItem
-          ? (
-              overlapScore(entry.userInput, relatedItem.requirement) >= 0.24
-              || (relatedItem.best_evidence_excerpt ? overlapScore(entry.userInput, relatedItem.best_evidence_excerpt) >= 0.24 : false)
-              || relatedItem.candidate_evidence.some((evidence) => overlapScore(entry.userInput, evidence.text) >= 0.24)
-            )
-          : false;
-        return requirementHit || answerHit;
-      });
-    })
-    .sort((left, right) => right.affectedCount - left.affectedCount || left.requirement.localeCompare(right.requirement))
-    .slice(0, 3);
+function attentionItemToCoachTarget(item: AttentionReviewItem): CoachTarget {
+  return {
+    id: `attention-target:${item.id}`,
+    section: item.section,
+    index: item.index,
+    requirements: item.requirements,
+    bulletText: item.text,
+    reviewState: item.reviewState,
+    requirementSource: item.requirementSource,
+    evidenceFound: item.evidenceFound,
+    sourceEvidence: undefined,
+    workItemId: item.workItemId,
+    proofLevel: item.proofLevel,
+    framingGuardrail: undefined,
+    nextBestAction: item.nextBestAction,
+    canRemove: true,
+    locationLabel: item.locationLabel,
+  };
+}
+
+function buildIdleCoachTargets(
+  sectionTargets: SectionCoachTarget[],
+  attentionItems: AttentionReviewItem[],
+): CoachTarget[] {
+  const seen = new Set<string>();
+  const targets: CoachTarget[] = [];
+
+  for (const target of sectionTargets) {
+    const coachTarget = sectionCoachTargetToCoachTarget(target);
+    const key = `${coachTarget.section}:${coachTarget.index}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push(coachTarget);
+  }
+
+  for (const item of attentionItems) {
+    const coachTarget = attentionItemToCoachTarget(item);
+    const key = `${coachTarget.section}:${coachTarget.index}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push(coachTarget);
+  }
+
+  return targets.slice(0, 4);
 }
 
 function clarificationMatchesAttentionItem(
@@ -786,447 +769,98 @@ function clarificationMatchesAttentionItem(
   return requirementHit || evidenceHit || lineHit;
 }
 
-function buildRememberedEvidenceCues(
-  clarificationMemory: ClarificationMemoryEntry[],
-  attentionItems: AttentionReviewItem[],
-): RememberedEvidenceCue[] {
-  return clarificationMemory
-    .map((entry) => {
-      const matches = attentionItems.filter((item) => clarificationMatchesAttentionItem(entry, item));
-
-      return {
-        id: entry.id,
-        topic: entry.topic,
-        answer: entry.userInput,
-        primaryFamily: entry.primaryFamily,
-        affectedCount: matches.length,
-        targetIndex: matches.length > 0
-          ? attentionItems.findIndex((candidate) => candidate.id === matches[0].id)
-          : null,
-      } satisfies RememberedEvidenceCue;
-    })
-    .filter((cue) => cue.affectedCount > 0)
-    .sort((left, right) => right.affectedCount - left.affectedCount || left.topic.localeCompare(right.topic))
-    .slice(0, 3);
-}
-
 function buildResumeLineSelector(section: string, index: number): string {
   return `[data-resume-line="${section}:${index}"]`;
 }
 
-function SectionCoachCard({
-  targets,
-  onOpenTarget,
+function StructureReviewPanel({
+  hiddenRecommendedSections,
+  missingStructureRecommendations,
 }: {
-  targets: SectionCoachTarget[];
-  onOpenTarget: (target: SectionCoachTarget) => void;
+  hiddenRecommendedSections: Array<{ title: string }>;
+  missingStructureRecommendations: Array<{ title: string }>;
 }) {
-  if (targets.length === 0) return null;
-
-  return (
-    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Polish Next</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Tighten the sections recruiters notice first</h3>
-      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        Once the structure feels right, these sections give you the fastest visible improvement.
-      </p>
-      <div className="mt-3 space-y-2 sm:mt-4">
-        {targets.map((target) => (
-          <button
-            key={target.id}
-            type="button"
-            onClick={() => onOpenTarget(target)}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              {target.label}
-            </p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-              {target.bulletText}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-              {target.helperText}
-            </p>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ClarificationCueCard({
-  cues,
-  onOpenCue,
-}: {
-  cues: ClarificationCue[];
-  onOpenCue: (cue: ClarificationCue) => void;
-}) {
-  if (cues.length === 0) return null;
-
-  return (
-    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">One Good Answer</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">A single detail could strengthen multiple lines</h3>
-      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These are the only details we still need. If you already answered one elsewhere, reuse it instead of starting from scratch.
-      </p>
-      <div className="mt-3 space-y-2 sm:mt-4">
-        {cues.map((cue) => (
-          <button
-            key={cue.id}
-            type="button"
-            onClick={() => onOpenCue(cue)}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              {cue.affectedCount > 0
-                ? `Could strengthen ${cue.affectedCount} ${cue.affectedCount === 1 ? 'line' : 'lines'}`
-                : cue.requirement}
-            </p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-              {cue.question}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-              {cue.requirement}
-            </p>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RememberedEvidenceCard({
-  cues,
-  onOpenCue,
-}: {
-  cues: RememberedEvidenceCue[];
-  onOpenCue: (cue: RememberedEvidenceCue) => void;
-}) {
-  if (cues.length === 0) return null;
-
-  return (
-    <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Use What We Know</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Start with proof you already confirmed</h3>
-      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        These details are already trustworthy. Reuse them before giving the app anything new.
-      </p>
-      <div className="mt-3 space-y-2 sm:mt-4">
-        {cues.map((cue) => {
-          const content = (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                {cue.affectedCount > 0
-                  ? `Could strengthen ${cue.affectedCount} ${cue.affectedCount === 1 ? 'line' : 'lines'}`
-                  : cue.topic}
-              </p>
-              <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-                {cue.topic}
-                {cue.primaryFamily ? ` • ${cue.primaryFamily}` : ''}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-                {cue.answer}
-              </p>
-            </>
-          );
-
-          if (cue.targetIndex === null) {
-            return (
-              <div
-                key={cue.id}
-                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 sm:px-3.5 sm:py-3"
-              >
-                {content}
-              </div>
-            );
-          }
-
-          return (
-            <button
-              key={cue.id}
-              type="button"
-              onClick={() => onOpenCue(cue)}
-              className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
-            >
-              {content}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function GuidedStartCard({
-  steps,
-}: {
-  steps: GuidedStartStep[];
-}) {
-  if (steps.length === 0) return null;
+  const hiddenTitles = hiddenRecommendedSections.slice(0, 2).map((item) => item.title);
+  const missingTitles = missingStructureRecommendations.slice(0, 2).map((item) => item.title);
+  const detail = hiddenTitles.length > 0
+    ? `Turn ${hiddenTitles.join(' and ')} back on before rewriting lines so the strongest proof shows up earlier.`
+    : missingTitles.length > 0
+      ? `Consider adding ${missingTitles.join(' and ')} before rewriting lines so the resume is shaped for this role from the start.`
+      : 'Review the section order before line editing so the strongest story comes first.';
 
   return (
     <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Start Here</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Do this first</h3>
+      <p className="eyebrow-label">Structure First</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix the sections before rewriting lines</h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        Start with the first move. Once that is done, the next step will be easier and more obvious.
+        {detail}
       </p>
-      <div className="mt-3 space-y-2 sm:mt-4">
-        {steps.length > 0 && (
-          <button
-            type="button"
-            onClick={steps[0].onSelect}
-            className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-4"
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              First move · {steps[0].label}
-            </p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-              {steps[0].title}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-              {steps[0].description}
-            </p>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
-              {steps[0].actionLabel}
-            </p>
-          </button>
-        )}
-        {steps.length > 1 && (
-          <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3 sm:px-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              After that
-            </p>
-            <div className="mt-2 space-y-2">
-              {steps.slice(1).map((step) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={step.onSelect}
-                  className="flex w-full items-start justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--surface-0)]"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                      {step.label}
-                    </p>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text-strong)]">
-                      {step.title}
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--link)]">
-                    {step.actionLabel}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
 
-function MobileResumeScoreSummary({
-  resumeScore,
-  nextAction,
-  flaggedCount,
-  onToggleFullReport,
-  isExpanded,
+function CoachNavigatorCard({
+  target,
+  total,
+  onPrevious,
+  onNext,
+  onShowOnResume,
+  onToggleStructurePlanner,
+  showStructurePlanner,
 }: {
-  resumeScore: number;
-  nextAction: string;
-  flaggedCount: number;
-  onToggleFullReport: () => void;
-  isExpanded: boolean;
+  target: CoachTarget;
+  total: number;
+  onPrevious: () => void;
+  onNext: () => void;
+  onShowOnResume: () => void;
+  onToggleStructurePlanner?: () => void;
+  showStructurePlanner?: boolean;
 }) {
   return (
     <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="eyebrow-label">Resume Score</p>
-          <div className="mt-2 flex items-end gap-3">
-            <span className="text-[2rem] font-semibold leading-none text-[var(--text-strong)]">
-              {resumeScore}%
-            </span>
-            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              {flaggedCount > 0 ? `${flaggedCount} lines still need review` : 'Ready for final review'}
-            </span>
-          </div>
-        </div>
+      <p className="eyebrow-label">Resume Coach</p>
+      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
+        Working in {target.locationLabel}
+      </h3>
+      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
+        I am focusing on the most important job need for this part of the resume and giving you wording options you can use right away.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={onToggleFullReport}
+          onClick={onShowOnResume}
           className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
         >
-          {isExpanded ? 'Hide Full Report' : 'Full Scoring Report'}
+          Show on resume
         </button>
+        {onToggleStructurePlanner && (
+          <button
+            type="button"
+            onClick={onToggleStructurePlanner}
+            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+          >
+            {showStructurePlanner ? 'Hide sections' : 'Change sections'}
+          </button>
+        )}
       </div>
-      <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-          Do this next
-        </p>
-        <p className="mt-1.5 text-sm leading-6 text-[var(--text-muted)]">
-          {nextAction}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AttentionReviewStrip({
-  items,
-  currentIndex,
-  nextActionCue,
-  onOpenCurrent,
-  onNext,
-  onPrevious,
-}: {
-  items: AttentionReviewItem[];
-  currentIndex: number;
-  nextActionCue?: string;
-  onOpenCurrent: () => void;
-  onNext: () => void;
-  onPrevious: () => void;
-}) {
-  const current = items[currentIndex];
-  if (!current) return null;
-
-  return (
-    <div
-      data-testid="attention-review-strip"
-      className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)]/90 px-4 py-3"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
-            Fix These Lines
-          </p>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {items.length} {items.length === 1 ? 'line still needs work.' : 'lines still need work.'} Open them one at a time and we will tighten them up together.
-          </p>
-          {nextActionCue && (
-            <p className="mt-2 text-xs text-[var(--text-soft)]">
-              {nextActionCue}
-            </p>
-          )}
-        </div>
-        <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-          {currentIndex + 1} of {items.length}
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <span className={current.statusClassName}>
-            {current.statusLabel}
-          </span>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-            {current.locationLabel}
-          </p>
-          <p data-testid="attention-review-current-text" className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">
-            {current.text}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      {total > 1 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onPrevious}
-            className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
+            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
           >
-            Back
+            Previous area
           </button>
           <button
             type="button"
             onClick={onNext}
-            className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
+            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
           >
-            Next
-          </button>
-          <button
-            type="button"
-            onClick={onOpenCurrent}
-            className="rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
-          >
-            Open coach
+            Next area
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function DesktopPriorityLineCard({
-  item,
-  index,
-  total,
-  onOpen,
-  onNext,
-}: {
-  item: AttentionReviewItem;
-  index: number;
-  total: number;
-  onOpen: () => void;
-  onNext: () => void;
-}) {
-  const primaryRequirement = item.requirements[0] ?? 'Strengthen this line for the job';
-  const missingSummary = describeMissingPlain({
-    nextBestAction: item.nextBestAction,
-    reviewState: item.reviewState,
-  });
-  const recommendation = describeRecommendationPlain(item);
-
-  return (
-    <div className="resume-guide-queue-card">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
-        Start here
-      </p>
-      <p className="mt-2 text-sm font-semibold leading-relaxed text-[var(--text-strong)]">
-        {primaryRequirement}
-      </p>
-      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-        Where this shows up
-      </p>
-      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
-        {item.locationLabel}
-      </p>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-        What I found already
-      </p>
-      <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
-        {summarizeEvidencePreview(item.evidenceFound || item.text)}
-      </p>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-        What is still missing
-      </p>
-      <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
-        {missingSummary}
-      </p>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-        What I recommend
-      </p>
-      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
-        {recommendation}
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="rounded-lg bg-[var(--accent-muted)] px-3.5 py-2 text-xs font-semibold text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-0)]"
-        >
-          Work on this line
-        </button>
-        {total > 1 && (
-          <button
-            type="button"
-            onClick={onNext}
-            className="rounded-lg border border-[var(--line-soft)] px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-          >
-            Show another line
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -1273,26 +907,28 @@ export function V2StreamingDisplay({
   const structurePlannerRef = useRef<HTMLDivElement | null>(null);
 
   // Active bullet for inline editing
-  const [activeBullet, setActiveBullet] = useState<{
-    section: string;
-    index: number;
-    requirements: string[];
-    bulletText: string;
-    reviewState: ResumeReviewState;
-    requirementSource?: RequirementSource;
-    evidenceFound: string;
-    sourceEvidence?: string;
-    workItemId?: string;
-    proofLevel?: ProofLevel;
-    framingGuardrail?: FramingGuardrail;
-    nextBestAction?: NextBestAction;
-    canRemove?: boolean;
-    autoReuseClarificationId?: string;
-  } | null>(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
-  const [showDesktopScoringDetails, setShowDesktopScoringDetails] = useState(false);
+  const [activeBullet, setActiveBullet] = useState<CoachTarget | null>(initialActiveBullet ? {
+    id: `initial:${initialActiveBullet.section}:${initialActiveBullet.index}`,
+    ...initialActiveBullet,
+    bulletText: '',
+    reviewState: 'supported' as ResumeReviewState,
+    evidenceFound: '',
+    canRemove: true,
+    locationLabel: chatContextLabelForSection(initialActiveBullet.section),
+  } : null);
+  const [coachIndex, setCoachIndex] = useState(0);
+  const [showStructurePlanner, setShowStructurePlanner] = useState(false);
 
   useEffect(() => {
-    setActiveBullet(initialActiveBullet ? { ...initialActiveBullet, bulletText: '', reviewState: 'supported' as ResumeReviewState, evidenceFound: '' } : null);
+    setActiveBullet(initialActiveBullet ? {
+      id: `initial:${initialActiveBullet.section}:${initialActiveBullet.index}`,
+      ...initialActiveBullet,
+      bulletText: '',
+      reviewState: 'supported' as ResumeReviewState,
+      evidenceFound: '',
+      canRemove: true,
+      locationLabel: chatContextLabelForSection(initialActiveBullet.section),
+    } : null);
   }, [initialActiveBullet]);
 
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
@@ -1301,16 +937,6 @@ export function V2StreamingDisplay({
   const attentionItems = useMemo(() => (
     displayResume ? buildAttentionReviewItems(displayResume, baselineResume) : []
   ), [baselineResume, displayResume]);
-  const clarificationCues = useMemo(() => (
-    buildClarificationCues(
-      (data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? []),
-      attentionItems,
-      clarificationMemory,
-    )
-  ), [attentionItems, clarificationMemory, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems]);
-  const rememberedEvidenceCues = useMemo(() => (
-    buildRememberedEvidenceCues(clarificationMemory, attentionItems)
-  ), [attentionItems, clarificationMemory]);
   const rememberedAttentionItemIds = useMemo(() => new Set(
     clarificationMemory.flatMap((entry) => (
       attentionItems
@@ -1398,8 +1024,23 @@ export function V2StreamingDisplay({
     displayResume,
     fullSectionPlan,
   ]);
-  const [attentionIndex, setAttentionIndex] = useState(0);
-  const currentDesktopPriorityItem = attentionItems[attentionIndex] ?? null;
+  const hasStructureFirstWork = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0;
+  const idleCoachTargets = useMemo(() => (
+    hasStructureFirstWork ? [] : buildIdleCoachTargets(sectionCoachTargets, attentionItems)
+  ), [attentionItems, hasStructureFirstWork, sectionCoachTargets]);
+  const currentIdleCoachTarget = idleCoachTargets[coachIndex] ?? null;
+
+  useEffect(() => {
+    if (coachIndex >= idleCoachTargets.length) {
+      setCoachIndex(0);
+    }
+  }, [coachIndex, idleCoachTargets.length]);
+
+  useEffect(() => {
+    if (hasStructureFirstWork) {
+      setShowStructurePlanner(true);
+    }
+  }, [hasStructureFirstWork]);
 
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((
@@ -1418,6 +1059,7 @@ export function V2StreamingDisplay({
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
       return {
+        id: `resume:${section}:${bulletIndex}`,
         section,
         index: bulletIndex,
         requirements,
@@ -1428,7 +1070,8 @@ export function V2StreamingDisplay({
         workItemId,
         proofLevel,
         nextBestAction,
-        canRemove,
+        canRemove: canRemove ?? true,
+        locationLabel: chatContextLabelForSection(section),
       };
     });
   }, []);
@@ -1436,8 +1079,8 @@ export function V2StreamingDisplay({
   const openAttentionItem = useCallback((index: number, options?: { autoReuseClarificationId?: string }) => {
     const item = attentionItems[index];
     if (!item) return;
-    setAttentionIndex(index);
     setActiveBullet({
+      id: `attention:${item.id}`,
       section: item.section,
       index: item.index,
       requirements: item.requirements,
@@ -1451,6 +1094,7 @@ export function V2StreamingDisplay({
       framingGuardrail: undefined,
       nextBestAction: item.nextBestAction,
       canRemove: true,
+      locationLabel: item.locationLabel,
       autoReuseClarificationId: options?.autoReuseClarificationId,
     });
     window.requestAnimationFrame(() => {
@@ -1460,6 +1104,7 @@ export function V2StreamingDisplay({
 
   const openSectionCoachTarget = useCallback((target: SectionCoachTarget) => {
     setActiveBullet({
+      id: `section:${target.section}:${target.index}`,
       section: target.section,
       index: target.index,
       requirements: target.requirements,
@@ -1473,6 +1118,7 @@ export function V2StreamingDisplay({
       framingGuardrail: target.framingGuardrail,
       nextBestAction: target.nextBestAction,
       canRemove: target.canRemove,
+      locationLabel: target.label,
     });
   }, []);
 
@@ -1497,6 +1143,7 @@ export function V2StreamingDisplay({
     const firstLine = result.lines.find((line) => line.trim().length > 0);
     const bulletText = firstLine ?? result.title;
     setActiveBullet({
+      id: `custom:${result.sectionId}`,
       section: `custom_section:${result.sectionId}`,
       index: firstLine ? result.lines.findIndex((line) => line === firstLine) : -1,
       requirements: [],
@@ -1510,6 +1157,7 @@ export function V2StreamingDisplay({
       framingGuardrail: undefined,
       nextBestAction: 'tighten',
       canRemove: true,
+      locationLabel: result.title,
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(`[data-section="${result.sectionId}"]`);
@@ -1530,19 +1178,28 @@ export function V2StreamingDisplay({
     }
   }, [onAddCustomSection, openNewCustomSectionInCoach]);
 
-  const openClarificationCue = useCallback((cue: ClarificationCue) => {
-    if (cue.targetIndex !== null && cue.targetIndex >= 0) {
-      openAttentionItem(cue.targetIndex);
-      return;
-    }
-    if (attentionItems.length > 0) {
-      openAttentionItem(0);
-    }
-  }, [attentionItems.length, openAttentionItem]);
+  const displayedCoachTarget = activeBullet ?? currentIdleCoachTarget;
+  const displayedCoachContext = useMemo(() => {
+    if (!displayedCoachTarget || !buildChatContext) return null;
+    return buildChatContext({
+      requirement: displayedCoachTarget.requirements[0],
+      requirements: displayedCoachTarget.requirements,
+      lineText: displayedCoachTarget.bulletText,
+      section: displayedCoachTarget.section,
+      index: displayedCoachTarget.index,
+      reviewState: displayedCoachTarget.reviewState,
+      evidenceFound: displayedCoachTarget.evidenceFound,
+      workItemId: displayedCoachTarget.workItemId,
+    });
+  }, [buildChatContext, displayedCoachTarget]);
 
-  const focusStructurePlanner = useCallback(() => {
-    structurePlannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
+  const openDisplayedCoachTargetOnResume = useCallback(() => {
+    if (!displayedCoachTarget) return;
+    setActiveBullet(displayedCoachTarget);
+    window.requestAnimationFrame(() => {
+      scrollToAndFocusTarget(buildResumeLineSelector(displayedCoachTarget.section, displayedCoachTarget.index));
+    });
+  }, [displayedCoachTarget]);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
@@ -1563,11 +1220,6 @@ export function V2StreamingDisplay({
       setActiveBullet(null);
     }
   }, [isRerunning]);
-
-  useEffect(() => {
-    if (attentionIndex < attentionItems.length) return;
-    setAttentionIndex(0);
-  }, [attentionIndex, attentionItems.length]);
 
   // M3: Scroll to coaching panel when a bullet is activated
   // B3: Escape key closes inline edit panel
@@ -1596,13 +1248,11 @@ export function V2StreamingDisplay({
 
   // Beat 2 gate — user must click through the "Resume Is Ready" screen before editing
   const [hasPassedReadyGate, setHasPassedReadyGate] = useState(false);
-  const [showMobileFullScoringReport, setShowMobileFullScoringReport] = useState(false);
 
   // Reset gate when re-running
   useEffect(() => {
     if (isRerunning) {
       setHasPassedReadyGate(false);
-      setShowMobileFullScoringReport(false);
     }
   }, [isRerunning]);
   useEffect(() => {
@@ -1779,187 +1429,21 @@ export function V2StreamingDisplay({
       ? `Open the line in ${topItem.locationLabel}. We are strengthening how this resume shows ${primaryRequirement}. ${nextAction}`
       : `Open the line in ${topItem.locationLabel}. ${nextAction}`;
   }, [attentionItems, rememberedAttentionItemIds]);
-  const mobileNextActionSummary = compactAttentionNextAction
-    ?? 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.';
-  const guidedStartSteps = useMemo<GuidedStartStep[]>(() => {
-    const steps: GuidedStartStep[] = [];
-
-    if (hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0) {
-      const hiddenTitles = hiddenRecommendedSections.slice(0, 2).map((item) => item.title);
-      const missingTitles = missingStructureRecommendations.slice(0, 2).map((item) => item.title);
-      const titles = hiddenTitles.length > 0 ? hiddenTitles : missingTitles;
-      steps.push({
-        id: 'structure',
-        label: 'Structure',
-        title: hiddenRecommendedSections.length > 0 ? 'Review the structure first' : 'Check the recommended sections first',
-        description: hiddenRecommendedSections.length > 0
-          ? `Turn ${titles.join(' and ')} back on before polishing lines so the strongest proof shows up earlier.`
-          : `Consider adding ${titles.join(' and ')} before line editing so the first draft is shaped for this role from the start.`,
-        actionLabel: 'Jump to structure planner',
-        onSelect: focusStructurePlanner,
-      });
-    }
-
-    const rememberedCue = rememberedEvidenceCues[0];
-    if (rememberedCue) {
-      steps.push({
-        id: 'remembered-proof',
-        label: 'Reuse proof',
-        title: `Reuse your earlier answer about ${rememberedCue.topic}`,
-        description: `This confirmed detail can already strengthen ${rememberedCue.affectedCount} ${rememberedCue.affectedCount === 1 ? 'line' : 'lines'} without asking you anything new.`,
-        actionLabel: 'Open matching line',
-        onSelect: () => {
-          if (rememberedCue.targetIndex !== null) {
-            openAttentionItem(rememberedCue.targetIndex, { autoReuseClarificationId: rememberedCue.id });
-          }
-        },
-      });
-    }
-
-    const clarificationCue = clarificationCues[0];
-    if (clarificationCue) {
-      steps.push({
-        id: 'clarification',
-        label: 'Missing proof',
-        title: 'Answer one question with real business detail',
-        description: `${clarificationCue.question} ${clarificationCue.affectedCount > 0 ? `This could strengthen ${clarificationCue.affectedCount} ${clarificationCue.affectedCount === 1 ? 'line' : 'lines'}.` : ''}`.trim(),
-        actionLabel: 'Go to the right line',
-        onSelect: () => openClarificationCue(clarificationCue),
-      });
-    }
-
-    const sectionTarget = sectionCoachTargets[0];
-    if (sectionTarget) {
-      steps.push({
-        id: `section-${sectionTarget.id}`,
-        label: 'Section polish',
-        title: `Polish ${sectionTarget.label}`,
-        description: sectionTarget.helperText,
-        actionLabel: 'Open section coach',
-        onSelect: () => openSectionCoachTarget(sectionTarget),
-      });
-    }
-
-    const attentionItem = attentionItems[0];
-    if (attentionItem && steps.length < 4) {
-      steps.push({
-        id: `line-${attentionItem.id}`,
-        label: 'Priority line',
-        title: `Fix ${attentionItem.locationLabel} next`,
-        description: `${attentionItem.statusLabel}: ${attentionItem.text}`,
-        actionLabel: 'Jump to line',
-        onSelect: () => openAttentionItem(0),
-      });
-    }
-
-    const seen = new Set<string>();
-    return steps.filter((step) => {
-      if (seen.has(step.id)) return false;
-      seen.add(step.id);
-      return true;
-    }).slice(0, 3);
-  }, [
-    attentionItems,
-    clarificationCues,
-    focusStructurePlanner,
-    hiddenRecommendedSections,
-    missingStructureRecommendations,
-    openAttentionItem,
-    openClarificationCue,
-    openSectionCoachTarget,
-    rememberedEvidenceCues,
-    sectionCoachTargets,
-  ]);
-  const hasStructureFirstWork = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0;
   const canShowStructurePlanner = Boolean(
     displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
   );
-  const secondarySupportMode = !activeBullet && !hasStructureFirstWork
-    ? rememberedEvidenceCues.length > 0
-      ? 'remembered'
-      : clarificationCues.length > 0
-        ? 'clarification'
-        : sectionCoachTargets.length > 0
-          ? 'section'
-          : attentionItems.length > 0
-            ? 'queue'
-            : null
-    : null;
-
-  const renderSecondarySupportPanel = () => {
-    if (activeBullet) return null;
-    if (guidedStartSteps.length > 0) return null;
-
-    if (secondarySupportMode === 'remembered') {
-      return (
-        <RememberedEvidenceCard
-          cues={rememberedEvidenceCues}
-          onOpenCue={(cue) => {
-            if (cue.targetIndex !== null) openAttentionItem(cue.targetIndex, { autoReuseClarificationId: cue.id });
-          }}
-        />
-      );
-    }
-
-    if (secondarySupportMode === 'clarification') {
-      return (
-        <ClarificationCueCard
-          cues={clarificationCues}
-          onOpenCue={openClarificationCue}
-        />
-      );
-    }
-
-    if (secondarySupportMode === 'section') {
-      return (
-        <SectionCoachCard
-          targets={sectionCoachTargets}
-          onOpenTarget={openSectionCoachTarget}
-        />
-      );
-    }
-
-    if (secondarySupportMode === 'queue') {
-      return (
-        <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
-          <p className="eyebrow-label">Priority Lines</p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix the lines that change the story fastest</h3>
-          <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-            If you do not need structure work first, start with one of these high-impact edits.
-          </p>
-          {attentionItems.length > 0 ? (
-            <div className="mt-3 space-y-2 sm:mt-4">
-              {attentionItems.slice(0, 3).map((item) => {
-                const itemIndex = attentionItems.findIndex((candidate) => candidate.id === item.id);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openAttentionItem(itemIndex)}
-                    className="block w-full rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-left hover:bg-[var(--surface-0)] transition-colors sm:px-3.5 sm:py-3"
-                  >
-                    <span className={item.statusClassName}>{item.statusLabel}</span>
-                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                      {item.locationLabel}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
-                      {item.text}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5 text-sm text-[var(--text-soft)] sm:mt-4 sm:px-3.5 sm:py-3">
-              The strongest version is already visible. Use the structure planner above if you want to change the section story before export.
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return null;
-  };
+  const handlePreviousCoachTarget = useCallback(() => {
+    if (idleCoachTargets.length <= 1) return;
+    setCoachIndex((current) => (current - 1 + idleCoachTargets.length) % idleCoachTargets.length);
+  }, [idleCoachTargets.length]);
+  const handleNextCoachTarget = useCallback(() => {
+    if (idleCoachTargets.length <= 1) return;
+    setCoachIndex((current) => (current + 1) % idleCoachTargets.length);
+  }, [idleCoachTargets.length]);
+  const toggleStructurePlanner = useCallback(() => {
+    setShowStructurePlanner((current) => !current);
+  }, []);
+  const canRenderCoach = Boolean(displayedCoachTarget && displayedCoachContext && gapChat);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1985,31 +1469,6 @@ export function V2StreamingDisplay({
         <>
           {/* ── Mobile / tablet: single-column layout (existing behavior) ── */}
           <div className="flex flex-col lg:hidden">
-            {!activeBullet && data.preScores && data.assembly && (
-              <div className="mx-auto max-w-[900px] px-6 pt-4">
-                <div className="space-y-3">
-                  <MobileResumeScoreSummary
-                    resumeScore={keywordMatchPercent}
-                    nextAction={mobileNextActionSummary}
-                    flaggedCount={attentionItems.length}
-                    isExpanded={showMobileFullScoringReport}
-                    onToggleFullReport={() => setShowMobileFullScoringReport((current) => !current)}
-                  />
-                  {showMobileFullScoringReport && (
-                    <ScoringReport
-                      preScores={data.preScores}
-                      assembly={data.assembly}
-                      verificationDetail={data.verificationDetail ?? null}
-                      gapAnalysis={data.gapAnalysis ?? null}
-                      compact
-                      compactReviewStatusLabel={compactReviewStatusLabel}
-                      compactAttentionSummary={compactAttentionSummary}
-                      compactAttentionNextAction={compactAttentionNextAction}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
             {canShowUndoBar && (
               <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-[var(--line-soft)]">
                 <button type="button" onClick={onUndo} disabled={undoCount === 0} className="flex items-center gap-1.5 rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-xs text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)] disabled:opacity-30 transition-colors" title="Undo">
@@ -2039,25 +1498,76 @@ export function V2StreamingDisplay({
                 </div>
               )}
               {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-              {attentionItems.length > 0 && (
-                <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
-              )}
               {!activeBullet && hasStructureFirstWork && (
-                <GuidedStartCard steps={guidedStartSteps} />
-              )}
-              {canShowStructurePlanner && hasStructureFirstWork && (
-                <div ref={structurePlannerRef}>
-                  <ResumeStructurePlannerCard
-                    resume={displayResume!}
-                    candidateIntelligence={data.candidateIntelligence}
-                    requirementWorkItems={data.requirementWorkItems}
-                    onMoveSection={onMoveSection!}
-                    onToggleSection={onToggleSection!}
-                    onAddAISection={handleAddAISectionAndOpen}
-                    onAddCustomSection={handleAddCustomSectionAndOpen}
-                    onRemoveCustomSection={onRemoveCustomSection!}
+                <>
+                  <StructureReviewPanel
+                    hiddenRecommendedSections={hiddenRecommendedSections}
+                    missingStructureRecommendations={missingStructureRecommendations}
                   />
-                </div>
+                  {canShowStructurePlanner && (
+                    <div ref={structurePlannerRef}>
+                      <ResumeStructurePlannerCard
+                        resume={displayResume!}
+                        candidateIntelligence={data.candidateIntelligence}
+                        requirementWorkItems={data.requirementWorkItems}
+                        onMoveSection={onMoveSection!}
+                        onToggleSection={onToggleSection!}
+                        onAddAISection={handleAddAISectionAndOpen}
+                        onAddCustomSection={handleAddCustomSectionAndOpen}
+                        onRemoveCustomSection={onRemoveCustomSection!}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              {!activeBullet && !hasStructureFirstWork && canRenderCoach && (
+                <>
+                  <CoachNavigatorCard
+                    target={currentIdleCoachTarget!}
+                    total={idleCoachTargets.length}
+                    onPrevious={handlePreviousCoachTarget}
+                    onNext={handleNextCoachTarget}
+                    onShowOnResume={openDisplayedCoachTargetOnResume}
+                    onToggleStructurePlanner={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                    showStructurePlanner={showStructurePlanner}
+                  />
+                  {canShowStructurePlanner && showStructurePlanner && (
+                    <div ref={structurePlannerRef}>
+                      <ResumeStructurePlannerCard
+                        resume={displayResume!}
+                        candidateIntelligence={data.candidateIntelligence}
+                        requirementWorkItems={data.requirementWorkItems}
+                        onMoveSection={onMoveSection!}
+                        onToggleSection={onToggleSection!}
+                        onAddAISection={handleAddAISectionAndOpen}
+                        onAddCustomSection={handleAddCustomSectionAndOpen}
+                        onRemoveCustomSection={onRemoveCustomSection!}
+                      />
+                    </div>
+                  )}
+                  <BulletCoachingPanel
+                    bulletText={currentIdleCoachTarget!.bulletText}
+                    section={currentIdleCoachTarget!.section}
+                    bulletIndex={currentIdleCoachTarget!.index}
+                    requirements={currentIdleCoachTarget!.requirements}
+                    reviewState={currentIdleCoachTarget!.reviewState}
+                    requirementSource={currentIdleCoachTarget!.requirementSource}
+                    evidenceFound={currentIdleCoachTarget!.evidenceFound}
+                    sourceEvidence={currentIdleCoachTarget!.sourceEvidence}
+                    proofLevel={currentIdleCoachTarget!.proofLevel}
+                    framingGuardrail={currentIdleCoachTarget!.framingGuardrail}
+                    nextBestAction={currentIdleCoachTarget!.nextBestAction}
+                    canRemove={currentIdleCoachTarget!.canRemove}
+                    initialReuseClarificationId={currentIdleCoachTarget!.autoReuseClarificationId}
+                    showCloseButton={false}
+                    gapChat={gapChat!}
+                    chatContext={displayedCoachContext!}
+                    onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
+                    onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
+                    onClose={() => setActiveBullet(null)}
+                    onBulletEnhance={onBulletEnhance}
+                  />
+                </>
               )}
               {displayResume && (
                 <AnimatedCard index={0}>
@@ -2066,24 +1576,6 @@ export function V2StreamingDisplay({
                   </div>
                 </AnimatedCard>
               )}
-              {!activeBullet && !hasStructureFirstWork && (
-                <GuidedStartCard steps={guidedStartSteps} />
-              )}
-              {canShowStructurePlanner && !hasStructureFirstWork && (
-                <div ref={structurePlannerRef}>
-                  <ResumeStructurePlannerCard
-                    resume={displayResume!}
-                    candidateIntelligence={data.candidateIntelligence}
-                    requirementWorkItems={data.requirementWorkItems}
-                    onMoveSection={onMoveSection!}
-                    onToggleSection={onToggleSection!}
-                    onAddAISection={handleAddAISectionAndOpen}
-                    onAddCustomSection={handleAddCustomSectionAndOpen}
-                    onRemoveCustomSection={onRemoveCustomSection!}
-                  />
-                </div>
-              )}
-              {!hasStructureFirstWork && renderSecondarySupportPanel()}
               {activeBullet && gapChat && buildChatContext && (
                 <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
@@ -2107,108 +1599,82 @@ export function V2StreamingDisplay({
           <div className="hidden h-full px-4 py-4 lg:flex xl:px-5 xl:py-5">
             <ResumeEditorLayout
               leftPanel={(() => {
-                const activeLinePreview = activeBullet ? truncatePreview(activeBullet.bulletText) : null;
-                const activeLineContext = activeBullet?.requirements[0]
-                  ?? activeBullet?.sourceEvidence
-                  ?? activeBullet?.evidenceFound
-                  ?? null;
+                const headerTitle = activeBullet
+                  ? `Working in ${activeBullet.locationLabel}`
+                  : hasStructureFirstWork
+                    ? 'Start with the sections'
+                    : currentIdleCoachTarget
+                      ? `Work on ${currentIdleCoachTarget.locationLabel}`
+                      : 'Review the final draft';
+                const headerSummary = activeBullet
+                  ? 'I will show what the job needs here, what we already found, what is still missing, and the wording I recommend next.'
+                  : hasStructureFirstWork
+                    ? 'Before rewriting, turn sections on or off and move the strongest proof earlier so this resume tells the right story from the start.'
+                    : currentIdleCoachTarget
+                      ? 'I will walk you through the top requirement for this part of the resume and suggest wording you can use right away.'
+                      : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
                   <div className="flex flex-col h-full">
-                    {/* Fixed header — always visible */}
                     <div className="shrink-0 border-b border-[var(--line-soft)] px-4 py-4">
-                      {(() => {
-                        const flaggedCount = attentionItems.length;
-                        const leftRailHeadline = activeBullet
-                          ? `Working in ${chatContextLabelForSection(activeBullet.section)}`
-                          : hasStructureFirstWork
-                            ? 'Start with the sections'
-                            : flaggedCount > 0
-                              ? 'We will fix the biggest job needs one by one'
-                              : 'Your draft is ready for the final polish';
-                        const leftRailSummary = activeBullet
-                          ? 'I will show what the job needs, what I found, what is still missing, and the best wording to use.'
-                          : hasStructureFirstWork
-                            ? 'Turn on, remove, or reorder the sections that will help this role most before changing lines.'
-                            : flaggedCount > 0
-                              ? 'Open the next line and I will help you strengthen it in plain English.'
-                              : 'Use the coach only if you want to tighten a line before export.';
-
-                        return (
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <p className="eyebrow-label">Requirement Coach</p>
-                              <div className="flex flex-wrap items-end justify-between gap-3">
-                                <p className="text-base font-semibold text-[var(--text-strong)]">
-                                  {leftRailHeadline}
-                                </p>
-                                {!activeBullet && data.preScores && data.assembly && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowDesktopScoringDetails((current) => !current)}
-                                    className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
-                                  >
-                                    {showDesktopScoringDetails ? 'Hide full scoring report' : 'See full scoring report'}
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-sm leading-6 text-[var(--text-soft)]">
-                                {leftRailSummary}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {flaggedCount > 0 && (
-                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  {flaggedCount} {flaggedCount === 1 ? 'line still needs work' : 'lines still need work'}
-                                </span>
-                              )}
-                              {hasStructureFirstWork && !activeBullet && (
-                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  Structure first
-                                </span>
-                              )}
-                              {activeBullet?.requirements[0] && (
-                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  Fixing: {truncatePreview(activeBullet.requirements[0], 58)}
-                                </span>
-                              )}
-                            </div>
-
-                            {activeBullet && activeLinePreview && (
-                              <div className="resume-guide-focus-card">
-                                <p className="resume-guide-focus-card__label">
-                                  Current line · {chatContextLabelForSection(activeBullet.section)}
-                                </p>
-                                <p className="resume-guide-focus-card__title">{activeLinePreview}</p>
-                                {activeLineContext && (
-                                  <p className="resume-guide-focus-card__body">
-                                    Current requirement: {truncatePreview(activeLineContext, 96)}
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                      <div className="space-y-3">
+                        <p className="eyebrow-label">Resume Coach</p>
+                        <h2 className="text-base font-semibold text-[var(--text-strong)]">
+                          {headerTitle}
+                        </h2>
+                        <p className="text-sm leading-6 text-[var(--text-soft)]">
+                          {headerSummary}
+                        </p>
+                        {!activeBullet && canShowStructurePlanner && !hasStructureFirstWork && (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={toggleStructurePlanner}
+                              className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+                            >
+                              {showStructurePlanner ? 'Hide sections' : 'Change sections'}
+                            </button>
                           </div>
-                        );
-                      })()}
-                      {!activeBullet && currentDesktopPriorityItem && (
-                        <div className="mt-4">
-                          <DesktopPriorityLineCard
-                            item={currentDesktopPriorityItem}
-                            index={attentionIndex}
-                            total={attentionItems.length}
-                            onOpen={() => openAttentionItem(attentionIndex)}
-                            onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)}
-                          />
-                        </div>
-                      )}
+                        )}
+                        {activeBullet?.requirements[0] && (
+                          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-3.5 py-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+                              Current requirement
+                            </p>
+                            <p className="mt-1.5 text-sm leading-6 text-[var(--text-strong)]">
+                              {activeBullet.requirements[0]}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Main content — one thing at a time */}
                     <div className="flex-1 overflow-y-auto px-3 py-3">
                       {(error || editError) && (
                         <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-3" role="alert">
                           <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
+                        </div>
+                      )}
+                      {!activeBullet && hasStructureFirstWork && (
+                        <div className="space-y-4">
+                          <StructureReviewPanel
+                            hiddenRecommendedSections={hiddenRecommendedSections}
+                            missingStructureRecommendations={missingStructureRecommendations}
+                          />
+                          {canShowStructurePlanner && (
+                            <div ref={structurePlannerRef}>
+                              <ResumeStructurePlannerCard
+                                resume={displayResume!}
+                                candidateIntelligence={data.candidateIntelligence}
+                                requirementWorkItems={data.requirementWorkItems}
+                                onMoveSection={onMoveSection!}
+                                onToggleSection={onToggleSection!}
+                                onAddAISection={handleAddAISectionAndOpen}
+                                onAddCustomSection={handleAddCustomSectionAndOpen}
+                                onRemoveCustomSection={onRemoveCustomSection!}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                       {activeBullet && gapChat && buildChatContext ? (
@@ -2235,28 +1701,18 @@ export function V2StreamingDisplay({
                             onBulletEnhance={onBulletEnhance}
                           />
                         </div>
-                      ) : (
+                      ) : !activeBullet && !hasStructureFirstWork && canRenderCoach ? (
                         <div className="space-y-4">
-                          {showDesktopScoringDetails && data.preScores && data.assembly && (
-                            <div className="guide-support-panel px-3 py-3 sm:px-4 sm:py-4">
-                              <p className="eyebrow-label">Scoring details</p>
-                              <p className="mt-2 text-base font-semibold text-[var(--text-strong)]">See the full keyword, fit, and before/after report</p>
-                              <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-                                Use the full report when you want the detailed keyword and phrasing breakdown behind the current score.
-                              </p>
-                              <div className="mt-4">
-                                <ScoringReport
-                                  preScores={data.preScores}
-                                  assembly={data.assembly}
-                                  verificationDetail={data.verificationDetail ?? null}
-                                  gapAnalysis={data.gapAnalysis ?? null}
-                                  renderSummary={false}
-                                />
-                              </div>
-                            </div>
-                          )}
-                          <GuidedStartCard steps={guidedStartSteps} />
-                          {canShowStructurePlanner && (
+                          <CoachNavigatorCard
+                            target={currentIdleCoachTarget!}
+                            total={idleCoachTargets.length}
+                            onPrevious={handlePreviousCoachTarget}
+                            onNext={handleNextCoachTarget}
+                            onShowOnResume={openDisplayedCoachTargetOnResume}
+                            onToggleStructurePlanner={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                            showStructurePlanner={showStructurePlanner}
+                          />
+                          {canShowStructurePlanner && showStructurePlanner && (
                             <div ref={structurePlannerRef}>
                               <ResumeStructurePlannerCard
                                 resume={displayResume!}
@@ -2270,7 +1726,47 @@ export function V2StreamingDisplay({
                               />
                             </div>
                           )}
-                          {renderSecondarySupportPanel()}
+                          <div ref={coachingPanelRef}>
+                            <BulletCoachingPanel
+                              bulletText={currentIdleCoachTarget!.bulletText}
+                              section={currentIdleCoachTarget!.section}
+                              bulletIndex={currentIdleCoachTarget!.index}
+                              requirements={currentIdleCoachTarget!.requirements}
+                              reviewState={currentIdleCoachTarget!.reviewState}
+                              requirementSource={currentIdleCoachTarget!.requirementSource}
+                              evidenceFound={currentIdleCoachTarget!.evidenceFound}
+                              sourceEvidence={currentIdleCoachTarget!.sourceEvidence}
+                              proofLevel={currentIdleCoachTarget!.proofLevel}
+                              framingGuardrail={currentIdleCoachTarget!.framingGuardrail}
+                              nextBestAction={currentIdleCoachTarget!.nextBestAction}
+                              canRemove={currentIdleCoachTarget!.canRemove}
+                              initialReuseClarificationId={currentIdleCoachTarget!.autoReuseClarificationId}
+                              showCloseButton={false}
+                              gapChat={gapChat!}
+                              chatContext={displayedCoachContext!}
+                              onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
+                              onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
+                              onClose={() => setActiveBullet(null)}
+                              onBulletEnhance={onBulletEnhance}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {canShowStructurePlanner && showStructurePlanner && (
+                            <div ref={structurePlannerRef}>
+                              <ResumeStructurePlannerCard
+                                resume={displayResume!}
+                                candidateIntelligence={data.candidateIntelligence}
+                                requirementWorkItems={data.requirementWorkItems}
+                                onMoveSection={onMoveSection!}
+                                onToggleSection={onToggleSection!}
+                                onAddAISection={handleAddAISectionAndOpen}
+                                onAddCustomSection={handleAddCustomSectionAndOpen}
+                                onRemoveCustomSection={onRemoveCustomSection!}
+                              />
+                            </div>
+                          )}
                           {isComplete && displayResume && (
                             <ResumeFinalReviewPanel
                               hiringManagerResult={hiringManagerResult ?? null}
