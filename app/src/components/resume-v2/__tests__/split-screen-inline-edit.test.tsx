@@ -638,13 +638,13 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
     const strip = await screen.findByTestId('attention-review-strip');
     expect(strip).toBeInTheDocument();
-    expect(within(strip).getByText('Review Attention Lines')).toBeInTheDocument();
+    expect(within(strip).getByText('Fix These Lines')).toBeInTheDocument();
     expect(within(strip).getByText('1 of 2')).toBeInTheDocument();
-    expect(within(strip).getByText(/2 lines still need attention\. click a bullet on the resume to review it here\./i)).toBeInTheDocument();
-    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp\. We are strengthening "Product delivery"\. Open this line and let the coach suggest the cleanest truthful version\./i)).toBeInTheDocument();
+    expect(within(strip).getByText(/2 lines still need work\. open them one at a time and we will tighten them up together\./i)).toBeInTheDocument();
+    expect(within(strip).getByText(/Open the line in VP Engineering · Acme Corp\. We are strengthening how this resume shows Product delivery\. Open this line and let the coach suggest the cleanest truthful version\./i)).toBeInTheDocument();
     expect(within(strip).getByText('Needs proof')).toBeInTheDocument();
     expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Jump to bullet' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open coach' })).toBeInTheDocument();
   });
 
   it('lets the user step through attention lines and open the current one on the resume', async () => {
@@ -682,14 +682,14 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
     expect(await screen.findByTestId('attention-review-current-text')).toHaveTextContent('Shipped 3 major product lines');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next Line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     const strip = screen.getByTestId('attention-review-strip');
     expect(within(strip).getByText('2 of 2')).toBeInTheDocument();
     expect(within(strip).getByText('Selected Accomplishments')).toBeInTheDocument();
     expect(screen.getByTestId('attention-review-current-text')).toHaveTextContent('Reduced deploy time by 60%');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Jump to bullet' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open coach' }));
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -1554,8 +1554,8 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     const strip = await screen.findByTestId('attention-review-strip');
-    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp\. We already have useful proof for "Product delivery" from an earlier answer\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Start in VP Engineering · Acme Corp\. We already have useful proof for "Product delivery" from an earlier answer\./i).length).toBeGreaterThan(0);
+    expect(within(strip).getByText(/Open the line in VP Engineering · Acme Corp\. We already have a useful detail for Product delivery from an earlier answer\./i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Open the line in VP Engineering · Acme Corp\. We already have a useful detail for Product delivery from an earlier answer\./i).length).toBeGreaterThan(0);
   });
 
   it('shows the PipelineProgressCard for each pipeline stage', () => {

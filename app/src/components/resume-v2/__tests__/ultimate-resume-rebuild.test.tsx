@@ -253,7 +253,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--partial');
-    expect(screen.getByText('Can be sharper')).toBeInTheDocument();
+    expect(screen.getByText('Make this stronger')).toBeInTheDocument();
   });
 
   it('renders highlighted red treatment for needs_validation confidence bullets from JD', () => {
@@ -280,16 +280,16 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet).toBeTruthy();
     expect(bullet!.className).toContain('resume-proof-line--benchmark');
     expect(bullet!.className).not.toContain('resume-proof-line--code-red');
-    expect(screen.getByText('Verify fit')).toBeInTheDocument();
+    expect(screen.getByText('Check this claim')).toBeInTheDocument();
   });
 
   it('keeps strong bullets visually quiet without an extra pill', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'strong' });
     render(<ResumeDocumentCard resume={resume} />);
 
-    expect(screen.queryByText('Can be sharper')).not.toBeInTheDocument();
+    expect(screen.queryByText('Make this stronger')).not.toBeInTheDocument();
     expect(screen.queryByText('Needs proof')).not.toBeInTheDocument();
-    expect(screen.queryByText('Verify fit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Check this claim')).not.toBeInTheDocument();
   });
 
   it('renders explicit line-level proof treatment on reviewable bullets', () => {

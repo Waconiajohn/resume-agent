@@ -30,14 +30,14 @@ function getStateConfig(reviewState: ResumeReviewState) {
         borderVar: 'rgba(217, 119, 6, 0.18)',
         bgVar: 'linear-gradient(180deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--bullet-strengthen)',
-        label: 'Can be sharper',
+        label: 'Make this stronger',
       };
     case 'confirm_fit':
       return {
         borderVar: 'rgba(37, 99, 235, 0.16)',
         bgVar: 'linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.98))',
         colorVar: 'var(--bullet-confirm)',
-        label: 'Verify the fit',
+        label: 'Check this claim',
       };
     case 'code_red':
       return {

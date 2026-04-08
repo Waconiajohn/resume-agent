@@ -24,15 +24,15 @@ export const REVIEW_STATE_DISPLAY: Record<
     priority: 0,
   },
   confirm_fit: {
-    label: 'Verify fit',
+    label: 'Check this claim',
     meaning:
-      'This comes from the benchmark for this role. Confirm it honestly describes your background.',
+      'This may be directionally right, but we should make sure the wording stays fully honest.',
     colorHex: '#f97316',
     cssModifier: 'benchmark',
     priority: 1,
   },
   strengthen: {
-    label: 'Can be sharper',
+    label: 'Make this stronger',
     meaning:
       'You have real experience here, but the bullet could land harder. Click to improve it.',
     colorHex: '#eab308',

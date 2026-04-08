@@ -1100,14 +1100,14 @@ function AttentionReviewStrip({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
-            Review Attention Lines
+            Fix These Lines
           </p>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {items.length} {items.length === 1 ? 'line still needs attention.' : 'lines still need attention.'} Click a bullet on the resume to review it here.
+            {items.length} {items.length === 1 ? 'line still needs work.' : 'lines still need work.'} Open them one at a time and we will tighten them up together.
           </p>
           {nextActionCue && (
             <p className="mt-2 text-xs text-[var(--text-soft)]">
-              Next best action: {nextActionCue}
+              {nextActionCue}
             </p>
           )}
         </div>
@@ -1134,21 +1134,21 @@ function AttentionReviewStrip({
             onClick={onPrevious}
             className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
           >
-            Previous Line
+            Back
           </button>
           <button
             type="button"
             onClick={onNext}
             className="rounded-md border border-[var(--line-soft)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)] transition-colors"
           >
-            Next Line
+            Next
           </button>
           <button
             type="button"
             onClick={onOpenCurrent}
             className="rounded-md bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
           >
-            Jump to bullet
+            Open coach
           </button>
         </div>
       </div>
@@ -1771,13 +1771,13 @@ export function V2StreamingDisplay({
     const primaryRequirement = topItem.requirements[0];
     if (rememberedAttentionItemIds.has(topItem.id)) {
       return primaryRequirement
-        ? `Start in ${topItem.locationLabel}. We already have useful proof for "${primaryRequirement}" from an earlier answer.`
-        : `Start in ${topItem.locationLabel}. We already have useful proof from an earlier answer.`;
+        ? `Open the line in ${topItem.locationLabel}. We already have a useful detail for ${primaryRequirement} from an earlier answer.`
+        : `Open the line in ${topItem.locationLabel}. We already have a useful detail from an earlier answer.`;
     }
     const nextAction = describeRecommendationPlain(topItem);
     return primaryRequirement
-      ? `Start in ${topItem.locationLabel}. We are strengthening "${primaryRequirement}". ${nextAction}`
-      : `Start in ${topItem.locationLabel}. ${nextAction}`;
+      ? `Open the line in ${topItem.locationLabel}. We are strengthening how this resume shows ${primaryRequirement}. ${nextAction}`
+      : `Open the line in ${topItem.locationLabel}. ${nextAction}`;
   }, [attentionItems, rememberedAttentionItemIds]);
   const mobileNextActionSummary = compactAttentionNextAction
     ?? 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.';
