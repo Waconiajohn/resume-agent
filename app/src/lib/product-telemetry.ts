@@ -15,6 +15,23 @@ export interface ProductTelemetryPayloadMap {
     readiness_percent: number;
     focus_areas: string[];
   };
+  profile_setup_retry_needed: {
+    session_id: string;
+    source: 'initial_complete' | 'retry';
+  };
+  profile_setup_retry_requested: {
+    session_id: string;
+    source: 'reveal';
+  };
+  profile_setup_retry_succeeded: {
+    session_id: string;
+    master_resume_id: string | null;
+  };
+  profile_setup_retry_failed: {
+    session_id: string;
+    reason: 'request_failed' | 'master_resume_not_created';
+    message: string;
+  };
   resume_builder_opened: {
     surface: string;
   };

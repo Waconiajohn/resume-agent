@@ -1,6 +1,7 @@
 import { useReducer, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileSetup } from '@/hooks/useProfileSetup';
+import { trackProductEvent } from '@/lib/product-telemetry';
 import { IntakeForm } from './IntakeForm';
 import { InterviewView } from './InterviewView';
 import { ProfileReveal } from './ProfileReveal';
@@ -180,6 +181,7 @@ export default function ProfileSetupPage() {
   const { analyze, answer, complete, analyzing, answering, completing, error: hookError } = useProfileSetup(accessToken);
 
   const [state, dispatch] = useReducer(setupReducer, initialState);
+  const [retryMasterResumeRecovered, setRetryMasterResumeRecovered] = useState(false);
 
   // The hook's error is read via hookErrorRef at dispatch time; no separate effect needed.
 
@@ -192,6 +194,13 @@ export default function ProfileSetupPage() {
     const fetchProfile = async () => {
       const result = await complete(state.sessionId!);
       if (result) {
+        if (result.master_resume_created === false) {
+          trackProductEvent('profile_setup_retry_needed', {
+            session_id: state.sessionId!,
+            source: 'initial_complete',
+          });
+        }
+        setRetryMasterResumeRecovered(false);
         dispatch({
           type: 'PROFILE_READY',
           profile: result.profile,
@@ -218,6 +227,7 @@ export default function ProfileSetupPage() {
       targetRoles: string,
       situation: string,
     ) => {
+      setRetryMasterResumeRecovered(false);
       dispatch({ type: 'START_PROCESSING' });
 
       const result = await analyze(resumeText, linkedinAbout, targetRoles, situation);
@@ -258,6 +268,7 @@ export default function ProfileSetupPage() {
   );
 
   const handleInterviewComplete = useCallback(() => {
+    setRetryMasterResumeRecovered(false);
     dispatch({ type: 'START_BUILDING' });
     buildingTriggeredRef.current = false;
   }, []);
@@ -265,8 +276,36 @@ export default function ProfileSetupPage() {
   const handleRetryMasterResume = useCallback(async () => {
     if (!state.sessionId || state.screen !== 'reveal') return;
 
+    trackProductEvent('profile_setup_retry_requested', {
+      session_id: state.sessionId,
+      source: 'reveal',
+    });
+
     const result = await complete(state.sessionId);
     if (result) {
+      if (result.master_resume_created === false) {
+        setRetryMasterResumeRecovered(false);
+        trackProductEvent('profile_setup_retry_needed', {
+          session_id: state.sessionId,
+          source: 'retry',
+        });
+        trackProductEvent('profile_setup_retry_failed', {
+          session_id: state.sessionId,
+          reason: 'master_resume_not_created',
+          message: 'Master resume creation still needs another retry.',
+        });
+        dispatch({
+          type: 'SET_ERROR',
+          error: 'We saved your profile again, but your master resume still needs another retry.',
+        });
+        return;
+      }
+
+      setRetryMasterResumeRecovered(true);
+      trackProductEvent('profile_setup_retry_succeeded', {
+        session_id: state.sessionId,
+        master_resume_id: result.master_resume_id ?? null,
+      });
       dispatch({
         type: 'PROFILE_READY',
         profile: result.profile,
@@ -277,6 +316,12 @@ export default function ProfileSetupPage() {
       return;
     }
 
+    setRetryMasterResumeRecovered(false);
+    trackProductEvent('profile_setup_retry_failed', {
+      session_id: state.sessionId,
+      reason: 'request_failed',
+      message: hookErrorRef.current ?? 'Could not create your master resume yet. Please try again.',
+    });
     dispatch({
       type: 'SET_ERROR',
       error: hookErrorRef.current ?? 'Could not create your master resume yet. Please try again.',
@@ -336,6 +381,7 @@ export default function ProfileSetupPage() {
         <ProfileReveal
           profile={state.profile}
           masterResumeCreated={state.masterResumeCreated}
+          masterResumeRecovered={retryMasterResumeRecovered}
           onRetryMasterResume={state.masterResumeCreated === false ? handleRetryMasterResume : undefined}
           retryingMasterResume={completing}
         />

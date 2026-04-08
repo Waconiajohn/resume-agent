@@ -61,4 +61,22 @@ describe('product-telemetry', () => {
       },
     });
   });
+
+  it('stores profile-setup retry telemetry events with route context', () => {
+    trackProductEvent('profile_setup_retry_requested', {
+      session_id: 'setup-session-1',
+      source: 'reveal',
+    });
+
+    const events = readProductTelemetryEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      name: 'profile_setup_retry_requested',
+      path: '/workspace?room=resume',
+      payload: {
+        session_id: 'setup-session-1',
+        source: 'reveal',
+      },
+    });
+  });
 });

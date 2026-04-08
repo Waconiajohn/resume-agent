@@ -72,4 +72,17 @@ describe('ProfileReveal', () => {
 
     expect(screen.queryByRole('button', { name: /retry creating my master resume/i })).not.toBeInTheDocument();
   });
+
+  it('shows a success confirmation once the master resume retry succeeds', () => {
+    render(
+      <ProfileReveal
+        profile={makeProfile()}
+        masterResumeCreated
+        masterResumeRecovered
+      />,
+    );
+
+    expect(screen.getByText(/your master resume is ready now/i)).toBeInTheDocument();
+    expect(screen.getByText(/the retry worked/i)).toBeInTheDocument();
+  });
 });

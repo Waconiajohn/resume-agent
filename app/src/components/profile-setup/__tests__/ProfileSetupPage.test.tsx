@@ -7,10 +7,12 @@ const {
   mockAnalyze,
   mockAnswer,
   mockComplete,
+  mockTrackProductEvent,
 } = vi.hoisted(() => ({
   mockAnalyze: vi.fn(),
   mockAnswer: vi.fn(),
   mockComplete: vi.fn(),
+  mockTrackProductEvent: vi.fn(),
 }));
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -30,6 +32,10 @@ vi.mock('@/hooks/useProfileSetup', () => ({
     error: null,
     clearError: vi.fn(),
   }),
+}));
+
+vi.mock('@/lib/product-telemetry', () => ({
+  trackProductEvent: mockTrackProductEvent,
 }));
 
 vi.mock('../IntakeForm', () => ({
@@ -54,13 +60,16 @@ vi.mock('../InterviewView', () => ({
 vi.mock('../ProfileReveal', () => ({
   ProfileReveal: ({
     masterResumeCreated,
+    masterResumeRecovered,
     onRetryMasterResume,
   }: {
     masterResumeCreated?: boolean | null;
+    masterResumeRecovered?: boolean;
     onRetryMasterResume?: () => void;
   }) => (
     <div>
       <div data-testid="master-resume-state">{String(masterResumeCreated)}</div>
+      <div data-testid="master-resume-recovered">{String(masterResumeRecovered)}</div>
       {masterResumeCreated === false && onRetryMasterResume && (
         <button type="button" onClick={onRetryMasterResume}>
           Retry master resume
@@ -146,14 +155,28 @@ describe('ProfileSetupPage', () => {
       expect(screen.getByTestId('master-resume-state')).toHaveTextContent('false');
     });
 
+    expect(mockTrackProductEvent).toHaveBeenCalledWith('profile_setup_retry_needed', {
+      session_id: 'profile-setup-session',
+      source: 'initial_complete',
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /retry master resume/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('master-resume-state')).toHaveTextContent('true');
     });
+    expect(screen.getByTestId('master-resume-recovered')).toHaveTextContent('true');
 
     expect(mockComplete).toHaveBeenCalledTimes(2);
     expect(mockComplete).toHaveBeenNthCalledWith(1, 'profile-setup-session');
     expect(mockComplete).toHaveBeenNthCalledWith(2, 'profile-setup-session');
+    expect(mockTrackProductEvent).toHaveBeenCalledWith('profile_setup_retry_requested', {
+      session_id: 'profile-setup-session',
+      source: 'reveal',
+    });
+    expect(mockTrackProductEvent).toHaveBeenCalledWith('profile_setup_retry_succeeded', {
+      session_id: 'profile-setup-session',
+      master_resume_id: 'resume-123',
+    });
   });
 });

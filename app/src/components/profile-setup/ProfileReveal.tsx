@@ -5,6 +5,7 @@ import type { CareerIQProfileFull } from '@/types/profile-setup';
 interface ProfileRevealProps {
   profile: CareerIQProfileFull;
   masterResumeCreated?: boolean | null;
+  masterResumeRecovered?: boolean;
   onRetryMasterResume?: () => void;
   retryingMasterResume?: boolean;
 }
@@ -40,6 +41,7 @@ function FadeInSection({ children, delayMs }: FadeInSectionProps) {
 export function ProfileReveal({
   profile,
   masterResumeCreated = null,
+  masterResumeRecovered = false,
   onRetryMasterResume,
   retryingMasterResume = false,
 }: ProfileRevealProps) {
@@ -62,6 +64,22 @@ export function ProfileReveal({
           <p className="text-sm text-[var(--text-soft)] mt-1 mb-12">
             This profile is the foundation. Every resume you build from here will use it.
           </p>
+          {masterResumeRecovered && masterResumeCreated && (
+            <div
+              className="mb-8 rounded-2xl border px-5 py-4"
+              style={{
+                background: 'var(--surface-1)',
+                borderColor: 'var(--badge-green-text)',
+              }}
+            >
+              <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
+                Your master resume is ready now.
+              </p>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                The retry worked, and future Resume Builder sessions will use this profile and master resume together.
+              </p>
+            </div>
+          )}
           {masterResumeCreated === false && onRetryMasterResume && (
             <div
               className="mb-8 rounded-2xl border px-5 py-4"

@@ -236,6 +236,14 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
       'The network path is the stronger default and should usually lead the room.',
       { healthy: 60, watch: 40 },
     ),
+    buildRatioMetric(
+      'profile_setup_retry_success',
+      'Profile Setup Retry Success',
+      eventCounts.profile_setup_retry_succeeded ?? 0,
+      eventCounts.profile_setup_retry_requested ?? 0,
+      'When master-resume creation needs a retry, the reveal-screen recovery should usually succeed.',
+      { healthy: 80, watch: 50 },
+    ),
   ];
 
   return {

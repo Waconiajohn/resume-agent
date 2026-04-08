@@ -130,6 +130,20 @@ describe('product telemetry routes', () => {
           path: '/workspace?room=networking',
           payload: { path: 'bonus', source: 'user', has_connections: false },
         },
+        {
+          user_id: 'user-c',
+          event_name: 'profile_setup_retry_requested',
+          occurred_at: '2026-03-30T10:09:00.000Z',
+          path: '/profile-setup',
+          payload: { session_id: 'setup-1', source: 'reveal' },
+        },
+        {
+          user_id: 'user-c',
+          event_name: 'profile_setup_retry_succeeded',
+          occurred_at: '2026-03-30T10:10:00.000Z',
+          path: '/profile-setup',
+          payload: { session_id: 'setup-1', master_resume_id: 'resume-1' },
+        },
       ],
       error: null,
     }));
@@ -157,11 +171,12 @@ describe('product telemetry routes', () => {
     };
 
     expect(body.days).toBe(7);
-    expect(body.active_users).toBe(2);
-    expect(body.total_events).toBe(3);
+    expect(body.active_users).toBe(3);
+    expect(body.total_events).toBe(5);
     expect(body.event_counts.resume_builder_session_started).toBe(1);
     expect(body.event_counts.job_board_search_run).toBe(1);
     expect(body.path_breakdown.smart_referrals.bonus).toBe(1);
     expect(body.watch_metrics.some((metric) => metric.id === 'smart_referrals_network_share')).toBe(true);
+    expect(body.watch_metrics.some((metric) => metric.id === 'profile_setup_retry_success')).toBe(true);
   });
 });
