@@ -52,6 +52,7 @@ function reducer(state: FinalReviewChatState, action: FinalReviewChatAction): Fi
             ...item,
             messages: [...item.messages, { role: 'user', content: action.userMessage, candidateInputUsed: true }],
             isLoading: true,
+            resolvedLanguage: null,
             error: null,
           },
         },

@@ -4,6 +4,9 @@ import type { CareerIQProfileFull } from '@/types/profile-setup';
 
 interface ProfileRevealProps {
   profile: CareerIQProfileFull;
+  masterResumeCreated?: boolean | null;
+  onRetryMasterResume?: () => void;
+  retryingMasterResume?: boolean;
 }
 
 const STAGGER_DELAYS = [0, 200, 400, 600];
@@ -34,7 +37,12 @@ function FadeInSection({ children, delayMs }: FadeInSectionProps) {
   );
 }
 
-export function ProfileReveal({ profile }: ProfileRevealProps) {
+export function ProfileReveal({
+  profile,
+  masterResumeCreated = null,
+  onRetryMasterResume,
+  retryingMasterResume = false,
+}: ProfileRevealProps) {
   const navigate = useNavigate();
 
   return (
@@ -54,6 +62,34 @@ export function ProfileReveal({ profile }: ProfileRevealProps) {
           <p className="text-sm text-[var(--text-soft)] mt-1 mb-12">
             This profile is the foundation. Every resume you build from here will use it.
           </p>
+          {masterResumeCreated === false && onRetryMasterResume && (
+            <div
+              className="mb-8 rounded-2xl border px-5 py-4"
+              style={{
+                background: 'var(--surface-1)',
+                borderColor: 'var(--line-soft)',
+              }}
+            >
+              <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
+                Your profile is saved, but your first master resume still needs one more step.
+              </p>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-3">
+                We kept your setup session so you can retry the master-resume creation now without losing anything.
+              </p>
+              <button
+                type="button"
+                onClick={onRetryMasterResume}
+                disabled={retryingMasterResume}
+                className="rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed"
+                style={{
+                  background: retryingMasterResume ? 'var(--surface-1)' : 'var(--link)',
+                  color: retryingMasterResume ? 'var(--text-muted)' : '#080b10',
+                }}
+              >
+                {retryingMasterResume ? 'Retrying master resume creation...' : 'Retry creating my master resume'}
+              </button>
+            </div>
+          )}
         </FadeInSection>
 
         {/* Section 1: Career Thread */}

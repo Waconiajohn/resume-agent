@@ -3,6 +3,9 @@ import { Upload } from 'lucide-react';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import { cn } from '@/lib/utils';
 
+const MIN_RESUME_TEXT_LENGTH = 100;
+const MIN_TARGET_ROLES_LENGTH = 5;
+
 interface IntakeFormProps {
   onSubmit: (
     resumeText: string,
@@ -22,11 +25,20 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
   const [showLinkedInHelp, setShowLinkedInHelp] = useState(false);
   const [linkedinFileName, setLinkedinFileName] = useState<string | null>(null);
   const linkedinFileRef = useRef<HTMLInputElement>(null);
+  const linkedinTextRef = useRef<HTMLTextAreaElement>(null);
   const [resumeDragging, setResumeDragging] = useState(false);
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const resumeFileRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = resumeText.trim().length > 0 && targetRoles.trim().length > 0 && !loading;
+  const trimmedResumeLength = resumeText.trim().length;
+  const trimmedTargetRolesLength = targetRoles.trim().length;
+  const resumeNeedsMoreChars = trimmedResumeLength > 0 && trimmedResumeLength < MIN_RESUME_TEXT_LENGTH;
+  const targetRolesNeedMoreChars = trimmedTargetRolesLength > 0 && trimmedTargetRolesLength < MIN_TARGET_ROLES_LENGTH;
+  const canSubmit = (
+    trimmedResumeLength >= MIN_RESUME_TEXT_LENGTH
+    && trimmedTargetRolesLength >= MIN_TARGET_ROLES_LENGTH
+    && !loading
+  );
 
   const handleResumeFile = useCallback(async (file: File) => {
     try {
@@ -155,6 +167,11 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
               aria-required="true"
             />
           </div>
+          {resumeNeedsMoreChars && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Add at least {MIN_RESUME_TEXT_LENGTH - trimmedResumeLength} more characters so we have enough resume detail to analyze.
+            </p>
+          )}
         </div>
 
         {/* LinkedIn Profile */}
@@ -222,6 +239,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           )}
 
           <textarea
+            ref={linkedinTextRef}
             className="w-full min-h-[120px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
             placeholder="Or paste your LinkedIn About section or full profile text here..."
             value={linkedinAbout}
@@ -244,8 +262,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
                   className="text-sm text-[var(--link)] hover:text-[var(--link-hover)] transition-colors"
                   onClick={() => {
                     setShowLinkedInSkipConfirm(false);
-                    const el = document.querySelector<HTMLTextAreaElement>('[aria-label="LinkedIn About section"]');
-                    el?.focus();
+                    linkedinTextRef.current?.focus();
                   }}
                 >
                   Add it now
@@ -281,6 +298,11 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
             aria-label="Target roles"
             aria-required="true"
           />
+          {targetRolesNeedMoreChars && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Add at least {MIN_TARGET_ROLES_LENGTH - trimmedTargetRolesLength} more characters so we know what roles to target.
+            </p>
+          )}
         </div>
 
         {/* Situation */}

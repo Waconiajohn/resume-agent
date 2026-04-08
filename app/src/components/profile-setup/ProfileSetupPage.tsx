@@ -17,6 +17,7 @@ interface SetupState {
   answers: Array<{ question: string; answer: string }>;
   currentQuestionIndex: number;
   profile: CareerIQProfileFull | null;
+  masterResumeCreated: boolean | null;
   error: string | null;
 }
 
@@ -26,8 +27,9 @@ type SetupAction =
   | { type: 'ANALYSIS_ERROR'; error: string }
   | { type: 'RECORD_ANSWER'; question: string; answer: string; nextIndex: number }
   | { type: 'START_BUILDING' }
-  | { type: 'PROFILE_READY'; profile: CareerIQProfileFull }
+  | { type: 'PROFILE_READY'; profile: CareerIQProfileFull; masterResumeCreated: boolean | null }
   | { type: 'PROFILE_ERROR'; error: string }
+  | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' };
 
 // ─── Processing messages ─────────────────────────────────────────────────────
@@ -70,10 +72,19 @@ function setupReducer(state: SetupState, action: SetupAction): SetupState {
       return { ...state, screen: 'building' };
 
     case 'PROFILE_READY':
-      return { ...state, screen: 'reveal', profile: action.profile, error: null };
+      return {
+        ...state,
+        screen: 'reveal',
+        profile: action.profile,
+        masterResumeCreated: action.masterResumeCreated,
+        error: null,
+      };
 
     case 'PROFILE_ERROR':
       return { ...state, screen: 'interview', error: action.error };
+
+    case 'SET_ERROR':
+      return { ...state, error: action.error };
 
     case 'CLEAR_ERROR':
       return { ...state, error: null };
@@ -90,6 +101,7 @@ const initialState: SetupState = {
   answers: [],
   currentQuestionIndex: 0,
   profile: null,
+  masterResumeCreated: null,
   error: null,
 };
 
@@ -180,7 +192,13 @@ export default function ProfileSetupPage() {
     const fetchProfile = async () => {
       const result = await complete(state.sessionId!);
       if (result) {
-        dispatch({ type: 'PROFILE_READY', profile: result.profile });
+        dispatch({
+          type: 'PROFILE_READY',
+          profile: result.profile,
+          masterResumeCreated: typeof result.master_resume_created === 'boolean'
+            ? result.master_resume_created
+            : null,
+        });
       } else {
         dispatch({ type: 'PROFILE_ERROR', error: 'Could not build your profile. Please try again.' });
         buildingTriggeredRef.current = false;
@@ -244,6 +262,27 @@ export default function ProfileSetupPage() {
     buildingTriggeredRef.current = false;
   }, []);
 
+  const handleRetryMasterResume = useCallback(async () => {
+    if (!state.sessionId || state.screen !== 'reveal') return;
+
+    const result = await complete(state.sessionId);
+    if (result) {
+      dispatch({
+        type: 'PROFILE_READY',
+        profile: result.profile,
+        masterResumeCreated: typeof result.master_resume_created === 'boolean'
+          ? result.master_resume_created
+          : state.masterResumeCreated,
+      });
+      return;
+    }
+
+    dispatch({
+      type: 'SET_ERROR',
+      error: hookErrorRef.current ?? 'Could not create your master resume yet. Please try again.',
+    });
+  }, [complete, state.masterResumeCreated, state.screen, state.sessionId]);
+
   const displayError = state.error ?? hookError ?? null;
 
   return (
@@ -294,7 +333,12 @@ export default function ProfileSetupPage() {
       {state.screen === 'building' && <BuildingScreen />}
 
       {state.screen === 'reveal' && state.profile && (
-        <ProfileReveal profile={state.profile} />
+        <ProfileReveal
+          profile={state.profile}
+          masterResumeCreated={state.masterResumeCreated}
+          onRetryMasterResume={state.masterResumeCreated === false ? handleRetryMasterResume : undefined}
+          retryingMasterResume={completing}
+        />
       )}
 
       {/* Completing indicator (overlay when building) */}

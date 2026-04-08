@@ -48,14 +48,9 @@ export function buildMasterResumePayload(
   intake: IntakeAnalysis,
   answers: InterviewAnswer[],
   profile: CareerIQProfileFull,
-  sessionId: string,
+  sourceSessionId: string,
 ): MasterResumePayload {
   const now = new Date().toISOString();
-
-  // A stable UUID for evidence items: generated once per profile-setup session.
-  // We use a new random UUID rather than the profile-setup session_id (which has
-  // a non-UUID prefix) so the FK constraint on source_session_id is satisfied.
-  const evidenceSessionUUID = crypto.randomUUID();
 
   // 1. Map structured experience to master resume format.
   //    Entries where company === 'Education' are handled separately below.
@@ -71,33 +66,21 @@ export function buildMasterResumePayload(
       bullets: e.original_bullets.map((b) => ({ text: b, source: 'resume' as const })),
     }));
 
-  // 2. Map interview answers onto experience entries via references_resume_element,
-  //    and collect them as standalone evidence items for the evidence browser.
+  // 2. Collect interview answers as standalone evidence items for the evidence
+  //    browser and future evidence extraction. Do not promote raw interview
+  //    prose directly into timeline bullets.
   const evidence_items: EvidenceItem[] = [];
 
   for (const answer of answers) {
     const question = intake.interview_questions[answer.question_index];
     if (!question) continue;
 
-    const ref = question.references_resume_element;
-
-    if (ref) {
-      // Find a matching experience entry using word-boundary token matching.
-      // This avoids substring false positives (e.g. "GE" matching "longer")
-      // and false negatives (e.g. "Nimbus" not matching "Nimbus Technologies, Inc.").
-      const matchedExp = experience.find((e) => matchesCompanyOrTitle(ref, e.company, e.title));
-
-      if (matchedExp) {
-        matchedExp.bullets.push({ text: answer.answer, source: 'interview' });
-      }
-    }
-
     // Always capture as a standalone evidence item regardless of company match.
     evidence_items.push({
       text: answer.answer,
       source: 'interview',
       category: question.what_we_are_looking_for || 'interview_response',
-      source_session_id: evidenceSessionUUID,
+      source_session_id: sourceSessionId,
       created_at: now,
     });
   }
@@ -156,6 +139,7 @@ export function buildMasterResumePayload(
 export async function createInitialMasterResume(
   userId: string,
   payload: MasterResumePayload,
+  sourceSessionId: string | null,
 ): Promise<{ success: boolean; resumeId?: string }> {
   try {
     const { data, error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
@@ -167,7 +151,7 @@ export async function createInitialMasterResume(
       p_education: payload.education,
       p_certifications: payload.certifications,
       p_contact_info: payload.contact_info,
-      p_source_session_id: null,
+      p_source_session_id: sourceSessionId,
       p_set_as_default: true,
       p_evidence_items: payload.evidence_items,
     });
@@ -193,39 +177,6 @@ export async function createInitialMasterResume(
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
-
-/**
- * Test whether a reference string (from references_resume_element) mentions
- * a given company or job title.
- *
- * Uses word-boundary token matching instead of substring includes to prevent:
- *   - False positives from short names ("GE" matching "longer")
- *   - False negatives from variant names ("Nimbus" not matching "Nimbus Technologies, Inc.")
- */
-function matchesCompanyOrTitle(reference: string, company: string, title: string): boolean {
-  const refLower = reference.toLowerCase();
-
-  // Tokenize company name into words (min 2 chars to avoid single-letter false positives)
-  const companyWords = company.toLowerCase().split(/[\s,.'&()-]+/).filter((w) => w.length >= 2);
-  const titleWords = title.toLowerCase().split(/[\s,.'&()-]+/).filter((w) => w.length >= 2);
-
-  // Check if ANY company word appears at a word boundary in the reference
-  const companyMatch = companyWords.some((word) => {
-    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    return re.test(refLower);
-  });
-
-  // Also check title words, but only multi-word titles to avoid "Manager" matching everything
-  const titleMatch =
-    titleWords.length >= 2 &&
-    titleWords.some((word) => {
-      if (['of', 'the', 'and', 'for', 'at', 'in', 'to', 'a'].includes(word)) return false;
-      const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-      return re.test(refLower);
-    });
-
-  return companyMatch || titleMatch;
-}
 
 /**
  * Extract contact info from the top of a resume.

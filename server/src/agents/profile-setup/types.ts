@@ -85,6 +85,8 @@ export interface ProfileSetupSessionState {
   input: ProfileSetupInput;
   intake: IntakeAnalysis;
   answers: InterviewAnswer[];
+  completed_profile?: CareerIQProfileFull | null;
+  provenance_session_id?: string | null;
   created_at: number;
   last_active_at: number;
 }

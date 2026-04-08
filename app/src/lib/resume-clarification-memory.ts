@@ -8,16 +8,77 @@ function normalizeTopic(topic: string): string {
   return topic.trim().toLowerCase().replace(/[.,;:!?]+$/u, '');
 }
 
-function latestMessageByRole(
-  messages: GapChatMessage[] | undefined,
-  role: GapChatMessage['role'],
+function hasMeaningfulAssistantState(message: GapChatMessage | null | undefined): boolean {
+  return Boolean(
+    message?.suggestedLanguage?.trim()
+    || message?.currentQuestion?.trim()
+    || message?.followUpQuestion?.trim()
+    || message?.needsCandidateInput,
+  );
+}
+
+function assistantRequestedInput(message: GapChatMessage | null | undefined): boolean {
+  return Boolean(
+    message?.currentQuestion?.trim()
+    || message?.followUpQuestion?.trim()
+    || message?.needsCandidateInput,
+  );
+}
+
+function findNextAssistantMessage(
+  messages: GapChatMessage[],
+  startIndex: number,
 ): GapChatMessage | null {
-  if (!messages?.length) return null;
+  for (let index = startIndex + 1; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (message?.role === 'assistant' && typeof message.content === 'string' && message.content.trim()) {
+      return message;
+    }
+  }
+  return null;
+}
+
+function findPreviousAssistantMessage(
+  messages: GapChatMessage[],
+  startIndex: number,
+): GapChatMessage | null {
+  for (let index = startIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === 'assistant' && typeof message.content === 'string' && message.content.trim()) {
+      return message;
+    }
+  }
+  return null;
+}
+
+function findLatestCompletedExchange(
+  item: CoachingThreadSnapshot['items'][string],
+): {
+  userMessage: GapChatMessage;
+  assistantMessage: GapChatMessage | null;
+} | null {
+  const messages = item.messages ?? [];
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
-    if (message?.role === role && typeof message.content === 'string' && message.content.trim()) {
-      return message;
+    if (message?.role !== 'user' || typeof message.content !== 'string' || !message.content.trim()) {
+      continue;
+    }
+
+    const nextAssistant = findNextAssistantMessage(messages, index);
+    if (hasMeaningfulAssistantState(nextAssistant)) {
+      return {
+        userMessage: message,
+        assistantMessage: nextAssistant,
+      };
+    }
+
+    const previousAssistant = findPreviousAssistantMessage(messages, index);
+    if (item.resolvedLanguage?.trim() && assistantRequestedInput(previousAssistant)) {
+      return {
+        userMessage: message,
+        assistantMessage: previousAssistant,
+      };
     }
   }
 
@@ -34,23 +95,22 @@ function buildEntry(
   const normalizedTopic = normalizeTopic(topic);
   if (!normalizedTopic) return null;
 
-  const latestUser = latestMessageByRole(item.messages, 'user');
-  const latestAssistant = latestMessageByRole(item.messages, 'assistant');
-  const userInput = latestUser?.content.trim();
+  const completedExchange = findLatestCompletedExchange(item);
+  const userInput = completedExchange?.userMessage.content.trim();
   if (!userInput) return null;
 
+  const assistantMessage = completedExchange?.assistantMessage;
+
   const suggestedLanguage = item.resolvedLanguage?.trim()
-    || latestAssistant?.suggestedLanguage?.trim()
+    || assistantMessage?.suggestedLanguage?.trim()
     || undefined;
 
-  const hasMeaningfulAssistantState = Boolean(
+  const hasCompletedExchange = Boolean(
     suggestedLanguage
-    || latestAssistant?.currentQuestion?.trim()
-    || latestAssistant?.followUpQuestion?.trim()
-    || latestAssistant?.needsCandidateInput,
+    || hasMeaningfulAssistantState(assistantMessage),
   );
 
-  if (!hasMeaningfulAssistantState) return null;
+  if (!hasCompletedExchange) return null;
 
   const appliedLanguage = item.resolvedLanguage?.trim()
     || (suggestedLanguage && currentResumeText.includes(suggestedLanguage) ? suggestedLanguage : undefined);

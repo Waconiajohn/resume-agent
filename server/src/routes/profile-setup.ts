@@ -18,6 +18,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import { upsertUserContext } from '../lib/platform-context.js';
 import { createCombinedAbortSignal } from '../lib/llm-provider.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import { runIntakeAgent } from '../agents/profile-setup/intake-agent.js';
 import { processInterviewAnswer } from '../agents/profile-setup/interview-runner.js';
 import { synthesizeProfile } from '../agents/profile-setup/synthesizer.js';
@@ -52,6 +53,48 @@ pruneTimer.unref();
 const inFlightAnalyze = new Set<string>();
 const inFlightAnswer = new Set<string>();
 const inFlightComplete = new Set<string>();
+
+async function ensureProfileSetupProvenanceSession(
+  userId: string,
+  sessionState: ProfileSetupSessionState,
+): Promise<string | null> {
+  if (sessionState.provenance_session_id) {
+    return sessionState.provenance_session_id;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('coach_sessions')
+    .insert({
+      user_id: userId,
+      status: 'completed',
+      current_phase: 'profile_setup',
+      product_type: 'profile-setup',
+      messages: [],
+      interview_responses: sessionState.answers.map((answer) => ({
+        question_index: answer.question_index,
+        question: answer.question,
+        answer: answer.answer,
+      })),
+    })
+    .select('id')
+    .single();
+
+  if (error || !data?.id) {
+    logger.error(
+      { userId, sessionId: sessionState.session_id, error: error?.message ?? 'missing session id' },
+      'Profile setup: failed to create provenance session',
+    );
+    return null;
+  }
+
+  const updatedState: ProfileSetupSessionState = {
+    ...sessionState,
+    provenance_session_id: data.id,
+    last_active_at: Date.now(),
+  };
+  sessions.set(sessionState.session_id, updatedState);
+  return data.id;
+}
 
 // ─── POST /analyze ────────────────────────────────────────────────────────────
 
@@ -264,8 +307,10 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
   const { signal, cleanup: signalCleanup } = createCombinedAbortSignal(c.req.raw.signal, 120_000);
 
   try {
+    let currentSessionState = sessionState;
+
     // M6: Warn if no answers were recorded
-    if (sessionState.answers.length === 0) {
+    if (currentSessionState.answers.length === 0) {
       logger.warn(
         { userId: user.id, sessionId: session_id },
         'Profile setup complete: no interview answers recorded — transcript and evidence will be empty',
@@ -273,16 +318,27 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
     }
 
     logger.info(
-      { userId: user.id, sessionId: session_id, answerCount: sessionState.answers.length },
+      { userId: user.id, sessionId: session_id, answerCount: currentSessionState.answers.length },
       'Profile setup complete: synthesizing profile',
     );
 
-    const profile = await synthesizeProfile(
-      sessionState.input,
-      sessionState.intake,
-      sessionState.answers,
+    const profile = currentSessionState.completed_profile ?? await synthesizeProfile(
+      currentSessionState.input,
+      currentSessionState.intake,
+      currentSessionState.answers,
       signal,
     );
+
+    if (!currentSessionState.completed_profile) {
+      currentSessionState = {
+        ...currentSessionState,
+        completed_profile: profile,
+        last_active_at: Date.now(),
+      };
+      sessions.set(session_id, currentSessionState);
+    }
+
+    const provenanceSessionId = await ensureProfileSetupProvenanceSession(user.id, currentSessionState);
 
     // Save to user_platform_context — try career_iq_profile first, fall back to career_profile
     // if the DB constraint hasn't been updated yet. Either way, return the profile to the user.
@@ -291,6 +347,7 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
       'career_iq_profile',
       profile as unknown as Record<string, unknown>,
       'profile-setup',
+      provenanceSessionId ?? undefined,
     );
 
     if (!saved) {
@@ -304,6 +361,7 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
         'career_profile',
         profile as unknown as Record<string, unknown>,
         'profile-setup',
+        provenanceSessionId ?? undefined,
       );
     }
 
@@ -343,6 +401,7 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
       'career_interview_transcript',
       transcriptContent as unknown as Record<string, unknown>,
       'profile-setup',
+      provenanceSessionId ?? undefined,
     );
 
     if (!transcriptSaved) {
@@ -354,29 +413,37 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
 
     // Build and create initial master resume from the profile setup data.
     // Failure is non-fatal — profile is still returned to the user.
-    const resumePayload = buildMasterResumePayload(
-      sessionState.input,
-      sessionState.intake,
-      sessionState.answers,
-      profile,
-      session_id,
-    );
+    let resumeResult: { success: boolean; resumeId?: string } = { success: false };
 
-    const resumeResult = await createInitialMasterResume(user.id, resumePayload);
+    if (provenanceSessionId) {
+      const resumePayload = buildMasterResumePayload(
+        currentSessionState.input,
+        currentSessionState.intake,
+        currentSessionState.answers,
+        profile,
+        provenanceSessionId,
+      );
+
+      resumeResult = await createInitialMasterResume(user.id, resumePayload, provenanceSessionId);
+    } else {
+      logger.warn(
+        { userId: user.id, sessionId: session_id },
+        'Profile setup: skipping master resume creation because provenance session was unavailable',
+      );
+    }
+
     if (resumeResult.success) {
       logger.info(
         { userId: user.id, sessionId: session_id, resumeId: resumeResult.resumeId },
         'Profile setup complete: initial master resume created',
       );
+      sessions.delete(session_id);
     } else {
       logger.warn(
         { userId: user.id, sessionId: session_id },
-        'Profile setup: master resume creation failed — profile still saved',
+        'Profile setup: master resume creation failed — profile saved, session retained for retry',
       );
     }
-
-    // Clean up session — profile is being returned to the user regardless
-    sessions.delete(session_id);
 
     return c.json({
       profile,

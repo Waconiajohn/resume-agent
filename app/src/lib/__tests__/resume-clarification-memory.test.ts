@@ -97,4 +97,32 @@ describe('resume-clarification-memory', () => {
       },
     ]);
   });
+
+  it('ignores a trailing in-flight user message and keeps the last completed exchange', () => {
+    const memory = extractClarificationMemory({
+      gapChatSnapshot: {
+        items: {
+          'Platform leadership': {
+            messages: [
+              { role: 'assistant', content: 'What was the scale?', currentQuestion: 'What was the scale?' },
+              { role: 'user', content: 'I led platform modernization across four business units.' },
+              { role: 'assistant', content: 'Great.', suggestedLanguage: 'Led platform modernization across 4 business units.' },
+              { role: 'user', content: 'Actually it was across five business units and one shared-services team.' },
+            ],
+            resolvedLanguage: null,
+            error: null,
+          },
+        },
+      },
+      currentResumeText: '',
+    });
+
+    expect(memory).toEqual([
+      expect.objectContaining({
+        id: 'gap_chat:platform leadership',
+        userInput: 'I led platform modernization across four business units.',
+        suggestedLanguage: 'Led platform modernization across 4 business units.',
+      }),
+    ]);
+  });
 });

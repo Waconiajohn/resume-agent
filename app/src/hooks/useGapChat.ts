@@ -60,6 +60,7 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
             ...item,
             messages: [...item.messages, { role: 'user', content: action.userMessage }],
             isLoading: true,
+            resolvedLanguage: null,
             error: null,
           },
         },
