@@ -44,34 +44,6 @@ function sectionSecondaryCopy(sectionId: string): string {
   }
 }
 
-function recommendationSignalLabel(signalSource: 'job_description' | 'benchmark' | 'mixed' | 'grounded_draft'): string {
-  switch (signalSource) {
-    case 'job_description':
-      return 'JD signal';
-    case 'benchmark':
-      return 'Benchmark signal';
-    case 'mixed':
-      return 'Mixed signal';
-    case 'grounded_draft':
-    default:
-      return 'Grounded draft';
-  }
-}
-
-function recommendationSignalTone(signalSource: 'job_description' | 'benchmark' | 'mixed' | 'grounded_draft'): string {
-  switch (signalSource) {
-    case 'job_description':
-      return 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]';
-    case 'benchmark':
-      return 'bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]';
-    case 'mixed':
-      return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
-    case 'grounded_draft':
-    default:
-      return 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]';
-  }
-}
-
 export function ResumeStructurePlannerCard({
   resume,
   candidateIntelligence,
@@ -98,6 +70,7 @@ export function ResumeStructurePlannerCard({
     [recommendationList],
   );
   const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
+  const [showAllRecommendations, setShowAllRecommendations] = useState(false);
   const availablePresets = useMemo(() => (
     RESUME_CUSTOM_SECTION_PRESETS
       .filter((preset) => !plan.some((item) => item.id === preset.id))
@@ -129,6 +102,7 @@ export function ResumeStructurePlannerCard({
   const selectedDraftSuggestions = selectedPresetId !== 'custom'
     ? draftSuggestions[selectedPresetId] ?? []
     : [];
+  const visibleRecommendations = showAllRecommendations ? recommendationList : recommendationList.slice(0, 1);
   const draftLines = useMemo(
     () => draftText.split('\n').map((line) => line.trim()).filter((line, index, all) => line.length > 0 && all.findIndex((candidate) => candidate.toLowerCase() === line.toLowerCase()) === index),
     [draftText],
@@ -192,10 +166,10 @@ export function ResumeStructurePlannerCard({
     <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow-label">Resume Structure</p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Shape the resume before you polish the lines</h3>
+          <p className="eyebrow-label">Section Plan</p>
+          <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Get the structure right first</h3>
           <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-            Start here. Reorder the story, hide weaker sections, and add the proof sections this role will care about most.
+            Add, hide, or move sections before you polish wording so the strongest proof shows up in the right place.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -266,26 +240,11 @@ export function ResumeStructurePlannerCard({
                 <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
                   {selectedRecommendation.readyLineCount} lines ready
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${recommendationSignalTone(selectedRecommendation.signalSource)}`}>
-                  {recommendationSignalLabel(selectedRecommendation.signalSource)}
-                </span>
               </div>
               <p className="mt-2 text-[13px] leading-5 text-[var(--text-soft)]">{selectedRecommendation.whyNow}</p>
-              {selectedRecommendation.matchedRequirements.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedRecommendation.matchedRequirements.map((requirement) => (
-                    <span
-                      key={requirement}
-                      className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-strong)]"
-                    >
-                      {requirement}
-                    </span>
-                  ))}
-                </div>
-              )}
               {selectedRecommendation.supportPreview.length > 0 && (
                 <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-                  Grounded by: {selectedRecommendation.supportPreview.join(' • ')}
+                  Built from: {selectedRecommendation.supportPreview.join(' • ')}
                 </p>
               )}
             </div>
@@ -377,14 +336,14 @@ export function ResumeStructurePlannerCard({
         <div className="mt-4 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--text-strong)]">Recommended section adds</p>
+              <p className="text-sm font-semibold text-[var(--text-strong)]">Recommended next section</p>
               <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
-                These section types already have grounded draft material and fit what this role appears to reward.
+                Start with the strongest grounded section add. You can open the full planner if you want more choices.
               </p>
             </div>
           </div>
           <div className="mt-3 space-y-2">
-            {recommendationList.map((recommendation) => (
+            {visibleRecommendations.map((recommendation) => (
               <div
                 key={recommendation.presetId}
                 className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3"
@@ -396,26 +355,11 @@ export function ResumeStructurePlannerCard({
                       <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
                         {recommendation.readyLineCount} lines ready
                       </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${recommendationSignalTone(recommendation.signalSource)}`}>
-                        {recommendationSignalLabel(recommendation.signalSource)}
-                      </span>
                     </div>
                     <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">{recommendation.whyNow}</p>
-                    {recommendation.matchedRequirements.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {recommendation.matchedRequirements.map((requirement) => (
-                          <span
-                            key={requirement}
-                            className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-strong)]"
-                          >
-                            {requirement}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                     {recommendation.supportPreview.length > 0 && (
                       <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-                        Grounded by: {recommendation.supportPreview.join(' • ')}
+                        Built from: {recommendation.supportPreview.join(' • ')}
                       </p>
                     )}
                   </div>
@@ -439,6 +383,15 @@ export function ResumeStructurePlannerCard({
               </div>
             ))}
           </div>
+          {recommendationList.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setShowAllRecommendations((current) => !current)}
+              className="mt-3 rounded-lg border border-[var(--line-soft)] px-3 py-2 text-xs font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)]"
+            >
+              {showAllRecommendations ? 'Show fewer section ideas' : `Show ${recommendationList.length - 1} more section idea${recommendationList.length - 1 === 1 ? '' : 's'}`}
+            </button>
+          )}
         </div>
       )}
 

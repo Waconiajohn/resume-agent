@@ -180,14 +180,11 @@ describe('ResumeStructurePlannerCard', () => {
       />,
     );
 
-    expect(screen.getByText(/recommended section adds/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/jd signal/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Lead automation and operating-model transformation/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Grounded by:/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/recommended next section/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Built from:/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole('button', { name: /preview draft/i })[0]);
 
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Transformation Highlights');
-    expect(screen.getAllByText(/jd signal/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
       'Applied automation and data workflows to tighten operating rhythm across multiple sites.',
       'Led transformation work across 3 sites while rolled out workflow automation across operations.',

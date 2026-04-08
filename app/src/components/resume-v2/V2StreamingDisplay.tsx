@@ -32,7 +32,7 @@ import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
-import { buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+import { buildCustomSectionDraftSuggestions, buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 
@@ -773,93 +773,54 @@ function buildResumeLineSelector(section: string, index: number): string {
   return `[data-resume-line="${section}:${index}"]`;
 }
 
-function StructureReviewPanel({
-  hiddenRecommendedSections,
-  missingStructureRecommendations,
+function GuidedNextStepCard({
+  title,
+  reason,
+  primaryActionLabel,
+  onPrimaryAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  note,
 }: {
-  hiddenRecommendedSections: Array<{ title: string }>;
-  missingStructureRecommendations: Array<{ title: string }>;
-}) {
-  const hiddenTitles = hiddenRecommendedSections.slice(0, 2).map((item) => item.title);
-  const missingTitles = missingStructureRecommendations.slice(0, 2).map((item) => item.title);
-  const detail = hiddenTitles.length > 0
-    ? `Turn ${hiddenTitles.join(' and ')} back on before rewriting lines so the strongest proof shows up earlier.`
-    : missingTitles.length > 0
-      ? `Consider adding ${missingTitles.join(' and ')} before rewriting lines so the resume is shaped for this role from the start.`
-      : 'Review the section order before line editing so the strongest story comes first.';
-
-  return (
-    <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Structure First</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">Fix the sections before rewriting lines</h3>
-      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        {detail}
-      </p>
-    </div>
-  );
-}
-
-function CoachNavigatorCard({
-  target,
-  total,
-  onPrevious,
-  onNext,
-  onShowOnResume,
-  onToggleStructurePlanner,
-  showStructurePlanner,
-}: {
-  target: CoachTarget;
-  total: number;
-  onPrevious: () => void;
-  onNext: () => void;
-  onShowOnResume: () => void;
-  onToggleStructurePlanner?: () => void;
-  showStructurePlanner?: boolean;
+  title: string;
+  reason: string;
+  primaryActionLabel: string;
+  onPrimaryAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  note?: string;
 }) {
   return (
     <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Resume Coach</p>
+      <p className="eyebrow-label">Start Here</p>
       <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-        Working in {target.locationLabel}
+        {title}
       </h3>
       <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        I am focusing on the most important job need for this part of the resume and giving you wording options you can use right away.
+        {reason}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={onShowOnResume}
-          className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
+          onClick={onPrimaryAction}
+          className="rounded-lg bg-[var(--link)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-opacity hover:opacity-95"
         >
-          Show on resume
+          {primaryActionLabel}
         </button>
-        {onToggleStructurePlanner && (
+        {secondaryActionLabel && onSecondaryAction && (
           <button
             type="button"
-            onClick={onToggleStructurePlanner}
+            onClick={onSecondaryAction}
             className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
           >
-            {showStructurePlanner ? 'Hide sections' : 'Change sections'}
+            {secondaryActionLabel}
           </button>
         )}
       </div>
-      {total > 1 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onPrevious}
-            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-          >
-            Previous area
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-medium text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-          >
-            Next area
-          </button>
-        </div>
+      {note && (
+        <p className="mt-3 text-[12px] leading-5 text-[var(--text-soft)]">
+          {note}
+        </p>
       )}
     </div>
   );
@@ -916,7 +877,6 @@ export function V2StreamingDisplay({
     canRemove: true,
     locationLabel: chatContextLabelForSection(initialActiveBullet.section),
   } : null);
-  const [coachIndex, setCoachIndex] = useState(0);
   const [showStructurePlanner, setShowStructurePlanner] = useState(false);
 
   useEffect(() => {
@@ -1028,19 +988,7 @@ export function V2StreamingDisplay({
   const idleCoachTargets = useMemo(() => (
     hasStructureFirstWork ? [] : buildIdleCoachTargets(sectionCoachTargets, attentionItems)
   ), [attentionItems, hasStructureFirstWork, sectionCoachTargets]);
-  const currentIdleCoachTarget = idleCoachTargets[coachIndex] ?? null;
-
-  useEffect(() => {
-    if (coachIndex >= idleCoachTargets.length) {
-      setCoachIndex(0);
-    }
-  }, [coachIndex, idleCoachTargets.length]);
-
-  useEffect(() => {
-    if (hasStructureFirstWork) {
-      setShowStructurePlanner(true);
-    }
-  }, [hasStructureFirstWork]);
+  const currentIdleCoachTarget = idleCoachTargets[0] ?? null;
 
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((
@@ -1178,28 +1126,73 @@ export function V2StreamingDisplay({
     }
   }, [onAddCustomSection, openNewCustomSectionInCoach]);
 
-  const displayedCoachTarget = activeBullet ?? currentIdleCoachTarget;
-  const displayedCoachContext = useMemo(() => {
-    if (!displayedCoachTarget || !buildChatContext) return null;
-    return buildChatContext({
-      requirement: displayedCoachTarget.requirements[0],
-      requirements: displayedCoachTarget.requirements,
-      lineText: displayedCoachTarget.bulletText,
-      section: displayedCoachTarget.section,
-      index: displayedCoachTarget.index,
-      reviewState: displayedCoachTarget.reviewState,
-      evidenceFound: displayedCoachTarget.evidenceFound,
-      workItemId: displayedCoachTarget.workItemId,
+  const primaryHiddenSection = hiddenRecommendedSections[0];
+  const primaryMissingSection = missingStructureRecommendations[0];
+  const handlePrimaryStructureAction = useCallback(() => {
+    if (primaryHiddenSection && onToggleSection) {
+      onToggleSection(primaryHiddenSection.id, true);
+      setShowStructurePlanner(false);
+      return;
+    }
+
+    if (primaryMissingSection) {
+      const suggestion = buildCustomSectionDraftSuggestions(
+        data.candidateIntelligence,
+        data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [],
+        primaryMissingSection.presetId,
+      )[0];
+      if (suggestion && suggestion.lines.length > 0) {
+        handleAddCustomSectionAndOpen(primaryMissingSection.title, suggestion.lines, primaryMissingSection.presetId);
+        setShowStructurePlanner(false);
+        return;
+      }
+    }
+
+    setShowStructurePlanner(true);
+    window.requestAnimationFrame(() => {
+      structurePlannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [buildChatContext, displayedCoachTarget]);
+  }, [
+    data.candidateIntelligence,
+    data.gapAnalysis?.requirement_work_items,
+    data.requirementWorkItems,
+    handleAddCustomSectionAndOpen,
+    onToggleSection,
+    primaryHiddenSection,
+    primaryMissingSection,
+  ]);
+
+  const structureNextStep = useMemo(() => {
+    if (primaryHiddenSection) {
+      return {
+        title: `Turn on ${primaryHiddenSection.title}`,
+        reason: `${primaryHiddenSection.title} already looks valuable for this role. Bring it back before rewriting lines so the strongest proof shows up earlier.`,
+        primaryActionLabel: `Turn on ${primaryHiddenSection.title}`,
+      };
+    }
+
+    if (primaryMissingSection) {
+      return {
+        title: `Add ${primaryMissingSection.title}`,
+        reason: `${primaryMissingSection.whyNow} I can draft this section now from what we already know.`,
+        primaryActionLabel: `Add ${primaryMissingSection.title}`,
+      };
+    }
+
+    return {
+      title: 'Review the section plan',
+      reason: 'Shape the resume before you polish the lines so the strongest story shows up first.',
+      primaryActionLabel: 'Review section plan',
+    };
+  }, [primaryHiddenSection, primaryMissingSection]);
 
   const openDisplayedCoachTargetOnResume = useCallback(() => {
-    if (!displayedCoachTarget) return;
-    setActiveBullet(displayedCoachTarget);
+    if (!currentIdleCoachTarget) return;
+    setActiveBullet(currentIdleCoachTarget);
     window.requestAnimationFrame(() => {
-      scrollToAndFocusTarget(buildResumeLineSelector(displayedCoachTarget.section, displayedCoachTarget.index));
+      scrollToAndFocusTarget(buildResumeLineSelector(currentIdleCoachTarget.section, currentIdleCoachTarget.index));
     });
-  }, [displayedCoachTarget]);
+  }, [currentIdleCoachTarget]);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
@@ -1432,18 +1425,24 @@ export function V2StreamingDisplay({
   const canShowStructurePlanner = Boolean(
     displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
   );
-  const handlePreviousCoachTarget = useCallback(() => {
-    if (idleCoachTargets.length <= 1) return;
-    setCoachIndex((current) => (current - 1 + idleCoachTargets.length) % idleCoachTargets.length);
-  }, [idleCoachTargets.length]);
-  const handleNextCoachTarget = useCallback(() => {
-    if (idleCoachTargets.length <= 1) return;
-    setCoachIndex((current) => (current + 1) % idleCoachTargets.length);
-  }, [idleCoachTargets.length]);
   const toggleStructurePlanner = useCallback(() => {
     setShowStructurePlanner((current) => !current);
   }, []);
-  const canRenderCoach = Boolean(displayedCoachTarget && displayedCoachContext && gapChat);
+  const idleCoachNextStep = useMemo(() => {
+    if (!currentIdleCoachTarget) return null;
+    const primaryRequirement = currentIdleCoachTarget.requirements[0];
+    const locationLabel = currentIdleCoachTarget.locationLabel;
+    const reason = primaryRequirement
+      ? `This is the clearest next place to show ${primaryRequirement}. ${describeNextBestAction(currentIdleCoachTarget.nextBestAction, 'line')}`
+      : describeNextBestAction(currentIdleCoachTarget.nextBestAction, 'line');
+
+    return {
+      title: `Open ${locationLabel}`,
+      reason,
+      note: 'We will move to the next strongest area after this one.',
+    };
+  }, [currentIdleCoachTarget]);
+  const showDesktopFinalReview = Boolean(!activeBullet && isComplete && displayResume && hiringManagerResult);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1500,36 +1499,14 @@ export function V2StreamingDisplay({
               {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
               {!activeBullet && hasStructureFirstWork && (
                 <>
-                  <StructureReviewPanel
-                    hiddenRecommendedSections={hiddenRecommendedSections}
-                    missingStructureRecommendations={missingStructureRecommendations}
-                  />
-                  {canShowStructurePlanner && (
-                    <div ref={structurePlannerRef}>
-                      <ResumeStructurePlannerCard
-                        resume={displayResume!}
-                        candidateIntelligence={data.candidateIntelligence}
-                        requirementWorkItems={data.requirementWorkItems}
-                        onMoveSection={onMoveSection!}
-                        onToggleSection={onToggleSection!}
-                        onAddAISection={handleAddAISectionAndOpen}
-                        onAddCustomSection={handleAddCustomSectionAndOpen}
-                        onRemoveCustomSection={onRemoveCustomSection!}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-              {!activeBullet && !hasStructureFirstWork && canRenderCoach && (
-                <>
-                  <CoachNavigatorCard
-                    target={currentIdleCoachTarget!}
-                    total={idleCoachTargets.length}
-                    onPrevious={handlePreviousCoachTarget}
-                    onNext={handleNextCoachTarget}
-                    onShowOnResume={openDisplayedCoachTargetOnResume}
-                    onToggleStructurePlanner={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                    showStructurePlanner={showStructurePlanner}
+                  <GuidedNextStepCard
+                    title={structureNextStep.title}
+                    reason={structureNextStep.reason}
+                    primaryActionLabel={structureNextStep.primaryActionLabel}
+                    onPrimaryAction={handlePrimaryStructureAction}
+                    secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
+                    onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                    note="Make this structure change first. It will make the line-level coaching much easier to trust."
                   />
                   {canShowStructurePlanner && showStructurePlanner && (
                     <div ref={structurePlannerRef}>
@@ -1545,28 +1522,33 @@ export function V2StreamingDisplay({
                       />
                     </div>
                   )}
-                  <BulletCoachingPanel
-                    bulletText={currentIdleCoachTarget!.bulletText}
-                    section={currentIdleCoachTarget!.section}
-                    bulletIndex={currentIdleCoachTarget!.index}
-                    requirements={currentIdleCoachTarget!.requirements}
-                    reviewState={currentIdleCoachTarget!.reviewState}
-                    requirementSource={currentIdleCoachTarget!.requirementSource}
-                    evidenceFound={currentIdleCoachTarget!.evidenceFound}
-                    sourceEvidence={currentIdleCoachTarget!.sourceEvidence}
-                    proofLevel={currentIdleCoachTarget!.proofLevel}
-                    framingGuardrail={currentIdleCoachTarget!.framingGuardrail}
-                    nextBestAction={currentIdleCoachTarget!.nextBestAction}
-                    canRemove={currentIdleCoachTarget!.canRemove}
-                    initialReuseClarificationId={currentIdleCoachTarget!.autoReuseClarificationId}
-                    showCloseButton={false}
-                    gapChat={gapChat!}
-                    chatContext={displayedCoachContext!}
-                    onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
-                    onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
-                    onClose={() => setActiveBullet(null)}
-                    onBulletEnhance={onBulletEnhance}
+                </>
+              )}
+              {!activeBullet && !hasStructureFirstWork && idleCoachNextStep && (
+                <>
+                  <GuidedNextStepCard
+                    title={idleCoachNextStep.title}
+                    reason={idleCoachNextStep.reason}
+                    primaryActionLabel="Open coach"
+                    onPrimaryAction={openDisplayedCoachTargetOnResume}
+                    secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
+                    onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                    note={idleCoachNextStep.note}
                   />
+                  {canShowStructurePlanner && showStructurePlanner && (
+                    <div ref={structurePlannerRef}>
+                      <ResumeStructurePlannerCard
+                        resume={displayResume!}
+                        candidateIntelligence={data.candidateIntelligence}
+                        requirementWorkItems={data.requirementWorkItems}
+                        onMoveSection={onMoveSection!}
+                        onToggleSection={onToggleSection!}
+                        onAddAISection={handleAddAISectionAndOpen}
+                        onAddCustomSection={handleAddCustomSectionAndOpen}
+                        onRemoveCustomSection={onRemoveCustomSection!}
+                      />
+                    </div>
+                  )}
                 </>
               )}
               {displayResume && (
@@ -1600,18 +1582,22 @@ export function V2StreamingDisplay({
             <ResumeEditorLayout
               leftPanel={(() => {
                 const headerTitle = activeBullet
-                  ? `Working in ${activeBullet.locationLabel}`
+                  ? activeBullet.locationLabel
+                  : showDesktopFinalReview
+                    ? 'Final review'
                   : hasStructureFirstWork
                     ? 'Start with the sections'
                     : currentIdleCoachTarget
-                      ? `Work on ${currentIdleCoachTarget.locationLabel}`
+                      ? 'One clear next move'
                       : 'Review the final draft';
                 const headerSummary = activeBullet
-                  ? 'I will show what the job needs here, what we already found, what is still missing, and the wording I recommend next.'
+                  ? 'Use the suggestions below, apply the one that feels true, and then move on.'
+                  : showDesktopFinalReview
+                    ? 'Review the strongest hiring-manager concerns before you export or keep polishing lines.'
                   : hasStructureFirstWork
-                    ? 'Before rewriting, turn sections on or off and move the strongest proof earlier so this resume tells the right story from the start.'
+                    ? 'Make the structure change first so the strongest proof shows up in the right place.'
                     : currentIdleCoachTarget
-                      ? 'I will walk you through the top requirement for this part of the resume and suggest wording you can use right away.'
+                      ? 'Start with the one recommendation that will move this resume forward fastest.'
                       : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
@@ -1625,27 +1611,6 @@ export function V2StreamingDisplay({
                         <p className="text-sm leading-6 text-[var(--text-soft)]">
                           {headerSummary}
                         </p>
-                        {!activeBullet && canShowStructurePlanner && !hasStructureFirstWork && (
-                          <div>
-                            <button
-                              type="button"
-                              onClick={toggleStructurePlanner}
-                              className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-                            >
-                              {showStructurePlanner ? 'Hide sections' : 'Change sections'}
-                            </button>
-                          </div>
-                        )}
-                        {activeBullet?.requirements[0] && (
-                          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-0)] px-3.5 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                              Current requirement
-                            </p>
-                            <p className="mt-1.5 text-sm leading-6 text-[var(--text-strong)]">
-                              {activeBullet.requirements[0]}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -1655,14 +1620,36 @@ export function V2StreamingDisplay({
                           <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
                         </div>
                       )}
-                      {!activeBullet && hasStructureFirstWork && (
+                      {showDesktopFinalReview ? (
+                        <ResumeFinalReviewPanel
+                          hiringManagerResult={hiringManagerResult ?? null}
+                          resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                          isFinalReviewStale={isFinalReviewStale}
+                          isHiringManagerLoading={isHiringManagerLoading}
+                          hiringManagerError={hiringManagerError}
+                          companyName={data.jobIntelligence?.company_name}
+                          jobTitle={data.jobIntelligence?.role_title}
+                          onRequestHiringManagerReview={onRequestHiringManagerReview}
+                          onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
+                          finalReviewChat={finalReviewChat}
+                          buildFinalReviewChatContext={buildFinalReviewChatContext}
+                          resolveConcernTarget={resolveFinalReviewTarget}
+                          onPreviewConcernTarget={onPreviewFinalReviewTarget}
+                          isEditing={isEditing}
+                        />
+                      ) : !activeBullet && hasStructureFirstWork ? (
                         <div className="space-y-4">
-                          <StructureReviewPanel
-                            hiddenRecommendedSections={hiddenRecommendedSections}
-                            missingStructureRecommendations={missingStructureRecommendations}
+                          <GuidedNextStepCard
+                            title={structureNextStep.title}
+                            reason={structureNextStep.reason}
+                            primaryActionLabel={structureNextStep.primaryActionLabel}
+                            onPrimaryAction={handlePrimaryStructureAction}
+                            secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
+                            onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                            note="Make this structure change first. It will make the line-level coaching much easier to trust."
                           />
                           {canShowStructurePlanner && (
-                            <div ref={structurePlannerRef}>
+                            <div ref={structurePlannerRef} className={showStructurePlanner ? '' : 'hidden'}>
                               <ResumeStructurePlannerCard
                                 resume={displayResume!}
                                 candidateIntelligence={data.candidateIntelligence}
@@ -1676,8 +1663,7 @@ export function V2StreamingDisplay({
                             </div>
                           )}
                         </div>
-                      )}
-                      {activeBullet && gapChat && buildChatContext ? (
+                      ) : activeBullet && gapChat && buildChatContext ? (
                         <div ref={coachingPanelRef}>
                           <BulletCoachingPanel
                             bulletText={activeBullet.bulletText}
@@ -1701,16 +1687,16 @@ export function V2StreamingDisplay({
                             onBulletEnhance={onBulletEnhance}
                           />
                         </div>
-                      ) : !activeBullet && !hasStructureFirstWork && canRenderCoach ? (
+                      ) : !activeBullet && !hasStructureFirstWork && idleCoachNextStep ? (
                         <div className="space-y-4">
-                          <CoachNavigatorCard
-                            target={currentIdleCoachTarget!}
-                            total={idleCoachTargets.length}
-                            onPrevious={handlePreviousCoachTarget}
-                            onNext={handleNextCoachTarget}
-                            onShowOnResume={openDisplayedCoachTargetOnResume}
-                            onToggleStructurePlanner={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                            showStructurePlanner={showStructurePlanner}
+                          <GuidedNextStepCard
+                            title={idleCoachNextStep!.title}
+                            reason={idleCoachNextStep!.reason}
+                            primaryActionLabel="Open coach"
+                            onPrimaryAction={openDisplayedCoachTargetOnResume}
+                            secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
+                            onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
+                            note={idleCoachNextStep!.note}
                           />
                           {canShowStructurePlanner && showStructurePlanner && (
                             <div ref={structurePlannerRef}>
@@ -1726,30 +1712,6 @@ export function V2StreamingDisplay({
                               />
                             </div>
                           )}
-                          <div ref={coachingPanelRef}>
-                            <BulletCoachingPanel
-                              bulletText={currentIdleCoachTarget!.bulletText}
-                              section={currentIdleCoachTarget!.section}
-                              bulletIndex={currentIdleCoachTarget!.index}
-                              requirements={currentIdleCoachTarget!.requirements}
-                              reviewState={currentIdleCoachTarget!.reviewState}
-                              requirementSource={currentIdleCoachTarget!.requirementSource}
-                              evidenceFound={currentIdleCoachTarget!.evidenceFound}
-                              sourceEvidence={currentIdleCoachTarget!.sourceEvidence}
-                              proofLevel={currentIdleCoachTarget!.proofLevel}
-                              framingGuardrail={currentIdleCoachTarget!.framingGuardrail}
-                              nextBestAction={currentIdleCoachTarget!.nextBestAction}
-                              canRemove={currentIdleCoachTarget!.canRemove}
-                              initialReuseClarificationId={currentIdleCoachTarget!.autoReuseClarificationId}
-                              showCloseButton={false}
-                              gapChat={gapChat!}
-                              chatContext={displayedCoachContext!}
-                              onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
-                              onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
-                              onClose={() => setActiveBullet(null)}
-                              onBulletEnhance={onBulletEnhance}
-                            />
-                          </div>
                         </div>
                       ) : (
                         <div className="space-y-4">

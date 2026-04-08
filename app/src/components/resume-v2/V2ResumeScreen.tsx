@@ -1909,10 +1909,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     );
   }
 
-  // Display score — live score overrides pipeline score
-  const displayAtsScore = postReviewPolish.result?.ats_score ?? liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? null;
-  const displayTruthScore = data.assembly?.scores.truth ?? null;
-  const displayToneScore = postReviewPolish.result?.tone_score ?? data.assembly?.scores.tone ?? null;
   const gapChatSnapshotForDisplay = isComplete ? gapChatSnapshot : null;
   const finalReviewChatSnapshotForDisplay = isComplete ? finalReviewChatSnapshot : null;
 
@@ -1944,39 +1940,23 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
         <span className="text-xs text-[var(--text-soft)] shrink-0">{stepLabel}</span>
 
-        {/* Live scores + DOCX download in header */}
-        {isComplete && (displayAtsScore !== null || currentResume) && (
+        {/* DOCX download in header */}
+        {isComplete && currentResume && (
           <div className="ml-auto flex items-center gap-3 text-xs">
-            {displayAtsScore !== null && (
-              <>
-                <div className="flex items-center gap-1">
-                  {isScoring && <Loader2 className="h-3 w-3 text-[var(--text-soft)] motion-safe:animate-spin" />}
-                  <span className="text-[var(--badge-blue-text)]">Resume Match: {displayAtsScore}%</span>
-                </div>
-                {displayTruthScore !== null && (
-                  <span className="text-[var(--badge-green-text)]">Accuracy: {displayTruthScore}%</span>
-                )}
-                {displayToneScore !== null && (
-                  <span className="text-[var(--badge-amber-text)]">Tone: {displayToneScore}%</span>
-                )}
-              </>
-            )}
-            {currentResume && (
-              <GlassButton
-                variant="ghost"
-                size="sm"
-                onClick={handleTopBarDocx}
-                disabled={isExportingDocx}
-                aria-busy={isExportingDocx}
-                aria-label="Download resume as DOCX"
-                className="gap-1 text-xs"
-              >
-                {isExportingDocx
-                  ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" />
-                  : <FileDown className="h-3.5 w-3.5" />}
-                DOCX
-              </GlassButton>
-            )}
+            <GlassButton
+              variant="ghost"
+              size="sm"
+              onClick={handleTopBarDocx}
+              disabled={isExportingDocx}
+              aria-busy={isExportingDocx}
+              aria-label="Download resume as DOCX"
+              className="gap-1 text-xs"
+            >
+              {isExportingDocx
+                ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" />
+                : <FileDown className="h-3.5 w-3.5" />}
+              DOCX
+            </GlassButton>
           </div>
         )}
       </div>

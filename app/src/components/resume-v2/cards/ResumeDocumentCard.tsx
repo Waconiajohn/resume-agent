@@ -11,7 +11,6 @@ import type {
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
-import { REVIEW_STATE_DISPLAY } from '../utils/review-state-labels';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -132,9 +131,6 @@ export function ResumeDocumentCard({
           <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
             <Pencil className="h-3.5 w-3.5 text-gray-400" />
           </span>
-          {activeBullet?.section === 'executive_summary' && activeBullet.index === 0 && (
-            <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
-          )}
         </div>
       ) : (
         <p className="resume-document-copy text-sm leading-relaxed text-gray-800">
@@ -253,7 +249,6 @@ export function ResumeDocumentCard({
                   workItemId={a.work_item_id}
                   proofLevel={a.proof_level}
                   nextBestAction={a.next_best_action}
-                  isActive={isActive}
                   onBulletClick={onBulletClick}
                 />
               </li>
@@ -334,7 +329,6 @@ export function ResumeDocumentCard({
                         workItemId={bullet.work_item_id}
                         proofLevel={bullet.proof_level}
                         nextBestAction={bullet.next_best_action}
-                        isActive={isActive}
                         onBulletClick={onBulletClick}
                       />
                     </li>
@@ -456,9 +450,6 @@ export function ResumeDocumentCard({
               <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
               </span>
-              {activeBullet?.section === customSectionKey && activeBullet.index === -1 && (
-                <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
-              )}
             </div>
           ) : (
             <p className="resume-document-copy mb-2 text-sm leading-relaxed text-gray-700">{summaryText}</p>
@@ -520,9 +511,6 @@ export function ResumeDocumentCard({
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Pencil className="h-3.5 w-3.5 text-gray-400" />
                   </span>
-                  {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                    <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
-                  )}
                 </div>
               ) : (
                 <p key={index} className="resume-document-copy text-sm leading-relaxed text-gray-800">{line}</p>
@@ -584,9 +572,6 @@ export function ResumeDocumentCard({
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Pencil className="h-3.5 w-3.5 text-gray-400" />
                         </span>
-                        {activeBullet?.section === customSectionKey && activeBullet.index === index && (
-                          <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
-                        )}
                       </div>
                     ) : (
                       <span className="resume-document-copy">{line}</span>
@@ -655,8 +640,6 @@ interface BulletLineContentProps {
   workItemId?: string;
   proofLevel?: ProofLevel;
   nextBestAction?: NextBestAction;
-  /** Whether this bullet is currently selected for editing in the left panel. */
-  isActive?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
   onBulletClick?: (
     text: string,
@@ -687,12 +670,9 @@ function BulletLineContent({
   workItemId,
   proofLevel,
   nextBestAction,
-  isActive = false,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
-  const statusMeta = getConfidencePill(resolvedReviewState, requirementSource);
-  const sourceLabel = getConfidenceSourceLabel(resolvedReviewState, requirementSource);
   const isClickable = !!onBulletClick;
 
   const handleActivate = () => {
@@ -703,19 +683,6 @@ function BulletLineContent({
 
   return (
     <span className="block">
-      {statusMeta ? (
-        <span className="resume-proof-meta-row mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={statusMeta.className}>{statusMeta.label}</span>
-          {sourceLabel ? (
-            <>
-              <span aria-hidden="true" className="text-gray-300">/</span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-gray-500">
-                {sourceLabel}
-              </span>
-            </>
-          ) : null}
-        </span>
-      ) : null}
       {isClickable ? (
         <span className="group flex items-start gap-1">
           <span
@@ -752,9 +719,6 @@ function BulletLineContent({
           {text}
         </span>
       )}
-      {isActive && (
-        <span className="resume-line-active-note mt-2 inline-flex">Active in coach</span>
-      )}
     </span>
   );
 }
@@ -771,10 +735,6 @@ function resolveReviewState(
   if (confidence === 'needs_validation') return 'code_red';
   if (confidence === 'partial') return 'strengthen';
   return 'supported';
-}
-
-function isResolvedReviewState(reviewState: ResumeReviewState): boolean {
-  return reviewState === 'supported' || reviewState === 'supported_rewrite';
 }
 
 function getConfidenceLineClass(
@@ -796,45 +756,6 @@ function getConfidenceLineClass(
     default:
       return '';
   }
-}
-
-function getConfidencePill(
-  reviewState: ResumeReviewState,
-  requirementSource?: RequirementSource,
-): { label: string; className: string } | null {
-  if (reviewState === 'strengthen') {
-    return {
-      label: REVIEW_STATE_DISPLAY.strengthen.label,
-      className:
-        'resume-proof-meta-label resume-proof-meta-label--partial',
-    };
-  }
-
-  if (reviewState === 'confirm_fit' || (reviewState === 'code_red' && requirementSource === 'benchmark')) {
-    return {
-      label: REVIEW_STATE_DISPLAY.confirm_fit.label,
-      className:
-        'resume-proof-meta-label resume-proof-meta-label--benchmark',
-    };
-  }
-
-  if (reviewState === 'code_red') {
-    return {
-      label: REVIEW_STATE_DISPLAY.code_red.label,
-      className:
-        'resume-proof-meta-label resume-proof-meta-label--code-red',
-    };
-  }
-
-  return null;
-}
-
-function getConfidenceSourceLabel(
-  reviewState: ResumeReviewState,
-  requirementSource?: RequirementSource,
-): string | null {
-  if (isResolvedReviewState(reviewState)) return null;
-  return requirementSource === 'benchmark' ? 'Benchmark Signal' : 'Job Need';
 }
 
 function normalizeRequirementKey(value: string): string {

@@ -639,7 +639,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByTestId('attention-review-strip')).not.toBeInTheDocument();
   });
 
-  it('lets the user step through the new coach queue and open the current area on the resume', async () => {
+  it('shows one recommended next move and opens the current area on the resume', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -672,13 +672,12 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Area 1 of 4/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bullet-coaching-panel')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Next area' })[0]);
-    expect(screen.getAllByText('Working in Core Competencies').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Show on resume' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -686,8 +685,8 @@ describe('V2StreamingDisplay — layout modes', () => {
       evidenceFound: string;
       requirementSource?: string;
     };
-    expect(lastCall.bulletText).toBe('Team Leadership');
-    expect(lastCall.evidenceFound).toBe('Team Leadership');
+    expect(lastCall.bulletText).toBe('Seasoned engineering leader driving outcomes at scale.');
+    expect(lastCall.evidenceFound).toBe('Seasoned engineering leader driving outcomes at scale.');
     expect(lastCall.requirementSource).toBeUndefined();
   });
 
@@ -814,7 +813,8 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
 
     expect(screen.getAllByText('Resume Coach').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('One clear next move').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Area 1 of \d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish AI Highlights/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish Transformation Highlights/i)).not.toBeInTheDocument();
@@ -1192,7 +1192,8 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Working in Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
 
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       section: string;
@@ -1279,10 +1280,9 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Structure First').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Fix the sections before rewriting lines/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Selected Projects/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText('Start Here')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Add Selected Projects/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Fix the sections before rewriting lines/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Section Polish')).not.toBeInTheDocument();
   });
 
@@ -1338,6 +1338,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       section: string;
       reviewState: string;
@@ -1440,6 +1441,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       chatContext: {
         priorClarifications?: Array<{ id: string; topic: string; userInput: string }>;
@@ -1525,6 +1527,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     expect(screen.queryByText('One Good Answer')).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       chatContext: {
         priorClarifications?: Array<{ id: string }>;
