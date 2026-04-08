@@ -36,6 +36,15 @@ import type {
 } from '../types.js';
 
 const loggedFuzzyExperienceFramingMatches = new Set<string>();
+const BRACKET_PLACEHOLDER_PATTERN = /\[[^\]]{2,80}\]\s*:?\s*/g;
+const PROMPT_EXAMPLE_LEAKAGE_MARKERS = [
+  'eagle ford shale',
+  'delaware basin',
+  'bha failures',
+  'insulated drill pipe',
+  'drilling fluid program',
+  'well completions',
+];
 const PROOF_SIGNAL_STOPWORDS = new Set([
   'about',
   'across',
@@ -471,6 +480,7 @@ export async function runResumeWriter(
     selectedAccomplishmentTargets,
   );
   parsed = applySectionPlanning(parsed, input.candidate, input.gap_analysis);
+  parsed = sanitizeDraftForDisplay(parsed, input);
 
   // Log review-state distribution summary
   const reviewStateCounts = {
@@ -506,6 +516,121 @@ export async function runResumeWriter(
 
 
   return parsed;
+}
+
+function sanitizeDraftForDisplay(
+  draft: ResumeDraftOutput,
+  input: ResumeWriterInput,
+): ResumeDraftOutput {
+  const sourceCorpus = buildDraftSafetySourceCorpus(input);
+  const fallback = buildDeterministicResumeDraft(input);
+  let sanitizedFieldCount = 0;
+
+  const sanitizeField = (value: string, fallbackValue: string): string => {
+    const stripped = value.replace(BRACKET_PLACEHOLDER_PATTERN, '').replace(/\s+/g, ' ').trim();
+    if (!stripped) {
+      if (value.trim()) sanitizedFieldCount += 1;
+      return fallbackValue;
+    }
+    if (containsPromptExampleLeakage(stripped, sourceCorpus)) {
+      sanitizedFieldCount += 1;
+      return fallbackValue;
+    }
+    if (stripped !== value.trim()) {
+      sanitizedFieldCount += 1;
+    }
+    return stripped;
+  };
+
+  const sanitized: ResumeDraftOutput = {
+    ...draft,
+    executive_summary: {
+      ...draft.executive_summary,
+      content: sanitizeField(
+        draft.executive_summary.content,
+        fallback.executive_summary.content,
+      ),
+    },
+    core_competencies: draft.core_competencies
+      .map((item, index) => sanitizeField(item, fallback.core_competencies[index] ?? item))
+      .filter((item) => item.length > 0),
+    selected_accomplishments: draft.selected_accomplishments.map((item, index) => ({
+      ...item,
+      content: sanitizeField(
+        item.content,
+        fallback.selected_accomplishments[index]?.content ?? item.content,
+      ),
+    })),
+    professional_experience: draft.professional_experience.map((experience, experienceIndex) => ({
+      ...experience,
+      scope_statement: sanitizeField(
+        experience.scope_statement,
+        fallback.professional_experience[experienceIndex]?.scope_statement ?? experience.scope_statement,
+      ),
+      bullets: experience.bullets.map((bullet, bulletIndex) => ({
+        ...bullet,
+        text: sanitizeField(
+          bullet.text,
+          fallback.professional_experience[experienceIndex]?.bullets[bulletIndex]?.text ?? bullet.text,
+        ),
+      })),
+    })),
+    custom_sections: draft.custom_sections?.map((section) => ({
+      ...section,
+      summary: section.summary
+        ? sanitizeField(section.summary, section.summary.replace(BRACKET_PLACEHOLDER_PATTERN, '').trim())
+        : section.summary,
+      lines: section.lines
+        .map((line) => sanitizeField(line, line.replace(BRACKET_PLACEHOLDER_PATTERN, '').trim()))
+        .filter((line) => line.length > 0),
+    })),
+  };
+
+  if (sanitizedFieldCount > 0) {
+    logger.warn(
+      { sanitizedFieldCount },
+      'Resume Writer: sanitized placeholder/example leakage from draft before returning it to the client',
+    );
+  }
+
+  return sanitized;
+}
+
+function buildDraftSafetySourceCorpus(input: ResumeWriterInput): string {
+  return [
+    input.candidate.raw_text,
+    input.candidate.contact.name,
+    input.candidate.contact.email,
+    input.candidate.contact.phone,
+    input.candidate.contact.linkedin,
+    input.candidate.contact.location,
+    input.candidate.leadership_scope,
+    input.candidate.operational_scale,
+    ...(input.candidate.career_themes ?? []),
+    ...(input.candidate.industry_depth ?? []),
+    ...(input.candidate.technologies ?? []),
+    ...(input.candidate.hidden_accomplishments ?? []),
+    ...getAuthoritativeSourceExperience(input.candidate).flatMap((experience) => [
+      experience.company,
+      experience.title,
+      experience.start_date,
+      experience.end_date,
+      ...(experience.bullets ?? []),
+    ]),
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join('\n')
+    .toLowerCase();
+}
+
+function containsPromptExampleLeakage(
+  text: string,
+  sourceCorpus: string,
+): boolean {
+  const normalized = text.toLowerCase();
+  return PROMPT_EXAMPLE_LEAKAGE_MARKERS.some((marker) => (
+    normalized.includes(marker) && !sourceCorpus.includes(marker)
+  ));
 }
 
 /**

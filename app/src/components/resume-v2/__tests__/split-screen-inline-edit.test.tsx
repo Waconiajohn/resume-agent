@@ -596,11 +596,11 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
     const resumeBullets = await screen.findAllByText(/Reduced deploy time by 60%/i);
     expect(resumeBullets.length).toBeGreaterThan(0);
-    const fullScoringReportButton = screen.getByRole('button', { name: /Full Scoring Report/i });
+    const fullScoringReportButtons = screen.getAllByRole('button', { name: /Full Scoring Report|See full scoring report/i });
     expect(screen.getByText('Resume Score')).toBeInTheDocument();
     expect(screen.getByText('Do this next')).toBeInTheDocument();
     expect(screen.getByText(/Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export\./i)).toBeInTheDocument();
-    expect(fullScoringReportButton).toBeInTheDocument();
+    expect(fullScoringReportButtons.length).toBeGreaterThan(0);
     expect(screen.queryByText('Original ATS Match')).not.toBeInTheDocument();
     expect(screen.queryByText('On-Paper Fit Score')).not.toBeInTheDocument();
     expect(screen.queryByText('What improved')).not.toBeInTheDocument();
@@ -641,7 +641,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(within(strip).getByText('Review Attention Lines')).toBeInTheDocument();
     expect(within(strip).getByText('1 of 2')).toBeInTheDocument();
     expect(within(strip).getByText(/2 lines still need attention\. click a bullet on the resume to review it here\./i)).toBeInTheDocument();
-    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp and review the bullet marked 'needs proof'\./i)).toBeInTheDocument();
+    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp\. We are strengthening "Product delivery"\. Open this line and let the coach suggest the cleanest truthful version\./i)).toBeInTheDocument();
     expect(within(strip).getByText('Needs proof')).toBeInTheDocument();
     expect(within(strip).getByText('VP Engineering · Acme Corp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Jump to bullet' })).toBeInTheDocument();
@@ -1558,8 +1558,8 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     const strip = await screen.findByTestId('attention-review-strip');
-    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp and reuse an earlier confirmed answer\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Start in VP Engineering · Acme Corp and reuse an earlier confirmed answer\./i).length).toBeGreaterThan(0);
+    expect(within(strip).getByText(/Next best action: Start in VP Engineering · Acme Corp\. We already have useful proof for "Product delivery" from an earlier answer\./i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Start in VP Engineering · Acme Corp\. We already have useful proof for "Product delivery" from an earlier answer\./i).length).toBeGreaterThan(0);
   });
 
   it('shows the PipelineProgressCard for each pipeline stage', () => {

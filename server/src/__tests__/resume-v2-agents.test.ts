@@ -3737,6 +3737,41 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.header.phone).toBe('555-0100');
     });
 
+    it('strips bracket-style placeholder labels from the returned draft', async () => {
+      const placeholderDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          ...RESUME_DRAFT_OUTPUT.executive_summary,
+          content: '[Scale and scope of experience]: Executive product leader driving measurable growth across complex organizations.',
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(placeholderDraft);
+
+      const result = await runResumeWriter(input);
+
+      expect(result.executive_summary.content).not.toContain('[Scale and scope of experience]');
+      expect(result.executive_summary.content).toContain('Executive product leader driving measurable growth across complex organizations.');
+    });
+
+    it('replaces prompt-example leakage with deterministic fallback text', async () => {
+      const contaminatedDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          ...RESUME_DRAFT_OUTPUT.executive_summary,
+          content: 'Directed multi-site operations spanning 3 regions and 40+ team members across the Delaware Basin and Eagle Ford Shale.',
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(contaminatedDraft);
+
+      const result = await runResumeWriter(input);
+
+      expect(result.executive_summary.content).not.toContain('Eagle Ford Shale');
+      expect(result.executive_summary.content).not.toContain('Delaware Basin');
+      expect(result.executive_summary.content).toContain(input.candidate.leadership_scope);
+    });
+
     it('includes gap positioning map in user message when provided', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
       mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);

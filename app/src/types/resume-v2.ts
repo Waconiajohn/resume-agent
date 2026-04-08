@@ -591,6 +591,8 @@ export interface GapChatContext {
   currentStrategy?: string;
   aiReasoning?: string;
   inferredMetric?: string;
+  recommendedBullet?: string;
+  missingDetail?: string;
   jobDescriptionExcerpt: string;
   candidateExperienceSummary: string;
   coachingPolicy?: RequirementCoachingPolicySnapshot;

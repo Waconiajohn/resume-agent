@@ -449,6 +449,59 @@ function describeNextBestAction(action: NextBestAction | undefined, lineLabel: s
   }
 }
 
+function summarizeEvidencePreview(text: string | undefined): string {
+  const trimmed = text?.trim();
+  if (!trimmed) return 'We still need stronger proof from the resume or interview.';
+  return truncatePreview(trimmed, 140);
+}
+
+function describeMissingPlain(args: {
+  nextBestAction?: NextBestAction;
+  reviewState: ResumeReviewState;
+}): string {
+  const { nextBestAction, reviewState } = args;
+  switch (nextBestAction) {
+    case 'answer':
+      return 'One concrete detail, example, or number before this line is safe to keep.';
+    case 'quantify':
+      return 'A metric, budget, team size, timeline, or business result.';
+    case 'confirm':
+      return 'A safer version of the claim unless the strongest wording is definitely true.';
+    case 'tighten':
+      return 'A cleaner, sharper connection to what the job is asking for.';
+    case 'accept':
+      return 'Nothing major. This line may already be okay.';
+    case 'remove':
+      return 'A truthful reason to keep this line. If not, it should come out.';
+    default:
+      break;
+  }
+
+  if (reviewState === 'code_red') return 'A real proof point before this line is safe.';
+  if (reviewState === 'confirm_fit') return 'A safer way to phrase the claim.';
+  if (reviewState === 'strengthen') return 'A clearer scope marker, impact statement, or stronger wording.';
+  return 'A quick polish pass.';
+}
+
+function describeRecommendationPlain(item: AttentionReviewItem): string {
+  switch (item.nextBestAction) {
+    case 'answer':
+      return 'Open this line, answer one quick question, and then use the suggested rewrite.';
+    case 'quantify':
+      return 'Open this line and add one defensible number or scope marker.';
+    case 'confirm':
+      return 'Open this line and use the safer wording unless the stronger claim is fully true.';
+    case 'tighten':
+      return 'Open this line and use the stronger suggested version.';
+    case 'accept':
+      return 'Open this line, confirm it reads honestly, and move on if it does.';
+    case 'remove':
+      return 'Open this line and remove it if it does not hold up.';
+    default:
+      return 'Open this line and let the coach suggest the cleanest truthful version.';
+  }
+}
+
 function buildSectionCoachTargets(
   resume: ResumeDraft,
   workItems: NonNullable<V2PipelineData['requirementWorkItems']>,
@@ -1109,25 +1162,44 @@ function DesktopPriorityLineCard({
   onOpen: () => void;
   onNext: () => void;
 }) {
+  const primaryRequirement = item.requirements[0] ?? 'Strengthen this line for the job';
+  const missingSummary = describeMissingPlain({
+    nextBestAction: item.nextBestAction,
+    reviewState: item.reviewState,
+  });
+  const recommendation = describeRecommendationPlain(item);
+
   return (
     <div className="resume-guide-queue-card">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
-            Next priority line
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-soft)]">
-            {index + 1} of {total} flagged {total === 1 ? 'line' : 'lines'}
-          </p>
-        </div>
-        <span className={item.statusClassName}>{item.statusLabel}</span>
-      </div>
-
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
+        Start here
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-relaxed text-[var(--text-strong)]">
+        {primaryRequirement}
+      </p>
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        Where this shows up
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
         {item.locationLabel}
       </p>
-      <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-strong)]">
-        {item.text}
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        What I found already
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+        {summarizeEvidencePreview(item.evidenceFound || item.text)}
+      </p>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        What is still missing
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+        {missingSummary}
+      </p>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+        What I recommend
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--text-strong)]">
+        {recommendation}
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -1136,7 +1208,7 @@ function DesktopPriorityLineCard({
           onClick={onOpen}
           className="rounded-lg bg-[var(--accent-muted)] px-3.5 py-2 text-xs font-semibold text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-0)]"
         >
-          Open this line
+          Work on this line
         </button>
         {total > 1 && (
           <button
@@ -1144,7 +1216,7 @@ function DesktopPriorityLineCard({
             onClick={onNext}
             className="rounded-lg border border-[var(--line-soft)] px-3.5 py-2 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
           >
-            Show next line
+            Show another line
           </button>
         )}
       </div>
@@ -1689,20 +1761,16 @@ export function V2StreamingDisplay({
   const compactAttentionNextAction = useMemo(() => {
     const topItem = attentionItems[0];
     if (!topItem) return undefined;
+    const primaryRequirement = topItem.requirements[0];
     if (rememberedAttentionItemIds.has(topItem.id)) {
-      return `Start in ${topItem.locationLabel} and reuse an earlier confirmed answer.`;
+      return primaryRequirement
+        ? `Start in ${topItem.locationLabel}. We already have useful proof for "${primaryRequirement}" from an earlier answer.`
+        : `Start in ${topItem.locationLabel}. We already have useful proof from an earlier answer.`;
     }
-    const nextAction = topItem.nextBestAction
-      ? ({
-          accept: 'leave it as is',
-          tighten: 'tighten the wording',
-          quantify: 'add scope or a metric',
-          confirm: 'confirm the fit honestly',
-          answer: 'answer the missing question',
-          remove: 'remove it if it is not true',
-        } satisfies Record<NextBestAction, string>)[topItem.nextBestAction]
-      : `review the bullet marked '${topItem.statusLabel.toLowerCase()}'`;
-    return `Start in ${topItem.locationLabel} and ${nextAction}.`;
+    const nextAction = describeRecommendationPlain(topItem);
+    return primaryRequirement
+      ? `Start in ${topItem.locationLabel}. We are strengthening "${primaryRequirement}". ${nextAction}`
+      : `Start in ${topItem.locationLabel}. ${nextAction}`;
   }, [attentionItems, rememberedAttentionItemIds]);
   const mobileNextActionSummary = compactAttentionNextAction
     ?? 'Run final review on this resume to catch any last hiring-manager, ATS, or credibility issues before export.';
@@ -2044,37 +2112,35 @@ export function V2StreamingDisplay({
                       {(() => {
                         const flaggedCount = attentionItems.length;
                         const leftRailHeadline = activeBullet
-                          ? 'Work this line to a stronger finish'
+                          ? `Working in ${chatContextLabelForSection(activeBullet.section)}`
                           : hasStructureFirstWork
-                            ? 'Start with the structure'
+                            ? 'Start with the sections'
                             : flaggedCount > 0
-                              ? 'Work through the next best moves'
-                              : 'The draft is ready for final polish';
+                              ? 'We will fix the biggest job needs one by one'
+                              : 'Your draft is ready for the final polish';
                         const leftRailSummary = activeBullet
-                          ? 'Use the coach to tighten the wording, add proof, or confirm the safest truthful version.'
-                          : compactAttentionNextAction
-                            ?? 'Review the remaining high-impact edits before export.';
+                          ? 'I will show what the job needs, what I found, what is still missing, and the best wording to use.'
+                          : hasStructureFirstWork
+                            ? 'Turn on, remove, or reorder the sections that will help this role most before changing lines.'
+                            : flaggedCount > 0
+                              ? 'Open the next line and I will help you strengthen it in plain English.'
+                              : 'Use the coach only if you want to tighten a line before export.';
 
                         return (
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <p className="eyebrow-label">Resume Guide</p>
+                              <p className="eyebrow-label">Requirement Coach</p>
                               <div className="flex flex-wrap items-end justify-between gap-3">
-                                <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-                                  <p className="text-base font-semibold text-[var(--text-strong)]">
-                                    {leftRailHeadline}
-                                  </p>
-                                  <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                    Resume score {keywordMatchPercent}%
-                                  </span>
-                                </div>
+                                <p className="text-base font-semibold text-[var(--text-strong)]">
+                                  {leftRailHeadline}
+                                </p>
                                 {!activeBullet && data.preScores && data.assembly && (
                                   <button
                                     type="button"
                                     onClick={() => setShowDesktopScoringDetails((current) => !current)}
                                     className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
                                   >
-                                    {showDesktopScoringDetails ? 'Hide scoring details' : 'View scoring details'}
+                                    {showDesktopScoringDetails ? 'Hide full scoring report' : 'See full scoring report'}
                                   </button>
                                 )}
                               </div>
@@ -2083,38 +2149,10 @@ export function V2StreamingDisplay({
                               </p>
                             </div>
 
-                            {activeBullet ? (
-                              <div className="flex flex-wrap gap-2">
-                                <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  Match {keywordMatchPercent}%
-                                </span>
-                                {flaggedCount > 0 && (
-                                  <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                    {flaggedCount} open {flaggedCount === 1 ? 'line' : 'lines'}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="resume-guide-metric-row">
-                                <div className="resume-guide-metric-pill">
-                                  <span className="resume-guide-metric-pill__label">Matched</span>
-                                  <span className="resume-guide-metric-pill__value">{keywordPhrasesFound.length}</span>
-                                </div>
-                                <div className="resume-guide-metric-pill">
-                                  <span className="resume-guide-metric-pill__label">Still light</span>
-                                  <span className="resume-guide-metric-pill__value">{keywordPhrasesMissing.length}</span>
-                                </div>
-                                <div className="resume-guide-metric-pill">
-                                  <span className="resume-guide-metric-pill__label">Role coverage</span>
-                                  <span className="resume-guide-metric-pill__value">{Math.round(jobBreakdown.coverage_score)}%</span>
-                                </div>
-                              </div>
-                            )}
-
                             <div className="flex flex-wrap gap-2">
-                              {flaggedCount > 0 && !activeBullet && (
+                              {flaggedCount > 0 && (
                                 <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  {flaggedCount} {flaggedCount === 1 ? 'line to review' : 'lines to review'}
+                                  {flaggedCount} {flaggedCount === 1 ? 'line still needs work' : 'lines still need work'}
                                 </span>
                               )}
                               {hasStructureFirstWork && !activeBullet && (
@@ -2122,9 +2160,9 @@ export function V2StreamingDisplay({
                                   Structure first
                                 </span>
                               )}
-                              {keywordPhrasesMissing.length > 0 && !activeBullet && (
+                              {activeBullet?.requirements[0] && (
                                 <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                                  Missing: {keywordPhrasesMissing.slice(0, 2).join(', ')}
+                                  Fixing: {truncatePreview(activeBullet.requirements[0], 58)}
                                 </span>
                               )}
                             </div>
@@ -2137,7 +2175,7 @@ export function V2StreamingDisplay({
                                 <p className="resume-guide-focus-card__title">{activeLinePreview}</p>
                                 {activeLineContext && (
                                   <p className="resume-guide-focus-card__body">
-                                    Closest job need: {truncatePreview(activeLineContext, 96)}
+                                    Current requirement: {truncatePreview(activeLineContext, 96)}
                                   </p>
                                 )}
                               </div>

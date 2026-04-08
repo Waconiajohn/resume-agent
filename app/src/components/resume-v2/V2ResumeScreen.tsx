@@ -720,6 +720,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       currentStrategy: lineText || gapReq?.strategy?.positioning,
       aiReasoning: gapReq?.strategy?.ai_reasoning,
       inferredMetric: gapReq?.strategy?.inferred_metric,
+      recommendedBullet: workItem?.recommended_bullet,
+      missingDetail: workItem?.missing_detail ?? workItem?.looking_for,
       coachingPolicy,
       jobDescriptionExcerpt: sourceEvidenceParts.length > 0
         ? sourceEvidenceParts.join('\n')

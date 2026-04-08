@@ -76,7 +76,8 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByText('Show leadership scope')).toBeInTheDocument();
     expect(screen.getByText('Match this role')).toBeInTheDocument();
     expect(screen.getByText('Add business impact')).toBeInTheDocument();
-    expect(screen.getByText('Best first move')).toBeInTheDocument();
+    expect(screen.getByText('What I recommend')).toBeInTheDocument();
+    expect(screen.getByText('Top requirements for this section')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /run opening rewrite/i })).toBeInTheDocument();
   });
 
@@ -107,9 +108,8 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText(/start with this:/i)).toHaveTextContent(
-      'Start with this: What KPI review, scorecard, or operating rhythm did you actually own?',
-    );
+    expect(screen.getAllByText('Quick check').length).toBeGreaterThan(0);
+    expect(screen.getByText('What KPI review, scorecard, or operating rhythm did you actually own?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /answer the question below/i })).toBeInTheDocument();
 
     const textarea = screen.getByLabelText('Provide context about your experience');
@@ -263,12 +263,10 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Confirmed detail you can reuse')).toBeInTheDocument();
-    expect(screen.getByText('Performance metrics • metrics')).toBeInTheDocument();
+    expect(screen.getByText('Already confirmed')).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
-    expect(screen.getByText(/Resume wording used: Built weekly KPI reviews across 3 plants\./i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /rewrite from this answer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /use this answer in the rewrite/i }));
 
     expect(gapChat.sendMessage).toHaveBeenCalledWith(
       'Develop and track performance metrics',

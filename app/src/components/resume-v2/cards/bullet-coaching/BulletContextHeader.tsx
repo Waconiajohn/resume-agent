@@ -1,20 +1,22 @@
 /**
- * BulletContextHeader — compact proof header for the active line.
+ * BulletContextHeader — plain-language requirement summary for the active line.
  *
- * This is the single context block for the coach. It tells the user:
- * - what this line needs to prove
- * - whether that target came from the JD or benchmark
- * - what proof we already have
- * - what kind of move is safest next
+ * The UI here stays intentionally simple:
+ * - top requirements for this section
+ * - the current requirement we are fixing now
+ * - what the app already found
+ * - what is still missing before the line is strong enough
  */
 
 import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource } from '@/types/resume-v2';
 
 export interface BulletContextHeaderProps {
   requirement?: string;
+  requirements?: string[];
   requirementSource?: RequirementSource;
   evidenceFound?: string;
   sourceEvidence?: string;
+  missingSummary?: string;
   reviewState: ResumeReviewState;
   proofLevel?: ProofLevel;
   framingGuardrail?: FramingGuardrail;
@@ -57,72 +59,113 @@ function getStateConfig(reviewState: ResumeReviewState) {
 function getIntroLabel(reviewState: ResumeReviewState): string {
   switch (reviewState) {
     case 'code_red':
-      return 'This line is trying to show';
+      return 'This line is trying to prove';
     default:
       return 'This line needs to show';
   }
 }
 
 function getSourceLabel(source?: RequirementSource): string {
-  if (source === 'benchmark') return 'Benchmark signal';
-  if (source === 'job_description') return 'JD signal';
-  return 'JD signal';
+  if (source === 'benchmark') return 'This is especially important for the benchmark candidate.';
+  return 'This comes straight from the job description.';
 }
 
-function getProofLabel(proofLevel?: ProofLevel, framingGuardrail?: FramingGuardrail): string | null {
-  switch (proofLevel) {
-    case 'direct':
-      return 'Direct proof';
-    case 'adjacent':
-      return framingGuardrail === 'reframe' ? 'Adjacent proof' : 'Related proof';
-    case 'inferable':
-      return 'Inferable proof';
-    case 'none':
-      return 'No proof yet';
+function dedupeRequirements(requirement: string | undefined, requirements: string[] | undefined): string[] {
+  const values = [requirement, ...(requirements ?? [])]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const normalized = value.trim().toLowerCase();
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  }).slice(0, 3);
+}
+
+function getStateLabel(reviewState: ResumeReviewState): string {
+  switch (reviewState) {
+    case 'code_red':
+      return 'Needs one more real detail';
+    case 'confirm_fit':
+      return 'Needs a safer version';
+    case 'strengthen':
+      return 'Can be stronger';
     default:
-      return null;
+      return 'Looks solid';
   }
 }
 
-function getNextActionLabel(nextBestAction?: NextBestAction): string | null {
+function getFallbackMissingSummary(args: {
+  reviewState: ResumeReviewState;
+  proofLevel?: ProofLevel;
+  framingGuardrail?: FramingGuardrail;
+  nextBestAction?: NextBestAction;
+}): string {
+  const { reviewState, proofLevel, framingGuardrail, nextBestAction } = args;
+
   switch (nextBestAction) {
-    case 'accept':
-      return 'Ready to accept';
-    case 'tighten':
-      return 'Sharpen the wording';
-    case 'quantify':
-      return 'Add scope or a metric';
-    case 'confirm':
-      return 'Confirm honest fit';
     case 'answer':
-      return 'Answer one question';
+      return 'One concrete example, number, or scope detail before we can safely strengthen the line.';
+    case 'quantify':
+      return 'A number, budget, team size, timeline, or business result so the impact feels real.';
+    case 'confirm':
+      return 'The safest truthful version of the claim, so the line does not overstate your role.';
+    case 'tighten':
+      return 'A sharper connection between what you did and why this role cares about it.';
+    case 'accept':
+      return 'Nothing critical. We can keep it or make the wording cleaner.';
     case 'remove':
-      return 'Remove if it does not fit';
+      return 'A truthful reason to keep this line. If we cannot support it, it should go.';
     default:
-      return null;
+      break;
   }
+
+  if (reviewState === 'code_red') {
+    return 'A concrete proof point before this line is safe to keep.';
+  }
+  if (reviewState === 'confirm_fit') {
+    return 'A safer way to phrase the claim unless the stronger version is definitely true.';
+  }
+  if (reviewState === 'strengthen') {
+    return 'A clearer business outcome, scope marker, or tighter wording.';
+  }
+  if (proofLevel === 'none') {
+    return 'Direct proof before we make this claim stronger.';
+  }
+  if (proofLevel === 'adjacent' && framingGuardrail === 'reframe') {
+    return 'A cleaner way to connect your related experience to what the job needs.';
+  }
+
+  return 'A little more clarity so the line reads stronger and more specific.';
 }
 
 export function BulletContextHeader({
   requirement,
+  requirements,
   requirementSource,
   evidenceFound,
   sourceEvidence,
+  missingSummary,
   reviewState,
   proofLevel,
   framingGuardrail,
   nextBestAction,
 }: BulletContextHeaderProps) {
-  if (!requirement) return null;
+  const topRequirements = dedupeRequirements(requirement, requirements);
+  if (topRequirements.length === 0) return null;
 
-  const { borderVar, bgVar, colorVar, label } = getStateConfig(reviewState);
+  const { borderVar, bgVar, colorVar } = getStateConfig(reviewState);
   const introLabel = getIntroLabel(reviewState);
+  const currentRequirement = requirement ?? topRequirements[0];
   const sourceLabel = getSourceLabel(requirementSource);
   const trimmedEvidence = evidenceFound?.trim();
   const trimmedSourceEvidence = sourceEvidence?.trim();
-  const proofLabel = getProofLabel(proofLevel, framingGuardrail);
-  const nextActionLabel = getNextActionLabel(nextBestAction);
-  const metaTrail = [sourceLabel, proofLabel, nextActionLabel].filter(Boolean) as string[];
+  const resolvedMissingSummary = missingSummary?.trim() || getFallbackMissingSummary({
+    reviewState,
+    proofLevel,
+    framingGuardrail,
+    nextBestAction,
+  });
 
   return (
     <div
@@ -141,18 +184,40 @@ export function BulletContextHeader({
             border: `1px solid ${borderVar}`,
           }}
         >
-          {label}
+          {getStateLabel(reviewState)}
         </span>
       </div>
 
-      {metaTrail.length > 0 && (
-        <p
-          className="mt-2 text-[10.5px] font-semibold uppercase tracking-[0.15em]"
-          style={{ color: 'var(--text-soft)' }}
-        >
-          {metaTrail.join(' · ')}
+      <div className="mt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+          Top requirements for this section
         </p>
-      )}
+        <ol className="mt-2 space-y-1.5">
+          {topRequirements.map((item, index) => {
+            const isActive = item === currentRequirement;
+            return (
+              <li key={`${item}-${index}`} className="flex items-start gap-2">
+                <span
+                  className="mt-[2px] inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                  style={{
+                    background: isActive ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.6)',
+                    color: isActive ? colorVar : 'var(--text-soft)',
+                    border: `1px solid ${isActive ? borderVar : 'rgba(203, 213, 225, 0.48)'}`,
+                  }}
+                >
+                  {index + 1}
+                </span>
+                <p
+                  className="text-[13px] leading-5"
+                  style={{ color: isActive ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: isActive ? 600 : 500 }}
+                >
+                  {item}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       <div className="mt-3 space-y-2.5">
         <div>
@@ -160,7 +225,7 @@ export function BulletContextHeader({
             {introLabel}
           </p>
           <p className="mt-1.5 text-[15px] leading-6" style={{ color: 'var(--text-strong)' }}>
-            {requirement}
+            {currentRequirement}
           </p>
         </div>
 
@@ -173,10 +238,10 @@ export function BulletContextHeader({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-              Role signal
+              Why this matters for the job
             </p>
             <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
-              &ldquo;{trimmedSourceEvidence}&rdquo;
+              {sourceLabel} &ldquo;{trimmedSourceEvidence}&rdquo;
             </p>
           </div>
         )}
@@ -190,13 +255,28 @@ export function BulletContextHeader({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-              Current proof
+              What I already found
             </p>
             <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
               &ldquo;{trimmedEvidence}&rdquo;
             </p>
           </div>
         )}
+
+        <div
+          className="rounded-xl px-3 py-2"
+          style={{
+            background: 'rgba(255, 255, 255, 0.84)',
+            border: '1px solid rgba(148, 163, 184, 0.14)',
+          }}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+            What is still missing
+          </p>
+          <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
+            {resolvedMissingSummary}
+          </p>
+        </div>
       </div>
     </div>
   );

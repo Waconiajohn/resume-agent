@@ -89,8 +89,8 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         ],
         "alternative_bullets": [
           { "text": "Managed $3.4M payroll budget across 40-person operations team, driving 18% cost reduction through optimized scheduling and vendor renegotiation", "angle": "metric" },
-          { "text": "Directed multi-site operations spanning 3 regions and 40+ team members, standardizing processes across the Delaware Basin and Eagle Ford Shale", "angle": "scope" },
-          { "text": "Transformed field operations efficiency, reducing equipment downtime by 22% and enabling on-time project delivery for 95% of well completions", "angle": "impact" }
+          { "text": "Directed multi-site operations spanning 3 regions and 40+ team members, standardizing processes across distributed field teams", "angle": "scope" },
+          { "text": "Transformed field operations efficiency, reducing downtime by 22% and enabling on-time delivery for 95% of major initiatives", "angle": "impact" }
         ]
       }
     }
