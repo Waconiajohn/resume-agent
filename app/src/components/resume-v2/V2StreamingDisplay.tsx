@@ -1858,10 +1858,10 @@ export function V2StreamingDisplay({
               {attentionItems.length > 0 && (
                 <AttentionReviewStrip items={attentionItems} currentIndex={attentionIndex} nextActionCue={compactAttentionNextAction} onOpenCurrent={() => openAttentionItem(attentionIndex)} onNext={() => openAttentionItem((attentionIndex + 1) % attentionItems.length)} onPrevious={() => openAttentionItem((attentionIndex - 1 + attentionItems.length) % attentionItems.length)} />
               )}
-              {!activeBullet && (
+              {!activeBullet && hasStructureFirstWork && (
                 <GuidedStartCard steps={guidedStartSteps} />
               )}
-              {canShowStructurePlanner && (
+              {canShowStructurePlanner && hasStructureFirstWork && (
                 <div ref={structurePlannerRef}>
                   <ResumeStructurePlannerCard
                     resume={displayResume!}
@@ -1875,7 +1875,6 @@ export function V2StreamingDisplay({
                   />
                 </div>
               )}
-              {renderSecondarySupportPanel()}
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="resume-paper-shell overflow-hidden">
@@ -1883,6 +1882,24 @@ export function V2StreamingDisplay({
                   </div>
                 </AnimatedCard>
               )}
+              {!activeBullet && !hasStructureFirstWork && (
+                <GuidedStartCard steps={guidedStartSteps} />
+              )}
+              {canShowStructurePlanner && !hasStructureFirstWork && (
+                <div ref={structurePlannerRef}>
+                  <ResumeStructurePlannerCard
+                    resume={displayResume!}
+                    candidateIntelligence={data.candidateIntelligence}
+                    requirementWorkItems={data.requirementWorkItems}
+                    onMoveSection={onMoveSection!}
+                    onToggleSection={onToggleSection!}
+                    onAddAISection={handleAddAISectionAndOpen}
+                    onAddCustomSection={handleAddCustomSectionAndOpen}
+                    onRemoveCustomSection={onRemoveCustomSection!}
+                  />
+                </div>
+              )}
+              {!hasStructureFirstWork && renderSecondarySupportPanel()}
               {activeBullet && gapChat && buildChatContext && (
                 <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
@@ -1947,18 +1964,18 @@ export function V2StreamingDisplay({
                               </p>
                             </div>
 
-                            <div className="resume-guide-snapshot-grid">
-                              <div className="resume-guide-snapshot-card">
-                                <p className="resume-guide-snapshot-card__label">Matched phrases</p>
-                                <p className="resume-guide-snapshot-card__value">{keywordPhrasesFound.length}</p>
+                            <div className="resume-guide-metric-row">
+                              <div className="resume-guide-metric-pill">
+                                <span className="resume-guide-metric-pill__label">Matched</span>
+                                <span className="resume-guide-metric-pill__value">{keywordPhrasesFound.length}</span>
                               </div>
-                              <div className="resume-guide-snapshot-card">
-                                <p className="resume-guide-snapshot-card__label">Still light</p>
-                                <p className="resume-guide-snapshot-card__value">{keywordPhrasesMissing.length}</p>
+                              <div className="resume-guide-metric-pill">
+                                <span className="resume-guide-metric-pill__label">Still light</span>
+                                <span className="resume-guide-metric-pill__value">{keywordPhrasesMissing.length}</span>
                               </div>
-                              <div className="resume-guide-snapshot-card">
-                                <p className="resume-guide-snapshot-card__label">Role coverage</p>
-                                <p className="resume-guide-snapshot-card__value">{Math.round(jobBreakdown.coverage_score)}%</p>
+                              <div className="resume-guide-metric-pill">
+                                <span className="resume-guide-metric-pill__label">Role coverage</span>
+                                <span className="resume-guide-metric-pill__value">{Math.round(jobBreakdown.coverage_score)}%</span>
                               </div>
                             </div>
 
