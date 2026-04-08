@@ -110,6 +110,9 @@ vi.mock('@/components/ErrorBoundary', () => ({
 
 vi.mock('@/components/career-iq/CareerProfileContext', () => ({
   CareerProfileProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  useCareerProfile: () => ({
+    dashboardState: 'ready',
+  }),
 }));
 
 vi.mock('@/components/career-iq/CareerIQScreen', () => ({

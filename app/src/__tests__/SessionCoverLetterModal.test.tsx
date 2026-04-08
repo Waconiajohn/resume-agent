@@ -45,8 +45,7 @@ describe('SessionCoverLetterModal', () => {
       onGetSessionCoverLetter: mockFn(() => new Promise(() => {})), // never resolves
     });
     render(<SessionCoverLetterModal {...props} />);
-    // The spinner uses motion-safe:animate-spin. Match by border-t class that's unique to it.
-    const spinner = document.querySelector('.border-t-\\[\\#afc4ff\\]');
+    const spinner = document.querySelector('.motion-safe\\:animate-spin');
     expect(spinner).toBeTruthy();
   });
 

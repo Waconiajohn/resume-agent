@@ -50,7 +50,7 @@ describe('MomentumCard', () => {
     const { container } = render(<MomentumCard summary={SUMMARY_HIGH_STREAK} loading={false} />);
     // The streak number should carry the green class
     const streakNum = screen.getByText('7');
-    expect(streakNum.className).toContain('text-[#b5dec2]');
+    expect(streakNum.className).toContain('text-[var(--badge-green-text)]');
     expect(container).toBeTruthy();
   });
 

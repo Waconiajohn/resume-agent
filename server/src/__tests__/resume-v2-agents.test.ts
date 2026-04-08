@@ -250,6 +250,76 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
   ],
 };
 
+const GAP_ANALYSIS_NORMALIZED_EXPECTATION: GapAnalysisOutput = {
+  ...GAP_ANALYSIS_OUTPUT,
+  requirements: [
+    GAP_ANALYSIS_OUTPUT.requirements[0],
+    {
+      ...GAP_ANALYSIS_OUTPUT.requirements[1],
+      strategy: {
+        ...GAP_ANALYSIS_OUTPUT.requirements[1].strategy!,
+        positioning: 'Led 40-person team at ~$85K average',
+      },
+    },
+  ],
+  requirement_work_items: [
+    {
+      id: 'job_description:cloud architecture',
+      requirement: 'Cloud Architecture',
+      source: 'job_description',
+      source_evidence: undefined,
+      importance: 'must_have',
+      score_domain: 'ats',
+      category: 'core_competency',
+      candidate_evidence: [
+        {
+          text: 'Built cloud platform on AWS',
+          source_type: 'uploaded_resume',
+          source_section: undefined,
+          evidence_strength: 'direct',
+        },
+      ],
+      best_evidence_excerpt: 'Built cloud platform on AWS',
+      proof_level: 'direct',
+      framing_guardrail: 'exact',
+      current_claim_strength: 'supported',
+      recommended_bullet: undefined,
+      target_evidence: 'Built cloud platform on AWS',
+      clarifying_question: undefined,
+      looking_for: undefined,
+      missing_detail: undefined,
+      next_best_action: 'accept',
+    },
+    {
+      id: 'benchmark:budget management',
+      requirement: 'Budget Management',
+      source: 'benchmark',
+      source_evidence: undefined,
+      importance: 'important',
+      score_domain: 'benchmark',
+      category: 'benchmark_achievement',
+      candidate_evidence: [
+        {
+          text: 'Managed $3M payroll',
+          source_type: 'uploaded_resume',
+          source_section: undefined,
+          evidence_strength: 'adjacent',
+        },
+      ],
+      best_evidence_excerpt: 'Managed $3M payroll',
+      proof_level: 'inferable',
+      framing_guardrail: 'soft_inference',
+      current_claim_strength: 'confirm_fit',
+      recommended_bullet: 'Led 40-person team at ~$85K average',
+      target_evidence: 'Managed $3M payroll',
+      clarifying_question: undefined,
+      looking_for: undefined,
+      missing_detail: 'A more specific metric, scope detail, or outcome for Budget Management.',
+      next_best_action: 'quantify',
+    },
+  ],
+};
+
 const NARRATIVE_OUTPUT: NarrativeStrategyOutput = {
   primary_narrative: 'Platform Scale Architect',
   narrative_angle_rationale: 'The role demands platform ownership; candidate has done exactly that.',
@@ -755,19 +825,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runGapAnalysis(input);
 
-      expect(result).toEqual({
-        ...GAP_ANALYSIS_OUTPUT,
-        requirements: [
-          GAP_ANALYSIS_OUTPUT.requirements[0],
-          {
-            ...GAP_ANALYSIS_OUTPUT.requirements[1],
-            strategy: {
-              ...GAP_ANALYSIS_OUTPUT.requirements[1].strategy!,
-              positioning: 'Led 40-person team at ~$85K average',
-            },
-          },
-        ],
-      });
+      expect(result).toEqual(GAP_ANALYSIS_NORMALIZED_EXPECTATION);
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
@@ -781,19 +839,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runGapAnalysis(input);
 
-      expect(result).toEqual({
-        ...GAP_ANALYSIS_OUTPUT,
-        requirements: [
-          GAP_ANALYSIS_OUTPUT.requirements[0],
-          {
-            ...GAP_ANALYSIS_OUTPUT.requirements[1],
-            strategy: {
-              ...GAP_ANALYSIS_OUTPUT.requirements[1].strategy!,
-              positioning: 'Led 40-person team at ~$85K average',
-            },
-          },
-        ],
-      });
+      expect(result).toEqual(GAP_ANALYSIS_NORMALIZED_EXPECTATION);
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 

@@ -102,8 +102,7 @@ describe('CoachingNudgeBar', () => {
     const { container } = render(
       <CoachingNudgeBar nudges={[NUDGE_INACTIVITY]} onDismiss={vi.fn()} />,
     );
-    // The GlassCard wrapper should have the amber border class
-    const card = container.querySelector('.border-\\[\\#f0d99f\\]\\/20');
+    const card = container.querySelector('.border-\\[var\\(--badge-amber-text\\)\\]\\/20');
     expect(card).not.toBeNull();
   });
 
@@ -111,7 +110,7 @@ describe('CoachingNudgeBar', () => {
     const { container } = render(
       <CoachingNudgeBar nudges={[NUDGE_REJECTION]} onDismiss={vi.fn()} />,
     );
-    const card = container.querySelector('.border-\\[\\#98b3ff\\]\\/20');
+    const card = container.querySelector('.border-\\[var\\(--link\\)\\]\\/20');
     expect(card).not.toBeNull();
   });
 
@@ -119,7 +118,7 @@ describe('CoachingNudgeBar', () => {
     const { container } = render(
       <CoachingNudgeBar nudges={[NUDGE_MILESTONE]} onDismiss={vi.fn()} />,
     );
-    const card = container.querySelector('.border-\\[\\#b5dec2\\]\\/20');
+    const card = container.querySelector('.border-\\[var\\(--badge-green-text\\)\\]\\/20');
     expect(card).not.toBeNull();
   });
 

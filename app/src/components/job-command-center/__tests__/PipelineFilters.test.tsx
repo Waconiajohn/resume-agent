@@ -84,7 +84,7 @@ describe('PipelineFilters — stage filter pills', () => {
   it('applies active color class to the currently active stage filter', () => {
     renderFilters({ activeStageFilter: 'applied' });
     const appliedButton = screen.getByText('Applied');
-    expect(appliedButton.className).toContain('text-[#98b3ff]');
+    expect(appliedButton.className).toContain('text-[var(--link)]');
   });
 
   it('applies inactive color class to non-active pills', () => {
@@ -96,6 +96,6 @@ describe('PipelineFilters — stage filter pills', () => {
   it('applies active class to "All" pill when activeStageFilter is "all"', () => {
     renderFilters({ activeStageFilter: 'all' });
     const allButton = screen.getByText('All');
-    expect(allButton.className).toContain('text-[#98b3ff]');
+    expect(allButton.className).toContain('text-[var(--link)]');
   });
 });

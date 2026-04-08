@@ -228,18 +228,22 @@ test.describe('Profile Setup', () => {
     await expect(page.getByRole('button', { name: /Build my CareerIQ profile/i })).toBeVisible();
   });
 
-  test('submit button is disabled without resume and target roles', async ({ page }) => {
+  test('submit button stays disabled until resume detail and target roles meet validation minimums', async ({ page }) => {
     await navigateToProfileSetup(page);
 
     const submit = page.getByRole('button', { name: /Build my CareerIQ profile/i });
     await expect(submit).toBeDisabled();
 
-    // Only resume — still disabled
+    // Short resume text is still disabled because it does not meet the client/server minimum.
     await page.getByLabel(/Resume text/i).fill('Some resume text');
     await expect(submit).toBeDisabled();
 
-    // Add target roles — now enabled
+    // Adding target roles alone is still not enough while resume detail is too short.
     await page.getByLabel(/Target roles/i).fill('VP of Engineering');
+    await expect(submit).toBeDisabled();
+
+    // A sufficiently detailed resume unlocks submit.
+    await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await expect(submit).toBeEnabled();
   });
 

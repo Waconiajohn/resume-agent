@@ -164,8 +164,8 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const impactBadge = screen.getByText(/Impact 80/);
-    expect(impactBadge.className).toContain('text-[#b5dec2]');
-    expect(impactBadge.className).toContain('bg-[#b5dec2]/10');
+    expect(impactBadge.className).toContain('text-[var(--badge-green-text)]');
+    expect(impactBadge.className).toContain('bg-[var(--badge-green-text)]/10');
   });
 
   it('applies yellow color class for scores in range 60–79', () => {
@@ -176,8 +176,8 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const impactBadge = screen.getByText(/Impact 60/);
-    expect(impactBadge.className).toContain('text-[#f0d99f]');
-    expect(impactBadge.className).toContain('bg-[#f0d99f]/10');
+    expect(impactBadge.className).toContain('text-[var(--badge-amber-text)]');
+    expect(impactBadge.className).toContain('bg-[var(--badge-amber-text)]/10');
   });
 
   it('applies red color class for scores < 60', () => {
@@ -200,7 +200,7 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const badge = screen.getByText(/Impact 80/);
-    expect(badge.className).toContain('text-[#b5dec2]');
+    expect(badge.className).toContain('text-[var(--badge-green-text)]');
   });
 
   it('applies yellow at exactly 60 (boundary)', () => {
@@ -211,7 +211,7 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const badge = screen.getByText(/Impact 60/);
-    expect(badge.className).toContain('text-[#f0d99f]');
+    expect(badge.className).toContain('text-[var(--badge-amber-text)]');
   });
 
   it('applies red at 59 (one below yellow boundary)', () => {
@@ -232,10 +232,10 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     render(<ExperienceEntryCard entry={entry} />);
     fireEvent.click(getExpandButton());
 
-    expect(screen.getByText(/Impact 90/).className).toContain('text-[#b5dec2]');
-    expect(screen.getByText(/Metrics 70/).className).toContain('text-[#f0d99f]');
+    expect(screen.getByText(/Impact 90/).className).toContain('text-[var(--badge-green-text)]');
+    expect(screen.getByText(/Metrics 70/).className).toContain('text-[var(--badge-amber-text)]');
     expect(screen.getByText(/Context 40/).className).toContain('text-red-400');
-    expect(screen.getByText(/Keywords 80/).className).toContain('text-[#b5dec2]');
+    expect(screen.getByText(/Keywords 80/).className).toContain('text-[var(--badge-green-text)]');
   });
 });
 

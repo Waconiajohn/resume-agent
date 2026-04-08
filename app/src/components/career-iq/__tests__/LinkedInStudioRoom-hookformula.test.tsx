@@ -275,8 +275,8 @@ describe('LinkedInStudioRoom — hook score badge visibility', () => {
 describe('LinkedInStudioRoom — hook score badge color coding', () => {
   /**
    * The component applies:
-   *   score >= 60  → green  (text-[#b5dec2] bg-[#b5dec2]/10)
-   *   score < 60   → yellow (text-[#f0d99f] bg-[#f0d99f]/10)
+   *   score >= 60  → green  (text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10)
+   *   score < 60   → yellow (text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10)
    *
    * We verify by checking that the badge element carries the correct class.
    */
@@ -285,28 +285,28 @@ describe('LinkedInStudioRoom — hook score badge color coding', () => {
     setPostReviewState({ hookScore: 60 });
     renderWriteTab();
     const badge = screen.getByText('Hook 60');
-    expect(badge.className).toContain('text-[#b5dec2]');
+    expect(badge.className).toContain('text-[var(--badge-green-text)]');
   });
 
   it('hook score badge has green class when score is above 60', () => {
     setPostReviewState({ hookScore: 85 });
     renderWriteTab();
     const badge = screen.getByText('Hook 85');
-    expect(badge.className).toContain('text-[#b5dec2]');
+    expect(badge.className).toContain('text-[var(--badge-green-text)]');
   });
 
   it('hook score badge has yellow class when score is below 60', () => {
     setPostReviewState({ hookScore: 59 });
     renderWriteTab();
     const badge = screen.getByText('Hook 59');
-    expect(badge.className).toContain('text-[#f0d99f]');
+    expect(badge.className).toContain('text-[var(--badge-amber-text)]');
   });
 
   it('hook score badge has yellow class when score is 0', () => {
     setPostReviewState({ hookScore: 0 });
     renderWriteTab();
     const badge = screen.getByText('Hook 0');
-    expect(badge.className).toContain('text-[#f0d99f]');
+    expect(badge.className).toContain('text-[var(--badge-amber-text)]');
   });
 });
 

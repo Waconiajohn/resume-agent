@@ -44,7 +44,7 @@ describe('StageBadge — color classes', () => {
   it('applies blue color class for "researching"', () => {
     render(<StageBadge stage="researching" />);
     const badge = screen.getByText('researching');
-    expect(badge.className).toContain('text-[#98b3ff]');
+    expect(badge.className).toContain('text-[var(--link)]');
   });
 
   it('applies golden color class for "applied"', () => {

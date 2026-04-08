@@ -52,7 +52,7 @@ describe('SessionResumeModal', () => {
       />,
     );
 
-    const spinner = document.querySelector('.border-t-\\[\\#afc4ff\\]');
+    const spinner = document.querySelector('.motion-safe\\:animate-spin');
     expect(spinner).toBeTruthy();
   });
 

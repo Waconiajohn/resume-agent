@@ -95,6 +95,15 @@ describe('useWhyMeStory', () => {
   });
   afterEach(() => cleanup());
 
+  const strongStory = {
+    colleaguesCameForWhat:
+      'I lead complex transformations across product and engineering teams. Over the last 2 years, I cut planning cycle time by 30% while rebuilding team trust.',
+    knownForWhat:
+      'I want to be known for turning strategy into measurable operating rhythm. In my last role, I helped a 120-person org move from reactive execution to quarterly planning with clear ownership.',
+    whyNotMe:
+      'People sometimes assume I am too operational, but that misses the full picture. I pair operating depth with executive communication, and that helped us grow revenue by 18% during a messy transition.',
+  };
+
   async function importHook() {
     // Dynamic import to get fresh module after localStorage is set
     const mod = await import('../../components/career-iq/useWhyMeStory');
@@ -172,15 +181,10 @@ describe('useWhyMeStory', () => {
     expect(result.current.hasStarted).toBe(true);
   });
 
-  it('returns strong state when all fields have >=50 chars', async () => {
-    const longText = 'A'.repeat(50);
+  it('returns strong state when all fields have rich evidence, metrics, and complete thoughts', async () => {
     localStorageMock.setItem(
       'careeriq_why_me_story',
-      JSON.stringify({
-        colleaguesCameForWhat: longText,
-        knownForWhat: longText,
-        whyNotMe: longText,
-      }),
+      JSON.stringify(strongStory),
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
@@ -189,14 +193,9 @@ describe('useWhyMeStory', () => {
   });
 
   it('returns all green signals for complete story', async () => {
-    const longText = 'A'.repeat(50);
     localStorageMock.setItem(
       'careeriq_why_me_story',
-      JSON.stringify({
-        colleaguesCameForWhat: longText,
-        knownForWhat: longText,
-        whyNotMe: longText,
-      }),
+      JSON.stringify(strongStory),
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
@@ -207,14 +206,9 @@ describe('useWhyMeStory', () => {
   });
 
   it('returns isComplete=true for strong state', async () => {
-    const longText = 'A'.repeat(50);
     localStorageMock.setItem(
       'careeriq_why_me_story',
-      JSON.stringify({
-        colleaguesCameForWhat: longText,
-        knownForWhat: longText,
-        whyNotMe: longText,
-      }),
+      JSON.stringify(strongStory),
     );
     const useWhyMeStory = await importHook();
     const { result } = renderHook(() => useWhyMeStory());
@@ -260,36 +254,32 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
-    // 'Career Profile' appears in both the nav button and the CoachBanner phase label
-    expect(screen.getAllByText('Career Profile').length).toBeGreaterThan(0);
+    expect(screen.getByText('Your Profile')).toBeInTheDocument();
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByText('Job Search')).toBeInTheDocument();
     expect(screen.getByText('Interview Prep')).toBeInTheDocument();
   });
 
-  it('disables gated rooms when dashboardState is new-user', () => {
+  it('keeps core rooms available when dashboardState is new-user', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    // Resume Builder is gated
     const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton).toBeDisabled();
+    expect(resumeButton).not.toBeDisabled();
     const homeButton = screen.getByText('Home').closest('button');
     expect(homeButton).not.toBeDisabled();
-    // 'Your Profile' nav button has description 'Your resume, story, and evidence in one place'
-    // which is unique to the nav item
     const profileButton = screen.getByText('Your resume, story, and evidence in one place').closest('button');
     expect(profileButton).not.toBeDisabled();
   });
 
-  it('shows lock icon on gated rooms when new-user', () => {
+  it('does not show lock state on core rooms when dashboardState is new-user', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    // Gated rooms should have title with "Complete your Career Profile to unlock"
     const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton?.getAttribute('title')).toContain('Complete your Career Profile to unlock');
+    expect(resumeButton?.getAttribute('title')).toBeNull();
+    expect(screen.queryByText('Complete your Career Profile to unlock Resume Builder')).not.toBeInTheDocument();
   });
 
   it('enables all rooms when dashboardState is refining', () => {
@@ -319,13 +309,13 @@ describe('Sidebar', () => {
     expect(onNavigate).toHaveBeenCalledWith('resume');
   });
 
-  it('does not call onNavigate when a gated room is clicked', () => {
+  it('still allows navigation to Resume Builder when dashboardState is new-user', () => {
     const onNavigate = vi.fn();
     render(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="new-user" />,
     );
     fireEvent.click(screen.getByText('Resume Builder'));
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledWith('resume');
   });
 });
 

@@ -50,18 +50,18 @@ describe('ScoreBadge — color tiers', () => {
   it('applies blue class for medium score (>=60 and <80)', () => {
     render(<ScoreBadge score={70} />);
     const badge = screen.getByText('70');
-    expect(badge.className).toContain('text-[#98b3ff]');
-    expect(badge.className).toContain('bg-[#98b3ff]/10');
+    expect(badge.className).toContain('text-[var(--link)]');
+    expect(badge.className).toContain('bg-[var(--link)]/10');
   });
 
   it('applies blue class at exactly 60 (boundary)', () => {
     render(<ScoreBadge score={60} />);
-    expect(screen.getByText('60').className).toContain('text-[#98b3ff]');
+    expect(screen.getByText('60').className).toContain('text-[var(--link)]');
   });
 
   it('applies blue class at 79 (just below green threshold)', () => {
     render(<ScoreBadge score={79} />);
-    expect(screen.getByText('79').className).toContain('text-[#98b3ff]');
+    expect(screen.getByText('79').className).toContain('text-[var(--link)]');
   });
 
   it('applies neutral class for low score (<60)', () => {
