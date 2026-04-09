@@ -35,6 +35,12 @@ export interface BulletCoachingPanelProps {
   canRemove?: boolean;
   initialReuseClarificationId?: string;
   showCloseButton?: boolean;
+  /**
+   * True when this bullet was produced by the AI pipeline (is_new on the source ResumeBullet).
+   * When true and evidenceFound is non-empty, a diff view is shown comparing the original
+   * evidence text against the AI-written bullet text.
+   */
+  isAIEnhanced?: boolean;
   // New: optional AI enhancement handler
   onBulletEnhance?: (
     action: string,
@@ -394,6 +400,7 @@ export function BulletCoachingPanel({
   canRemove = true,
   initialReuseClarificationId,
   showCloseButton = true,
+  isAIEnhanced,
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -513,6 +520,13 @@ export function BulletCoachingPanel({
     onApplyToResume(section, bulletIndex, text, applyMetadata());
     onClose();
   }, [applyMetadata, onApplyToResume, onClose, section, bulletIndex]);
+
+  // ── Revert to original evidence text ──────────────────────────────────────
+  const handleRevertToOriginal = useCallback(() => {
+    if (!evidenceFound.trim()) return;
+    onApplyToResume(section, bulletIndex, evidenceFound.trim(), applyMetadata());
+    onClose();
+  }, [applyMetadata, evidenceFound, onApplyToResume, onClose, section, bulletIndex]);
 
   // ── Apply from custom edit area ────────────────────────────────────────────
   const handleApplyEdit = useCallback(() => {
@@ -757,6 +771,76 @@ export function BulletCoachingPanel({
           </button>
         )}
       </div>
+
+      {isAIEnhanced && evidenceFound.trim().length > 0 && evidenceFound.trim() !== bulletText.trim() && (
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            border: '1px solid rgba(203, 213, 225, 0.52)',
+          }}
+        >
+          <div
+            className="px-3.5 py-3"
+            style={{
+              background: 'rgba(248, 250, 252, 0.92)',
+              borderBottom: '1px solid rgba(203, 213, 225, 0.40)',
+            }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>
+              Original
+            </p>
+            <p
+              className="mt-1.5 text-sm leading-relaxed line-through"
+              style={{ color: 'var(--text-soft)' }}
+            >
+              {evidenceFound.trim()}
+            </p>
+          </div>
+          <div
+            className="px-3.5 py-3"
+            style={{ background: 'rgba(239, 246, 255, 0.72)' }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--badge-blue-text)' }}>
+              AI Enhanced
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-strong)' }}>
+              {bulletText}
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-2 px-3.5 py-2.5"
+            style={{
+              background: 'rgba(255, 255, 255, 0.88)',
+              borderTop: '1px solid rgba(203, 213, 225, 0.40)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={{
+                background: 'var(--btn-primary-bg)',
+                border: '1px solid var(--btn-primary-border)',
+                color: 'var(--btn-primary-text)',
+              }}
+            >
+              Accept AI Version
+            </button>
+            <button
+              type="button"
+              onClick={handleRevertToOriginal}
+              className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-2)]"
+              style={{
+                borderColor: 'var(--line-soft)',
+                color: 'var(--text-soft)',
+                background: 'transparent',
+              }}
+            >
+              Revert to Original
+            </button>
+          </div>
+        </div>
+      )}
 
       {primaryRequirement && (
         <BulletContextHeader

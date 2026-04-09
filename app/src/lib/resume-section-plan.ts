@@ -698,13 +698,18 @@ export function buildResumeSectionPlan(resume: ResumeDraft): ResumeSectionPlanIt
 
   const customItems = customSections.map((section, index) => {
     const existing = planById.get(section.id);
+    const resolvedSource = existing?.source ?? section.source ?? 'user_added';
+    // Pipeline-auto sections (job_match, ai_readiness) are opt-in — default to hidden
+    // unless the user has explicitly enabled them (stored in section_plan).
+    const isPipelineAuto = resolvedSource === 'job_match' || resolvedSource === 'ai_readiness';
+    const defaultEnabled = isPipelineAuto ? false : true;
     return {
       id: section.id,
       type: section.id === 'ai_highlights' ? 'ai_highlights' : 'custom',
       title: normalizeSectionTitle(existing?.title, section.title),
-      enabled: typeof existing?.enabled === 'boolean' ? existing.enabled : true,
+      enabled: typeof existing?.enabled === 'boolean' ? existing.enabled : defaultEnabled,
       order: typeof existing?.order === 'number' ? existing.order : standardItems.length + index,
-      source: existing?.source ?? section.source ?? 'user_added',
+      source: resolvedSource,
       recommended_for_job: existing?.recommended_for_job ?? section.recommended_for_job,
       rationale: existing?.rationale ?? section.rationale,
       is_custom: true,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, BrainCircuit, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, BrainCircuit, Eye, EyeOff, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { CandidateIntelligence, RequirementWorkItem, ResumeDraft } from '@/types/resume-v2';
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 import {
@@ -55,6 +55,15 @@ export function ResumeStructurePlannerCard({
   onRemoveCustomSection,
 }: ResumeStructurePlannerCardProps) {
   const plan = buildResumeSectionPlan(resume);
+  // Split plan into active sections and pipeline-suggested sections (opt-in).
+  // Suggested sections are custom sections whose source is 'job_match' or 'ai_readiness'
+  // and are currently disabled (user has not opted in yet).
+  const activePlan = plan.filter(
+    (item) => !(item.is_custom && (item.source === 'job_match' || item.source === 'ai_readiness') && !item.enabled),
+  );
+  const suggestedSections = plan.filter(
+    (item) => item.is_custom && (item.source === 'job_match' || item.source === 'ai_readiness') && !item.enabled,
+  );
   const aiSectionCandidate = buildAIHighlightsSection(candidateIntelligence, requirementWorkItems);
   const hasAISection = plan.some((item) => item.id === 'ai_highlights');
   const recommendationList = useMemo(
@@ -303,7 +312,7 @@ export function ResumeStructurePlannerCard({
       )}
 
       <div className="mt-4 space-y-2">
-        {plan.map((item, index) => (
+        {activePlan.map((item, index) => (
           <div
             key={item.id}
             className={`rounded-xl border px-3.5 py-3 transition-colors ${
@@ -345,7 +354,7 @@ export function ResumeStructurePlannerCard({
                   <button
                     type="button"
                     onClick={() => onMoveSection(item.id, 'down')}
-                    disabled={index === plan.length - 1}
+                    disabled={index === activePlan.length - 1}
                     className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] disabled:opacity-30"
                     aria-label={`Move ${item.title} down`}
                   >
@@ -375,6 +384,45 @@ export function ResumeStructurePlannerCard({
           </div>
         ))}
       </div>
+
+      {suggestedSections.length > 0 && (
+        <div className="mt-5">
+          <div className="mb-2 flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-[var(--link)]" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              Suggested Sections
+            </p>
+          </div>
+          <p className="mb-3 text-[12px] leading-5 text-[var(--text-soft)]">
+            The pipeline identified these sections as a strong fit for this role. Add the ones that apply to you.
+          </p>
+          <div className="space-y-2">
+            {suggestedSections.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-dashed border-[var(--line-soft)] bg-[var(--surface-0)] px-3.5 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--text-strong)]">{item.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-soft)]">
+                      {item.rationale ?? sectionSecondaryCopy(item.id)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onToggleSection(item.id, true)}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--link)] bg-[var(--badge-blue-bg)] px-3 py-2 text-xs font-semibold text-[var(--link)] hover:bg-[var(--link)] hover:text-white transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Preview &amp; Add
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!aiSectionCandidate && !hasAISection && (
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-dashed border-[var(--line-soft)] px-3.5 py-3 text-[13px] text-[var(--text-soft)]">

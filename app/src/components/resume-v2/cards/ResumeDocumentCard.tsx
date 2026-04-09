@@ -30,6 +30,7 @@ interface ResumeDocumentCardProps {
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
     canRemove?: boolean,
+    isAIEnhanced?: boolean,
   ) => void;
   /** Direct edit callback — saves edited text back into the resume */
   onBulletEdit?: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
@@ -282,6 +283,7 @@ export function ResumeDocumentCard({
                   workItemId={a.work_item_id}
                   proofLevel={a.proof_level}
                   nextBestAction={a.next_best_action}
+                  isAIEnhanced={a.is_new}
                   onBulletClick={onBulletClick}
                 />
               </li>
@@ -362,6 +364,7 @@ export function ResumeDocumentCard({
                         workItemId={bullet.work_item_id}
                         proofLevel={bullet.proof_level}
                         nextBestAction={bullet.next_best_action}
+                        isAIEnhanced={bullet.is_new}
                         onBulletClick={onBulletClick}
                       />
                     </li>
@@ -673,6 +676,8 @@ interface BulletLineContentProps {
   workItemId?: string;
   proofLevel?: ProofLevel;
   nextBestAction?: NextBestAction;
+  /** True when this bullet was AI-generated/enhanced (is_new on the source bullet). */
+  isAIEnhanced?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
   onBulletClick?: (
     text: string,
@@ -686,6 +691,7 @@ interface BulletLineContentProps {
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
     canRemove?: boolean,
+    isAIEnhanced?: boolean,
   ) => void;
 }
 
@@ -703,6 +709,7 @@ function BulletLineContent({
   workItemId,
   proofLevel,
   nextBestAction,
+  isAIEnhanced,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
@@ -710,7 +717,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true);
+      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true, isAIEnhanced);
     }
   };
 
