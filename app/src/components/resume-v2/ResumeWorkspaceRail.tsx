@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { ExportBar } from './ExportBar';
 import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
-import type { ResumeDraft } from '@/types/resume-v2';
+import type { ResumeDraft, RewriteQueueSummary } from '@/types/resume-v2';
 import type { FinalReviewChatContext } from '@/types/resume-v2';
 import type {
   HiringManagerConcern,
@@ -126,7 +126,7 @@ export function ResumeWorkspaceRail({
   hiringManagerResult?: HiringManagerReviewResult | null;
   resolvedFinalReviewConcernIds: string[];
   isFinalReviewStale: boolean;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
+  queueSummary: RewriteQueueSummary;
   nextQueueItemLabel?: string;
   finalReviewWarningsAcknowledged?: boolean;
   onAcknowledgeFinalReviewWarnings?: () => void;
@@ -156,6 +156,10 @@ export function ResumeWorkspaceRail({
         unresolvedHardGapCount={queueSummary.hardGapCount}
         queueNeedsAttentionCount={queueSummary.needsAttention}
         queuePartialCount={queueSummary.partiallyAddressed}
+        queueNeedsUserInput={queueSummary.needsUserInput}
+        queueNeedsApproval={queueSummary.needsApproval}
+        queueHandled={queueSummary.handled}
+        queueTotal={queueSummary.total}
         nextQueueItemLabel={nextQueueItemLabel}
         warningsAcknowledged={finalReviewWarningsAcknowledged}
         onAcknowledgeWarnings={onAcknowledgeFinalReviewWarnings}

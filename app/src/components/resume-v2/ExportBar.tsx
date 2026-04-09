@@ -26,6 +26,11 @@ interface ExportBarProps {
   unresolvedHardGapCount?: number;
   queueNeedsAttentionCount?: number;
   queuePartialCount?: number;
+  /** Three-tier queue counts for health score display */
+  queueNeedsUserInput?: number;
+  queueNeedsApproval?: number;
+  queueHandled?: number;
+  queueTotal?: number;
   nextQueueItemLabel?: string;
   warningsAcknowledged?: boolean;
   onAcknowledgeWarnings?: () => void;
@@ -50,9 +55,13 @@ export function ExportBar({
   unresolvedHardGapCount = 0,
   queueNeedsAttentionCount = 0,
   queuePartialCount = 0,
+  queueNeedsUserInput = 0,
+  queueNeedsApproval = 0,
+  queueHandled = 0,
+  queueTotal = 0,
   nextQueueItemLabel,
   warningsAcknowledged = false,
-  onAcknowledgeWarnings,
+  onAcknowledgeWarnings: _onAcknowledgeWarnings,
   onCopy,
   jobUrl,
   sessionId,
@@ -64,13 +73,17 @@ export function ExportBar({
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const [isLinkingResume, setIsLinkingResume] = useState(false);
   const { addToast } = useToast();
-  const { hasWarnings, exportBlocked } = getExportGateState({
+  const { hasWarnings } = getExportGateState({
     hasCompletedFinalReview,
     isFinalReviewStale,
     unresolvedCriticalCount,
     unresolvedHardGapCount,
     warningsAcknowledged,
   });
+
+  // Health score: percentage of queue items that are handled
+  const healthScore = queueTotal > 0 ? Math.round((queueHandled / queueTotal) * 100) : 100;
+  const itemsToImprove = queueTotal - queueHandled;
 
   const getFinalResume = useCallback(() => {
     return resumeDraftToFinalResume(resume, { companyName, jobTitle, atsScore });
@@ -79,13 +92,13 @@ export function ExportBar({
   const handleDocx = useCallback(async () => {
     trackProductEvent('export_attempted', {
       format: 'docx',
-      export_blocked: exportBlocked,
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
       unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
+      health_score: healthScore,
     });
     setExporting('docx');
     setError(null);
@@ -99,9 +112,9 @@ export function ExportBar({
       setExporting(null);
     }
   }, [
-    exportBlocked,
     getFinalResume,
     hasCompletedFinalReview,
+    healthScore,
     isFinalReviewStale,
     queueNeedsAttentionCount,
     queuePartialCount,
@@ -113,13 +126,13 @@ export function ExportBar({
   const handlePdf = useCallback(async () => {
     trackProductEvent('export_attempted', {
       format: 'pdf',
-      export_blocked: exportBlocked,
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
       unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
+      health_score: healthScore,
     });
     setExporting('pdf');
     setError(null);
@@ -133,9 +146,9 @@ export function ExportBar({
       setExporting(null);
     }
   }, [
-    exportBlocked,
     getFinalResume,
     hasCompletedFinalReview,
+    healthScore,
     isFinalReviewStale,
     queueNeedsAttentionCount,
     queuePartialCount,
@@ -149,13 +162,13 @@ export function ExportBar({
     if (!text) return;
     trackProductEvent('export_attempted', {
       format: 'copy',
-      export_blocked: exportBlocked,
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
       unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
+      health_score: healthScore,
     });
     try {
       await navigator.clipboard.writeText(text);
@@ -165,8 +178,8 @@ export function ExportBar({
       setError('Copy to clipboard failed');
     }
   }, [
-    exportBlocked,
     hasCompletedFinalReview,
+    healthScore,
     isFinalReviewStale,
     onCopy,
     queueNeedsAttentionCount,
@@ -212,12 +225,64 @@ export function ExportBar({
 
   return (
     <div className="space-y-2">
+      {/* Health score */}
+      {queueTotal > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-xs text-[var(--text-soft)]">
+                Resume health: <span className="font-semibold text-[var(--text-strong)]">{healthScore}%</span>
+              </span>
+              {itemsToImprove > 0 && (
+                <span className="text-xs text-[var(--text-muted)]">
+                  — {itemsToImprove} item{itemsToImprove === 1 ? '' : 's'} could make it stronger
+                </span>
+              )}
+            </div>
+            <div className="mt-1 h-1 w-full rounded-full bg-[var(--line-soft)] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[var(--badge-green-text)] transition-all duration-500"
+                style={{ width: `${healthScore}%` }}
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Three-tier queue summary */}
+      {queueTotal > 0 && (
+        <div className="flex items-center gap-3 px-1 flex-wrap">
+          {queueNeedsUserInput > 0 && (
+            <span className="flex items-center gap-1 text-xs text-[var(--text-soft)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--badge-red-text)]" aria-hidden="true" />
+              <span className="font-semibold text-[var(--badge-red-text)]">{queueNeedsUserInput}</span>{' '}
+              {queueNeedsUserInput === 1 ? 'item needs' : 'items need'} your input
+            </span>
+          )}
+          {queueNeedsApproval > 0 && (
+            <span className="flex items-center gap-1 text-xs text-[var(--text-soft)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--badge-amber-text)]" aria-hidden="true" />
+              <span className="font-medium">{queueNeedsApproval}</span>{' '}
+              {queueNeedsApproval === 1 ? 'item wants' : 'items want'} your approval
+            </span>
+          )}
+          {queueHandled > 0 && (
+            <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--badge-green-text)]" aria-hidden="true" />
+              {queueHandled} handled
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Informational warnings — never blocking */}
       {hasWarnings && (
         <div className="support-callout border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.05] px-4 py-3.5">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--badge-amber-text)]" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-[var(--text-strong)]">Export still has open warnings</p>
+              <p className="text-sm font-medium text-[var(--text-strong)]">A few things to be aware of</p>
               <div className="mt-1 space-y-1 text-xs leading-5 text-[var(--text-soft)]">
                 {!hasCompletedFinalReview && (
                   <p>Final Review has not been run yet.</p>
@@ -231,43 +296,12 @@ export function ExportBar({
                 {unresolvedHardGapCount > 0 && (
                   <p>{unresolvedHardGapCount} hard requirement risk{unresolvedHardGapCount === 1 ? '' : 's'} still remain on the draft.</p>
                 )}
-                {(queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
-                  <p>
-                    The rewrite queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
-                    {nextQueueItemLabel ? ` The clearest next move is "${nextQueueItemLabel}".` : ''}
-                  </p>
+                {(queueNeedsAttentionCount > 0 || queuePartialCount > 0) && nextQueueItemLabel && (
+                  <p>The clearest next move is "{nextQueueItemLabel}".</p>
                 )}
               </div>
-              {exportBlocked ? (
-                <GlassButton
-                  onClick={() => {
-                    trackProductEvent('export_warning_acknowledged', {
-                      unresolved_critical_count: unresolvedCriticalCount,
-                      queue_needs_attention_count: queueNeedsAttentionCount,
-                      queue_partial_count: queuePartialCount,
-                    });
-                    onAcknowledgeWarnings?.();
-                  }}
-                  variant="secondary"
-                  size="sm"
-                  className="mt-3"
-                >
-                  I understand, enable export
-                </GlassButton>
-              ) : (
-                <p className="mt-3 text-xs text-[var(--text-soft)]">
-                  Warning acknowledged. Export is enabled, but the draft still has open review warnings.
-                </p>
-              )}
             </div>
           </div>
-        </div>
-      )}
-
-      {!hasWarnings && (queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
-        <div className="support-callout px-4 py-3 text-xs leading-5 text-[var(--text-soft)]">
-          Export is available, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
-          {nextQueueItemLabel ? ` If you want to keep improving the draft first, start with "${nextQueueItemLabel}".` : ''}
         </div>
       )}
 
@@ -280,7 +314,7 @@ export function ExportBar({
       <div className="flex items-center gap-2 flex-wrap">
         <GlassButton
           onClick={handleDocx}
-          disabled={exporting === 'docx' || exportBlocked}
+          disabled={exporting === 'docx'}
           size="sm"
           className="gap-1.5"
         >
@@ -297,7 +331,7 @@ export function ExportBar({
 
         <GlassButton
           onClick={handlePdf}
-          disabled={exporting === 'pdf' || exportBlocked}
+          disabled={exporting === 'pdf'}
           variant="ghost"
           size="sm"
           className="gap-1.5"
@@ -315,7 +349,7 @@ export function ExportBar({
 
         <GlassButton
           onClick={handleCopy}
-          disabled={exporting !== null || exportBlocked}
+          disabled={exporting !== null}
           variant="ghost"
           size="sm"
           className="gap-1.5"

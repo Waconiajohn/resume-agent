@@ -815,6 +815,12 @@ export interface RewriteQueueSummary {
   partiallyAddressed: number;
   resolved: number;
   hardGapCount: number;
+  /** Items in needs_attention where the candidate must supply an answer or decision */
+  needsUserInput: number;
+  /** Items the AI has already improved that just need user approval */
+  needsApproval: number;
+  /** Items that are fully resolved */
+  handled: number;
 }
 
 export interface FinalReviewPersistedState {

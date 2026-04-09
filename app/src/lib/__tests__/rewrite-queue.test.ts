@@ -151,6 +151,9 @@ describe('rewrite-queue', () => {
       partiallyAddressed: 0,
       resolved: 1,
       hardGapCount: 0,
+      needsUserInput: 1,
+      needsApproval: 0,
+      handled: 1,
     });
   });
 

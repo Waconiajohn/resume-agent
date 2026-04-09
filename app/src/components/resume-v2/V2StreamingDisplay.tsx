@@ -1692,7 +1692,7 @@ export function V2StreamingDisplay({
               )}
               {isComplete && data.assembly && displayResume && (
                 <CollapsibleWorkspaceRail>
-                  <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
+                  <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
                 </CollapsibleWorkspaceRail>
               )}
             </div>
@@ -1843,7 +1843,7 @@ export function V2StreamingDisplay({
                                 hiringManagerResult={hiringManagerResult ?? null}
                                 resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
                                 isFinalReviewStale={isFinalReviewStale}
-                                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                                queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }}
                                 nextQueueItemLabel={rewriteQueue?.nextItem?.title}
                                 finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
                                 onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}

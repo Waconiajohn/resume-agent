@@ -56,13 +56,46 @@ export function ResumeDocumentCard({
   const education = Array.isArray(resume.education) ? resume.education : [];
   const certifications = Array.isArray(resume.certifications) ? resume.certifications : [];
 
-  // Continuous global bullet numbering: Selected Accomplishments first (1…n),
-  // then each company's bullets in document order.
-  const expBulletOffsets: number[] = [];
-  let runningBulletIndex = 1 + selectedAccomplishments.length;
+  // Flagged-only bullet numbering: only bullets that need attention get sequential numbers.
+  // "Done" states (supported, supported_rewrite) are not numbered.
+  // We do a pre-pass over all numbered bullet positions to assign sequential flagged numbers.
+  type BulletKey = string; // `${section}:${index}`
+  const flaggedBulletNumbers = new Map<BulletKey, number>();
+  let flaggedBulletCounter = 0;
+
+  const isFlaggedReviewState = (state: ResumeReviewState): boolean =>
+    state === 'strengthen' || state === 'confirm_fit' || state === 'code_red';
+
+  // Selected accomplishments
+  for (let i = 0; i < selectedAccomplishments.length; i++) {
+    const resolved = resolveReviewState(
+      selectedAccomplishments[i].review_state,
+      selectedAccomplishments[i].confidence,
+      selectedAccomplishments[i].requirement_source,
+    );
+    if (isFlaggedReviewState(resolved)) {
+      flaggedBulletCounter += 1;
+      flaggedBulletNumbers.set(`selected_accomplishments:${i}`, flaggedBulletCounter);
+    }
+  }
+
+  // Professional experience bullets
   for (const exp of professionalExperience) {
-    expBulletOffsets.push(runningBulletIndex);
-    runningBulletIndex += Array.isArray(exp.bullets) ? exp.bullets.length : 0;
+    const bullets = Array.isArray(exp.bullets) ? exp.bullets : [];
+    for (let j = 0; j < bullets.length; j++) {
+      const bullet = bullets[j];
+      const resolved = resolveReviewState(
+        bullet.review_state,
+        bullet.confidence,
+        bullet.requirement_source,
+      );
+      if (isFlaggedReviewState(resolved)) {
+        flaggedBulletCounter += 1;
+        const expIdx = professionalExperience.indexOf(exp);
+        const bulletIndex = expIdx * 100 + j;
+        flaggedBulletNumbers.set(`professional_experience:${bulletIndex}`, flaggedBulletCounter);
+      }
+    }
   }
 
   const customSections = getResumeCustomSectionMap(resume);
@@ -242,7 +275,7 @@ export function ResumeDocumentCard({
                   requirementSource={a.requirement_source}
                   section="selected_accomplishments"
                   bulletIndex={i}
-                  globalNumber={i + 1}
+                  globalNumber={flaggedBulletNumbers.get(`selected_accomplishments:${i}`)}
                   requirements={accomplishmentDisplayTargets}
                   resolvedState={resolvedState}
                   evidenceFound={a.evidence_found}
@@ -322,7 +355,7 @@ export function ResumeDocumentCard({
                         requirementSource={bullet.requirement_source}
                         section="professional_experience"
                         bulletIndex={bulletIndex}
-                        globalNumber={expBulletOffsets[i] + j}
+                        globalNumber={flaggedBulletNumbers.get(`professional_experience:${bulletIndex}`)}
                         requirements={bulletDisplayTargets}
                         resolvedState={resolvedState}
                         evidenceFound={bullet.evidence_found}

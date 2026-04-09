@@ -739,12 +739,28 @@ export function buildRewriteQueue(args: {
     return left.title.localeCompare(right.title);
   });
 
+  const USER_INPUT_ACTIONS: ReadonlyArray<string> = ['answer_question', 'check_hard_requirement'];
+
   const summary = items.reduce<RewriteQueueSummary>((accumulator, item) => {
     accumulator.total += 1;
     if (item.bucket === 'needs_attention') accumulator.needsAttention += 1;
     if (item.bucket === 'partially_addressed') accumulator.partiallyAddressed += 1;
     if (item.bucket === 'resolved') accumulator.resolved += 1;
     if (item.category === 'hard_gap' && item.bucket !== 'resolved') accumulator.hardGapCount += 1;
+
+    // Three-tier classification
+    if (item.bucket === 'resolved') {
+      accumulator.handled += 1;
+    } else if (
+      item.bucket === 'needs_attention' &&
+      USER_INPUT_ACTIONS.includes(item.recommendedNextStep.action)
+    ) {
+      accumulator.needsUserInput += 1;
+    } else {
+      // partially_addressed, or needs_attention with a review/AI action
+      accumulator.needsApproval += 1;
+    }
+
     return accumulator;
   }, {
     total: 0,
@@ -752,6 +768,9 @@ export function buildRewriteQueue(args: {
     partiallyAddressed: 0,
     resolved: 0,
     hardGapCount: 0,
+    needsUserInput: 0,
+    needsApproval: 0,
+    handled: 0,
   });
 
   return {

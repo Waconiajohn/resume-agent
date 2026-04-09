@@ -65,13 +65,13 @@ export interface ProductTelemetryPayloadMap {
   };
   export_attempted: {
     format: string;
-    export_blocked: boolean;
     has_completed_final_review: boolean;
     is_final_review_stale: boolean;
     unresolved_critical_count: number;
     unresolved_hard_gap_count: number;
     queue_needs_attention_count: number;
     queue_partial_count: number;
+    health_score?: number;
   };
   job_board_search_run: {
     query: string;
