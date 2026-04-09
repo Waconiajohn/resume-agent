@@ -14,6 +14,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import { computeSimilarityMatrix, findBestMatches, SIMILARITY_THRESHOLDS } from '../../../lib/embeddings.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import {
   buildRequirementInterviewQuestion,
@@ -227,8 +228,8 @@ export async function runGapAnalysis(
     if (parsed) {
       return normalizeGapAnalysis(
         shouldBackfillFromDeterministic
-          ? mergeWithDeterministicBackfill(parsed, input, fullRequirementSeeds)
-          : reconcileModeledHardRequirements(parsed, input),
+          ? await mergeWithDeterministicBackfill(parsed, input, fullRequirementSeeds)
+          : await reconcileModeledHardRequirements(parsed, input),
       );
     }
 
@@ -238,7 +239,7 @@ export async function runGapAnalysis(
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
-    const salvaged = tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
+    const salvaged = await tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
     if (salvaged) {
       logger.warn(
         { error: error instanceof Error ? error.message : String(error) },
@@ -250,7 +251,7 @@ export async function runGapAnalysis(
       { error: error instanceof Error ? error.message : String(error) },
       'Gap Analysis: first attempt failed, using deterministic fallback',
     );
-    return buildDeterministicGapAnalysis(input);
+    return await buildDeterministicGapAnalysis(input);
   }
 
   try {
@@ -267,8 +268,8 @@ export async function runGapAnalysis(
     if (retryParsed) {
       return normalizeGapAnalysis(
         shouldBackfillFromDeterministic
-          ? mergeWithDeterministicBackfill(retryParsed, input, fullRequirementSeeds)
-          : reconcileModeledHardRequirements(retryParsed, input),
+          ? await mergeWithDeterministicBackfill(retryParsed, input, fullRequirementSeeds)
+          : await reconcileModeledHardRequirements(retryParsed, input),
       );
     }
 
@@ -278,7 +279,7 @@ export async function runGapAnalysis(
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
-    const salvaged = tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
+    const salvaged = await tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
     if (salvaged) {
       logger.warn(
         { error: error instanceof Error ? error.message : String(error) },
@@ -292,7 +293,7 @@ export async function runGapAnalysis(
     );
   }
 
-  return buildDeterministicGapAnalysis(input);
+  return await buildDeterministicGapAnalysis(input);
 }
 
 function buildUserMessage(
@@ -488,12 +489,12 @@ function benchmarkCategoryPriority(category: RequirementCategory): number {
   }
 }
 
-function mergeWithDeterministicBackfill(
+async function mergeWithDeterministicBackfill(
   output: GapAnalysisOutput,
   input: GapAnalysisInput,
   fullRequirementSeeds: CanonicalRequirementSeed[],
-): GapAnalysisOutput {
-  const deterministic = buildDeterministicGapAnalysis(input);
+): Promise<GapAnalysisOutput> {
+  const deterministic = await buildDeterministicGapAnalysis(input);
   const modeledRequirements = Array.isArray(output.requirements) ? output.requirements : [];
   if (modeledRequirements.length === 0) {
     return deterministic;
@@ -568,11 +569,11 @@ function mergeWithDeterministicBackfill(
   };
 }
 
-function reconcileModeledHardRequirements(
+async function reconcileModeledHardRequirements(
   output: GapAnalysisOutput,
   input: GapAnalysisInput,
-): GapAnalysisOutput {
-  const deterministic = buildDeterministicGapAnalysis(input);
+): Promise<GapAnalysisOutput> {
+  const deterministic = await buildDeterministicGapAnalysis(input);
   const modeledRequirements = Array.isArray(output.requirements) ? output.requirements : [];
   if (modeledRequirements.length === 0) {
     return deterministic;
@@ -838,12 +839,12 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   return error instanceof Error && /aborted/i.test(error.message);
 }
 
-function tryRecoverGapAnalysisFromProviderError(
+async function tryRecoverGapAnalysisFromProviderError(
   error: unknown,
   input: GapAnalysisInput,
   fullRequirementSeeds: CanonicalRequirementSeed[],
   shouldBackfillFromDeterministic: boolean,
-): GapAnalysisOutput | null {
+): Promise<GapAnalysisOutput | null> {
   const failedGeneration = extractFailedGeneration(error);
   if (!failedGeneration) return null;
 
@@ -852,8 +853,8 @@ function tryRecoverGapAnalysisFromProviderError(
   if (repaired) {
     return normalizeGapAnalysis(
       shouldBackfillFromDeterministic
-        ? mergeWithDeterministicBackfill(repaired, input, fullRequirementSeeds)
-        : reconcileModeledHardRequirements(repaired, input),
+        ? await mergeWithDeterministicBackfill(repaired, input, fullRequirementSeeds)
+        : await reconcileModeledHardRequirements(repaired, input),
     );
   }
 
@@ -862,8 +863,8 @@ function tryRecoverGapAnalysisFromProviderError(
 
   return normalizeGapAnalysis(
     shouldBackfillFromDeterministic
-      ? mergeWithDeterministicBackfill(partiallyRecovered, input, fullRequirementSeeds)
-      : reconcileModeledHardRequirements(partiallyRecovered, input),
+      ? await mergeWithDeterministicBackfill(partiallyRecovered, input, fullRequirementSeeds)
+      : await reconcileModeledHardRequirements(partiallyRecovered, input),
   );
 }
 
@@ -1010,10 +1011,24 @@ function salvageStringArrayField(raw: string, field: string): string[] {
     .filter(Boolean);
 }
 
-function buildDeterministicGapAnalysis(input: GapAnalysisInput): GapAnalysisOutput {
+async function buildDeterministicGapAnalysis(
+  input: GapAnalysisInput,
+  semanticMatrix?: { matrix: number[][]; requirementTexts: string[]; evidenceTexts: string[] } | null,
+): Promise<GapAnalysisOutput> {
   const corpus = buildEvidenceCorpus(input);
-  const requirements = buildCanonicalRequirements(input).map((seed) => {
-    const evaluation = evaluateRequirement(seed, corpus, input);
+  const canonicalRequirements = buildCanonicalRequirements(input);
+
+  // Compute semantic similarity matrix if not provided (single API call for all requirements × evidence)
+  let semMatrix = semanticMatrix;
+  if (semMatrix === undefined) {
+    const requirementTexts = canonicalRequirements.map((seed) => `${seed.requirement} ${seed.source_evidence}`.trim());
+    const evidenceTexts = corpus.map((entry) => entry.text);
+    const matrix = await computeSimilarityMatrix(requirementTexts, evidenceTexts);
+    semMatrix = matrix ? { matrix, requirementTexts, evidenceTexts } : null;
+  }
+
+  const requirements = canonicalRequirements.map((seed, seedIndex) => {
+    const evaluation = evaluateRequirement(seed, corpus, input, semMatrix ? { matrix: semMatrix.matrix, requirementIndex: seedIndex, evidenceTexts: semMatrix.evidenceTexts } : undefined);
     const requirement: RequirementGap = {
       requirement: seed.requirement,
       source: seed.source,
@@ -1206,6 +1221,7 @@ function evaluateRequirement(
   requirement: CanonicalRequirementSeed,
   corpus: EvidenceEntry[],
   input: GapAnalysisInput,
+  semanticContext?: { matrix: number[][]; requirementIndex: number; evidenceTexts: string[] },
 ): {
   classification: GapClassification;
   evidence: string[];
@@ -1258,16 +1274,45 @@ function evaluateRequirement(
   const rankedEvidence = rankEvidence(requirementText, corpus);
   const topEvidence = rankedEvidence.filter((item) => item.supportsDisplayEvidence).slice(0, 3);
   const evidence = topEvidence.map((item) => item.text);
-  const topScore = topEvidence[0]?.score ?? 0;
+  const topKeywordScore = topEvidence[0]?.score ?? 0;
   const hasNearEvidence = evidence.length > 0;
 
-  const classification: GapClassification = hardRequirement
-    ? (topScore >= 3 ? 'strong' : 'missing')
-    : topScore >= 3
+  // Semantic similarity augmentation: if we have embeddings, use cosine similarity
+  // to catch matches that keyword overlap misses (e.g., "container orchestration" ≈ "Kubernetes expertise")
+  let semanticClassification: GapClassification | null = null;
+  let semanticEvidence: string[] = [];
+  if (semanticContext) {
+    const semanticMatches = findBestMatches(semanticContext.requirementIndex, semanticContext.matrix, semanticContext.evidenceTexts);
+    if (semanticMatches.length > 0) {
+      const bestSemanticScore = semanticMatches[0].score;
+      semanticEvidence = semanticMatches.map((m) => m.text);
+      if (bestSemanticScore >= SIMILARITY_THRESHOLDS.strong) {
+        semanticClassification = 'strong';
+      } else if (bestSemanticScore >= SIMILARITY_THRESHOLDS.partial) {
+        semanticClassification = 'partial';
+      }
+    }
+  }
+
+  // Combine keyword + semantic: take the BETTER classification
+  const keywordClassification: GapClassification = hardRequirement
+    ? (topKeywordScore >= 3 ? 'strong' : 'missing')
+    : topKeywordScore >= 3
       ? 'strong'
       : hasNearEvidence
         ? 'partial'
         : 'missing';
+
+  // Semantic can upgrade but never downgrade a keyword match
+  const classificationRank = { strong: 2, partial: 1, missing: 0 };
+  const classification = semanticClassification && classificationRank[semanticClassification] > classificationRank[keywordClassification]
+    ? semanticClassification
+    : keywordClassification;
+
+  // Merge evidence from both sources, deduplicated
+  if (semanticClassification && semanticEvidence.length > 0 && evidence.length === 0) {
+    evidence.push(...semanticEvidence.slice(0, 2));
+  }
 
   if (classification === 'strong') {
     return { classification, evidence };
