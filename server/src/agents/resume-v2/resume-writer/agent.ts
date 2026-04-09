@@ -1385,22 +1385,19 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
 
     if (!originalExp) continue;
 
+    // Filter out lines that CI parsed as bullets but are actually section headers
+    // (EDUCATION:, CERTIFICATIONS:, SKILLS:, etc.) or raw comma-separated skill lists.
+    const cleanOriginalBullets = originalExp.bullets.filter((bullet) => {
+      if (/^(education|certifications?|skills|awards|publications|languages|interests)\s*[:|\-–—]/i.test(bullet.trim())) return false;
+      if (/^[A-Z][A-Za-z\s]+(?:,\s*[A-Z][A-Za-z\s]+){3,}$/.test(bullet.trim())) return false;
+      return true;
+    });
+
     const draftBulletCount = (draftExp.bullets ?? []).length;
-    const originalBulletCount = originalExp.bullets.length;
+    const originalBulletCount = cleanOriginalBullets.length;
     const draftBullets = draftExp.bullets ?? [];
-    const uncoveredSourceBullets = originalExp.bullets
+    const uncoveredSourceBullets = cleanOriginalBullets
       .filter((origBullet) => {
-        // Skip lines that are clearly section headers, not experience bullets.
-        // CI sometimes parses EDUCATION/CERTIFICATIONS/SKILLS lines as experience bullets
-        // when they follow the last position without a clear section separator.
-        const lower = origBullet.toLowerCase().trim();
-        if (/^(education|certifications?|skills|awards|publications|languages|interests)\s*[:|\-–—]/i.test(origBullet.trim())) {
-          return false;
-        }
-        // Skip raw skill/cert lists (no verb, just comma-separated items)
-        if (/^[A-Z][A-Za-z\s]+(?:,\s*[A-Z][A-Za-z\s]+){3,}$/.test(origBullet.trim())) {
-          return false;
-        }
         const sourceImportance = scoreSourceBulletImportance(origBullet, input);
         return !draftBullets.some((draftBullet) => (
           bulletPreservesProofDensity(draftBullet.text, origBullet)
@@ -1500,7 +1497,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
       );
     }
 
-    const coverageRecovery = findUncoveredSourceBulletsAndUnusedDraftIndexes(originalExp.bullets, draftBullets, input);
+    const coverageRecovery = findUncoveredSourceBulletsAndUnusedDraftIndexes(cleanOriginalBullets, draftBullets, input);
     let coverageRestored = 0;
 
     for (const [slot, replacementIndex] of coverageRecovery.unusedDraftIndexes.entries()) {
@@ -1534,7 +1531,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
       );
     }
 
-    const residualCoverage = findResidualCoverageGaps(originalExp.bullets, draftBullets, input);
+    const residualCoverage = findResidualCoverageGaps(cleanOriginalBullets, draftBullets, input);
     let residualRestored = 0;
 
     for (const [slot, replacementIndex] of residualCoverage.unmatchedDraftIndexes.entries()) {
@@ -1568,7 +1565,7 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
       );
     }
 
-    const duplicateCoverage = findDuplicateCoverageGaps(originalExp.bullets, draftBullets, input);
+    const duplicateCoverage = findDuplicateCoverageGaps(cleanOriginalBullets, draftBullets, input);
     let duplicateRestored = 0;
 
     for (const [slot, replacementIndex] of duplicateCoverage.duplicateDraftIndexes.entries()) {
