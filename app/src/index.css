@@ -548,6 +548,54 @@
       0 6px 14px rgba(37, 99, 235, 0.08);
   }
 
+  /* ── Focus-dimming: when any bullet is active, fade everything else ── */
+
+  /* Proof-list bullets that are NOT active */
+  .resume-has-active-bullet .resume-proof-line:not(.resume-line-active) {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Section headings */
+  .resume-has-active-bullet .resume-section-heading {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Document header (name / title / contact) */
+  .resume-has-active-bullet .resume-document-header {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Line-card elements (executive summary, custom section paragraphs) that are NOT active */
+  .resume-has-active-bullet .resume-line-card:not(.resume-line-active) {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Competency chips that are NOT active */
+  .resume-has-active-bullet .resume-competency-chip:not(.resume-line-active) {
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Role headers, dates, scope notes, earlier career, education, certifications */
+  .resume-has-active-bullet .resume-role-title,
+  .resume-has-active-bullet .resume-role-company,
+  .resume-has-active-bullet .resume-role-date,
+  .resume-has-active-bullet .resume-scope-note,
+  .resume-has-active-bullet .resume-document-copy {
+    transition: opacity 0.3s ease;
+  }
+
+  /* Keep the active element and everything inside it fully visible via specificity */
+  .resume-has-active-bullet .resume-line-active,
+  .resume-has-active-bullet .resume-proof-line.resume-line-active {
+    opacity: 1 !important;
+    transition: opacity 0.3s ease;
+  }
+
   .eyebrow-label {
     font-size: 0.75rem;
     font-weight: 700;

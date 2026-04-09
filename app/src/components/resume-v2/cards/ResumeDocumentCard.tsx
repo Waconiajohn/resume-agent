@@ -284,6 +284,7 @@ export function ResumeDocumentCard({
                   proofLevel={a.proof_level}
                   nextBestAction={a.next_best_action}
                   isAIEnhanced={a.is_new}
+                  isActive={isActive}
                   onBulletClick={onBulletClick}
                 />
               </li>
@@ -365,6 +366,7 @@ export function ResumeDocumentCard({
                         proofLevel={bullet.proof_level}
                         nextBestAction={bullet.next_best_action}
                         isAIEnhanced={bullet.is_new}
+                        isActive={isActive}
                         onBulletClick={onBulletClick}
                       />
                     </li>
@@ -626,7 +628,7 @@ export function ResumeDocumentCard({
     .filter((id) => sectionNodes.has(id));
 
   return (
-    <div className="resume-document-shell space-y-6 p-6 font-['Georgia','Times_New_Roman',serif] leading-[1.85] select-text cursor-text sm:space-y-7 sm:p-9">
+    <div className={`resume-document-shell space-y-6 p-6 font-['Georgia','Times_New_Roman',serif] leading-[1.85] select-text cursor-text sm:space-y-7 sm:p-9${activeBullet ? ' resume-has-active-bullet' : ''}`}>
       {/* Header */}
       <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-6 sm:pb-7">
         <h2 className="resume-document-name text-[2.08rem] font-semibold tracking-[-0.028em] text-gray-900 sm:text-[2.62rem]">{resume.header.name}</h2>
@@ -678,6 +680,8 @@ interface BulletLineContentProps {
   nextBestAction?: NextBestAction;
   /** True when this bullet was AI-generated/enhanced (is_new on the source bullet). */
   isAIEnhanced?: boolean;
+  /** True when this bullet is currently selected for coaching. */
+  isActive?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
   onBulletClick?: (
     text: string,
@@ -710,6 +714,7 @@ function BulletLineContent({
   proofLevel,
   nextBestAction,
   isAIEnhanced,
+  isActive,
   onBulletClick,
 }: BulletLineContentProps) {
   const resolvedReviewState = resolveReviewState(reviewState, confidence, requirementSource);
@@ -721,31 +726,52 @@ function BulletLineContent({
     }
   };
 
+  // The first requirement to surface as the floating context tag
+  const activeRequirementTag = isActive && requirements.length > 0 ? requirements[0] : null;
+  const truncatedTag = activeRequirementTag && activeRequirementTag.length > 50
+    ? `${activeRequirementTag.slice(0, 50)}…`
+    : activeRequirementTag;
+
   return (
     <span className="block">
       {isClickable ? (
         <span className="group flex items-start gap-1">
-          <span
-            role="button"
-            tabIndex={0}
-            title="Click to review and edit this bullet"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleActivate();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+          <span className="min-w-0 flex-1">
+            <span
+              role="button"
+              tabIndex={0}
+              title="Click to review and edit this bullet"
+              onClick={(e) => {
                 e.stopPropagation();
                 handleActivate();
-              }
-            }}
-            className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none min-w-0 flex-1"
-          >
-            {globalNumber !== undefined && (
-              <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
-            )}
-            {text}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleActivate();
+                }
+              }}
+              className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+            >
+              {globalNumber !== undefined && (
+                <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
+              )}
+              {text}
+            </span>
+            {/* Floating requirement tag — only visible when this bullet is active */}
+            <span
+              aria-hidden="true"
+              className={`inline-flex items-center mt-1 ml-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium
+                bg-blue-50 text-blue-600
+                transition-all duration-200
+                ${isActive && truncatedTag
+                  ? 'opacity-100 translate-y-0 pointer-events-none'
+                  : 'opacity-0 -translate-y-1 pointer-events-none'
+                }`}
+            >
+              {truncatedTag ?? ''}
+            </span>
           </span>
           <span className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
             <Pencil className="h-3.5 w-3.5 text-gray-400" />
