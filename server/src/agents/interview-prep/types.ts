@@ -127,6 +127,10 @@ export interface InterviewPrepState extends BaseState {
     positioning_strategy?: Record<string, unknown>;
     /** Evidence items captured during resume sessions */
     evidence_items?: Record<string, unknown>[];
+    /** Candidate intelligence from resume pipeline (quantified outcomes, hidden accomplishments) */
+    candidate_intelligence?: Record<string, unknown>;
+    /** Gap analysis from resume pipeline (requirements, gaps, bridging strategies) */
+    gap_analysis?: Record<string, unknown>;
   };
 
   /** Canonical shared context, populated alongside legacy platform_context during migration */

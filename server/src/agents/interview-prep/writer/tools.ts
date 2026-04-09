@@ -134,6 +134,57 @@ function buildContextBlock(state: InterviewPrepState): string {
     }));
   }
 
+  // ─── Quantified Candidate Metrics (from resume pipeline) ─────────
+  // These ground STAR answers with real numbers instead of generic framing.
+  const candidateIntel = state.platform_context?.candidate_intelligence as Record<string, unknown> | undefined;
+  if (candidateIntel) {
+    const outcomes = Array.isArray(candidateIntel.quantified_outcomes) ? candidateIntel.quantified_outcomes : [];
+    if (outcomes.length > 0) {
+      parts.push('\n## Quantified Candidate Outcomes (use these REAL metrics in STAR answers)');
+      for (const o of outcomes.slice(0, 10)) {
+        const outcome = o as { outcome?: string; metric_type?: string; value?: string };
+        parts.push(`- [${outcome.metric_type ?? 'metric'}] ${outcome.outcome ?? ''}: ${outcome.value ?? ''}`);
+      }
+    }
+    const hiddenAccomplishments = Array.isArray(candidateIntel.hidden_accomplishments) ? candidateIntel.hidden_accomplishments : [];
+    if (hiddenAccomplishments.length > 0) {
+      parts.push('\nHidden Accomplishments (deeper evidence the resume doesn\'t fully show):');
+      for (const h of hiddenAccomplishments.slice(0, 5)) {
+        parts.push(`- ${h}`);
+      }
+    }
+    if (typeof candidateIntel.operational_scale === 'string' && candidateIntel.operational_scale) {
+      parts.push(`\nOperational Scale: ${candidateIntel.operational_scale}`);
+    }
+    if (typeof candidateIntel.leadership_scope === 'string' && candidateIntel.leadership_scope) {
+      parts.push(`Leadership Scope: ${candidateIntel.leadership_scope}`);
+    }
+  }
+
+  // ─── Gap Analysis (for trap question preparation) ─────────────────
+  // Help the candidate prepare for skeptical interviewer questions on weak areas.
+  const gapAnalysis = state.platform_context?.gap_analysis as Record<string, unknown> | undefined;
+  if (gapAnalysis) {
+    const criticalGaps = Array.isArray(gapAnalysis.critical_gaps) ? gapAnalysis.critical_gaps : [];
+    const requirements = Array.isArray(gapAnalysis.requirements) ? gapAnalysis.requirements : [];
+    const weakAreas = requirements
+      .filter((r: Record<string, unknown>) => r.classification === 'missing' || r.classification === 'partial')
+      .slice(0, 5);
+
+    if (criticalGaps.length > 0 || weakAreas.length > 0) {
+      parts.push('\n## Gap Analysis — Prepare for Skeptical Questions');
+      parts.push('The candidate has gaps in these areas. Generate trap/probe questions and coach how to address them honestly:');
+      for (const gap of criticalGaps.slice(0, 3)) {
+        parts.push(`- CRITICAL GAP: ${gap}`);
+      }
+      for (const area of weakAreas) {
+        const r = area as { requirement?: string; classification?: string; strategy?: { positioning?: string } };
+        const bridging = r.strategy?.positioning ? ` — Bridging: ${r.strategy.positioning}` : '';
+        parts.push(`- [${r.classification}] ${r.requirement}${bridging}`);
+      }
+    }
+  }
+
   return parts.join('\n');
 }
 
