@@ -367,7 +367,9 @@ function buildRecommendedSectionPlan(
         id: AI_SECTION_ID,
         type: 'ai_highlights',
         title: aiSection.title,
-        enabled: hasContent(draft, AI_SECTION_ID, customSections),
+        // Custom sections default to disabled (opt-in, not opt-out).
+        // User enables via "Preview & Add" in the section planner.
+        enabled: false,
         order: index,
         source: aiSection.source ?? 'ai_readiness',
         recommended_for_job: aiSection.recommended_for_job,
@@ -382,7 +384,8 @@ function buildRecommendedSectionPlan(
         id: customSection.id,
         type: 'custom',
         title: customSection.title,
-        enabled: hasContent(draft, customSection.id, customSections),
+        // Custom sections default to disabled (opt-in, not opt-out).
+        enabled: false,
         order: index,
         source: customSection.source ?? 'job_match',
         recommended_for_job: customSection.recommended_for_job,
@@ -409,7 +412,9 @@ function buildRecommendedSectionPlan(
       id: section.id,
       type: 'custom',
       title: section.title,
-      enabled: hasContent(draft, section.id, customSections),
+      // Custom sections default to disabled (opt-in, not opt-out).
+      // Exception: user-added sections should stay enabled since user explicitly created them.
+      enabled: section.source === 'user_added',
       order: plan.length,
       source: section.source ?? 'user_added',
       recommended_for_job: section.recommended_for_job,
