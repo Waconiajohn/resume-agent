@@ -67,6 +67,12 @@ function truncatePreview(text: string, maxLength = 118): string {
   return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function formatMissingDetailPrompt(question?: string): string | undefined {
+  const trimmed = question?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/[?.!]+$/, '').trim();
+}
+
 function classificationForReviewState(reviewState: ResumeReviewState): 'partial' | 'missing' | 'strong' {
   if (reviewState === 'code_red') return 'missing';
   if (reviewState === 'strengthen' || reviewState === 'confirm_fit') return 'partial';
@@ -133,6 +139,7 @@ function buildBestFirstMove(args: {
     sectionRecommendedForJob,
   } = args;
 
+  const missingDetailPrompt = formatMissingDetailPrompt(topClarifyingQuestion);
   const sectionContext = sectionRecommendedForJob
     ? `${sectionLabel ?? 'This section'} is worth polishing early for this role.`
     : sectionRationale
@@ -153,8 +160,8 @@ function buildBestFirstMove(args: {
   if (reviewState === 'code_red') {
     return {
       title: 'Best first move',
-      body: topClarifyingQuestion
-        ? `${sectionContext ? `${sectionContext} ` : ''}I can keep this honest right now by rewriting it conservatively. If you later confirm more detail, we can strengthen it further. The one thing that would help most is: ${topClarifyingQuestion}`
+      body: missingDetailPrompt
+        ? `${sectionContext ? `${sectionContext} ` : ''}I can keep this honest right now by rewriting it conservatively. If you want to strengthen it later, the most helpful extra detail would be: ${missingDetailPrompt}.`
         : `${sectionContext ? `${sectionContext} ` : ''}I can keep this honest right now by rewriting it conservatively, then strengthen it later only if we confirm more detail.`,
       actionLabel: 'Show safest version',
       action: 'safe_rewrite',
@@ -164,8 +171,8 @@ function buildBestFirstMove(args: {
   if (nextBestAction === 'answer') {
     return {
       title: 'Best first move',
-      body: topClarifyingQuestion
-        ? `${sectionContext ? `${sectionContext} ` : ''}I can give you a safe version now, and this is the one detail that would make it stronger later: ${topClarifyingQuestion}`
+      body: missingDetailPrompt
+        ? `${sectionContext ? `${sectionContext} ` : ''}I can give you a safe version now, and this is the one detail that would make it stronger later: ${missingDetailPrompt}.`
         : `${sectionContext ? `${sectionContext} ` : ''}I can give you a safe version now, then we can strengthen it later if needed.`,
       actionLabel: 'Show safe version',
       action: 'safe_rewrite',
@@ -234,11 +241,12 @@ function buildMissingSummary(args: {
 }): string {
   const { missingDetail, reviewState, nextBestAction, topClarifyingQuestion, lineLabel } = args;
   if (missingDetail?.trim()) return missingDetail.trim();
+  const missingDetailPrompt = formatMissingDetailPrompt(topClarifyingQuestion);
 
   switch (nextBestAction) {
     case 'answer':
-      return topClarifyingQuestion
-        ? `One concrete detail is still missing. Start here: ${topClarifyingQuestion}`
+      return missingDetailPrompt
+        ? `One concrete detail is still missing. The most helpful extra detail would be: ${missingDetailPrompt}.`
         : `One concrete detail is still missing before this ${lineLabel} is safe to keep.`;
     case 'quantify':
       return `A number, budget, team size, timeline, or business result so this ${lineLabel} feels concrete.`;
@@ -255,8 +263,8 @@ function buildMissingSummary(args: {
   }
 
   if (reviewState === 'code_red') {
-    return topClarifyingQuestion
-      ? `We still need one real detail before this line is safe. ${topClarifyingQuestion}`
+    return missingDetailPrompt
+      ? `We still need one real detail before this line is safe. The most helpful extra detail would be: ${missingDetailPrompt}.`
       : `We still need one real detail before this line is safe.`;
   }
   if (reviewState === 'confirm_fit') {
@@ -277,6 +285,7 @@ function buildRecommendationSummary(args: {
   hasPriorClarifications: boolean;
 }): string {
   const { reviewState, nextBestAction, lineLabel, recommendedBullet, topClarifyingQuestion, hasPriorClarifications } = args;
+  const missingDetailPrompt = formatMissingDetailPrompt(topClarifyingQuestion);
 
   if (hasPriorClarifications) {
     return `I recommend reusing the detail you already confirmed and turning it into a stronger ${lineLabel} instead of starting from scratch.`;
@@ -284,12 +293,12 @@ function buildRecommendationSummary(args: {
 
   if (recommendedBullet?.trim()) {
     if (reviewState === 'confirm_fit' || nextBestAction === 'confirm') {
-      return `I recommend the middle-ground version below. It gets you closer without overstating the truth.`;
+      return `I recommend the middle-ground version below. It gets you closer without overstating your experience.`;
     }
     if (reviewState === 'code_red' || nextBestAction === 'answer') {
-      return `I can get this line closer, but I still need one real detail before I would trust the stronger version.`;
+      return `I can improve this line now, but I still need one real detail before I would use a stronger version.`;
     }
-    return `I recommend the wording below. It is the clearest truthful version based on what we already know.`;
+    return `I recommend the wording below. It is the clearest version based on the evidence we already have.`;
   }
 
   if (nextBestAction === 'quantify') {
@@ -298,8 +307,8 @@ function buildRecommendationSummary(args: {
   if (nextBestAction === 'tighten') {
     return 'I recommend tightening the sentence so the job fit is obvious right away.';
   }
-  if (topClarifyingQuestion) {
-    return `I can get closer once you answer one quick question: ${topClarifyingQuestion}`;
+  if (missingDetailPrompt) {
+    return `I can get closer once we confirm one more detail: ${missingDetailPrompt}.`;
   }
 
   return `I recommend starting with a cleaner version of this ${lineLabel}, then adjusting the wording until it feels exactly right.`;
@@ -347,7 +356,7 @@ function buildSuggestedWordingOptions(args: {
           ? 'Shows more scale or leadership scope'
           : alternative?.angle === 'impact'
             ? 'Shows the business outcome more directly'
-            : 'Another truthful way to say it';
+            : 'Another clear way to say it';
 
     if (isRecommended) {
       helper = 'Recommended';
@@ -399,6 +408,8 @@ export function BulletCoachingPanel({
   const [editDraft, setEditDraft] = useState('');
   const [showCustomEdit, setShowCustomEdit] = useState(false);
   const [showAdvancedAI, setShowAdvancedAI] = useState(false);
+  const [showAlternativeOptions, setShowAlternativeOptions] = useState(false);
+  const [showRelatedSuggestions, setShowRelatedSuggestions] = useState(false);
   // Remove confirmation state
   const [confirmRemove, setConfirmRemove] = useState(false);
   const applyMetadata = useCallback((overrides?: Partial<OptimisticResumeEditMetadata>): OptimisticResumeEditMetadata => ({
@@ -454,6 +465,7 @@ export function BulletCoachingPanel({
   const lineLabel = getLineLabel(chatContext.lineKind);
   const coachTitle = chatContext.sectionLabel ?? `This ${lineLabel}`;
   const topClarifyingQuestion = chatContext.clarifyingQuestions?.[0]?.trim();
+  const topClarifyingDetail = formatMissingDetailPrompt(topClarifyingQuestion);
   const priorClarifications = (chatContext.priorClarifications ?? []).slice(0, 2);
 
   // ── Escape to close ────────────────────────────────────────────────────────
@@ -636,6 +648,10 @@ export function BulletCoachingPanel({
     primarySuggestion,
     alternatives,
   });
+  const featuredOption = suggestedOptions.find((option) => option.isRecommended) ?? suggestedOptions[0] ?? null;
+  const alternateOptions = featuredOption
+    ? suggestedOptions.filter((option) => option.id !== featuredOption.id)
+    : [];
 
   const handleBestFirstMove = useCallback(() => {
     switch (bestFirstMove?.action) {
@@ -708,7 +724,7 @@ export function BulletCoachingPanel({
             className="text-[11px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: 'var(--text-soft)' }}
           >
-            Requirement Coach
+            Resume Coach
           </p>
           <div
             className="mt-2 rounded-2xl px-3.5 py-3"
@@ -718,14 +734,14 @@ export function BulletCoachingPanel({
               boxShadow: '0 8px 18px rgba(15, 23, 42, 0.04)',
             }}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-              Working in {coachTitle}
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>
+              Working on {coachTitle}
             </p>
             <p className="mt-1.5 text-[15px] leading-6 text-[var(--text-strong)]">
               {truncatePreview(bulletText, 148)}
             </p>
-            <p className="mt-2 text-[12px] leading-5 text-[var(--text-soft)]">
-              We will work this section one requirement at a time and I will suggest wording you can use immediately.
+            <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-muted)' }}>
+              I will help you strengthen this section one requirement at a time, with wording you can use immediately.
             </p>
           </div>
         </div>
@@ -771,23 +787,23 @@ export function BulletCoachingPanel({
                 className="text-[10px] font-semibold uppercase tracking-[0.14em]"
                 style={{ color: 'var(--text-soft)' }}
               >
-                What I recommend
+                My recommendation
               </p>
               <p className="mt-1.5 text-[14px] leading-6" style={{ color: 'var(--text-strong)' }}>
                 {recommendationSummary}
               </p>
               {priorClarifications.length > 0 && (
                 <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
-                  I am also using an earlier confirmed detail here: &ldquo;{priorClarifications[0].userInput}&rdquo;
+                  I am also using this earlier detail you confirmed: &ldquo;{priorClarifications[0].userInput}&rdquo;
                 </p>
               )}
-              {topClarifyingQuestion && !priorClarifications.length && (
+              {topClarifyingDetail && !priorClarifications.length && !featuredOption && (
                 <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-soft)' }}>
-                  If you want to make the stronger version even more specific later, this is the one detail I would confirm next: {topClarifyingQuestion}
+                  If you want to strengthen this later, the extra detail I would want is: {topClarifyingDetail}.
                 </p>
               )}
             </div>
-            {bestFirstMove?.actionLabel && (isCodeRedNoEvidence || !suggestedOptions.length) && (
+            {bestFirstMove?.actionLabel && (priorClarifications.length > 0 || isCodeRedNoEvidence || !suggestedOptions.length) && (
               <button
                 type="button"
                 onClick={handleBestFirstMove}
@@ -806,56 +822,14 @@ export function BulletCoachingPanel({
               </button>
             )}
           </div>
-        </div>
-      </div>
 
-      {suggestedOptions.length > 0 && !isCodeRedNoEvidence && (
-        <div
-          className="rounded-2xl px-3.5 py-3.5"
-          style={{
-            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.92))',
-            border: '1px solid rgba(203, 213, 225, 0.52)',
-          }}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p
-                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-                style={{ color: 'var(--text-soft)' }}
-              >
-                Suggested wording
-              </p>
-              <p className="mt-1.5 text-[14px] leading-6" style={{ color: 'var(--text-strong)' }}>
-                Pick the version that feels most true. Start with the recommended version, use the safer one if you want to stay cautious, or use the stronger one only if it is fully accurate.
-              </p>
-            </div>
-            {bestFirstMove?.actionLabel && (
-              <button
-                type="button"
-                onClick={handleBestFirstMove}
-                disabled={isChatLoading || isEnhancing}
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
-                  (isChatLoading || isEnhancing) && 'opacity-50 cursor-not-allowed',
-                )}
-                style={{
-                  borderColor: 'var(--line-soft)',
-                  color: 'var(--text-strong)',
-                  background: 'var(--surface-elevated)',
-                }}
-              >
-                {bestFirstMove.actionLabel}
-              </button>
-            )}
-          </div>
-          <div className="mt-3 space-y-2">
-            {suggestedOptions.map((option) => (
+          {featuredOption && !isCodeRedNoEvidence && (
+            <>
               <div
-                key={option.id}
                 className="rounded-xl border px-3 py-3"
                 style={{
-                  borderColor: option.isRecommended ? 'rgba(59, 130, 246, 0.35)' : 'rgba(203, 213, 225, 0.52)',
-                  background: option.isRecommended
+                  borderColor: featuredOption.isRecommended ? 'rgba(59, 130, 246, 0.35)' : 'rgba(203, 213, 225, 0.52)',
+                  background: featuredOption.isRecommended
                     ? 'linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.98))'
                     : 'rgba(255, 255, 255, 0.82)',
                 }}
@@ -863,36 +837,39 @@ export function BulletCoachingPanel({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-                        {option.label}
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>
+                        Recommended wording
                       </span>
                       <span
                         className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                         style={{
-                          background: option.isRecommended ? 'var(--badge-blue-bg)' : 'rgba(241, 245, 249, 0.88)',
-                          color: option.isRecommended ? 'var(--badge-blue-text)' : 'var(--text-soft)',
+                          background: featuredOption.isRecommended ? 'var(--badge-blue-bg)' : 'rgba(241, 245, 249, 0.88)',
+                          color: featuredOption.isRecommended ? 'var(--badge-blue-text)' : 'var(--text-soft)',
                         }}
                       >
-                        {option.helper}
+                        {featuredOption.helper}
                       </span>
                     </div>
                     <p className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">
-                      {option.text}
+                      {featuredOption.text}
+                    </p>
+                    <p className="mt-2 text-[12px] leading-5" style={{ color: 'var(--text-muted)' }}>
+                      Start here. If it feels true, use it. If not, you can reveal the safer and stronger versions below.
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
                     <button
                       type="button"
-                      onClick={() => handleAcceptSuggestion(option.text)}
+                      onClick={() => handleAcceptSuggestion(featuredOption.text)}
                       disabled={isEnhancing || isChatLoading}
                       className={cn(
                         'rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
                         (isEnhancing || isChatLoading) && 'opacity-50 cursor-not-allowed',
                       )}
                       style={{
-                        background: option.isRecommended ? 'var(--btn-primary-bg)' : 'var(--surface-elevated)',
-                        border: option.isRecommended ? '1px solid var(--btn-primary-border)' : '1px solid var(--line-soft)',
-                        color: option.isRecommended ? 'var(--btn-primary-text)' : 'var(--text-strong)',
+                        background: featuredOption.isRecommended ? 'var(--btn-primary-bg)' : 'var(--surface-elevated)',
+                        border: featuredOption.isRecommended ? '1px solid var(--btn-primary-border)' : '1px solid var(--line-soft)',
+                        color: featuredOption.isRecommended ? 'var(--btn-primary-text)' : 'var(--text-strong)',
                       }}
                     >
                       Use this version
@@ -900,7 +877,7 @@ export function BulletCoachingPanel({
                     <button
                       type="button"
                       onClick={() => {
-                        setEditDraft(option.text);
+                        setEditDraft(featuredOption.text);
                         setShowCustomEdit(true);
                       }}
                       disabled={isEnhancing || isChatLoading}
@@ -910,19 +887,102 @@ export function BulletCoachingPanel({
                       )}
                       style={{
                         borderColor: 'var(--line-soft)',
-                        color: 'var(--text-muted)',
-                        background: 'transparent',
+                        color: 'var(--text-strong)',
+                        background: 'rgba(255, 255, 255, 0.82)',
                       }}
                     >
-                      Tweak this one
+                      Adjust this version
                     </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {alternateOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAlternativeOptions((current) => !current)}
+                  className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-xs font-medium hover:text-[var(--text-strong)]"
+                  style={{ color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.82)' }}
+                >
+                  {showAlternativeOptions ? 'Hide safer and stronger versions' : 'Show safer and stronger versions'}
+                </button>
+              )}
+
+              {showAlternativeOptions && alternateOptions.map((option) => (
+                <div
+                  key={option.id}
+                  className="rounded-xl border px-3 py-3"
+                  style={{
+                    borderColor: option.isRecommended ? 'rgba(59, 130, 246, 0.35)' : 'rgba(203, 213, 225, 0.52)',
+                    background: option.isRecommended
+                      ? 'linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.98))'
+                      : 'rgba(255, 255, 255, 0.82)',
+                  }}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>
+                          {option.label}
+                        </span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                          style={{
+                            background: option.isRecommended ? 'var(--badge-blue-bg)' : 'rgba(241, 245, 249, 0.88)',
+                            color: option.isRecommended ? 'var(--badge-blue-text)' : 'var(--text-soft)',
+                          }}
+                        >
+                          {option.helper}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-strong)]">
+                        {option.text}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptSuggestion(option.text)}
+                        disabled={isEnhancing || isChatLoading}
+                        className={cn(
+                          'rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+                          (isEnhancing || isChatLoading) && 'opacity-50 cursor-not-allowed',
+                        )}
+                        style={{
+                          background: option.isRecommended ? 'var(--btn-primary-bg)' : 'var(--surface-elevated)',
+                          border: option.isRecommended ? '1px solid var(--btn-primary-border)' : '1px solid var(--line-soft)',
+                          color: option.isRecommended ? 'var(--btn-primary-text)' : 'var(--text-strong)',
+                        }}
+                      >
+                        Use this version
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditDraft(option.text);
+                          setShowCustomEdit(true);
+                        }}
+                        disabled={isEnhancing || isChatLoading}
+                        className={cn(
+                          'rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                          (isEnhancing || isChatLoading) && 'opacity-50 cursor-not-allowed',
+                        )}
+                        style={{
+                          borderColor: 'var(--line-soft)',
+                          color: 'var(--text-strong)',
+                          background: 'rgba(255, 255, 255, 0.82)',
+                        }}
+                      >
+                        Adjust this version
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 4. Optional advanced AI actions */}
       {!isCodeRedNoEvidence && onBulletEnhance && (
@@ -973,7 +1033,7 @@ export function BulletCoachingPanel({
             className="text-[12px] leading-relaxed"
             style={{ color: 'var(--text-muted)' }}
           >
-            I will keep this truthful and conservative first. If you later want to make it stronger, the most helpful extra detail would be around{' '}
+            I will keep this conservative first. If you later want to make it stronger, the most helpful extra detail would be around{' '}
             <span
               className="font-medium"
               style={{ color: 'var(--text-strong)' }}
@@ -982,12 +1042,12 @@ export function BulletCoachingPanel({
             </span>
             .
           </p>
-          {topClarifyingQuestion && (
+          {topClarifyingDetail && (
             <p
               className="text-[12px] leading-relaxed"
               style={{ color: 'var(--text-soft)' }}
             >
-              If you ever want a stronger version, this is what I would want to confirm: {topClarifyingQuestion}
+              If you ever want a stronger version, the extra detail I would want is: {topClarifyingDetail}.
             </p>
           )}
           <div className="flex flex-wrap gap-2">
@@ -1005,7 +1065,7 @@ export function BulletCoachingPanel({
                 color: 'var(--btn-primary-text)',
                 border: '1px solid var(--btn-primary-border)',
               }}
-              aria-label="Generate the safest truthful version"
+              aria-label="Generate the safest version"
             >
               {isChatLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1049,16 +1109,16 @@ export function BulletCoachingPanel({
                 className="text-[10px] uppercase tracking-wider"
                 style={{ color: 'var(--text-soft)' }}
               >
-                One answer can strengthen nearby lines too
+                Also improve nearby lines
               </p>
               <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                This detail also gives us stronger footing for {relatedSuggestionTargets.length} other {relatedSuggestionTargets.length === 1 ? 'line' : 'lines'}.
+                This same detail can also improve {relatedSuggestionTargets.length} other {relatedSuggestionTargets.length === 1 ? 'line' : 'lines'}.
               </p>
             </div>
-            {relatedSuggestionTargets.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleApplyAllRelatedSuggestions}
+                onClick={() => setShowRelatedSuggestions((current) => !current)}
                 className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
                 style={{
                   borderColor: 'var(--line-soft)',
@@ -1066,12 +1126,27 @@ export function BulletCoachingPanel({
                   background: 'var(--surface-elevated)',
                 }}
               >
-                Apply all nearby lines
+                {showRelatedSuggestions ? 'Hide nearby lines' : 'Show nearby lines'}
               </button>
-            )}
+              {showRelatedSuggestions && relatedSuggestionTargets.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleApplyAllRelatedSuggestions}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={{
+                    borderColor: 'var(--line-soft)',
+                    color: 'var(--text-strong)',
+                    background: 'var(--surface-elevated)',
+                  }}
+                >
+                  Apply all nearby lines
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2">
+          {showRelatedSuggestions && (
+            <div className="space-y-2">
             {relatedSuggestionTargets.map(({ candidate, suggestion }) => (
               <div
                 key={candidate.id}
@@ -1118,7 +1193,8 @@ export function BulletCoachingPanel({
                 )}
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

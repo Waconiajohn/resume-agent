@@ -4,6 +4,7 @@ import type { FinalReviewConcern, GapChatContext, GapChatMessage, GapChatTargetI
 import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
+import { buildResumeSectionWorkflowViewModel } from '@/lib/resume-section-workflow';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
 import { scrollToAndFocusTarget } from '../useStrategyThread';
 import { findResumeTargetForFinalReviewConcern } from '../utils/final-review-target';
@@ -246,6 +247,66 @@ export function ResumeV2VisualHarness() {
       relatedLineCandidates: [],
     };
   }, [editableResume, scenario.data.gapAnalysis?.requirements, scenario.data.jobIntelligence?.core_competencies]);
+
+  const sectionDrafts = useMemo(() => {
+    if (scenarioId !== 'final-review') return {};
+
+    const workflow = buildResumeSectionWorkflowViewModel({
+      resume: editableResume,
+      requirementWorkItems: scenario.data.requirementWorkItems ?? scenario.data.gapAnalysis?.requirement_work_items ?? [],
+      candidateIntelligence: scenario.data.candidateIntelligence,
+    });
+
+    return Object.fromEntries(
+      workflow.steps.map((step, index) => [
+        step.id,
+        {
+          status: 'ready' as const,
+          error: null,
+          result: {
+            recommendedVariantId: 'recommended' as const,
+            variants: [
+              {
+                id: 'recommended' as const,
+                label: 'Recommended',
+                helper: 'Best fit for the role.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Recommended draft for ${step.title} ${index + 1}.`,
+                },
+              },
+              {
+                id: 'safer' as const,
+                label: 'Safer',
+                helper: 'More conservative wording.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Safer draft for ${step.title} ${index + 1}.`,
+                },
+              },
+              {
+                id: 'stronger' as const,
+                label: 'Stronger',
+                helper: 'Use only if fully supported.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Stronger draft for ${step.title} ${index + 1}.`,
+                },
+              },
+            ],
+            whyItWorks: [`Explains why ${step.title} is stronger for this role.`],
+            strengtheningNote: 'Add one specific scope or outcome if the candidate can support it.',
+          },
+        },
+      ]),
+    );
+  }, [
+    editableResume,
+    scenario.data.candidateIntelligence,
+    scenario.data.gapAnalysis?.requirement_work_items,
+    scenario.data.requirementWorkItems,
+    scenarioId,
+  ]);
 
   const harnessGapChat = useMemo<GapChatHook>(() => ({
     getItemState: (requirement: string) => harnessChatItems[normalizeHarnessChatKey(requirement)],
@@ -564,6 +625,8 @@ export function ResumeV2VisualHarness() {
           onBulletEnhance={handleHarnessEnhance}
           postReviewPolish={undefined}
           initialActiveBullet={scenario.initialActiveBullet ?? null}
+          sectionDrafts={sectionDrafts}
+          onApplySectionDraft={() => {}}
         />
       </div>
     </div>

@@ -78,9 +78,10 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getByText('Show leadership scope')).toBeInTheDocument();
     expect(screen.getByText('Match this role')).toBeInTheDocument();
     expect(screen.getByText('Add business impact')).toBeInTheDocument();
-    expect(screen.getByText('What I recommend')).toBeInTheDocument();
-    expect(screen.getByText('Top requirements for this section')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /run opening rewrite/i })).toBeInTheDocument();
+    expect(screen.getByText('My recommendation')).toBeInTheDocument();
+    expect(screen.getByText('Current focus')).toBeInTheDocument();
+    expect(screen.getByText('Recommended wording')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /use this version/i })).toBeInTheDocument();
   });
 
   it('offers a safe rewrite first when a code-red line is missing proof', () => {
@@ -113,7 +114,7 @@ describe('BulletCoachingPanel', () => {
     );
 
     expect(screen.queryByText('Quick check')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/If you want to make the stronger version even more specific later/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/the extra detail i would want is/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /show safest version/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /write my own version/i })).toBeInTheDocument();
 
@@ -203,8 +204,9 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText('One answer can strengthen nearby lines too')).toBeInTheDocument();
-    expect(screen.getByText(/this detail also gives us stronger footing for 2 other lines/i)).toBeInTheDocument();
+    expect(screen.getByText('Also improve nearby lines')).toBeInTheDocument();
+    expect(screen.getByText(/this same detail can also improve 2 other lines/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /show nearby lines/i }));
     expect(screen.getByText('Apply all nearby lines')).toBeInTheDocument();
     expect(screen.getByText('Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.')).toBeInTheDocument();
 
@@ -271,7 +273,7 @@ describe('BulletCoachingPanel', () => {
     );
 
     expect(screen.queryByText('Already confirmed')).not.toBeInTheDocument();
-    expect(screen.getByText(/I am also using an earlier confirmed detail here/i)).toBeInTheDocument();
+    expect(screen.getByText(/I am also using this earlier detail you confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /rewrite from earlier answer/i }));

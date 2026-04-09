@@ -2,8 +2,8 @@
  * BulletContextHeader — plain-language requirement summary for the active line.
  *
  * The UI here stays intentionally simple:
- * - top requirements for this section
  * - the current requirement we are fixing now
+ * - the other section priorities in one compact line
  * - what the app already found
  * - what is still missing before the line is strong enough
  */
@@ -59,9 +59,9 @@ function getStateConfig(reviewState: ResumeReviewState) {
 function getIntroLabel(reviewState: ResumeReviewState): string {
   switch (reviewState) {
     case 'code_red':
-      return 'This line is trying to prove';
+      return 'Right now, make this section prove';
     default:
-      return 'This line needs to show';
+      return 'Right now, make this section show';
   }
 }
 
@@ -109,13 +109,13 @@ function getFallbackMissingSummary(args: {
     case 'quantify':
       return 'A number, budget, team size, timeline, or business result so the impact feels real.';
     case 'confirm':
-      return 'The safest truthful version of the claim, so the line does not overstate your role.';
+      return 'The safest version of the claim, so the line does not overstate your role.';
     case 'tighten':
       return 'A sharper connection between what you did and why this role cares about it.';
     case 'accept':
       return 'Nothing critical. We can keep it or make the wording cleaner.';
     case 'remove':
-      return 'A truthful reason to keep this line. If we cannot support it, it should go.';
+      return 'A real reason to keep this line. If we cannot support it, it should go.';
     default:
       break;
   }
@@ -166,6 +166,7 @@ export function BulletContextHeader({
     framingGuardrail,
     nextBestAction,
   });
+  const secondaryRequirements = topRequirements.filter((item) => item !== currentRequirement);
 
   return (
     <div
@@ -180,6 +181,16 @@ export function BulletContextHeader({
           className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
           style={{
             background: 'rgba(255, 255, 255, 0.88)',
+            color: 'var(--text-strong)',
+            border: '1px solid rgba(148, 163, 184, 0.16)',
+          }}
+        >
+          Current focus
+        </span>
+        <span
+          className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+          style={{
+            background: 'rgba(255, 255, 255, 0.88)',
             color: colorVar,
             border: `1px solid ${borderVar}`,
           }}
@@ -188,40 +199,9 @@ export function BulletContextHeader({
         </span>
       </div>
 
-      <div className="mt-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-          Top requirements for this section
-        </p>
-        <ol className="mt-2 space-y-1.5">
-          {topRequirements.map((item, index) => {
-            const isActive = item === currentRequirement;
-            return (
-              <li key={`${item}-${index}`} className="flex items-start gap-2">
-                <span
-                  className="mt-[2px] inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-                  style={{
-                    background: isActive ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.6)',
-                    color: isActive ? colorVar : 'var(--text-soft)',
-                    border: `1px solid ${isActive ? borderVar : 'rgba(203, 213, 225, 0.48)'}`,
-                  }}
-                >
-                  {index + 1}
-                </span>
-                <p
-                  className="text-[13px] leading-5"
-                  style={{ color: isActive ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: isActive ? 600 : 500 }}
-                >
-                  {item}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      <div className="mt-3 space-y-2.5">
+      <div className="mt-3 space-y-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>
             {introLabel}
           </p>
           <p className="mt-1.5 text-[15px] leading-6" style={{ color: 'var(--text-strong)' }}>
@@ -230,53 +210,35 @@ export function BulletContextHeader({
         </div>
 
         {trimmedSourceEvidence && (
-          <div
-            className="rounded-xl px-3 py-2"
-            style={{
-              background: 'rgba(255, 255, 255, 0.74)',
-              border: '1px solid rgba(148, 163, 184, 0.14)',
-            }}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-              Why this matters for the job
-            </p>
-            <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
-              {sourceLabel} {trimmedSourceEvidence}
-            </p>
-          </div>
+          <p className="text-[12.5px] leading-5" style={{ color: 'var(--text-muted)' }}>
+            <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>
+              Why this matters:
+            </span>{' '}
+            {sourceLabel} {trimmedSourceEvidence}
+          </p>
         )}
 
         {trimmedEvidence && (
-          <div
-            className="rounded-xl px-3 py-2"
-            style={{
-              background: 'rgba(255, 255, 255, 0.84)',
-              border: '1px solid rgba(148, 163, 184, 0.14)',
-            }}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-              What I already found
-            </p>
-            <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
-              &ldquo;{trimmedEvidence}&rdquo;
-            </p>
-          </div>
+          <p className="text-[12.5px] leading-5" style={{ color: 'var(--text-muted)' }}>
+            <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>
+              What we already have:
+            </span>{' '}
+            {trimmedEvidence}
+          </p>
         )}
 
-        <div
-          className="rounded-xl px-3 py-2"
-          style={{
-            background: 'rgba(255, 255, 255, 0.84)',
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-          }}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-soft)' }}>
-            What is still missing
+        <p className="text-[12.5px] leading-5" style={{ color: 'var(--text-muted)' }}>
+          <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>
+            Best next improvement:
+          </span>{' '}
+          {resolvedMissingSummary}
+        </p>
+
+        {secondaryRequirements.length > 0 && (
+          <p className="text-[12px] leading-5" style={{ color: 'var(--text-muted)' }}>
+            After this, this section should still help show: {secondaryRequirements.join(' • ')}
           </p>
-          <p className="mt-1 text-[12.5px] leading-5" style={{ color: 'var(--text-soft)' }}>
-            {resolvedMissingSummary}
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );

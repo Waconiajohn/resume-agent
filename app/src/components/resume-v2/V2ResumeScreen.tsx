@@ -15,6 +15,7 @@ import { useGapChat } from '@/hooks/useGapChat';
 import { useFinalReviewChat } from '@/hooks/useFinalReviewChat';
 import { usePostReviewPolish } from '@/hooks/usePostReviewPolish';
 import { useBulletEnhance } from '@/hooks/useBulletEnhance';
+import { useSectionDraft } from '@/hooks/useSectionDraft';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
@@ -52,6 +53,12 @@ import {
   removeResumeCustomSection,
   setResumeSectionEnabled,
 } from '@/lib/resume-section-plan';
+import {
+  applySectionDraftVariantToResume,
+  type ResumeSectionDraftVariant,
+  type ResumeWorkflowSectionStepViewModel,
+} from '@/lib/resume-section-workflow';
+import type { SectionRefineActionId } from '@/lib/section-draft-refinement';
 import { DEFAULT_TEMPLATE_ID } from '@/lib/export-templates';
 import {
   buildAuthScopedStorageKey,
@@ -396,6 +403,16 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   // Bullet AI enhancement (show_transformation / demonstrate_leadership / connect_to_role / show_accountability)
   const { enhance: bulletEnhance } = useBulletEnhance(accessToken, data.sessionId || null);
+  const {
+    drafts: sectionDrafts,
+    generateDraft: generateSectionDraft,
+    refineDraft: refineSectionDraft,
+    resetAll: resetSectionDrafts,
+  } = useSectionDraft(accessToken, data.sessionId || null);
+  useEffect(() => {
+    resetSectionDrafts();
+  }, [data.sessionId, resetSectionDrafts]);
+
   const handleBulletEnhance = useCallback(async (
     action: string,
     bulletText: string,
@@ -650,6 +667,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const sectionLabel = (() => {
       if (sectionKey === 'executive_summary') return 'Executive Summary';
       if (sectionKey === 'core_competencies') return 'Core Competencies';
+      if (sectionKey === 'selected_accomplishments') return 'Selected Accomplishments';
+      if (sectionKey === 'professional_experience') return 'Professional Experience';
       const customSectionId = parseCustomSectionKey(sectionKey ?? '');
       if (customSectionId) {
         const customSection = currentResume?.custom_sections?.find((section) => section.id === customSectionId);
@@ -660,14 +679,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     const sectionPlanItem = (() => {
       if (!currentResume || !sectionKey) return undefined;
       const plan = buildResumeSectionPlan(currentResume);
-      if (sectionKey === 'executive_summary' || sectionKey === 'core_competencies') {
-        return plan.find((item) => item.id === sectionKey);
-      }
       const customSectionId = parseCustomSectionKey(sectionKey);
-      if (customSectionId) {
-        return plan.find((item) => item.id === customSectionId);
-      }
-      return undefined;
+      const planId = customSectionId ?? sectionKey;
+      return plan.find((item) => item.id === planId);
     })();
 
     const sourceEvidenceParts = Array.from(new Set([
@@ -718,6 +732,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       }
       if (lineKind === 'competency') {
         return 'Rewrite this competency as a crisp ATS-friendly keyword phrase, not a full sentence.';
+      }
+      if (sectionKey === 'selected_accomplishments') {
+        return 'Rewrite this accomplishment so it quickly proves one of the most important job requirements with a concrete result.';
+      }
+      if (sectionKey === 'professional_experience') {
+        return 'Rewrite this experience line so it shows ownership, scope, and business impact clearly without overstating the claim.';
       }
       if (sectionKey?.startsWith('custom_section:')) {
         return sectionKey === 'custom_section:ai_highlights'
@@ -1171,6 +1191,60 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       resetPostReviewPolish();
     }
   }, [hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  const handleApplySectionDraft = useCallback((
+    step: ResumeWorkflowSectionStepViewModel,
+    variant: ResumeSectionDraftVariant,
+  ) => {
+    setEditableResume((prev) => {
+      const base = normalizeResumeDraft(prev ?? currentResume);
+      if (!base) return prev;
+      return applySectionDraftVariantToResume({
+        resume: base,
+        step,
+        variant,
+      });
+    });
+
+    const appliedText = (() => {
+      if (variant.content.kind === 'paragraph') return variant.content.paragraph ?? '';
+      if (variant.content.kind === 'role_block') {
+        return [variant.content.scopeStatement ?? '', ...(variant.content.lines ?? [])].filter(Boolean).join(' ');
+      }
+      return (variant.content.lines ?? []).join(' ');
+    })();
+
+    promoteRequirementWorkItems(appliedText, {
+      requirements: step.topRequirements.map((entry) => entry.requirement),
+      requirement: step.topRequirements[0]?.requirement,
+      requirementSource: step.topRequirements[0]?.source,
+      reviewState: 'supported_rewrite',
+      nextBestAction: 'accept',
+      proofLevel: 'direct',
+      framingGuardrail: 'exact',
+      evidenceFound: step.topRequirements[0]?.evidencePreview ?? appliedText,
+    });
+
+    markResumeArtifactsStale();
+  }, [currentResume, markResumeArtifactsStale, promoteRequirementWorkItems]);
+
+  const handleRefineSectionDraft = useCallback(async (
+    step: ResumeWorkflowSectionStepViewModel,
+    actionId: SectionRefineActionId,
+    workingDraft: string,
+  ) => {
+    const base = normalizeResumeDraft(editableResume ?? currentResume);
+    if (!base) return;
+
+    await refineSectionDraft({
+      step,
+      actionId,
+      workingDraft,
+      fullResumeText: resumeToPlainText(base),
+      jobDescription,
+      sectionContext: extractResumeExcerptForSection(base, step.title),
+    });
+  }, [currentResume, editableResume, jobDescription, refineSectionDraft]);
 
   const handleMoveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
     setEditableResume((prev) => {
@@ -2028,6 +2102,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         jobUrl={activeJobUrl ?? undefined}
         accessToken={accessToken}
         clarificationMemory={currentClarificationMemory}
+        sectionDrafts={sectionDrafts}
+        onGenerateSectionDraft={generateSectionDraft}
+        onRefineSectionDraft={handleRefineSectionDraft}
+        onApplySectionDraft={handleApplySectionDraft}
       />
     </div>
   );

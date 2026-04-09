@@ -28,6 +28,7 @@ import { ResumeEditorLayout } from './ResumeEditorLayout';
 import { PipelineProgressCard } from './cards/PipelineProgressCard';
 import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
 import { ResumeStructurePlannerCard } from './cards/ResumeStructurePlannerCard';
+import { ResumeSectionWorkflowPanel } from './workflow/ResumeSectionWorkflowPanel';
 import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
@@ -35,6 +36,13 @@ import { scrollToAndFocusTarget } from './useStrategyThread';
 import { buildCustomSectionDraftSuggestions, buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
+import type {
+  ResumeSectionDraftResult,
+  ResumeSectionDraftVariant,
+  ResumeWorkflowSectionStepViewModel,
+} from '@/lib/resume-section-workflow';
+import type { SectionRefineActionId } from '@/lib/section-draft-refinement';
+import { buildResumeSectionWorkflowViewModel } from '@/lib/resume-section-workflow';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -150,6 +158,27 @@ interface V2StreamingDisplayProps {
   /** Access token for the link-resume API call in ExportBar */
   accessToken?: string | null;
   clarificationMemory?: ClarificationMemoryEntry[];
+  sectionDrafts?: Record<string, {
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    result: ResumeSectionDraftResult | null;
+    error: string | null;
+    isRefining?: boolean;
+    refinementActionId?: SectionRefineActionId | null;
+    refinementError?: string | null;
+  }>;
+  onGenerateSectionDraft?: (args: {
+    step: ResumeWorkflowSectionStepViewModel;
+    force?: boolean;
+  }) => Promise<ResumeSectionDraftResult | null>;
+  onRefineSectionDraft?: (
+    step: ResumeWorkflowSectionStepViewModel,
+    actionId: SectionRefineActionId,
+    workingDraft: string,
+  ) => Promise<void>;
+  onApplySectionDraft?: (
+    step: ResumeWorkflowSectionStepViewModel,
+    variant: ResumeSectionDraftVariant,
+  ) => void;
 }
 
 interface AttentionReviewItem {
@@ -295,6 +324,20 @@ function getAttentionStatusMeta(
     className: 'resume-attention-status resume-attention-status--neutral',
     priority: 3,
   };
+}
+
+function resolveCoachReviewState(
+  reviewState: ResumeReviewState | undefined,
+  confidence: BulletConfidence | undefined,
+  requirementSource: RequirementSource | undefined,
+  fallback: ResumeReviewState = 'strengthen',
+): ResumeReviewState {
+  if (reviewState) return reviewState;
+  if (confidence === 'needs_validation' && requirementSource === 'benchmark') return 'confirm_fit';
+  if (confidence === 'needs_validation') return 'code_red';
+  if (confidence === 'partial') return 'strengthen';
+  if (confidence === 'strong') return 'supported';
+  return fallback;
 }
 
 function buildAttentionReviewItems(
@@ -581,6 +624,7 @@ function buildSectionCoachTargets(
   };
 
   const targets: SectionCoachTarget[] = [];
+  const planOrderFor = (sectionId: string) => planById.get(sectionId)?.order ?? Number.MAX_SAFE_INTEGER;
 
   const summaryText = resume.executive_summary.content.trim();
   if (summaryText) {
@@ -588,12 +632,13 @@ function buildSectionCoachTargets(
     const primaryGuidance = derivePrimaryGuidance(rankedItems, summaryText, 'summary');
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
     const sectionPlanItem = planById.get('executive_summary');
+    const summaryRationale = sectionPlanItem?.rationale ?? 'Lead with identity in the clearest version of the why-me story.';
     targets.push({
       id: 'executive_summary',
       label: 'Executive Summary',
       helperText: relatedRequirements.length > 0
-        ? `${sectionPlanItem?.rationale ?? 'Lead with identity and fit.'} Bring forward ${formatRequirementFocus(relatedRequirements)} so the opening story maps faster to the role. ${primaryGuidance.nextMoveText}`
-        : `${sectionPlanItem?.rationale ?? 'Tighten the first impression and opening story.'} ${primaryGuidance.nextMoveText}`,
+        ? `${summaryRationale} Then make the opening clearly support ${formatRequirementFocus(relatedRequirements)} without losing the overall why-me story. ${primaryGuidance.nextMoveText}`
+        : `${summaryRationale} ${primaryGuidance.nextMoveText}`,
       section: 'executive_summary',
       index: 0,
       bulletText: summaryText,
@@ -640,8 +685,109 @@ function buildSectionCoachTargets(
     });
   }
 
+  const firstAccomplishmentIndex = resume.selected_accomplishments.findIndex((item) => item.content.trim().length > 0);
+  if (firstAccomplishmentIndex >= 0) {
+    const accomplishmentCorpus = resume.selected_accomplishments
+      .map((item) => item.content)
+      .filter((value) => value.trim().length > 0)
+      .join(' ');
+    const rankedItems = rankWorkItems('selected_accomplishments', 'Selected Accomplishments', accomplishmentCorpus);
+    const accomplishmentCandidate = resume.selected_accomplishments.find((item) => {
+      const resolved = resolveCoachReviewState(item.review_state, item.confidence, item.requirement_source, 'supported');
+      return reviewStateNeedsAttention(resolved);
+    }) ?? resume.selected_accomplishments[firstAccomplishmentIndex];
+    const accomplishmentIndex = resume.selected_accomplishments.findIndex((item) => item === accomplishmentCandidate);
+    const primaryGuidance = derivePrimaryGuidance(rankedItems, accomplishmentCandidate.content, 'accomplishment');
+    const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
+    const accomplishmentRequirements = canonicalRequirementSignals(
+      accomplishmentCandidate.primary_target_requirement,
+      accomplishmentCandidate.addresses_requirements,
+    );
+    const sectionPlanItem = planById.get('selected_accomplishments');
+    targets.push({
+      id: 'selected_accomplishments',
+      label: 'Selected Accomplishments',
+      helperText: relatedRequirements.length > 0
+        ? `${sectionPlanItem?.rationale ?? 'Use the strongest proof points above the fold.'} Make this section clearly prove ${formatRequirementFocus(relatedRequirements)} before the reader reaches the timeline. ${primaryGuidance.nextMoveText}`
+        : `${sectionPlanItem?.rationale ?? 'Use the strongest proof points above the fold.'} ${primaryGuidance.nextMoveText}`,
+      section: 'selected_accomplishments',
+      index: accomplishmentIndex,
+      bulletText: accomplishmentCandidate.content,
+      requirements: relatedRequirements.length > 0 ? relatedRequirements : accomplishmentRequirements,
+      reviewState: resolveCoachReviewState(
+        accomplishmentCandidate.review_state,
+        accomplishmentCandidate.confidence,
+        accomplishmentCandidate.requirement_source,
+        primaryGuidance.reviewState,
+      ),
+      requirementSource: accomplishmentCandidate.requirement_source ?? primaryGuidance.requirementSource,
+      evidenceFound: accomplishmentCandidate.evidence_found ?? primaryGuidance.evidenceFound,
+      sourceEvidence: primaryGuidance.sourceEvidence,
+      workItemId: accomplishmentCandidate.work_item_id ?? primaryGuidance.primaryItem?.id,
+      proofLevel: accomplishmentCandidate.proof_level ?? primaryGuidance.proofLevel,
+      framingGuardrail: primaryGuidance.framingGuardrail,
+      nextBestAction: accomplishmentCandidate.next_best_action ?? primaryGuidance.nextBestAction,
+      canRemove: true,
+    });
+  }
+
+  const experienceBulletCandidates = resume.professional_experience.flatMap((experience, experienceIndex) => (
+    (Array.isArray(experience.bullets) ? experience.bullets : []).map((bullet, bulletOffset) => ({
+      experience,
+      bullet,
+      index: experienceIndex * 100 + bulletOffset,
+    }))
+  ));
+  const firstExperienceBullet = experienceBulletCandidates.find((item) => item.bullet.text.trim().length > 0);
+  if (firstExperienceBullet) {
+    const experienceCorpus = resume.professional_experience
+      .flatMap((experience) => [
+        experience.scope_statement,
+        ...(Array.isArray(experience.bullets) ? experience.bullets.map((bullet) => bullet.text) : []),
+      ])
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join(' ');
+    const rankedItems = rankWorkItems('professional_experience', 'Professional Experience', experienceCorpus);
+    const experienceCandidate = experienceBulletCandidates.find(({ bullet }) => {
+      const resolved = resolveCoachReviewState(bullet.review_state, bullet.confidence, bullet.requirement_source, 'supported');
+      return reviewStateNeedsAttention(resolved);
+    }) ?? firstExperienceBullet;
+    const primaryGuidance = derivePrimaryGuidance(rankedItems, experienceCandidate.bullet.text, 'experience bullet');
+    const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
+    const experienceRequirements = canonicalRequirementSignals(
+      experienceCandidate.bullet.primary_target_requirement,
+      experienceCandidate.bullet.addresses_requirements,
+    );
+    const sectionPlanItem = planById.get('professional_experience');
+    targets.push({
+      id: 'professional_experience',
+      label: 'Professional Experience',
+      helperText: relatedRequirements.length > 0
+        ? `${sectionPlanItem?.rationale ?? 'Let the chronology prove your strongest business wins.'} Use the recent roles to clearly prove ${formatRequirementFocus(relatedRequirements)} with concrete scope, ownership, and results. ${primaryGuidance.nextMoveText}`
+        : `${sectionPlanItem?.rationale ?? 'Let the chronology prove your strongest business wins.'} ${primaryGuidance.nextMoveText}`,
+      section: 'professional_experience',
+      index: experienceCandidate.index,
+      bulletText: experienceCandidate.bullet.text,
+      requirements: relatedRequirements.length > 0 ? relatedRequirements : experienceRequirements,
+      reviewState: resolveCoachReviewState(
+        experienceCandidate.bullet.review_state,
+        experienceCandidate.bullet.confidence,
+        experienceCandidate.bullet.requirement_source,
+        primaryGuidance.reviewState,
+      ),
+      requirementSource: experienceCandidate.bullet.requirement_source ?? primaryGuidance.requirementSource,
+      evidenceFound: experienceCandidate.bullet.evidence_found ?? primaryGuidance.evidenceFound,
+      sourceEvidence: primaryGuidance.sourceEvidence,
+      workItemId: experienceCandidate.bullet.work_item_id ?? primaryGuidance.primaryItem?.id,
+      proofLevel: experienceCandidate.bullet.proof_level ?? primaryGuidance.proofLevel,
+      framingGuardrail: primaryGuidance.framingGuardrail,
+      nextBestAction: experienceCandidate.bullet.next_best_action ?? primaryGuidance.nextBestAction,
+      canRemove: true,
+    });
+  }
+
   const customSections = getResumeCustomSectionMap(resume);
-  const customTargets: Array<{ target: SectionCoachTarget; score: number }> = [];
+  const customTargets: SectionCoachTarget[] = [];
   for (const [sectionId, section] of customSections.entries()) {
     if (!enabledSectionIds.has(sectionId)) continue;
     const summary = section.summary?.trim();
@@ -652,106 +798,39 @@ function buildSectionCoachTargets(
     const primaryGuidance = derivePrimaryGuidance(rankedItems, bulletText, 'section');
     const relatedRequirements = rankedItems.slice(0, 2).map(({ item }) => item.requirement);
     customTargets.push({
-      target: {
-        id: sectionId,
-        label: section.title,
-        helperText: sectionId === 'ai_highlights'
-          ? relatedRequirements.length > 0
-            ? `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story.'} Make it clearly support ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
-            : `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story for roles that value transformation and automation.'} ${primaryGuidance.nextMoveText}`
-          : relatedRequirements.length > 0
-            ? `${planById.get(sectionId)?.rationale ?? 'Use this section to reinforce the role story.'} Make it reinforce ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
-            : `${planById.get(sectionId)?.rationale ?? 'Polish this section so it strengthens the overall story.'} ${primaryGuidance.nextMoveText}`,
-        section: `custom_section:${sectionId}`,
-        index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
-        bulletText,
-        requirements: relatedRequirements,
-        reviewState: primaryGuidance.reviewState,
-        requirementSource: primaryGuidance.requirementSource,
-        evidenceFound: primaryGuidance.evidenceFound,
-        sourceEvidence: primaryGuidance.sourceEvidence,
-        workItemId: primaryGuidance.primaryItem?.id,
-        proofLevel: primaryGuidance.proofLevel,
-        framingGuardrail: primaryGuidance.framingGuardrail,
-        nextBestAction: primaryGuidance.nextBestAction,
-        canRemove: !summary,
-      },
-      score: (rankedItems[0]?.score ?? 0) + (planById.get(sectionId)?.recommended_for_job ? 0.25 : 0),
+      id: sectionId,
+      label: section.title,
+      helperText: sectionId === 'ai_highlights'
+        ? relatedRequirements.length > 0
+          ? `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story.'} Make it clearly support ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
+          : `${planById.get(sectionId)?.rationale ?? 'Sharpen the AI story for roles that value transformation and automation.'} ${primaryGuidance.nextMoveText}`
+        : relatedRequirements.length > 0
+          ? `${planById.get(sectionId)?.rationale ?? 'Use this section to reinforce the role story.'} Make it reinforce ${formatRequirementFocus(relatedRequirements)}. ${primaryGuidance.nextMoveText}`
+          : `${planById.get(sectionId)?.rationale ?? 'Polish this section so it strengthens the overall story.'} ${primaryGuidance.nextMoveText}`,
+      section: `custom_section:${sectionId}`,
+      index: summary ? -1 : section.lines.findIndex((line) => line === firstLine),
+      bulletText,
+      requirements: relatedRequirements,
+      reviewState: primaryGuidance.reviewState,
+      requirementSource: primaryGuidance.requirementSource,
+      evidenceFound: primaryGuidance.evidenceFound,
+      sourceEvidence: primaryGuidance.sourceEvidence,
+      workItemId: primaryGuidance.primaryItem?.id,
+      proofLevel: primaryGuidance.proofLevel,
+      framingGuardrail: primaryGuidance.framingGuardrail,
+      nextBestAction: primaryGuidance.nextBestAction,
+      canRemove: !summary,
     });
   }
 
-  customTargets
-    .sort((left, right) => right.score - left.score || left.target.label.localeCompare(right.target.label))
-    .slice(0, 2)
-    .forEach(({ target }) => targets.push(target));
+  customTargets.forEach((target) => targets.push(target));
 
-  return targets.slice(0, 4);
-}
-
-function sectionCoachTargetToCoachTarget(target: SectionCoachTarget): CoachTarget {
-  return {
-    id: `section-target:${target.section}:${target.index}`,
-    section: target.section,
-    index: target.index,
-    requirements: target.requirements,
-    bulletText: target.bulletText,
-    reviewState: target.reviewState,
-    requirementSource: target.requirementSource,
-    evidenceFound: target.evidenceFound,
-    sourceEvidence: target.sourceEvidence,
-    workItemId: target.workItemId,
-    proofLevel: target.proofLevel,
-    framingGuardrail: target.framingGuardrail,
-    nextBestAction: target.nextBestAction,
-    canRemove: target.canRemove,
-    locationLabel: target.label,
-  };
-}
-
-function attentionItemToCoachTarget(item: AttentionReviewItem): CoachTarget {
-  return {
-    id: `attention-target:${item.id}`,
-    section: item.section,
-    index: item.index,
-    requirements: item.requirements,
-    bulletText: item.text,
-    reviewState: item.reviewState,
-    requirementSource: item.requirementSource,
-    evidenceFound: item.evidenceFound,
-    sourceEvidence: undefined,
-    workItemId: item.workItemId,
-    proofLevel: item.proofLevel,
-    framingGuardrail: undefined,
-    nextBestAction: item.nextBestAction,
-    canRemove: true,
-    locationLabel: item.locationLabel,
-  };
-}
-
-function buildIdleCoachTargets(
-  sectionTargets: SectionCoachTarget[],
-  attentionItems: AttentionReviewItem[],
-): CoachTarget[] {
-  const seen = new Set<string>();
-  const targets: CoachTarget[] = [];
-
-  for (const target of sectionTargets) {
-    const coachTarget = sectionCoachTargetToCoachTarget(target);
-    const key = `${coachTarget.section}:${coachTarget.index}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    targets.push(coachTarget);
-  }
-
-  for (const item of attentionItems) {
-    const coachTarget = attentionItemToCoachTarget(item);
-    const key = `${coachTarget.section}:${coachTarget.index}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    targets.push(coachTarget);
-  }
-
-  return targets.slice(0, 4);
+  return targets
+    .filter((target) => enabledSectionIds.has(target.id))
+    .sort((left, right) => (
+      planOrderFor(left.id) - planOrderFor(right.id)
+      || left.label.localeCompare(right.label)
+    ));
 }
 
 function clarificationMatchesAttentionItem(
@@ -862,6 +941,10 @@ export function V2StreamingDisplay({
   jobUrl,
   accessToken,
   clarificationMemory = [],
+  sectionDrafts = {},
+  onGenerateSectionDraft,
+  onRefineSectionDraft,
+  onApplySectionDraft,
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coachingPanelRef = useRef<HTMLDivElement | null>(null);
@@ -878,6 +961,8 @@ export function V2StreamingDisplay({
     locationLabel: chatContextLabelForSection(initialActiveBullet.section),
   } : null);
   const [showStructurePlanner, setShowStructurePlanner] = useState(false);
+  const [hasCompletedStructureStep, setHasCompletedStructureStep] = useState(false);
+  const [sectionJourneyIndex, setSectionJourneyIndex] = useState(0);
 
   useEffect(() => {
     setActiveBullet(initialActiveBullet ? {
@@ -966,6 +1051,15 @@ export function V2StreamingDisplay({
   const fullSectionPlan = useMemo(() => (
     displayResume ? buildResumeSectionPlan(displayResume) : []
   ), [displayResume]);
+  const sectionWorkflow = useMemo(() => (
+    displayResume
+      ? buildResumeSectionWorkflowViewModel({
+          resume: displayResume,
+          requirementWorkItems: data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [],
+          candidateIntelligence: data.candidateIntelligence,
+        })
+      : { sections: [], steps: [] }
+  ), [data.candidateIntelligence, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, displayResume]);
   const hiddenRecommendedSections = useMemo(() => (
     fullSectionPlan.filter((item) => item.recommended_for_job && item.enabled === false)
   ), [fullSectionPlan]);
@@ -984,12 +1078,16 @@ export function V2StreamingDisplay({
     displayResume,
     fullSectionPlan,
   ]);
-  const hasStructureFirstWork = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0;
-  const idleCoachTargets = useMemo(() => (
-    hasStructureFirstWork ? [] : buildIdleCoachTargets(sectionCoachTargets, attentionItems)
-  ), [attentionItems, hasStructureFirstWork, sectionCoachTargets]);
-  const currentIdleCoachTarget = idleCoachTargets[0] ?? null;
-
+  const canShowStructurePlanner = Boolean(
+    displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
+  );
+  const needsStructureStep = canShowStructurePlanner && !hasCompletedStructureStep;
+  const workflowNeedsStructureStep = canShowStructurePlanner && !hasCompletedStructureStep;
+  const currentWorkflowStep = useMemo(() => {
+    if (sectionWorkflow.steps.length === 0) return null;
+    if (sectionJourneyIndex < 0 || sectionJourneyIndex >= sectionWorkflow.steps.length) return null;
+    return sectionWorkflow.steps[sectionJourneyIndex];
+  }, [sectionJourneyIndex, sectionWorkflow.steps]);
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((
     bulletText: string,
@@ -1126,79 +1224,42 @@ export function V2StreamingDisplay({
     }
   }, [onAddCustomSection, openNewCustomSectionInCoach]);
 
-  const primaryHiddenSection = hiddenRecommendedSections[0];
-  const primaryMissingSection = missingStructureRecommendations[0];
-  const handlePrimaryStructureAction = useCallback(() => {
-    if (primaryHiddenSection && onToggleSection) {
-      onToggleSection(primaryHiddenSection.id, true);
-      setShowStructurePlanner(false);
-      return;
-    }
+  const handleConfirmStructureStep = useCallback(() => {
+    setHasCompletedStructureStep(true);
+    setShowStructurePlanner(false);
+    setSectionJourneyIndex(0);
+    setActiveBullet(null);
+  }, []);
 
-    if (primaryMissingSection) {
-      const suggestion = buildCustomSectionDraftSuggestions(
-        data.candidateIntelligence,
-        data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [],
-        primaryMissingSection.presetId,
-      )[0];
-      if (suggestion && suggestion.lines.length > 0) {
-        handleAddCustomSectionAndOpen(primaryMissingSection.title, suggestion.lines, primaryMissingSection.presetId);
-        setShowStructurePlanner(false);
-        return;
-      }
-    }
-
+  const handleShowStructurePlan = useCallback(() => {
     setShowStructurePlanner(true);
-    window.requestAnimationFrame(() => {
-      structurePlannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [
-    data.candidateIntelligence,
-    data.gapAnalysis?.requirement_work_items,
-    data.requirementWorkItems,
-    handleAddCustomSectionAndOpen,
-    onToggleSection,
-    primaryHiddenSection,
-    primaryMissingSection,
-  ]);
-
-  const structureNextStep = useMemo(() => {
-    if (primaryHiddenSection) {
-      return {
-        title: `Turn on ${primaryHiddenSection.title}`,
-        reason: `${primaryHiddenSection.title} already looks valuable for this role. Bring it back before rewriting lines so the strongest proof shows up earlier.`,
-        primaryActionLabel: `Turn on ${primaryHiddenSection.title}`,
-      };
-    }
-
-    if (primaryMissingSection) {
-      return {
-        title: `Add ${primaryMissingSection.title}`,
-        reason: `${primaryMissingSection.whyNow} I can draft this section now from what we already know.`,
-        primaryActionLabel: `Add ${primaryMissingSection.title}`,
-      };
-    }
-
-    return {
-      title: 'Review the section plan',
-      reason: 'Shape the resume before you polish the lines so the strongest story shows up first.',
-      primaryActionLabel: 'Review section plan',
-    };
-  }, [primaryHiddenSection, primaryMissingSection]);
-
-  const openDisplayedCoachTargetOnResume = useCallback(() => {
-    if (!currentIdleCoachTarget) return;
-    setActiveBullet(currentIdleCoachTarget);
-    window.requestAnimationFrame(() => {
-      scrollToAndFocusTarget(buildResumeLineSelector(currentIdleCoachTarget.section, currentIdleCoachTarget.index));
-    });
-  }, [currentIdleCoachTarget]);
+    setHasCompletedStructureStep(false);
+    setActiveBullet(null);
+  }, []);
 
   // Clear activeBullet after accepting an edit (inline panel should close)
   const handleAcceptEdit = useCallback((editedText: string) => {
     onAcceptEdit(editedText);
     setActiveBullet(null);
   }, [onAcceptEdit]);
+  const advanceSectionJourney = useCallback(() => {
+    setSectionJourneyIndex((current) => {
+      if (sectionWorkflow.steps.length === 0) return 0;
+      return Math.min(current + 1, sectionWorkflow.steps.length);
+    });
+  }, [sectionWorkflow.steps.length]);
+  const handleApplyWorkflowVariant = useCallback((variant: ResumeSectionDraftVariant) => {
+    if (!currentWorkflowStep || !onApplySectionDraft) return;
+    onApplySectionDraft(currentWorkflowStep, variant);
+    setActiveBullet(null);
+    advanceSectionJourney();
+  }, [advanceSectionJourney, currentWorkflowStep, onApplySectionDraft]);
+  const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
+    onBulletEdit?.(section, index, newText, metadata);
+  }, [onBulletEdit]);
+  const handleCoachRemoveBullet = useCallback((section: string, index: number) => {
+    onBulletRemove?.(section, index);
+  }, [onBulletRemove]);
 
   // Bullet clicking and direct editing: available as soon as the resume is visible
   const canInteract = displayResume !== null && displayResume !== undefined;
@@ -1246,14 +1307,65 @@ export function V2StreamingDisplay({
   useEffect(() => {
     if (isRerunning) {
       setHasPassedReadyGate(false);
+      setHasCompletedStructureStep(false);
+      setShowStructurePlanner(false);
     }
   }, [isRerunning]);
+  useEffect(() => {
+    if (!hasPassedReadyGate) {
+      setHasCompletedStructureStep(false);
+      setShowStructurePlanner(false);
+      setSectionJourneyIndex(0);
+      return;
+    }
+
+    if (canShowStructurePlanner && !hasCompletedStructureStep) {
+      setShowStructurePlanner(true);
+      return;
+    }
+
+    if (!canShowStructurePlanner) {
+      setHasCompletedStructureStep(true);
+      setShowStructurePlanner(false);
+    }
+  }, [canShowStructurePlanner, hasCompletedStructureStep, hasPassedReadyGate]);
+  useEffect(() => {
+    if (sectionWorkflow.steps.length === 0) {
+      if (sectionJourneyIndex !== 0) {
+        setSectionJourneyIndex(0);
+      }
+      return;
+    }
+
+    if (sectionJourneyIndex > sectionWorkflow.steps.length) {
+      setSectionJourneyIndex(sectionWorkflow.steps.length);
+    }
+  }, [sectionJourneyIndex, sectionWorkflow.steps.length]);
   useEffect(() => {
     if (activeBullet && hasPassedReadyGate && coachingPanelRef.current) {
       scrollToAndFocusTarget(buildResumeLineSelector(activeBullet.section, activeBullet.index));
       coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [activeBullet, hasPassedReadyGate]);
+  useEffect(() => {
+    if (!hasPassedReadyGate || workflowNeedsStructureStep || activeBullet || !currentWorkflowStep || !onGenerateSectionDraft) {
+      return;
+    }
+    const currentDraftState = sectionDrafts[currentWorkflowStep.id];
+    if (
+      currentDraftState?.status === 'ready'
+      || currentDraftState?.status === 'loading'
+      || currentDraftState?.status === 'error'
+    ) return;
+    void onGenerateSectionDraft({ step: currentWorkflowStep });
+  }, [
+    activeBullet,
+    currentWorkflowStep,
+    hasPassedReadyGate,
+    onGenerateSectionDraft,
+    sectionDrafts,
+    workflowNeedsStructureStep,
+  ]);
   const handleReadyGateStartEditing = useCallback(() => {
     queueMicrotask(() => {
       setHasPassedReadyGate(true);
@@ -1274,12 +1386,6 @@ export function V2StreamingDisplay({
     missing: 0,
     coverage_score: 0,
   };
-  const keywordMatchPercent = Math.round(
-    postReviewPolish?.result?.ats_score
-      ?? data.verificationDetail?.ats.match_score
-      ?? data.assembly?.scores.ats_match
-      ?? 0,
-  );
   const keywordPhrasesFound = dedupePhraseList(
     postReviewPolish?.result?.keywords_found
       ?? data.verificationDetail?.ats.keywords_found
@@ -1292,11 +1398,51 @@ export function V2StreamingDisplay({
       ?? data.preScores?.keywords_missing
       ?? [],
   );
+  const keywordMatchPercent = useMemo(() => {
+    const verifiedScore = postReviewPolish?.result?.ats_score ?? data.verificationDetail?.ats.match_score;
+    if (typeof verifiedScore === 'number' && Number.isFinite(verifiedScore)) {
+      return Math.round(verifiedScore);
+    }
+
+    const assemblyScore = data.assembly?.scores.ats_match;
+    const preScore = data.preScores?.keyword_match_score ?? data.preScores?.ats_match;
+    const hasPhraseEvidence = keywordPhrasesFound.length > 0 || keywordPhrasesMissing.length > 0;
+
+    if (typeof assemblyScore === 'number' && Number.isFinite(assemblyScore) && (assemblyScore > 0 || !hasPhraseEvidence)) {
+      return Math.round(assemblyScore);
+    }
+
+    if (typeof preScore === 'number' && Number.isFinite(preScore)) {
+      return Math.round(preScore);
+    }
+
+    if (typeof assemblyScore === 'number' && Number.isFinite(assemblyScore)) {
+      return Math.round(assemblyScore);
+    }
+
+    return null;
+  }, [
+    data.assembly?.scores.ats_match,
+    data.preScores?.ats_match,
+    data.preScores?.keyword_match_score,
+    data.verificationDetail?.ats.match_score,
+    keywordPhrasesFound.length,
+    keywordPhrasesMissing.length,
+    postReviewPolish?.result?.ats_score,
+  ]);
+  const hasKeywordReportData = Boolean(
+    data.gapAnalysis?.score_breakdown
+      || typeof keywordMatchPercent === 'number'
+      || keywordPhrasesFound.length > 0
+      || keywordPhrasesMissing.length > 0,
+  );
   const readyGateActionSummary = useMemo(() => {
     const workItems = data.requirementWorkItems ?? data.gapAnalysis?.requirement_work_items ?? [];
     const lines: string[] = [];
 
-    if (hiddenRecommendedSections.length > 0) {
+    if (canShowStructurePlanner) {
+      lines.push('Choose the sections and order first so the strongest proof shows up in the right place before you edit the wording.');
+    } else if (hiddenRecommendedSections.length > 0) {
       lines.push(`Before line editing, re-enable ${hiddenRecommendedSections.slice(0, 2).map((item) => item.title).join(' and ')} so the strongest proof shows up earlier in the resume.`);
     } else if (missingStructureRecommendations.length > 0) {
       lines.push(`Before line editing, review whether ${missingStructureRecommendations.slice(0, 2).map((item) => item.title).join(' and ')} should be added so the story is structured for this role from the start.`);
@@ -1317,10 +1463,18 @@ export function V2StreamingDisplay({
     const quantifyCount = unresolved.filter((item) => item.next_best_action === 'quantify').length;
     const tightenCount = unresolved.filter((item) => item.next_best_action === 'tighten').length;
     if (answerCount > 0) {
-      lines.push(`${answerCount} requirement${answerCount === 1 ? '' : 's'} still need one concrete example or missing detail before the claim is safe to keep.`);
+      lines.push(
+        answerCount === 1
+          ? '1 requirement still needs a concrete example or missing detail before its claim is safe to add to the resume.'
+          : `${answerCount} requirements still need concrete examples and/or missing details before those claims are safe to add to the resume.`,
+      );
     }
     if (confirmCount > 0) {
-      lines.push(`${confirmCount} benchmark-style claim${confirmCount === 1 ? '' : 's'} need an honest fit check before you keep them as written.`);
+      lines.push(
+        confirmCount === 1
+          ? '1 claim that would make your resume look more like a top candidate still needs more verification before we should include it.'
+          : `${confirmCount} claims that would make your resume look more like a top candidate still need more verification before we should include them.`,
+      );
     }
     if (quantifyCount + tightenCount > 0) {
       const total = quantifyCount + tightenCount;
@@ -1328,13 +1482,14 @@ export function V2StreamingDisplay({
     }
     return lines.slice(0, 3);
   }, [
+    canShowStructurePlanner,
     data.gapAnalysis?.requirement_work_items,
     data.requirementWorkItems,
     hiddenRecommendedSections,
     missingStructureRecommendations,
   ]);
-  const readyGatePrimaryActionLabel = hiddenRecommendedSections.length > 0 || missingStructureRecommendations.length > 0
-    ? 'Review Structure First'
+  const readyGatePrimaryActionLabel = canShowStructurePlanner
+    ? 'Review Sections First'
     : 'Start Editing My Resume';
   const rewriteQueue = useMemo(() => {
     if (!data.jobIntelligence || !data.gapAnalysis) return null;
@@ -1422,27 +1577,16 @@ export function V2StreamingDisplay({
       ? `Open the line in ${topItem.locationLabel}. We are strengthening how this resume shows ${primaryRequirement}. ${nextAction}`
       : `Open the line in ${topItem.locationLabel}. ${nextAction}`;
   }, [attentionItems, rememberedAttentionItemIds]);
-  const canShowStructurePlanner = Boolean(
-    displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
+  const isShowingStructurePlan = !activeBullet && canShowStructurePlanner && (!hasCompletedStructureStep || showStructurePlanner);
+  const showDesktopFinalReview = Boolean(
+    !activeBullet
+      && hasCompletedStructureStep
+      && !showStructurePlanner
+      && !currentWorkflowStep
+      && isComplete
+      && displayResume
+      && onRequestHiringManagerReview,
   );
-  const toggleStructurePlanner = useCallback(() => {
-    setShowStructurePlanner((current) => !current);
-  }, []);
-  const idleCoachNextStep = useMemo(() => {
-    if (!currentIdleCoachTarget) return null;
-    const primaryRequirement = currentIdleCoachTarget.requirements[0];
-    const locationLabel = currentIdleCoachTarget.locationLabel;
-    const reason = primaryRequirement
-      ? `This is the clearest next place to show ${primaryRequirement}. ${describeNextBestAction(currentIdleCoachTarget.nextBestAction, 'line')}`
-      : describeNextBestAction(currentIdleCoachTarget.nextBestAction, 'line');
-
-    return {
-      title: `Open ${locationLabel}`,
-      reason,
-      note: 'We will move to the next strongest area after this one.',
-    };
-  }, [currentIdleCoachTarget]);
-  const showDesktopFinalReview = Boolean(!activeBullet && isComplete && displayResume && hiringManagerResult);
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -1497,59 +1641,36 @@ export function V2StreamingDisplay({
                 </div>
               )}
               {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-              {!activeBullet && hasStructureFirstWork && (
-                <>
-                  <GuidedNextStepCard
-                    title={structureNextStep.title}
-                    reason={structureNextStep.reason}
-                    primaryActionLabel={structureNextStep.primaryActionLabel}
-                    onPrimaryAction={handlePrimaryStructureAction}
-                    secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
-                    onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                    note="Make this structure change first. It will make the line-level coaching much easier to trust."
+              {!activeBullet && displayResume && (
+                <div ref={structurePlannerRef}>
+                  <ResumeSectionWorkflowPanel
+                    resume={displayResume}
+                    workflow={sectionWorkflow}
+                    candidateIntelligence={data.candidateIntelligence}
+                    requirementWorkItems={data.requirementWorkItems}
+                    structureConfirmed={!isShowingStructurePlan}
+                    currentStep={currentWorkflowStep}
+                    draftState={currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
+                    onMoveSection={onMoveSection!}
+                    onToggleSection={onToggleSection!}
+                    onAddAISection={handleAddAISectionAndOpen}
+                    onAddCustomSection={handleAddCustomSectionAndOpen}
+                    onRemoveCustomSection={onRemoveCustomSection!}
+                    onConfirmStructure={handleConfirmStructureStep}
+                    onGenerateDraft={() => {
+                      if (currentWorkflowStep) {
+                        void onGenerateSectionDraft?.({ step: currentWorkflowStep, force: true });
+                      }
+                    }}
+                    onRefineDraft={async (actionId, workingDraft) => {
+                      if (currentWorkflowStep) {
+                        await onRefineSectionDraft?.(currentWorkflowStep, actionId, workingDraft);
+                      }
+                    }}
+                    onApplyVariant={handleApplyWorkflowVariant}
+                    onShowStructurePlan={handleShowStructurePlan}
                   />
-                  {canShowStructurePlanner && showStructurePlanner && (
-                    <div ref={structurePlannerRef}>
-                      <ResumeStructurePlannerCard
-                        resume={displayResume!}
-                        candidateIntelligence={data.candidateIntelligence}
-                        requirementWorkItems={data.requirementWorkItems}
-                        onMoveSection={onMoveSection!}
-                        onToggleSection={onToggleSection!}
-                        onAddAISection={handleAddAISectionAndOpen}
-                        onAddCustomSection={handleAddCustomSectionAndOpen}
-                        onRemoveCustomSection={onRemoveCustomSection!}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-              {!activeBullet && !hasStructureFirstWork && idleCoachNextStep && (
-                <>
-                  <GuidedNextStepCard
-                    title={idleCoachNextStep.title}
-                    reason={idleCoachNextStep.reason}
-                    primaryActionLabel="Open coach"
-                    onPrimaryAction={openDisplayedCoachTargetOnResume}
-                    secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
-                    onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                    note={idleCoachNextStep.note}
-                  />
-                  {canShowStructurePlanner && showStructurePlanner && (
-                    <div ref={structurePlannerRef}>
-                      <ResumeStructurePlannerCard
-                        resume={displayResume!}
-                        candidateIntelligence={data.candidateIntelligence}
-                        requirementWorkItems={data.requirementWorkItems}
-                        onMoveSection={onMoveSection!}
-                        onToggleSection={onToggleSection!}
-                        onAddAISection={handleAddAISectionAndOpen}
-                        onAddCustomSection={handleAddCustomSectionAndOpen}
-                        onRemoveCustomSection={onRemoveCustomSection!}
-                      />
-                    </div>
-                  )}
-                </>
+                </div>
               )}
               {displayResume && (
                 <AnimatedCard index={0}>
@@ -1559,14 +1680,14 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)} onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
                   <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={handleAcceptEdit} onReject={onRejectEdit} />
                 </div>
               )}
-              {isComplete && displayResume && (
+              {showDesktopFinalReview && (
                 <ResumeFinalReviewPanel hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} isHiringManagerLoading={isHiringManagerLoading} hiringManagerError={hiringManagerError} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} onRequestHiringManagerReview={onRequestHiringManagerReview} onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation} finalReviewChat={finalReviewChat} buildFinalReviewChatContext={buildFinalReviewChatContext} resolveConcernTarget={resolveFinalReviewTarget} onPreviewConcernTarget={onPreviewFinalReviewTarget} isEditing={isEditing} />
               )}
               {isComplete && data.assembly && displayResume && (
@@ -1585,19 +1706,19 @@ export function V2StreamingDisplay({
                   ? activeBullet.locationLabel
                   : showDesktopFinalReview
                     ? 'Final review'
-                  : hasStructureFirstWork
-                    ? 'Start with the sections'
-                    : currentIdleCoachTarget
-                      ? 'One clear next move'
+                  : isShowingStructurePlan
+                    ? 'Section plan'
+                    : currentWorkflowStep
+                      ? currentWorkflowStep.title
                       : 'Review the final draft';
                 const headerSummary = activeBullet
                   ? 'Use the suggestions below, apply the one that feels true, and then move on.'
                   : showDesktopFinalReview
                     ? 'Review the strongest hiring-manager concerns before you export or keep polishing lines.'
-                  : hasStructureFirstWork
-                    ? 'Make the structure change first so the strongest proof shows up in the right place.'
-                    : currentIdleCoachTarget
-                      ? 'Start with the one recommendation that will move this resume forward fastest.'
+                  : isShowingStructurePlan
+                    ? 'Choose the sections and order before you polish the wording. When the structure looks right, start at the top and work down the resume.'
+                    : currentWorkflowStep
+                      ? 'Review the full section draft, choose the version that feels right, and then move to the next section.'
                       : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
@@ -1637,32 +1758,6 @@ export function V2StreamingDisplay({
                           onPreviewConcernTarget={onPreviewFinalReviewTarget}
                           isEditing={isEditing}
                         />
-                      ) : !activeBullet && hasStructureFirstWork ? (
-                        <div className="space-y-4">
-                          <GuidedNextStepCard
-                            title={structureNextStep.title}
-                            reason={structureNextStep.reason}
-                            primaryActionLabel={structureNextStep.primaryActionLabel}
-                            onPrimaryAction={handlePrimaryStructureAction}
-                            secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
-                            onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                            note="Make this structure change first. It will make the line-level coaching much easier to trust."
-                          />
-                          {canShowStructurePlanner && (
-                            <div ref={structurePlannerRef} className={showStructurePlanner ? '' : 'hidden'}>
-                              <ResumeStructurePlannerCard
-                                resume={displayResume!}
-                                candidateIntelligence={data.candidateIntelligence}
-                                requirementWorkItems={data.requirementWorkItems}
-                                onMoveSection={onMoveSection!}
-                                onToggleSection={onToggleSection!}
-                                onAddAISection={handleAddAISectionAndOpen}
-                                onAddCustomSection={handleAddCustomSectionAndOpen}
-                                onRemoveCustomSection={onRemoveCustomSection!}
-                              />
-                            </div>
-                          )}
-                        </div>
                       ) : activeBullet && gapChat && buildChatContext ? (
                         <div ref={coachingPanelRef}>
                           <BulletCoachingPanel
@@ -1681,55 +1776,46 @@ export function V2StreamingDisplay({
                             initialReuseClarificationId={activeBullet.autoReuseClarificationId}
                             gapChat={gapChat}
                             chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
-                            onApplyToResume={(s, idx, newText, metadata) => onBulletEdit?.(s, idx, newText, metadata)}
-                            onRemoveBullet={(s, idx) => onBulletRemove?.(s, idx)}
+                            onApplyToResume={handleCoachApplyToResume}
+                            onRemoveBullet={handleCoachRemoveBullet}
                             onClose={() => setActiveBullet(null)}
                             onBulletEnhance={onBulletEnhance}
                           />
                         </div>
-                      ) : !activeBullet && !hasStructureFirstWork && idleCoachNextStep ? (
-                        <div className="space-y-4">
-                          <GuidedNextStepCard
-                            title={idleCoachNextStep!.title}
-                            reason={idleCoachNextStep!.reason}
-                            primaryActionLabel="Open coach"
-                            onPrimaryAction={openDisplayedCoachTargetOnResume}
-                            secondaryActionLabel={canShowStructurePlanner ? (showStructurePlanner ? 'Hide section plan' : 'Show section plan') : undefined}
-                            onSecondaryAction={canShowStructurePlanner ? toggleStructurePlanner : undefined}
-                            note={idleCoachNextStep!.note}
-                          />
-                          {canShowStructurePlanner && showStructurePlanner && (
-                            <div ref={structurePlannerRef}>
-                              <ResumeStructurePlannerCard
-                                resume={displayResume!}
-                                candidateIntelligence={data.candidateIntelligence}
-                                requirementWorkItems={data.requirementWorkItems}
-                                onMoveSection={onMoveSection!}
-                                onToggleSection={onToggleSection!}
-                                onAddAISection={handleAddAISectionAndOpen}
-                                onAddCustomSection={handleAddCustomSectionAndOpen}
-                                onRemoveCustomSection={onRemoveCustomSection!}
-                              />
-                            </div>
-                          )}
-                        </div>
                       ) : (
                         <div className="space-y-4">
-                          {canShowStructurePlanner && showStructurePlanner && (
+                          {displayResume && (
                             <div ref={structurePlannerRef}>
-                              <ResumeStructurePlannerCard
-                                resume={displayResume!}
+                              <ResumeSectionWorkflowPanel
+                                resume={displayResume}
+                                workflow={sectionWorkflow}
                                 candidateIntelligence={data.candidateIntelligence}
                                 requirementWorkItems={data.requirementWorkItems}
+                                structureConfirmed={!isShowingStructurePlan}
+                                currentStep={currentWorkflowStep}
+                                draftState={currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
                                 onMoveSection={onMoveSection!}
                                 onToggleSection={onToggleSection!}
                                 onAddAISection={handleAddAISectionAndOpen}
                                 onAddCustomSection={handleAddCustomSectionAndOpen}
                                 onRemoveCustomSection={onRemoveCustomSection!}
+                                onConfirmStructure={handleConfirmStructureStep}
+                                onGenerateDraft={() => {
+                                  if (currentWorkflowStep) {
+                                    void onGenerateSectionDraft?.({ step: currentWorkflowStep, force: true });
+                                  }
+                                }}
+                                onRefineDraft={async (actionId, workingDraft) => {
+                                  if (currentWorkflowStep) {
+                                    await onRefineSectionDraft?.(currentWorkflowStep, actionId, workingDraft);
+                                  }
+                                }}
+                                onApplyVariant={handleApplyWorkflowVariant}
+                                onShowStructurePlan={handleShowStructurePlan}
                               />
                             </div>
                           )}
-                          {isComplete && displayResume && (
+                          {!displayResume && isComplete && (
                             <ResumeFinalReviewPanel
                               hiringManagerResult={hiringManagerResult ?? null}
                               resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
@@ -1801,7 +1887,7 @@ export function V2StreamingDisplay({
             actionSummaryLines={readyGateActionSummary}
             companyName={data.jobIntelligence?.company_name}
             roleTitle={data.jobIntelligence?.role_title}
-            hasScoreData={!!data.gapAnalysis?.score_breakdown}
+            hasScoreData={hasKeywordReportData}
             primaryActionLabel={readyGatePrimaryActionLabel}
             onStartEditing={handleReadyGateStartEditing}
           />

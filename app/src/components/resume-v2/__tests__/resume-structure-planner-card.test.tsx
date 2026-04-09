@@ -166,7 +166,7 @@ describe('ResumeStructurePlannerCard', () => {
     ].join('\n'));
   });
 
-  it('surfaces recommended custom sections for the role and opens the matching draft', () => {
+  it('opens the matching suggested preset draft from the add-section composer without recommendation badges on section rows', () => {
     render(
       <ResumeStructurePlannerCard
         resume={makeResumeDraft()}
@@ -180,9 +180,11 @@ describe('ResumeStructurePlannerCard', () => {
       />,
     );
 
-    expect(screen.getByText(/recommended next section/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /add section/i })[0]);
+    expect(screen.getByRole('button', { name: /transformation highlights/i })).toBeInTheDocument();
+    expect(screen.queryByText(/^Recommended$/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /transformation highlights/i }));
     expect(screen.getAllByText(/Built from:/i).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole('button', { name: /preview draft/i })[0]);
 
     expect(screen.getByLabelText(/section title/i)).toHaveValue('Transformation Highlights');
     expect(screen.getByLabelText(/opening lines/i)).toHaveValue([
@@ -192,7 +194,7 @@ describe('ResumeStructurePlannerCard', () => {
     ].join('\n'));
   });
 
-  it('can add a recommended section immediately without opening the composer first', () => {
+  it('can add a suggested section from the composer', () => {
     const onAddCustomSection = vi.fn();
 
     render(
@@ -208,7 +210,9 @@ describe('ResumeStructurePlannerCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /add section/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /transformation highlights/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /^Add Section$/i }).at(-1)!);
 
     expect(onAddCustomSection).toHaveBeenCalledWith(
       'Transformation Highlights',

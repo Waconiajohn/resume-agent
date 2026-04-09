@@ -1,5 +1,5 @@
 interface ResumeReadyScreenProps {
-  keywordMatchPercent: number;
+  keywordMatchPercent: number | null;
   requirementCoveragePercent: number;
   benchmarkMatchPercent?: number;
   keywordsFound?: string[];
@@ -49,14 +49,15 @@ function KeywordPhraseGroup({
         </span>
       </div>
       {items.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 space-y-2">
           {items.slice(0, 8).map((item) => (
-            <span
+            <div
               key={item}
-              className={`ready-phrase-chip ready-phrase-chip--${tone}`}
+              className={`ready-phrase-row ready-phrase-row--${tone}`}
             >
-              {item}
-            </span>
+              <span className="ready-phrase-row__dot" aria-hidden="true" />
+              <span>{item}</span>
+            </div>
           ))}
         </div>
       ) : (
@@ -112,9 +113,15 @@ export function ResumeReadyScreen({
   const reportIntro = hasScoreData
     ? 'This draft is now being judged the way a job-scan style reviewer would: by the language it lands, the phrases it still misses, and how directly it mirrors the role.'
     : 'The keyword and key-phrasing report is still calculating.';
-  const summaryLine = hasScoreData
-    ? `Language match ${Math.round(keywordMatchPercent)}%. ${foundPhrases.length} phrase${foundPhrases.length === 1 ? '' : 's'} are already landing, and ${missingPhrases.length} still need attention.`
-    : 'The keyword and key-phrasing report is still calculating.';
+  const summaryLine = (() => {
+    if (typeof keywordMatchPercent === 'number') {
+      return `Language match ${Math.round(keywordMatchPercent)}%. ${foundPhrases.length} phrase${foundPhrases.length === 1 ? '' : 's'} are already landing, and ${missingPhrases.length} still need attention.`;
+    }
+    if (foundPhrases.length > 0 || missingPhrases.length > 0) {
+      return `${foundPhrases.length} phrase${foundPhrases.length === 1 ? '' : 's'} are already landing, and ${missingPhrases.length} still need attention.`;
+    }
+    return 'The keyword and key-phrasing report is still calculating.';
+  })();
   const nextSteps = (actionSummaryLines.length > 0 ? actionSummaryLines : [summary]).slice(0, 2);
 
   return (
@@ -152,7 +159,7 @@ export function ResumeReadyScreen({
               {reportIntro}
             </p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <ScoreStat label="Language Match" value={hasScoreData ? `${Math.round(keywordMatchPercent)}%` : '—'} tone="good" />
+              <ScoreStat label="Language Match" value={typeof keywordMatchPercent === 'number' ? `${Math.round(keywordMatchPercent)}%` : '—'} tone="good" />
               <ScoreStat label="Role Coverage" value={hasScoreData ? `${Math.round(requirementCoveragePercent)}%` : '—'} tone="good" />
               {typeof benchmarkMatchPercent === 'number' && (
                 <ScoreStat label="Benchmark Fit" value={hasScoreData ? `${Math.round(benchmarkMatchPercent)}%` : '—'} tone="neutral" />

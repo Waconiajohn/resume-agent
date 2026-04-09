@@ -65,12 +65,8 @@ export function ResumeStructurePlannerCard({
     () => new Map(recommendationList.map((item, index) => [item.presetId, index])),
     [recommendationList],
   );
-  const recommendationByPresetId = useMemo(
-    () => new Map(recommendationList.map((item) => [item.presetId, item])),
-    [recommendationList],
-  );
   const [showAddSectionComposer, setShowAddSectionComposer] = useState(false);
-  const [showAllRecommendations, setShowAllRecommendations] = useState(false);
+  const [showSectionControls, setShowSectionControls] = useState(false);
   const availablePresets = useMemo(() => (
     RESUME_CUSTOM_SECTION_PRESETS
       .filter((preset) => !plan.some((item) => item.id === preset.id))
@@ -96,13 +92,9 @@ export function ResumeStructurePlannerCard({
   const [sectionTitle, setSectionTitle] = useState('');
   const [draftText, setDraftText] = useState('');
   const selectedPreset = availablePresets.find((preset) => preset.id === selectedPresetId);
-  const selectedRecommendation = selectedPresetId !== 'custom'
-    ? recommendationByPresetId.get(selectedPresetId)
-    : undefined;
   const selectedDraftSuggestions = selectedPresetId !== 'custom'
     ? draftSuggestions[selectedPresetId] ?? []
     : [];
-  const visibleRecommendations = showAllRecommendations ? recommendationList : recommendationList.slice(0, 1);
   const draftLines = useMemo(
     () => draftText.split('\n').map((line) => line.trim()).filter((line, index, all) => line.length > 0 && all.findIndex((candidate) => candidate.toLowerCase() === line.toLowerCase()) === index),
     [draftText],
@@ -137,20 +129,6 @@ export function ResumeStructurePlannerCard({
     });
   };
 
-  const handleUseRecommendedPreset = (presetId: ResumeCustomSectionPresetId) => {
-    if (!showAddSectionComposer) {
-      setShowAddSectionComposer(true);
-    }
-    handleSelectPreset(presetId);
-  };
-
-  const handleAddRecommendedSection = (presetId: ResumeCustomSectionPresetId) => {
-    const preset = RESUME_CUSTOM_SECTION_PRESETS.find((candidate) => candidate.id === presetId);
-    const suggestion = buildCustomSectionDraftSuggestions(candidateIntelligence, requirementWorkItems, presetId)[0];
-    if (!preset || !suggestion || suggestion.lines.length === 0) return;
-    onAddCustomSection(preset.title, suggestion.lines, presetId);
-  };
-
   const handleAddSection = () => {
     if (!canAddSection) return;
     onAddCustomSection(sectionTitle.trim(), draftLines, selectedPresetId === 'custom' ? undefined : selectedPresetId);
@@ -173,6 +151,13 @@ export function ResumeStructurePlannerCard({
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSectionControls((current) => !current)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-2)] transition-colors"
+          >
+            {showSectionControls ? 'Done Arranging' : 'Arrange Sections'}
+          </button>
           <button
             type="button"
             onClick={handleOpenComposer}
@@ -234,21 +219,6 @@ export function ResumeStructurePlannerCard({
           <p className="mt-3 text-xs leading-5 text-[var(--text-soft)]">
             {selectedPreset?.rationale ?? 'Create a custom section when you need a focused proof area the standard resume structure does not cover.'}
           </p>
-          {selectedRecommendation && (
-            <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 sm:px-3.5 sm:py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
-                  {selectedRecommendation.readyLineCount} lines ready
-                </span>
-              </div>
-              <p className="mt-2 text-[13px] leading-5 text-[var(--text-soft)]">{selectedRecommendation.whyNow}</p>
-              {selectedRecommendation.supportPreview.length > 0 && (
-                <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-                  Built from: {selectedRecommendation.supportPreview.join(' • ')}
-                </p>
-              )}
-            </div>
-          )}
           {selectedDraftSuggestions.length > 0 && (
             <div className="mt-3 rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 sm:px-3.5 sm:py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Starter drafts</p>
@@ -332,69 +302,6 @@ export function ResumeStructurePlannerCard({
         </div>
       )}
 
-      {recommendationList.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-[var(--text-strong)]">Recommended next section</p>
-              <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
-                Start with the strongest grounded section add. You can open the full planner if you want more choices.
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 space-y-2">
-            {visibleRecommendations.map((recommendation) => (
-              <div
-                key={recommendation.presetId}
-                className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3.5 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-[var(--text-strong)]">{recommendation.title}</p>
-                      <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
-                        {recommendation.readyLineCount} lines ready
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">{recommendation.whyNow}</p>
-                    {recommendation.supportPreview.length > 0 && (
-                      <p className="mt-2 text-xs leading-5 text-[var(--text-soft)]">
-                        Built from: {recommendation.supportPreview.join(' • ')}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleUseRecommendedPreset(recommendation.presetId)}
-                      className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-0)] transition-colors"
-                    >
-                      Preview Draft
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddRecommendedSection(recommendation.presetId)}
-                      className="rounded-lg bg-[var(--link)] px-3 py-2 text-xs font-semibold text-white hover:opacity-95 transition-opacity"
-                    >
-                      Add Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {recommendationList.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowAllRecommendations((current) => !current)}
-              className="mt-3 rounded-lg border border-[var(--line-soft)] px-3 py-2 text-xs font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)]"
-            >
-              {showAllRecommendations ? 'Show fewer section ideas' : `Show ${recommendationList.length - 1} more section idea${recommendationList.length - 1 === 1 ? '' : 's'}`}
-            </button>
-          )}
-        </div>
-      )}
-
       <div className="mt-4 space-y-2">
         {plan.map((item, index) => (
           <div
@@ -409,9 +316,13 @@ export function ResumeStructurePlannerCard({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-[var(--text-strong)]">{item.title}</span>
-                  {item.recommended_for_job && (
-                    <span className="rounded-full bg-[var(--badge-green-bg)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--badge-green-text)]">
-                      Recommended
+                  {!showSectionControls && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                      item.enabled
+                        ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
+                        : 'bg-[var(--surface-2)] text-[var(--text-soft)]'
+                    }`}>
+                      {item.enabled ? 'Included' : 'Hidden'}
                     </span>
                   )}
                 </div>
@@ -420,44 +331,46 @@ export function ResumeStructurePlannerCard({
                 </p>
               </div>
 
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => onMoveSection(item.id, 'up')}
-                  disabled={index === 0}
-                  className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] disabled:opacity-30"
-                  aria-label={`Move ${item.title} up`}
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMoveSection(item.id, 'down')}
-                  disabled={index === plan.length - 1}
-                  className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] disabled:opacity-30"
-                  aria-label={`Move ${item.title} down`}
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleSection(item.id, !item.enabled)}
-                  className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)]"
-                  aria-label={`${item.enabled ? 'Hide' : 'Show'} ${item.title}`}
-                >
-                  {item.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                </button>
-                {item.is_custom && (
+              {showSectionControls && (
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => onRemoveCustomSection(item.id)}
-                    className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--badge-red-text)]"
-                    aria-label={`Remove ${item.title}`}
+                    onClick={() => onMoveSection(item.id, 'up')}
+                    disabled={index === 0}
+                    className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] disabled:opacity-30"
+                    aria-label={`Move ${item.title} up`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </button>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => onMoveSection(item.id, 'down')}
+                    disabled={index === plan.length - 1}
+                    className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] disabled:opacity-30"
+                    aria-label={`Move ${item.title} down`}
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleSection(item.id, !item.enabled)}
+                    className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)]"
+                    aria-label={`${item.enabled ? 'Hide' : 'Show'} ${item.title}`}
+                  >
+                    {item.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  </button>
+                  {item.is_custom && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveCustomSection(item.id)}
+                      className="rounded-md border border-[var(--line-soft)] p-1.5 text-[var(--text-soft)] hover:text-[var(--badge-red-text)]"
+                      aria-label={`Remove ${item.title}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}

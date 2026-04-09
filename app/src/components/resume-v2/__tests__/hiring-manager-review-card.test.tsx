@@ -35,6 +35,8 @@ function makeResult(): HiringManagerReviewResult {
         target_section: 'Professional Experience - Acme Manufacturing',
         related_requirement: 'Develop and track performance metrics',
         requires_candidate_input: false,
+        suggested_resume_edit: 'Built and tracked weekly plant scorecards across safety, throughput, and labor efficiency targets.',
+        clarifying_question: 'What operating metric or scorecard detail makes the ownership clear?',
       },
     ],
     structure_recommendations: [],
@@ -150,5 +152,44 @@ describe('HiringManagerReviewCard', () => {
 
     expect(screen.getByTestId('final-review-thread')).toBeInTheDocument();
     expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it('surfaces direct final review actions for suggested wording and questions', () => {
+    const onApplyRecommendation = vi.fn();
+
+    render(
+      <HiringManagerReviewCard
+        result={makeResult()}
+        isLoading={false}
+        error={null}
+        companyName="Acme Manufacturing"
+        roleTitle="VP Operations"
+        onRequestReview={vi.fn()}
+        onApplyRecommendation={onApplyRecommendation}
+        finalReviewChat={{
+          getItemState: vi.fn(() => ({ messages: [], isLoading: false, error: null, resolvedLanguage: null })),
+          sendMessage: vi.fn(),
+          hydrate: vi.fn(),
+          reset: vi.fn(),
+        } as never}
+        buildFinalReviewChatContext={() => makeFinalReviewContext()}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Performance metrics ownership is still too vague/i })[0]);
+
+    expect(screen.getByRole('button', { name: /Use suggested wording/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Edit suggested wording/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Answer this question/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Use suggested wording/i }));
+    expect(onApplyRecommendation).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'concern-1' }),
+      'Built and tracked weekly plant scorecards across safety, throughput, and labor efficiency targets.',
+      false,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Edit suggested wording/i }));
+    expect(screen.getByTestId('final-review-thread')).toBeInTheDocument();
   });
 });

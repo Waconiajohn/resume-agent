@@ -10,6 +10,7 @@ import { render, screen, fireEvent, cleanup, act, within } from '@testing-librar
 import { ResumeDocumentCard } from '../cards/ResumeDocumentCard';
 import { V2StreamingDisplay } from '../V2StreamingDisplay';
 import { scrollToAndFocusTarget } from '../useStrategyThread';
+import { buildResumeSectionWorkflowViewModel } from '@/lib/resume-section-workflow';
 
 import type { ResumeDraft, V2PipelineData, JobIntelligence, GapAnalysis, GapChatContext } from '@/types/resume-v2';
 import type { PendingEdit } from '@/hooks/useInlineEdit';
@@ -287,7 +288,7 @@ function makeGapAnalysis(): GapAnalysis {
 }
 
 async function startEditingIfGatePresent() {
-  const startButton = screen.queryByRole('button', { name: /Start Editing My Resume|Review Structure First/i });
+  const startButton = screen.queryByRole('button', { name: /Start Editing My Resume|Review Structure First|Review Sections First/i });
   if (!startButton) return;
 
   await act(async () => {
@@ -381,6 +382,10 @@ function makeChatContextMock() {
         ? 'Executive Summary'
         : section === 'core_competencies'
           ? 'Core Competencies'
+          : section === 'selected_accomplishments'
+            ? 'Selected Accomplishments'
+            : section === 'professional_experience'
+              ? 'Professional Experience'
           : section?.startsWith('custom_section:')
             ? 'AI Highlights'
             : 'Resume Line',
@@ -389,6 +394,67 @@ function makeChatContextMock() {
         : target.requirements ?? (requirement ? [requirement] : []),
     };
   });
+}
+
+function makeReadySectionDrafts(
+  resume: ResumeDraft,
+  options?: {
+    requirementWorkItems?: V2PipelineData['requirementWorkItems'];
+    candidateIntelligence?: V2PipelineData['candidateIntelligence'];
+  },
+) {
+  const workflow = buildResumeSectionWorkflowViewModel({
+    resume,
+    requirementWorkItems: options?.requirementWorkItems ?? [],
+    candidateIntelligence: options?.candidateIntelligence ?? null,
+  });
+
+  return {
+    workflow,
+    drafts: Object.fromEntries(
+      workflow.steps.map((step, index) => [
+        step.id,
+        {
+          status: 'ready' as const,
+          error: null,
+          result: {
+            recommendedVariantId: 'recommended' as const,
+            variants: [
+              {
+                id: 'recommended' as const,
+                label: 'Recommended',
+                helper: 'Best fit for this role.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Recommended version for ${step.title} ${index + 1}.`,
+                },
+              },
+              {
+                id: 'safer' as const,
+                label: 'Safer',
+                helper: 'More conservative wording.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Safer version for ${step.title} ${index + 1}.`,
+                },
+              },
+              {
+                id: 'stronger' as const,
+                label: 'Stronger',
+                helper: 'Use only if fully supported.',
+                content: {
+                  kind: 'paragraph' as const,
+                  paragraph: `Stronger version for ${step.title} ${index + 1}.`,
+                },
+              },
+            ],
+            whyItWorks: [`Explains why ${step.title} is stronger for the role.`],
+            strengtheningNote: 'Add one scoped outcome here if it is accurate.',
+          },
+        },
+      ]),
+    ),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -533,16 +599,72 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.getByTestId('pipeline-progress-card')).toBeInTheDocument();
   });
 
-  it('shows final review on the main resume canvas when review is available', async () => {
+  it('holds final review until the section workflow is complete', async () => {
+    const resume = makeResumeDraft();
+    const { workflow, drafts } = makeReadySectionDrafts(resume);
+    const onApplySectionDraft = vi.fn();
+
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
+          editableResume: resume,
+          sectionDrafts: drafts,
+          onApplySectionDraft,
           onRequestHiringManagerReview: vi.fn(),
+          hiringManagerResult: {
+            six_second_scan: {
+              decision: 'continue_reading',
+              reason: 'The top third is clear enough to keep reading.',
+              top_signals_seen: [],
+              important_signals_missing: [],
+            },
+            hiring_manager_verdict: {
+              rating: 'possible_interview',
+              summary: 'The draft is strong enough for a final review pass.',
+            },
+            fit_assessment: {
+              job_description_fit: 'moderate',
+              benchmark_alignment: 'moderate',
+              business_impact: 'strong',
+              clarity_and_credibility: 'moderate',
+            },
+            top_wins: [],
+            concerns: [],
+            structure_recommendations: [],
+            benchmark_comparison: {
+              advantages_vs_benchmark: [],
+              gaps_vs_benchmark: [],
+              reframing_opportunities: [],
+            },
+            improvement_summary: [],
+          } as never,
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
         })}
       />,
     );
 
     await startEditingIfGatePresent();
+    expect(screen.queryByTestId('hiring-manager-review-card')).not.toBeInTheDocument();
+
+    for (let index = 0; index < workflow.steps.length; index += 1) {
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('button', { name: 'Use this version' })[0]);
+        await Promise.resolve();
+      });
+    }
+
+    expect(onApplySectionDraft).toHaveBeenCalledTimes(workflow.steps.length);
     expect((await screen.findAllByTestId('hiring-manager-review-card')).length).toBeGreaterThan(0);
   });
 
@@ -564,6 +686,99 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     expect(screen.queryByText('Your Resume vs. This Role')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Expand overview card/i })).not.toBeInTheDocument();
+  });
+
+  it('uses a non-zero keyword fallback and clearer checkpoint language when the current score is missing', () => {
+    const resume = makeResumeDraftWithAttention();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: resume,
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            preScores: {
+              ats_match: 64,
+              keyword_match_score: 64,
+              keywords_found: ['product management'],
+              keywords_missing: ['AI strategy', 'machine learning'],
+              overall_fit_score: 58,
+              job_requirement_coverage_score: 72,
+            },
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 0,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+            requirementWorkItems: [
+              {
+                id: 'answer-1',
+                requirement: 'Requirement A',
+                source: 'job_description',
+                importance: 'must_have',
+                candidate_evidence: [],
+                proof_level: 'none',
+                framing_guardrail: 'blocked',
+                current_claim_strength: 'code_red',
+                next_best_action: 'answer',
+              },
+              {
+                id: 'answer-2',
+                requirement: 'Requirement B',
+                source: 'job_description',
+                importance: 'important',
+                candidate_evidence: [],
+                proof_level: 'none',
+                framing_guardrail: 'blocked',
+                current_claim_strength: 'code_red',
+                next_best_action: 'answer',
+              },
+              {
+                id: 'confirm-1',
+                requirement: 'Requirement C',
+                source: 'benchmark',
+                importance: 'important',
+                candidate_evidence: [],
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'confirm_fit',
+                next_best_action: 'confirm',
+              },
+              {
+                id: 'confirm-2',
+                requirement: 'Requirement D',
+                source: 'benchmark',
+                importance: 'important',
+                candidate_evidence: [],
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'confirm_fit',
+                next_best_action: 'confirm',
+              },
+              {
+                id: 'confirm-3',
+                requirement: 'Requirement E',
+                source: 'benchmark',
+                importance: 'important',
+                candidate_evidence: [],
+                proof_level: 'adjacent',
+                framing_guardrail: 'reframe',
+                current_claim_strength: 'confirm_fit',
+                next_best_action: 'confirm',
+              },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/Language match 64%/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 requirements still need concrete examples and\/or missing details before those claims are safe to add to the resume\./i)).toBeInTheDocument();
+    expect(screen.getByText(/3 claims that would make your resume look more like a top candidate still need more verification before we should include them\./i)).toBeInTheDocument();
   });
 
   it('drops the mobile score summary once the user enters resume editing mode', async () => {
@@ -639,7 +854,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByTestId('attention-review-strip')).not.toBeInTheDocument();
   });
 
-  it('shows one recommended next move and opens the current area on the resume', async () => {
+  it('shows the section workflow first and keeps the line coach closed until a resume line is clicked', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -672,12 +887,15 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Step 1 of 4/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('What this section needs to do').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Best Draft For This Role').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Area 1 of 4/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Start Here')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bullet-coaching-panel')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Seasoned engineering leader driving outcomes at scale.' })[0]);
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -732,7 +950,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(scrollToAndFocusTarget).toHaveBeenLastCalledWith('[data-resume-line="selected_accomplishments:0"]');
   });
 
-  it('shows one coach target at a time instead of the old stacked section cards', async () => {
+  it('shows one section workflow at a time instead of the old stacked section cards', async () => {
     const resume = makeResumeDraft();
     resume.custom_sections = [
       {
@@ -813,14 +1031,92 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
 
     expect(screen.getAllByText('Resume Coach').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('One clear next move').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('What this section needs to do').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Area 1 of \d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText('One clear next move')).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish AI Highlights/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Polish Transformation Highlights/i)).not.toBeInTheDocument();
   });
 
-  it('opens coaching immediately after adding a recommended custom section', async () => {
+  it('shows the section plan first when structure controls are available', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: makeResumeDraft(),
+          gapChat: {
+            getItemState: vi.fn(),
+            sendMessage: vi.fn(),
+            resolveLanguage: vi.fn(),
+            clearResolution: vi.fn(),
+            hydrate: vi.fn(),
+            reset: vi.fn(),
+          } as never,
+          buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
+          data: makePipelineDataWithResume(),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+
+    expect(screen.getAllByText(/Get the structure right first/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Start with Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Continue to editing' }).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Start Here')).not.toBeInTheDocument();
+  });
+
+  it('does not auto-regenerate a section draft after an error until the user retries', async () => {
+    const resume = makeResumeDraft();
+    const workflow = buildResumeSectionWorkflowViewModel({
+      resume,
+      requirementWorkItems: [],
+      candidateIntelligence: null,
+    });
+    const firstStep = workflow.steps[0];
+    const onGenerateSectionDraft = vi.fn();
+
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          editableResume: resume,
+          data: makePipelineDataWithResume({ resumeDraft: resume }),
+          sectionDrafts: {
+            [firstStep.id]: {
+              status: 'error',
+              result: null,
+              error: 'Too many requests. Please try again later.',
+            },
+          },
+          onGenerateSectionDraft,
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+
+    expect(onGenerateSectionDraft).not.toHaveBeenCalled();
+    expect(screen.getAllByText('Too many requests. Please try again later.').length).toBeGreaterThan(0);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]);
+      await Promise.resolve();
+    });
+
+    expect(onGenerateSectionDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        step: expect.objectContaining({ id: firstStep.id }),
+        force: true,
+      }),
+    );
+  });
+
+  it('opens coaching immediately after adding a custom section from the section composer', async () => {
     const resume = makeResumeDraft();
     const nextResume: ResumeDraft = {
       ...resume,
@@ -937,8 +1233,21 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    const plannerCard = screen.getAllByText('Get the structure right first')[0]?.closest('.shell-panel') as HTMLElement | null;
+    if (!plannerCard) {
+      throw new Error('Section planner card not found');
+    }
+
+    fireEvent.click(within(plannerCard).getByRole('button', { name: /add section/i }));
+
+    const openingLinesInput = await within(plannerCard).findByLabelText(/opening lines/i);
+    const composerPanel = openingLinesInput.closest('.rounded-2xl') as HTMLElement | null;
+    if (!composerPanel) {
+      throw new Error('Composer panel not found');
+    }
+
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: /add now/i })[0]);
+      fireEvent.click(within(composerPanel).getByRole('button', { name: /^Add Section$/i }));
       await Promise.resolve();
     });
 
@@ -1113,7 +1422,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    fireEvent.click(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.')[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Seasoned engineering leader driving outcomes at scale.' })[0]);
 
     expect((await screen.findAllByTestId('bullet-coaching-panel')).length).toBeGreaterThan(0);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
@@ -1134,7 +1443,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(lastCall.chatContext.relatedRequirements).toContain('Product delivery');
   });
 
-  it('threads work-item requirements into the first requirement-coach target', async () => {
+  it('threads ranked work-item requirements into the executive summary workflow', async () => {
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
@@ -1192,38 +1501,60 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Open Executive Summary').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
-
-    const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
-      section: string;
-      requirements: string[];
-      reviewState?: string;
-      requirementSource?: string;
-      evidenceFound: string;
-      proofLevel?: string;
-      nextBestAction?: string;
-      chatContext: {
-        relatedRequirements?: string[];
-      };
-    };
-
-    expect(lastCall.section).toBe('executive_summary');
-    expect(lastCall.requirements).toEqual(['Product delivery', 'Executive leadership']);
-    expect(lastCall.requirementSource).toBe('job_description');
-    expect(lastCall.evidenceFound).toBe('Led product and engineering delivery across multiple launches.');
-    expect(lastCall.reviewState).toBe('strengthen');
-    expect(lastCall.proofLevel).toBe('adjacent');
-    expect(lastCall.nextBestAction).toBe('tighten');
-    expect(lastCall.chatContext.relatedRequirements).toEqual(
-      expect.arrayContaining(['Product delivery', 'Executive leadership']),
-    );
+    expect(screen.getAllByText(/Show Product delivery early in the paragraph\./i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Support it with proof around Executive leadership\./i).length).toBeGreaterThan(0);
   });
 
-  it('surfaces a start-here structure step when a recommended section is still missing', async () => {
+  it('moves to the next section after applying the current section draft', async () => {
+    const resume = makeResumeDraft();
+    const { workflow, drafts } = makeReadySectionDrafts(resume);
+    const onApplySectionDraft = vi.fn();
+
     render(
       <V2StreamingDisplay
         {...makeDisplayProps({
+          editableResume: resume,
+          sectionDrafts: drafts,
+          onApplySectionDraft,
+          data: makePipelineDataWithResume({
+            resumeDraft: resume,
+            assembly: {
+              final_resume: resume,
+              scores: {
+                ats_match: 87,
+                truth: 92,
+                tone: 88,
+              },
+              quick_wins: [],
+            },
+          }),
+        })}
+      />,
+    );
+
+    await startEditingIfGatePresent();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Use this version' })[0]);
+      await Promise.resolve();
+    });
+
+    expect(onApplySectionDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ id: workflow.steps[0].id, title: 'Executive Summary' }),
+      expect.objectContaining({ id: 'recommended' }),
+    );
+    expect(screen.getAllByText(/Step 2 of 4/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Selected Accomplishments').length).toBeGreaterThan(0);
+  });
+
+  it('shows the structure planner first when the role suggests a missing section', async () => {
+    render(
+      <V2StreamingDisplay
+        {...makeDisplayProps({
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           data: makePipelineDataWithResume({
             candidateIntelligence: {
               contact: {
@@ -1280,9 +1611,9 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Add Selected Projects/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Fix the sections before rewriting lines/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Get the structure right first/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Start with Executive Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /add section/i }).length).toBeGreaterThan(0);
     expect(screen.queryByText('Section Polish')).not.toBeInTheDocument();
   });
 
@@ -1338,7 +1669,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Seasoned engineering leader driving outcomes at scale.' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       section: string;
       reviewState: string;
@@ -1347,7 +1678,7 @@ describe('V2StreamingDisplay — layout modes', () => {
       };
     };
     expect(lastCall.section).toBe('executive_summary');
-    expect(lastCall.reviewState).toBe('code_red');
+    expect(lastCall.reviewState).toBe('strengthen');
     expect(lastCall.chatContext.clarifyingQuestions).toEqual([
       'What specific product launch or delivery outcome proves this most clearly?',
     ]);
@@ -1441,7 +1772,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Seasoned engineering leader driving outcomes at scale.' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       chatContext: {
         priorClarifications?: Array<{ id: string; topic: string; userInput: string }>;
@@ -1527,7 +1858,7 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     await startEditingIfGatePresent();
     expect(screen.queryByText('One Good Answer')).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open coach' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Seasoned engineering leader driving outcomes at scale.' })[0]);
     const lastCall = mockBulletCoachingPanel.mock.calls.at(-1)?.[0] as {
       chatContext: {
         priorClarifications?: Array<{ id: string }>;

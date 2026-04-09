@@ -36,6 +36,12 @@ test.describe('resume-v2 visual harness', () => {
         if (await startButton.isVisible().catch(() => false)) {
           await startButton.click();
         }
+        for (let stepIndex = 0; stepIndex < 6; stepIndex += 1) {
+          const useButton = page.getByRole('button', { name: /use this version/i }).filter({ visible: true }).first();
+          if (!(await useButton.isVisible().catch(() => false))) break;
+          await useButton.click();
+          await page.waitForTimeout(120);
+        }
         await expect(page.getByText('Priority Fixes', { exact: true }).filter({ visible: true }).first()).toBeVisible();
         await page.getByRole('button', { name: /Performance metrics ownership is still too vague/i }).filter({ visible: true }).first().click();
         await expect(page.getByText('Resume line to edit', { exact: true }).filter({ visible: true }).first()).toBeVisible();

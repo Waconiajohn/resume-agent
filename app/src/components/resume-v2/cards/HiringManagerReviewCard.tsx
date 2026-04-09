@@ -381,6 +381,10 @@ export function HiringManagerReviewCard({
             const chatState = finalReviewChat?.getItemState(concern.id);
             const chatContext = buildFinalReviewChatContext?.(concern) ?? null;
             const resolvedTarget = resolveConcernTarget?.(concern) ?? null;
+            const openConcernThread = () => {
+              setExpandedConcern(concern.id);
+              setThreadConcernId(concern.id);
+            };
 
             return (
               <div
@@ -501,6 +505,40 @@ export function HiringManagerReviewCard({
                     )}
 
                     <div className="final-review-actions gap-2 sm:gap-2.5">
+                      {concern.suggested_resume_edit && onApplyRecommendation && (
+                        <button
+                          type="button"
+                          onClick={() => onApplyRecommendation(concern, concern.suggested_resume_edit, false)}
+                          disabled={isEditing}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] px-3 py-2 text-[13px] font-medium text-[var(--badge-green-text)] transition-colors hover:bg-[var(--badge-green-bg)] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Use suggested wording
+                        </button>
+                      )}
+
+                      {concern.suggested_resume_edit && finalReviewChat && chatContext && (
+                        <button
+                          type="button"
+                          onClick={openConcernThread}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
+                        >
+                          <Wrench className="h-3 w-3" />
+                          Edit suggested wording
+                        </button>
+                      )}
+
+                      {concern.clarifying_question && finalReviewChat && chatContext && (
+                        <button
+                          type="button"
+                          onClick={openConcernThread}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)] px-3 py-2 text-[13px] font-medium text-[var(--badge-amber-text)] transition-colors hover:bg-[var(--badge-amber-bg)]"
+                        >
+                          <AlertCircle className="h-3 w-3" />
+                          Answer this question
+                        </button>
+                      )}
+
                       {resolvedTarget && onPreviewConcernTarget && (
                         <button
                           type="button"
@@ -532,7 +570,13 @@ export function HiringManagerReviewCard({
                       {finalReviewChat && chatContext && (
                         <button
                           type="button"
-                          onClick={() => setThreadConcernId(isThreadOpen ? null : concern.id)}
+                          onClick={() => {
+                            if (isThreadOpen) {
+                              setThreadConcernId(null);
+                              return;
+                            }
+                            openConcernThread();
+                          }}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]"
                         >
                           <Sparkles className="h-3 w-3" />
