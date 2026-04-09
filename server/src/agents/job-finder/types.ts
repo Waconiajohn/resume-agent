@@ -59,6 +59,51 @@ export interface JobEvaluation {
 
 // ─── Ranked Match ────────────────────────────────────────────────────
 
+/** Career-Ops-style career level strategy assessment */
+export interface CareerLevelStrategy {
+  current_level: string;
+  target_level: string;
+  move_type: 'step_up' | 'lateral' | 'step_down' | 'reset';
+  scope_change: string;
+  strategic_rationale: string;
+}
+
+/** Compensation analysis relative to role and candidate level */
+export interface CompensationAnalysis {
+  posted_range?: string;
+  market_estimate: string;
+  vs_current: 'premium' | 'in_range' | 'below_market' | 'unknown';
+  level_alignment: string;
+  red_flags: string[];
+}
+
+/** How well the candidate's evidence maps to this specific JD */
+export interface PersonalizationPotential {
+  evidence_alignment_score: number;
+  strongest_evidence_matches: Array<{
+    requirement: string;
+    evidence: string;
+    confidence: 'High' | 'Moderate' | 'Low';
+  }>;
+  evidence_gaps: Array<{
+    requirement: string;
+    gap_type: 'unaddressed' | 'adjacent_proof_only' | 'supportable_inference';
+  }>;
+  personalization_narrative: string;
+}
+
+/** STAR-scaffolded interview story for a specific role challenge */
+export interface InterviewPrepStory {
+  jd_challenge: string;
+  star_setup: {
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+  };
+  relevance_to_role: string;
+}
+
 /** A job opening ranked and narrated against the user's positioning */
 export interface RankedMatch extends DiscoveredJob {
   /** Overall fit score (0-100) */
@@ -75,6 +120,14 @@ export interface RankedMatch extends DiscoveredJob {
   network_connections?: string[];
   /** Structured evaluation — fit check, gap assessment, red flags, verdict */
   evaluation?: JobEvaluation;
+  /** Career-Ops block 3: Career level strategy (step up/lateral/down/reset) */
+  career_level_strategy?: CareerLevelStrategy;
+  /** Career-Ops block 4: Compensation analysis */
+  compensation_analysis?: CompensationAnalysis;
+  /** Career-Ops block 5: How much resume evidence maps to this JD */
+  personalization_potential?: PersonalizationPotential;
+  /** Career-Ops block 6: STAR-scaffolded interview prep stories */
+  interview_prep_stories?: InterviewPrepStory[];
 }
 
 // ─── User Decision (from review gate) ───────────────────────────────

@@ -113,7 +113,39 @@ Return a JSON array — one object per job, same order as above:
         "decision": "APPLY_NOW" | "WORTH_A_CONVERSATION" | "DEPRIORITIZE",
         "reasoning": "1 sentence justification for the verdict"
       }
-    }
+    },
+    "career_level_strategy": {
+      "current_level": "candidate's current/most recent title",
+      "target_level": "this role's level",
+      "move_type": "step_up" | "lateral" | "step_down" | "reset",
+      "scope_change": "what changes: budget, team size, complexity, geography",
+      "strategic_rationale": "why this move serves the candidate's trajectory"
+    },
+    "compensation_analysis": {
+      "posted_range": "salary range if posted, or null",
+      "market_estimate": "estimated market range for this role and company size",
+      "vs_current": "premium" | "in_range" | "below_market" | "unknown",
+      "level_alignment": "does the comp match the stated seniority?",
+      "red_flags": ["comp suggests IC role despite VP title"]
+    },
+    "personalization_potential": {
+      "evidence_alignment_score": 0-100,
+      "strongest_evidence_matches": [{"requirement": "JD need", "evidence": "candidate proof", "confidence": "High|Moderate|Low"}],
+      "evidence_gaps": [{"requirement": "JD need", "gap_type": "unaddressed|adjacent_proof_only|supportable_inference"}],
+      "personalization_narrative": "how to tailor the resume for this specific role"
+    },
+    "interview_prep_stories": [
+      {
+        "jd_challenge": "the implicit challenge this role solves",
+        "star_setup": {
+          "situation": "context from candidate's history",
+          "task": "the challenge they faced",
+          "action": "what they did",
+          "result": "metrics and outcomes"
+        },
+        "relevance_to_role": "why this story proves readiness"
+      }
+    ]
   }
 ]
 
@@ -131,7 +163,13 @@ Evaluation guidance:
 - fit_check.rating: STRONG_FIT = clear match on level, function, and trajectory; STRETCH = one or two gaps but candidate could make a case; MISMATCH = fundamentally wrong level or function
 - gap_assessment: be specific about what is missing (credentials, industry, scope) and whether the candidate's transferable experience makes it bridgeable
 - red_flags: flag posting age (>60 days old = likely filled), unicorn specs (10+ unrelated requirements), vague or contradictory job descriptions, signs the role may be filled internally, unrealistic scope for one person. Use an empty array if no flags apply.
-- verdict: APPLY_NOW = strong match, invest the energy now; WORTH_A_CONVERSATION = not perfect but worth a recruiter call; DEPRIORITIZE = not worth the time given current priorities`;
+- verdict: APPLY_NOW = strong match, invest the energy now; WORTH_A_CONVERSATION = not perfect but worth a recruiter call; DEPRIORITIZE = not worth the time given current priorities
+
+Career-Ops evaluation blocks:
+- career_level_strategy: Categorize the move as step_up (title/scope increase), lateral (same level, new domain/industry), step_down (intentional reset to hands-on work), or reset (career pivot). Note scope changes in budget, team, complexity. A step_down can still be a STRONG_FIT if the strategic rationale is clear.
+- compensation_analysis: If salary_range is posted, estimate whether it aligns with the seniority level. Flag if comp suggests a different level than the title. Use "unknown" if no data.
+- personalization_potential: Score 0-100 based on how many of the role's key requirements the candidate can prove with direct evidence. 80+ = highly personalizable resume. Include the top 2-3 evidence matches and any critical gaps.
+- interview_prep_stories: For the top 2-3 implicit challenges in this role, map to the candidate's STAR-ready evidence. Focus on stories with quantified results. These help the candidate prepare before applying.`;
 
     const response = await llm.chat({
       model: MODEL_MID,
@@ -149,6 +187,10 @@ Evaluation guidance:
       seniority_fit: string;
       fit_reasoning: string;
       evaluation?: JobEvaluation;
+      career_level_strategy?: RankedMatch['career_level_strategy'];
+      compensation_analysis?: RankedMatch['compensation_analysis'];
+      personalization_potential?: RankedMatch['personalization_potential'];
+      interview_prep_stories?: RankedMatch['interview_prep_stories'];
     }> = [];
 
     try {
@@ -323,6 +365,10 @@ Rules:
         career_trajectory_fit: scored.career_trajectory_fit ?? '',
         seniority_fit: scored.seniority_fit ?? 'match',
         ...(scored.evaluation !== undefined ? { evaluation: scored.evaluation } : {}),
+        ...((scored as Record<string, unknown>).career_level_strategy !== undefined ? { career_level_strategy: (scored as Record<string, unknown>).career_level_strategy as RankedMatch['career_level_strategy'] } : {}),
+        ...((scored as Record<string, unknown>).compensation_analysis !== undefined ? { compensation_analysis: (scored as Record<string, unknown>).compensation_analysis as RankedMatch['compensation_analysis'] } : {}),
+        ...((scored as Record<string, unknown>).personalization_potential !== undefined ? { personalization_potential: (scored as Record<string, unknown>).personalization_potential as RankedMatch['personalization_potential'] } : {}),
+        ...((scored as Record<string, unknown>).interview_prep_stories !== undefined ? { interview_prep_stories: (scored as Record<string, unknown>).interview_prep_stories as RankedMatch['interview_prep_stories'] } : {}),
       };
     });
 
