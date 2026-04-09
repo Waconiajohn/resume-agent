@@ -1,4 +1,4 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider } from './llm-provider.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
 import {
   ACTIVE_PROVIDER,
@@ -101,6 +101,15 @@ function createProvider(): LLMProvider {
     }
     const baseUrl = process.env.GROQ_BASE_URL;
     return new GroqProvider({ apiKey, ...(baseUrl && { baseUrl }) });
+  }
+
+  if (providerName === 'deepseek') {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      throw new Error('DEEPSEEK_API_KEY environment variable is required when LLM_PROVIDER=deepseek');
+    }
+    const baseUrl = process.env.DEEPSEEK_BASE_URL;
+    return new DeepSeekProvider({ apiKey, ...(baseUrl && { baseUrl }) });
   }
 
   if (providerName === 'zai') {

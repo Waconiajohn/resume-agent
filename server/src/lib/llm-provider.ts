@@ -895,6 +895,26 @@ export class GroqProvider extends ZAIProvider {
   }
 }
 
+// ─── DeepSeek provider (OpenAI-compatible) ───────────────────────────
+
+interface DeepSeekConfig {
+  apiKey: string;
+  baseUrl?: string;
+}
+
+export class DeepSeekProvider extends ZAIProvider {
+  constructor(config: DeepSeekConfig) {
+    super({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl ?? 'https://api.deepseek.com',
+      providerName: 'deepseek',
+      chatTimeoutMs: 120_000,  // DeepSeek can be slower during peak hours
+      streamTimeoutMs: 180_000,
+      disableParallelToolCalls: false,
+    });
+  }
+}
+
 // ─── OpenAI-compatible type definitions (internal) ───────────────────
 
 interface OpenAIMessage {

@@ -1,0 +1,1122 @@
+/**
+ * Section-by-section resume writer
+ *
+ * Splits the single-pass 32K-token resume writer into 5 focused LLM calls,
+ * each with section-specific rules and explicit cross-section evidence tracking.
+ *
+ * Why: A single prompt with 50+ rules and 20K tokens of output causes the model
+ * to drop structural rules, repeat evidence across sections, and produce thin
+ * custom sections. One focused call per section group fixes all three failure modes.
+ *
+ * Call sequence:
+ *   1. Executive Summary  (2048 max tokens)
+ *   2. Selected Accomplishments + Core Competencies  (4096 + 2048, can overlap in time but run sequentially here)
+ *   3. Core Competencies  (2048 max tokens)
+ *   4. Custom Sections  (4096 max tokens, after accomplishments so used evidence is known)
+ *   5. Professional Experience  (16384 max tokens, after all above)
+ *
+ * Output: ResumeDraftOutput — same type as the monolithic writer.
+ * Post-processing (ensureBulletMetadata, deterministicRequirementMatch, applySectionPlanning, etc.)
+ * stays in agent.ts and runs on the merged output just like before.
+ */
+
+import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
+import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
+import { buildWriterSectionStrategy } from '../section-planning.js';
+import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
+import type {
+  ResumeWriterInput,
+  ResumeDraftOutput,
+  ResumeBullet,
+  ResumeCustomSection,
+  CandidateExperience,
+  ResumePriorityTarget,
+} from '../types.js';
+
+// ─── Constants ───────────────────────────────────────────────────────
+
+const JSON_RULES = `Return exactly one JSON object. First character must be {, last must be }. No markdown fences. No prose outside the JSON.`;
+
+const RETRY_SYSTEM =
+  'You are a JSON extraction machine. Return ONLY valid JSON. Start with { and end with }. No markdown fences, no commentary, no text before or after the JSON object.';
+
+// ─── Abort helper ────────────────────────────────────────────────────
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+// ─── Evidence tracking ───────────────────────────────────────────────
+
+/**
+ * Extract key proof phrases from section output for cross-section deduplication.
+ * We take the first 120 characters of each content line — enough to identify a
+ * repeated proof point without being so long that minor rewording defeats the check.
+ */
+function extractUsedEvidence(lines: string[]): string[] {
+  return lines
+    .map((line) => line.trim().slice(0, 200).toLowerCase())
+    .filter((line) => line.length > 20);
+}
+
+function formatUsedEvidence(usedEvidence: string[]): string {
+  if (usedEvidence.length === 0) return 'None yet.';
+  return usedEvidence.map((e, i) => `  ${i + 1}. ${e}`).join('\n');
+}
+
+// ─── Section 1: Executive Summary ───────────────────────────────────
+
+const SUMMARY_SYSTEM = `You are an expert executive resume writer. Your job is to COMPLETE an executive summary that has already been started for you.
+
+## YOUR TASK
+
+You will receive an opening sentence that has already been written. Your job is to write 2-4 follow-up sentences that complete the executive summary. Total length: 60-100 words including the opener.
+
+Your follow-up sentences should cover:
+1. CAPABILITY SENTENCE: What this person consistently delivers across roles — their signature pattern.
+2. PROOF SENTENCES (1-2): Specific quantified achievements that back up the identity and capability claims. Use real metrics from the candidate data.
+3. POSITIONING SENTENCE (optional): A forward-looking frame connecting their track record to what they'll deliver next.
+
+## WRITING RULES — READ FIRST
+- Do NOT rewrite or replace the opening sentence — it is final. You are ONLY writing what comes after it.
+- Do NOT use first-person pronouns: "I", "my", "mine", "I've", "I'm", "I have", "I possess", "I am", "we", "our".
+  WRONG: "I've led teams across 3 regions." RIGHT: "Led teams across 3 regions."
+  WRONG: "I'm an expert in cloud." RIGHT: "Deep expertise in cloud infrastructure."
+- Do NOT use filler phrases: "results-driven", "proven track record", "seasoned professional", "ideal candidate", "dynamic professional", "motivated self-starter", "extensive experience"
+- Do NOT name the target company — the summary must work for any application
+- Do NOT repeat the same verb to start two different sentences
+- Every sentence must be grammatically correct and sound natural when read aloud
+- Weave in domain-relevant terms from the job description naturally — but only where the candidate has real evidence
+
+## EXAMPLE
+
+Opening sentence (given): "Cloud Infrastructure Architect with 12 years of experience designing, scaling, and securing enterprise platforms across multi-cloud environments."
+
+Good completion: "Consistently delivers cost optimization and reliability at scale — most recently driving 35% hosting cost reduction through a 60+ application cloud migration while maintaining 99.95% availability. Combines deep AWS and Kubernetes expertise with hands-on leadership of 14-person engineering teams supporting 200+ microservices. AWS Solutions Architect – Professional certified."
+
+${SOURCE_DISCIPLINE}
+${JSON_RULES}`;
+
+interface SummaryResult {
+  content: string;
+  is_new: boolean;
+}
+
+async function callSummarySection(
+  input: ResumeWriterInput,
+  signal?: AbortSignal,
+): Promise<SummaryResult> {
+  const { candidate, narrative, benchmark } = input;
+
+  const topOutcomes = candidate.quantified_outcomes.slice(0, 5).map(
+    (o) => `- [${o.metric_type}] ${o.outcome}: ${o.value}`,
+  ).join('\n');
+
+  const directMatchLines = (benchmark.direct_matches ?? []).slice(0, 3).map(
+    (m) => `- [${m.strength}] ${m.jd_requirement} → ${m.candidate_evidence}`,
+  ).join('\n');
+
+  // Construct the opening sentence deterministically — this is the identity-first anchor.
+  // Keep it short: just branded title + years. The LLM fills in the capability in follow-up sentences.
+  const openingSentence = `${narrative.branded_title} with ${candidate.career_span_years} years of experience.`;
+
+  const userMessage = [
+    '## THE OPENING SENTENCE (already written — do not change it)',
+    `"${openingSentence}"`,
+    '',
+    'Write 2-4 sentences that FOLLOW this opener. Return the COMPLETE summary including the opening sentence above.',
+    '',
+    '## STRATEGIC CONTEXT',
+    `Primary narrative: ${narrative.primary_narrative}`,
+    `Why Me (concise): ${narrative.why_me_concise}`,
+    narrative.unique_differentiators?.length
+      ? `\nUnique differentiators:\n${narrative.unique_differentiators.slice(0, 3).map((d) => `- ${d}`).join('\n')}`
+      : '',
+    benchmark.positioning_frame
+      ? `\nPositioning frame: ${benchmark.positioning_frame}`
+      : '',
+    '',
+    '## CANDIDATE',
+    `Name: ${candidate.contact.name}`,
+    `Career span: ${candidate.career_span_years} years`,
+    `Top quantified outcomes:\n${topOutcomes}`,
+    `Career themes: ${candidate.career_themes.slice(0, 4).join(', ')}`,
+    `Leadership scope: ${candidate.leadership_scope}`,
+    `Operational scale: ${candidate.operational_scale}`,
+    directMatchLines ? `\nDirect JD matches to surface:\n${directMatchLines}` : '',
+    '',
+    '## OUTPUT FORMAT',
+    'Return this JSON object:',
+    '{ "content": "3-5 sentence executive summary", "is_new": true }',
+  ].filter(Boolean).join('\n');
+
+  const parse = async (text: string): Promise<SummaryResult | null> => {
+    const parsed = repairJSON<SummaryResult>(text);
+    if (!parsed?.content || typeof parsed.content !== 'string') return null;
+
+    // Safety net: if the model wrote follow-up sentences but forgot to include the
+    // opening sentence, prepend it. This ensures identity-first regardless of model behavior.
+    const content = parsed.content.trim();
+    const openerNormalized = openingSentence.toLowerCase().slice(0, 40);
+    if (!content.toLowerCase().startsWith(openerNormalized)) {
+      parsed.content = `${openingSentence} ${content}`;
+    }
+
+    return parsed;
+  };
+
+  const start = Date.now();
+  logger.info('section-writer: calling summary section');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: SUMMARY_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 2048,
+      signal,
+    });
+
+    const result = await parse(response.text);
+    if (result) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: summary complete');
+      return result;
+    }
+
+    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: summary parse failed, retrying');
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${SUMMARY_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 2048,
+      signal,
+    });
+
+    const retryResult = await parse(retry.text);
+    if (retryResult) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: summary complete (retry)');
+      return retryResult;
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'section-writer: summary LLM call failed, using deterministic fallback',
+    );
+  }
+
+  // Deterministic fallback: identity + top metric + why_me_concise
+  const topMetric = candidate.quantified_outcomes[0]
+    ? `${candidate.quantified_outcomes[0].outcome}: ${candidate.quantified_outcomes[0].value}.`
+    : '';
+  const fallbackContent = [
+    `${narrative.branded_title} with ${candidate.career_span_years} years of experience.`,
+    topMetric,
+    narrative.why_me_concise,
+  ].filter(Boolean).join(' ');
+
+  logger.info({ duration_ms: Date.now() - start }, 'section-writer: summary fallback used');
+  return { content: fallbackContent, is_new: true };
+}
+
+// ─── Section 2: Selected Accomplishments ─────────────────────────────
+
+const ACCOMPLISHMENTS_SYSTEM = `You are an expert executive resume writer. Your only job right now is to write 3-4 Selected Accomplishments — the spectacular proof points that make a hiring manager stop and re-read.
+
+## WHAT MAKES A GREAT ACCOMPLISHMENT
+- One primary JD requirement it proves — every accomplishment must be tied to a real job need
+- Format: Strong Action Verb + What You Did (with context) + Measurable Result
+- Every accomplishment must have a substantive metric: $X saved, Y% improved, Z people/systems/sites impacted
+- "Managed" and "Supported" are NOT strong verbs — use Drove, Championed, Transformed, Negotiated, Architected, Scaled
+- Must be traceable to the original resume — no fabrication
+
+## HARD RULES
+- 3-4 accomplishments maximum — quality over quantity
+- Each accomplishment must address a DIFFERENT primary JD requirement — do not repeat proof themes
+- No accomplishment may duplicate evidence already used in another section
+- Every accomplishment must have is_new set correctly (true if enhanced beyond verbatim original)
+
+## OUTPUT FORMAT
+Return this JSON object:
+{
+  "accomplishments": [
+    {
+      "content": "Strong action verb sentence with metric",
+      "is_new": false,
+      "addresses_requirements": ["requirement name"],
+      "source": "original",
+      "requirement_source": "job_description",
+      "evidence_found": "quote from original resume or empty string",
+      "confidence": "strong"
+    }
+  ]
+}
+
+${SOURCE_DISCIPLINE}
+${JSON_RULES}`;
+
+interface AccomplishmentItem {
+  content: string;
+  is_new: boolean;
+  addresses_requirements: string[];
+  source: 'original' | 'enhanced' | 'drafted';
+  requirement_source: 'job_description' | 'benchmark';
+  evidence_found: string;
+  confidence: 'strong' | 'partial' | 'needs_validation';
+}
+
+interface AccomplishmentsResult {
+  accomplishments: AccomplishmentItem[];
+}
+
+async function callAccomplishmentsSection(
+  input: ResumeWriterInput,
+  executiveSummary: string,
+  selectedTargets: ResumePriorityTarget[],
+  signal?: AbortSignal,
+): Promise<AccomplishmentsResult> {
+  const { candidate, job_intelligence } = input;
+  const sourceExperience = getAuthoritativeSourceExperience(candidate);
+
+  const targetLines = selectedTargets.slice(0, 5).map(
+    (t, i) => `${i + 1}. ${t.requirement} (${t.source === 'benchmark' ? 'benchmark signal' : 'job need'}; ${t.importance})${t.source_evidence ? ` — evidence: ${t.source_evidence}` : ''}`,
+  ).join('\n');
+
+  const evidencePool = sourceExperience
+    .flatMap((exp) => exp.bullets.map((b) => `[${exp.company}] ${b}`))
+    .slice(0, 30)
+    .map((b, i) => `${i + 1}. ${b}`)
+    .join('\n');
+
+  const topRequirements = job_intelligence.core_competencies
+    .filter((c) => c.importance === 'must_have')
+    .slice(0, 5)
+    .map((c) => `- [${c.importance}] ${c.competency}: ${c.evidence_from_jd}`)
+    .join('\n');
+
+  const userMessage = [
+    '## EXECUTIVE SUMMARY (written above — your accomplishments must reinforce this narrative)',
+    executiveSummary,
+    '',
+    '## PRIORITY TARGETS — write accomplishments that prove THESE needs first',
+    targetLines || 'Use the top must_have JD requirements below.',
+    '',
+    '## TOP JD REQUIREMENTS',
+    topRequirements,
+    '',
+    '## EVIDENCE POOL (original resume bullets — trace every accomplishment to one of these)',
+    evidencePool,
+    '',
+    `Career span: ${candidate.career_span_years} years`,
+    `Quantified outcomes: ${candidate.quantified_outcomes.slice(0, 5).map((o) => `${o.outcome}: ${o.value}`).join('; ')}`,
+  ].join('\n');
+
+  const parse = (text: string): AccomplishmentsResult | null => {
+    const parsed = repairJSON<AccomplishmentsResult>(text);
+    if (parsed?.accomplishments && Array.isArray(parsed.accomplishments)) return parsed;
+    return null;
+  };
+
+  const start = Date.now();
+  logger.info('section-writer: calling accomplishments section');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: ACCOMPLISHMENTS_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal,
+    });
+
+    const result = parse(response.text);
+    if (result) {
+      logger.info({ duration_ms: Date.now() - start, count: result.accomplishments.length }, 'section-writer: accomplishments complete');
+      return result;
+    }
+
+    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: accomplishments parse failed, retrying');
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${ACCOMPLISHMENTS_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal,
+    });
+
+    const retryResult = parse(retry.text);
+    if (retryResult) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: accomplishments complete (retry)');
+      return retryResult;
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'section-writer: accomplishments LLM call failed, using deterministic fallback',
+    );
+  }
+
+  // Deterministic fallback: top 3 quantified outcomes
+  const fallbackAccomplishments: AccomplishmentItem[] = candidate.quantified_outcomes
+    .slice(0, 3)
+    .map((o) => ({
+      content: `${o.outcome}: ${o.value}`,
+      is_new: false,
+      addresses_requirements: [],
+      source: 'original' as const,
+      requirement_source: 'job_description' as const,
+      evidence_found: `${o.outcome}: ${o.value}`,
+      confidence: 'strong' as const,
+    }));
+
+  logger.info({ duration_ms: Date.now() - start }, 'section-writer: accomplishments fallback used');
+  return { accomplishments: fallbackAccomplishments };
+}
+
+// ─── Section 3: Core Competencies ────────────────────────────────────
+
+const COMPETENCIES_SYSTEM = `You are an expert executive resume writer. Your only job right now is to write 12-18 Core Competencies for an executive resume.
+
+## RULES
+- Mirror exact phrases from the job description wherever possible — this section is the primary ATS keyword magnet
+- Group by narrative themes, not as a raw keyword dump
+- Include BOTH technical domain skills AND strategic soft skills appropriate to the candidate's seniority level
+- Soft skills like "Cross-Functional Collaboration," "Executive Stakeholder Communication," "Change Management," and "Strategic Planning" signal seniority and belong on executive resumes — include them whether or not the JD mentions them
+- Only exclude truly meaningless generics that add zero signal at any level: "hard worker," "team player," "self-starter," "detail-oriented," "people person"
+- For executive candidates, AI readiness means leadership of technology adoption and digital transformation — frame it at the executive level: "AI-Enabled Process Optimization" not "Machine Learning"
+- Include the candidate's domain strengths and industry-specific technical capabilities
+- Avoid duplicating competencies — each entry should be distinct
+
+## OUTPUT FORMAT
+Return this JSON object:
+{ "competencies": ["skill1", "skill2", "skill3", ...] }
+
+12 minimum, 18 maximum. Quality over exhaustiveness.
+
+${SOURCE_DISCIPLINE}
+${JSON_RULES}`;
+
+interface CompetenciesResult {
+  competencies: string[];
+}
+
+async function callCompetenciesSection(
+  input: ResumeWriterInput,
+  signal?: AbortSignal,
+): Promise<CompetenciesResult> {
+  const { candidate, job_intelligence, narrative } = input;
+
+  const jdKeywords = job_intelligence.language_keywords.slice(0, 30).join(', ');
+  const competencyThemes = narrative.section_guidance.competency_themes.join(', ');
+  const technologies = (candidate.technologies ?? []).slice(0, 20).join(', ');
+  const mustHaveCompetencies = job_intelligence.core_competencies
+    .filter((c) => c.importance === 'must_have')
+    .map((c) => c.competency)
+    .join(', ');
+
+  const userMessage = [
+    '## JD KEYWORDS (mirror these exactly where possible)',
+    jdKeywords,
+    '',
+    '## JD MUST-HAVE COMPETENCIES',
+    mustHaveCompetencies,
+    '',
+    '## NARRATIVE COMPETENCY THEMES (group skills around these)',
+    competencyThemes,
+    '',
+    technologies ? `## CANDIDATE TECHNOLOGIES\n${technologies}` : '',
+    `\nIndustry depth: ${(candidate.industry_depth ?? []).slice(0, 5).join(', ')}`,
+    `Career themes: ${candidate.career_themes.slice(0, 4).join(', ')}`,
+  ].filter(Boolean).join('\n');
+
+  const parse = (text: string): CompetenciesResult | null => {
+    const parsed = repairJSON<CompetenciesResult>(text);
+    if (parsed?.competencies && Array.isArray(parsed.competencies) && parsed.competencies.length >= 8) {
+      return parsed;
+    }
+    return null;
+  };
+
+  const start = Date.now();
+  logger.info('section-writer: calling competencies section');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: COMPETENCIES_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 2048,
+      signal,
+    });
+
+    const result = parse(response.text);
+    if (result) {
+      logger.info({ duration_ms: Date.now() - start, count: result.competencies.length }, 'section-writer: competencies complete');
+      return result;
+    }
+
+    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: competencies parse failed, retrying');
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${COMPETENCIES_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 2048,
+      signal,
+    });
+
+    const retryResult = parse(retry.text);
+    if (retryResult) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: competencies complete (retry)');
+      return retryResult;
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'section-writer: competencies LLM call failed, using deterministic fallback',
+    );
+  }
+
+  // Deterministic fallback: JD keywords + competency themes + candidate technologies, deduplicated
+  const seen = new Set<string>();
+  const fallback: string[] = [];
+  const candidates = [
+    ...narrative.section_guidance.competency_themes,
+    ...job_intelligence.language_keywords,
+    ...(candidate.technologies ?? []),
+  ];
+  for (const item of candidates) {
+    const normalized = item.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    fallback.push(item.trim());
+    if (fallback.length >= 18) break;
+  }
+
+  logger.info({ duration_ms: Date.now() - start }, 'section-writer: competencies fallback used');
+  return { competencies: fallback.slice(0, 18) };
+}
+
+// ─── Section 4: Custom Sections ───────────────────────────────────────
+
+const CUSTOM_SECTIONS_SYSTEM = `You are an expert executive resume writer. Your only job right now is to write content for recommended custom resume sections.
+
+## CRITICAL RULE — EVIDENCE EXCLUSIVITY
+Each custom section must contain UNIQUE proof NOT already used in Selected Accomplishments or other sections.
+If the evidence pool for a section is too thin to produce 2+ unique proof points, return an empty lines array for that section — it will be filtered out automatically.
+Do NOT repeat accomplishments, metrics, or proof points that appear in the "Already Used Evidence" list below.
+
+## TRUTHFULNESS — DO NOT SILENTLY INVENT
+You may CREATIVELY REFRAME real experience to fit a section's theme. That is expected and valuable.
+You may NOT invent accomplishments, tools, methodologies, or metrics that do not appear in the candidate's background.
+
+The difference:
+- GOOD (creative reframe): Candidate did "automated server provisioning with Ansible" → reframe as "Implemented infrastructure automation reducing manual overhead and enabling scalable operations"
+- BAD (invention): Candidate has no ML experience → write "Developed machine learning models to optimize resource utilization" — this is fabrication
+
+When evidence is genuinely thin for a section, you have two options:
+1. Write what IS real, even if it's only 1-2 lines of reframed proof. The system will surface these as areas for the candidate to strengthen.
+2. Return empty lines if nothing real can fill the section. The section will be filtered out.
+
+Either option is better than inventing accomplishments the candidate cannot defend in an interview.
+
+## SECTION CONTENT GUIDELINES
+- Each line must be substantive: action + context + result
+- Lines should read as resume bullets, not as paragraph prose
+- Back off 10-20% on inferred metrics and mark with "~" or "up to"
+- Every line must trace back to the original resume or user-provided context — creative reframing of real experience is encouraged, invention of new experience is not
+
+## OUTPUT FORMAT
+Return this JSON object:
+{
+  "sections": [
+    {
+      "id": "section_id_here",
+      "lines": ["line 1", "line 2", "line 3"]
+    }
+  ]
+}
+
+Return an entry for EVERY recommended section. If a section has insufficient unique evidence, return an empty lines array: { "id": "...", "lines": [] }
+
+${SOURCE_DISCIPLINE}
+${JSON_RULES}`;
+
+interface CustomSectionOutput {
+  id: string;
+  lines: string[];
+}
+
+interface CustomSectionsResult {
+  sections: CustomSectionOutput[];
+}
+
+async function callCustomSections(
+  input: ResumeWriterInput,
+  usedEvidence: string[],
+  signal?: AbortSignal,
+): Promise<CustomSectionsResult> {
+  const { candidate, job_intelligence } = input;
+  const sectionStrategy = buildWriterSectionStrategy(candidate, input.gap_analysis);
+  const recommendedSections = sectionStrategy.recommended_custom_sections;
+
+  if (recommendedSections.length === 0) {
+    return { sections: [] };
+  }
+
+  const sectionDescriptions = recommendedSections.map((section) => [
+    `### ${section.title} (id: ${section.id})`,
+    `Why it belongs: ${section.rationale ?? 'Role-relevant proof.'}`,
+    section.summary ? `Section framing: ${section.summary}` : '',
+    section.lines.length > 0
+      ? `Seed evidence (rewrite with your own framing):\n${section.lines.map((l) => `  - ${l}`).join('\n')}`
+      : 'No seed evidence available — use candidate background below.',
+  ].filter(Boolean).join('\n')).join('\n\n');
+
+  const aiReadiness = candidate.ai_readiness;
+  const aiSignals = aiReadiness && aiReadiness.strength !== 'none' && aiReadiness.strength !== 'minimal'
+    ? aiReadiness.signals.map((s) => s.executive_framing || s.evidence).filter(Boolean).slice(0, 4).map((s) => `- ${s}`).join('\n')
+    : '';
+
+  const userMessage = [
+    '## RECOMMENDED CUSTOM SECTIONS',
+    sectionDescriptions,
+    '',
+    '## ALREADY USED EVIDENCE (do NOT repeat any of these proof points)',
+    formatUsedEvidence(usedEvidence),
+    '',
+    '## CANDIDATE BACKGROUND (draw additional evidence from here)',
+    `Career span: ${candidate.career_span_years} years`,
+    `Career themes: ${candidate.career_themes.slice(0, 4).join(', ')}`,
+    `Operational scale: ${candidate.operational_scale}`,
+    `Hidden accomplishments: ${(candidate.hidden_accomplishments ?? []).slice(0, 5).join('; ')}`,
+    aiSignals ? `\nAI Readiness signals:\n${aiSignals}` : '',
+    '',
+    '## JD CONTEXT',
+    `Business problems this role solves: ${job_intelligence.business_problems.slice(0, 3).join('; ')}`,
+    `Strategic responsibilities: ${job_intelligence.strategic_responsibilities.slice(0, 3).join('; ')}`,
+  ].filter(Boolean).join('\n');
+
+  const parse = (text: string): CustomSectionsResult | null => {
+    const parsed = repairJSON<CustomSectionsResult>(text);
+    if (parsed?.sections && Array.isArray(parsed.sections)) return parsed;
+    return null;
+  };
+
+  const start = Date.now();
+  logger.info({ count: recommendedSections.length }, 'section-writer: calling custom sections');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: CUSTOM_SECTIONS_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal,
+    });
+
+    const result = parse(response.text);
+    if (result) {
+      logger.info({ duration_ms: Date.now() - start, count: result.sections.length }, 'section-writer: custom sections complete');
+      return result;
+    }
+
+    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: custom sections parse failed, retrying');
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${CUSTOM_SECTIONS_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal,
+    });
+
+    const retryResult = parse(retry.text);
+    if (retryResult) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: custom sections complete (retry)');
+      return retryResult;
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'section-writer: custom sections LLM call failed, using empty fallback',
+    );
+  }
+
+  // Deterministic fallback: skip custom sections (empty array — they are optional)
+  logger.info({ duration_ms: Date.now() - start }, 'section-writer: custom sections fallback (empty)');
+  return { sections: [] };
+}
+
+// ─── Section 5: Professional Experience ──────────────────────────────
+
+const EXPERIENCE_SYSTEM = `You are an expert executive resume writer. Your only job right now is to write the Professional Experience section of an executive resume.
+
+## BULLET ARCHETYPES — use a mix within each role (aim for 2-3 different archetypes per role)
+
+1. TRANSFORMATION (before → action → after):
+   EXAMPLE: "Inherited operations division with 23% annual turnover. Built structured mentorship program pairing senior managers with high-potential ICs. Turnover dropped to 9% within 18 months — $340K in eliminated recruiting spend."
+
+2. EMPOWERMENT (grew people):
+   EXAMPLE: "Developed 8-person engineering leadership pipeline through quarterly stretch assignments. Five promoted to team leads within 3 years; three later led product teams generating $12M combined revenue."
+
+3. ACCOUNTABILITY (set standards):
+   EXAMPLE: "Established weekly OKR reviews with 100% participation. Every miss triggered 48-hour root cause analysis. Maintained 89% quarterly attainment against 67% historical baseline."
+
+4. RECOVERY (setback → fix):
+   EXAMPLE: "When Q3 launch missed adoption targets by 40%, conducted cross-functional post-mortem within one week. Redesigned onboarding flow and launched peer coaching. Q4 adoption exceeded original targets by 15%."
+
+5. PROCESS (methodology):
+   EXAMPLE: "Conducted 6-week competitive analysis across 14 offerings before entering enterprise segment. Identified underserved mid-market niche. Designed land-and-expand model capturing 23 logos in first year."
+
+6. IMPACT (traditional — limit to ~30% of bullets):
+   EXAMPLE: "Reduced infrastructure costs by 35% through cloud consolidation while maintaining 99.95% uptime."
+
+## HARD RULES
+- EVERY position from the candidate experience MUST appear in your output — count them before writing
+- Never drop a position that would create an employment gap greater than 6 months
+- Scope statement required for every role with meaningful responsibility (team size, budget, geography, P&L)
+- Preserve ALL specific metrics, dollar amounts, percentages, team sizes, site counts from the original
+- Do NOT repeat proof points already used in Selected Accomplishments or custom sections (see Used Evidence below)
+- Professional Experience bullets for a role must cover DIFFERENT achievements than its Selected Accomplishment
+- Mark is_new: true for ANY content you wrote, rephrased, or enhanced beyond the original resume
+- BANNED openers: "Responsible for", "Helped", "Assisted", "Supported", "Participated in", "Worked on"
+- 70%+ of all experience bullets must have at least one quantified metric
+
+## VERB VARIETY — MANDATORY
+No two bullets within the same role may start with the same verb. Across the ENTIRE experience section, no verb should appear as an opener more than twice total.
+
+"Led" is the most overused verb in executive resumes. Use it AT MOST ONCE across the entire section. Instead, choose from verbs that show HOW the leadership happened:
+- Architected, Orchestrated, Drove, Championed, Transformed, Scaled, Negotiated, Launched
+- Designed, Established, Introduced, Pioneered, Restructured, Consolidated, Streamlined
+- Directed, Oversaw, Steered, Guided, Mobilized, Cultivated, Elevated
+- Built, Delivered, Implemented, Deployed, Accelerated, Expanded, Secured
+
+Before finalizing, scan every bullet opener. If you see the same verb twice in one role, rewrite one of them.
+
+## OUTPUT FORMAT
+Return this JSON object:
+{
+  "positions": [
+    {
+      "company": "Company Name",
+      "title": "Job Title",
+      "start_date": "Start",
+      "end_date": "End",
+      "scope_statement": "Brief scope: team size, budget, geography, P&L",
+      "scope_statement_is_new": true,
+      "scope_statement_source": "enhanced",
+      "scope_statement_confidence": "strong",
+      "scope_statement_evidence_found": "original text or empty string",
+      "bullets": [
+        {
+          "text": "Strong action verb sentence with metric",
+          "is_new": false,
+          "addresses_requirements": ["requirement name"],
+          "source": "original",
+          "requirement_source": "job_description",
+          "evidence_found": "quote from original resume or empty string",
+          "confidence": "strong"
+        }
+      ]
+    }
+  ]
+}
+
+${SOURCE_DISCIPLINE}
+${JSON_RULES}`;
+
+interface ExperienceBulletRaw {
+  text: string;
+  is_new: boolean;
+  addresses_requirements: string[];
+  source: 'original' | 'enhanced' | 'drafted';
+  requirement_source: 'job_description' | 'benchmark';
+  evidence_found: string;
+  confidence: 'strong' | 'partial' | 'needs_validation';
+}
+
+interface ExperiencePositionRaw {
+  company: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  scope_statement: string;
+  scope_statement_is_new?: boolean;
+  scope_statement_source: 'original' | 'enhanced' | 'drafted';
+  scope_statement_confidence: 'strong' | 'partial' | 'needs_validation';
+  scope_statement_evidence_found: string;
+  bullets: ExperienceBulletRaw[];
+}
+
+interface ExperienceResult {
+  positions: ExperiencePositionRaw[];
+}
+
+async function callExperienceSection(
+  input: ResumeWriterInput,
+  usedEvidence: string[],
+  signal?: AbortSignal,
+): Promise<ExperienceResult> {
+  const { candidate, job_intelligence, narrative, gap_analysis, approved_strategies } = input;
+  const sourceExperience = getAuthoritativeSourceExperience(candidate);
+
+  // Build the source positions block
+  const positionsBlock = sourceExperience.map((exp) => {
+    const scopeParts = exp.inferred_scope
+      ? `team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
+      : 'unknown scope';
+    const bulletLines = exp.bullets.map((b) => `  - ${b}`).join('\n');
+    return [
+      `### ${exp.title} at ${exp.company} (${exp.start_date} – ${exp.end_date})`,
+      `  Scope signals: ${scopeParts}`,
+      bulletLines,
+      `  [DETAIL FLOOR: Preserve at least ${exp.bullets.length} distinct bullet-level proof points if this role stays in professional_experience.]`,
+      `  [PROOF FLOOR: Keep all concrete specifics — metrics, named systems, site counts, geographies, product names, dollar amounts. Improve wording without genericizing evidence.]`,
+    ].join('\n');
+  }).join('\n\n');
+
+  // Gap positioning map entries for experience section
+  const relevantGapEntries = (narrative.gap_positioning_map ?? [])
+    .filter((entry) => entry.where_to_feature.toLowerCase().includes('experience'))
+    .slice(0, 5)
+    .map((entry) => `- Requirement: ${entry.requirement}\n  How to frame: ${entry.narrative_positioning}\n  Justification: ${entry.narrative_justification}`)
+    .join('\n');
+
+  // Approved strategies with experience placement
+  const experienceStrategies = approved_strategies
+    .filter((s) => !s.target_section || s.target_section === 'auto' || s.target_section === 'experience')
+    .slice(0, 6)
+    .map((s) => {
+      const metricNote = s.strategy.inferred_metric ? ` [use: ${s.strategy.inferred_metric}]` : '';
+      const placement = s.target_company ? ` (preferred company: ${s.target_company})` : '';
+      return `- ${s.requirement}: ${s.strategy.positioning}${metricNote}${placement}`;
+    })
+    .join('\n');
+
+  // Top JD requirements for bullet targeting
+  const topRequirements = job_intelligence.core_competencies
+    .slice(0, 8)
+    .map((c) => `- [${c.importance}] ${c.competency}`)
+    .join('\n');
+
+  const experienceFraming = narrative.section_guidance.experience_framing ?? {};
+  const framingEntries = Object.entries(experienceFraming).slice(0, 6).map(
+    ([company, framing]) => `- ${company}: ${framing}`,
+  ).join('\n');
+
+  const userMessage = [
+    `## SOURCE POSITIONS (${sourceExperience.length} total — ALL must appear in output)`,
+    positionsBlock,
+    '',
+    '## CROSS-SECTION RULE — MANDATORY',
+    'The following proof points are ALREADY featured in Selected Accomplishments or custom sections above this position in the resume.',
+    'A hiring manager reads top to bottom — if they see the same accomplishment twice, it looks sloppy and unprofessional.',
+    '',
+    'For each bullet you write, check: does this substantially overlap with any item below?',
+    '- If YES → write a DIFFERENT accomplishment from that role instead, or reframe the bullet to highlight a different aspect (the HOW, the team impact, the process — not the same metric).',
+    '- If NO → proceed.',
+    '',
+    'ALREADY USED EVIDENCE:',
+    formatUsedEvidence(usedEvidence),
+    '',
+    '## TOP JD REQUIREMENTS (target these in bullets)',
+    topRequirements,
+    '',
+    experienceStrategies
+      ? `## GAP STRATEGIES TO SURFACE IN EXPERIENCE\n${experienceStrategies}`
+      : '',
+    relevantGapEntries
+      ? `\n## GAP POSITIONING MAP (experience-targeted entries)\n${relevantGapEntries}`
+      : '',
+    framingEntries
+      ? `\n## EXPERIENCE FRAMING GUIDANCE (from narrative strategy)\n${framingEntries}`
+      : '',
+    '',
+    `## NARRATIVE NORTH STAR`,
+    `Primary narrative: ${narrative.primary_narrative}`,
+    `Positioning frame: ${input.benchmark.positioning_frame ?? 'Not set'}`,
+    '',
+    `POSITION COUNT CHECK: There are ${sourceExperience.length} positions above. Your output must include ALL ${sourceExperience.length}.`,
+  ].filter(Boolean).join('\n');
+
+  const parse = (text: string): ExperienceResult | null => {
+    const parsed = repairJSON<ExperienceResult>(text);
+    if (parsed?.positions && Array.isArray(parsed.positions) && parsed.positions.length > 0) {
+      return parsed;
+    }
+    return null;
+  };
+
+  const start = Date.now();
+  logger.info({ position_count: sourceExperience.length }, 'section-writer: calling experience section');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: EXPERIENCE_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 16384,
+      signal,
+    });
+
+    const result = parse(response.text);
+    if (result) {
+      logger.info({ duration_ms: Date.now() - start, position_count: result.positions.length }, 'section-writer: experience complete');
+      return result;
+    }
+
+    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: experience parse failed, retrying');
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${EXPERIENCE_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 16384,
+      signal,
+    });
+
+    const retryResult = parse(retry.text);
+    if (retryResult) {
+      logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience complete (retry)');
+      return retryResult;
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'section-writer: experience LLM call failed, using deterministic fallback',
+    );
+  }
+
+  // Deterministic fallback: pass through original bullets with is_new=false
+  const fallbackPositions: ExperiencePositionRaw[] = sourceExperience.map((exp) => ({
+    company: exp.company,
+    title: exp.title,
+    start_date: exp.start_date,
+    end_date: exp.end_date,
+    scope_statement: [
+      exp.inferred_scope?.team_size ? `Team: ${exp.inferred_scope.team_size}` : '',
+      exp.inferred_scope?.budget ? `Budget: ${exp.inferred_scope.budget}` : '',
+      exp.inferred_scope?.geography ? `Geography: ${exp.inferred_scope.geography}` : '',
+    ].filter(Boolean).join('. ') || 'Scope not specified.',
+    scope_statement_is_new: false,
+    scope_statement_source: 'original' as const,
+    scope_statement_confidence: 'partial' as const,
+    scope_statement_evidence_found: '',
+    bullets: exp.bullets.map((b) => ({
+      text: b,
+      is_new: false,
+      addresses_requirements: [],
+      source: 'original' as const,
+      requirement_source: 'job_description' as const,
+      evidence_found: b,
+      confidence: 'strong' as const,
+    })),
+  }));
+
+  logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience fallback used');
+  return { positions: fallbackPositions };
+}
+
+// ─── Derive selected accomplishment targets ──────────────────────────
+// Minimal version used here: takes top must_have requirements from gap analysis
+// The full version in agent.ts runs the full evidence-scoring algorithm on the
+// merged draft, so this just primes the accomplishments call with priority targets.
+
+function deriveSimpleAccomplishmentTargets(input: ResumeWriterInput): ResumePriorityTarget[] {
+  const accomplishmentPriorities = Array.isArray(input.narrative.section_guidance.accomplishment_priorities)
+    ? input.narrative.section_guidance.accomplishment_priorities
+    : [];
+
+  const eligible = input.gap_analysis.requirements.filter(
+    (req) => req.source === 'job_description' && req.importance !== 'nice_to_have',
+  );
+
+  // Prefer requirements that match the narrative accomplishment_priorities
+  const ranked = [...eligible].sort((a, b) => {
+    const aInPriority = accomplishmentPriorities.some(
+      (p) => p.toLowerCase().includes(a.requirement.toLowerCase().slice(0, 20)),
+    );
+    const bInPriority = accomplishmentPriorities.some(
+      (p) => p.toLowerCase().includes(b.requirement.toLowerCase().slice(0, 20)),
+    );
+    if (aInPriority && !bInPriority) return -1;
+    if (!aInPriority && bInPriority) return 1;
+    const importanceOrder: Record<string, number> = { must_have: 0, important: 1, nice_to_have: 2 };
+    return (importanceOrder[a.importance] ?? 2) - (importanceOrder[b.importance] ?? 2);
+  });
+
+  return ranked.slice(0, 5).map((req) => ({
+    requirement: req.requirement,
+    source: req.source,
+    importance: req.importance,
+    source_evidence: req.source_evidence,
+  }));
+}
+
+// ─── Merge custom section LLM output with recommended section metadata ──
+
+function mergeCustomSections(
+  llmSections: CustomSectionOutput[],
+  recommended: ResumeCustomSection[],
+): ResumeCustomSection[] {
+  const llmMap = new Map(llmSections.map((s) => [s.id, s.lines]));
+
+  return recommended
+    .map((section): ResumeCustomSection => {
+      const llmLines = llmMap.get(section.id);
+      // If LLM returned lines for this section, use them; otherwise fall through to seed lines
+      const lines = llmLines && llmLines.length > 0
+        ? llmLines.filter((l) => l.trim().length > 0)
+        : section.lines;
+
+      // Don't carry section-planning guidance text into display output.
+      // The summary was useful as writer guidance but reads as internal notes on the resume.
+      return { ...section, lines, summary: undefined };
+    })
+    .filter((section) => section.lines.length >= 2); // drop thin sections
+}
+
+// ─── Main export ─────────────────────────────────────────────────────
+
+/**
+ * Run the section-by-section resume writer.
+ *
+ * Makes 5 focused LLM calls (summary, accomplishments, competencies, custom sections,
+ * experience) and merges them into a ResumeDraftOutput. Evidence tracking prevents
+ * cross-section repetition. Each call falls back to deterministic content on failure.
+ *
+ * The output is identical in shape to what the monolithic writer produces.
+ * All post-processing in agent.ts (ensureBulletMetadata, deterministicRequirementMatch,
+ * applySectionPlanning, sanitizeDraftForDisplay) runs on this output unchanged.
+ */
+export async function runSectionBySection(
+  input: ResumeWriterInput,
+  signal?: AbortSignal,
+): Promise<ResumeDraftOutput> {
+  const pipelineStart = Date.now();
+  logger.info('section-writer: starting section-by-section pipeline');
+
+  // Derive simple accomplishment targets for priming Call 2.
+  // The definitive targets are computed by agent.ts after the full draft is assembled.
+  const selectedTargets = deriveSimpleAccomplishmentTargets(input);
+
+  // ── Call 1: Executive Summary ────────────────────────────────────
+  const summaryResult = await callSummarySection(input, signal);
+  const usedEvidence: string[] = extractUsedEvidence([summaryResult.content]);
+
+  // ── Call 2: Selected Accomplishments ────────────────────────────
+  const accomplishmentsResult = await callAccomplishmentsSection(
+    input,
+    summaryResult.content,
+    selectedTargets,
+    signal,
+  );
+  // Track all accomplishment content to prevent experience repeating it
+  for (const acc of accomplishmentsResult.accomplishments) {
+    usedEvidence.push(...extractUsedEvidence([acc.content]));
+  }
+
+  // ── Call 3: Core Competencies ───────────────────────────────────
+  // Runs after accomplishments so the system has narrative coherence context,
+  // but competencies don't consume accomplishment evidence — they run independently.
+  const competenciesResult = await callCompetenciesSection(input, signal);
+
+  // ── Call 4: Custom Sections ─────────────────────────────────────
+  const customSectionsResult = await callCustomSections(input, [...usedEvidence], signal);
+  // Track custom section content before experience call
+  for (const section of customSectionsResult.sections) {
+    usedEvidence.push(...extractUsedEvidence(section.lines));
+  }
+
+  // ── Call 5: Professional Experience ─────────────────────────────
+  const experienceResult = await callExperienceSection(input, [...usedEvidence], signal);
+
+  // ── Merge custom section LLM output with section metadata ───────
+  const sectionStrategy = buildWriterSectionStrategy(input.candidate, input.gap_analysis);
+  const mergedCustomSections = mergeCustomSections(
+    customSectionsResult.sections,
+    sectionStrategy.recommended_custom_sections,
+  );
+
+  // ── Assemble ResumeDraftOutput ───────────────────────────────────
+  const draft: ResumeDraftOutput = {
+    header: {
+      name: input.candidate.contact.name,
+      phone: input.candidate.contact.phone,
+      email: input.candidate.contact.email,
+      linkedin: input.candidate.contact.linkedin,
+      branded_title: input.narrative.branded_title,
+    },
+    executive_summary: summaryResult,
+    core_competencies: competenciesResult.competencies,
+    selected_accomplishments: accomplishmentsResult.accomplishments.map((acc) => ({
+      content: acc.content,
+      is_new: acc.is_new,
+      addresses_requirements: acc.addresses_requirements,
+      source: acc.source,
+      requirement_source: acc.requirement_source,
+      evidence_found: acc.evidence_found,
+      confidence: acc.confidence,
+    })),
+    professional_experience: experienceResult.positions.map((pos) => ({
+      company: pos.company,
+      title: pos.title,
+      start_date: pos.start_date,
+      end_date: pos.end_date,
+      scope_statement: pos.scope_statement,
+      scope_statement_is_new: pos.scope_statement_is_new ?? false,
+      scope_statement_source: pos.scope_statement_source,
+      scope_statement_confidence: pos.scope_statement_confidence,
+      scope_statement_evidence_found: pos.scope_statement_evidence_found,
+      bullets: pos.bullets.map((b): ResumeBullet => ({
+        text: b.text,
+        is_new: b.is_new,
+        addresses_requirements: b.addresses_requirements,
+        source: b.source,
+        requirement_source: b.requirement_source,
+        evidence_found: b.evidence_found,
+        confidence: b.confidence,
+      })),
+    })),
+    education: input.candidate.education ?? [],
+    certifications: input.candidate.certifications ?? [],
+    custom_sections: mergedCustomSections,
+    // section_plan is NOT set here — applySectionPlanning() adds it in agent.ts post-processing
+  };
+
+  logger.info(
+    {
+      duration_ms: Date.now() - pipelineStart,
+      sections: {
+        accomplishments: draft.selected_accomplishments.length,
+        competencies: draft.core_competencies.length,
+        experience_positions: draft.professional_experience.length,
+        custom_sections: (draft.custom_sections ?? []).length,
+      },
+    },
+    'section-writer: pipeline complete',
+  );
+
+  return draft;
+}

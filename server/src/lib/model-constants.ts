@@ -12,7 +12,7 @@
 
 export const ACTIVE_PROVIDER =
   process.env.LLM_PROVIDER?.toLowerCase() ??
-  (process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
+  (process.env.DEEPSEEK_API_KEY ? 'deepseek' : process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
 
 // ─── ZAI model constants ─────────────────────────────────────────────
 
@@ -51,16 +51,26 @@ const GROQ_MODEL_ORCHESTRATOR =
  *  8B is fine for non-tool-calling tasks (text extraction, analysis). */
 const GROQ_MODEL_LIGHT = process.env.GROQ_MODEL_LIGHT ?? 'llama-3.1-8b-instant';
 
+// ─── DeepSeek model constants ───────────────────────────────────────
+
+/** DeepSeek V3 (671B MoE, 37B activated) — $0.14/$0.28 per M tokens.
+ *  Single model for all tiers; routing is simpler since there's only one. */
+const DEEPSEEK_MODEL_PRIMARY = process.env.DEEPSEEK_MODEL_PRIMARY ?? 'deepseek-chat';
+const DEEPSEEK_MODEL_MID = process.env.DEEPSEEK_MODEL_MID ?? 'deepseek-chat';
+const DEEPSEEK_MODEL_ORCHESTRATOR = process.env.DEEPSEEK_MODEL_ORCHESTRATOR ?? 'deepseek-chat';
+const DEEPSEEK_MODEL_LIGHT = process.env.DEEPSEEK_MODEL_LIGHT ?? 'deepseek-chat';
+
 // ─── Provider-aware model exports ────────────────────────────────────
 
-function selectModel(zai: string, groq: string): string {
+function selectModel(zai: string, groq: string, deepseek?: string): string {
+  if (ACTIVE_PROVIDER === 'deepseek') return deepseek ?? zai;
   return ACTIVE_PROVIDER === 'groq' ? groq : zai;
 }
 
-export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY);
-export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID);
-export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR);
-export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT);
+export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY, DEEPSEEK_MODEL_PRIMARY);
+export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MODEL_MID);
+export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR);
+export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT);
 
 /**
  * Orchestrator model for agent loops with complex nested tool schemas.
@@ -71,6 +81,7 @@ export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT);
 export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(
   ZAI_MODEL_ORCHESTRATOR,
   GROQ_MODEL_ORCHESTRATOR,
+  DEEPSEEK_MODEL_ORCHESTRATOR,
 );
 
 // ─── Model pricing (per million tokens) ──────────────────────────────
@@ -89,6 +100,8 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   'qwen/qwen3-32b': { input: 0.29, output: 0.59 },
   'meta-llama/llama-4-scout-17b-16e-instruct:free': { input: 0, output: 0 },
   'deepseek-r1-distill-llama-70b': { input: 0.75, output: 0.99 },
+  // DeepSeek models (direct API)
+  'deepseek-chat': { input: 0.14, output: 0.28 },
   'mistral-saba-24b': { input: 0.79, output: 0.79 },
   // Anthropic models for reference
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },

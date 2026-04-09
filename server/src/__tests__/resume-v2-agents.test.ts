@@ -12,12 +12,13 @@
  * 4. AbortSignal is forwarded to llm.chat
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ─── Hoist mocks before any imports ────────────────────────────────────────
 
 const mockLlmChat = vi.hoisted(() => vi.fn());
 const mockRepairJSON = vi.hoisted(() => vi.fn());
+const mockRunSectionBySection = vi.hoisted(() => vi.fn());
 
 vi.mock('../lib/llm.js', () => ({
   llm: { chat: mockLlmChat },
@@ -39,6 +40,11 @@ vi.mock('../lib/logger.js', () => ({
     child: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   },
   createSessionLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+}));
+
+// Section-by-section writer is used by resume-writer/agent.ts; mock it to return drafts directly
+vi.mock('../agents/resume-v2/resume-writer/section-writer.js', () => ({
+  runSectionBySection: mockRunSectionBySection,
 }));
 
 // Perplexity is used by benchmark-candidate for industry research; stub it out
@@ -393,7 +399,7 @@ function llmResponse(text: string) {
 
 describe('Resume V2 — LLM Agent Unit Tests', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1957,6 +1963,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   describe('Resume Writer', () => {
+    /** Minimal draft that triggers post-processing backfill from input data. */
+    const MINIMAL_DRAFT: ResumeDraftOutput = {
+      header: { name: '', phone: '', email: '', branded_title: '' },
+      executive_summary: { content: '', is_new: true },
+      core_competencies: [],
+      selected_accomplishments: [],
+      professional_experience: [],
+      education: [],
+      certifications: [],
+    };
+
     const input: ResumeWriterInput = {
       job_intelligence: JOB_INTEL_OUTPUT,
       candidate: CANDIDATE_OUTPUT,
@@ -1975,15 +1992,23 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       ],
     };
 
-    it('returns parsed output on first successful attempt', async () => {
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
+    beforeEach(() => {
+      // Default: section-by-section writer returns RESUME_DRAFT_OUTPUT.
+      // Individual tests override with mockResolvedValueOnce for specific drafts.
+      mockRunSectionBySection.mockResolvedValue(RESUME_DRAFT_OUTPUT);
+    });
+
+    afterEach(() => {
+      mockRunSectionBySection.mockReset();
+    });
+
+    it('returns parsed output from section-by-section writer', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
 
       const result = await runResumeWriter(input);
 
       expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
       expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
-      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
       expect(result.professional_experience[0]?.company).toBe('Acme Startup');
       expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
       expect(result.selected_accomplishments[0]).toEqual(
@@ -1992,57 +2017,53 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           primary_target_requirement: 'Cloud Architecture',
         }),
       );
-      expect(mockLlmChat).toHaveBeenCalledTimes(1);
+      expect(mockRunSectionBySection).toHaveBeenCalledTimes(1);
     });
 
-    it('retries when first repairJSON returns null', async () => {
-      mockLlmChat
-        .mockResolvedValueOnce({ text: 'bad' })
-        .mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
+    it('passes input and signal to section-by-section writer', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
+
+      const signal = new AbortController().signal;
+      const result = await runResumeWriter(input, signal);
+
+      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
+      expect(mockRunSectionBySection).toHaveBeenCalledWith(input, signal);
+    });
+
+    it('preserves section-writer summary without prepending guardrail content', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
 
       const result = await runResumeWriter(input);
 
-      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
+      // Summary should be preserved from section writer — no years threshold or strongest proof prepended
       expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
-      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
       expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
-      expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('retries when the first provider call fails before repairJSON', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
-
-      const result = await runResumeWriter(input);
-
-      expect(result.header).toEqual(RESUME_DRAFT_OUTPUT.header);
-      expect(result.executive_summary.content).toContain('Engineering leader who has scaled cloud platforms from startup to enterprise...');
-      expect(result.executive_summary.content).toContain('Scaled team from 10 to 40.');
-      expect(result.selected_accomplishment_targets?.[0]?.requirement).toBe('Cloud Architecture');
-      expect(mockLlmChat).toHaveBeenCalledTimes(2);
-    });
-
-    it('falls back deterministically when both attempts fail', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+    it('post-processes minimal draft with position backfill and contact guardrails', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(MINIMAL_DRAFT);
 
       const result = await runResumeWriter(input);
 
       expect(result.header.name).toBe('Jane Smith');
       expect(result.professional_experience.length).toBeGreaterThan(0);
-      expect(result.selected_accomplishments.length).toBeGreaterThan(0);
     });
 
     it('limits selected accomplishments to accomplishment-compatible job needs with one primary target each', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+      // Provide a draft with accomplishments from the candidate's experience
+      mockRunSectionBySection.mockResolvedValueOnce({
+        ...MINIMAL_DRAFT,
+        selected_accomplishments: [
+          { content: 'Drove $40M expansion revenue through consultative enterprise sales programs', is_new: false, addresses_requirements: [], source: 'original' as const, confidence: 'strong' as const, evidence_found: 'Drove $40M expansion revenue through consultative enterprise sales programs', requirement_source: 'job_description' as const },
+          { content: 'Built $28M pipeline across strategic accounts with complex solutions-based selling', is_new: false, addresses_requirements: [], source: 'original' as const, confidence: 'strong' as const, evidence_found: 'Built $28M pipeline across strategic accounts with complex solutions-based selling', requirement_source: 'job_description' as const },
+        ],
+        professional_experience: [
+          { company: 'GrowthCo', title: 'VP Sales', start_date: 'Jan 2018', end_date: 'Present', scope_statement: 'Led enterprise sales', scope_statement_source: 'original' as const, scope_statement_confidence: 'strong' as const, scope_statement_evidence_found: '', bullets: [
+            { text: 'Drove $40M expansion revenue through consultative enterprise sales programs', is_new: false, addresses_requirements: [], source: 'original' as const, confidence: 'strong' as const, evidence_found: 'Drove $40M expansion revenue through consultative enterprise sales programs', requirement_source: 'job_description' as const },
+            { text: 'Built $28M pipeline across strategic accounts with complex solutions-based selling', is_new: false, addresses_requirements: [], source: 'original' as const, confidence: 'strong' as const, evidence_found: 'Built $28M pipeline across strategic accounts with complex solutions-based selling', requirement_source: 'job_description' as const },
+          ]},
+        ],
+      });
 
       const accomplishmentFocusedInput: ResumeWriterInput = {
         ...input,
@@ -2165,9 +2186,18 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     });
 
     it('marks synthesized selected accomplishments as enhanced/strong when they are backed by resume-derived metrics', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+      // Provide a draft with a synthesized accomplishment for post-processing to classify
+      mockRunSectionBySection.mockResolvedValueOnce({
+        ...MINIMAL_DRAFT,
+        selected_accomplishments: [
+          { content: 'Expanded enterprise revenue ($40M) across healthcare and SaaS portfolios', is_new: true, addresses_requirements: ['Revenue growth and enterprise account expansion'], source: 'enhanced' as const, confidence: 'strong' as const, evidence_found: 'Led enterprise account strategy across healthcare and SaaS portfolios', requirement_source: 'job_description' as const },
+        ],
+        professional_experience: [
+          { company: 'RevenueCo', title: 'VP of Sales', start_date: 'Jan 2020', end_date: 'Present', scope_statement: 'Led enterprise sales', scope_statement_source: 'original' as const, scope_statement_confidence: 'strong' as const, scope_statement_evidence_found: '', bullets: [
+            { text: 'Led enterprise account strategy across healthcare and SaaS portfolios', is_new: false, addresses_requirements: [], source: 'original' as const, confidence: 'strong' as const, evidence_found: 'Led enterprise account strategy across healthcare and SaaS portfolios', requirement_source: 'job_description' as const },
+          ]},
+        ],
+      });
 
       const synthesizedAccomplishmentInput: ResumeWriterInput = {
         ...input,
@@ -2241,9 +2271,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     });
 
     it('uses the source resume outline to preserve bullets when candidate.experience is truncated', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+      mockRunSectionBySection.mockResolvedValueOnce(MINIMAL_DRAFT);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2313,8 +2341,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2390,8 +2417,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2456,8 +2482,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2551,8 +2576,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2632,8 +2656,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2708,8 +2731,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2790,8 +2812,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2864,8 +2885,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -2935,8 +2955,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -3006,8 +3025,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -3127,8 +3145,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -3281,8 +3298,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ],
       };
 
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(rewrittenDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(rewrittenDraft);
 
       const outlineBackedInput: ResumeWriterInput = {
         ...input,
@@ -3337,9 +3353,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     });
 
     it('keeps older highly relevant roles in professional experience instead of collapsing them', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+      mockRunSectionBySection.mockResolvedValueOnce(MINIMAL_DRAFT);
 
       const relevanceAwareInput: ResumeWriterInput = {
         ...input,
@@ -3396,9 +3410,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     });
 
     it('collapses older low-relevance roles into earlier career in deterministic fallback', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+      mockRunSectionBySection.mockResolvedValueOnce(MINIMAL_DRAFT);
 
       const lowRelevanceInput: ResumeWriterInput = {
         ...input,
@@ -3442,8 +3454,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           },
         ],
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(collapsedOldRoleDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(collapsedOldRoleDraft);
 
       const relevanceAwareInput: ResumeWriterInput = {
         ...input,
@@ -3499,143 +3510,21 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.earlier_career?.some((position) => position.company === 'Legacy ERP Transformation') ?? false).toBe(false);
     });
 
-    it('deterministic fallback surfaces satisfied years thresholds explicitly in the summary', async () => {
-      mockLlmChat
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
-        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
-
-      const yearsThresholdInput: ResumeWriterInput = {
-        ...input,
-        candidate: {
-          ...CANDIDATE_OUTPUT,
-          career_span_years: 18,
-        },
-        gap_analysis: {
-          ...GAP_ANALYSIS_OUTPUT,
-          requirements: [
-            {
-              requirement: '15+ years of progressive operations/manufacturing leadership',
-              source: 'job_description',
-              category: 'core_competency',
-              score_domain: 'ats',
-              importance: 'must_have',
-              classification: 'strong',
-              evidence: ['Led multi-site manufacturing operations'],
-            },
-          ],
-        },
-      };
-
-      const result = await runResumeWriter(yearsThresholdInput);
-
-      expect(result.executive_summary.content).toContain('18 years of progressive operations/manufacturing leadership');
-    });
-
-    it('patches parseable model output so satisfied years thresholds stay explicit in the summary', async () => {
-      const parsedDraftWithoutYears: ResumeDraftOutput = {
+    it('does not prepend years threshold or strongest proof to section-writer summary', async () => {
+      const craftedSummary: ResumeDraftOutput = {
         ...RESUME_DRAFT_OUTPUT,
         executive_summary: {
-          content: 'Operational excellence leader driving manufacturing scale and transformation.',
+          content: 'Cloud Infrastructure Architect with 12 years of experience. Delivers cost optimization at scale.',
           is_new: true,
         },
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutYears);
+      mockRunSectionBySection.mockResolvedValueOnce(craftedSummary);
 
-      const yearsThresholdInput: ResumeWriterInput = {
-        ...input,
-        candidate: {
-          ...CANDIDATE_OUTPUT,
-          career_span_years: 12,
-        },
-        gap_analysis: {
-          ...GAP_ANALYSIS_OUTPUT,
-          requirements: [
-            {
-              requirement: '10+ years in cloud infrastructure/architecture roles',
-              source: 'job_description',
-              category: 'core_competency',
-              score_domain: 'ats',
-              importance: 'must_have',
-              classification: 'strong',
-              evidence: ['Led enterprise cloud platform strategy'],
-            },
-          ],
-        },
-      };
+      const result = await runResumeWriter(input);
 
-      const result = await runResumeWriter(yearsThresholdInput);
-
-      expect(result.executive_summary.content).toContain('12 years in cloud infrastructure/architecture roles');
-      expect(result.executive_summary.content).toContain('Operational excellence leader driving manufacturing scale and transformation.');
-    });
-
-    it('patches parseable model output so the strongest source proof stays visible in the summary', async () => {
-      const parsedDraftWithoutStrongestProof: ResumeDraftOutput = {
-        ...RESUME_DRAFT_OUTPUT,
-        executive_summary: {
-          content: 'Growth leader helping enterprise teams expand revenue through consultative selling.',
-          is_new: true,
-        },
-      };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutStrongestProof);
-
-      const strongestProofInput: ResumeWriterInput = {
-        ...input,
-        candidate: {
-          ...CANDIDATE_OUTPUT,
-          leadership_scope: 'Led regional enterprise account teams across multiple business units',
-          operational_scale: '$250M portfolio responsibility across national accounts',
-          experience: [
-            {
-              company: 'RevenueCo',
-              title: 'VP of Sales',
-              start_date: 'Jan 2020',
-              end_date: 'Present',
-              bullets: [
-                'Drove $40M expansion revenue through consultative enterprise sales programs',
-                'Built enterprise account playbooks across healthcare and SaaS clients',
-              ],
-            },
-          ],
-          source_resume_outline: {
-            parse_mode: 'structured',
-            total_bullets: 2,
-            positions: [
-              {
-                company: 'RevenueCo',
-                title: 'VP of Sales',
-                start_date: 'Jan 2020',
-                end_date: 'Present',
-                bullets: [
-                  'Drove $40M expansion revenue through consultative enterprise sales programs',
-                  'Built enterprise account playbooks across healthcare and SaaS clients',
-                ],
-              },
-            ],
-          },
-        },
-        gap_analysis: {
-          ...GAP_ANALYSIS_OUTPUT,
-          requirements: [
-            {
-              requirement: 'Revenue growth and enterprise account expansion',
-              source: 'job_description',
-              category: 'strategic_responsibility',
-              score_domain: 'ats',
-              importance: 'must_have',
-              classification: 'strong',
-              evidence: ['Drove $40M expansion revenue'],
-            },
-          ],
-        },
-      };
-
-      const result = await runResumeWriter(strongestProofInput);
-
-      expect(result.executive_summary.content).toContain('Drove $40M expansion revenue through consultative enterprise sales programs.');
-      expect(result.executive_summary.content).toContain('Growth leader helping enterprise teams expand revenue through consultative selling.');
+      // Summary should start with the section writer's identity opener, not a prepended years line
+      expect(result.executive_summary.content).toMatch(/^Cloud Infrastructure Architect/);
+      expect(result.executive_summary.content).not.toMatch(/^\d+ years/);
     });
 
     it('preserves detailed candidate education when the model output downgrades it to a generic degree', async () => {
@@ -3649,8 +3538,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           },
         ],
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(parsedDraftWithGenericEducation);
+      mockRunSectionBySection.mockResolvedValueOnce(parsedDraftWithGenericEducation);
 
       const detailedEducationInput: ResumeWriterInput = {
         ...input,
@@ -3672,54 +3560,13 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.education[0]?.institution).toBe('Southern Methodist University');
     });
 
-    it('does not treat descriptor-only wording as sufficient when the years number is still missing', async () => {
-      const parsedDraftWithoutYearsNumber: ResumeDraftOutput = {
-        ...RESUME_DRAFT_OUTPUT,
-        executive_summary: {
-          content: 'Operational excellence leader with progressive operations/manufacturing leadership across complex multi-site environments.',
-          is_new: true,
-        },
-      };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutYearsNumber);
-
-      const yearsThresholdInput: ResumeWriterInput = {
-        ...input,
-        candidate: {
-          ...CANDIDATE_OUTPUT,
-          career_span_years: 18,
-        },
-        gap_analysis: {
-          ...GAP_ANALYSIS_OUTPUT,
-          requirements: [
-            {
-              requirement: '15+ years of progressive operations/manufacturing leadership',
-              source: 'job_description',
-              category: 'core_competency',
-              score_domain: 'ats',
-              importance: 'must_have',
-              classification: 'strong',
-              evidence: ['Led multi-site manufacturing operations'],
-            },
-          ],
-        },
-      };
-
-      const result = await runResumeWriter(yearsThresholdInput);
-
-      expect(result.executive_summary.content).toContain('18 years of progressive operations/manufacturing leadership');
-    });
-
-    it('forwards AbortSignal to llm.chat', async () => {
+    it('forwards AbortSignal to section-by-section writer', async () => {
       const controller = new AbortController();
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
 
       await runResumeWriter(input, controller.signal);
 
-      expect(mockLlmChat).toHaveBeenCalledWith(
-        expect.objectContaining({ signal: controller.signal }),
-      );
+      expect(mockRunSectionBySection).toHaveBeenCalledWith(input, controller.signal);
     });
 
     it('replaces placeholder name "john doe" with candidate contact info', async () => {
@@ -3727,8 +3574,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         ...RESUME_DRAFT_OUTPUT,
         header: { ...RESUME_DRAFT_OUTPUT.header, name: 'John Doe' },
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(placeholderDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(placeholderDraft);
 
       const result = await runResumeWriter(input);
 
@@ -3745,8 +3591,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           content: '[Scale and scope of experience]: Executive product leader driving measurable growth across complex organizations.',
         },
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(placeholderDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(placeholderDraft);
 
       const result = await runResumeWriter(input);
 
@@ -3762,8 +3607,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           content: 'Directed multi-site operations spanning 3 regions and 40+ team members across the Delaware Basin and Eagle Ford Shale.',
         },
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(contaminatedDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(contaminatedDraft);
 
       const result = await runResumeWriter(input);
 
@@ -3781,8 +3625,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           content: 'Spearheaded enterprise product launches that improved growth and operating performance.',
         },
       };
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(contaminatedDraft);
+      mockRunSectionBySection.mockResolvedValueOnce(contaminatedDraft);
 
       const result = await runResumeWriter(input);
 
@@ -3790,39 +3633,29 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.executive_summary.content).toContain('Led enterprise product launches');
     });
 
-    it('includes gap positioning map in user message when provided', async () => {
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
+    it('passes approved strategies to section-by-section writer', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
 
       await runResumeWriter(input);
 
-      const userMessage: string = mockLlmChat.mock.calls[0][0].messages[0].content;
-      expect(userMessage).toContain('GAP POSITIONING MAP');
-      expect(userMessage).toContain('Budget Management');
-    });
-
-    it('uses strict JSON guardrails in the primary prompt', async () => {
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
-
-      await runResumeWriter(input);
-
-      const llmCall = mockLlmChat.mock.calls[0][0];
-      expect(llmCall.system).toContain('The first character of your response must be {');
-      expect(llmCall.system).toContain('Do not add introductions like "Here is the complete resume"');
-      expect(llmCall.response_format).toEqual({ type: 'json_object' });
-      expect(llmCall.messages[0].content).toContain('Return JSON only. Do not write any introduction');
-    });
-
-    it('uses MODEL_PRIMARY', async () => {
-      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
-      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
-
-      await runResumeWriter(input);
-
-      expect(mockLlmChat).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'model-primary' }),
+      expect(mockRunSectionBySection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          approved_strategies: expect.arrayContaining([
+            expect.objectContaining({ requirement: 'Budget Management' }),
+          ]),
+        }),
+        undefined,
       );
+    });
+
+    it('delegates to section-by-section writer instead of single-pass LLM call', async () => {
+      mockRunSectionBySection.mockResolvedValueOnce(RESUME_DRAFT_OUTPUT);
+
+      await runResumeWriter(input);
+
+      expect(mockRunSectionBySection).toHaveBeenCalledTimes(1);
+      // The old single-pass llm.chat call should NOT be used by the writer itself
+      // (other agents still use it, but not the writer)
     });
   });
 

@@ -12,6 +12,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { runSectionBySection } from './section-writer.js';
 import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES, getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
@@ -101,6 +102,35 @@ The Why Me story is not a reference document — it is your north star. Every se
 - NEVER fabricate experience or metrics the candidate cannot defend
 - Mark ALL AI-enhanced content with is_new: true (content not directly from original resume)
 
+## EXECUTIVE SUMMARY — READ THIS FIRST
+
+CRITICAL — the executive summary is the first thing a hiring manager reads. Get it right or lose the reader.
+
+STRUCTURE (follow this order exactly):
+1. FIRST SENTENCE: "[Title/Identity] with [X] years of experience [doing what they do best]." — establishes who they are. Do NOT lead with a metric, a revenue figure, or an accomplishment. Lead with identity.
+2. SECOND SENTENCE: The core capability pattern — what they consistently deliver across roles.
+3. REMAINING SENTENCES: Key proof points (metrics, scope, outcomes) that back up sentences 1 and 2.
+4. FINAL SENTENCE (optional): Forward-looking positioning for the target role.
+
+RULES:
+- NEVER open with a metric or dollar figure. "Generated $250K..." is a bullet point, not an opening.
+- NEVER open with a duty. "Lead a team of 14 engineers..." is an experience bullet, not a summary opener.
+- NEVER use first person pronouns. No "I possess", "I have", "I am", "my experience". Write in implied first person without the pronoun.
+- NEVER smash two titles together without punctuation. "Transformational leader Customer Operations Leader" is wrong.
+- NEVER say "strategic growth of delivering" or any similar nonsensical phrase. Read it aloud — if it doesn't make sense spoken, rewrite it.
+- NEVER say "making me an ideal candidate" or similar self-assessment filler.
+- NEVER name the target company in the summary. The summary must work for any application.
+- NEVER use "Results-driven," "Seasoned professional," "Transformational leader," or any equivalent filler.
+- Every sentence must be grammatically correct. Proofread for missing punctuation, doubled nouns, and awkward phrasing.
+- The summary should sound like it was written by the candidate, not about them.
+
+BAD EXAMPLE (every rule violation in one paragraph):
+"Lead a team of 14 infrastructure and DevOps engineers supporting 200+ microservices. I possess a unique combination of technical expertise and leadership experience, making me an ideal candidate for this role. I have reduced hosting costs by 35%."
+Problems: Opens with duty not identity. Uses first person "I possess/I have." Says "ideal candidate" (self-assessment filler). Reads like a bullet list, not a positioning statement.
+
+GOOD EXAMPLE:
+"Cloud Infrastructure Architect with 12 years of experience designing, scaling, and securing enterprise platforms across hybrid and multi-cloud environments. Consistently delivers cost optimization at scale — most recently driving 35% hosting cost reduction through a 60+ application cloud migration while maintaining 99.95% availability. Combines deep AWS and Kubernetes expertise with cross-functional leadership of 14-person engineering teams supporting 200+ microservices."
+
 ${getResumeRulesPrompt()}
 
 ## CONTENT DECISIONS
@@ -128,25 +158,6 @@ Bullet count is governed by JD-relevance and available evidence — not by minim
 - NEVER drop ANY position from the candidate's experience. Every single position must appear either in professional_experience (with bullets) or in earlier_career (title/company only for old, low-relevance roles). Count the input positions and verify your output has the same total count.
 - Do not produce fewer bullets than the original resume had for a role that stays in professional_experience. If the source role has 4 bullets, preserve 4 distinct proof points unless one rewritten bullet clearly preserves multiple source bullets. You are here to improve, not shrink.
 
-## EXECUTIVE SUMMARY
-
-CRITICAL — the executive summary is the first thing a hiring manager reads. Get it right or lose the reader.
-
-STRUCTURE (follow this order exactly):
-1. FIRST SENTENCE: "[Title/Identity] with [X] years of experience [doing what they do best]." — establishes who they are. Do NOT lead with a metric, a revenue figure, or an accomplishment. Lead with identity.
-2. SECOND SENTENCE: The core capability pattern — what they consistently deliver across roles.
-3. REMAINING SENTENCES: Key proof points (metrics, scope, outcomes) that back up sentences 1 and 2.
-4. FINAL SENTENCE (optional): Forward-looking positioning for the target role.
-
-RULES:
-- NEVER open with a metric or dollar figure. "Generated $250K..." is a bullet point, not an opening.
-- NEVER smash two titles together without punctuation. "Transformational leader Customer Operations Leader" is wrong.
-- NEVER say "strategic growth of delivering" or any similar nonsensical phrase. Read it aloud — if it doesn't make sense spoken, rewrite it.
-- NEVER name the target company in the summary. The summary must work for any application.
-- NEVER use "Results-driven," "Seasoned professional," "Transformational leader," or any equivalent filler.
-- Every sentence must be grammatically correct. Proofread for missing punctuation, doubled nouns, and awkward phrasing.
-- The summary should sound like it was written by the candidate, not about them.
-
 ## CORE COMPETENCIES
 
 - Group competencies to reinforce the narrative themes, not as a keyword dump
@@ -160,6 +171,19 @@ RULES:
 - If a bullet does not reinforce the narrative, reframe it so it does — without fabricating
 - Every bullet must show agency, scale, and impact — not just activity
 - If the gap_positioning_map specifies where to surface a gap strategy, execute it in that role's bullets
+
+## EVIDENCE EXCLUSIVITY — NO CROSS-SECTION REPETITION
+
+This is a HARD RULE. The same evidence, accomplishment, or proof point MUST NOT appear in more than one section of the resume.
+
+RULES:
+1. Once a proof point is used in SELECTED ACCOMPLISHMENTS, it MUST NOT appear as a bullet in Professional Experience or any custom section. The Professional Experience entry for that role should reference different achievements.
+2. Custom sections (AI Leadership, Transformation Highlights, Selected Projects, etc.) must contain UNIQUE proof not already featured in Selected Accomplishments or Professional Experience bullets.
+3. If two custom sections would draw from the same evidence pool, MERGE them into one section or DROP the weaker one. Two thin sections that repeat each other are worse than one strong section.
+4. If the evidence pool for a custom section is too thin to fill it without repeating content from other sections, DO NOT include that custom section. Omit it entirely.
+5. Professional Experience bullets should NOT echo the same phrasing as Selected Accomplishments. If a top achievement appears in Selected Accomplishments, the corresponding role in Professional Experience should highlight DIFFERENT accomplishments from that role.
+
+SELF-CHECK: Before finalizing output, scan every line in every section. If any accomplishment, metric, or phrasing appears in more than one section — rewrite or remove the duplicate.
 
 ## VOICE GUIDANCE
 
@@ -372,71 +396,18 @@ export async function runResumeWriter(
   input: ResumeWriterInput,
   signal?: AbortSignal,
 ): Promise<ResumeDraftOutput> {
-  const userMessage = buildUserMessage(input);
   const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
 
-  let parsed: ResumeDraftOutput | null = null;
+  // Section-by-section writing: 5 focused LLM calls instead of one massive 32K-token pass.
+  // Each call gets section-specific rules and explicit cross-section evidence tracking.
+  // Falls back to deterministic per-section if any individual call fails.
+  let parsed = await runSectionBySection(input, signal);
 
-  try {
-    const response = await llm.chat({
-      model: MODEL_PRIMARY,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMessage }],
-      response_format: { type: 'json_object' },
-      max_tokens: 32768,
-      signal,
-    });
-
-    parsed = repairJSON<ResumeDraftOutput>(response.text);
-
-    if (!parsed) {
-      logger.warn(
-        { rawSnippet: response.text.substring(0, 500) },
-        'Resume Writer: first attempt unparseable, retrying with stricter prompt',
-      );
-    }
-  } catch (error) {
-    if (shouldRethrowForAbort(error, signal)) throw error;
-    logger.warn(
-      { error: error instanceof Error ? error.message : String(error) },
-      'Resume Writer: first attempt failed, retrying with stricter prompt',
-    );
-  }
-
-  if (!parsed) {
-    try {
-      const retry = await llm.chat({
-        model: MODEL_PRIMARY,
-        system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-        messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
-        response_format: { type: 'json_object' },
-        max_tokens: 32768,
-        signal,
-      });
-
-      parsed = repairJSON<ResumeDraftOutput>(retry.text);
-
-      if (!parsed) {
-        logger.error(
-          { rawSnippet: retry.text.substring(0, 500) },
-          'Resume Writer: retry returned unparseable response, using deterministic fallback',
-        );
-      }
-    } catch (error) {
-      if (shouldRethrowForAbort(error, signal)) throw error;
-      logger.error(
-        { error: error instanceof Error ? error.message : String(error) },
-        'Resume Writer: retry failed, using deterministic fallback',
-      );
-    }
-  }
-
-  if (!parsed) {
-    parsed = buildDeterministicResumeDraft(input);
-  }
-
-  parsed = ensureSatisfiedYearsThresholdVisible(parsed, input);
-  parsed = ensureStrongestProofVisible(parsed, input);
+  // NOTE: ensureSatisfiedYearsThresholdVisible and ensureStrongestProofVisible were removed.
+  // They were designed for the old single-pass writer where the LLM often returned incomplete summaries.
+  // With section-by-section writing, the summary prompt constructs an identity-first opener that
+  // already includes career span years, and instructs the LLM to include proof in follow-up sentences.
+  // The old guardrails PREPENDED content before the identity opener, destroying the structure.
 
   // Guardrail: ensure contact info is from candidate, not a placeholder
   if (!parsed.header?.name || parsed.header.name.toLowerCase().includes('john doe')) {
@@ -531,23 +502,29 @@ function sanitizeDraftForDisplay(
 
   const sanitizeField = (value: string, fallbackValue: string): string => {
     const stripped = sanitizeDisplayText(value);
-    const fallback = sanitizeDisplayText(fallbackValue);
+    const fallbackText = sanitizeDisplayText(fallbackValue);
     if (!stripped) {
       if (value.trim()) sanitizedFieldCount += 1;
-      return fallback;
+      return fallbackText;
     }
+    // Prompt example leakage is a hard replace — the entire content is contaminated
     if (containsPromptExampleLeakage(stripped, sourceCorpus)) {
       sanitizedFieldCount += 1;
-      return fallback;
+      return fallbackText;
     }
-    if (containsBannedDisplayPhrase(stripped)) {
+    // Banned display phrases: strip just the offending phrase, don't replace the entire field.
+    // The old behavior nuked well-crafted LLM content because one word was banned.
+    let cleaned = stripped;
+    for (const phrase of BANNED_PHRASES) {
+      if (cleaned.toLowerCase().includes(phrase)) {
+        sanitizedFieldCount += 1;
+        cleaned = cleaned.replace(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').replace(/\s+/g, ' ').trim();
+      }
+    }
+    if (cleaned !== value.trim()) {
       sanitizedFieldCount += 1;
-      return fallback;
     }
-    if (stripped !== value.trim() || fallback !== fallbackValue.trim()) {
-      sanitizedFieldCount += 1;
-    }
-    return stripped;
+    return cleaned || fallbackText;
   };
 
   const sanitized: ResumeDraftOutput = {
@@ -3268,11 +3245,25 @@ function ensureSatisfiedYearsThresholdVisible(
     return draft;
   }
 
+  // Insert the years threshold AFTER the first sentence, not before it.
+  // This preserves identity-first structure when the section writer leads with
+  // a branded title ("Cloud Infrastructure Architect with 12 years...").
+  // Use ". " (period+space) as sentence boundary to avoid splitting "enterprise..." or "U.S."
+  const sentenceBoundary = currentSummary.indexOf('. ');
+  let updatedContent: string;
+  if (sentenceBoundary > 0) {
+    const firstSentence = currentSummary.slice(0, sentenceBoundary + 1);
+    const rest = currentSummary.slice(sentenceBoundary + 2).trim();
+    updatedContent = `${firstSentence} ${yearsThresholdLine} ${rest}`.trim();
+  } else {
+    updatedContent = `${currentSummary} ${yearsThresholdLine}`.trim();
+  }
+
   return {
     ...draft,
     executive_summary: {
       ...draft.executive_summary,
-      content: `${yearsThresholdLine} ${currentSummary}`.trim(),
+      content: updatedContent,
       is_new: true,
     },
   };
@@ -3302,11 +3293,23 @@ function ensureStrongestProofVisible(
     return draft;
   }
 
+  // Insert strongest proof AFTER the first sentence to preserve identity-first structure.
+  // Use ". " (period+space) as sentence boundary to avoid splitting "enterprise..." or "U.S."
+  const firstDot = currentSummary.indexOf('. ');
+  let proofContent: string;
+  if (firstDot > 0) {
+    const firstSentence = currentSummary.slice(0, firstDot + 1);
+    const rest = currentSummary.slice(firstDot + 2).trim();
+    proofContent = `${firstSentence} ${strongestProofLine} ${rest}`.trim();
+  } else {
+    proofContent = `${currentSummary} ${strongestProofLine}`.trim();
+  }
+
   return {
     ...draft,
     executive_summary: {
       ...draft.executive_summary,
-      content: `${strongestProofLine} ${currentSummary}`.trim(),
+      content: proofContent,
       is_new: true,
     },
   };
@@ -3329,6 +3332,9 @@ function summaryAlreadyShowsYearsThreshold(
     return true;
   }
 
+  // If any mentioned years value meets the JD threshold, the years are visible enough.
+  // This prevents prepending "12 years of..." when the summary already says "11 years of..."
+  // and the JD only requires 10+.
   const satisfiedRequirement = input.gap_analysis.requirements.find((requirement) => {
     const requiredYears = extractYearsThreshold(requirement.requirement);
     return requiredYears !== null

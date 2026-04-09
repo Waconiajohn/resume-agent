@@ -90,6 +90,11 @@ function makeCandidate(): CandidateIntelligenceOutput {
           evidence: 'Rolled out workflow automation across plant operations.',
           executive_framing: 'Used automation and data workflows to tighten operating rhythm across multiple sites.',
         },
+        {
+          family: 'data_driven_decisions',
+          evidence: 'Deployed real-time KPI dashboards driving weekly operating reviews.',
+          executive_framing: 'Embedded data-driven decision frameworks into weekly operating cadence across three sites.',
+        },
       ],
       summary: 'Demonstrated AI-adjacent readiness through automation and operating-model change.',
     },

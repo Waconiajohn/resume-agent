@@ -161,7 +161,7 @@ function buildTransformationSection(
     quantifiedOutcome && scale ? `Drove transformation initiatives across ${scale} that ${quantifiedOutcome}` : undefined,
   ], 3);
 
-  if (!roleSignal || lines.length === 0) return null;
+  if (!roleSignal || lines.length < 2) return null;
 
   return {
     id: TRANSFORMATION_SECTION_ID,
@@ -196,7 +196,7 @@ function buildProjectsSection(
     experienceBullet,
   ], 3);
 
-  if (!roleSignal || lines.length === 0) return null;
+  if (!roleSignal || lines.length < 2) return null;
 
   return {
     id: PROJECTS_SECTION_ID,
@@ -228,7 +228,7 @@ function buildBoardSection(
     ...hiddenEvidence,
   ], 3);
 
-  if (!roleSignal || lines.length === 0) return null;
+  if (!roleSignal || lines.length < 2) return null;
 
   return {
     id: BOARD_SECTION_ID,
@@ -250,7 +250,7 @@ function buildAISection(
   gapAnalysis: GapAnalysisOutput,
 ): ResumeCustomSection | null {
   const readiness = candidate.ai_readiness;
-  if (!readiness || readiness.strength === 'none') return null;
+  if (!readiness || readiness.strength === 'none' || readiness.strength === 'minimal') return null;
   const matchingItems = findMatchingWorkItems(gapAnalysis, AI_REQUIREMENT_RE);
 
   const lines = uniqueLines([
@@ -260,7 +260,7 @@ function buildAISection(
     ...matchingEvidenceLines(matchingItems, 2),
   ], 3);
 
-  if (lines.length === 0 && readiness.summary.trim().length === 0) return null;
+  if (lines.length < 2) return null;
 
   const roleNeedsAI = hasAIRequirementSignal(gapAnalysis);
   return {

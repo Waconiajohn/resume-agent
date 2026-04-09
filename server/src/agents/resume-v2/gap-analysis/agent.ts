@@ -60,6 +60,13 @@ CREATIVE STRATEGY EXAMPLES:
 - "Call center centralization" but standardized processes → "Led initiatives to standardize operations across distributed teams" — that IS centralization.
 - "AI automation experience" but implemented knowledge bases → "Automation-ready knowledge infrastructure enabling future AI/RAG capabilities"
 
+ADJACENCY BRIDGING — when the candidate has closely related experience, bridge it:
+- "Compliance frameworks required (SOC 2/HIPAA/PCI-DSS)" but partnered with CISO on security → "Partnered with CISO to architect security controls aligned with enterprise compliance requirements" — security collaboration IS compliance-adjacent.
+- "Disaster recovery/business continuity required" but maintained high-uptime SLA → "Delivered 99.95% availability through resilient architecture and proactive incident management" — uptime discipline IS DR-adjacent.
+- "Multi-cloud required" but only has primary cloud + basic secondary → "Multi-cloud infrastructure experience spanning AWS (primary) and GCP" — don't hide the secondary skill, surface it.
+- "FinOps at $8M+ scale" but managed $4M budget → "Managed $4.2M cloud spend with quarterly optimization — methodology proven at scale and directly transferable to larger portfolios."
+- "Service mesh for 300+ microservices" but has 200+ microservices with Istio → "Implemented service mesh architecture with Istio across 200+ microservices" — don't inflate the number, let the pattern match speak.
+
 IMPORTANT MATH RULE: When you infer a number from scope (like budget from team size), ALWAYS back off 10-20% from the calculated value. The candidate must be able to defend the number comfortably in an interview.
 
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
