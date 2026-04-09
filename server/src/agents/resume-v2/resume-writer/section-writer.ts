@@ -122,7 +122,17 @@ async function callSummarySection(
 
   // Construct the opening sentence deterministically — this is the identity-first anchor.
   // Keep it short: just branded title + years. The LLM fills in the capability in follow-up sentences.
-  const openingSentence = `${narrative.branded_title} with ${candidate.career_span_years} years of experience.`;
+  // Safety net: if career_span_years seems too low, compute from earliest experience date.
+  const sourceExperience = getAuthoritativeSourceExperience(candidate);
+  const currentYear = new Date().getFullYear();
+  const earliestYear = sourceExperience.reduce((earliest, exp) => {
+    const year = parseInt(exp.start_date.replace(/\D/g, '').slice(0, 4), 10);
+    return year > 1970 && year < earliest ? year : earliest;
+  }, currentYear);
+  const computedYears = currentYear - earliestYear;
+  const careerYears = Math.max(candidate.career_span_years, computedYears);
+
+  const openingSentence = `${narrative.branded_title} with ${careerYears} years of experience.`;
 
   const userMessage = [
     '## THE OPENING SENTENCE (already written — do not change it)',
@@ -711,6 +721,16 @@ No two bullets within the same role may start with the same verb. Across the ENT
 
 Before finalizing, scan every bullet opener. If you see the same verb twice in one role, rewrite one of them.
 
+## SECTION BOUNDARIES — DO NOT MIX
+The positions array must contain ONLY professional experience entries (roles with company, title, dates, bullets).
+Do NOT include any of the following as experience bullets or positions:
+- CERTIFICATIONS (e.g., "AWS SA Pro, CKA, Terraform Associate")
+- SKILLS lists (e.g., "AWS, GCP, Docker, Kubernetes...")
+- EDUCATION entries (e.g., "B.S. Computer Science | Oregon State University")
+- Raw text from the input that isn't an accomplishment
+
+These belong in separate resume sections, NOT inside professional experience.
+
 ## OUTPUT FORMAT
 Return this JSON object:
 {
@@ -773,6 +793,7 @@ interface ExperienceResult {
 async function callExperienceSection(
   input: ResumeWriterInput,
   usedEvidence: string[],
+  accomplishmentTexts: string[],
   signal?: AbortSignal,
 ): Promise<ExperienceResult> {
   const { candidate, job_intelligence, narrative, gap_analysis, approved_strategies } = input;
@@ -827,14 +848,17 @@ async function callExperienceSection(
     positionsBlock,
     '',
     '## CROSS-SECTION RULE — MANDATORY',
-    'The following proof points are ALREADY featured in Selected Accomplishments or custom sections above this position in the resume.',
-    'A hiring manager reads top to bottom — if they see the same accomplishment twice, it looks sloppy and unprofessional.',
+    'The following accomplishments are ALREADY featured in the Selected Accomplishments section above Professional Experience.',
+    'A hiring manager reads top to bottom — if they see the same achievement twice, it looks sloppy.',
     '',
-    'For each bullet you write, check: does this substantially overlap with any item below?',
-    '- If YES → write a DIFFERENT accomplishment from that role instead, or reframe the bullet to highlight a different aspect (the HOW, the team impact, the process — not the same metric).',
-    '- If NO → proceed.',
+    'THESE EXACT ACCOMPLISHMENTS MUST NOT APPEAR AS EXPERIENCE BULLETS (not even rephrased):',
+    ...accomplishmentTexts.map((t, i) => `  ${i + 1}. "${t}"`),
     '',
-    'ALREADY USED EVIDENCE:',
+    'For each bullet you write, check: does it describe the SAME achievement as any accomplishment above?',
+    '- Same metric (e.g., "35% cost reduction", "50M+ API requests") → it overlaps. Write a DIFFERENT achievement from that role.',
+    '- Different aspect of the same project (the HOW, the team growth, the process) → acceptable, but do not repeat the headline metric.',
+    '',
+    'ADDITIONAL USED EVIDENCE (from custom sections):',
     formatUsedEvidence(usedEvidence),
     '',
     '## TOP JD REQUIREMENTS (target these in bullets)',
@@ -1082,7 +1106,9 @@ export async function runSectionBySection(
   }
 
   // ── Call 5: Professional Experience ─────────────────────────────
-  const experienceResult = await callExperienceSection(input, [...usedEvidence], signal);
+  // Pass exact accomplishment texts so the experience prompt can block repeats precisely
+  const accomplishmentTexts = accomplishmentsResult.accomplishments.map((a) => a.content);
+  const experienceResult = await callExperienceSection(input, [...usedEvidence], accomplishmentTexts, signal);
 
   // ── Merge custom section LLM output with section metadata ───────
   // Build a source corpus from the candidate's actual resume for evidence tracing
