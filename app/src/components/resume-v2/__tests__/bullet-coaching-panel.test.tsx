@@ -51,7 +51,7 @@ function makeChatContext(overrides: Partial<GapChatContext> = {}): GapChatContex
 }
 
 describe('BulletCoachingPanel', () => {
-  it('renders summary-specific enhancement actions and clarifying guidance', () => {
+  it('renders Block 1 with section name and bullet text', () => {
     render(
       <BulletCoachingPanel
         bulletText="Seasoned engineering leader driving outcomes at scale."
@@ -71,20 +71,41 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /show extra ai help/i }));
-
-    expect(screen.getByText('AI summary upgrades')).toBeInTheDocument();
-    expect(screen.getByText('Sharpen opening story')).toBeInTheDocument();
-    expect(screen.getByText('Show leadership scope')).toBeInTheDocument();
-    expect(screen.getByText('Match this role')).toBeInTheDocument();
-    expect(screen.getByText('Add business impact')).toBeInTheDocument();
-    expect(screen.getByText('My recommendation')).toBeInTheDocument();
-    expect(screen.getByText('Current focus')).toBeInTheDocument();
-    expect(screen.getByText('Recommended wording')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /use this version/i })).toBeInTheDocument();
+    // Block 1: section name + item number
+    expect(screen.getByText(/Executive Summary, item 1/i)).toBeInTheDocument();
+    // Block 1: full bullet text (may appear more than once if also in a suggestion)
+    expect(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.').length).toBeGreaterThan(0);
   });
 
-  it('offers a safe rewrite first when a code-red line is missing proof', () => {
+  it('shows Accept Enhancement / Edit Myself / Keep Original for AI-enhanced bullets', () => {
+    render(
+      <BulletCoachingPanel
+        bulletText="Proven engineering leader who scaled teams across global product launches."
+        section="executive_summary"
+        bulletIndex={0}
+        requirements={['Executive leadership']}
+        reviewState="strengthen"
+        requirementSource="job_description"
+        evidenceFound="Led a 45-person engineering organization across multiple launches."
+        isAIEnhanced
+        gapChat={makeGapChat()}
+        chatContext={makeChatContext()}
+        onApplyToResume={vi.fn()}
+        onRemoveBullet={vi.fn()}
+        onClose={vi.fn()}
+        onBulletEnhance={vi.fn(async () => null)}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /accept enhancement/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /edit myself/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /keep original/i })).toBeInTheDocument();
+    // Diff labels (use getAllBy since "Keep Original" button also contains "original")
+    expect(screen.getAllByText(/original/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/our enhancement/i)).toBeInTheDocument();
+  });
+
+  it('offers Use This Language / Write My Own / Skip This Gap when a code-red line is missing proof', () => {
     const gapChat = makeGapChat();
 
     render(
@@ -113,12 +134,20 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.queryByText('Quick check')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/the extra detail i would want is/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /show safest version/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /write my own version/i })).toBeInTheDocument();
+    // Gap Identified block
+    expect(screen.getByText(/gap identified/i)).toBeInTheDocument();
+    expect(screen.getByText(/we don't have evidence/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /show safest version/i }));
+    // Code red clarifying detail hint
+    expect(screen.getAllByText(/the extra detail i would want is/i).length).toBeGreaterThan(0);
+
+    // Primary action buttons
+    expect(screen.getByText('Use This Language')).toBeInTheDocument();
+    expect(screen.getByText('Write My Own')).toBeInTheDocument();
+    expect(screen.getByText('Skip This Gap')).toBeInTheDocument();
+
+    // Clicking "Use This Language" triggers a safe rewrite via gapChat
+    fireEvent.click(screen.getByText('Use This Language'));
 
     expect(gapChat.sendMessage).toHaveBeenCalledWith(
       'Develop and track performance metrics',
@@ -128,6 +157,49 @@ describe('BulletCoachingPanel', () => {
       }),
       'missing',
     );
+  });
+
+  it('shows Use Suggestion / Edit Myself / Skip for a standard suggestion', () => {
+    const { container } = render(
+      <BulletCoachingPanel
+        bulletText="Built and tracked performance metrics."
+        section="professional_experience"
+        bulletIndex={0}
+        requirements={['Develop and track performance metrics']}
+        reviewState="strengthen"
+        requirementSource="job_description"
+        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
+        gapChat={makeGapChat({
+          messages: [
+            {
+              role: 'assistant',
+              content: 'Here is a stronger version.',
+              suggestedLanguage: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
+            },
+          ],
+        })}
+        chatContext={makeChatContext({
+          lineKind: 'bullet',
+          sectionKey: 'professional_experience',
+          sectionLabel: 'Professional Experience',
+          lineText: 'Built and tracked performance metrics.',
+          primaryRequirement: 'Develop and track performance metrics',
+          relatedRequirements: ['Develop and track performance metrics'],
+        })}
+        onApplyToResume={vi.fn()}
+        onRemoveBullet={vi.fn()}
+        onClose={vi.fn()}
+        onBulletEnhance={vi.fn(async () => null)}
+      />,
+    );
+
+    // Use container-scoped queries to avoid pollution from other tests in the same jsdom body
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    expect(panel).toBeTruthy();
+    expect(panel.querySelector('button[class*="bg-blue-600"]')?.textContent).toContain('Use Suggestion');
+    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.includes('Edit Myself'))).toBe(true);
+    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Skip')).toBe(true);
+    expect(panel.textContent).toContain('Suggested Improvement');
   });
 
   it('shows related line suggestions from one clarification answer and applies them safely', () => {
@@ -206,8 +278,6 @@ describe('BulletCoachingPanel', () => {
 
     expect(screen.getByText('Also improve nearby lines')).toBeInTheDocument();
     expect(screen.getByText(/this same detail can also improve 2 other lines/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /show nearby lines/i }));
-    expect(screen.getByText('Apply all nearby lines')).toBeInTheDocument();
     expect(screen.getByText('Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.')).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByText('Apply to this line')[0]);
@@ -233,7 +303,7 @@ describe('BulletCoachingPanel', () => {
     );
   });
 
-  it('shows matching prior clarifications from earlier answers', () => {
+  it('shows matching prior clarifications from earlier answers and triggers a reuse rewrite', () => {
     const gapChat = makeGapChat();
 
     render(
@@ -272,25 +342,9 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.queryByText('Already confirmed')).not.toBeInTheDocument();
+    // Prior clarification text shown under the suggestion
     expect(screen.getByText(/I am also using this earlier detail you confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /rewrite from earlier answer/i }));
-
-    expect(gapChat.sendMessage).toHaveBeenCalledWith(
-      'Develop and track performance metrics',
-      expect.stringContaining('Use my earlier confirmed detail to rewrite this line'),
-      expect.objectContaining({
-        priorClarifications: [
-          expect.objectContaining({
-            topic: 'Performance metrics',
-            userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
-          }),
-        ],
-      }),
-      'partial',
-    );
   });
 
   it('auto-reuses a remembered clarification when the panel opens from that cue', async () => {

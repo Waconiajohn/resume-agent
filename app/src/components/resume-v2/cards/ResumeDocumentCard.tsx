@@ -752,7 +752,7 @@ function BulletLineContent({
                   handleActivate();
                 }
               }}
-              className="resume-bullet-interactive resume-bullet-interactive--flagged block cursor-pointer rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 hover:bg-white/70 transition-colors focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+              className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
             >
               {globalNumber !== undefined && (
                 <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>

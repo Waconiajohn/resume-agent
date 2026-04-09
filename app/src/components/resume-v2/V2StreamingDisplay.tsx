@@ -1258,10 +1258,16 @@ export function V2StreamingDisplay({
     setActiveBullet(null);
     advanceSectionJourney();
   }, [advanceSectionJourney, currentWorkflowStep, onApplySectionDraft]);
+  // Tracks when the coaching panel closed because the user applied an edit
+  // (vs. clicking the X button). Used to gate the auto-advance effect below.
+  const justCompletedEditRef = useRef(false);
+
   const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
+    justCompletedEditRef.current = true;
     onBulletEdit?.(section, index, newText, metadata);
   }, [onBulletEdit]);
   const handleCoachRemoveBullet = useCallback((section: string, index: number) => {
+    justCompletedEditRef.current = true;
     onBulletRemove?.(section, index);
   }, [onBulletRemove]);
 
@@ -1293,6 +1299,30 @@ export function V2StreamingDisplay({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeBullet, onRejectEdit]);
 
+  // Auto-advance: when the coaching panel closes after an edit (not the X button),
+  // wait 500ms then activate the next unresolved item.
+  const prevActiveBulletRef = useRef<CoachTarget | null>(null);
+  useEffect(() => {
+    const wasActive = prevActiveBulletRef.current !== null;
+    const isNowNull = activeBullet === null;
+    prevActiveBulletRef.current = activeBullet;
+
+    if (!wasActive || !isNowNull) return;
+    if (!justCompletedEditRef.current) return;
+    justCompletedEditRef.current = false;
+
+    const queueSummary = rewriteQueue?.summary;
+    const hasItemsLeft = (queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0;
+    if (!hasItemsLeft) return;
+
+    const timerId = window.setTimeout(() => {
+      handleStartReviewing();
+    }, 500);
+    return () => window.clearTimeout(timerId);
+  // handleStartReviewing is stable (useCallback) — include all referenced values
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBullet]);
+
   // Scroll to top when scoring report data arrives so it's visible
   useEffect(() => {
     if (data.assembly && containerRef.current) {
@@ -1323,14 +1353,15 @@ export function V2StreamingDisplay({
       return;
     }
 
-    if (canShowStructurePlanner && !hasCompletedStructureStep) {
-      setShowStructurePlanner(true);
-      return;
-    }
-
+    // Structure planner is no longer shown automatically on entry.
+    // It opens only when the user explicitly clicks "Adjust section structure".
+    // Mark the structure step as complete immediately so the Coach/Waiting view
+    // is the default entry state.
     if (!canShowStructurePlanner) {
       setHasCompletedStructureStep(true);
       setShowStructurePlanner(false);
+    } else if (!hasCompletedStructureStep) {
+      setHasCompletedStructureStep(true);
     }
   }, [canShowStructurePlanner, hasCompletedStructureStep, hasPassedReadyGate]);
   useEffect(() => {
@@ -1771,7 +1802,7 @@ export function V2StreamingDisplay({
                       : isReviewerMode
                         ? "You've addressed the key items."
                       : isCoachMode
-                        ? 'Your resume is ready for review.'
+                        ? 'Click any highlighted item or use Fix the Next One to start.'
                         : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
@@ -1837,61 +1868,69 @@ export function V2StreamingDisplay({
                           />
                         </div>
                       ) : isCoachMode ? (
-                        /* ── Coach Mode: default editing phase entry ── */
-                        <div className="space-y-6 py-2">
-                          {typeof healthScore === 'number' && (
-                            <div>
-                              <div className="text-3xl font-bold text-[var(--text-strong)]">{healthScore}%</div>
-                              <div className="text-sm text-[var(--text-soft)] mt-0.5">Resume health</div>
-                              <div className="h-1.5 bg-[var(--surface-1)] rounded-full mt-2 overflow-hidden">
-                                <div
-                                  className="h-1.5 bg-blue-500 rounded-full transition-all duration-500"
-                                  style={{ width: `${healthScore}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                          {queueSummary && (
-                            <div className="space-y-1.5 text-sm">
-                              {queueSummary.needsUserInput > 0 && (
-                                <div className="flex items-center gap-2 text-[var(--badge-red-text)]">
-                                  <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
-                                  {queueSummary.needsUserInput} item{queueSummary.needsUserInput === 1 ? '' : 's'} need your input
+                        /* ── State 2: WAITING — entry state ── */
+                        <div className="flex flex-col h-full">
+                          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                            {typeof healthScore === 'number' ? (
+                              <>
+                                <div className="text-4xl font-bold text-[var(--text-strong)] mb-1">{healthScore}%</div>
+                                <div className="text-sm text-[var(--text-soft)] mb-6">Resume Health</div>
+                                <div className="w-full max-w-[200px] h-2 bg-[var(--surface-1)] rounded-full mb-8">
+                                  <div
+                                    className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500"
+                                    style={{ width: `${healthScore}%` }}
+                                  />
                                 </div>
-                              )}
-                              {queueSummary.needsApproval > 0 && (
-                                <div className="flex items-center gap-2 text-[var(--badge-amber-text)]">
-                                  <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-                                  {queueSummary.needsApproval} item{queueSummary.needsApproval === 1 ? '' : 's'} want your approval
-                                </div>
-                              )}
-                              {queueSummary.handled > 0 && (
+                              </>
+                            ) : (
+                              <div className="mb-8" />
+                            )}
+
+                            <p className="text-[var(--text-soft)] text-sm mb-6 leading-relaxed">
+                              Click any highlighted item on your resume to start editing.
+                            </p>
+
+                            {queueSummary && (
+                              <div className="space-y-2 text-sm w-full max-w-[240px] mb-8">
+                                {queueSummary.needsUserInput > 0 && (
+                                  <div className="flex items-center gap-2 text-[var(--text-soft)]">
+                                    <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                                    <span>{queueSummary.needsUserInput} item{queueSummary.needsUserInput === 1 ? '' : 's'} need your input</span>
+                                  </div>
+                                )}
+                                {queueSummary.needsApproval > 0 && (
+                                  <div className="flex items-center gap-2 text-[var(--text-soft)]">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                                    <span>{queueSummary.needsApproval} item{queueSummary.needsApproval === 1 ? '' : 's'} want your approval</span>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-2 text-[var(--text-soft)]">
-                                  <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                                  {queueSummary.handled} item{queueSummary.handled === 1 ? '' : 's'} handled
+                                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                  <span>{queueSummary.handled} item{queueSummary.handled === 1 ? '' : 's'} handled</span>
                                 </div>
-                              )}
-                            </div>
-                          )}
-                          {(queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleStartReviewing}
-                              className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
-                            >
-                              Start Reviewing
-                              <ArrowRight className="h-4 w-4" />
-                            </button>
-                          )}
-                          {canShowStructurePlanner && (
+                              </div>
+                            )}
+
+                            {(queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0 && (
+                              <button
+                                type="button"
+                                onClick={handleStartReviewing}
+                                className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+                              >
+                                Fix the Next One &rarr;
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="shrink-0 px-6 py-4 border-t border-[var(--line-soft)]">
                             <button
                               type="button"
                               onClick={handleShowStructurePlan}
-                              className="w-full rounded-lg border border-[var(--line-soft)] px-4 py-2 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+                              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-soft)] transition-colors"
                             >
-                              Review section structure
+                              Adjust section structure
                             </button>
-                          )}
+                          </div>
                         </div>
                       ) : isReviewerMode ? (
                         /* ── Reviewer Mode: all critical items addressed ── */
