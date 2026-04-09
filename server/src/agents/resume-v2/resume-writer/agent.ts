@@ -1390,6 +1390,17 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
     const draftBullets = draftExp.bullets ?? [];
     const uncoveredSourceBullets = originalExp.bullets
       .filter((origBullet) => {
+        // Skip lines that are clearly section headers, not experience bullets.
+        // CI sometimes parses EDUCATION/CERTIFICATIONS/SKILLS lines as experience bullets
+        // when they follow the last position without a clear section separator.
+        const lower = origBullet.toLowerCase().trim();
+        if (/^(education|certifications?|skills|awards|publications|languages|interests)\s*[:|\-–—]/i.test(origBullet.trim())) {
+          return false;
+        }
+        // Skip raw skill/cert lists (no verb, just comma-separated items)
+        if (/^[A-Z][A-Za-z\s]+(?:,\s*[A-Z][A-Za-z\s]+){3,}$/.test(origBullet.trim())) {
+          return false;
+        }
         const sourceImportance = scoreSourceBulletImportance(origBullet, input);
         return !draftBullets.some((draftBullet) => (
           bulletPreservesProofDensity(draftBullet.text, origBullet)
