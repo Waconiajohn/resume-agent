@@ -181,21 +181,18 @@ function actionWeight(action: RewriteQueueItem['recommendedNextStep']['action'])
  * starts with fast, satisfying approvals that build momentum before asking for input.
  */
 function actionTierWeight(item: RewriteQueueItem): number {
-  // AI-enhanced items needing approval come first (fast, satisfying)
-  if (
-    item.recommendedNextStep.action === 'review_edit'
-    || item.recommendedNextStep.action === 'verify'
-  ) {
+  // Tier 0: AI-enhanced items needing approval (fast, satisfying)
+  if (item.recommendedNextStep.action === 'review_edit') {
     return 0;
   }
-  // Items needing candidate input come second
+  // Tier 1: Items needing candidate input
   if (
     item.recommendedNextStep.action === 'answer_question'
     || item.recommendedNextStep.action === 'check_hard_requirement'
   ) {
     return 1;
   }
-  // Everything else (view_in_resume, rerun_final_review, etc.)
+  // Tier 2: Everything else (verify, view_in_resume, rerun_final_review, etc.)
   return 2;
 }
 

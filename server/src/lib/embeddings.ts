@@ -30,7 +30,7 @@ let client: OpenAI | null = null;
 
 function getClient(): OpenAI | null {
   if (client) return client;
-  const apiKey = process.env.OpenAI_API_KEY ?? process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY ?? process.env.OpenAI_API_KEY;
   if (!apiKey) {
     logger.warn('No OpenAI API key found — semantic matching disabled, falling back to keyword matching');
     return null;
@@ -49,10 +49,15 @@ export async function embedBatch(texts: string[]): Promise<number[][] | null> {
   const openai = getClient();
   if (!openai || texts.length === 0) return null;
 
+  if (texts.length > 2048) {
+    logger.warn({ count: texts.length }, 'Embedding batch exceeds API limit of 2048 — truncating');
+  }
+  const batch = texts.length > 2048 ? texts.slice(0, 2048) : texts;
+
   try {
     const response = await openai.embeddings.create({
       model: EMBEDDING_MODEL,
-      input: texts,
+      input: batch,
       dimensions: EMBEDDING_DIMENSIONS,
     });
 

@@ -138,7 +138,8 @@ async function callSummarySection(
   const computedYears = currentYear - earliestYear;
   const careerYears = Math.max(candidate.career_span_years, computedYears);
 
-  const openingSentence = `${narrative.branded_title} with ${careerYears} years of experience.`;
+  const title = narrative.branded_title?.trim() || candidate.contact.name;
+  const openingSentence = `${title} with ${careerYears} years of experience.`;
 
   const userMessage = [
     '## THE OPENING SENTENCE (already written — do not change it)',

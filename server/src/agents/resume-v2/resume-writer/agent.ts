@@ -521,6 +521,13 @@ function sanitizeDraftForDisplay(
         cleaned = cleaned.replace(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').replace(/\s+/g, ' ').trim();
       }
     }
+    // Clean up orphaned articles/prepositions left behind by phrase stripping.
+    // e.g. "A initiative delivering..." → "An initiative delivering..."
+    cleaned = cleaned
+      .replace(/\b(a|an|the)\s+(a|an|the)\b/gi, '$1') // doubled articles
+      .replace(/\b(a)\s+([aeiou])/gi, 'an $2') // a → an before vowel
+      .replace(/\s{2,}/g, ' ')
+      .trim();
     if (cleaned !== value.trim()) {
       sanitizedFieldCount += 1;
     }
@@ -3229,130 +3236,6 @@ function buildSatisfiedYearsThresholdLine(input: ResumeWriterInput): string {
   }
 
   return `${input.candidate.career_span_years} years of ${descriptor}.`;
-}
-
-function ensureSatisfiedYearsThresholdVisible(
-  draft: ResumeDraftOutput,
-  input: ResumeWriterInput,
-): ResumeDraftOutput {
-  const yearsThresholdLine = buildSatisfiedYearsThresholdLine(input);
-  if (!yearsThresholdLine) return draft;
-
-  const currentSummary = draft.executive_summary?.content?.trim() ?? '';
-  if (!currentSummary) {
-    return {
-      ...draft,
-      executive_summary: {
-        content: yearsThresholdLine,
-        is_new: true,
-      },
-    };
-  }
-
-  if (summaryAlreadyShowsYearsThreshold(currentSummary, input)) {
-    return draft;
-  }
-
-  // Insert the years threshold AFTER the first sentence, not before it.
-  // This preserves identity-first structure when the section writer leads with
-  // a branded title ("Cloud Infrastructure Architect with 12 years...").
-  // Use ". " (period+space) as sentence boundary to avoid splitting "enterprise..." or "U.S."
-  const sentenceBoundary = currentSummary.indexOf('. ');
-  let updatedContent: string;
-  if (sentenceBoundary > 0) {
-    const firstSentence = currentSummary.slice(0, sentenceBoundary + 1);
-    const rest = currentSummary.slice(sentenceBoundary + 2).trim();
-    updatedContent = `${firstSentence} ${yearsThresholdLine} ${rest}`.trim();
-  } else {
-    updatedContent = `${currentSummary} ${yearsThresholdLine}`.trim();
-  }
-
-  return {
-    ...draft,
-    executive_summary: {
-      ...draft.executive_summary,
-      content: updatedContent,
-      is_new: true,
-    },
-  };
-}
-
-function ensureStrongestProofVisible(
-  draft: ResumeDraftOutput,
-  input: ResumeWriterInput,
-): ResumeDraftOutput {
-  const strongestProofLine = buildStrongestProofSummaryLine(input);
-  if (!strongestProofLine) return draft;
-
-  const currentSummary = draft.executive_summary?.content?.trim() ?? '';
-  if (!currentSummary) {
-    return {
-      ...draft,
-      executive_summary: {
-        content: strongestProofLine,
-        is_new: true,
-      },
-    };
-  }
-
-  const normalizedSummary = currentSummary.toLowerCase();
-  const normalizedStrongestProof = strongestProofLine.toLowerCase().replace(/\.$/, '');
-  if (normalizedSummary.includes(normalizedStrongestProof)) {
-    return draft;
-  }
-
-  // Insert strongest proof AFTER the first sentence to preserve identity-first structure.
-  // Use ". " (period+space) as sentence boundary to avoid splitting "enterprise..." or "U.S."
-  const firstDot = currentSummary.indexOf('. ');
-  let proofContent: string;
-  if (firstDot > 0) {
-    const firstSentence = currentSummary.slice(0, firstDot + 1);
-    const rest = currentSummary.slice(firstDot + 2).trim();
-    proofContent = `${firstSentence} ${strongestProofLine} ${rest}`.trim();
-  } else {
-    proofContent = `${currentSummary} ${strongestProofLine}`.trim();
-  }
-
-  return {
-    ...draft,
-    executive_summary: {
-      ...draft.executive_summary,
-      content: proofContent,
-      is_new: true,
-    },
-  };
-}
-
-function summaryAlreadyShowsYearsThreshold(
-  summary: string,
-  input: ResumeWriterInput,
-): boolean {
-  const normalizedSummary = summary.toLowerCase();
-  const years = input.candidate.career_span_years;
-  if (normalizedSummary.includes(`${years} years`)) {
-    return true;
-  }
-  const mentionedYears = Array.from(summary.matchAll(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/gi))
-    .map((match) => Number(match[1]))
-    .filter((value) => Number.isFinite(value));
-
-  if (mentionedYears.some((value) => value >= years)) {
-    return true;
-  }
-
-  // If any mentioned years value meets the JD threshold, the years are visible enough.
-  // This prevents prepending "12 years of..." when the summary already says "11 years of..."
-  // and the JD only requires 10+.
-  const satisfiedRequirement = input.gap_analysis.requirements.find((requirement) => {
-    const requiredYears = extractYearsThreshold(requirement.requirement);
-    return requiredYears !== null
-      && input.candidate.career_span_years >= requiredYears
-      && requirement.source === 'job_description';
-  });
-
-  if (!satisfiedRequirement) return false;
-  const requiredYears = extractYearsThreshold(satisfiedRequirement.requirement);
-  return requiredYears !== null && mentionedYears.some((value) => value >= requiredYears);
 }
 
 function extractYearsThreshold(text: string): number | null {
