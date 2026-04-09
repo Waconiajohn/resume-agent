@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
@@ -1520,6 +1520,41 @@ export function V2StreamingDisplay({
     hiringManagerResult,
     resolvedFinalReviewConcernIds,
   ]);
+  // Health score: use keyword match when available, fall back to requirement coverage
+  const healthScore = useMemo(() => {
+    if (typeof keywordMatchPercent === 'number') return keywordMatchPercent;
+    const queueSummary = rewriteQueue?.summary;
+    if (queueSummary && queueSummary.total > 0) {
+      return Math.round((queueSummary.handled / queueSummary.total) * 100);
+    }
+    return null;
+  }, [keywordMatchPercent, rewriteQueue?.summary]);
+
+  // Activate the first non-resolved rewrite queue item (transitions Coach → Editor mode)
+  const handleStartReviewing = useCallback(() => {
+    const nextQueueItem = rewriteQueue?.nextItem;
+    if (!nextQueueItem) return;
+
+    // Try to find a matching section coach target by requirement
+    const matchingTarget = sectionCoachTargets.find((target) =>
+      target.requirements.some((req) =>
+        req.toLowerCase().trim() === nextQueueItem.title.toLowerCase().trim(),
+      ),
+    );
+    if (matchingTarget) {
+      openSectionCoachTarget(matchingTarget);
+      window.requestAnimationFrame(() => {
+        scrollToAndFocusTarget(buildResumeLineSelector(matchingTarget.section, matchingTarget.index));
+      });
+      return;
+    }
+
+    // Fall back to the first attention item
+    if (attentionItems.length > 0) {
+      openAttentionItem(0);
+    }
+  }, [attentionItems, openAttentionItem, openSectionCoachTarget, rewriteQueue?.nextItem, sectionCoachTargets]);
+
   const unresolvedCriticalConcerns = useMemo(() => (
     hiringManagerResult?.concerns.filter((concern) => (
       concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
@@ -1706,6 +1741,12 @@ export function V2StreamingDisplay({
           <div className="hidden h-full px-4 py-4 lg:flex xl:px-5 xl:py-5">
             <ResumeEditorLayout
               leftPanel={(() => {
+                const queueSummary = rewriteQueue?.summary ?? null;
+                // 3-mode panel applies only in the editing phase (past structure step, no section draft step, no active bullet)
+                const isInEditingPhase = hasCompletedStructureStep && !isShowingStructurePlan && !currentWorkflowStep && !activeBullet && !showDesktopFinalReview;
+                const isReviewerMode = isInEditingPhase && queueSummary !== null && queueSummary.needsUserInput === 0 && queueSummary.needsApproval <= 2;
+                const isCoachMode = isInEditingPhase && !isReviewerMode;
+
                 const headerTitle = activeBullet
                   ? activeBullet.locationLabel
                   : showDesktopFinalReview
@@ -1714,7 +1755,11 @@ export function V2StreamingDisplay({
                     ? 'Section plan'
                     : currentWorkflowStep
                       ? currentWorkflowStep.title
-                      : 'Review the final draft';
+                      : isReviewerMode
+                        ? 'Ready to Export'
+                      : isCoachMode
+                        ? 'Resume Coach'
+                        : 'Review the final draft';
                 const headerSummary = activeBullet
                   ? 'Use the suggestions below, apply the one that feels true, and then move on.'
                   : showDesktopFinalReview
@@ -1723,7 +1768,11 @@ export function V2StreamingDisplay({
                     ? 'Choose the sections and order before you polish the wording. When the structure looks right, start at the top and work down the resume.'
                     : currentWorkflowStep
                       ? 'Review the full section draft, choose the version that feels right, and then move to the next section.'
-                      : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
+                      : isReviewerMode
+                        ? "You've addressed the key items."
+                      : isCoachMode
+                        ? 'Your resume is ready for review.'
+                        : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
                   <div className="flex flex-col h-full">
@@ -1787,7 +1836,129 @@ export function V2StreamingDisplay({
                             onBulletEnhance={onBulletEnhance}
                           />
                         </div>
+                      ) : isCoachMode ? (
+                        /* ── Coach Mode: default editing phase entry ── */
+                        <div className="space-y-6 py-2">
+                          {typeof healthScore === 'number' && (
+                            <div>
+                              <div className="text-3xl font-bold text-[var(--text-strong)]">{healthScore}%</div>
+                              <div className="text-sm text-[var(--text-soft)] mt-0.5">Resume health</div>
+                              <div className="h-1.5 bg-[var(--surface-1)] rounded-full mt-2 overflow-hidden">
+                                <div
+                                  className="h-1.5 bg-blue-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${healthScore}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {queueSummary && (
+                            <div className="space-y-1.5 text-sm">
+                              {queueSummary.needsUserInput > 0 && (
+                                <div className="flex items-center gap-2 text-[var(--badge-red-text)]">
+                                  <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
+                                  {queueSummary.needsUserInput} item{queueSummary.needsUserInput === 1 ? '' : 's'} need your input
+                                </div>
+                              )}
+                              {queueSummary.needsApproval > 0 && (
+                                <div className="flex items-center gap-2 text-[var(--badge-amber-text)]">
+                                  <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                                  {queueSummary.needsApproval} item{queueSummary.needsApproval === 1 ? '' : 's'} want your approval
+                                </div>
+                              )}
+                              {queueSummary.handled > 0 && (
+                                <div className="flex items-center gap-2 text-[var(--text-soft)]">
+                                  <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                                  {queueSummary.handled} item{queueSummary.handled === 1 ? '' : 's'} handled
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {(queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleStartReviewing}
+                              className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                            >
+                              Start Reviewing
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          )}
+                          {canShowStructurePlanner && (
+                            <button
+                              type="button"
+                              onClick={handleShowStructurePlan}
+                              className="w-full rounded-lg border border-[var(--line-soft)] px-4 py-2 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+                            >
+                              Review section structure
+                            </button>
+                          )}
+                        </div>
+                      ) : isReviewerMode ? (
+                        /* ── Reviewer Mode: all critical items addressed ── */
+                        <div className="space-y-6 py-2">
+                          {typeof healthScore === 'number' && (
+                            <div className="text-center">
+                              <div className="text-5xl font-bold text-[var(--text-strong)]">{healthScore}%</div>
+                              <div className="text-sm text-[var(--text-soft)] mt-1">Resume health</div>
+                              <div className="h-1.5 bg-[var(--surface-1)] rounded-full mt-3 overflow-hidden">
+                                <div
+                                  className="h-1.5 bg-green-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${healthScore}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {displayResume && (
+                            <div className="space-y-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Trigger DOCX download via ExportBar if available, otherwise open the workspace rail
+                                  const docxBtn = document.querySelector<HTMLButtonElement>('[data-export-docx]');
+                                  docxBtn?.click();
+                                }}
+                                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                              >
+                                <Download className="h-4 w-4" />
+                                Download DOCX
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const pdfBtn = document.querySelector<HTMLButtonElement>('[data-export-pdf]');
+                                  pdfBtn?.click();
+                                }}
+                                className="w-full flex items-center justify-center gap-2 rounded-lg border border-[var(--line-soft)] px-4 py-2.5 text-sm font-medium text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+                              >
+                                <Download className="h-4 w-4" />
+                                Download PDF
+                              </button>
+                            </div>
+                          )}
+                          {queueSummary && queueSummary.needsApproval > 0 && (
+                            <p className="text-sm text-[var(--text-soft)]">
+                              {queueSummary.needsApproval} more item{queueSummary.needsApproval === 1 ? '' : 's'} could push it higher.{' '}
+                              <button
+                                type="button"
+                                onClick={handleStartReviewing}
+                                className="text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline transition-colors"
+                              >
+                                Keep going
+                              </button>
+                            </p>
+                          )}
+                          {canShowStructurePlanner && (
+                            <button
+                              type="button"
+                              onClick={handleShowStructurePlan}
+                              className="w-full rounded-lg border border-[var(--line-soft)] px-4 py-2 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+                            >
+                              Review section structure
+                            </button>
+                          )}
+                        </div>
                       ) : (
+                        /* ── Default: section plan / section draft steps ── */
                         <div className="space-y-4">
                           {displayResume && (
                             <div ref={structurePlannerRef}>

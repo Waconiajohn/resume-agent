@@ -175,6 +175,30 @@ function actionWeight(action: RewriteQueueItem['recommendedNextStep']['action'])
   }
 }
 
+/**
+ * Primary sort tier: AI-enhanced items needing approval come before items requiring
+ * candidate input, which come before everything else. This ensures the review queue
+ * starts with fast, satisfying approvals that build momentum before asking for input.
+ */
+function actionTierWeight(item: RewriteQueueItem): number {
+  // AI-enhanced items needing approval come first (fast, satisfying)
+  if (
+    item.recommendedNextStep.action === 'review_edit'
+    || item.recommendedNextStep.action === 'verify'
+  ) {
+    return 0;
+  }
+  // Items needing candidate input come second
+  if (
+    item.recommendedNextStep.action === 'answer_question'
+    || item.recommendedNextStep.action === 'check_hard_requirement'
+  ) {
+    return 1;
+  }
+  // Everything else (view_in_resume, rerun_final_review, etc.)
+  return 2;
+}
+
 function latestAssistantMessage(snapshot: CoachingThreadSnapshot | null | undefined, key: string): GapChatMessage | null {
   const messages = snapshot?.items[normalize(key)]?.messages ?? [];
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -717,6 +741,10 @@ export function buildRewriteQueue(args: {
           : undefined,
     };
   }).sort((left, right) => {
+    // Primary sort: AI review items first, then must-address, then everything else
+    const tierDiff = actionTierWeight(left) - actionTierWeight(right);
+    if (tierDiff !== 0) return tierDiff;
+
     const bucketDiff = bucketWeight(left.bucket) - bucketWeight(right.bucket);
     if (bucketDiff !== 0) return bucketDiff;
 
