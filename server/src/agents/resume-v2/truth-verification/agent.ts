@@ -245,7 +245,7 @@ function attachCanonicalEvidence(output: TruthVerificationOutput): TruthVerifica
 function collectDraftClaims(input: TruthVerificationInput): Array<{ claim: string; section: string; work_item_id?: string }> {
   const claims: Array<{ claim: string; section: string; work_item_id?: string }> = [];
   const pushClaim = (claim: string, section: string, workItemId?: string) => {
-    const trimmed = claim.trim();
+    const trimmed = typeof claim === 'string' ? claim.trim() : '';
     if (!trimmed) return;
     claims.push({ claim: trimmed, section, work_item_id: workItemId });
   };

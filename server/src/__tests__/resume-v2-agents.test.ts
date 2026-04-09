@@ -3769,7 +3769,25 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(result.executive_summary.content).not.toContain('Eagle Ford Shale');
       expect(result.executive_summary.content).not.toContain('Delaware Basin');
-      expect(result.executive_summary.content).toContain(input.candidate.leadership_scope);
+      expect(result.executive_summary.content).not.toContain('Directed multi-site operations spanning 3 regions');
+      expect(result.executive_summary.content.length).toBeGreaterThan(0);
+    });
+
+    it('removes banned display wording from returned drafts', async () => {
+      const contaminatedDraft: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          ...RESUME_DRAFT_OUTPUT.executive_summary,
+          content: 'Spearheaded enterprise product launches that improved growth and operating performance.',
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(contaminatedDraft);
+
+      const result = await runResumeWriter(input);
+
+      expect(result.executive_summary.content).not.toContain('Spearheaded');
+      expect(result.executive_summary.content).toContain('Led enterprise product launches');
     });
 
     it('includes gap positioning map in user message when provided', async () => {

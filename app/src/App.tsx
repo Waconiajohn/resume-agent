@@ -26,10 +26,12 @@ import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { flushProductTelemetryEvents } from '@/lib/product-telemetry-sync';
 import {
+  buildResumeBuilderSessionRoute,
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
   getAppView,
   getNormalizedWorkspaceRedirect,
+  getResumeBuilderSessionIdFromSearch,
   getWorkspaceEntryRedirect,
   getWorkspaceRoomFromSearch,
   RESUME_BUILDER_SESSION_ROUTE,
@@ -109,11 +111,14 @@ export default function App() {
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
-  const [v2SessionId, setV2SessionId] = useState<string | null>(null);
-
   const currentView = getAppView(location.pathname);
   const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
   const normalizedWorkspaceRedirect = getNormalizedWorkspaceRedirect(location.search);
+  const resumeRouteSessionId = useMemo(() => (
+    location.pathname === RESUME_BUILDER_SESSION_ROUTE
+      ? getResumeBuilderSessionIdFromSearch(location.search) ?? null
+      : null
+  ), [location.pathname, location.search]);
   const isResumeV2VisualHarnessRoute = import.meta.env.DEV && location.pathname === '/__dev/resume-v2-visual';
   const isDiscoveryRoute = location.pathname === '/discover';
   const hasLiveWorkspaceState = Boolean(
@@ -169,8 +174,7 @@ export default function App() {
   useEffect(() => {
     if (location.pathname !== '/coach') return;
     if (currentSession?.product_type !== 'resume_v2') return;
-    setV2SessionId(currentSession.id);
-    navigate(RESUME_BUILDER_SESSION_ROUTE, { replace: true });
+    navigate(buildResumeBuilderSessionRoute({ sessionId: currentSession.id }), { replace: true });
   }, [currentSession, location.pathname, navigate]);
 
   const intakeInitialJobUrl = useMemo(() => {
@@ -227,7 +231,6 @@ export default function App() {
   }, [navigate]);
 
   const handleNewSession = useCallback(async () => {
-    setV2SessionId(null);
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
     trackProductEvent('resume_builder_session_started', { source: 'workspace_resume_builder' });
@@ -244,15 +247,13 @@ export default function App() {
     async (sessionId: string) => {
       const targetSession = sessions.find((session) => session.id === sessionId);
       if (targetSession?.product_type === 'resume_v2') {
-        setV2SessionId(sessionId);
-        navigate(RESUME_BUILDER_SESSION_ROUTE);
+        navigate(buildResumeBuilderSessionRoute({ sessionId }));
         return;
       }
 
       const loadedSession = await loadSession(sessionId);
       if (loadedSession?.product_type === 'resume_v2') {
-        setV2SessionId(sessionId);
-        navigate(RESUME_BUILDER_SESSION_ROUTE);
+        navigate(buildResumeBuilderSessionRoute({ sessionId }));
         return;
       }
 
@@ -484,7 +485,6 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     await signOut();
     setCurrentSession(null);
-    setV2SessionId(null);
     navigate('/sales');
   }, [navigate, setCurrentSession, signOut]);
 
@@ -651,7 +651,7 @@ export default function App() {
                         const resume = await getDefaultResume();
                         return resume?.raw_text?.trim() || null;
                       }}
-                      initialSessionId={v2SessionId ?? undefined}
+      initialSessionId={resumeRouteSessionId ?? undefined}
                       onSyncToMasterResume={handleSyncV2ResumeToMaster}
                     />
                   </WorkspaceLayout>

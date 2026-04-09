@@ -144,6 +144,18 @@ const VALID_RESCORE_BODY = {
   job_description: VALID_JD,
 };
 
+const VALID_SECTION_DRAFT_BODY = {
+  step_id: 'executive_summary',
+  section_kind: 'executive_summary',
+  section_key: 'executive_summary',
+  section_title: 'Executive Summary',
+  current_content: 'Experienced sales leader with strong client relationships.',
+  requirement_focus: ['Consultative selling', 'Revenue growth'],
+  why_this_section_matters: 'Lead with identity and fit.',
+  step_number: 1,
+  total_steps: 4,
+} as const;
+
 /**
  * Build a chainable Supabase mock that resolves .single() with the given result.
  * Handles: .from().select/insert/update().eq().eq().select().single()
@@ -946,6 +958,110 @@ describe('POST /api/resume-v2/:sessionId/bullet-enhance', () => {
     expect(prompt).toContain('This is an executive summary line, not a bullet.');
     expect(prompt).toContain('Rewrite this executive summary line to mirror the target role more directly.');
     expect(prompt).toContain('COACHING GOAL: "Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance."');
+  });
+});
+
+describe('POST /api/resume-v2/:sessionId/section-draft', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const chain = buildSingleChain({
+      data: {
+        id: SESSION_ID,
+        user_id: 'test-user-123',
+        tailored_sections: {
+          pipeline_data: {
+            candidateIntelligence: {
+              leadership_scope: 'Led cross-functional sales and solution teams across enterprise accounts.',
+              operational_scale: 'Large-scale banking and finance operations',
+              career_span_years: 15,
+              career_themes: ['consultative selling', 'complex solutions', 'customer growth'],
+              quantified_outcomes: [
+                { outcome: 'Delivered revenue growth across diverse agencies', value: '$9M, $40M, $15M' },
+              ],
+            },
+            jobIntelligence: {
+              role_title: 'Technical Sales Consultant - Digital Receivables',
+              company_name: 'US Bank',
+              core_competencies: [
+                { competency: 'Consultative selling', importance: 'must_have' },
+                { competency: 'Revenue growth', importance: 'must_have' },
+              ],
+              business_problems: ['Grow receivables revenue in banking clients'],
+            },
+            gapAnalysis: {
+              strength_summary: 'Strong consultative sales background with visible client trust signals.',
+              requirements: [
+                {
+                  requirement: 'Consultative selling',
+                  source_evidence: 'Own complex banking sales cycles',
+                },
+              ],
+            },
+          },
+          draft_state: {
+            editable_resume: {
+              header: {
+                branded_title: 'Technical Sales Consultant | Digital Receivables',
+              },
+              selected_accomplishments: [
+                { content: 'Delivered customized solutions to customers, resulting in revenue growth across diverse agencies.' },
+              ],
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+    mockParseJsonBodyWithLimit.mockResolvedValue({ ok: true, data: VALID_SECTION_DRAFT_BODY });
+    mockLlmChat.mockResolvedValue({
+      text: '{"recommended":{"kind":"paragraph","paragraph":"Technical sales consultant who delivered revenue growth across diverse agencies."},"safer":{"kind":"paragraph","paragraph":"Technical sales consultant supporting complex solution sales."},"stronger":{"kind":"paragraph","paragraph":"Technical sales consultant who delivered revenue growth across diverse agencies while leading complex banking sales cycles."},"why_it_works":["Leads with role identity.","Uses grounded revenue proof.","Connects to the target role."],"strengthening_note":"Use the strongest truthful version."}',
+    });
+    mockRepairJSON.mockReturnValue({
+      recommended: { kind: 'paragraph', paragraph: 'Technical sales consultant who delivered revenue growth across diverse agencies.' },
+      safer: { kind: 'paragraph', paragraph: 'Technical sales consultant supporting complex solution sales.' },
+      stronger: { kind: 'paragraph', paragraph: 'Technical sales consultant who delivered revenue growth across diverse agencies while leading complex banking sales cycles.' },
+      why_it_works: ['Leads with role identity.', 'Uses grounded revenue proof.', 'Connects to the target role.'],
+      strengthening_note: 'Use the strongest truthful version.',
+    });
+  });
+
+  it('adds top-of-page resume context to executive summary draft prompts', async () => {
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/section-draft`, 'POST', VALID_SECTION_DRAFT_BODY);
+
+    expect(res.status).toBe(200);
+    const llmArgs = mockLlmChat.mock.calls[0]?.[0] as {
+      model: string;
+      messages: Array<{ role: string; content: string }>;
+    };
+    const prompt = llmArgs.messages[0]?.content ?? '';
+
+    expect(llmArgs.model).toBe('model-primary');
+    expect(prompt).toContain('CURRENT TOP-OF-PAGE CONTEXT:');
+    expect(prompt).toContain('CURRENT HEADLINE: Technical Sales Consultant | Digital Receivables');
+    expect(prompt).toContain('SELECTED ACCOMPLISHMENTS PREVIEW:');
+    expect(prompt).toContain('TOP QUANTIFIED OUTCOMES:');
+    expect(prompt).toContain('Choose the strongest opening approach yourself');
+  });
+
+  it('returns a grounded executive-summary fallback instead of a hard failure when drafting is unusable', async () => {
+    mockRepairJSON.mockReturnValue(null);
+    mockLlmChat.mockResolvedValue({ text: 'not valid json' });
+
+    const res = await callApp(`/api/resume-v2/${SESSION_ID}/section-draft`, 'POST', VALID_SECTION_DRAFT_BODY);
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      recommendedVariantId: string;
+      variants: Array<{ id: string; content: { kind: string; paragraph?: string } }>;
+      strengtheningNote?: string;
+    };
+
+    expect(body.recommendedVariantId).toBe('recommended');
+    expect(body.variants[1]?.content.kind).toBe('paragraph');
+    expect(body.variants[1]?.content.paragraph).toContain('Technical Sales Consultant | Digital Receivables');
+    expect(body.strengtheningNote).toContain('assembled from the strongest current evidence');
   });
 });
 

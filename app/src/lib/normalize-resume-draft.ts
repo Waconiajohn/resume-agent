@@ -14,6 +14,19 @@ import type {
 } from '@/types/resume-v2';
 import { buildResumeSectionPlan, normalizeResumeCustomSections } from '@/lib/resume-section-plan';
 
+const BRACKET_PLACEHOLDER_PATTERN = /\[[^\]]{2,80}\]\s*:?\s*/g;
+const PROMPT_EXAMPLE_LEAKAGE_MARKERS = [
+  'eagle ford shale',
+  'delaware basin',
+  'bha failures',
+  'insulated drill pipe',
+  'drilling fluid program',
+  'well completions',
+];
+const BANNED_DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bspearheaded\b/gi, 'Led'],
+];
+
 type LooseRequirementSource = RequirementSource | string | null | undefined;
 type LooseBulletConfidence = BulletConfidence | string | null | undefined;
 type LooseContentOrigin = ResumeContentOrigin | string | null | undefined;
@@ -23,6 +36,35 @@ type LooseBulletSource = 'original' | 'enhanced' | 'drafted' | string | null | u
 type LooseProofLevel = ProofLevel | string | null | undefined;
 type LooseFramingGuardrail = FramingGuardrail | string | null | undefined;
 type LooseNextBestAction = NextBestAction | string | null | undefined;
+
+function sanitizeResumeDisplayText(value: string | undefined): string {
+  if (typeof value !== 'string' || value.trim().length === 0) return '';
+
+  const stripped = value
+    .replace(BRACKET_PLACEHOLDER_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!stripped) return '';
+
+  const cleanedSentences = stripped
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      const lower = sentence.toLowerCase();
+      if (PROMPT_EXAMPLE_LEAKAGE_MARKERS.some((marker) => lower.includes(marker))) {
+        return '';
+      }
+
+      let cleaned = sentence.trim();
+      for (const [pattern, replacement] of BANNED_DISPLAY_REPLACEMENTS) {
+        cleaned = cleaned.replace(pattern, replacement);
+      }
+      return cleaned.trim();
+    })
+    .filter((sentence) => sentence.length > 0);
+
+  return cleanedSentences.join(' ').replace(/\s+/g, ' ').trim();
+}
 
 function normalizeRequirementSource(value: LooseRequirementSource): RequirementSource {
   return value === 'benchmark' ? 'benchmark' : 'job_description';
@@ -238,6 +280,7 @@ function normalizeRequirements(value: unknown): string[] {
 
 function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
   const bullets = Array.isArray(entry?.bullets) ? entry.bullets : [];
+  const scopeStatement = sanitizeResumeDisplayText(typeof entry?.scope_statement === 'string' ? entry.scope_statement : '');
 
   return {
     ...entry,
@@ -245,9 +288,10 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
     title: typeof entry?.title === 'string' ? entry.title : '',
     start_date: typeof entry?.start_date === 'string' ? entry.start_date : '',
     end_date: typeof entry?.end_date === 'string' ? entry.end_date : '',
-    scope_statement: typeof entry?.scope_statement === 'string' ? entry.scope_statement : '',
+    scope_statement: scopeStatement,
     bullets: bullets.map((bullet) => {
-      const evidenceFound = typeof bullet?.evidence_found === 'string' ? bullet.evidence_found : '';
+      const sanitizedText = sanitizeResumeDisplayText(typeof bullet?.text === 'string' ? bullet.text : '');
+      const evidenceFound = sanitizeResumeDisplayText(typeof bullet?.evidence_found === 'string' ? bullet.evidence_found : '');
       const addressesRequirements = normalizeRequirements(bullet?.addresses_requirements);
       const isNew = Boolean(bullet?.is_new);
       const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, bullet?.confidence, bullet?.content_origin);
@@ -264,7 +308,7 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
       return {
         ...bullet,
         work_item_id: normalizeWorkItemId((bullet as { work_item_id?: unknown })?.work_item_id),
-        text: typeof bullet?.text === 'string' ? bullet.text : '',
+        text: sanitizedText,
         is_new: isNew,
         addresses_requirements: addressesRequirements,
         primary_target_requirement: primaryTargetRequirement,
@@ -282,7 +326,7 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
             confidence,
             source: (bullet as { source?: LooseBulletSource })?.source,
             evidenceFound,
-            currentText: typeof bullet?.text === 'string' ? bullet.text : '',
+            currentText: sanitizedText,
             isNew,
           },
         ),
@@ -303,7 +347,7 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
               confidence,
               source: (bullet as { source?: LooseBulletSource })?.source,
               evidenceFound,
-              currentText: typeof bullet?.text === 'string' ? bullet.text : '',
+              currentText: sanitizedText,
               isNew,
             },
           ),
@@ -313,7 +357,7 @@ function normalizeExperienceEntry(entry: ResumeExperience): ResumeExperience {
           framingGuardrail,
         }),
       };
-    }),
+    }).filter((bullet) => bullet.text.length > 0),
   };
 }
 
@@ -339,6 +383,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
 
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
   const professionalExperience = Array.isArray(resume.professional_experience) ? resume.professional_experience : [];
+  const executiveSummaryContent = sanitizeResumeDisplayText(typeof resume.executive_summary?.content === 'string' ? resume.executive_summary.content : '');
 
   const normalizedBase: ResumeDraft = {
     ...resume,
@@ -350,15 +395,19 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
       branded_title: typeof resume.header?.branded_title === 'string' ? resume.header.branded_title : '',
     },
     executive_summary: {
-      content: typeof resume.executive_summary?.content === 'string' ? resume.executive_summary.content : '',
+      content: executiveSummaryContent,
       is_new: Boolean(resume.executive_summary?.is_new),
       addresses_requirements: normalizeRequirements(resume.executive_summary?.addresses_requirements),
     },
     core_competencies: Array.isArray(resume.core_competencies)
-      ? resume.core_competencies.filter((item): item is string => typeof item === 'string')
+      ? resume.core_competencies
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => sanitizeResumeDisplayText(item))
+        .filter((item) => item.length > 0)
       : [],
     selected_accomplishments: selectedAccomplishments.map((item) => {
-      const evidenceFound = typeof item?.evidence_found === 'string' ? item.evidence_found : '';
+      const sanitizedContent = sanitizeResumeDisplayText(typeof item?.content === 'string' ? item.content : '');
+      const evidenceFound = sanitizeResumeDisplayText(typeof item?.evidence_found === 'string' ? item.evidence_found : '');
       const addressesRequirements = normalizeRequirements(item?.addresses_requirements);
       const isNew = Boolean(item?.is_new);
       const confidence = inferConfidence(isNew, evidenceFound, addressesRequirements, item?.confidence, item?.content_origin);
@@ -375,7 +424,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
       return {
         ...item,
         work_item_id: normalizeWorkItemId((item as { work_item_id?: unknown })?.work_item_id),
-        content: typeof item?.content === 'string' ? item.content : '',
+        content: sanitizedContent,
         is_new: isNew,
         addresses_requirements: addressesRequirements,
         primary_target_requirement: primaryTargetRequirement,
@@ -393,7 +442,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
             confidence,
             source: (item as { source?: LooseBulletSource })?.source,
             evidenceFound,
-            currentText: typeof item?.content === 'string' ? item.content : '',
+            currentText: sanitizedContent,
             isNew,
           },
         ),
@@ -414,7 +463,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
               confidence,
               source: (item as { source?: LooseBulletSource })?.source,
               evidenceFound,
-              currentText: typeof item?.content === 'string' ? item.content : '',
+              currentText: sanitizedContent,
               isNew,
             },
           ),
@@ -424,7 +473,7 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
           framingGuardrail,
         }),
       };
-    }),
+    }).filter((item) => item.content.length > 0),
     selected_accomplishment_targets: normalizeSelectedAccomplishmentTargets(resume.selected_accomplishment_targets),
     professional_experience: professionalExperience.map((entry) => normalizeExperienceEntry(entry)),
     earlier_career: Array.isArray(resume.earlier_career)
@@ -442,9 +491,18 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
         }))
       : [],
     certifications: Array.isArray(resume.certifications)
-      ? resume.certifications.filter((item): item is string => typeof item === 'string')
+      ? resume.certifications
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => sanitizeResumeDisplayText(item))
+        .filter((item) => item.length > 0)
       : [],
-    custom_sections: normalizeResumeCustomSections(resume),
+    custom_sections: normalizeResumeCustomSections(resume).map((section) => ({
+      ...section,
+      summary: typeof section.summary === 'string' ? sanitizeResumeDisplayText(section.summary) : section.summary,
+      lines: Array.isArray(section.lines)
+        ? section.lines.map((line) => sanitizeResumeDisplayText(line)).filter((line) => line.length > 0)
+        : [],
+    })),
   };
 
   return {

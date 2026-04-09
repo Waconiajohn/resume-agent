@@ -11,6 +11,7 @@ const mockGetDefaultResume = vi.fn(async () => ({
   id: 'resume-1',
   raw_text: 'Default resume text',
 }));
+const mockV2ResumeScreen = vi.fn();
 const mockLoadSession = vi.fn<(sessionId: string) => Promise<{ id: string; product_type?: string } | undefined>>(async () => undefined);
 const mockListSessions = vi.fn();
 const mockListResumes = vi.fn();
@@ -134,7 +135,10 @@ vi.mock('@/components/career-iq/CareerIQScreen', () => ({
 }));
 
 vi.mock('@/components/resume-v2/V2ResumeScreen', () => ({
-  V2ResumeScreen: () => <div>Resume V2 Screen</div>,
+  V2ResumeScreen: (props: unknown) => {
+    mockV2ResumeScreen(props);
+    return <div>Resume V2 Screen</div>;
+  },
 }));
 
 vi.mock('@/components/PricingPage', () => ({
@@ -168,6 +172,7 @@ describe('App routing shell', () => {
     mockLoadSession.mockResolvedValue(undefined);
     mockListSessions.mockReset();
     mockListResumes.mockReset();
+    mockV2ResumeScreen.mockReset();
     mockSessionState.sessions = [];
     mockSessionState.currentSession = null;
   });
@@ -218,6 +223,11 @@ describe('App routing shell', () => {
       expect(screen.getAllByText('Resume V2 Screen').length).toBeGreaterThan(0);
     });
     expect(mockLoadSession).toHaveBeenCalledWith('resume-v2-extra');
+    expect(mockV2ResumeScreen).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        initialSessionId: 'resume-v2-extra',
+      }),
+    );
   });
 
   it('redirects a resume-v2 coach route back into the v2 builder', async () => {

@@ -26,6 +26,7 @@ import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '
 import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
+import { withRetry } from '../lib/retry.js';
 import {
   buildRequirementClarifyingQuestion,
   buildRequirementFallbackQuestion,
@@ -60,6 +61,7 @@ import {
   extractHardRequirementRisksFromGapAnalysis,
   extractMaterialJobFitRisksFromGapAnalysis,
 } from './resume-v2-pipeline-support.js';
+import { BANNED_PHRASES } from '../agents/resume-v2/knowledge/resume-rules.js';
 
 export const resumeV2Pipeline = new Hono();
 
@@ -1085,7 +1087,7 @@ function buildLineCoachStarter(request: LineCoachRequest): StructuredCoachingRes
     response: hasPriorClarifications
       ? 'I will first reuse the strongest confirmed details you already shared earlier. I will only ask a new question if one critical detail is still missing after that.'
       : 'I will start by drafting the safest strong version I can from the evidence already here. If one detail would materially strengthen it, I will ask a short confirm-or-correct question instead of an open-ended one.',
-    follow_up_question: undefined,
+    follow_up_question: hasPriorClarifications ? undefined : starterQuestion,
     current_question: hasPriorClarifications ? undefined : starterQuestion,
     needs_candidate_input: false,
     recommended_next_action: 'review_edit',
@@ -1267,6 +1269,494 @@ const bulletEnhanceSchema = z.object({
   coaching_goal: z.string().max(2000).optional(),
   clarifying_questions: z.array(z.string().max(2000)).max(5).optional(),
 });
+
+const sectionDraftSchema = z.object({
+  step_id: z.string().max(200),
+  section_kind: z.enum(['executive_summary', 'selected_accomplishments', 'experience_role', 'core_competencies', 'custom_section']),
+  section_key: z.string().max(200),
+  section_title: z.string().max(500),
+  current_content: z.string().min(5).max(12_000),
+  requirement_focus: z.array(z.string().max(1000)).max(5).optional(),
+  why_this_section_matters: z.string().max(3000).optional(),
+  step_number: z.number().int().min(1).max(50),
+  total_steps: z.number().int().min(1).max(50),
+  experience_index: z.number().int().min(0).max(100).optional(),
+  custom_section_id: z.string().max(200).optional(),
+});
+
+const SECTION_DRAFT_LEAKAGE_MARKERS = [
+  'eagle ford shale',
+  'delaware basin',
+  'bha failures',
+  'insulated drill pipe',
+  'drilling fluid program',
+  'well completions',
+];
+const SECTION_DRAFT_BRACKET_PATTERN = /\[[^\]]{2,80}\]\s*:?\s*/g;
+const SECTION_DRAFT_BANNED_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bspearheaded\b/gi, 'Led'],
+];
+
+type SectionDraftVariantPayload =
+  | { kind: 'paragraph'; paragraph: string }
+  | { kind: 'bullet_list'; lines: string[] }
+  | { kind: 'keyword_list'; lines: string[] }
+  | { kind: 'role_block'; scopeStatement?: string; lines?: string[] };
+
+function sanitizeSectionDraftText(value: string): string {
+  let sanitized = value.replace(SECTION_DRAFT_BRACKET_PATTERN, '').trim();
+  SECTION_DRAFT_BANNED_REPLACEMENTS.forEach(([pattern, replacement]) => {
+    sanitized = sanitized.replace(pattern, replacement);
+  });
+
+  const sentences = sanitized
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .filter((sentence) => !SECTION_DRAFT_LEAKAGE_MARKERS.some((marker) => sentence.toLowerCase().includes(marker)));
+
+  return sentences.join(' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+function sanitizeSectionDraftLines(lines: unknown): string[] {
+  if (!Array.isArray(lines)) return [];
+  return lines
+    .map((line) => (typeof line === 'string' ? sanitizeSectionDraftText(line.replace(/^[•*-]\s*/, '')) : ''))
+    .filter((line) => line.length > 0)
+    .slice(0, 6);
+}
+
+function containsBannedSectionPhrase(text: string): boolean {
+  const normalized = text.toLowerCase();
+  if (
+    /^(results[-\s]?driven|seasoned|dynamic|veteran)\b/.test(normalized)
+    || /\bprofessional with expertise in\b/.test(normalized)
+    || /\bproven track record\b/.test(normalized)
+  ) {
+    return true;
+  }
+
+  return BANNED_PHRASES.some((phrase) => normalized.includes(phrase));
+}
+
+function requirementOverlapScore(left: string, right: string): number {
+  const leftTokens = new Set(left.toLowerCase().split(/\s+/).filter(Boolean));
+  const rightTokens = new Set(right.toLowerCase().split(/\s+/).filter(Boolean));
+  if (leftTokens.size === 0 || rightTokens.size === 0) return 0;
+  let overlap = 0;
+  leftTokens.forEach((token) => {
+    if (rightTokens.has(token)) overlap += 1;
+  });
+  return overlap / Math.max(leftTokens.size, rightTokens.size);
+}
+
+type SectionDraftResumeContext = {
+  headline?: string;
+  selectedAccomplishments: string[];
+  topOutcomes: string[];
+  strongestThemes: string[];
+  leadershipScope?: string;
+  operationalScale?: string;
+  targetRole?: string;
+  companyName?: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function extractLatestResumeDraft(snapshot: Record<string, unknown> | null): Record<string, unknown> | null {
+  const draftState = asRecord(snapshot?.draft_state);
+  const editableResume = asRecord(draftState?.editable_resume);
+  if (editableResume) return editableResume;
+
+  const pipelineData = asRecord(snapshot?.pipeline_data ?? snapshot);
+  const assembly = asRecord(pipelineData?.assembly);
+  const finalResume = asRecord(assembly?.final_resume);
+  if (finalResume) return finalResume;
+
+  return asRecord(pipelineData?.resumeDraft);
+}
+
+function buildSectionDraftResumeContext(snapshot: Record<string, unknown> | null): SectionDraftResumeContext {
+  const pipelineData = asRecord(snapshot?.pipeline_data ?? snapshot);
+  const latestResume = extractLatestResumeDraft(snapshot);
+  const header = asRecord(latestResume?.header);
+  const selectedAccomplishments = Array.isArray(latestResume?.selected_accomplishments)
+    ? (latestResume?.selected_accomplishments as unknown[])
+        .map((item) => asString(asRecord(item)?.content))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+
+  const candidate = asRecord(pipelineData?.candidateIntelligence ?? pipelineData?.candidate_intelligence);
+  const quantifiedOutcomes = Array.isArray(candidate?.quantified_outcomes)
+    ? (candidate?.quantified_outcomes as unknown[])
+        .map((item) => {
+          const record = asRecord(item);
+          const outcome = asString(record?.outcome);
+          const value = asString(record?.value);
+          return [outcome, value ? `(${value})` : ''].filter(Boolean).join(' ');
+        })
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
+  const strongestThemes = asStringArray(candidate?.career_themes).slice(0, 4);
+
+  const jobIntelligence = asRecord(pipelineData?.jobIntelligence ?? pipelineData?.job_intelligence);
+
+  return {
+    headline: asString(header?.branded_title),
+    selectedAccomplishments,
+    topOutcomes: quantifiedOutcomes,
+    strongestThemes,
+    leadershipScope: asString(candidate?.leadership_scope),
+    operationalScale: asString(candidate?.operational_scale),
+    targetRole: asString(jobIntelligence?.role_title),
+    companyName: asString(jobIntelligence?.company_name),
+  };
+}
+
+function buildSectionDraftResumeContextBlock(
+  sectionKind: z.infer<typeof sectionDraftSchema>['section_kind'],
+  context: SectionDraftResumeContext,
+): string {
+  const lines: string[] = [];
+
+  if (context.headline) {
+    lines.push(`CURRENT HEADLINE: ${context.headline}`);
+  }
+
+  if (sectionKind === 'executive_summary') {
+    if (context.selectedAccomplishments.length > 0) {
+      lines.push(
+        'SELECTED ACCOMPLISHMENTS PREVIEW:',
+        ...context.selectedAccomplishments.map((item) => `- ${item}`),
+      );
+    }
+    if (context.topOutcomes.length > 0) {
+      lines.push(
+        'TOP QUANTIFIED OUTCOMES:',
+        ...context.topOutcomes.map((item) => `- ${item}`),
+      );
+    }
+    if (context.strongestThemes.length > 0) {
+      lines.push(`STRONGEST THEMES: ${context.strongestThemes.join(', ')}`);
+    }
+    if (context.leadershipScope) {
+      lines.push(`LEADERSHIP SCOPE SIGNAL: ${context.leadershipScope}`);
+    }
+    if (context.operationalScale) {
+      lines.push(`OPERATING SCALE SIGNAL: ${context.operationalScale}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function cleanSentence(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().replace(/[.]+$/, '');
+}
+
+function toContinuation(value: string): string {
+  const cleaned = cleanSentence(value);
+  if (!cleaned) return '';
+  return cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+}
+
+function ensureSentence(value: string): string {
+  const cleaned = cleanSentence(value);
+  if (!cleaned) return '';
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
+}
+
+function buildExecutiveSummaryFallbackPayload(
+  input: z.infer<typeof sectionDraftSchema>,
+  context: SectionDraftResumeContext,
+): {
+  recommended: SectionDraftVariantPayload;
+  safer: SectionDraftVariantPayload;
+  stronger: SectionDraftVariantPayload;
+  why_it_works: string[];
+  strengthening_note: string;
+} {
+  const roleLead = context.headline || context.targetRole || 'Leader';
+  const firstRequirement = input.requirement_focus?.[0];
+  const secondRequirement = input.requirement_focus?.[1];
+  const strongestOutcome = context.topOutcomes[0];
+  const secondOutcome = context.topOutcomes[1];
+  const strongestAccomplishment = context.selectedAccomplishments[0];
+  const themePair = context.strongestThemes.slice(0, 2).join(' and ');
+
+  const opening = ensureSentence(
+    strongestOutcome
+      ? `${roleLead} who ${toContinuation(strongestOutcome)}`
+      : firstRequirement
+        ? `${roleLead} aligned to ${toContinuation(firstRequirement)} priorities`
+        : `${roleLead} with experience that matches this role`,
+  );
+  const fitSentence = ensureSentence(
+    [
+      secondRequirement ? `Brings visible proof around ${secondRequirement}` : '',
+      context.leadershipScope ? cleanSentence(context.leadershipScope) : '',
+      themePair ? `with strength in ${themePair}` : '',
+    ].filter(Boolean).join(', '),
+  );
+  const businessSentence = ensureSentence(
+    strongestAccomplishment
+      ? strongestAccomplishment
+      : secondOutcome
+        ? `${roleLead} also ${toContinuation(secondOutcome)}`
+        : context.operationalScale
+          ? `Has operated at ${toContinuation(context.operationalScale)}`
+          : '',
+  );
+
+  const saferParagraph = [opening, fitSentence].filter(Boolean).join(' ');
+  const recommendedParagraph = [opening, fitSentence, businessSentence].filter(Boolean).join(' ');
+  const strongerParagraph = [
+    ensureSentence(
+      strongestOutcome && firstRequirement
+        ? `${roleLead} who ${toContinuation(strongestOutcome)} while staying tightly aligned to ${firstRequirement}`
+        : opening,
+    ),
+    fitSentence,
+    businessSentence,
+  ].filter(Boolean).join(' ');
+
+  return {
+    recommended: { kind: 'paragraph', paragraph: recommendedParagraph },
+    safer: { kind: 'paragraph', paragraph: saferParagraph || recommendedParagraph },
+    stronger: { kind: 'paragraph', paragraph: strongerParagraph || recommendedParagraph },
+    why_it_works: [
+      'It gives the section a full opening paragraph instead of recycling fragments.',
+      firstRequirement
+        ? `It keeps ${firstRequirement} visible near the top of the page.`
+        : 'It leads with role fit instead of generic trait language.',
+      'It stays grounded in the current resume and strongest visible proof.',
+    ],
+    strengthening_note: 'Live drafting had trouble, so this version was assembled from the strongest current evidence and top-of-page proof.',
+  };
+}
+
+function buildSectionDraftPrompt(
+  input: z.infer<typeof sectionDraftSchema>,
+  args: {
+    candidateContext: string;
+    narrativeContext: string;
+    jobContext: string;
+    gapContext: string;
+    resumeContext: string;
+  },
+): string {
+  const { section_kind, section_title, current_content, requirement_focus = [], why_this_section_matters, step_number, total_steps } = input;
+  const requirementLine = requirement_focus.length > 0
+    ? `TOP ROLE NEEDS FOR THIS SECTION: ${requirement_focus.join(' | ')}`
+    : '';
+
+  const sectionInstructions = (() => {
+    switch (section_kind) {
+      case 'executive_summary':
+        return [
+          'Write a complete executive summary paragraph, not a fragment.',
+          'Use 3-5 sentences.',
+          'Choose the strongest opening approach yourself: identity-first, business-impact-first, or role-fit-first.',
+          'Sentence 1 must sound like a real top-of-resume opening, not a generic professional summary.',
+          'Anchor the paragraph to the headline, strongest quantified proof, and selected accomplishments preview when they help.',
+          'The rest should show strongest business value, leadership credibility, and role relevance.',
+          'If the current summary is weak, replace it rather than paraphrasing it.',
+          'Avoid empty "with expertise in" stacks, generic trait lists, and broad professional-summary language.',
+          'Return paragraph variants only, not bullets.',
+        ];
+      case 'selected_accomplishments':
+        return [
+          'Write the entire Selected Accomplishments section.',
+          'Return 3 bullets.',
+          'Each bullet must be concrete, executive, and defensible.',
+          'Bring the strongest proof points higher on the page.',
+        ];
+      case 'experience_role':
+        return [
+          `Rewrite the full role block for "${section_title}".`,
+          'Return one scope statement and 2-4 bullets.',
+          'Show what the candidate owned, how big it was, and what changed.',
+          'Keep every claim defensible and rooted in the current role evidence.',
+        ];
+      case 'core_competencies':
+        return [
+          'Return a tighter core competencies list.',
+          'Use short ATS-friendly keyword phrases, not full sentences.',
+          'Keep only the phrases that help this search most.',
+        ];
+      case 'custom_section':
+      default:
+        return [
+          `Rewrite the full "${section_title}" section.`,
+          'Return a polished section that supports the overall role story.',
+          'Use a paragraph if the current section reads like a paragraph. Use bullets if it reads like a proof list.',
+        ];
+    }
+  })();
+
+  const outputShape = (() => {
+    switch (section_kind) {
+      case 'executive_summary':
+        return `{
+  "recommended": { "kind": "paragraph", "paragraph": "<best draft>" },
+  "safer": { "kind": "paragraph", "paragraph": "<safer draft>" },
+  "stronger": { "kind": "paragraph", "paragraph": "<stronger if true draft>" },
+  "why_it_works": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "strengthening_note": "<optional one-line note>"
+}`;
+      case 'selected_accomplishments':
+        return `{
+  "recommended": { "kind": "bullet_list", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "safer": { "kind": "bullet_list", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "stronger": { "kind": "bullet_list", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "why_it_works": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "strengthening_note": "<optional one-line note>"
+}`;
+      case 'experience_role':
+        return `{
+  "recommended": { "kind": "role_block", "scopeStatement": "<scope statement>", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "safer": { "kind": "role_block", "scopeStatement": "<scope statement>", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "stronger": { "kind": "role_block", "scopeStatement": "<scope statement>", "lines": ["<bullet 1>", "<bullet 2>", "<bullet 3>"] },
+  "why_it_works": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "strengthening_note": "<optional one-line note>"
+}`;
+      case 'core_competencies':
+        return `{
+  "recommended": { "kind": "keyword_list", "lines": ["<phrase 1>", "<phrase 2>", "<phrase 3>"] },
+  "safer": { "kind": "keyword_list", "lines": ["<phrase 1>", "<phrase 2>", "<phrase 3>"] },
+  "stronger": { "kind": "keyword_list", "lines": ["<phrase 1>", "<phrase 2>", "<phrase 3>"] },
+  "why_it_works": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "strengthening_note": "<optional one-line note>"
+}`;
+      case 'custom_section':
+      default:
+        return `{
+  "recommended": { "kind": "paragraph", "paragraph": "<best draft>" },
+  "safer": { "kind": "paragraph", "paragraph": "<safer draft>" },
+  "stronger": { "kind": "paragraph", "paragraph": "<stronger if true draft>" },
+  "why_it_works": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "strengthening_note": "<optional one-line note>"
+}`;
+    }
+  })();
+
+  return [
+    'You are the section writer inside a premium executive resume workflow.',
+    'Write the strongest truthful version of the entire section first.',
+    'Do not coach. Do not explain process. Deliver ready-to-use section drafts.',
+    '',
+    `SECTION TITLE: ${section_title}`,
+    `SECTION KIND: ${section_kind}`,
+    `WORKFLOW STEP: ${step_number} of ${total_steps}`,
+    requirementLine,
+    why_this_section_matters ? `WHY THIS SECTION MATTERS: ${why_this_section_matters}` : '',
+    args.jobContext,
+    args.narrativeContext,
+    args.candidateContext,
+    args.gapContext,
+    args.resumeContext ? `CURRENT TOP-OF-PAGE CONTEXT:\n${args.resumeContext}` : '',
+    '',
+    'CURRENT SECTION TO IMPROVE:',
+    current_content,
+    '',
+    ...sectionInstructions,
+    '',
+    'Rules:',
+    '- Never fabricate experience, metrics, projects, or industries.',
+    '- Never use borrowed example content from prompts or templates.',
+    '- Never use bracket placeholders.',
+    '- Keep every variant materially different: safer, recommended, stronger if true.',
+    '- Avoid resume cliches and banned phrases.',
+    '- For executive summary drafts, reject generic openers like "results-driven", "seasoned", "dynamic", or "professional with expertise in".',
+    '- Return only valid JSON with the exact shape requested.',
+    '',
+    outputShape,
+  ].filter(Boolean).join('\n');
+}
+
+function sanitizeSectionDraftPayload(
+  sectionKind: z.infer<typeof sectionDraftSchema>['section_kind'],
+  payload: unknown,
+): {
+  recommended: SectionDraftVariantPayload;
+  safer: SectionDraftVariantPayload;
+  stronger: SectionDraftVariantPayload;
+  why_it_works: string[];
+  strengthening_note?: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const normalizeVariant = (value: unknown): SectionDraftVariantPayload | null => {
+    const variant = value as Record<string, unknown> | null | undefined;
+    const fallbackKind = sectionKind === 'selected_accomplishments'
+      ? 'bullet_list'
+      : sectionKind === 'experience_role'
+        ? 'role_block'
+        : sectionKind === 'core_competencies'
+          ? 'keyword_list'
+          : 'paragraph';
+    const kind = variant?.kind === 'paragraph' || variant?.kind === 'bullet_list' || variant?.kind === 'keyword_list' || variant?.kind === 'role_block'
+      ? variant.kind
+      : fallbackKind;
+    const paragraph = typeof variant?.paragraph === 'string' ? sanitizeSectionDraftText(variant.paragraph) : undefined;
+    const lines = sanitizeSectionDraftLines(variant?.lines);
+    const scopeStatement = typeof variant?.scopeStatement === 'string'
+      ? sanitizeSectionDraftText(variant.scopeStatement)
+      : undefined;
+
+    if (kind === 'paragraph' && paragraph && !containsBannedSectionPhrase(paragraph)) {
+      return { kind, paragraph };
+    }
+    if ((kind === 'bullet_list' || kind === 'keyword_list') && lines.length > 0 && !lines.some(containsBannedSectionPhrase)) {
+      return { kind, lines };
+    }
+    if (kind === 'role_block' && (scopeStatement || lines.length > 0) && ![scopeStatement, ...lines].filter(Boolean).some((text) => containsBannedSectionPhrase(String(text)))) {
+      return { kind, scopeStatement, lines };
+    }
+
+    return null;
+  };
+
+  const record = payload as Record<string, unknown>;
+  const recommended = normalizeVariant(record.recommended);
+  const safer = normalizeVariant(record.safer);
+  const stronger = normalizeVariant(record.stronger);
+  const whyItWorks = Array.isArray(record.why_it_works)
+    ? record.why_it_works
+        .map((line) => (typeof line === 'string' ? sanitizeSectionDraftText(line) : ''))
+        .filter((line) => line.length > 0)
+        .slice(0, 4)
+    : [];
+  const strengtheningNote = typeof record.strengthening_note === 'string'
+    ? sanitizeSectionDraftText(record.strengthening_note)
+    : undefined;
+
+  if (!recommended || !safer || !stronger || whyItWorks.length === 0) return null;
+  return {
+    recommended,
+    safer,
+    stronger,
+    why_it_works: whyItWorks,
+    strengthening_note: strengtheningNote,
+  };
+}
 
 function buildEnhanceActionDescription(
   action: z.infer<typeof bulletEnhanceSchema>['action'],
@@ -1640,6 +2130,226 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, action, error: message }, 'Bullet enhance failed');
     return c.json({ error: 'Enhancement failed', message }, 500);
+  }
+});
+
+resumeV2Pipeline.post('/:sessionId/section-draft', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: sessionData } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, tailored_sections')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!sessionData) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 20_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = sectionDraftSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const {
+    section_kind,
+    section_title,
+    requirement_focus = [],
+  } = parsed.data;
+
+  let narrativeContext = '';
+  let candidateContext = '';
+  let gapContext = '';
+  let jobContext = '';
+  let resumeContext = '';
+  let sectionDraftResumeContext: SectionDraftResumeContext = {
+    selectedAccomplishments: [],
+    topOutcomes: [],
+    strongestThemes: [],
+  };
+
+  try {
+    const stored = sessionData.tailored_sections as Record<string, unknown> | null;
+    sectionDraftResumeContext = buildSectionDraftResumeContext(stored);
+    resumeContext = buildSectionDraftResumeContextBlock(section_kind, sectionDraftResumeContext);
+    const pipelineState = (stored?.pipeline_data ?? stored) as Record<string, unknown> | null;
+    if (pipelineState) {
+      const narrative = (pipelineState.narrativeStrategy ?? pipelineState.narrative_strategy) as Record<string, unknown> | undefined;
+      if (typeof narrative?.primary_narrative === 'string') {
+        narrativeContext = `POSITIONING: ${narrative.primary_narrative}`;
+      }
+      if (typeof narrative?.why_me_concise === 'string') {
+        narrativeContext += `${narrativeContext ? '\n' : ''}WHY ME: ${narrative.why_me_concise}`;
+      }
+
+      const candidate = (pipelineState.candidateIntelligence ?? pipelineState.candidate_intelligence) as Record<string, unknown> | undefined;
+      if (candidate) {
+        const parts = [
+          typeof candidate.leadership_scope === 'string' ? `Leadership scope: ${candidate.leadership_scope}` : '',
+          typeof candidate.operational_scale === 'string' ? `Scale: ${candidate.operational_scale}` : '',
+          typeof candidate.career_span_years === 'number' ? `${candidate.career_span_years} years of experience` : '',
+          Array.isArray(candidate.career_themes) ? `Themes: ${(candidate.career_themes as string[]).slice(0, 5).join(', ')}` : '',
+          Array.isArray(candidate.quantified_outcomes)
+            ? `Key outcomes: ${(candidate.quantified_outcomes as Array<Record<string, unknown>>).slice(0, 4).map((entry) => `${entry.outcome ?? ''} (${entry.value ?? ''})`).filter(Boolean).join(' | ')}`
+            : '',
+        ].filter(Boolean);
+        candidateContext = parts.join('\n');
+      }
+
+      const gapAnalysis = (pipelineState.gapAnalysis ?? pipelineState.gap_analysis) as Record<string, unknown> | undefined;
+      if (gapAnalysis) {
+        const strengthSummary = typeof gapAnalysis.strength_summary === 'string' ? gapAnalysis.strength_summary : '';
+        const requirementHints = Array.isArray(gapAnalysis.requirements)
+          ? (gapAnalysis.requirements as Array<Record<string, unknown>>)
+              .filter((entry) => requirement_focus.some((focus) => typeof entry.requirement === 'string' && requirementOverlapScore(String(entry.requirement), focus) >= 0.28))
+              .slice(0, 3)
+              .map((entry) => {
+                const requirement = typeof entry.requirement === 'string' ? entry.requirement : '';
+                const sourceEvidence = typeof entry.source_evidence === 'string' ? entry.source_evidence : '';
+                return [requirement, sourceEvidence].filter(Boolean).join(' — ');
+              })
+          : [];
+        gapContext = [
+          strengthSummary ? `Strength summary: ${strengthSummary}` : '',
+          requirementHints.length > 0 ? `Relevant role needs: ${requirementHints.join(' | ')}` : '',
+        ].filter(Boolean).join('\n');
+      }
+
+      const jobIntelligence = (pipelineState.jobIntelligence ?? pipelineState.job_intelligence) as Record<string, unknown> | undefined;
+      if (jobIntelligence) {
+        const parts = [
+          typeof jobIntelligence.role_title === 'string' ? `Target role: ${jobIntelligence.role_title}` : '',
+          typeof jobIntelligence.company_name === 'string' ? `Company: ${jobIntelligence.company_name}` : '',
+          Array.isArray(jobIntelligence.business_problems)
+            ? `Business problems: ${(jobIntelligence.business_problems as string[]).slice(0, 3).join('; ')}`
+            : '',
+          Array.isArray(jobIntelligence.core_competencies)
+            ? `Must-have competencies: ${(jobIntelligence.core_competencies as Array<Record<string, unknown>>)
+                .filter((entry) => entry.importance === 'must_have')
+                .slice(0, 5)
+                .map((entry) => String(entry.competency ?? ''))
+                .filter(Boolean)
+                .join(', ')}`
+            : '',
+        ].filter(Boolean);
+        jobContext = parts.join('\n');
+      }
+    }
+  } catch {
+    // Ignore missing enrichment context
+  }
+
+  const prompt = buildSectionDraftPrompt(parsed.data, {
+    candidateContext,
+    narrativeContext,
+    jobContext,
+    gapContext,
+    resumeContext,
+  });
+
+  logger.info({ session_id: sessionId, section_kind, section_title }, 'Section draft request');
+
+  const model = section_kind === 'executive_summary' ? MODEL_PRIMARY : MODEL_MID;
+  const buildResponsePayload = (sanitized: {
+    recommended: SectionDraftVariantPayload;
+    safer: SectionDraftVariantPayload;
+    stronger: SectionDraftVariantPayload;
+    why_it_works: string[];
+    strengthening_note?: string;
+  }) => ({
+    recommendedVariantId: 'recommended' as const,
+    variants: [
+      {
+        id: 'safer' as const,
+        label: 'Safer version',
+        helper: 'More conservative wording with less stretch.',
+        content: sanitized.safer,
+      },
+      {
+        id: 'recommended' as const,
+        label: 'Recommended version',
+        helper: 'Best balance of strength, fit, and defensible wording.',
+        content: sanitized.recommended,
+      },
+      {
+        id: 'stronger' as const,
+        label: 'Stronger version if true',
+        helper: 'A more assertive version only if every claim fully holds.',
+        content: sanitized.stronger,
+      },
+    ],
+    whyItWorks: sanitized.why_it_works,
+    strengtheningNote: sanitized.strengthening_note,
+  });
+  const executiveSummaryFallback = section_kind === 'executive_summary'
+    ? buildExecutiveSummaryFallbackPayload(parsed.data, sectionDraftResumeContext)
+    : null;
+
+  try {
+    const runSectionDraft = async (systemPrompt: string, promptContent: string) => withTrackedSessionUsage(sessionId, userId, async () => (
+      withRetry(
+        () => llm.chat({
+          model,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: promptContent }],
+          max_tokens: 1800,
+        }),
+        {
+          maxAttempts: 3,
+          baseDelay: 1500,
+          onRetry: (attempt, err) => {
+            logger.warn({ session_id: sessionId, section_kind, attempt, error: err.message }, 'Retrying section draft request');
+          },
+        },
+      )
+    ));
+
+    const response = await runSectionDraft(
+      'You are a premium executive resume writer. Return ONLY valid JSON. No markdown fences. No commentary.',
+      prompt,
+    );
+
+    let repaired = repairJSON<unknown>(response.text);
+    let sanitized = sanitizeSectionDraftPayload(section_kind, repaired);
+
+    if (!sanitized) {
+      const retryResponse = await runSectionDraft(
+        'Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }. Every variant must be complete and usable.',
+        `${prompt}\n\nIMPORTANT: The first attempt could not be turned into a usable section draft. Return stricter JSON that exactly matches the requested shape.`,
+      );
+      repaired = repairJSON<unknown>(retryResponse.text);
+      sanitized = sanitizeSectionDraftPayload(section_kind, repaired);
+    }
+
+    if (!sanitized) {
+      logger.warn({ session_id: sessionId, section_kind, rawSnippet: response.text.substring(0, 200) }, 'Section draft parse failed');
+      if (executiveSummaryFallback) {
+        return c.json(buildResponsePayload(executiveSummaryFallback));
+      }
+      return c.json({ error: 'Section drafting failed. Please try again.' }, 500);
+    }
+
+    return c.json(buildResponsePayload(sanitized));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, section_kind, error: message }, 'Section draft failed');
+    if (section_kind === 'executive_summary') {
+      return c.json(buildResponsePayload(buildExecutiveSummaryFallbackPayload(parsed.data, sectionDraftResumeContext)));
+    }
+    const isRateLimit = /\b429\b|rate limit|too many requests/i.test(message);
+    return c.json(
+      {
+        error: isRateLimit ? 'Too many requests. Please try again in a moment.' : 'Section drafting failed',
+        message,
+      },
+      isRateLimit ? 429 : 500,
+    );
   }
 });
 

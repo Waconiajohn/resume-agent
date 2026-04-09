@@ -172,8 +172,8 @@ RULES:
   BAD: "Proven ability to ensure regulatory compliance" (generic, could describe anyone)
   BAD: "Related experience in safety and compliance" (label, not a bullet)
   BAD: "Strong track record of operational excellence" (meaningless filler)
-  GOOD: "Ensured regulatory compliance across multi-rig operations in the Delaware Basin and Eagle Ford Shale by implementing structured pre-tour safety briefings, hazard identification protocols, and BHP operating system standards"
-  GOOD: "Drove $3M+ cost reduction through insulated drill pipe implementation, reducing BHA failures from 2.0 to 1.6 per lateral"
+  GOOD: "Cut quoting turnaround from 16 minutes to 5 by simplifying workflow, retraining front-line teams, and tightening approval paths"
+  GOOD: "Led multi-site operating reviews across 3 plants, raising throughput by 18% through KPI discipline and defect-reduction planning"
   The positioning MUST reference specific details from the candidate's actual resume: company names, locations, team sizes, tools, methodologies, and outcomes. If you cannot write a specific bullet, leave positioning empty rather than writing a generic one.
 - PRESERVATION RULE: The positioning MUST preserve or improve upon the specificity of the evidence. If the candidate's resume says "Reduced BHA failures from 2.0 to 1.6 per lateral", your positioning must keep those exact numbers and details — never flatten them into "Optimized drilling performance". Your job is to REFRAME the evidence for the requirement, not to summarize it into a generic capability statement.
 - INFERRED METRIC RULE: If you generate an inferred_metric, the positioning text MUST incorporate that metric. Never infer "$350MM+ annual operations budget" in one field while writing generic "experience in budget management" in another. The inferred metric IS the value — weave it into the positioning bullet itself.

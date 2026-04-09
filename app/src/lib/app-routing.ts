@@ -13,6 +13,25 @@ export type AppView =
 
 export const RESUME_BUILDER_SESSION_ROUTE = '/resume-builder/session';
 
+export function buildResumeBuilderSessionRoute(
+  params?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const search = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, String(value));
+  }
+
+  const query = search.toString();
+  return query ? `${RESUME_BUILDER_SESSION_ROUTE}?${query}` : RESUME_BUILDER_SESSION_ROUTE;
+}
+
+export function getResumeBuilderSessionIdFromSearch(search: string): string | undefined {
+  const value = new URLSearchParams(search).get('sessionId')?.trim();
+  return value || undefined;
+}
+
 export function buildWorkspaceRoute(
   room?: string | null,
   params?: Record<string, string | number | boolean | null | undefined>,

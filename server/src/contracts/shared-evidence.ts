@@ -150,19 +150,21 @@ export function mapTruthClaimToEvidenceItem(
     capturedAt?: string | null;
   },
 ): EvidenceItem {
+  const statement = normalizeText(claim.claim) || normalizeText(claim.source_text);
+  const section = normalizeText(claim.section);
   const level = mapTruthConfidenceToEvidenceLevel(claim.confidence);
   const requiresConfirmation = level !== 'DirectProof';
   const finalArtifactEligible = level === 'DirectProof' || level === 'StrongAdjacentProof';
   const limitationNote = normalizeText(claim.note);
 
   return {
-    id: makeEvidenceId(['truth', claim.section, claim.claim]),
+    id: makeEvidenceId(['truth', section, statement]),
     level,
-    statement: claim.claim.trim(),
+    statement,
     sourceType: 'truth_verification_claim',
     sourceArtifactId: meta?.sourceSessionId ?? null,
     sourceExcerpt: normalizeText(claim.source_text) || null,
-    supports: normalizeText(claim.section) ? [claim.section] : [],
+    supports: section ? [section] : [],
     limitations: limitationNote ? [limitationNote] : [],
     requiresConfirmation,
     finalArtifactEligible,
@@ -177,7 +179,7 @@ export function mapTruthClaimToEvidenceItem(
     },
     metadata: {
       source_found: claim.source_found,
-      section: claim.section,
+      section,
       legacy_confidence: claim.confidence,
     },
   };

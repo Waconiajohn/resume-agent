@@ -13,7 +13,7 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
-import { getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
+import { BANNED_PHRASES, getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
 import { applySectionPlanning, buildWriterSectionStrategy } from '../section-planning.js';
 import type {
@@ -44,6 +44,9 @@ const PROMPT_EXAMPLE_LEAKAGE_MARKERS = [
   'insulated drill pipe',
   'drilling fluid program',
   'well completions',
+];
+const DISPLAY_BANNED_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bspearheaded\b/gi, 'Led'],
 ];
 const PROOF_SIGNAL_STOPWORDS = new Set([
   'about',
@@ -527,16 +530,21 @@ function sanitizeDraftForDisplay(
   let sanitizedFieldCount = 0;
 
   const sanitizeField = (value: string, fallbackValue: string): string => {
-    const stripped = value.replace(BRACKET_PLACEHOLDER_PATTERN, '').replace(/\s+/g, ' ').trim();
+    const stripped = sanitizeDisplayText(value);
+    const fallback = sanitizeDisplayText(fallbackValue);
     if (!stripped) {
       if (value.trim()) sanitizedFieldCount += 1;
-      return fallbackValue;
+      return fallback;
     }
     if (containsPromptExampleLeakage(stripped, sourceCorpus)) {
       sanitizedFieldCount += 1;
-      return fallbackValue;
+      return fallback;
     }
-    if (stripped !== value.trim()) {
+    if (containsBannedDisplayPhrase(stripped)) {
+      sanitizedFieldCount += 1;
+      return fallback;
+    }
+    if (stripped !== value.trim() || fallback !== fallbackValue.trim()) {
       sanitizedFieldCount += 1;
     }
     return stripped;
@@ -631,6 +639,34 @@ function containsPromptExampleLeakage(
   return PROMPT_EXAMPLE_LEAKAGE_MARKERS.some((marker) => (
     normalized.includes(marker) && !sourceCorpus.includes(marker)
   ));
+}
+
+function containsBannedDisplayPhrase(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return BANNED_PHRASES.some((phrase) => normalized.includes(phrase));
+}
+
+function sanitizeDisplayText(value: string): string {
+  const stripped = value.replace(BRACKET_PLACEHOLDER_PATTERN, '').replace(/\s+/g, ' ').trim();
+  if (!stripped) return '';
+
+  const cleanedSentences = stripped
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      const lower = sentence.toLowerCase();
+      if (PROMPT_EXAMPLE_LEAKAGE_MARKERS.some((marker) => lower.includes(marker))) {
+        return '';
+      }
+
+      let cleaned = sentence.trim();
+      for (const [pattern, replacement] of DISPLAY_BANNED_REPLACEMENTS) {
+        cleaned = cleaned.replace(pattern, replacement);
+      }
+      return cleaned.trim();
+    })
+    .filter((sentence) => sentence.length > 0);
+
+  return cleanedSentences.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /**

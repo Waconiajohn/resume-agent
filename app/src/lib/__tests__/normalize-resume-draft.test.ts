@@ -187,6 +187,62 @@ describe('normalizeResumeDraft', () => {
     const normalized = normalizeResumeDraft(resume);
     expect(normalized?.selected_accomplishments[0].review_state).toBe('confirm_fit');
   });
+
+  it('sanitizes leaked prompt text and banned wording from loaded drafts', () => {
+    const resume: ResumeDraft = {
+      header: {
+        name: 'Rose M. Seed',
+        phone: '555-0100',
+        email: 'rose@example.com',
+        branded_title: 'Product Leader',
+      },
+      executive_summary: {
+        content: '[Scale and scope of experience]: Eagle Ford Shale project — 22 individuals 29M dollar budget. Spearheaded digital product launches that improved conversion.',
+        is_new: true,
+      },
+      core_competencies: ['Spearheaded transformation'],
+      selected_accomplishments: [
+        {
+          content: 'Eagle Ford Shale project — 22 individuals 29M dollar budget. Spearheaded execution.',
+          is_new: true,
+          addresses_requirements: ['Leadership'],
+          confidence: 'needs_validation',
+          evidence_found: '',
+          requirement_source: 'job_description',
+        },
+      ],
+      professional_experience: [
+        {
+          company: 'Beam Benefits',
+          title: 'Product Manager',
+          start_date: '2022',
+          end_date: 'Present',
+          scope_statement: 'Spearheaded roadmap delivery across benefits products.',
+          bullets: [
+            {
+              text: 'Spearheaded product launch for Eagle Ford Shale field program.',
+              is_new: true,
+              addresses_requirements: ['Product management'],
+              confidence: 'needs_validation',
+              evidence_found: '',
+              requirement_source: 'job_description',
+            },
+          ],
+        },
+      ],
+      education: [],
+      certifications: [],
+    };
+
+    const normalized = normalizeResumeDraft(resume);
+    expect(normalized?.executive_summary.content).not.toContain('Eagle Ford Shale');
+    expect(normalized?.executive_summary.content).not.toContain('[Scale and scope of experience]');
+    expect(normalized?.executive_summary.content).toContain('Led digital product launches');
+    expect(normalized?.core_competencies[0]).toBe('Led transformation');
+    expect(normalized?.selected_accomplishments[0].content).toBe('Led execution.');
+    expect(normalized?.professional_experience[0].scope_statement).toBe('Led roadmap delivery across benefits products.');
+    expect(normalized?.professional_experience[0].bullets).toEqual([]);
+  });
 });
 
 describe('normalizeAssemblyResult', () => {

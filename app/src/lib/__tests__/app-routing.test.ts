@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildResumeBuilderSessionRoute,
   buildResumeWorkspaceRoute,
   buildWorkspaceRoute,
   getAppView,
+  getResumeBuilderSessionIdFromSearch,
   getWorkspaceEntryRedirect,
   getNormalizedWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
@@ -29,6 +31,10 @@ describe('app-routing', () => {
     expect(buildWorkspaceRoute('interview', { focus: 'negotiation', job: 'abc123' })).toBe(
       '/workspace?room=interview&focus=negotiation&job=abc123',
     );
+    expect(buildResumeBuilderSessionRoute()).toBe('/resume-builder/session');
+    expect(buildResumeBuilderSessionRoute({ sessionId: 'abc123', jobUrl: 'https://example.com/role' })).toBe(
+      '/resume-builder/session?sessionId=abc123&jobUrl=https%3A%2F%2Fexample.com%2Frole',
+    );
     expect(buildResumeWorkspaceRoute()).toBe('/workspace?room=resume');
     expect(buildResumeWorkspaceRoute('cover-letter')).toBe('/workspace?room=resume&focus=cover-letter');
   });
@@ -41,6 +47,8 @@ describe('app-routing', () => {
     expect(getNormalizedWorkspaceRedirect('?room=network-intelligence')).toBe('/workspace?room=networking');
     expect(getNormalizedWorkspaceRedirect('?room=case-study')).toBe('/workspace?room=career-profile&focus=case-study');
     expect(getNormalizedWorkspaceRedirect('?room=resume')).toBeNull();
+    expect(getResumeBuilderSessionIdFromSearch('?sessionId=resume-v2-123')).toBe('resume-v2-123');
+    expect(getResumeBuilderSessionIdFromSearch('')).toBeUndefined();
     expect(resolveNavigationTarget('workspace')).toBe('/workspace');
     expect(resolveNavigationTarget('tools')).toBe('/workspace');
     expect(resolveNavigationTarget('/dashboard')).toBe('/workspace');
