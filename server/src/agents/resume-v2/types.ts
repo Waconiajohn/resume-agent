@@ -285,6 +285,11 @@ export interface ResumeCustomSection {
   source?: ResumeSectionPlanSource;
   recommended_for_job?: boolean;
   rationale?: string;
+  /** How well the section content is backed by the candidate's actual resume evidence.
+   *  - 'strong': all lines trace to original resume
+   *  - 'aspirational': some lines are creative reframes or gap-bridging suggestions — flag for user review
+   *  - 'unsupported': section content has no traceable evidence — code red */
+  evidence_strength?: 'strong' | 'aspirational' | 'unsupported';
 }
 
 export interface ResumeSectionPlanItem {

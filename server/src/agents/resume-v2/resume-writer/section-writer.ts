@@ -976,9 +976,37 @@ function deriveSimpleAccomplishmentTargets(input: ResumeWriterInput): ResumePrio
 
 // ─── Merge custom section LLM output with recommended section metadata ──
 
+function classifyEvidenceStrength(
+  lines: string[],
+  sourceCorpus: string,
+): 'strong' | 'aspirational' | 'unsupported' {
+  if (lines.length === 0) return 'unsupported';
+
+  // Check how many lines have traceable evidence in the source resume corpus
+  let traceable = 0;
+  for (const line of lines) {
+    const normalized = line.toLowerCase();
+    // Extract key proof signals — numbers, percentages, named systems, dollar amounts
+    const proofTokens = normalized.match(/\$[\d.]+[mk]?|\d+%|\d+\+?\s+(?:years?|engineers?|teams?|nodes?|microservices|applications)/g) ?? [];
+    const hasProofInSource = proofTokens.some((token) => sourceCorpus.includes(token));
+    // Also check for substantial word overlap (3+ significant words matching)
+    const words = normalized.split(/\s+/).filter((w) => w.length > 4);
+    const matchingWords = words.filter((w) => sourceCorpus.includes(w));
+    if (hasProofInSource || matchingWords.length >= 4) {
+      traceable++;
+    }
+  }
+
+  const traceableRatio = traceable / lines.length;
+  if (traceableRatio >= 0.7) return 'strong';
+  if (traceableRatio >= 0.3) return 'aspirational';
+  return 'unsupported';
+}
+
 function mergeCustomSections(
   llmSections: CustomSectionOutput[],
   recommended: ResumeCustomSection[],
+  sourceCorpus: string,
 ): ResumeCustomSection[] {
   const llmMap = new Map(llmSections.map((s) => [s.id, s.lines]));
 
@@ -990,9 +1018,13 @@ function mergeCustomSections(
         ? llmLines.filter((l) => l.trim().length > 0)
         : section.lines;
 
+      // Classify how well lines trace back to actual resume evidence.
+      // 'aspirational' or 'unsupported' sections get flagged for user review in the UI.
+      const evidence_strength = classifyEvidenceStrength(lines, sourceCorpus);
+
       // Don't carry section-planning guidance text into display output.
       // The summary was useful as writer guidance but reads as internal notes on the resume.
-      return { ...section, lines, summary: undefined };
+      return { ...section, lines, summary: undefined, evidence_strength };
     })
     .filter((section) => section.lines.length >= 2); // drop thin sections
 }
@@ -1053,10 +1085,17 @@ export async function runSectionBySection(
   const experienceResult = await callExperienceSection(input, [...usedEvidence], signal);
 
   // ── Merge custom section LLM output with section metadata ───────
+  // Build a source corpus from the candidate's actual resume for evidence tracing
+  const sourceCorpus = getAuthoritativeSourceExperience(input.candidate)
+    .flatMap((exp) => exp.bullets)
+    .join('\n')
+    .toLowerCase();
+
   const sectionStrategy = buildWriterSectionStrategy(input.candidate, input.gap_analysis);
   const mergedCustomSections = mergeCustomSections(
     customSectionsResult.sections,
     sectionStrategy.recommended_custom_sections,
+    sourceCorpus,
   );
 
   // ── Assemble ResumeDraftOutput ───────────────────────────────────
