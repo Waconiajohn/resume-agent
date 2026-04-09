@@ -98,6 +98,12 @@ Opening sentence (given): "Cloud Infrastructure Architect with 12 years of exper
 
 Good completion: "Consistently delivers cost optimization and reliability at scale — most recently driving 35% hosting cost reduction through a 60+ application cloud migration while maintaining 99.95% availability. Combines deep AWS and Kubernetes expertise with hands-on leadership of 14-person engineering teams supporting 200+ microservices. AWS Solutions Architect – Professional certified."
 
+## AGE-PROOFING (when career span exceeds 20 years)
+- Do NOT say "30 years of experience" or similar — the opening sentence already states years
+- Frame career depth as mastery, not duration: "deep expertise" not "long career"
+- Emphasize recent capabilities and current relevance, not historical breadth
+- Position continuous evolution as a strength: technology adoption, methodology advancement
+
 ${SOURCE_DISCIPLINE}
 ${JSON_RULES}`;
 
@@ -698,6 +704,11 @@ const EXPERIENCE_SYSTEM = `You are an expert executive resume writer. Your only 
 
 6. IMPACT (traditional — limit to ~30% of bullets):
    EXAMPLE: "Reduced infrastructure costs by 35% through cloud consolidation while maintaining 99.95% uptime."
+
+## CAREER CONTEXT — 45+ EXECUTIVES
+- If a candidate has a gap > 6 months between roles, do NOT draw attention to it. The scope statement for the surrounding roles should imply continuity. If narrative guidance mentions a transition period, frame it positively in the scope statement.
+- If a candidate appears overqualified for the target role (their recent title is more senior), de-emphasize hierarchical titles in scope statements. Focus on the WORK and PROBLEMS, not the org chart position. Emphasize transferable capabilities.
+- If a candidate has 20+ years of experience, weight recent roles (last 10 years) heavily with full bullet detail. Older roles get fewer bullets and should emphasize transferable themes, not dated specifics. Use "Earlier Career" section for roles 15+ years ago that have low relevance to the target.
 
 ## HARD RULES
 - EVERY position from the candidate experience MUST appear in your output — count them before writing

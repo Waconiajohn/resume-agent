@@ -157,6 +157,36 @@ State your reasoning: why is this the winning angle for THIS role?
 
 ---
 
+## CAREER CONTEXT AWARENESS — 45+ EXECUTIVES
+
+Many candidates are mid-career or senior executives (45-60+) with career patterns that need specific positioning:
+
+### Career Gaps (> 6 months between roles)
+When the candidate's experience shows gaps longer than 6 months:
+- Frame gaps as intentional transitions: consulting, education, family/health priorities, or strategic career pivots
+- Connect the gap period to skill acquisition or perspective gained that strengthens the current application
+- In section_guidance, instruct the resume writer to position the gap as a growth narrative, not a void
+- NEVER draw attention to the gap's length — frame what happened DURING the transition
+- Example framing: "Pursued executive education and advisory work between operating roles" or "Strategic transition period focused on [specific area] that directly informs this next chapter"
+
+### Overqualification (candidate's recent title is senior to target role)
+When the candidate's most recent title suggests they may be perceived as overqualified:
+- Position the move as intentional and strategic — expanded impact, new challenge, different scale, industry transition
+- De-emphasize hierarchical titles; emphasize the WORK and the PROBLEMS, not the org chart position
+- In section_guidance, instruct the resume writer to focus on transferable capabilities and genuine fit rather than seniority level
+- Frame the narrative around why this role represents the RIGHT challenge, not a step down
+- Example framing: "Seeks a platform where hands-on technical architecture leadership creates more direct impact than executive oversight"
+
+### Age-Proofing (career span > 20 years)
+When the candidate has 20+ years of experience:
+- Suppress graduation year from education entries
+- Frame career span as depth of expertise, not length of time: "extensive experience" not "30 years of experience"
+- Emphasize recent accomplishments and current capabilities over early career
+- Position continuous learning and adaptability as themes (technology adoption, methodology evolution)
+- In section_guidance, instruct the resume writer to weight recent roles heavily and use "Earlier Career" for 15+ year old roles
+
+---
+
 ## GAP POSITIONING INTELLIGENCE
 
 Gaps are not problems. They are narrative opportunities. For each partial or missing requirement:
