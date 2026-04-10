@@ -49,7 +49,7 @@ function runSupabaseMigrationList() {
   if (initial.status !== 0 && /Cannot find project ref/i.test(initialCombined) && process.env.SUPABASE_PROJECT_REF) {
     const link = spawnSync(
       'supabase',
-      ['link', '--project-ref', process.env.SUPABASE_PROJECT_REF, '--workdir', repoRoot, '--yes'],
+      ['link', '--project-ref', process.env.SUPABASE_PROJECT_REF, '--workdir', repoRoot],
       { encoding: 'utf8', env: process.env },
     );
     if (link.error) {

@@ -165,11 +165,11 @@ Rules:
       const parsed = JSON.parse(repairJSON(response.text) ?? response.text);
       const items = Array.isArray(parsed) ? parsed : [parsed];
       achievements = items.map((item: RawAchievement, idx: number) => ({
-        id: String(item.id ?? `ach_${idx + 1}`),
-        title: String(item.title ?? ''),
-        company: String(item.company ?? ''),
-        role: String(item.role ?? ''),
-        description: String(item.description ?? ''),
+        id: item.id ?? `ach_${idx + 1}`,
+        title: item.title ?? '',
+        company: item.company ?? '',
+        role: item.role ?? '',
+        description: item.description ?? '',
       }));
     } catch {
       achievements = [];
@@ -282,7 +282,7 @@ Rules:
       // Build a map of scores by achievement id
       const scoreMap = new Map<string, ScoredItem>();
       for (const item of scoredItems) {
-        if (item.id) scoreMap.set(String(item.id), item);
+        if (item.id) scoreMap.set(item.id, item);
       }
 
       // Build full Achievement objects for selected items
@@ -472,7 +472,7 @@ Rules:
 
       // Update selected achievements with narrative data
       for (const item of items) {
-        const achievement = selected.find((a) => a.id === String(item.id ?? ''));
+        const achievement = selected.find((a) => a.id === (item.id ?? ''));
         if (achievement) {
           achievement.situation = String(item.situation ?? '');
           achievement.situation_is_inferred = item.situation_is_inferred === true;
@@ -623,7 +623,7 @@ Rules:
       const items: MetricItem[] = Array.isArray(parsed) ? parsed : [parsed];
 
       for (const item of items) {
-        const achievement = selected.find((a) => a.id === String(item.id ?? ''));
+        const achievement = selected.find((a) => a.id === (item.id ?? ''));
         if (achievement && Array.isArray(item.metrics)) {
           achievement.metrics = item.metrics.map((m) => ({
             label: String(m.label ?? ''),
