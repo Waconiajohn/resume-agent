@@ -356,10 +356,10 @@ export function BulletCoachingPanel({
     >
       {/* ── Block 1: What You Have ─────────────────────────────────────── */}
       <div className="px-4 pt-4 pb-3">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
           {sectionDisplayName}
         </p>
-        <p className="text-sm leading-relaxed text-gray-200">
+        <p className="text-sm leading-relaxed text-white">
           {bulletText}
         </p>
       </div>
@@ -375,7 +375,7 @@ export function BulletCoachingPanel({
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
                   Original
                 </p>
-                <p className="text-sm leading-relaxed text-gray-500">
+                <p className="text-sm leading-relaxed text-gray-300">
                   {evidenceFound.trim()}
                 </p>
               </div>
@@ -388,7 +388,7 @@ export function BulletCoachingPanel({
                 </p>
               </div>
               {addressesLabel && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-300">
                   Addresses: <span className="text-gray-400">{addressesLabel}</span>
                 </p>
               )}
@@ -407,12 +407,12 @@ export function BulletCoachingPanel({
                 </p>
               </div>
               {addressesLabel && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-300">
                   Addresses: <span className="text-gray-400">{addressesLabel}</span>
                 </p>
               )}
               {priorClarifications.length > 0 && (
-                <p className="text-xs text-gray-500 italic">
+                <p className="text-xs text-gray-300 italic">
                   I am also using this earlier detail you confirmed: &ldquo;{priorClarifications[0].userInput}&rdquo;
                 </p>
               )}
@@ -441,7 +441,7 @@ export function BulletCoachingPanel({
                   </p>
                 </div>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-300">
                 Can you confirm this reflects your experience?
               </p>
             </div>
@@ -640,7 +640,7 @@ export function BulletCoachingPanel({
             <button
               type="button"
               onClick={() => setShowMoreOptions((v) => !v)}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-300 hover:text-gray-300 transition-colors"
             >
               {showMoreOptions ? (
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -689,7 +689,7 @@ export function BulletCoachingPanel({
               <p className="text-xs text-gray-400">
                 Also improve nearby lines
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-300">
                 {relatedSuggestionTargets.length === 1
                   ? 'This same detail can also improve 1 other line.'
                   : `This same detail can also improve ${relatedSuggestionTargets.length} other lines.`}
@@ -728,7 +728,7 @@ export function BulletCoachingPanel({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{candidate.label}</p>
                       {suggestion.requirement && (
-                        <p className="mt-0.5 text-xs text-gray-500">Supports: {suggestion.requirement}</p>
+                        <p className="mt-0.5 text-xs text-gray-300">Supports: {suggestion.requirement}</p>
                       )}
                     </div>
                     <button
@@ -739,10 +739,10 @@ export function BulletCoachingPanel({
                       Apply to this line
                     </button>
                   </div>
-                  <p className="mt-1.5 text-xs text-gray-500">Current: {candidate.lineText}</p>
+                  <p className="mt-1.5 text-xs text-gray-300">Current: {candidate.lineText}</p>
                   <p className="mt-1.5 text-sm leading-relaxed text-gray-200">{suggestion.suggestedLanguage}</p>
                   {suggestion.rationale && (
-                    <p className="mt-1 text-xs text-gray-500">Why this also improves: {suggestion.rationale}</p>
+                    <p className="mt-1 text-xs text-gray-300">Why this also improves: {suggestion.rationale}</p>
                   )}
                 </div>
               ))}
@@ -770,7 +770,7 @@ export function BulletCoachingPanel({
                 'text-xs font-medium transition-colors',
                 confirmRemove
                   ? 'text-red-400 font-semibold'
-                  : 'text-gray-500 hover:text-red-400',
+                  : 'text-gray-300 hover:text-red-400',
                 isChatLoading && 'opacity-50 cursor-not-allowed',
               )}
             >
