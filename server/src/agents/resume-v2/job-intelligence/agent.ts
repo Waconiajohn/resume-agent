@@ -8,6 +8,7 @@
  */
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -80,7 +81,7 @@ export async function runJobIntelligence(
   signal?: AbortSignal,
 ): Promise<JobIntelligenceOutput> {
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_MID,
       system: SYSTEM_PROMPT,
       messages: [
@@ -107,7 +108,7 @@ export async function runJobIntelligence(
   }
 
   try {
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_MID,
       system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
       messages: [

@@ -11,6 +11,7 @@
  */
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -263,7 +264,7 @@ export async function runNarrativeStrategy(
   const userMessage = buildUserMessage(input);
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
@@ -290,7 +291,7 @@ export async function runNarrativeStrategy(
   }
 
   try {
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
       messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],

@@ -9,6 +9,7 @@
  */
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { detectAIPrecursors, buildAIPrecursorSummary } from '../../../contracts/ai-readiness-policy.js';
@@ -133,7 +134,7 @@ export async function runCandidateIntelligence(
   const sourceResumeOutline = buildSourceResumeOutline(input.resume_text);
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_MID,
       system: SYSTEM_PROMPT,
       messages: [
@@ -167,7 +168,7 @@ export async function runCandidateIntelligence(
 
   if (!parsed) {
     try {
-      const retry = await llm.chat({
+      const retry = await chatWithTruncationRetry({
         model: MODEL_MID,
         system: `You are a JSON extraction machine.\n${JSON_OUTPUT_GUARDRAILS}`,
         messages: [

@@ -21,6 +21,7 @@
  */
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -190,7 +191,7 @@ async function callSummarySection(
   logger.info('section-writer: calling summary section');
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: SUMMARY_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
@@ -207,7 +208,7 @@ async function callSummarySection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: summary parse failed, retrying');
 
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${SUMMARY_SYSTEM}\n\n${userMessage}` }],
@@ -345,7 +346,7 @@ async function callAccomplishmentsSection(
   logger.info('section-writer: calling accomplishments section');
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: ACCOMPLISHMENTS_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
@@ -362,7 +363,7 @@ async function callAccomplishmentsSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: accomplishments parse failed, retrying');
 
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${ACCOMPLISHMENTS_SYSTEM}\n\n${userMessage}` }],
@@ -469,7 +470,7 @@ async function callCompetenciesSection(
   logger.info('section-writer: calling competencies section');
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: COMPETENCIES_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
@@ -486,7 +487,7 @@ async function callCompetenciesSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: competencies parse failed, retrying');
 
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${COMPETENCIES_SYSTEM}\n\n${userMessage}` }],
@@ -638,7 +639,7 @@ async function callCustomSections(
   logger.info({ count: recommendedSections.length }, 'section-writer: calling custom sections');
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: CUSTOM_SECTIONS_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
@@ -655,7 +656,7 @@ async function callCustomSections(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: custom sections parse failed, retrying');
 
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${CUSTOM_SECTIONS_SYSTEM}\n\n${userMessage}` }],
@@ -906,38 +907,14 @@ async function callExperienceSection(
   logger.info({ position_count: sourceExperience.length }, 'section-writer: calling experience section');
 
   try {
-    let maxTokens = 16384;
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: EXPERIENCE_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
-      max_tokens: maxTokens,
+      max_tokens: 16384,
       signal,
     });
-
-    // Detect truncation: if finish_reason is 'length', the output was cut short.
-    // Retry with higher max_tokens to get the complete response.
-    if (response.finish_reason === 'length') {
-      logger.warn(
-        { output_tokens: response.usage.output_tokens, max_tokens: maxTokens },
-        'section-writer: experience section truncated at max_tokens — retrying with 32768',
-      );
-      maxTokens = 32768;
-      const retryResponse = await llm.chat({
-        model: MODEL_PRIMARY,
-        system: EXPERIENCE_SYSTEM,
-        messages: [{ role: 'user', content: userMessage }],
-        response_format: { type: 'json_object' },
-        max_tokens: maxTokens,
-        signal,
-      });
-      const retryResult = parse(retryResponse.text);
-      if (retryResult) {
-        logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience complete (retry with higher max_tokens)');
-        return retryResult;
-      }
-    }
 
     const result = parse(response.text);
     if (result) {
@@ -947,7 +924,7 @@ async function callExperienceSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: experience parse failed, retrying');
 
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_PRIMARY,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${EXPERIENCE_SYSTEM}\n\n${userMessage}` }],

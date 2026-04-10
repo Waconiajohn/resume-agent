@@ -15,6 +15,7 @@
  */
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { queryWithFallback } from '../../../lib/perplexity.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
@@ -185,7 +186,7 @@ export async function runBenchmarkCandidate(
   const userMessage = `Build the benchmark candidate assessment for this role and candidate:\n\n## JOB ANALYSIS\n${jobContext}\n${candidateContext}${industryResearchBlock}`;
 
   // Attempt 1
-  const response = await llm.chat({
+  const response = await chatWithTruncationRetry({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
     messages: [
@@ -204,7 +205,7 @@ export async function runBenchmarkCandidate(
     'Benchmark Candidate: first attempt unparseable or incomplete, retrying with stricter prompt',
   );
 
-  const retry = await llm.chat({
+  const retry = await chatWithTruncationRetry({
     model: MODEL_PRIMARY,
     system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
     messages: [

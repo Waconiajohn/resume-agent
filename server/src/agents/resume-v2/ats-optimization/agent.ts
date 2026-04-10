@@ -9,6 +9,7 @@
  */
 
 import { llm, MODEL_LIGHT } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -67,7 +68,7 @@ export async function runATSOptimization(
   const userMessage = `## Resume to Analyze\n\n${resumeText}\n\n## JD Keywords\n${keywords}\n\n## Required Competencies\n${competencies}\n\nScore this resume's ATS match and suggest improvements. Return JSON only.`;
 
   // Attempt 1
-  const response = await llm.chat({
+  const response = await chatWithTruncationRetry({
     model: MODEL_LIGHT,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
@@ -86,7 +87,7 @@ export async function runATSOptimization(
     'ATS Optimization: first attempt unparseable, retrying with stricter prompt',
   );
 
-  const retry = await llm.chat({
+  const retry = await chatWithTruncationRetry({
     model: MODEL_LIGHT,
     system: `You are a JSON extraction machine.\n${JSON_OUTPUT_GUARDRAILS}`,
     messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],

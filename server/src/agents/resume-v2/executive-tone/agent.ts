@@ -8,6 +8,7 @@
  */
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
+import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -81,7 +82,7 @@ Return JSON only.
 - Return at most 12 findings, keep each suggestion concise, and focus on the most visible issues first.`;
 
   try {
-    const response = await llm.chat({
+    const response = await chatWithTruncationRetry({
       model: MODEL_MID,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
@@ -115,7 +116,7 @@ Return JSON only.
   }
 
   try {
-    const retry = await llm.chat({
+    const retry = await chatWithTruncationRetry({
       model: MODEL_MID,
       system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
       messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
