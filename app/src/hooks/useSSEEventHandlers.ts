@@ -861,8 +861,8 @@ export function handleDraftReadiness(
               requirement:
                 typeof item.requirement === 'string' ? item.requirement : '',
               classification: (item.classification === 'partial'
-                ? 'partial'
-                : 'gap') as 'partial' | 'gap',
+                ? 'partial' as const
+                : 'gap' as const),
               priority,
               evidence_count: typeof item.evidence_count === 'number' && Number.isFinite(item.evidence_count)
                 ? Math.max(0, item.evidence_count)

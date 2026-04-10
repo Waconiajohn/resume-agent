@@ -1085,7 +1085,7 @@ export function V2StreamingDisplay({
       : { sections: [], steps: [] }
   ), [data.candidateIntelligence, data.gapAnalysis?.requirement_work_items, data.requirementWorkItems, displayResume]);
   const hiddenRecommendedSections = useMemo(() => (
-    fullSectionPlan.filter((item) => item.recommended_for_job && item.enabled === false)
+    fullSectionPlan.filter((item) => item.recommended_for_job && !item.enabled)
   ), [fullSectionPlan]);
   const missingStructureRecommendations = useMemo(() => (
     displayResume
@@ -1409,6 +1409,7 @@ export function V2StreamingDisplay({
     if (activeBullet && hasPassedReadyGate && coachingPanelRef.current) {
       scrollToAndFocusTarget(buildResumeLineSelector(activeBullet.section, activeBullet.index));
       coachingPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      coachingPanelRef.current.focus();
     }
   }, [activeBullet, hasPassedReadyGate]);
   useEffect(() => {
@@ -1906,7 +1907,7 @@ export function V2StreamingDisplay({
                           isEditing={isEditing}
                         />
                       ) : activeBullet && gapChat && buildChatContext ? (
-                        <div ref={coachingPanelRef}>
+                        <div ref={coachingPanelRef} tabIndex={-1} className="outline-none">
                           <BulletCoachingPanel
                             bulletText={activeBullet.bulletText}
                             section={activeBullet.section}

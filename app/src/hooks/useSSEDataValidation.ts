@@ -241,7 +241,7 @@ export function sanitizeSectionContextPayload(
                 typeof o.label === 'string'
                   ? o.label.slice(0, SUGGESTION_LIMITS.max_option_label_chars)
                   : '',
-              action: (o.action === 'skip' ? 'skip' : 'apply') as 'apply' | 'skip',
+              action: (o.action === 'skip' ? 'skip' as const : 'apply' as const),
             }))
         : [],
       priority: Number.isFinite(item.priority as number)

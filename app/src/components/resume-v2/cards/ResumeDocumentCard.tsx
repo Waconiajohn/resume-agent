@@ -402,13 +402,13 @@ export function ResumeDocumentCard({
                       className={`resume-scope-note text-[0.94rem] text-gray-500 italic${exp.scope_statement_is_new ? ' resume-proof-line resume-proof-line--partial' : ''}`}
                       title="Click to edit this role scope"
                       onClick={() => onBulletClick(
-                        exp.scope_statement!,
+                        exp.scope_statement,
                         'professional_experience',
                         i * 100 - 1,
                         [],
                         'strengthen' as ResumeReviewState,
                         undefined,
-                        exp.scope_statement!,
+                        exp.scope_statement,
                         undefined,
                         'adjacent',
                         'tighten',
@@ -418,13 +418,13 @@ export function ResumeDocumentCard({
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           onBulletClick(
-                            exp.scope_statement!,
+                            exp.scope_statement,
                             'professional_experience',
                             i * 100 - 1,
                             [],
                             'strengthen' as ResumeReviewState,
                             undefined,
-                            exp.scope_statement!,
+                            exp.scope_statement,
                             undefined,
                             'adjacent',
                             'tighten',
@@ -855,7 +855,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick!(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true, isAIEnhanced);
+      onBulletClick(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true, isAIEnhanced);
     }
   };
 
@@ -873,6 +873,7 @@ function BulletLineContent({
               role="button"
               tabIndex={0}
               title="Click to review and edit this bullet"
+              aria-label={`${resolvedReviewState === 'code_red' ? 'Needs attention: ' : resolvedReviewState === 'strengthen' || resolvedReviewState === 'confirm_fit' ? 'Partially addressed: ' : ''}${text}`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleActivate();
