@@ -1928,7 +1928,7 @@ export function V2StreamingDisplay({
                                 onClick={handleStartReviewing}
                                 className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
                               >
-                                {(queueSummary?.handled ?? 0) === 0 ? 'Start Reviewing \u2192' : 'Fix the Next One \u2192'}
+                                Review Next Item →
                               </button>
                             )}
                           </div>
