@@ -42,13 +42,10 @@ import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
-import {
-  InterviewLabDocumentsPanel,
-} from '@/components/career-iq/interview-lab/InterviewLabDocumentsPanel';
+import { NinetyDayPlanRoom } from '@/components/career-iq/NinetyDayPlanRoom';
 import {
   resolveInterviewLabRouteState,
   resolveInterviewLabSessionTargets,
-  type InterviewLabDocumentsView,
   type InterviewLabFollowUpView,
   type InterviewLabSection,
   type InterviewLabViewMode,
@@ -1228,7 +1225,6 @@ export function InterviewLabRoom({
   const [activeUserId, setActiveUserId] = useState<string | null | undefined>(undefined);
   const [viewMode, setViewMode] = useState<InterviewLabViewMode>('lab');
   const [activeSection, setActiveSection] = useState<InterviewLabSection>(initialRouteState.activeSection);
-  const [documentsView, setDocumentsView] = useState<InterviewLabDocumentsView>(initialRouteState.documentsView);
   const [followUpView, setFollowUpView] = useState<InterviewLabFollowUpView>(initialRouteState.followUpView);
   const [activeCompany, setActiveCompany] = useState(initialCompany ?? '');
   const [activeRole, setActiveRole] = useState(initialRole ?? '');
@@ -1313,18 +1309,14 @@ export function InterviewLabRoom({
   useEffect(() => {
     const nextRouteState = resolveInterviewLabRouteState(initialFocus);
     setActiveSection(nextRouteState.activeSection);
-    setDocumentsView(nextRouteState.documentsView);
     setFollowUpView(nextRouteState.followUpView);
   }, [initialFocus]);
 
   useEffect(() => {
-    if (activeSection !== 'documents' && documentsView !== 'overview') {
-      setDocumentsView('overview');
-    }
     if (activeSection !== 'follow_up' && followUpView !== 'overview') {
       setFollowUpView('overview');
     }
-  }, [activeSection, documentsView, followUpView]);
+  }, [activeSection, followUpView]);
 
   const handleGeneratePrep = useCallback(async (interview: UpcomingInterview) => {
     setActiveCompany(interview.company);
@@ -1493,9 +1485,6 @@ export function InterviewLabRoom({
     setFollowUpView((current) => (current === view ? 'overview' : view));
   }, []);
 
-  const currentSectionIndex = LAB_SECTION_ORDER.indexOf(activeSection);
-  const nextSection = currentSectionIndex >= 0 ? LAB_SECTION_ORDER[currentSectionIndex + 1] : undefined;
-
   if (viewMode === 'mock_interview' && mockInterviewConfig) {
     return (
       <MockInterviewView
@@ -1607,7 +1596,7 @@ export function InterviewLabRoom({
           <div className="eyebrow-label">Interview Prep</div>
           <h1 className="room-title">Prep, practice, and follow-up in one place</h1>
           <p className="room-subtitle">
-            Keep prep, practice, leave-behinds, and follow-up in one place.
+            Select an upcoming interview or add one manually to get started.
           </p>
         </div>
       </div>
@@ -1660,40 +1649,6 @@ export function InterviewLabRoom({
               </button>
             );
           })}
-        </div>
-      </GlassCard>
-
-      <GlassCard className="p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--link)]">
-              Right now
-            </div>
-            <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-              {LAB_SECTION_COPY[activeSection].label}
-            </div>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-muted)]">
-              {LAB_SECTION_COPY[activeSection].description}
-            </p>
-          </div>
-          <div className="min-w-[220px] rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-3.5">
-            <div className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-              Then
-            </div>
-            <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">
-              {nextSection ? LAB_SECTION_COPY[nextSection].label : 'Follow-up and keep the loop moving'}
-            </div>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-              {nextSection
-                ? LAB_SEQUENCE_COPY[nextSection]
-                : 'Once the follow-up tools are done, you should be ready to move back into the live job process with a cleaner story and stronger momentum.'}
-            </p>
-            {nextSection ? (
-              <GlassButton variant="ghost" onClick={() => setActiveSection(nextSection)} className="mt-4 text-[13px]">
-                Open {LAB_SECTION_COPY[nextSection].label}
-              </GlassButton>
-            ) : null}
-          </div>
         </div>
       </GlassCard>
 
@@ -1786,19 +1741,12 @@ export function InterviewLabRoom({
       )}
 
       {activeSection === 'documents' && (
-        <div className="space-y-4">
-          <InterviewLabDocumentsPanel
-            documentsView={documentsView}
-            activeCompany={activeCompany}
-            activeRole={activeRole}
-            activeJobApplicationId={activeJobApplicationId}
-            initialPlanSessionId={sessionTargets.planSessionId}
-            onDocumentsViewChange={setDocumentsView}
-            onOpenThankYou={() => {
-              setFollowUpTool('thank_you');
-            }}
-          />
-        </div>
+        <NinetyDayPlanRoom
+          initialTargetRole={activeRole}
+          initialTargetCompany={activeCompany}
+          initialJobApplicationId={activeJobApplicationId}
+          initialSessionId={sessionTargets.planSessionId}
+        />
       )}
 
       {activeSection === 'follow_up' && (
@@ -1826,32 +1774,6 @@ export function InterviewLabRoom({
               </div>
             </div>
           </GlassCard>
-
-          {followUpView === 'overview' && (
-            <GlassCard className="p-5">
-              <div className="grid gap-4 lg:grid-cols-2">
-                {FOLLOW_UP_TOOL_COPY.map((tool) => {
-                  const Icon = tool.icon;
-                  return (
-                    <div key={tool.view} className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-                      <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-                        {tool.label}
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-                        {tool.description}
-                      </p>
-                      <div className="mt-4">
-                        <GlassButton variant="ghost" onClick={() => setFollowUpTool(tool.view)} className="text-[13px]">
-                          <Icon size={14} className="mr-1.5" />
-                          {tool.openLabel}
-                        </GlassButton>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </GlassCard>
-          )}
 
           {followUpView === 'debrief' && (
             <DebriefForm
