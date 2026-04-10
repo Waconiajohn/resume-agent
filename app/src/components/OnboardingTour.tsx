@@ -69,7 +69,7 @@ const TOUR_STEPS = [
     content: (
       <p>
         Once your profile is set, paste in any job description and the Resume
-        Builder creates a tailored, ATS-optimised resume positioned specifically
+        Builder creates a role-specific, ATS-optimised resume positioned specifically
         for that role.
       </p>
     ),

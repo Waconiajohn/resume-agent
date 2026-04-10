@@ -35,7 +35,7 @@ const ROOM_GROUPS: RoomGroup[] = [
     rooms: [
       { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
       { id: 'career-profile', label: 'Your Profile', icon: User, description: 'Your resume, story, and evidence in one place', gated: false },
-      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save tailored resumes', gated: false },
+      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save role-specific resumes', gated: false },
     ],
   },
   {

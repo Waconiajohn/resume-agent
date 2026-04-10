@@ -230,7 +230,7 @@ export function SessionHistoryTab({
           </div>
         ) : jobRecords.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="text-sm text-[var(--text-soft)]">No saved tailored work found for this filter.</p>
+            <p className="text-sm text-[var(--text-soft)]">No saved role-specific work found for this filter.</p>
           </div>
         ) : (
           <div className="divide-y divide-white/[0.04]">

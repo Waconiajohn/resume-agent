@@ -124,7 +124,7 @@ export function JobWorkspaceView({
         </div>
         {!application ? (
           <p className="mt-3 text-[13px] text-[var(--text-soft)]">
-            This tailored work is not yet linked to a tracked job application, so the stage shown here is read-only.
+            This role-specific work is not yet linked to a tracked job application, so the stage shown here is read-only.
           </p>
         ) : null}
       </div>
@@ -141,8 +141,8 @@ export function JobWorkspaceView({
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                   {resumeAsset || coverLetterAsset
-                    ? 'Your tailored resume and cover letter live together here. Reopen the active session or review the saved draft assets.'
-                    : 'Use Resume Builder for the tailored resume first. Add a cover letter there only when this job actually needs one.'}
+                    ? 'Your role-specific resume and cover letter live together here. Reopen the active session or review the saved draft assets.'
+                    : 'Use Resume Builder for the role-specific resume first. Add a cover letter there only when this job actually needs one.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {resumeAsset ? (

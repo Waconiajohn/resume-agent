@@ -106,7 +106,7 @@ describe('SessionHistoryTab', () => {
 
   it('shows an empty state when there are no saved sessions', () => {
     render(<SessionHistoryTab {...makeProps({ sessions: [] })} />);
-    expect(screen.getByText(/no saved tailored work found/i)).toBeInTheDocument();
+    expect(screen.getByText(/no saved role-specific work found/i)).toBeInTheDocument();
   });
 
   it('shows loading rows when loading is true', () => {

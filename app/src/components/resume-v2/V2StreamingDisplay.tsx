@@ -2,7 +2,7 @@
  * V2StreamingDisplay — Output display for the v2 pipeline
  *
  * Two layout modes:
- *   1. Processing mode — minimal status card while the tailored resume is being built
+ *   1. Processing mode — minimal status card while the role-specific resume is being built
  *   2. Resume mode — full-width centered document with inline editing
  */
 

@@ -59,11 +59,11 @@ export function deriveWorkspaceHomeGuidance(params: {
   if (!hasResumeSessions) {
     return {
       eyebrow: 'Next best move',
-      title: 'Build the first tailored resume for a live role',
+      title: 'Build the first role-specific resume for a live role',
       description:
         'Your profile is ready enough to stop starting from scratch. Turn it into a job-specific resume you can reopen later by company, role, and date.',
       mobileInsight:
-        'Use your profile to build the first tailored resume for a live role instead of waiting for the perfect job.',
+        'Use your profile to build the first role-specific resume for a live role instead of waiting for the perfect job.',
       primary: { label: 'Open Resume Builder', room: 'resume' },
       secondary: { label: 'Open Job Search', room: 'jobs' },
       coachLine: coachRecommendation?.action ?? undefined,

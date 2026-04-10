@@ -128,7 +128,7 @@ vi.mock('@/components/career-iq/CareerIQScreen', () => ({
   }) => (
     <div>
       <div>Workspace room: {initialRoom ?? 'dashboard'}</div>
-      <button type="button" onClick={onNewSession}>New Tailored Resume</button>
+      <button type="button" onClick={onNewSession}>New Role-Specific Resume</button>
       <button type="button" onClick={() => onResumeSession?.('resume-v2-extra')}>Open Saved Resume</button>
     </div>
   ),
@@ -187,7 +187,7 @@ describe('App routing shell', () => {
     expect(await screen.findByText('Workspace room: dashboard')).toBeInTheDocument();
   });
 
-  it('opens a new tailored resume session from Workspace', async () => {
+  it('opens a new role-specific resume session from Workspace', async () => {
     const user = userEvent.setup();
 
     render(
@@ -196,7 +196,7 @@ describe('App routing shell', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getAllByRole('button', { name: 'New Tailored Resume' })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'New Role-Specific Resume' })[0]);
 
     await waitFor(() => {
       expect(screen.getByText('Resume V2 Screen')).toBeInTheDocument();

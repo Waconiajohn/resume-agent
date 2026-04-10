@@ -87,7 +87,7 @@ export function CareerIQProfileScreen({ profile, resume, jobText }: CareerIQProf
             <PathCard
               icon={<FileText className="h-5 w-5" />}
               title="Build the full resume for this job"
-              description="Turn this profile into a tailored resume that positions you as the benchmark candidate."
+              description="Turn this profile into a role-specific resume that positions you as the benchmark candidate."
               onClick={() => navigate('/resume-builder/session', {
                 state: { fromDiscovery: true, jobDescription: jobText },
               })}

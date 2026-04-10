@@ -124,7 +124,7 @@ export function ResumeWorkshopRoom({
             <div className="eyebrow-label">Resume Builder</div>
             <h1 className="room-title">Choose the resume tool you need right now</h1>
             <p className="room-subtitle">
-              Start a new tailored resume, open your master resume, write a cover letter, or review saved job workspaces. The landing view should help you choose, not dump you into a table.
+              Start a new role-specific resume, open your master resume, write a cover letter, or review saved job workspaces. The landing view should help you choose, not dump you into a table.
             </p>
             <div className="room-meta-strip mt-5">
               <div className="room-meta-item">
@@ -145,18 +145,18 @@ export function ResumeWorkshopRoom({
         <div className="grid gap-4 xl:grid-cols-2">
           <ResumeToolCard
             eyebrow="Primary"
-            title="New Tailored Resume"
+            title="New Role-Specific Resume"
             description="Start a fresh role-specific resume and go straight into the guided editing workflow."
             meta={`Saved workspaces: ${tailoredCount}`}
             icon={FilePlus2}
-            actionLabel="Start Tailored Resume"
+            actionLabel="Start Role-Specific Resume"
             onAction={onNewSession}
             accent="primary"
           />
           <ResumeToolCard
             eyebrow="Reusable Base"
             title="Master Resume"
-            description="Maintain the long-term source resume you promote strong edits into after a tailored run proves worth keeping."
+            description="Maintain the long-term source resume you promote strong edits into after a role-specific run proves worth keeping."
             meta={defaultResume ? `Default version: v${defaultResume.version}` : 'No default master resume yet'}
             icon={LibraryBig}
             actionLabel="Open Master Resume"
@@ -174,7 +174,7 @@ export function ResumeWorkshopRoom({
           <ResumeToolCard
             eyebrow="Saved Work"
             title="Job Workspaces"
-            description="Review saved tailored resumes and reopen past work only when you actually want the history view."
+            description="Review saved role-specific resumes and reopen past work only when you actually want the history view."
             meta={`${tailoredCount} saved workspace${tailoredCount === 1 ? '' : 's'}`}
             icon={BriefcaseBusiness}
             actionLabel="Browse Job Workspaces"
@@ -188,9 +188,9 @@ export function ResumeWorkshopRoom({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <div className="eyebrow-label">Job Workspaces</div>
-              <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Open saved tailored work only when you need the history view</h2>
+              <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Open saved role-specific work only when you need the history view</h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                This is the archive of saved tailored resumes and linked assets. It should be available, but it should not take over the Resume Builder landing page.
+                This is the archive of saved role-specific resumes and linked assets. It should be available, but it should not take over the Resume Builder landing page.
               </p>
             </div>
             <div className="flex flex-col items-start gap-2">

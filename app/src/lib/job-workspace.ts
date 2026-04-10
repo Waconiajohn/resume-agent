@@ -116,7 +116,7 @@ export function humanizeProductType(type: string): string {
   switch (type) {
     case 'resume_v2':
     case 'resume':
-      return 'Tailored Resume';
+      return 'Role-Specific Resume';
     case 'cover_letter':
       return 'Cover Letter';
     default:

@@ -23,7 +23,7 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
       aria-live="polite"
     >
       <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-4">
-        Building Your Tailored Resume
+        Building Your Role-Specific Resume
       </p>
 
       {/* 6-step stepper */}

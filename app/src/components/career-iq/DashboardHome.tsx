@@ -112,7 +112,7 @@ function HomeGuideCard({
           title="Resume work"
           description={hasResumeSessions
             ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
-            : 'Start a tailored resume and keep the best additions for future use.'}
+            : 'Start a role-specific resume and keep the best additions for future use.'}
           actionLabel={hasResumeSessions ? 'Open resumes' : 'Start resume'}
           onClick={() => onNavigateRoom?.('resume')}
           className="border-[var(--line-soft)] bg-[var(--accent-muted)]"

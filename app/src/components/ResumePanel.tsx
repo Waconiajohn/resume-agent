@@ -22,7 +22,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
         <div className="flex flex-col items-center gap-3 text-center">
           <FileText className="h-10 w-10 text-[var(--text-soft)]" />
           <p className="text-sm text-[var(--text-soft)]">
-            Your tailored resume will appear here as we work together.
+            Your role-specific resume will appear here as we work together.
           </p>
         </div>
       </div>
