@@ -652,7 +652,17 @@ function sanitizeDisplayText(value: string): string {
     })
     .filter((sentence) => sentence.length > 0);
 
-  return cleanedSentences.join(' ').replace(/\s+/g, ' ').trim();
+  let result = cleanedSentences.join(' ').replace(/\s+/g, ' ').trim();
+
+  // Fix truncation artifacts: a bullet starting with a single lowercase letter
+  // followed by a space (e.g., "d knowledge of products") is a broken word.
+  // Remove the orphaned letter. Also capitalize the first letter of any bullet.
+  result = result.replace(/^[a-z]\s+/, '');
+  if (result.length > 0) {
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
+  return result;
 }
 
 /**
