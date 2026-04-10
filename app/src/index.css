@@ -411,6 +411,9 @@
         color-mix(in srgb, var(--surface-elevated) 94%, transparent),
         color-mix(in srgb, var(--surface-2) 98%, transparent)
       );
+    /* Isolate compositing so focus-dimming opacity changes don't bleed
+       into the left panel's backdrop-filter blur sampling region. */
+    isolation: isolate;
   }
 
   .resume-editor-divider {
@@ -1790,12 +1793,10 @@ body {
   background-attachment: fixed;
 }
 
-/* OUTSIDE @layer — maximum specificity. Left coaching panel must never dim. */
-.resume-editor-guide-pane,
-.resume-editor-guide-pane * {
-  opacity: 1 !important;
-  filter: none !important;
-}
+/* Note: left panel dimming was caused by backdrop-filter: blur(14px) on
+   .resume-editor-guide-pane sampling dimmed right-panel pixels through
+   the 4px divider. Fixed by adding isolation: isolate to the right panel's
+   .resume-editor-document-pane, which prevents compositing bleed. */
 
 @media print {
   body * {
