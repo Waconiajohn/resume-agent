@@ -36,8 +36,6 @@ import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
 import { useStoryBank } from '@/hooks/useStoryBank';
 import type { InterviewStory, StoryBankRow } from '@/hooks/useStoryBank';
 import { useEvidenceLibrary } from '@/hooks/useEvidenceLibrary';
-import { ExecutiveBioRoom } from './ExecutiveBioRoom';
-import { CaseStudyRoom } from './CaseStudyRoom';
 import type { MasterResume } from '@/types/resume';
 import type { CareerProfileV2 } from '@/types/career-profile';
 
@@ -106,8 +104,10 @@ interface ResumeSectionProps {
 }
 
 function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionProps) {
+  const navigate = useNavigate();
   const [resume, setResume] = useState<MasterResume | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [resumeError, setResumeError] = useState(false);
   const loadAttemptedRef = useRef(false);
 
   // Load default resume once on mount — ref guards against double-runs
@@ -116,15 +116,29 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
     loadAttemptedRef.current = true;
     let cancelled = false;
     setResumeLoading(true);
+
+    // Timeout: if resume doesn't load in 10s, stop spinning and show empty state
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setResumeLoading(false);
+        setResumeError(true);
+      }
+    }, 10_000);
+
     void onGetDefaultResume().then((r) => {
+      clearTimeout(timeoutId);
       if (!cancelled) {
         setResume(r);
         setResumeLoading(false);
       }
     }).catch(() => {
-      if (!cancelled) setResumeLoading(false);
+      clearTimeout(timeoutId);
+      if (!cancelled) {
+        setResumeLoading(false);
+        setResumeError(true);
+      }
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [onGetDefaultResume]);
 
   if (resumeLoading) {
@@ -148,12 +162,23 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           and every session starts with full context.
         </p>
         <div className="mt-5 text-center py-6">
-          <p className="text-sm text-[var(--text-muted)] mb-3">
-            No master resume yet.
-          </p>
-          <GlassButton onClick={() => { window.location.href = '/workspace?room=resume'; }}>
-            Go to Resume Builder
-          </GlassButton>
+          {resumeError ? (
+            <div className="text-sm text-[var(--text-soft)]">
+              <p>We couldn't load your master resume. You may not have uploaded one yet.</p>
+              <button onClick={() => navigate('/workspace?room=resume')} className="mt-2 text-[var(--link)] hover:underline text-sm">
+                Go to Resume Builder →
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-[var(--text-muted)] mb-3">
+                No master resume yet.
+              </p>
+              <GlassButton onClick={() => { window.location.href = '/workspace?room=resume'; }}>
+                Go to Resume Builder
+              </GlassButton>
+            </>
+          )}
         </div>
       </GlassCard>
     );
@@ -291,7 +316,7 @@ function LinkedInSection() {
 
   return (
     <GlassCard className="p-6">
-      <SectionHeader icon={Linkedin} label="Section D" title="LinkedIn Profile" />
+      <SectionHeader icon={Linkedin} label="Section C" title="LinkedIn Profile" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
         Your LinkedIn headline and About section are stored here as source material. LinkedIn Studio
         uses this to generate optimized content and profile suggestions.
@@ -402,12 +427,9 @@ function EvidenceLibrarySection({
     careerProfile,
   });
 
-  // Don't render at all until loading completes and there's something to show
-  if (!loading && items.length === 0 && !careerProfile) return null;
-
   return (
     <GlassCard className="p-6">
-      <SectionHeader icon={BookOpen} label="Section E" title="Proof Library" />
+      <SectionHeader icon={BookOpen} label="Section D" title="Proof Library" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
         Everything we have gathered from your accomplishments, positioning, and profile sources in one proof base.
         Use this to support your Why Me Story and benchmark assets.
@@ -419,19 +441,10 @@ function EvidenceLibrarySection({
           Loading evidence...
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-[var(--accent-muted)] p-2">
-              <BookOpen size={14} className="text-[var(--text-soft)]" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-[var(--text-soft)]">No evidence yet</div>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                Complete the Why Me Story above, run a Resume Builder session, or use the Career
-                Profile assessment to populate your evidence library automatically.
-              </p>
-            </div>
-          </div>
+        <div className="text-center py-8">
+          <p className="text-sm text-[var(--text-soft)]">
+            Your evidence library builds automatically as you use the platform — from resume sessions, interview prep, and your Why Me story.
+          </p>
         </div>
       ) : (
         <div className="mt-4 space-y-2">
@@ -452,62 +465,6 @@ function EvidenceLibrarySection({
         </div>
       )}
     </GlassCard>
-  );
-}
-
-// ─── Section E — Brand & Proof Assets ────────────────────────────────────────
-
-type BrandAssetFocus = 'bio' | 'case-study';
-
-function getBrandAssetFocus(initialFocus?: string): BrandAssetFocus {
-  if (initialFocus === 'case-study') return 'case-study';
-  return 'bio';
-}
-
-function BrandProofAssetsSection({ initialFocus }: { initialFocus?: string }) {
-  const [activeAsset, setActiveAsset] = useState<BrandAssetFocus>(getBrandAssetFocus(initialFocus));
-
-  useEffect(() => {
-    setActiveAsset(getBrandAssetFocus(initialFocus));
-  }, [initialFocus]);
-
-  const showBio = activeAsset === 'bio';
-  const showCaseStudy = activeAsset === 'case-study';
-
-  return (
-    <div className="space-y-4">
-      <GlassCard className="p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <SectionHeader icon={BookOpen} label="Section C" title="Brand & Benchmark Assets" />
-            <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-              Turn your core story into reusable bios and deeper proof without drifting away from
-              your Why Me Story or master resume.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <GlassButton
-              variant={showBio ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveAsset('bio')}
-            >
-              Bio Builder
-            </GlassButton>
-            <GlassButton
-              variant={showCaseStudy ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveAsset('case-study')}
-            >
-              Case Studies
-            </GlassButton>
-          </div>
-        </div>
-      </GlassCard>
-
-      {showBio ? <ExecutiveBioRoom /> : null}
-      {showCaseStudy ? <CaseStudyRoom /> : null}
-    </div>
   );
 }
 
@@ -713,6 +670,7 @@ function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
 }
 
 function StoryBankSection() {
+  const navigate = useNavigate();
   const { stories, loading, error, reload, updateStory, deleteStory } = useStoryBank();
 
   const handleDelete = useCallback(
@@ -722,13 +680,10 @@ function StoryBankSection() {
     [deleteStory],
   );
 
-  // Don't render at all until loading completes and there are stories to show
-  if (!loading && !error && stories.length === 0) return null;
-
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={MessageSquare} label="Section F" title="Story Bank" />
+        <SectionHeader icon={MessageSquare} label="Section E" title="Story Bank" />
         {stories.length > 0 && (
           <div className="shrink-0 rounded-full border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-0.5 text-[12px] text-[var(--link)]/80">
             {stories.length} {stories.length === 1 ? 'story' : 'stories'}
@@ -760,6 +715,15 @@ function StoryBankSection() {
             </button>
           </div>
         </div>
+      ) : stories.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-sm text-[var(--text-soft)] mb-3">
+            Interview stories you create during Interview Prep sessions will appear here. Each story follows the STAR+R framework and can be reused across applications.
+          </p>
+          <button onClick={() => navigate('/workspace?room=interview')} className="text-sm text-[var(--link)] hover:underline">
+            Start Interview Prep →
+          </button>
+        </div>
       ) : (
         <div className="mt-5 space-y-3">
           {stories.map((row) => (
@@ -782,56 +746,35 @@ interface YourProfilePageProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
   onNavigateResume?: () => void;
   careerProfile?: CareerProfileV2 | null;
-  initialFocus?: string;
 }
 
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
   careerProfile = null,
-  initialFocus,
 }: YourProfilePageProps) {
-  const { story, signals, updateField, hasStarted } = useWhyMeStory();
+  const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
   const navigate = useNavigate();
+  const [whyMeSaved, setWhyMeSaved] = useState(false);
+  const prevLastSavedAtRef = useRef<Date | null>(null);
 
-  if (!careerProfile) {
-    return (
-      <div className="flex h-full items-center justify-center px-6 py-16">
-        <div
-          className="w-full max-w-lg rounded-2xl p-8 text-center"
-          style={{ background: 'var(--surface-1)', border: '1px solid var(--line-soft)' }}
-        >
-          <h2
-            className="text-xl font-light text-[var(--text-strong)] mb-3"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            Build your CareerIQ profile first
-          </h2>
-          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-8">
-            Your profile is the foundation for everything else — resumes, interviews, job search.
-            It takes about 20 minutes.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/profile-setup')}
-            className="w-full py-4 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-            style={{ background: 'var(--link)', color: '#080b10' }}
-          >
-            Start Profile Setup →
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Show "Saved" indicator briefly whenever lastSavedAt changes
+  useEffect(() => {
+    if (!lastSavedAt) return;
+    if (prevLastSavedAtRef.current?.getTime() === lastSavedAt.getTime()) return;
+    prevLastSavedAtRef.current = lastSavedAt;
+    setWhyMeSaved(true);
+    const t = setTimeout(() => setWhyMeSaved(false), 2500);
+    return () => clearTimeout(t);
+  }, [lastSavedAt]);
 
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
       {/* Page title */}
-      <div>
+      <div className="mb-6">
         <h1 className="text-xl font-semibold text-[var(--text-strong)]">Your Profile</h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-soft)]">
-          Keep your positioning story, master resume, and proof base aligned here so every other
-          workspace tool starts from the same foundation.
+        <p className="mt-1 text-sm text-[var(--text-soft)]">
+          Your career foundation. Everything here feeds into your resumes, cover letters, and interview prep. The stronger this profile, the better every tool works for you.
         </p>
       </div>
 
@@ -839,22 +782,38 @@ export function YourProfilePage({
       {hasStarted ? (
         // WhyMeStoryCard renders its own GlassCard
         <div>
-          <div className="mb-3 flex items-center gap-2 px-1">
-            <div className="rounded-lg bg-[var(--link)]/12 p-2">
-              <BookOpen size={16} className="text-[var(--link)]" />
+          <div className="mb-3 flex items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-[var(--link)]/12 p-2">
+                <BookOpen size={16} className="text-[var(--link)]" />
+              </div>
+              <div>
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Section A</div>
+                <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
+                  Your Why Me Story
+                </h2>
+              </div>
             </div>
-            <div>
-              <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Section A</div>
-              <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
-                Your Why Me Story
-              </h2>
-            </div>
+            {whyMeSaved && (
+              <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
+                <CheckCircle2 size={13} />
+                Saved
+              </div>
+            )}
           </div>
           <WhyMeStoryCard />
         </div>
       ) : (
         <GlassCard className="p-6">
-          <SectionHeader icon={BookOpen} label="Section A" title="Your Why Me Story" />
+          <div className="flex items-center justify-between gap-4">
+            <SectionHeader icon={BookOpen} label="Section A" title="Your Why Me Story" />
+            {whyMeSaved && (
+              <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
+                <CheckCircle2 size={13} />
+                Saved
+              </div>
+            )}
+          </div>
           <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
             Three answers that define how Resume Builder, LinkedIn, Interview Prep, and every other
             tool frames your positioning. This is the most important section on this page.
@@ -871,10 +830,7 @@ export function YourProfilePage({
         onNavigateResume={onNavigateResume}
       />
 
-      {/* Section C — Brand & Benchmark Assets */}
-      <BrandProofAssetsSection initialFocus={initialFocus} />
-
-      {/* Section D — LinkedIn Profile */}
+      {/* Section C — LinkedIn Profile */}
       <LinkedInSection />
 
       {/* Section E — Proof Library */}

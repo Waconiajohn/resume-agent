@@ -94,6 +94,7 @@ function hasStoryContent(story: WhyMeStory) {
 export function useWhyMeStory() {
   const [story, setStory] = useState<WhyMeStory>(EMPTY_STORY);
   const [supabaseLoading, setSupabaseLoading] = useState(true);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [activeUserId, setActiveUserId] = useState<string | null | undefined>(undefined);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const initialLoadDone = useRef(false);
@@ -201,6 +202,7 @@ export function useWhyMeStory() {
           known_for_what: story.knownForWhat,
           why_not_me: story.whyNotMe,
         }, { onConflict: 'user_id' });
+        setLastSavedAt(new Date());
       } catch {
         // Supabase unavailable — the user-scoped local draft remains.
       }
@@ -254,5 +256,6 @@ export function useWhyMeStory() {
     isComplete,
     hasStarted,
     loading: supabaseLoading,
+    lastSavedAt,
   };
 }

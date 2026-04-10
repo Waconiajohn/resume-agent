@@ -94,13 +94,20 @@ export function useEvidenceLibrary({
     let cancelled = false;
     setLoadingResume(true);
 
+    // Timeout: if resume doesn't load in 10s, stop spinning and continue without it
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) setLoadingResume(false);
+    }, 10_000);
+
     async function load() {
       try {
         const resume = await onGetDefaultResume!();
+        clearTimeout(timeoutId);
         if (!cancelled && resume && resume.evidence_items.length > 0) {
           setResumeItems(extractResumeItems(resume));
         }
       } catch {
+        clearTimeout(timeoutId);
         // Evidence from resume unavailable — continue with other sources
       } finally {
         if (!cancelled) setLoadingResume(false);
@@ -110,6 +117,7 @@ export function useEvidenceLibrary({
     void load();
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [onGetDefaultResume]);
 
