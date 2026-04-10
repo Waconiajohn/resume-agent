@@ -3,6 +3,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import type { JobMatch, JobMatchSearchContext, JobMatchStatus } from '@/types/ni';
+import type { WorkModes } from '@/hooks/useJobFilters';
 import { API_BASE } from '@/lib/api';
 
 type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
@@ -27,6 +28,8 @@ export interface JobMatchesListProps {
   onApplyWithResume?: (jobUrl: string) => void;
   /** Increment this key to trigger a re-fetch of matches (e.g. after a scan completes) */
   refreshKey?: number;
+  /** When provided, applies client-side work mode filtering to results */
+  workModes?: WorkModes;
 }
 
 const STATUS_OPTIONS: JobMatchStatus[] = ['new', 'applied', 'referred', 'interviewing', 'rejected', 'archived'];
@@ -92,6 +95,7 @@ function mapJobMatch(m: Record<string, unknown>): JobMatch {
     connectionCount: m.connection_count as number,
     searchContext,
     source: (metadata.source as string) ?? null,
+    remoteType: (metadata.remote_type as string) ?? null,
     status: m.status as JobMatchStatus,
     postedOn: (m.posted_on as string) ?? null,
     scrapedAt: (m.scraped_at as string) ?? null,
@@ -106,6 +110,7 @@ export function JobMatchesList({
   description = 'Review one combined result stream, then narrow it by source or by known referral bonus.',
   onApplyWithResume,
   refreshKey,
+  workModes,
 }: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +149,18 @@ export function JobMatchesList({
     if (activeFilter === 'all') return true;
     if (activeFilter === 'referral_bonus') return match.referralAvailable;
     return match.searchContext === activeFilter;
+  }).filter((match) => {
+    if (!workModes) return true;
+    // If all modes are off, show everything (no meaningful filter)
+    const anyActive = workModes.remote || workModes.hybrid || workModes.onsite;
+    if (!anyActive) return true;
+    const rt = (match.remoteType ?? '').toLowerCase();
+    if (workModes.remote && rt === 'remote') return true;
+    if (workModes.hybrid && rt === 'hybrid') return true;
+    if (workModes.onsite && (rt === 'onsite' || rt === 'on-site' || rt === 'in-person')) return true;
+    // Jobs with no remote_type pass through when at least one non-all filter is active
+    if (!rt) return true;
+    return false;
   });
 
   const filterCounts: Record<MatchFilter, number> = {

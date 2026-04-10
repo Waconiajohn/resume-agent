@@ -33,6 +33,9 @@ interface StartNiScrapeOptions {
   targetTitles?: string[];
   searchContext: JobMatchSearchContext;
   emptyMessage: string;
+  location?: string;
+  remoteOnly?: boolean;
+  maxDaysOld?: number;
 }
 
 function buildResult(log: NiScrapeStatus): NiScrapeResult {
@@ -137,6 +140,9 @@ export function useNiScrapeRunner(accessToken: string | null) {
     targetTitles = [],
     searchContext,
     emptyMessage,
+    location,
+    remoteOnly,
+    maxDaysOld,
   }: StartNiScrapeOptions) => {
     if (!accessToken) {
       stopPolling();
@@ -169,6 +175,9 @@ export function useNiScrapeRunner(accessToken: string | null) {
           company_ids: companyIds,
           target_titles: targetTitles,
           search_context: searchContext,
+          ...(location ? { location } : {}),
+          ...(remoteOnly !== undefined ? { remote_only: remoteOnly } : {}),
+          ...(maxDaysOld !== undefined ? { max_days_old: maxDaysOld } : {}),
         }),
       });
 

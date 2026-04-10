@@ -78,6 +78,7 @@ export interface JobMatch {
   connectionCount: number;
   searchContext: JobMatchSearchContext | null;
   source: string | null;
+  remoteType: string | null;
   status: JobMatchStatus;
   postedOn: string | null;
   scrapedAt: string | null;

@@ -27,6 +27,8 @@ import { useRadarSearch } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
+import { useJobFilters } from '@/hooks/useJobFilters';
+import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 import { PipelineBoard } from '@/components/job-command-center/PipelineBoard';
 import { AddOpportunityDialog } from '@/components/job-command-center/AddOpportunityDialog';
 import { PipelineFilters } from '@/components/job-command-center/PipelineFilters';
@@ -439,6 +441,13 @@ export function JobCommandCenterRoom({
   const radar = useRadarSearch();
   const watchlist = useWatchlist();
   const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, pipeline.loading);
+  const {
+    filters: jobFilters,
+    setLocation: setJobFilterLocation,
+    setRadiusMiles: setJobFilterRadius,
+    setWorkModes: setJobFilterWorkModes,
+    setPostedWithin: setJobFilterPostedWithin,
+  } = useJobFilters('main-job-filters');
 
   const [activeTab, setActiveTab] = useState<JCCTab>('board');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -527,16 +536,27 @@ export function JobCommandCenterRoom({
 
   const handleSearchCompany = useCallback(
     (companyName: string) => {
+      const remoteType =
+        jobFilters.workModes.remote && !jobFilters.workModes.hybrid && !jobFilters.workModes.onsite
+          ? 'remote'
+          : jobFilters.workModes.hybrid && !jobFilters.workModes.remote && !jobFilters.workModes.onsite
+            ? 'hybrid'
+            : jobFilters.workModes.onsite && !jobFilters.workModes.remote && !jobFilters.workModes.hybrid
+              ? 'onsite'
+              : 'any';
       trackProductEvent('job_board_search_run', {
         query: companyName,
-        location: null,
-        date_posted: 'any',
-        remote_type: 'any',
+        location: jobFilters.location || null,
+        date_posted: jobFilters.postedWithin,
+        remote_type: remoteType,
         source: 'watchlist',
       });
-      radar.search(companyName, '');
+      radar.search(companyName, jobFilters.location, {
+        datePosted: jobFilters.postedWithin,
+        remoteType,
+      });
     },
-    [radar],
+    [jobFilters, radar],
   );
 
   const handlePromoteRadarJob = useCallback(
@@ -777,6 +797,17 @@ export function JobCommandCenterRoom({
             resumeText={masterResumeText}
             loadingResume={loadingMasterResume}
             onShowAiSuggestions={() => setShowAiSuggestions(true)}
+          />
+
+          <JobFilterPanel
+            location={jobFilters.location}
+            onLocationChange={setJobFilterLocation}
+            radiusMiles={jobFilters.radiusMiles}
+            onRadiusMilesChange={setJobFilterRadius}
+            workModes={jobFilters.workModes}
+            onWorkModesChange={setJobFilterWorkModes}
+            postedWithin={jobFilters.postedWithin}
+            onPostedWithinChange={setJobFilterPostedWithin}
           />
 
           <RadarSection

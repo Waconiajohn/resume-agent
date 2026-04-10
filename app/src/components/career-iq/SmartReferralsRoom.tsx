@@ -13,6 +13,7 @@ import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHub
 import { API_BASE } from '@/lib/api';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { useAuth } from '@/hooks/useAuth';
+import { useJobFilters } from '@/hooks/useJobFilters';
 import type { CsvUploadSummary } from '@/types/ni';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
@@ -147,6 +148,7 @@ function NetworkSetupPanel({
 
 export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartReferralsRoomProps) {
   const { user, session, loading: authLoading } = useAuth();
+  const { filters: niFilters } = useJobFilters('ni-job-filters');
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
   const [networkSupportView, setNetworkSupportView] = useState<NetworkSupportView>(null);
@@ -345,6 +347,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
             }
             onApplyWithResume={onNavigate ? handleApplyWithResume : undefined}
             refreshKey={matchRefreshKey}
+            workModes={niFilters.workModes}
           />
         );
       case 'job-scan':
