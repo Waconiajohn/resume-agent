@@ -19,16 +19,17 @@ import {
 export interface LinkedInProfile {
   headline: string;
   about: string;
+  experience: string;
 }
 
 const STORAGE_NAMESPACE = 'careeriq_linkedin_profile';
 const LEGACY_STORAGE_KEY = STORAGE_NAMESPACE;
 const DEBOUNCE_MS = 1_000;
 
-const EMPTY_PROFILE: LinkedInProfile = { headline: '', about: '' };
+const EMPTY_PROFILE: LinkedInProfile = { headline: '', about: '', experience: '' };
 
 function hasProfileContent(profile: LinkedInProfile) {
-  return Boolean(profile.headline.trim() || profile.about.trim());
+  return Boolean(profile.headline.trim() || profile.about.trim() || profile.experience.trim());
 }
 
 function getStorageKey(userId: string | null) {
@@ -40,6 +41,7 @@ function normalizeProfile(parsed: unknown): LinkedInProfile {
   return {
     headline: source.headline ?? '',
     about: source.about ?? '',
+    experience: source.experience ?? '',
   };
 }
 
@@ -241,7 +243,10 @@ export function useLinkedInProfile() {
     };
   }, [activeUserId, profile]);
 
-  const hasContent = profile.headline.trim().length > 0 || profile.about.trim().length > 0;
+  const hasContent =
+    profile.headline.trim().length > 0 ||
+    profile.about.trim().length > 0 ||
+    profile.experience.trim().length > 0;
 
   return {
     profile,

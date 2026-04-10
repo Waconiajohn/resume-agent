@@ -16,7 +16,6 @@ import {
   ChevronDown,
   RotateCcw,
   BookOpen,
-  Users,
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,6 +23,7 @@ import { useState, useCallback } from 'react';
 import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
 import { useLinkedInEditor } from '@/hooks/useLinkedInEditor';
+import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
 import { useContentCalendar } from '@/hooks/useContentCalendar';
 import type { SavedCalendarReportFull } from '@/hooks/useContentCalendar';
 import { useContentPosts } from '@/hooks/useContentPosts';
@@ -39,7 +39,7 @@ interface LinkedInStudioRoomProps {
   signals: WhyMeSignals;
 }
 
-type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library';
+type StudioTab = 'profile' | 'content';
 
 const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
   headline: 'Headline',
@@ -51,88 +51,7 @@ const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
 
 const PROFILE_SECTION_ORDER: ProfileSection[] = ['headline', 'about', 'experience', 'skills', 'education'];
 
-type StudioStageMeta = {
-  label: string;
-  icon: React.ComponentType<{ size: number; className?: string }>;
-  category: 'primary' | 'support';
-  workflowLabel?: string;
-  focusTitle: string;
-  focusSummary: string;
-  next?: {
-    tab: StudioTab;
-    label: string;
-    description: string;
-  };
-};
 
-const STUDIO_STAGE_CONFIG: Record<StudioTab, StudioStageMeta> = {
-  editor: {
-    label: 'Profile',
-    icon: PenLine,
-    category: 'primary',
-    workflowLabel: 'Profile',
-    focusTitle: 'Sharpen the profile people land on',
-    focusSummary: 'Rewrite the sections that matter most so the profile supports the story your posts are telling.',
-    next: {
-      tab: 'composer',
-      label: 'Write',
-      description: 'Turn the stronger positioning into a post once the profile reads cleanly.',
-    },
-  },
-  composer: {
-    label: 'Write',
-    icon: FileText,
-    category: 'primary',
-    workflowLabel: 'Write',
-    focusTitle: 'Draft a post in your own voice',
-    focusSummary: 'Start with one authentic idea, tighten the hook, and only keep what feels publishable.',
-    next: {
-      tab: 'analytics',
-      label: 'Review Results',
-      description: 'Check how the profile and post signals are reading before you keep building outward.',
-    },
-  },
-  analytics: {
-    label: 'Results',
-    icon: BarChart3,
-    category: 'primary',
-    workflowLabel: 'Results',
-    focusTitle: 'Review how strong the profile looks on paper',
-    focusSummary: 'Use the score, rewritten sections, and weak spots to decide what should be tightened next.',
-    next: {
-      tab: 'composer',
-      label: 'Write Again',
-      description: 'Use the results to decide whether to tighten the profile or draft the next post with a cleaner signal.',
-    },
-  },
-  calendar: {
-    label: 'Content Plan',
-    icon: Calendar,
-    category: 'support',
-    focusTitle: 'Plan the next stretch of posts',
-    focusSummary: 'Use this support workspace to map themes, sequence ideas, and build a usable content rhythm.',
-    next: {
-      tab: 'composer',
-      label: 'Return to Write',
-      description: 'Turn the plan into a post as soon as you have a topic worth drafting.',
-    },
-  },
-  library: {
-    label: 'Library',
-    icon: BookOpen,
-    category: 'support',
-    focusTitle: 'Reuse saved drafts and ideas',
-    focusSummary: 'Pull older posts and approved drafts back into the main flow when you want a faster starting point.',
-    next: {
-      tab: 'composer',
-      label: 'Write from saved work',
-      description: 'Start with a saved idea or turn a past draft into something publishable.',
-    },
-  },
-};
-
-const PRIMARY_STUDIO_TABS: StudioTab[] = ['editor', 'composer', 'analytics'];
-const LINKEDIN_WORKFLOW_ORDER: StudioTab[] = ['editor', 'composer', 'analytics'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────
 
@@ -909,60 +828,6 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
   );
 }
 
-// ─── Fifty Groups Guide ────────────────────────────────────────────────────
-
-function FiftyGroupsGuide() {
-  return (
-    <GlassCard className="p-6 mt-6">
-      <details>
-        <summary className="cursor-pointer flex items-center gap-2 text-[14px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors list-none">
-          <Users size={16} className="text-[var(--link)]" />
-          The 50 Groups Strategy
-          <span className="ml-auto text-[13px] text-[var(--text-soft)] font-normal">Coaching Guide</span>
-        </summary>
-        <div className="mt-4 space-y-4 text-[13px] text-[var(--text-soft)] leading-relaxed">
-          <p>
-            <strong className="text-[var(--text-muted)]">Why 50 groups?</strong> LinkedIn lets you message any
-            member of a shared group for free — no InMail credits needed. By joining 50 relevant
-            groups, you unlock free messaging to thousands of potential contacts.
-          </p>
-
-          <div>
-            <p className="text-[var(--text-muted)] font-medium mb-2">How to find the right groups:</p>
-            <ul className="space-y-1.5 list-disc list-inside text-[var(--text-soft)]">
-              <li>Search for groups in your target industry (e.g., "Supply Chain Leaders")</li>
-              <li>Join groups your target companies' employees belong to</li>
-              <li>Look for professional associations in your field</li>
-              <li>Find alumni groups from your schools and past employers</li>
-              <li>Join groups for your target role titles</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="text-[var(--text-muted)] font-medium mb-2">The free messaging advantage:</p>
-            <ul className="space-y-1.5 list-disc list-inside text-[var(--text-soft)]">
-              <li>Most professionals have only 5 InMail credits per week</li>
-              <li>Group messages bypass this limit entirely</li>
-              <li>Group members see you as a peer, not a cold contact</li>
-              <li>Your message arrives in their primary inbox, not "Other"</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="text-[var(--text-muted)] font-medium mb-2">How to participate (without being spammy):</p>
-            <ul className="space-y-1.5 list-disc list-inside text-[var(--text-soft)]">
-              <li>Comment thoughtfully on 2-3 discussions per week</li>
-              <li>Share relevant insights from your experience</li>
-              <li>Wait at least a week after joining before messaging members</li>
-              <li>Reference group content when reaching out ("I saw your comment about...")</li>
-            </ul>
-          </div>
-        </div>
-      </details>
-    </GlassCard>
-  );
-}
-
 // ─── Content Calendar ──────────────────────────────────────────────────────
 
 type CalendarView = 'calendar' | 'series';
@@ -1518,37 +1383,6 @@ function KeywordMultiplierNudge() {
   );
 }
 
-function LinkedInSupportWorkspaces({
-  onOpenCalendar,
-  onOpenLibrary,
-}: {
-  onOpenCalendar: () => void;
-  onOpenLibrary: () => void;
-}) {
-  return (
-    <GlassCard className="p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-            Support tools
-          </div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-soft)]">
-            Keep planning and saved drafts nearby, but let the main room stay centered on profile, writing, and results.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <GlassButton variant="ghost" size="sm" onClick={onOpenCalendar}>
-            Plan posts
-          </GlassButton>
-          <GlassButton variant="ghost" size="sm" onClick={onOpenLibrary}>
-            Reuse drafts
-          </GlassButton>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function parseReportSections(report: string): {
@@ -1582,19 +1416,12 @@ function parseReportSections(report: string): {
 
 export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
-  const [activeTab, setActiveTab] = useState<StudioTab>('editor');
+  const linkedInProfile = useLinkedInProfile();
+  const [activeTab, setActiveTab] = useState<StudioTab>('profile');
   const [inputError, setInputError] = useState<string | null>(null);
 
   const handleWritePostFromCalendar = useCallback(() => {
-    setActiveTab('composer');
-  }, []);
-
-  const handleOpenCalendar = useCallback(() => {
-    setActiveTab('calendar');
-  }, []);
-
-  const handleOpenLibrary = useCallback(() => {
-    setActiveTab('library');
+    setActiveTab('content');
   }, []);
 
   const handleOptimize = useCallback(async () => {
@@ -1625,13 +1452,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   }, [optimizer]);
 
   const isOptimizerRunning = optimizer.status === 'connecting' || optimizer.status === 'running';
-  const activeStage = STUDIO_STAGE_CONFIG[activeTab];
-  const ActiveStageIcon = activeStage.icon;
-  const primaryTabs = PRIMARY_STUDIO_TABS.map((id) => ({
-    id,
-    label: STUDIO_STAGE_CONFIG[id].label,
-    icon: STUDIO_STAGE_CONFIG[id].icon,
-  }));
 
   return (
     <div className="room-shell">
@@ -1653,23 +1473,23 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
-          <GlassButton
-            onClick={handleOptimize}
-            disabled={isOptimizerRunning}
-            className="flex items-center gap-2"
-          >
-            {isOptimizerRunning ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Optimizing...
-              </>
-            ) : (
-              <>
-                <Linkedin size={14} />
-                {optimizer.report ? 'Re-optimize' : 'Quick Optimize'}
-              </>
-            )}
-          </GlassButton>
+            <GlassButton
+              onClick={handleOptimize}
+              disabled={isOptimizerRunning}
+              className="flex items-center gap-2"
+            >
+              {isOptimizerRunning ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Optimizing...
+                </>
+              ) : (
+                <>
+                  <Linkedin size={14} />
+                  {optimizer.report ? 'Re-optimize' : 'Quick Optimize'}
+                </>
+              )}
+            </GlassButton>
           </div>
         </div>
       </div>
@@ -1682,131 +1502,93 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         </div>
       )}
 
-      <GlassCard className="p-4">
-        <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr]">
-          <div>
-            <div className="eyebrow-label">LinkedIn workflow</div>
-            <h2 className="text-[17px] font-semibold text-[var(--text-strong)]">
-              Sharpen the profile, write, then review what is landing.
-            </h2>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-              Keep the main room centered on profile strength, writing, and results. Planning and saved drafts stay close without taking over.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {LINKEDIN_WORKFLOW_ORDER.map((tab, index) => {
-                const stage = STUDIO_STAGE_CONFIG[tab];
-                return (
-                  <span
-                    key={tab}
-                    className={cn(
-                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium',
-                      activeTab === tab
-                        ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.08] text-[var(--link)]'
-                        : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
-                    )}
-                  >
-                    <span className="tabular-nums opacity-80">{index + 1}</span>
-                    {stage.workflowLabel ?? stage.label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Right now
-            </div>
-            <div className="mt-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
-              <ActiveStageIcon size={15} className="text-[var(--link)]" />
-              {activeStage.focusTitle}
-            </div>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-              {activeStage.focusSummary}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              Then
-            </div>
-            <div className="mt-2 text-[14px] font-semibold text-[var(--text-strong)]">
-              {activeStage.next?.label ?? 'Keep refining this stage'}
-            </div>
-            <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-              {activeStage.next?.description ?? 'Stay with the current work until the profile, writing, or evidence feels solid enough to move on.'}
-            </p>
-          </div>
-        </div>
-      </GlassCard>
-
-      {(activeTab === 'calendar' || activeTab === 'library') && (
-        <GlassCard className="p-3.5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                Support workspace
-              </div>
-              <div className="mt-1 text-[14px] font-semibold text-[var(--text-strong)]">
-                {activeTab === 'calendar' ? 'Content Plan' : 'Library'}
-              </div>
-              <p className="mt-1 text-[13px] leading-5 text-[var(--text-soft)]">
-                {activeTab === 'calendar'
-                  ? 'Map the next stretch of posts here, then step back into Write.'
-                  : 'Reuse saved work here, then step back into Write.'}
-              </p>
-            </div>
-            <GlassButton variant="ghost" onClick={() => setActiveTab('composer')}>
-              Back to Write
-            </GlassButton>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Keyword multiplier coaching nudge */}
-      {(activeTab === 'composer' || activeTab === 'calendar') && (
-        <KeywordMultiplierNudge />
-      )}
-
-      <div className="rail-tabs">
-        {primaryTabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id);
-              }}
-              className="rail-tab"
-              data-active={activeTab === tab.id}
-            >
-              <Icon size={14} className="flex-shrink-0" />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Tab buttons */}
+      <div className="flex gap-1 mb-6">
+        <button
+          type="button"
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'profile'
+              ? 'bg-blue-600 text-white'
+              : 'text-[var(--text-soft)] hover:bg-white/10'
+          }`}
+          onClick={() => setActiveTab('profile')}
+        >
+          Profile Audit
+        </button>
+        <button
+          type="button"
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'content'
+              ? 'bg-blue-600 text-white'
+              : 'text-[var(--text-soft)] hover:bg-white/10'
+          }`}
+          onClick={() => setActiveTab('content')}
+        >
+          Content
+        </button>
       </div>
 
       {/* Tab content */}
       <div>
-        {activeTab === 'composer' && <PostComposer signals={signals} />}
-        {activeTab === 'composer' && (
-          <LinkedInSupportWorkspaces
-            onOpenCalendar={handleOpenCalendar}
-            onOpenLibrary={handleOpenLibrary}
-          />
-        )}
-        {activeTab === 'editor' && (
+        {activeTab === 'profile' && (
           <div className="flex flex-col gap-6">
+            {/* LinkedIn Profile Input */}
+            <GlassCard className="p-6">
+              <h3 className="text-base font-semibold text-[var(--text-strong)] mb-1">Your Current LinkedIn Profile</h3>
+              <p className="text-sm text-[var(--text-soft)] mb-4">
+                Paste your current LinkedIn content so we can compare it against your resume and positioning strategy.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
+                    Current Headline
+                  </label>
+                  <input
+                    type="text"
+                    value={linkedInProfile.profile.headline}
+                    onChange={(e) => linkedInProfile.updateField('headline', e.target.value)}
+                    placeholder="e.g., Senior Product Owner | Salesforce | Agile Delivery"
+                    className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
+                    Current About Section
+                  </label>
+                  <textarea
+                    value={linkedInProfile.profile.about}
+                    onChange={(e) => linkedInProfile.updateField('about', e.target.value)}
+                    placeholder="Paste your LinkedIn About section here..."
+                    rows={6}
+                    className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)] resize-y"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
+                    Current Experience (optional)
+                  </label>
+                  <textarea
+                    value={linkedInProfile.profile.experience}
+                    onChange={(e) => linkedInProfile.updateField('experience', e.target.value)}
+                    placeholder="Paste your experience bullets — we'll compare against your resume"
+                    rows={8}
+                    className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)] resize-y"
+                  />
+                </div>
+
+                <p className="text-xs text-[var(--text-muted)]">
+                  To get your LinkedIn text: Visit your profile, click "More", select "Save to PDF", then open the PDF and copy the text.
+                </p>
+              </div>
+            </GlassCard>
+
+            {/* Profile editor workflow */}
             <ProfileEditor signals={signals} />
-            <FiftyGroupsGuide />
-          </div>
-        )}
-        {activeTab === 'calendar' && <ContentCalendar onWritePost={handleWritePostFromCalendar} />}
-        {activeTab === 'library' && <LibraryWorkspace />}
-        {activeTab === 'analytics' && (
-          <div className="flex flex-col gap-6">
+
+            {/* Results / analytics */}
             <ResultsSnapshot qualityScore={optimizer.qualityScore} />
 
             {optimizer.experienceEntries.length > 0 && (
@@ -1825,15 +1607,55 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
                 </div>
               </GlassCard>
             )}
-            {!isOptimizerRunning && !optimizer.report && (
+            {!isOptimizerRunning && optimizer.report && (
               <ProfileOptimizer signals={signals} report={optimizer.report} />
             )}
-            {optimizer.report && (
-              <ProfileOptimizer signals={signals} report={optimizer.report} />
+            {!isOptimizerRunning && !optimizer.report && (
+              <ProfileOptimizer signals={signals} report={null} />
             )}
             {isOptimizerRunning && (
               <ActivityFeed messages={optimizer.activityMessages} label="Optimization in progress..." />
             )}
+          </div>
+        )}
+
+        {activeTab === 'content' && (
+          <div className="flex flex-col gap-6">
+            {/* Keyword multiplier coaching nudge */}
+            <KeywordMultiplierNudge />
+
+            {/* Post Composer */}
+            <PostComposer signals={signals} />
+
+            {/* Content Calendar — collapsible */}
+            <GlassCard className="p-4">
+              <details>
+                <summary className="cursor-pointer flex items-center gap-2 text-[14px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors list-none">
+                  <Calendar size={16} className="text-[var(--link)]" />
+                  Content Plan
+                  <span className="ml-auto text-[13px] text-[var(--text-soft)] font-normal">Plan your posts</span>
+                  <ChevronDown size={14} className="text-[var(--text-soft)] ml-1" />
+                </summary>
+                <div className="mt-4">
+                  <ContentCalendar onWritePost={handleWritePostFromCalendar} />
+                </div>
+              </details>
+            </GlassCard>
+
+            {/* Post Library — collapsible */}
+            <GlassCard className="p-4">
+              <details>
+                <summary className="cursor-pointer flex items-center gap-2 text-[14px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors list-none">
+                  <BookOpen size={16} className="text-[var(--link)]" />
+                  Post Library
+                  <span className="ml-auto text-[13px] text-[var(--text-soft)] font-normal">Saved drafts</span>
+                  <ChevronDown size={14} className="text-[var(--text-soft)] ml-1" />
+                </summary>
+                <div className="mt-4">
+                  <LibraryWorkspace />
+                </div>
+              </details>
+            </GlassCard>
           </div>
         )}
       </div>
