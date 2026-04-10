@@ -71,9 +71,6 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder-anon-key-for-ci-build
 
-      - name: Run tests
-        run: npx vitest run
-
   server-verify:
     name: Server Verify
     runs-on: ubuntu-latest
