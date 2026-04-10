@@ -44,6 +44,8 @@ export interface ChatResponse {
   text: string;
   tool_calls: ToolCall[];
   usage: { input_tokens: number; output_tokens: number };
+  /** Why the model stopped generating. 'length' means output was truncated at max_tokens. */
+  finish_reason?: 'stop' | 'length' | 'tool_calls' | 'content_filter';
 }
 
 export interface ToolCall {
@@ -871,6 +873,7 @@ export class ZAIProvider implements LLMProvider {
         input_tokens: data.usage?.prompt_tokens ?? 0,
         output_tokens: data.usage?.completion_tokens ?? 0,
       },
+      finish_reason: choice?.finish_reason as ChatResponse['finish_reason'] ?? undefined,
     };
   }
 }
@@ -939,6 +942,7 @@ interface OpenAIChatResponse {
       content?: string;
       tool_calls?: OpenAIToolCall[];
     };
+    finish_reason?: string;
   }>;
   usage?: {
     prompt_tokens: number;

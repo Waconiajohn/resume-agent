@@ -906,14 +906,38 @@ async function callExperienceSection(
   logger.info({ position_count: sourceExperience.length }, 'section-writer: calling experience section');
 
   try {
+    let maxTokens = 16384;
     const response = await llm.chat({
       model: MODEL_PRIMARY,
       system: EXPERIENCE_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
-      max_tokens: 16384,
+      max_tokens: maxTokens,
       signal,
     });
+
+    // Detect truncation: if finish_reason is 'length', the output was cut short.
+    // Retry with higher max_tokens to get the complete response.
+    if (response.finish_reason === 'length') {
+      logger.warn(
+        { output_tokens: response.usage.output_tokens, max_tokens: maxTokens },
+        'section-writer: experience section truncated at max_tokens — retrying with 32768',
+      );
+      maxTokens = 32768;
+      const retryResponse = await llm.chat({
+        model: MODEL_PRIMARY,
+        system: EXPERIENCE_SYSTEM,
+        messages: [{ role: 'user', content: userMessage }],
+        response_format: { type: 'json_object' },
+        max_tokens: maxTokens,
+        signal,
+      });
+      const retryResult = parse(retryResponse.text);
+      if (retryResult) {
+        logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience complete (retry with higher max_tokens)');
+        return retryResult;
+      }
+    }
 
     const result = parse(response.text);
     if (result) {
