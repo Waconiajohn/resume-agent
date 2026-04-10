@@ -790,6 +790,7 @@ export interface SuggestionScore {
     avoidsClicheVagueness: number;
     avoidsRedundancy: number;
     preservesBrandVoice: number;
+    evidenceIntegrity: number;
   };
   verdict: 'show' | 'collapse' | 'ask_question';
   reason: string;

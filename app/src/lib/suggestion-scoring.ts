@@ -180,6 +180,34 @@ function scorePreservesBrandVoice(current: string, suggestion: string, brandedTi
   return 3;
 }
 
+function scoreEvidenceIntegrity(current: string, suggestion: string): number {
+  // Extract all quantified claims from both texts
+  const currentClaims = new Set(
+    (current.match(METRIC_PATTERN) ?? []).map(m => m.toLowerCase().replace(/\s+/g, '')),
+  );
+  const suggestionClaims =
+    (suggestion.match(METRIC_PATTERN) ?? []).map(m => m.toLowerCase().replace(/\s+/g, ''));
+
+  if (suggestionClaims.length === 0) return 9; // no claims to fabricate
+
+  // Check how many suggestion claims are new (not in current text)
+  let newClaims = 0;
+  for (const claim of suggestionClaims) {
+    if (!currentClaims.has(claim)) {
+      // Also check if the raw number appears anywhere in current text
+      const digits = claim.replace(/[^0-9.]/g, '');
+      if (digits && !current.includes(digits)) {
+        newClaims++;
+      }
+    }
+  }
+
+  if (newClaims === 0) return 10; // all claims traceable to source
+  if (newClaims === 1 && suggestionClaims.length >= 3) return 7; // one new claim among many existing
+  if (newClaims === 1) return 5; // one new claim, potentially inferred
+  return 2; // multiple unsupported claims — high fabrication risk
+}
+
 // ─── Gap-Fill Question Generation ────────────────────────────────────
 
 function generateGapFillQuestion(
@@ -218,13 +246,14 @@ function generateGapFillQuestion(
 // ─── Main Scoring Function ──────────────────────────────────────────
 
 const DIMENSION_WEIGHTS: Record<keyof SuggestionScoreDimensions, number> = {
-  preservesSpecificity: 0.18,
-  preservesSeniority: 0.15,
-  preservesOutcomes: 0.18,
-  requirementAlignment: 0.15,
-  avoidsClicheVagueness: 0.12,
-  avoidsRedundancy: 0.10,
-  preservesBrandVoice: 0.12,
+  preservesSpecificity: 0.15,
+  preservesSeniority: 0.13,
+  preservesOutcomes: 0.15,
+  requirementAlignment: 0.13,
+  avoidsClicheVagueness: 0.10,
+  avoidsRedundancy: 0.09,
+  preservesBrandVoice: 0.10,
+  evidenceIntegrity: 0.15,
 };
 
 export function scoreSuggestion(
@@ -240,6 +269,7 @@ export function scoreSuggestion(
     avoidsClicheVagueness: scoreAvoidsClicheVagueness(suggestion),
     avoidsRedundancy: scoreAvoidsRedundancy(suggestion, context.otherSectionTexts ?? []),
     preservesBrandVoice: scorePreservesBrandVoice(currentText, suggestion, context.brandedTitle),
+    evidenceIntegrity: scoreEvidenceIntegrity(currentText, suggestion),
   };
 
   // Weighted composite
@@ -257,10 +287,10 @@ export function scoreSuggestion(
   if (overall >= 6) {
     verdict = 'show';
     reason = 'Suggestion improves on the current text.';
-  } else if (overall >= 3 && context.importance === 'must_have') {
+  } else if (overall >= 4 && context.importance === 'must_have') {
     verdict = 'show';
     reason = 'This is a must-have requirement — showing suggestion despite moderate score.';
-  } else if (overall < 3) {
+  } else if (overall < 4) {
     verdict = 'ask_question';
     suggestedQuestion = generateGapFillQuestion(currentText, context.targetRequirements, context.importance);
     reason = 'Suggestion would likely downgrade the current text. Asking for more context instead.';

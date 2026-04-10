@@ -338,7 +338,7 @@ describe('verdict logic', () => {
   });
 
   it('returns verdict "show" even with moderate overall score when importance is "must_have"', () => {
-    // Build a scenario that lands overall in the 3–5.9 range
+    // Build a scenario that lands overall in the 4–5.9 range
     const current = 'Worked on cloud systems.';
     // Generic suggestion with one cliche — moderate quality
     const suggestion = 'As a results-driven leader, helped teams adopt cloud infrastructure solutions.';
@@ -369,22 +369,22 @@ describe('verdict logic', () => {
     //   redundancy: suggestion text echoed in otherSections → 2
     //   brand voice: distinctive words dropped → 3
     const current = 'Architected AWS migration saving $4.2M; led Kubernetes rollout with 60% latency reduction.';
-    const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with software improvements.';
+    const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with software improvements, achieving $50M in savings and 99% uptime.';
     // Provide a nearly-identical other section to drive redundancy score to 2
-    const nearDuplicate = 'was responsible for assisting with software improvements seasoned professional proven track record';
+    const nearDuplicate = 'was responsible for assisting with software improvements seasoned professional proven track record achieving $50M';
     const result = scoreSuggestion(current, suggestion, ctx({
       targetRequirements: ['financial regulatory compliance GDPR', 'blockchain distributed ledger', 'quantum computing optimization'],
       otherSectionTexts: [nearDuplicate],
     }));
-    expect(result.overall).toBeLessThan(3);
+    expect(result.overall).toBeLessThan(4);
     expect(result.verdict).toBe('ask_question');
     expect(result.suggestedQuestion).toBeDefined();
     expect(typeof result.suggestedQuestion).toBe('string');
     expect((result.suggestedQuestion as string).length).toBeGreaterThan(0);
   });
 
-  it('returns verdict "collapse" for score between 3 and 6 without must_have', () => {
-    // Craft a mediocre suggestion that will land in the 3–5.9 band
+  it('returns verdict "collapse" for score between 4 and 6 without must_have', () => {
+    // Craft a mediocre suggestion that will land in the 4–5.9 band
     const current = 'Led SAP implementation across 5 business units.';
     // Drops SAP specificity, adds one cliche, neutral alignment
     const suggestion = 'As a results-driven leader, oversaw technology implementation projects across business units.';
@@ -408,8 +408,8 @@ describe('verdict logic', () => {
 
     // A truly terrible suggestion that scores below 3 (see the ask_question test
     // above for the exact recipe: mismatched reqs + duplicate text + every dim low)
-    const badSuggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with software improvements.';
-    const nearDuplicate = 'was responsible for assisting with software improvements seasoned professional proven track record';
+    const badSuggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with software improvements, achieving $50M in savings and 99% uptime.';
+    const nearDuplicate = 'was responsible for assisting with software improvements seasoned professional proven track record achieving $50M';
 
     const goodResult = scoreSuggestion(current, goodSuggestion, ctx());
     const badResult = scoreSuggestion(current, badSuggestion, ctx({
@@ -437,8 +437,8 @@ describe('gap-fill question generation', () => {
   //   current:    has named tech terms + dollar/percent metrics + ownership verb + no team reference
   //   suggestion: 2 cliche phrases + passive downgrade verb, drops all tech + all metrics
   //   context:    3 wholly unrelated requirements + near-duplicate other section (forces redundancy to 2)
-  const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with improvements.';
-  const nearDuplicate = 'was responsible for assisting with improvements seasoned professional proven track record';
+  const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with improvements, delivering $75M in value.';
+  const nearDuplicate = 'was responsible for assisting with improvements seasoned professional proven track record delivering $75M';
   const unrelatedReqs = ['blockchain distributed ledger implementation', 'quantum computing optimization', 'satellite imagery processing'];
 
   function badCtx(extras: Partial<SuggestionScoringContext> = {}): SuggestionScoringContext {
@@ -453,7 +453,7 @@ describe('gap-fill question generation', () => {
     // Priority 2 (!hasScale) fires because there is no "team", "staff", or headcount word.
     const current = 'Architected AWS migration saving $4M; reduced query time by 60% using Snowflake.';
     const result = scoreSuggestion(current, suggestion, badCtx());
-    expect(result.overall).toBeLessThan(3);
+    expect(result.overall).toBeLessThan(4);
     expect(result.verdict).toBe('ask_question');
     expect(result.suggestedQuestion).toMatch(/team|budget|scope|size/i);
   });
@@ -495,7 +495,7 @@ describe('gap-fill question generation', () => {
       targetRequirements: ['HIPAA compliance program design'],
       importance: 'must_have',
     }));
-    expect(result.overall).toBeLessThan(3);
+    expect(result.overall).toBeLessThan(4);
     expect(result.verdict).toBe('ask_question');
     expect(result.suggestedQuestion).toMatch(/HIPAA/i);
   });
@@ -504,7 +504,7 @@ describe('gap-fill question generation', () => {
     // With all four present, the priority checks 2–4 are skipped and the fallback fires.
     const current = 'Led a team of twelve engineers, building AWS Kubernetes infrastructure, reducing costs by $4M and 60%.';
     const result = scoreSuggestion(current, suggestion, badCtx());
-    expect(result.overall).toBeLessThan(3);
+    expect(result.overall).toBeLessThan(4);
     expect(result.verdict).toBe('ask_question');
     // Fallback question asks for a specific outcome or metric
     expect(result.suggestedQuestion).toMatch(/specific|outcome|metric|impact/i);
@@ -540,13 +540,13 @@ describe('composite scoring', () => {
     // trigger "ask_question", we add a near-duplicate other section that forces
     // the redundancy dimension down to 2.
     const current = 'Architected Snowflake data warehouse saving $1.8M; reduced query time by 80% using Databricks.';
-    const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with data warehouse improvements.';
-    const nearDuplicate = 'was responsible for assisting with data warehouse improvements seasoned professional proven track record';
+    const suggestion = 'As a seasoned professional with a proven track record, was responsible for assisting with data warehouse improvements, saving $12M and improving performance by 99%.';
+    const nearDuplicate = 'was responsible for assisting with data warehouse improvements seasoned professional proven track record saving $12M';
     const result = scoreSuggestion(current, suggestion, ctx({
       targetRequirements: ['financial services data engineering', 'machine learning feature store', 'real-time streaming ingestion'],
       otherSectionTexts: [nearDuplicate],
     }));
-    expect(result.overall).toBeLessThan(3);
+    expect(result.overall).toBeLessThan(4);
     expect(result.verdict).toBe('ask_question');
   });
 
@@ -570,7 +570,7 @@ describe('composite scoring', () => {
     expect(decimalPart).toBe(0);
   });
 
-  it('returns all seven dimension keys with numeric values', () => {
+  it('returns all eight dimension keys with numeric values', () => {
     const result = scoreSuggestion('Prior text.', 'New suggestion text.', ctx());
     const dims = result.dimensions;
     expect(typeof dims.preservesSpecificity).toBe('number');
@@ -580,6 +580,7 @@ describe('composite scoring', () => {
     expect(typeof dims.avoidsClicheVagueness).toBe('number');
     expect(typeof dims.avoidsRedundancy).toBe('number');
     expect(typeof dims.preservesBrandVoice).toBe('number');
+    expect(typeof dims.evidenceIntegrity).toBe('number');
   });
 
   it('all dimension scores fall within the 1–10 range', () => {
@@ -619,5 +620,47 @@ describe('composite scoring', () => {
     expect(first.overall).toBe(second.overall);
     expect(first.verdict).toBe(second.verdict);
     expect(first.dimensions).toEqual(second.dimensions);
+  });
+});
+
+// ─── evidenceIntegrity ──────────────────────────────────────────────────────
+
+describe('evidenceIntegrity', () => {
+  it('scores 10 when all suggestion metrics match the source text', () => {
+    const current = 'Reduced deployment time by 60% and saved $2.4M annually.';
+    const suggestion = 'Cut deployment time 60%, delivering $2.4M in annual savings.';
+    const { dimensions } = scoreSuggestion(current, suggestion, ctx());
+    expect(dimensions.evidenceIntegrity).toBe(10);
+  });
+
+  it('scores 9 when suggestion has no quantified claims at all', () => {
+    const current = 'Led the platform engineering team through a major cloud migration.';
+    const suggestion = 'Directed platform engineering through enterprise-wide cloud migration.';
+    const { dimensions } = scoreSuggestion(current, suggestion, ctx());
+    expect(dimensions.evidenceIntegrity).toBe(9);
+  });
+
+  it('scores low when suggestion invents metrics not in source', () => {
+    const current = 'Managed the supply chain operations team.';
+    const suggestion = 'Managed supply chain operations, driving $8M in cost savings and 45% efficiency gains.';
+    const { dimensions } = scoreSuggestion(current, suggestion, ctx());
+    // Two new claims (8M, 45%) with no source basis
+    expect(dimensions.evidenceIntegrity).toBeLessThanOrEqual(2);
+  });
+
+  it('scores moderately when suggestion has one new claim among existing ones', () => {
+    const current = 'Reduced costs by 30% and improved throughput by 2x, saving $1.2M.';
+    const suggestion = 'Reduced costs 30%, improved throughput 2x ($1.2M savings), and cut cycle time by 40%.';
+    const { dimensions } = scoreSuggestion(current, suggestion, ctx());
+    // Three existing claims preserved, one new (40%) — 1 new among 4 total
+    expect(dimensions.evidenceIntegrity).toBeGreaterThanOrEqual(5);
+  });
+
+  it('catches inflated metrics (same unit, different number)', () => {
+    const current = 'Grew revenue by 15% year over year.';
+    const suggestion = 'Grew revenue by 45% year over year through strategic initiatives.';
+    const { dimensions } = scoreSuggestion(current, suggestion, ctx());
+    // 45 is not in the source, 15 was the original — fabrication risk
+    expect(dimensions.evidenceIntegrity).toBeLessThanOrEqual(5);
   });
 });
