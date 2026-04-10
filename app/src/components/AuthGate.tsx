@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
 import { GlassInput } from './GlassInput';
-import { Sparkles } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
 
 interface AuthGateProps {
   onSignIn: (email: string, password: string) => Promise<{ error: unknown }>;
@@ -41,8 +41,8 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
       <GlassCard className="relative z-10 w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <Sparkles className="h-8 w-8 text-[var(--link)]" />
-          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Resume Agent</h1>
+          <Briefcase className="h-8 w-8 text-[var(--link)]" />
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">CareerIQ</h1>
           <p className="text-sm text-[var(--text-soft)]">Your career workspace</p>
         </div>
 

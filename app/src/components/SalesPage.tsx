@@ -415,7 +415,7 @@ function Footer() {
   return (
     <footer className="border-t border-white/[0.08] py-10">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 text-sm text-white/40">
-        <span>Resume Agent</span>
+        <span>CareerIQ</span>
         <span>&copy; 2026 All rights reserved</span>
         <a href="/workspace" className="text-white/50 transition-colors hover:text-white">
           Sign In

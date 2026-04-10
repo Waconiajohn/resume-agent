@@ -16,7 +16,7 @@ export function sendGateNotification(description: string): void {
   if (!permissionGranted) return;
   if (typeof document === 'undefined' || !document.hidden) return;
   try {
-    const notification = new Notification('Resume Agent', {
+    const notification = new Notification('CareerIQ', {
       body: description,
       tag: 'pipeline-gate',
     });

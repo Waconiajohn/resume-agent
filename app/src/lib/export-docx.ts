@@ -784,7 +784,7 @@ async function _exportDocxInner(
   const doc = new Document({
     // Document metadata (Section X-F)
     title: resume.contact_info?.name ? `${resume.contact_info.name} Resume` : 'Resume',
-    creator: 'Resume Agent',
+    creator: 'CareerIQ',
     description: resume.contact_info?.name
       ? `Resume for ${resume.contact_info.name}`
       : 'Tailored executive resume',

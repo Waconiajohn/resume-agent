@@ -117,7 +117,7 @@ export async function exportCoverLetterDocx(
   }
 
   const doc = new Document({
-    creator: 'Resume Agent',
+    creator: 'CareerIQ',
     styles: {
       default: {
         document: {
