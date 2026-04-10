@@ -8,7 +8,7 @@
  * strongest available model, not a cost-saving mid-tier model.
  */
 
-import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { MODEL_PRIMARY } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';

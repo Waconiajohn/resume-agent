@@ -55,7 +55,7 @@ import { getAuthCacheStats } from './middleware/auth.js';
 import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js';
 import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
-import { initSentry, captureError, captureErrorWithContext, flushSentry } from './lib/sentry.js';
+import { initSentry, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
 import { FF_RESUME_V2 } from './lib/feature-flags.js';
 import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
@@ -382,9 +382,9 @@ function shutdown(signal: string) {
     Promise.resolve(0), // TODO: drain active v2 pipeline sessions before exit (ticket: INFRA-drain-v2)
     flushSentry(2000),
     redisBus ? redisBus.disconnect() : Promise.resolve(),
-  ]).then((results) => {
+  ]).then((_results) => {
     logger.info('Completed shutdown flush tasks');
-  }).catch((err) => {
+  }).catch((err: unknown) => {
     logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Shutdown flush tasks failed');
   });
 
@@ -460,7 +460,7 @@ if (isMainModule()) {
       logger.info('RedisBus active — agent messages routed via Redis');
     }
     startServer();
-  }).catch((err) => {
+  }).catch((err: unknown) => {
     logger.error({ err }, 'Redis bus init failed — falling back to in-memory bus');
     startServer();
   });

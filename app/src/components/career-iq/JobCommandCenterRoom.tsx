@@ -626,9 +626,9 @@ export function JobCommandCenterRoom({
     [pipeline.applications],
   );
 
-  const dueCount = dailyOps.dueActions.length;
+  const _dueCount = dailyOps.dueActions.length;
 
-  const handleOpenShortlist = useCallback((entryPoint: 'overview_cta' | 'board_target') => {
+  const _handleOpenShortlist = useCallback((entryPoint: 'overview_cta' | 'board_target') => {
     trackProductEvent('job_shortlist_opened', {
       entry_point: entryPoint,
       shortlist_count: shortlistCount,

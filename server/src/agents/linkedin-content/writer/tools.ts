@@ -10,7 +10,7 @@
  * - emit_transparency: Shared transparency tool
  */
 
-import type { LinkedInContentTool, PostQualityScores, SeriesPost } from '../types.js';
+import type { LinkedInContentTool, PostQualityScores } from '../types.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';

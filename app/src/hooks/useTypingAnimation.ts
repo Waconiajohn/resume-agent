@@ -134,7 +134,7 @@ export function useTypingAnimation({
       }
     };
     // wordIndex intentionally excluded — the interval manages progression internally via setWordIndex functional updates
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isActive, skipped, wordsPerTick, tickIntervalMs]);
 
   const skipToEnd = useCallback(() => {

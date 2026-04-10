@@ -28,7 +28,6 @@ import { flushProductTelemetryEvents } from '@/lib/product-telemetry-sync';
 import {
   buildResumeBuilderSessionRoute,
   buildResumeWorkspaceRoute,
-  buildWorkspaceRoute,
   getAppView,
   getNormalizedWorkspaceRedirect,
   getResumeBuilderSessionIdFromSearch,
@@ -335,7 +334,7 @@ export default function App() {
       const clarificationMemory = options?.clarificationMemory ?? [];
 
       let targetResumeId = intakeDefaultResumeId ?? resumes.find((item) => item.is_default)?.id ?? null;
-      let defaultResume = await getDefaultResume();
+      const defaultResume = await getDefaultResume();
       if (!targetResumeId) {
         targetResumeId = defaultResume?.id ?? null;
       }

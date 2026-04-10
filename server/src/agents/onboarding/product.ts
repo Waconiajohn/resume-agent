@@ -102,7 +102,7 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           '',
         ];
 
-        const resumeText = String((input as Record<string, unknown>).resume_text ?? '');
+        const resumeText = String((input).resume_text ?? '');
         if (resumeText.length > 50) {
           parts.push('## Resume (provided)', resumeText, '');
         } else {

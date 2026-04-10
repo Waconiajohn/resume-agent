@@ -335,10 +335,10 @@ Return JSON:
 
     return c.json({
       situation,
-      subject: String(result.subject ?? `Re: ${role} at ${company}`),
-      body: String(result.body ?? ''),
-      tone_notes: String(result.tone_notes ?? ''),
-      timing_guidance: String(result.timing_guidance ?? ''),
+      subject: (result.subject ?? `Re: ${role} at ${company}`),
+      body: (result.body ?? ''),
+      tone_notes: (result.tone_notes ?? ''),
+      timing_guidance: (result.timing_guidance ?? ''),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

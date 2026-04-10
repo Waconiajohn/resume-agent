@@ -221,7 +221,7 @@ function RequirementRow({
       approve: { dot: <span className="h-2 w-2 bg-[var(--badge-green-text)] shrink-0" />, label: 'Draft queued', color: 'text-[var(--badge-green-text)]' },
       context: { dot: <MessageSquare className="h-3 w-3 text-[var(--link)] shrink-0" />, label: 'More context added', color: 'text-[var(--link)]' },
       skip: { dot: <Minus className="h-3 w-3 text-[var(--text-soft)] shrink-0" />, label: 'Left as-is', color: 'text-[var(--text-soft)]' },
-    }[coachingState!.action!];
+    }[coachingState.action!];
 
     return (
       <div
@@ -1058,12 +1058,12 @@ export function UnifiedGapAnalysisCard({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Review Progress</span>
-            <span className="text-xs text-[var(--text-soft)]">{respondedCount} / {gapCoachingCards!.length} reviewed</span>
+            <span className="text-xs text-[var(--text-soft)]">{respondedCount} / {gapCoachingCards.length} reviewed</span>
           </div>
           <div className="h-1 w-full overflow-hidden bg-[var(--surface-1)]">
             <div
               className="h-full bg-gradient-to-r from-[var(--link)] to-[var(--badge-green-text)] transition-all duration-500"
-              style={{ width: gapCoachingCards!.length > 0 ? `${(respondedCount / gapCoachingCards!.length) * 100}%` : '0%' }}
+              style={{ width: gapCoachingCards.length > 0 ? `${(respondedCount / gapCoachingCards.length) * 100}%` : '0%' }}
             />
           </div>
         </div>
@@ -1158,7 +1158,7 @@ export function UnifiedGapAnalysisCard({
           </button>
           {!allResponded && (
             <p className="text-center text-xs text-[var(--text-soft)] mt-2">
-              Review all {gapCoachingCards!.length} items to continue
+              Review all {gapCoachingCards.length} items to continue
             </p>
           )}
           {allResponded && coachingStates.every(s => s.action === 'skip') && (

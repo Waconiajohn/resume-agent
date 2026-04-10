@@ -110,7 +110,7 @@ export class RedisBus {
     }
     this.handlers.set(key, handler);
     const channel = `${CHANNEL_PREFIX}${key}`;
-    this.sub.subscribe(channel).catch((err) => {
+    this.sub.subscribe(channel).catch((err: unknown) => {
       logger.error({ err, channel }, 'RedisBus: subscribe failed');
       this.activateFallback('subscribe failed');
     });
@@ -124,7 +124,7 @@ export class RedisBus {
     }
     this.handlers.delete(key);
     const channel = `${CHANNEL_PREFIX}${key}`;
-    this.sub.unsubscribe(channel).catch((err) => {
+    this.sub.unsubscribe(channel).catch((err: unknown) => {
       logger.error({ err, channel }, 'RedisBus: unsubscribe failed');
     });
   }
@@ -146,7 +146,7 @@ export class RedisBus {
     this.appendToLog(msg);
 
     const channel = this.resolveChannel(msg.to, msg.domain);
-    this.pub.publish(channel, JSON.stringify(msg)).catch((err) => {
+    this.pub.publish(channel, JSON.stringify(msg)).catch((err: unknown) => {
       logger.error({ err, channel }, 'RedisBus: publish failed');
       // Attempt local fallback for this message
       this.handleLocalFallbackSend(msg);
@@ -181,7 +181,7 @@ export class RedisBus {
       this.appendToLog(msg);
 
       const channel = `${prefix}${agentName}`;
-      this.pub.publish(channel, JSON.stringify(msg)).catch((err) => {
+      this.pub.publish(channel, JSON.stringify(msg)).catch((err: unknown) => {
         logger.error({ err, channel }, 'RedisBus: broadcast publish failed');
       });
 

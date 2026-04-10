@@ -136,7 +136,7 @@ const searchCareerPagesTool: JobFinderTool = {
     const jobMatches = await getJobMatchesByUser(state.user_id, { status: 'new', limit: 200 });
     const careerPageJobs: DiscoveredJob[] = jobMatches
       .filter((m) => {
-        const src = (m.metadata as Record<string, unknown>)?.source;
+        const src = (m.metadata)?.source;
         return typeof src === 'string' && ATS_SOURCE_LABELS.has(src);
       })
       .map((m) => {
@@ -234,7 +234,7 @@ const generateSearchQueriesTool: JobFinderTool = {
     pushTargetTitle(sharedTargetRole?.roleTitle);
 
     if (positioningStrategy && typeof positioningStrategy === 'object') {
-      const ps = positioningStrategy as Record<string, unknown>;
+      const ps = positioningStrategy;
       if (Array.isArray(ps.target_titles)) {
         for (const title of ps.target_titles.filter((t): t is string => typeof t === 'string').slice(0, 10)) {
           pushTargetTitle(title);

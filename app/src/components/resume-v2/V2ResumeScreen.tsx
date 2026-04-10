@@ -31,7 +31,6 @@ import type {
   GapChatRelatedLineCandidate,
   GapChatTargetInput,
   MasterPromotionItem,
-  ResumeReviewState,
   V2PersistedDraftState,
 } from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
@@ -330,7 +329,7 @@ function buildRelatedLineCandidates(args: {
 }
 
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
-  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
+  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword: _integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
   const storageUserId = useMemo(() => decodeUserIdFromAccessToken(accessToken), [accessToken]);
 

@@ -70,9 +70,9 @@ function parseRelativeDate(dateStr: string): Date | null {
   const match = dateStr.match(/(\d+)\s*(day|hour|minute|week|month)s?\s*ago/i);
   if (!match) return null;
   const [, num, unit] = match;
-  const n = parseInt(num as string, 10);
+  const n = parseInt(num, 10);
   const now = new Date();
-  switch ((unit as string).toLowerCase()) {
+  switch ((unit).toLowerCase()) {
     case 'minute':
       return new Date(now.getTime() - n * 60 * 1000);
     case 'hour':

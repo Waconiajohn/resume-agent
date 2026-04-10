@@ -426,7 +426,7 @@ function buildPlainText(resume: ResumeDraft): string {
     for (const exp of resume.professional_experience) {
       lines.push(
         '',
-        `${exp.company}`,
+        exp.company,
         `${exp.title} | ${exp.start_date} – ${exp.end_date}`,
       );
       if (exp.scope_statement) lines.push(exp.scope_statement);

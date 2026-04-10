@@ -309,7 +309,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       }
 
       if (agentName === 'writer') {
-        const method = (state.messaging_method ?? 'group_message') as MessagingMethod;
+        const method = (state.messaging_method ?? 'group_message');
         const methodConfig = MESSAGING_METHOD_CONFIG[method];
         const parts = [
           'Write the complete outreach sequence using the research data gathered.',

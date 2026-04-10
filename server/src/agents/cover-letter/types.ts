@@ -5,7 +5,7 @@
  * works for a second product beyond resumes.
  */
 
-import type { BaseState, BaseEvent } from '../runtime/agent-protocol.js';
+import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { SharedContext } from '../../contracts/shared-context.js';
 

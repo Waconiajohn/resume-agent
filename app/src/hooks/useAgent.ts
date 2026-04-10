@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { FinalResume } from '@/types/resume';
-import type { PanelData, PanelType } from '@/types/panels';
+import type { PanelData } from '@/types/panels';
 import type {
   PipelineActivitySnapshot,
   PipelineStage,
@@ -84,7 +84,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     () => undefined,
   );
 
-  const { connectSSE, handleDisconnect, flushDeltaBuffer, abortCurrentConnection, reconnectStreamNow } =
+  const { connectSSE, handleDisconnect: _handleDisconnect, flushDeltaBuffer, abortCurrentConnection, reconnectStreamNow } =
     useSSEConnection(
       sessionId,
       state,
@@ -265,7 +265,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
             state.setCurrentPhase(data.pipeline_stage);
           }
           state.setIsPipelineGateActive(Boolean(data.pending_gate));
-          state.setIsProcessing(!Boolean(data.pending_gate));
+          state.setIsProcessing(!data.pending_gate);
           if (!data.pending_gate) {
             state.setAskPrompt(null);
             state.setPhaseGate(null);
@@ -408,7 +408,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     stalledSuspected: state.stalledSuspected,
     sessionComplete: state.sessionComplete,
     error: state.error,
-    panelType: state.panelType as PanelType | null,
+    panelType: state.panelType,
     panelData: state.panelData,
     addUserMessage,
     pipelineStage: state.pipelineStage,

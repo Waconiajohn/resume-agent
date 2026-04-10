@@ -74,7 +74,7 @@ export async function qualifyWithEmotionalReadiness(
   try {
     const baselineRows = await getUserContext(userId, 'emotional_baseline');
     if (baselineRows.length > 0) {
-      const baseline = baselineRows[0].content as Record<string, unknown>;
+      const baseline = baselineRows[0].content;
       emotionalReadiness = baseline.distress_detected !== true;
     }
   } catch {

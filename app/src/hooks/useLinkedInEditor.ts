@@ -292,7 +292,7 @@ export function useLinkedInEditor() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useLinkedInEditor] SSE fetch error:', err);
           if (mountedRef.current) {

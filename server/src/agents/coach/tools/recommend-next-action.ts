@@ -31,13 +31,13 @@ export function getRecommendation(snapshot: ClientSnapshot): RecommendationResul
   const currentPhaseDef = JOURNEY_PHASES.find((p) => p.phase === phase);
 
   const emotionalState =
-    typeof (snapshot.emotional_baseline as Record<string, unknown> | undefined)?.['state'] === 'string'
-      ? String((snapshot.emotional_baseline as Record<string, unknown>)['state'])
+    typeof (snapshot.emotional_baseline)?.['state'] === 'string'
+      ? (snapshot.emotional_baseline)['state'] as string
       : 'unknown';
 
   const financialSegment =
-    typeof (snapshot.client_profile as Record<string, unknown> | undefined)?.['financial_segment'] === 'string'
-      ? String((snapshot.client_profile as Record<string, unknown>)['financial_segment'])
+    typeof (snapshot.client_profile)?.['financial_segment'] === 'string'
+      ? (snapshot.client_profile)['financial_segment'] as string
       : 'ideal';
 
   // ─── Decision tree ────────────────────────────────────────

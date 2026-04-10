@@ -237,7 +237,7 @@ export async function getWhyMeContext(userId: string): Promise<WhyMeContext | nu
     const narrativeRows = await getUserContext(userId, 'career_narrative');
     if (narrativeRows.length > 0) {
       const content = narrativeRows[0].content;
-      const nested = (content as Record<string, unknown>).why_me_story;
+      const nested = (content).why_me_story;
       if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
         const n = nested as Record<string, unknown>;
         const result: WhyMeContext = {

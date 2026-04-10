@@ -136,7 +136,7 @@ applicationPipelineRoutes.get(
     query = query.order(sort_by ?? 'updated_at', { ascending: (sort_order ?? 'desc') === 'asc' });
     query = query.range(offset ?? 0, (offset ?? 0) + (limit ?? 50) - 1);
 
-    const { data, error, count } = await query;
+    const { data, error, count: _count } = await query;
 
     if (error) {
       logger.error({ error: error.message, userId: user.id }, 'application-pipeline: list failed');

@@ -13,7 +13,6 @@ import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type {
   LinkedInOptimizerState,
   LinkedInOptimizerSSEEvent,
-  LinkedInSection,
   OptimizedSection,
   ExperienceEntry,
   LinkedInAuditReport,
@@ -501,20 +500,20 @@ Return a JSON object with this exact shape:
     const rawEntries: RawEntry[] = Array.isArray(result?.entries) ? result.entries : [];
 
     const experienceEntries: ExperienceEntry[] = rawEntries.map((e, idx) => {
-      const entryText = String(e.optimized ?? e.content ?? '');
+      const entryText = (e.optimized ?? e.content ?? '');
       const scores = e.quality_scores ?? {};
       return {
         role_id: `role_${idx}`,
-        company: String(e.company ?? ''),
-        title: String(e.title ?? ''),
-        duration: String(e.duration ?? ''),
+        company: (e.company ?? ''),
+        title: (e.title ?? ''),
+        duration: (e.duration ?? ''),
         original: '',
         optimized: entryText,
         quality_scores: {
-          impact: Number(scores.impact ?? 70),
-          metrics: Number(scores.metrics ?? 70),
-          context: Number(scores.context ?? 70),
-          keywords: Number(scores.keywords ?? 70),
+          impact: (scores.impact ?? 70),
+          metrics: (scores.metrics ?? 70),
+          context: (scores.context ?? 70),
+          keywords: (scores.keywords ?? 70),
         },
       };
     });
@@ -538,7 +537,7 @@ Return a JSON object with this exact shape:
       section: 'experience',
       original: state.current_profile?.experience_text ?? '',
       optimized: combinedText,
-      rationale: String(result?.rationale ?? ''),
+      rationale: (result?.rationale ?? ''),
       word_count: wordCount(combinedText),
     };
 

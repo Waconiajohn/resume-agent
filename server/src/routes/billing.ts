@@ -175,7 +175,7 @@ billing.get('/validate-promo', authMiddleware, async (c) => {
     const promo = promotionCodes.data[0];
     // promotion.coupon may be a string ID or an expanded Coupon object
     const couponRaw = promo.promotion.coupon;
-    const coupon = typeof couponRaw === 'object' && couponRaw !== null ? couponRaw as Stripe.Coupon : null;
+    const coupon = typeof couponRaw === 'object' && couponRaw !== null ? couponRaw : null;
 
     return c.json({
       valid: true,
@@ -345,22 +345,22 @@ billing.post('/portal', authMiddleware, async (c) => {
 async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object;
       await handleCheckoutCompleted(session);
       break;
     }
     case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object;
       await handleSubscriptionUpdated(subscription);
       break;
     }
     case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object;
       await handleSubscriptionDeleted(subscription);
       break;
     }
     case 'invoice.payment_failed': {
-      const invoice = event.data.object as Stripe.Invoice;
+      const invoice = event.data.object;
       await handlePaymentFailed(invoice);
       break;
     }

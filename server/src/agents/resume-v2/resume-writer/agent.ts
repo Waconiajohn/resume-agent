@@ -10,8 +10,6 @@
  * Model: MODEL_PRIMARY
  */
 
-import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
-import { repairJSON } from '../../../lib/json-repair.js';
 import { runSectionBySection } from './section-writer.js';
 import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES, getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -88,7 +86,7 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Do not add introductions like "Here is the complete resume" or any other prose outside the JSON object.
 - Keep field values concise and resume-ready.`;
 
-const SYSTEM_PROMPT = `You are an expert executive resume writer producing a COMPLETE, tailored resume. You write like a $3,000 executive resume writer who has placed hundreds of VPs and C-suite leaders.
+const _SYSTEM_PROMPT = `You are an expert executive resume writer producing a COMPLETE, tailored resume. You write like a $3,000 executive resume writer who has placed hundreds of VPs and C-suite leaders.
 
 ## YOUR NORTH STAR
 
@@ -627,7 +625,7 @@ function containsPromptExampleLeakage(
   ));
 }
 
-function containsBannedDisplayPhrase(text: string): boolean {
+function _containsBannedDisplayPhrase(text: string): boolean {
   const normalized = text.toLowerCase();
   return BANNED_PHRASES.some((phrase) => normalized.includes(phrase));
 }
@@ -747,7 +745,7 @@ function logFuzzyExperienceFramingMatch(
   );
 }
 
-function buildUserMessage(input: ResumeWriterInput): string {
+function _buildUserMessage(input: ResumeWriterInput): string {
   const sourceExperience = getAuthoritativeSourceExperience(input.candidate);
   const competencyThemes = Array.isArray(input.narrative.section_guidance.competency_themes)
     ? input.narrative.section_guidance.competency_themes
@@ -1640,7 +1638,7 @@ function calculateTokenOverlap(leftText: string, rightText: string): number {
   return Math.max(shared / leftTokens.length, shared / rightTokens.length);
 }
 
-function calculateLongestCommonSubstringRatio(leftText: string, rightText: string): number {
+function _calculateLongestCommonSubstringRatio(leftText: string, rightText: string): number {
   const left = normalizeLooseText(leftText);
   const right = normalizeLooseText(rightText);
   if (!left || !right) return 0;
@@ -2778,7 +2776,7 @@ function buildEarlierCareer(
     }));
 }
 
-function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+function _shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   return error instanceof Error && /aborted/i.test(error.message);

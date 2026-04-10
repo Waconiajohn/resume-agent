@@ -392,7 +392,7 @@ function RequirementCard({
     const target = resolveEditTarget();
     if (!target) return;
     const label = req.tier === 'gap' ? 'safe resume language' : 'positioning';
-    onRequestEdit!(
+    onRequestEdit(
       target.text,
       target.section,
       'custom',
@@ -405,14 +405,14 @@ function RequirementCard({
     if (!canAct) return;
     const target = resolveEditTarget();
     if (!target) return;
-    onRequestEdit!(target.text, target.section, 'strengthen', undefined, buildEditContext(req.requirement, req.evidence, req.strategy?.positioning));
+    onRequestEdit(target.text, target.section, 'strengthen', undefined, buildEditContext(req.requirement, req.evidence, req.strategy?.positioning));
   }, [canAct, onRequestEdit, req, resolveEditTarget]);
 
   const handleSubmitContext = useCallback(() => {
     if (!canAct || !contextText.trim()) return;
     const target = resolveEditTarget();
     if (!target) return;
-    onRequestEdit!(
+    onRequestEdit(
       target.text,
       target.section,
       'custom',
@@ -840,7 +840,7 @@ function RequirementCard({
             onAcceptLanguage={(requirement, language, candidateInputUsed) => {
               // Find a target bullet before accepting — prevent silent no-op
               if (!canAct) return;
-              const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+              const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
               // Fallback: first experience bullet if no direct mapping exists
               const fallbackTarget = !target && currentResume?.professional_experience[0]?.bullets[0]
                 ? { text: currentResume.professional_experience[0].bullets[0].text, section: `Professional Experience - ${currentResume.professional_experience[0].company}` }
@@ -848,7 +848,7 @@ function RequirementCard({
               const editTarget = target ?? fallbackTarget;
               if (!editTarget) return; // No resume content to edit — don't fake "Applied"
 
-              onRequestEdit!(
+              onRequestEdit(
                 editTarget.text,
                 editTarget.section,
                 'custom',

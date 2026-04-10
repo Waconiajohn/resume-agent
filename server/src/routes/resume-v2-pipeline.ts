@@ -37,7 +37,6 @@ import {
 import {
   startSchema,
   editSchema,
-  type EditAction,
   type StoredV2Snapshot,
   createInitialSnapshot,
   buildClarificationMemoryContext,
@@ -2207,7 +2206,7 @@ resumeV2Pipeline.post('/:sessionId/section-draft', authMiddleware, rateLimitMidd
         const strengthSummary = typeof gapAnalysis.strength_summary === 'string' ? gapAnalysis.strength_summary : '';
         const requirementHints = Array.isArray(gapAnalysis.requirements)
           ? (gapAnalysis.requirements as Array<Record<string, unknown>>)
-              .filter((entry) => requirement_focus.some((focus) => typeof entry.requirement === 'string' && requirementOverlapScore(String(entry.requirement), focus) >= 0.28))
+              .filter((entry) => requirement_focus.some((focus) => typeof entry.requirement === 'string' && requirementOverlapScore(entry.requirement as string, focus) >= 0.28))
               .slice(0, 3)
               .map((entry) => {
                 const requirement = typeof entry.requirement === 'string' ? entry.requirement : '';

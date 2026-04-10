@@ -14,11 +14,9 @@ import type {
   JobTrackerState,
   JobTrackerSSEEvent,
   FollowUpMessage,
-  FollowUpType,
 } from '../types.js';
 import { FOLLOW_UP_LABELS, FOLLOW_UP_TIMING } from '../types.js';
-import { JOB_TRACKER_RULES } from '../knowledge/rules.js';
-import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
+import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
   renderCareerNarrativeSection,

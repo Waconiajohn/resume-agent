@@ -136,7 +136,7 @@ function buildContextBlock(state: InterviewPrepState): string {
 
   // ─── Quantified Candidate Metrics (from resume pipeline) ─────────
   // These ground STAR answers with real numbers instead of generic framing.
-  const candidateIntel = state.platform_context?.candidate_intelligence as Record<string, unknown> | undefined;
+  const candidateIntel = state.platform_context?.candidate_intelligence;
   if (candidateIntel) {
     const outcomes = Array.isArray(candidateIntel.quantified_outcomes) ? candidateIntel.quantified_outcomes : [];
     if (outcomes.length > 0) {
@@ -163,7 +163,7 @@ function buildContextBlock(state: InterviewPrepState): string {
 
   // ─── Gap Analysis (for trap question preparation) ─────────────────
   // Help the candidate prepare for skeptical interviewer questions on weak areas.
-  const gapAnalysis = state.platform_context?.gap_analysis as Record<string, unknown> | undefined;
+  const gapAnalysis = state.platform_context?.gap_analysis;
   if (gapAnalysis) {
     const criticalGaps = Array.isArray(gapAnalysis.critical_gaps) ? gapAnalysis.critical_gaps : [];
     const requirements = Array.isArray(gapAnalysis.requirements) ? gapAnalysis.requirements : [];
@@ -781,12 +781,12 @@ Return JSON:
 
     const notes: ThankYouNoteOutput[] = Array.isArray(parsed.notes)
       ? parsed.notes.map((n) => ({
-          interviewer: String(n.interviewer ?? ''),
-          interviewer_title: String(n.interviewer_title ?? ''),
-          note_text: String(n.note_text ?? ''),
-          subject_line: String(n.subject_line ?? ''),
+          interviewer: (n.interviewer ?? ''),
+          interviewer_title: (n.interviewer_title ?? ''),
+          note_text: (n.note_text ?? ''),
+          subject_line: (n.subject_line ?? ''),
           key_callbacks: Array.isArray(n.key_callbacks) ? n.key_callbacks.map(String) : [],
-          timing_guidance: String(n.timing_guidance ?? 'Send within 2-4 hours of the interview.'),
+          timing_guidance: (n.timing_guidance ?? 'Send within 2-4 hours of the interview.'),
         }))
       : [];
 
@@ -911,10 +911,10 @@ Return JSON:
 
     const email: FollowUpEmailOutput = {
       situation,
-      subject: String(parsed.subject ?? `Re: ${role} at ${company}`),
-      body: String(parsed.body ?? response.text.trim()),
-      tone_notes: String(parsed.tone_notes ?? ''),
-      timing_guidance: String(parsed.timing_guidance ?? ''),
+      subject: (parsed.subject ?? `Re: ${role} at ${company}`),
+      body: (parsed.body ?? response.text.trim()),
+      tone_notes: (parsed.tone_notes ?? ''),
+      timing_guidance: (parsed.timing_guidance ?? ''),
     };
 
     if (!state.post_interview_docs) {
@@ -1048,8 +1048,8 @@ Return JSON:
     }
 
     const debrief: InterviewDebriefOutput = {
-      company: String(parsed.company ?? company),
-      role: String(parsed.role ?? role),
+      company: (parsed.company ?? company),
+      role: (parsed.role ?? role),
       strengths_demonstrated: Array.isArray(parsed.strengths_demonstrated)
         ? parsed.strengths_demonstrated.map(String)
         : [],
@@ -1108,7 +1108,7 @@ const recallStoryBankTool: InterviewPrepTool = {
     const rows = await getUserContext(userId, 'interview_story');
     const stories = rows
       .map((row) => {
-        const c = row.content as Record<string, unknown>;
+        const c = row.content;
         return {
           situation: typeof c.situation === 'string' ? c.situation : '',
           task: typeof c.task === 'string' ? c.task : '',

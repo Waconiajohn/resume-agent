@@ -190,7 +190,7 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
     sourceProduct: row.source_product,
     sourceSessionId: row.source_session_id,
     updatedAt: row.updated_at,
-    summary: asString((row.content as Record<string, unknown>).text) ?? 'legacy evidence item',
+    summary: asString((row.content).text) ?? 'legacy evidence item',
   }));
 
   context.careerNarrative.careerArc = asString(careerNarrative?.career_arc)

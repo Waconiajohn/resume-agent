@@ -23,7 +23,7 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       if (!mountedRef.current) return;
       console.error('Failed to get auth session:', err);
       setLoading(false);

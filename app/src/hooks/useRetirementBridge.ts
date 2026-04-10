@@ -169,7 +169,7 @@ export function useRetirementBridge() {
           }
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('[useRetirementBridge] SSE fetch error:', err);
         if (mountedRef.current) {

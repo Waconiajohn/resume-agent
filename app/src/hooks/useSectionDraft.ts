@@ -112,7 +112,7 @@ export function useSectionDraft(accessToken: string | null, sessionId: string | 
       return data;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return null;
-      const message = error instanceof Error ? error.message : 'Unable to draft this section.';
+      const _message = error instanceof Error ? error.message : 'Unable to draft this section.';
       const fallback = buildFallbackSectionDraftResult(step, {
         note: 'This draft keeps the section grounded in the current resume so you can keep moving while live drafting catches up.',
       });

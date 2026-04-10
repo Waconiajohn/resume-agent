@@ -22,8 +22,6 @@ import {
   Star,
   Mail,
   Send,
-  MessageSquare,
-  TrendingUp,
 } from 'lucide-react';
 import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
@@ -696,7 +694,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
       )}
       <div className="space-y-3">
         {history.map((interview) => {
-          const outcome = outcomeConfig[interview.outcome];
+          const _outcome = outcomeConfig[interview.outcome];
           return (
             <div key={interview.id} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
               <div className="flex items-center justify-between mb-1">
@@ -1475,7 +1473,7 @@ export function InterviewLabRoom({
     setMockInterviewConfig(null);
   }, []);
 
-  const setFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
+  const _setFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
     setActiveSection('follow_up');
     setFollowUpView(view);
   }, []);

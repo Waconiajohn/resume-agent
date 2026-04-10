@@ -46,7 +46,7 @@ export function PipelineProgressBar({ pipelineStage, isProcessing, sessionComple
         <span className="text-[13px] text-[var(--text-soft)]" aria-live="polite" role="status">{label}</span>
         <div className="flex items-center gap-3">
           {showEstimate && (
-            <span className="text-[13px] text-[var(--text-soft)]">~{stageInfo!.estimateMinutes} min</span>
+            <span className="text-[13px] text-[var(--text-soft)]">~{stageInfo.estimateMinutes} min</span>
           )}
           {!sessionComplete && stepIndex !== null && (
             <span className="text-[13px] text-[var(--text-soft)]">

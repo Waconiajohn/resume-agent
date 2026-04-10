@@ -169,20 +169,20 @@ function StepCard({
 }
 
 export function DashboardHome({
-  signals,
+  signals: _signals,
   dashboardState,
   onNavigateRoom,
   onRefineWhyMe,
   hasResumeSessions = false,
   sessionCount = 0,
-  nudges = [],
-  onDismissNudge,
+  nudges: _nudges = [],
+  onDismissNudge: _onDismissNudge,
   coachRecommendation,
   onInterviewPrepClick,
   onNegotiationPrepClick,
 }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
-  const handleDismiss = (key: string) => {
+  const _handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
     setDismissed(updated);
     saveDismissed(updated);

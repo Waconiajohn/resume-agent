@@ -99,18 +99,18 @@ export async function loadClientSnapshot(userId: string): Promise<ClientSnapshot
     : 0;
 
   // Extract client name from profile
-  const profile = clientProfile?.content as Record<string, unknown> | undefined;
+  const profile = clientProfile?.content;
   const name = (profile?.name as string) ?? (profile?.full_name as string) ?? undefined;
 
   return {
     user_id: userId,
     name,
     journey_phase: journeyPhase,
-    client_profile: clientProfile?.content as Record<string, unknown> | undefined,
-    positioning_strategy: positioning?.content as Record<string, unknown> | undefined,
-    emotional_baseline: emotional?.content as Record<string, unknown> | undefined,
-    evidence_items: evidenceRows.map((r) => r.content as Record<string, unknown>),
-    career_narratives: narrativeRows.map((r) => r.content as Record<string, unknown>),
+    client_profile: clientProfile?.content,
+    positioning_strategy: positioning?.content,
+    emotional_baseline: emotional?.content,
+    evidence_items: evidenceRows.map((r) => r.content),
+    career_narratives: narrativeRows.map((r) => r.content),
     active_pipelines: activePipelines,
     completed_products: [...new Set(completedProducts)],
     stalled_items: stalledItems,

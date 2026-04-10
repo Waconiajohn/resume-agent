@@ -71,7 +71,7 @@ export async function getEmotionalBaseline(
     const profileRows = await getUserContext(userId, 'client_profile' as ContextType);
     if (profileRows.length === 0) return null;
 
-    const content = profileRows[0].content as Record<string, unknown>;
+    const content = profileRows[0].content;
 
     const emotionalState = (
       typeof content.emotional_state === 'string' &&

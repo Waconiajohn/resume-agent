@@ -110,8 +110,8 @@ export function ResumeDocumentCard({
   requirementCatalog = [],
   activeBullet = null,
   onBulletClick,
-  onBulletEdit,
-  onBulletRemove,
+  onBulletEdit: _onBulletEdit,
+  onBulletRemove: _onBulletRemove,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];

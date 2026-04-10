@@ -8,7 +8,7 @@
  * Model: MODEL_MID
  */
 
-import { llm, MODEL_MID } from '../../../lib/llm.js';
+import { MODEL_MID } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';

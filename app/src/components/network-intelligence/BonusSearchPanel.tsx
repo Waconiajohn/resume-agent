@@ -29,7 +29,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const {
     scrapeLogId,
-    scrapeStatus,
+    scrapeStatus: _scrapeStatus,
     result,
     running,
     error,

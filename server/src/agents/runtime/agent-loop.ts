@@ -10,7 +10,6 @@
  * Uses the existing llm-provider.ts infrastructure (streaming, usage tracking).
  */
 
-import { randomUUID } from 'node:crypto';
 import { llm } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';

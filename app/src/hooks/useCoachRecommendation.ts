@@ -43,7 +43,7 @@ function loadCached(userId: string | null | undefined): CoachRecommendation | nu
   return readJsonFromSessionStorage<CoachRecommendation>(buildCacheKey(userId));
 }
 
-function saveCache(userId: string | null | undefined, rec: CoachRecommendation) {
+function _saveCache(userId: string | null | undefined, rec: CoachRecommendation) {
   writeJsonToSessionStorage(buildCacheKey(userId), rec);
 }
 

@@ -5,7 +5,6 @@ import {
   Users,
   UserCircle,
   MessageSquare,
-  Send,
   Copy,
   Check,
   TrendingUp,
@@ -27,7 +26,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNetworkingOutreach } from '@/hooks/useNetworkingOutreach';
 import { useNetworkingContacts, type NetworkingContact, type Touchpoint } from '@/hooks/useNetworkingContacts';
-import { useRuleOfFour, CONTACT_ROLE_LABELS, ALL_ROLES, type ContactRole, type RuleOfFourGroup } from '@/hooks/useRuleOfFour';
+import { useRuleOfFour, CONTACT_ROLE_LABELS, type ContactRole, type RuleOfFourGroup } from '@/hooks/useRuleOfFour';
 import { ContactFormModal, type CreateContactData } from '@/components/career-iq/ContactFormModal';
 import { ContactDetailSheet } from '@/components/career-iq/ContactDetailSheet';
 import { RuleOfFourCoachingBar } from '@/components/career-iq/RuleOfFourCoachingBar';

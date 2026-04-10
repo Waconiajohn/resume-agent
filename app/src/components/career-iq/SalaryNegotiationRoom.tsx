@@ -381,7 +381,7 @@ function CounterScenarioCards() {
 
 function ActivityFeed({
   messages,
-  currentStage,
+  currentStage: _currentStage,
 }: {
   messages: { id: string; message: string; stage?: string; timestamp: number }[];
   currentStage: string | null;

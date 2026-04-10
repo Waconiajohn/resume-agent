@@ -7,7 +7,6 @@ import {
   Trash2,
   User,
   Building2,
-  Calendar,
   Video,
   Phone,
   MapPin,

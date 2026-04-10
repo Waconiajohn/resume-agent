@@ -37,7 +37,7 @@ export function SessionCoverLetterModal({
           setLoading(false);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : String(err);
           setError(message);

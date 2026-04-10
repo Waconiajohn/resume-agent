@@ -10,7 +10,7 @@ import type { AgentConfig, BaseState, BaseEvent } from './agent-protocol.js';
 
 // Internal widened type used by the registry store.
 // Callers register via registerAgent() which handles this widening safely.
-type AnyAgentConfig = AgentConfig<BaseState, BaseEvent>;
+type AnyAgentConfig = AgentConfig;
 
 class AgentRegistry {
   private readonly agents = new Map<string, AnyAgentConfig>();

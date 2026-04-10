@@ -394,7 +394,7 @@ export function useContentCalendar() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useContentCalendar] SSE fetch error:', err);
           if (mountedRef.current) {

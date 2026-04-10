@@ -109,7 +109,7 @@ function sectionLabel(step: ResumeWorkflowSectionStepViewModel): string {
 function joinRequirements(step: ResumeWorkflowSectionStepViewModel): string {
   const requirements = step.topRequirements.map((entry) => entry.requirement).filter(Boolean);
   if (requirements.length === 0) return 'the most important role needs already visible in this section';
-  if (requirements.length === 1) return requirements[0]!;
+  if (requirements.length === 1) return requirements[0];
   return `${requirements.slice(0, -1).join(', ')}, and ${requirements[requirements.length - 1]}`;
 }
 

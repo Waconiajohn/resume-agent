@@ -135,7 +135,7 @@ export function questionResponseHistory(questionResponseRows: QuestionResponseRo
   updated_at: string | null;
 }> {
   return questionResponseRows
-    .filter((row) => typeof row.question_id === 'string' && (row.question_id as string).includes(':'))
+    .filter((row) => typeof row.question_id === 'string' && (row.question_id).includes(':'))
     .map((row) => {
       const rawQuestionId = row.question_id as string;
       const [questionnaireId, ...questionIdParts] = rawQuestionId.split(':');
@@ -145,7 +145,7 @@ export function questionResponseHistory(questionResponseRows: QuestionResponseRo
         questionnaire_id: questionnaireId,
         question_id: questionId || rawQuestionId,
         stage: typeof row.stage === 'string' ? row.stage : 'unknown',
-        status: (row.status === 'skipped' || row.status === 'deferred' ? row.status : 'answered') as 'answered' | 'skipped' | 'deferred',
+        status: (row.status === 'skipped' ? 'skipped' as const : row.status === 'deferred' ? 'deferred' as const : 'answered' as const),
         impact_tag: (row.impact_tag === 'high' || row.impact_tag === 'medium' || row.impact_tag === 'low'
           ? row.impact_tag
           : null) as 'high' | 'medium' | 'low' | null,
@@ -189,10 +189,10 @@ export function questionReuseSummaries(questionReuseSummaryRows: QuestionReuseSu
             .slice(0, 6)
         : [];
       return {
-        stage: (payload.stage === 'gap_analysis' ? 'gap_analysis' : 'positioning') as 'gap_analysis' | 'positioning',
+        stage: (payload.stage === 'gap_analysis' ? 'gap_analysis' as const : 'positioning' as const),
         questionnaire_kind: (payload.questionnaire_kind === 'gap_analysis_quiz'
-          ? 'gap_analysis_quiz'
-          : 'positioning_batch') as 'gap_analysis_quiz' | 'positioning_batch',
+          ? 'gap_analysis_quiz' as const
+          : 'positioning_batch' as const),
         skipped_count: typeof payload.skipped_count === 'number' ? Math.max(0, payload.skipped_count) : 0,
         matched_by_topic_count: typeof payload.matched_by_topic_count === 'number'
           ? Math.max(0, payload.matched_by_topic_count)
@@ -435,7 +435,7 @@ export function normalizeDraftPathDecision(
     : null;
   const normalizedMessage = pathDecisionCompat.shouldRewriteMessage
     ? helpers.buildCoverageOnlyDraftPathDecisionMessage({
-        workflowMode: normalizedWorkflowMode as 'fast_draft' | 'balanced' | 'deep_dive',
+        workflowMode: normalizedWorkflowMode,
         coverageScore: typeof payload.coverage_score === 'number' ? payload.coverage_score : undefined,
         coverageThreshold: typeof payload.coverage_threshold === 'number' ? payload.coverage_threshold : undefined,
         ready: pathDecisionCompat.ready,

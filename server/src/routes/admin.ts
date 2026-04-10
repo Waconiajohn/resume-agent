@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type Stripe from 'stripe';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
 import { resetSessionRouteStateForTests } from './sessions.js';
@@ -107,7 +106,7 @@ admin.get('/promo-codes', async (c) => {
       codes: codes.map(pc => {
         const couponRaw = pc.promotion.coupon;
         const coupon = typeof couponRaw === 'object' && couponRaw !== null
-          ? couponRaw as Stripe.Coupon
+          ? couponRaw
           : null;
         return {
           id: pc.id,

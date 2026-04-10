@@ -108,7 +108,7 @@ function buildStarterQuestion(args: {
   return `${promptPrefix}What is the clearest concrete example that proves "${args.requirement}" for this role?`;
 }
 
-function looksLikeTargetedStarterQuestion(question: string | null | undefined, requirement: string): boolean {
+function looksLikeTargetedStarterQuestion(question: string | null | undefined, _requirement: string): boolean {
   if (typeof question !== 'string') return false;
   const trimmed = question.trim();
   if (!trimmed) return false;

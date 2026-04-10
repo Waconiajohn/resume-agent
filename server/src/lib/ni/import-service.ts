@@ -79,7 +79,7 @@ export async function runCsvImportPipeline(
     const uniqueCompanyNames = [...new Set(result.connections.map((c) => c.companyRaw))];
     void normalizeCompanyBatch(userId, uniqueCompanyNames)
       .then(() => runBulkEnrichment(userId))
-      .catch((bgErr) => {
+      .catch((bgErr: unknown) => {
         logger.error(
           { error: bgErr instanceof Error ? bgErr.message : String(bgErr), userId },
           'Background normalization or ATS enrichment failed',

@@ -23,7 +23,6 @@ import type {
 } from '../types.js';
 import { RETIREMENT_BRIDGE_RULES, FIDUCIARY_DISCLAIMER } from '../knowledge/rules.js';
 import { llm, MODEL_MID } from '../../../lib/llm.js';
-import type { ChatResponse } from '../../../lib/llm-provider.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 
 type RetirementTool = AgentTool<RetirementBridgeState, RetirementBridgeSSEEvent>;
@@ -129,7 +128,7 @@ Return JSON array:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let questions: RetirementQuestion[];
     try {
@@ -284,7 +283,7 @@ REQUIREMENTS:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let rawAssessments: Record<string, unknown>[];
     try {
@@ -436,7 +435,7 @@ REQUIREMENTS:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let synthesis: {
       key_observations: string[];
@@ -464,7 +463,7 @@ REQUIREMENTS:
     }
 
     // Enforce fiduciary disclaimer in shareable summary — append if LLM omitted it
-    const summaryText = String(synthesis.shareable_summary ?? '');
+    const summaryText = (synthesis.shareable_summary ?? '');
     if (!summaryText.toLowerCase().includes('fiduciary') && !summaryText.toLowerCase().includes('not financial advice')) {
       synthesis.shareable_summary = summaryText + '\n\n' + FIDUCIARY_DISCLAIMER;
     }
@@ -478,7 +477,7 @@ REQUIREMENTS:
       recommended_planner_topics: Array.isArray(synthesis.recommended_planner_topics)
         ? synthesis.recommended_planner_topics.slice(0, 7)
         : [],
-      shareable_summary: String(synthesis.shareable_summary ?? ''),
+      shareable_summary: (synthesis.shareable_summary ?? ''),
     };
 
     ctx.scratchpad.readiness_summary = summary;

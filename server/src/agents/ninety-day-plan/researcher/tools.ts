@@ -355,8 +355,8 @@ CANDIDATE STRENGTHS:
 - Key Achievements: ${state.resume_data?.key_achievements?.join(' | ') || 'Not available'}
 
 ROLE ANALYSIS:
-- Candidate Strengths for Role: ${JSON.stringify((roleAnalysis as Record<string, unknown>).candidate_strengths_for_role ?? [])}
-- Success Criteria: ${JSON.stringify((roleAnalysis as Record<string, unknown>).success_criteria ?? [])}
+- Candidate Strengths for Role: ${JSON.stringify((roleAnalysis).candidate_strengths_for_role ?? [])}
+- Success Criteria: ${JSON.stringify((roleAnalysis).success_criteria ?? [])}
 
 STAKEHOLDERS:
 ${state.stakeholder_map.map((s) => `- ${s.name_or_role} (${s.relationship_type}, ${s.priority})`).join('\n')}
@@ -471,8 +471,8 @@ CANDIDATE:
 - Career Summary: ${state.resume_data?.career_summary ?? 'Not available'}
 
 ROLE ANALYSIS:
-- Candidate Gaps: ${JSON.stringify((roleAnalysis as Record<string, unknown>).candidate_gaps_for_role ?? [])}
-- Organizational Dynamics: ${JSON.stringify((roleAnalysis as Record<string, unknown>).organizational_dynamics ?? [])}
+- Candidate Gaps: ${JSON.stringify((roleAnalysis).candidate_gaps_for_role ?? [])}
+- Organizational Dynamics: ${JSON.stringify((roleAnalysis).organizational_dynamics ?? [])}
 
 Return JSON array of learning priorities:
 [

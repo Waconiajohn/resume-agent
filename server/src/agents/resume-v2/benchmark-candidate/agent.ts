@@ -14,7 +14,7 @@
  * Model: MODEL_PRIMARY
  */
 
-import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { MODEL_PRIMARY } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { queryWithFallback } from '../../../lib/perplexity.js';
 import { repairJSON } from '../../../lib/json-repair.js';

@@ -85,7 +85,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
             if (typeof scratchpad[key] === 'string' && !state.section_drafts[section]) {
               state.section_drafts = {
                 ...state.section_drafts,
-                [section]: scratchpad[key] as string,
+                [section]: scratchpad[key],
               };
             }
 
@@ -139,7 +139,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
           parts.push(`## Next Section to Write: "${nextSection}"`, '');
 
           // Include the feedback for this section if revision was requested
-          const feedback = state.section_feedback?.[nextSection as ProfileSection];
+          const feedback = state.section_feedback?.[nextSection];
           if (feedback) {
             parts.push(
               `## Revision Requested for ${nextSection}`,

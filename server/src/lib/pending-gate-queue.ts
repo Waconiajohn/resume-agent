@@ -52,8 +52,8 @@ function normalizeQueue(queue: BufferedResponseItem[]): BufferedResponseItem[] {
   const normalized = queue
     .slice(-MAX_BUFFERED_RESPONSES)
     .map((item) => ({
-      gate: String(item.gate ?? '').slice(0, 100),
-      responded_at: String(item.responded_at ?? '').slice(0, 64) || new Date().toISOString(),
+      gate: (item.gate ?? '').slice(0, 100),
+      responded_at: (item.responded_at ?? '').slice(0, 64) || new Date().toISOString(),
       response: truncateResponseForQueue(item.response),
     }))
     .filter((item) => item.gate.length > 0);

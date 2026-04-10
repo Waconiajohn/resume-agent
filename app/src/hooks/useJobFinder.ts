@@ -322,7 +322,7 @@ export function useJobFinder() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useJobFinder] SSE fetch error:', err);
           if (mountedRef.current) {

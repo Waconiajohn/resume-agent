@@ -17,7 +17,6 @@ import type {
   QuestionType,
 } from '../types.js';
 import { llm, MODEL_MID } from '../../../../lib/llm.js';
-import type { ChatResponse } from '../../../../lib/llm-provider.js';
 import { repairJSON } from '../../../../lib/json-repair.js';
 import {
   renderPositioningStrategySection,
@@ -151,15 +150,15 @@ Return ONLY valid JSON:
       messages: [{ role: 'user', content: parts.join('\n') }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
     const parsedRaw = repairJSON<{ question: string; context: string }>(text);
     const parsed: { question?: string; context?: string } = parsedRaw ?? {};
 
     const question: InterviewQuestion = {
       index: questionIndex,
       type: questionType,
-      question: String(parsed.question ?? `Tell me about a time you demonstrated ${questionType} skills in your role.`),
-      context: parsed.context ? String(parsed.context) : undefined,
+      question: (parsed.question ?? `Tell me about a time you demonstrated ${questionType} skills in your role.`),
+      context: parsed.context ?? undefined,
     };
 
     // Persist to state via scratchpad accumulator
@@ -216,11 +215,11 @@ const presentQuestionToUserTool: InterviewerTool = {
     const answer = await ctx.waitForUser<string>('mock_interview_answer');
 
     // Store answer in scratchpad for evaluate_answer to pick up
-    ctx.scratchpad[`answer_${questionIndex}`] = String(answer ?? '');
+    ctx.scratchpad[`answer_${questionIndex}`] = (answer ?? '');
 
     return JSON.stringify({
       question_index: questionIndex,
-      answer: String(answer ?? ''),
+      answer: (answer ?? ''),
       message: 'User provided answer. Proceed to evaluate_answer.',
     });
   },
@@ -319,7 +318,7 @@ Return ONLY valid JSON:
       messages: [{ role: 'user', content: contextParts.join('\n') }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
     type EvalResponse = {
       scores?: {
         star_completeness?: number;
@@ -336,10 +335,10 @@ Return ONLY valid JSON:
     const parsed: EvalResponse = parsedRaw ?? {};
 
     const scores: AnswerEvaluation['scores'] = {
-      star_completeness: Number(parsed.scores?.star_completeness ?? 50),
-      relevance: Number(parsed.scores?.relevance ?? 50),
-      impact: Number(parsed.scores?.impact ?? 50),
-      specificity: Number(parsed.scores?.specificity ?? 50),
+      star_completeness: (parsed.scores?.star_completeness ?? 50),
+      relevance: (parsed.scores?.relevance ?? 50),
+      impact: (parsed.scores?.impact ?? 50),
+      specificity: (parsed.scores?.specificity ?? 50),
     };
 
     const evaluation: AnswerEvaluation = {
@@ -348,15 +347,15 @@ Return ONLY valid JSON:
       question: question.question,
       answer,
       scores,
-      overall_score: Number(parsed.overall_score ?? Math.round(
+      overall_score: (parsed.overall_score ?? Math.round(
         scores.star_completeness * 0.3 +
         scores.relevance * 0.25 +
         scores.impact * 0.25 +
         scores.specificity * 0.2,
       )),
-      strengths: Array.isArray(parsed.strengths) ? (parsed.strengths as string[]) : [],
-      improvements: Array.isArray(parsed.improvements) ? (parsed.improvements as string[]) : [],
-      model_answer_hint: parsed.model_answer_hint ? String(parsed.model_answer_hint) : undefined,
+      strengths: Array.isArray(parsed.strengths) ? (parsed.strengths) : [],
+      improvements: Array.isArray(parsed.improvements) ? (parsed.improvements) : [],
+      model_answer_hint: parsed.model_answer_hint ?? undefined,
     };
 
     // Persist to state

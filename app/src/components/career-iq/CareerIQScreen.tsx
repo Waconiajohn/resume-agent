@@ -99,7 +99,7 @@ export function CareerIQScreen({
   const [activeRoom, setActiveRoom] = useState<WorkspaceRoom>(resolveWorkspaceRoom(initialRoom));
   const {
     profile,
-    story,
+    story: _story,
     signals,
     dashboardState,
     summary,

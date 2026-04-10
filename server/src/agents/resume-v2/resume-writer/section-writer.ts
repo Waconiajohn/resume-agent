@@ -20,7 +20,7 @@
  * stays in agent.ts and runs on the merged output just like before.
  */
 
-import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { MODEL_PRIMARY } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
@@ -32,7 +32,6 @@ import type {
   ResumeDraftOutput,
   ResumeBullet,
   ResumeCustomSection,
-  CandidateExperience,
   ResumePriorityTarget,
 } from '../types.js';
 
@@ -810,7 +809,7 @@ async function callExperienceSection(
   accomplishmentTexts: string[],
   signal?: AbortSignal,
 ): Promise<ExperienceResult> {
-  const { candidate, job_intelligence, narrative, gap_analysis, approved_strategies } = input;
+  const { candidate, job_intelligence, narrative, gap_analysis: _gap_analysis, approved_strategies } = input;
   const sourceExperience = getAuthoritativeSourceExperience(candidate);
 
   // Build the source positions block

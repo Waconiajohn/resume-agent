@@ -8,7 +8,7 @@
  * - emit_transparency: Live progress updates
  */
 
-import type { JobFinderTool, DiscoveredJob, RankedMatch, JobEvaluation } from '../types.js';
+import type { JobFinderTool, RankedMatch, JobEvaluation } from '../types.js';
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';

@@ -116,7 +116,7 @@ export function EvidenceLibraryTab({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {filteredItems.map((item, i) => {
+          {filteredItems.map((item, _i) => {
             const originalIndex = allItems.indexOf(item);
             return (
               <EvidenceItemCard

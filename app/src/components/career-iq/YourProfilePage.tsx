@@ -754,7 +754,7 @@ export function YourProfilePage({
   careerProfile = null,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [whyMeSaved, setWhyMeSaved] = useState(false);
   const prevLastSavedAtRef = useRef<Date | null>(null);
 

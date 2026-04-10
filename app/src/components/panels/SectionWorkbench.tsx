@@ -212,7 +212,7 @@ export function SectionWorkbench({
   const positioningAngle =
     context?.blueprint_slice &&
     typeof context.blueprint_slice['positioning_angle'] === 'string'
-      ? (context.blueprint_slice['positioning_angle'] as string)
+      ? (context.blueprint_slice['positioning_angle'])
       : null;
 
   const sectionOrder = Array.isArray(context?.section_order) ? context.section_order : [];

@@ -59,8 +59,8 @@ export async function searchAllSources(
   const sources_queried: string[] = [];
 
   for (let i = 0; i < adapters.length; i++) {
-    const adapter = adapters[i]!;
-    const result = settled[i]!;
+    const adapter = adapters[i];
+    const result = settled[i];
 
     sources_queried.push(adapter.name);
 

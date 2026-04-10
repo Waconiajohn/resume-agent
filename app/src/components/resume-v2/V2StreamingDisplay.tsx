@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
+import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState, SuggestionScore, RewriteQueueItem } from '@/types/resume-v2';
@@ -27,13 +27,12 @@ import { ScoringReport } from './ScoringReport';
 import { ResumeEditorLayout } from './ResumeEditorLayout';
 import { PipelineProgressCard } from './cards/PipelineProgressCard';
 import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
-import { ResumeStructurePlannerCard } from './cards/ResumeStructurePlannerCard';
 import { ResumeSectionWorkflowPanel } from './workflow/ResumeSectionWorkflowPanel';
 import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { scrollToAndFocusTarget } from './useStrategyThread';
-import { buildCustomSectionDraftSuggestions, buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+import { buildCustomSectionPresetRecommendations, buildResumeSectionPlan, getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import type { ResumeCustomSectionPresetId } from '@/lib/resume-section-plan';
 import type {
@@ -281,7 +280,7 @@ function dedupePhraseList(items: string[] | null | undefined): string[] {
   });
 }
 
-function truncatePreview(text: string, maxLength = 120): string {
+function _truncatePreview(text: string, maxLength = 120): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
@@ -872,7 +871,7 @@ function buildResumeLineSelector(section: string, index: number): string {
   return `[data-resume-line="${section}:${index}"]`;
 }
 
-function GuidedNextStepCard({
+function _GuidedNextStepCard({
   title,
   reason,
   primaryActionLabel,
@@ -930,27 +929,27 @@ export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
   onBulletEdit, onBulletRemove,
-  onRequestEdit, onAcceptEdit, onRejectEdit, onUndo, onRedo,
-  onAddContext, isRerunning,
-  liveScores, isScoring,
-  gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
-  previousResume, onDismissChanges,
+  onRequestEdit: _onRequestEdit, onAcceptEdit, onRejectEdit, onUndo, onRedo,
+  onAddContext: _onAddContext, isRerunning,
+  liveScores: _liveScores, isScoring: _isScoring,
+  gapCoachingCards, onRespondGapCoaching: _onRespondGapCoaching, preScores: _preScores, onIntegrateKeyword: _onIntegrateKeyword,
+  previousResume: _previousResume, onDismissChanges: _onDismissChanges,
   hiringManagerResult, resolvedFinalReviewConcernIds = [], isFinalReviewStale = false, finalReviewWarningsAcknowledged = false, onAcknowledgeFinalReviewWarnings,
   isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
   gapChat, gapChatSnapshot, buildChatContext,
   finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, resolveFinalReviewTarget, onPreviewFinalReviewTarget, postReviewPolish,
-  masterSaveMode = 'session_only',
-  onChangeMasterSaveMode,
-  onSaveCurrentToMaster,
-  isSavingToMaster = false,
-  masterSaveStatus,
-  promotableMasterItems = [],
-  selectedMasterPromotionIds = [],
-  onToggleMasterPromotionItem,
-  onSelectAllMasterPromotionItems,
-  onClearMasterPromotionItems,
-  onGapAssist,
+  masterSaveMode: _masterSaveMode = 'session_only',
+  onChangeMasterSaveMode: _onChangeMasterSaveMode,
+  onSaveCurrentToMaster: _onSaveCurrentToMaster,
+  isSavingToMaster: _isSavingToMaster = false,
+  masterSaveStatus: _masterSaveStatus,
+  promotableMasterItems: _promotableMasterItems = [],
+  selectedMasterPromotionIds: _selectedMasterPromotionIds = [],
+  onToggleMasterPromotionItem: _onToggleMasterPromotionItem,
+  onSelectAllMasterPromotionItems: _onSelectAllMasterPromotionItems,
+  onClearMasterPromotionItems: _onClearMasterPromotionItems,
+  onGapAssist: _onGapAssist,
   initialActiveBullet = null,
   onBulletEnhance,
   onMoveSection,
@@ -1105,7 +1104,7 @@ export function V2StreamingDisplay({
   const canShowStructurePlanner = Boolean(
     displayResume && onMoveSection && onToggleSection && onAddAISection && onAddCustomSection && onRemoveCustomSection && !activeBullet,
   );
-  const needsStructureStep = canShowStructurePlanner && !hasCompletedStructureStep;
+  const _needsStructureStep = canShowStructurePlanner && !hasCompletedStructureStep;
   const workflowNeedsStructureStep = canShowStructurePlanner && !hasCompletedStructureStep;
   const currentWorkflowStep = useMemo(() => {
     if (sectionWorkflow.steps.length === 0) return null;

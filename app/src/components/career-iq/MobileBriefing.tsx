@@ -251,7 +251,7 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
 
 export function MobileBriefing({
   userName,
-  signals,
+  signals: _signals,
   dashboardState,
   activeRoom,
   onRefineWhyMe,

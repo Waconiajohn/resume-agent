@@ -64,8 +64,8 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
               const decisions = response as Array<{ company: string; title: string; status: string }> | undefined;
               if (Array.isArray(decisions)) {
                 state.user_decisions = decisions.map((d) => ({
-                  company: String(d.company ?? ''),
-                  title: String(d.title ?? ''),
+                  company: (d.company ?? ''),
+                  title: (d.title ?? ''),
                   status: (d.status === 'promoted' || d.status === 'dismissed' ? d.status : 'pending') as JobDecision['status'],
                 }));
               }

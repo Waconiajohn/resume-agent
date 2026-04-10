@@ -123,7 +123,7 @@ function isATSDomain(url: string): boolean {
   }
 }
 
-function parseSerperResults(data: SerperResponse, companyName: string): ATSJob[] {
+function parseSerperResults(data: SerperResponse, _companyName: string): ATSJob[] {
   const results: ATSJob[] = [];
   const organicResults = data.organic ?? [];
 

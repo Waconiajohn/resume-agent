@@ -19,7 +19,7 @@ import type {
 } from '../types.js';
 import { CONTENT_TYPE_LABELS } from '../types.js';
 import { CONTENT_CALENDAR_RULES } from '../knowledge/rules.js';
-import { llm, MODEL_PRIMARY, MODEL_MID, MODEL_LIGHT } from '../../../lib/llm.js';
+import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
   renderCareerNarrativeSection,

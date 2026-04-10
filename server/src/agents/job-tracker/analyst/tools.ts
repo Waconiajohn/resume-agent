@@ -305,7 +305,7 @@ Rules:
       const refinedArray = Array.isArray(refined) ? refined : [refined];
 
       for (const item of refinedArray) {
-        const existing = state.application_analyses!.find(
+        const existing = state.application_analyses.find(
           (a) => a.company === item.company && a.role === item.role,
         );
         if (existing) {
@@ -324,7 +324,7 @@ Rules:
     }
 
     const avg = Math.round(
-      state.application_analyses!.reduce((s, a) => s + a.fit_score, 0) / state.application_analyses!.length,
+      state.application_analyses.reduce((s, a) => s + a.fit_score, 0) / state.application_analyses.length,
     );
 
     ctx.emit({
@@ -336,7 +336,7 @@ Rules:
     return JSON.stringify({
       success: true,
       average_fit_score: avg,
-      scores: state.application_analyses!.map((a) => ({
+      scores: state.application_analyses.map((a) => ({
         company: a.company,
         role: a.role,
         fit_score: a.fit_score,
@@ -441,13 +441,13 @@ Rules:
       });
     }
 
-    const immediate = state.follow_up_priorities!.filter((p) => p.urgency === 'immediate').length;
-    const soon = state.follow_up_priorities!.filter((p) => p.urgency === 'soon').length;
+    const immediate = state.follow_up_priorities.filter((p) => p.urgency === 'immediate').length;
+    const soon = state.follow_up_priorities.filter((p) => p.urgency === 'soon').length;
 
     ctx.emit({
       type: 'transparency',
       stage: 'assess_follow_up_timing',
-      message: `Follow-up timing assessed — ${immediate} immediate, ${soon} soon, ${state.follow_up_priorities!.length - immediate - soon} can wait or no action`,
+      message: `Follow-up timing assessed — ${immediate} immediate, ${soon} soon, ${state.follow_up_priorities.length - immediate - soon} can wait or no action`,
     });
 
     return JSON.stringify({
@@ -518,7 +518,7 @@ const generatePortfolioAnalyticsTool: JobTrackerTool = {
     // Industry distribution
     const industryDistribution: Record<string, number> = {};
     // Use LLM to extract industry from JD for more accurate distribution
-    for (const app of applications) {
+    for (const _app of applications) {
       // Simple heuristic: use company name as proxy (LLM already scored industry_relevance)
       const industry = 'General'; // Will be enriched by the assessment prompt
       industryDistribution[industry] = (industryDistribution[industry] ?? 0) + 1;
@@ -549,7 +549,7 @@ Be direct and strategic. If the average fit score is below 60, say so. If the pi
     state.portfolio_analytics = {
       total_applications: analyses.length,
       average_fit_score: avgFitScore,
-      status_breakdown: statusBreakdown as Record<string, number>,
+      status_breakdown: statusBreakdown,
       likelihood_breakdown: likelihoodBreakdown,
       top_applications: topApplications,
       follow_up_urgent: followUpUrgent,

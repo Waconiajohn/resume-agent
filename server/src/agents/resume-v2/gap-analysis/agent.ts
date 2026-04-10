@@ -11,7 +11,7 @@
  * Model: MODEL_PRIMARY
  */
 
-import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { MODEL_PRIMARY } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
@@ -310,9 +310,9 @@ function buildUserMessage(
   const adjacentPositioning = input.career_profile?.positioning.adjacent_positioning ?? [];
   const constraints = input.career_profile?.preferences.constraints ?? [];
   const achievements = input.benchmark.expected_achievements ?? [];
-  const technicalSkills = input.benchmark.expected_technical_skills ?? [];
-  const certifications = input.benchmark.expected_certifications ?? [];
-  const industryKnowledge = input.benchmark.expected_industry_knowledge ?? [];
+  const _technicalSkills = input.benchmark.expected_technical_skills ?? [];
+  const _certifications = input.benchmark.expected_certifications ?? [];
+  const _industryKnowledge = input.benchmark.expected_industry_knowledge ?? [];
   const candidateCareerThemes = input.candidate.career_themes ?? [];
   const candidateQuantifiedOutcomes = input.candidate.quantified_outcomes ?? [];
   const candidateExperience = input.candidate.experience ?? [];
@@ -733,7 +733,7 @@ function buildRequirementWorkItems(
 ): RequirementWorkItem[] {
   const pendingByKey = new Map(
     pendingStrategies.map((item) => [
-      `${item.requirement.toLowerCase().trim()}`,
+      item.requirement.toLowerCase().trim(),
       item.strategy,
     ]),
   );
@@ -932,8 +932,8 @@ function salvageRequirementObjects(raw: string): RequirementGap[] {
   const salvaged: RequirementGap[] = [];
 
   for (let index = 0; index < objectStarts.length; index += 1) {
-    const start = objectStarts[index]!;
-    const end = index + 1 < objectStarts.length ? objectStarts[index + 1]! : requirementsSection.length;
+    const start = objectStarts[index];
+    const end = index + 1 < objectStarts.length ? objectStarts[index + 1] : requirementsSection.length;
     const fragment = cleanPartialRequirementFragment(requirementsSection.slice(start, end));
     if (!fragment) continue;
 
@@ -1233,7 +1233,7 @@ function evaluateRequirement(
   const educationText = input.candidate.education.map((item) => `${item.degree} ${item.institution}`).join(' ');
   const candidateCertifications = input.candidate.certifications.filter(Boolean);
   const certificationText = candidateCertifications.join(' ');
-  const combinedCredentialText = `${educationText} ${certificationText}`.toLowerCase();
+  const _combinedCredentialText = `${educationText} ${certificationText}`.toLowerCase();
 
   if (/\byears? of experience\b|\bminimum of \d+ years\b|\b\d+\+?\s+years?\b/.test(requirementText.toLowerCase())) {
     const requiredYears = extractRequiredYears(requirementText);
@@ -1573,11 +1573,11 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
 
   const questions = Array.isArray(strategy.interview_questions)
     ? strategy.interview_questions
-      .filter((item): item is NonNullable<GapStrategy['interview_questions']>[number] => Boolean(
-        item
+      .filter((item): item is NonNullable<GapStrategy['interview_questions']>[number] => (
+        item != null
         && typeof item.question === 'string'
         && typeof item.rationale === 'string'
-        && typeof item.looking_for === 'string',
+        && typeof item.looking_for === 'string'
       ))
       .map((item) => ({
         question: item.question.trim(),

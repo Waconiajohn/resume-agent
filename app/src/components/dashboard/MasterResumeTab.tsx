@@ -81,8 +81,8 @@ export function MasterResumeTab({
   onGetDefaultResume,
   onGetResumeById,
   onUpdateMasterResume,
-  onSetDefaultResume,
-  onDeleteResume,
+  onSetDefaultResume: _onSetDefaultResume,
+  onDeleteResume: _onDeleteResume,
   onGetResumeHistory,
   sessions = [],
 }: MasterResumeTabProps) {

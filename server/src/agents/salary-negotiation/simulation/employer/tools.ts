@@ -18,7 +18,6 @@ import type {
 } from '../types.js';
 import { SALARY_NEGOTIATION_RULES } from '../../knowledge/rules.js';
 import { llm, MODEL_MID } from '../../../../lib/llm.js';
-import type { ChatResponse } from '../../../../lib/llm-provider.js';
 import { repairJSON } from '../../../../lib/json-repair.js';
 
 type EmployerTool = AgentTool<NegotiationSimulationState, NegotiationSimulationSSEEvent>;
@@ -183,16 +182,16 @@ Return JSON:
       ],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
     const parsed = repairJSON<{ employer_position?: string; context?: string }>(text) ?? {};
 
     const round: NegotiationRound = {
       index: roundIndex,
       type: roundType,
-      employer_position: String(
-        parsed.employer_position ?? `We'd like to move forward with the offer as structured. What are your thoughts?`,
+      employer_position: (
+        parsed.employer_position ?? `We'd like to move forward with the offer as structured. What are your thoughts?`
       ),
-      context: parsed.context ? String(parsed.context) : undefined,
+      context: parsed.context ?? undefined,
     };
 
     // Persist to state
@@ -249,11 +248,11 @@ const presentPositionToUserTool: EmployerTool = {
     const candidateResponse = await ctx.waitForUser<string>('negotiation_response');
 
     // Store for evaluate_response to pick up
-    ctx.scratchpad[`response_${roundIndex}`] = String(candidateResponse ?? '');
+    ctx.scratchpad[`response_${roundIndex}`] = (candidateResponse ?? '');
 
     return JSON.stringify({
       round_index: roundIndex,
-      candidate_response: String(candidateResponse ?? ''),
+      candidate_response: (candidateResponse ?? ''),
       message: 'Candidate responded. Proceed to evaluate_response.',
     });
   },
@@ -354,7 +353,7 @@ Return ONLY valid JSON:
       messages: [{ role: 'user', content: evalPrompt }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
     const parsed = repairJSON<{
       scores?: { acknowledgment?: number; data_support?: number; specificity?: number; tone?: number };
       overall_score?: number;
@@ -365,10 +364,10 @@ Return ONLY valid JSON:
     }>(text) ?? {};
 
     const scores = {
-      acknowledgment: Number(parsed.scores?.acknowledgment ?? 50),
-      data_support: Number(parsed.scores?.data_support ?? 50),
-      specificity: Number(parsed.scores?.specificity ?? 50),
-      tone: Number(parsed.scores?.tone ?? 50),
+      acknowledgment: (parsed.scores?.acknowledgment ?? 50),
+      data_support: (parsed.scores?.data_support ?? 50),
+      specificity: (parsed.scores?.specificity ?? 50),
+      tone: (parsed.scores?.tone ?? 50),
     };
 
     const overallScore = typeof parsed.overall_score === 'number'
@@ -389,7 +388,7 @@ Return ONLY valid JSON:
       improvements: Array.isArray(parsed.improvements)
         ? parsed.improvements.map(String).slice(0, 3)
         : [],
-      coaching_note: parsed.coaching_note ? String(parsed.coaching_note) : undefined,
+      coaching_note: parsed.coaching_note ?? undefined,
     };
 
     // Persist evaluation

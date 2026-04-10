@@ -474,11 +474,11 @@ Rules:
       for (const item of items) {
         const achievement = selected.find((a) => a.id === (item.id ?? ''));
         if (achievement) {
-          achievement.situation = String(item.situation ?? '');
+          achievement.situation = (item.situation ?? '');
           achievement.situation_is_inferred = item.situation_is_inferred === true;
-          achievement.approach = String(item.approach ?? '');
+          achievement.approach = (item.approach ?? '');
           achievement.approach_is_inferred = item.approach_is_inferred === true;
-          achievement.results = String(item.results ?? '');
+          achievement.results = (item.results ?? '');
           achievement.results_is_inferred = item.results_is_inferred === true;
           achievement.transferable_lessons = Array.isArray(item.transferable_lessons)
             ? item.transferable_lessons.map(String)
@@ -626,9 +626,9 @@ Rules:
         const achievement = selected.find((a) => a.id === (item.id ?? ''));
         if (achievement && Array.isArray(item.metrics)) {
           achievement.metrics = item.metrics.map((m) => ({
-            label: String(m.label ?? ''),
-            value: String(m.value ?? ''),
-            context: String(m.context ?? ''),
+            label: (m.label ?? ''),
+            value: (m.value ?? ''),
+            context: (m.context ?? ''),
           }));
         }
       }

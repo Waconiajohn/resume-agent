@@ -1177,7 +1177,7 @@ function dedupeNearEquivalentConcerns(
       continue;
     }
 
-    const existing = deduped[existingIndex]!;
+    const existing = deduped[existingIndex];
     if (concernPriority(concern) < concernPriority(existing)) {
       deduped[existingIndex] = concern;
     }

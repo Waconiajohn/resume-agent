@@ -39,7 +39,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 function ActivityFeed({
   messages,
-  currentStage,
+  currentStage: _currentStage,
 }: {
   messages: { id: string; message: string; stage?: string; timestamp: number }[];
   currentStage: string | null;

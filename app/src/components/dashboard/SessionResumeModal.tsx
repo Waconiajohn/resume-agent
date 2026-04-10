@@ -30,7 +30,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
           setLoading(false);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : String(err);
           setError(message);

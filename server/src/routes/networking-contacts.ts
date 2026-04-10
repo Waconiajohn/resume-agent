@@ -713,7 +713,7 @@ networkingContacts.post(
           },
         }) as unknown as Record<string, unknown>;
         if (Object.keys(bundle.platformContext).length > 0) {
-          platformContext = bundle.platformContext as Record<string, unknown>;
+          platformContext = bundle.platformContext;
         }
       } catch (ctxErr) {
         logger.warn(

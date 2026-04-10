@@ -132,14 +132,14 @@ function buildDeterministicFallback(input: {
   benchmark: BenchmarkCandidateOutput;
   discovery: DiscoveryOutput;
 }): CareerIQProfile {
-  const { candidate, job_intelligence, benchmark, discovery } = input;
+  const { candidate, job_intelligence: _job_intelligence, benchmark, discovery } = input;
 
   return {
     career_thread: discovery.recognition.career_thread,
     exceptional_areas: candidate.career_themes.slice(0, 3).map((theme, i) => ({
       area: theme,
       evidence: candidate.quantified_outcomes[i]
-        ? `${candidate.quantified_outcomes[i]!.outcome}: ${candidate.quantified_outcomes[i]!.value}`
+        ? `${candidate.quantified_outcomes[i].outcome}: ${candidate.quantified_outcomes[i].value}`
         : candidate.hidden_accomplishments[i] ?? 'Demonstrated across multiple roles',
     })),
     role_fit_points: benchmark.direct_matches.slice(0, 3).map((m) => ({

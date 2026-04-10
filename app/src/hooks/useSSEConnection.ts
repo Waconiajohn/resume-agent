@@ -170,7 +170,7 @@ export function useSSEConnection(
           handleDisconnect();
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // AbortError is expected during cleanup
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;

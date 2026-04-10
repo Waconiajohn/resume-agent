@@ -340,7 +340,7 @@ export function useNegotiationSimulation() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useNegotiationSimulation] SSE fetch error:', err);
           if (mountedRef.current) {

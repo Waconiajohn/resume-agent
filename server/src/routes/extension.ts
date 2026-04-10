@@ -22,7 +22,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_EXTENSION } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { normalizeJobUrl, detectPlatform } from '../lib/url-normalizer.js';
-import { llm, MODEL_LIGHT, MAX_TOKENS } from '../lib/llm.js';
+import { llm, MODEL_LIGHT } from '../lib/llm.js';
 import logger from '../lib/logger.js';
 import { mergeJobMatchMetadata } from '../lib/ni/job-matches-store.js';
 import type { FeedbackMetadata } from '../agents/resume-v2/types.js';

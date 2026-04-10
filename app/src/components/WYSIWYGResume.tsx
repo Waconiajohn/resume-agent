@@ -245,7 +245,7 @@ export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
       orderedSections.push(<Component key={sectionName} resume={resume} />);
       rendered.add(sectionName);
     } else if (rawSections[sectionName]) {
-      orderedSections.push(<RawSection key={sectionName} sectionName={sectionName} content={rawSections[sectionName]!} />);
+      orderedSections.push(<RawSection key={sectionName} sectionName={sectionName} content={rawSections[sectionName]} />);
       rendered.add(sectionName);
     } else if (import.meta.env.DEV) {
       // experience_role_*, earlier_career, education_and_certifications are handled

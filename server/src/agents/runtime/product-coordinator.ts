@@ -250,7 +250,7 @@ export async function runProductPipeline<
             let rerunCount = 0;
 
             // Gate loop: wait → onResponse → optionally re-run agent → re-fire gate
-            // eslint-disable-next-line no-constant-condition
+             
             while (true) {
               // C1: Abort check at top of every revision loop iteration to prevent
               // hanging after SSE disconnect during a revision loop.

@@ -230,7 +230,7 @@ app.put('/story-bank/:id', async (c) => {
   const storyBody = body as Record<string, unknown>;
   const requiredStringFields = ['situation', 'task', 'action', 'result', 'reflection'];
   for (const field of requiredStringFields) {
-    if (typeof storyBody[field] !== 'string' || (storyBody[field] as string).trim().length === 0) {
+    if (typeof storyBody[field] !== 'string' || (storyBody[field]).trim().length === 0) {
       return c.json({ error: `Missing or empty required field: ${field}` }, 400);
     }
   }

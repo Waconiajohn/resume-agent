@@ -66,7 +66,7 @@ export function repairJSON<T>(text: string): T | null {
 
   // Step 6: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,
   // single quotes, unquoted keys
-  let aggressive = noTrailing
+  const aggressive = noTrailing
     // Fix unescaped control chars inside JSON strings (newlines, tabs)
     .replace(/(?<=:\s*"[^"]*)\n/g, '\\n')
     .replace(/(?<=:\s*"[^"]*)\t/g, '\\t')

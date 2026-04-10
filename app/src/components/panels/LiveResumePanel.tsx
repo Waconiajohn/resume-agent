@@ -38,7 +38,7 @@ function stripBulletPrefix(line: string): string {
 function EditableLine({
   line,
   index,
-  section,
+  section: _section,
   editingIndex,
   editText,
   onStartEdit,

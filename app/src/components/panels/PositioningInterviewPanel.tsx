@@ -462,7 +462,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
 
         {/* Category progress bars — shown when category data is available */}
         {hasCategoryProgress ? (
-          <CategoryProgressBars categories={category_progress!} />
+          <CategoryProgressBars categories={category_progress} />
         ) : (
           /* Fallback: simple overall progress bar */
           questions_total > 0 && (

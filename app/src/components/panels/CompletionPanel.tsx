@@ -62,7 +62,7 @@ export function CompletionPanel({
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const validationIssues = validateResumeForExport(resume);
   const blockingIssue = validationIssues.find((i) => i.severity === 'error');
-  const hasWarnings = validationIssues.some((i) => i.severity === 'warning') || Boolean(data.export_validation && !data.export_validation.passed);
+  const _hasWarnings = validationIssues.some((i) => i.severity === 'warning') || Boolean(data.export_validation && !data.export_validation.passed);
 
   const handleResumeDocx = async () => {
     if (!resume) return;

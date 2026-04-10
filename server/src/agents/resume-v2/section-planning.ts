@@ -5,7 +5,6 @@ import type {
   ResumeCustomSection,
   ResumeDraftOutput,
   ResumeSectionPlanItem,
-  ResumeSectionPlanSource,
 } from './types.js';
 
 const AI_SECTION_ID = 'ai_highlights';

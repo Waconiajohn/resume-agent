@@ -91,7 +91,7 @@ export function ChatDrawer({
   }, [expanded, handleEscape]);
 
   // Status derivation (mirrors ChatPanel logic)
-  const pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';
+  const _pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';
   const runtimeState = pipelineActivity?.processing_state ?? (
     stalledSuspected
       ? 'stalled_suspected'

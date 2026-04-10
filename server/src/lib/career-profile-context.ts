@@ -290,7 +290,7 @@ function normalizeCareerProfile(
 
   const leadershipScope = extractFirstString(positioningRecord, ['leadership_scope'])
     || extractFirstString(positioningStrategy, ['leadership_scope'])
-    || asString((rawCareerProfile as Record<string, unknown> | null)?.leadership_scope)
+    || asString((rawCareerProfile)?.leadership_scope)
     || (clientProfile?.years_experience ? `${clientProfile.years_experience}+ years of experience` : '');
 
   const scopeOfResponsibility = extractFirstString(positioningRecord, ['scope_of_responsibility'])
@@ -539,7 +539,7 @@ export async function loadCareerProfileContext(userId: string): Promise<CareerPr
         'career_profile',
         normalized as unknown as Record<string, unknown>,
         'career-profile-migration',
-      ).catch((error) => {
+      ).catch((error: unknown) => {
         logger.warn(
           { userId, error: error instanceof Error ? error.message : String(error) },
           'Failed to auto-migrate normalized career profile',

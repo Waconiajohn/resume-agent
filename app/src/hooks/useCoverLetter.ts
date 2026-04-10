@@ -225,7 +225,7 @@ export function useCoverLetter(accessToken: string | null) {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useCoverLetter] SSE fetch error:', err);
           if (mountedRef.current) {

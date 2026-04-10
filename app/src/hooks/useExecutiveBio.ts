@@ -236,7 +236,7 @@ export function useExecutiveBio() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useExecutiveBio] SSE fetch error:', err);
           if (mountedRef.current) {

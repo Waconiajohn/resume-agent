@@ -28,7 +28,6 @@ import { sleep } from '../lib/sleep.js';
 import logger from '../lib/logger.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import {
-  getPendingGateQueueConfig,
   getResponseQueue,
   parsePendingGatePayload,
   type PendingGatePayload,
@@ -514,7 +513,7 @@ export function createProductRoutes<
         .eq('id', sessionId);
       // Hook: onComplete — domain-specific success cleanup
       if (config.onComplete) {
-        await config.onComplete(sessionId).catch((err) => {
+        await config.onComplete(sessionId).catch((err: unknown) => {
           logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onComplete hook failed');
         });
       }
@@ -543,7 +542,7 @@ export function createProductRoutes<
         .eq('id', sessionId);
       // Hook: onError — domain-specific failure cleanup
       if (config.onError) {
-        await config.onError(sessionId, pipelineError).catch((err) => {
+        await config.onError(sessionId, pipelineError).catch((err: unknown) => {
           logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onError hook failed');
         });
       }
@@ -645,7 +644,7 @@ export function createProductRoutes<
 
       // Hook: onRespond — domain-specific post-response processing
       if (config.onRespond) {
-        void config.onRespond(session_id, dbState.pending_gate, normalizedResponse, dbState).catch((err) => {
+        void config.onRespond(session_id, dbState.pending_gate, normalizedResponse, dbState).catch((err: unknown) => {
           logger.warn({ session_id, gate: dbState.pending_gate, error: err instanceof Error ? err.message : String(err) }, 'onRespond hook failed');
         });
       }
@@ -673,7 +672,7 @@ export function createProductRoutes<
 
       // Hook: onRespond — also called for buffered responses
       if (config.onRespond) {
-        void config.onRespond(session_id, gate, normalizedResponse, dbState).catch((err) => {
+        void config.onRespond(session_id, gate, normalizedResponse, dbState).catch((err: unknown) => {
           logger.warn({ session_id, gate, error: err instanceof Error ? err.message : String(err) }, 'onRespond hook failed (buffered)');
         });
       }

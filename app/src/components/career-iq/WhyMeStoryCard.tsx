@@ -12,7 +12,7 @@ import {
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { useWhyMeStory } from './useWhyMeStory';
-import type { WhyMeStory, SignalLevel } from './useWhyMeStory';
+import type { SignalLevel } from './useWhyMeStory';
 import { useNarrativeSnapshot } from './useNarrativeSnapshot';
 
 // ---------------------------------------------------------------------------

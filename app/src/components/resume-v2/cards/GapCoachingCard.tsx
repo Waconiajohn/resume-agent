@@ -110,7 +110,7 @@ interface SingleCardProps {
   disabled: boolean;
 }
 
-function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCardProps) {
+function SingleCoachingCard({ card, index: _index, state, onChange, disabled }: SingleCardProps) {
   const isResponded = state.action !== null;
 
   // Collapsed summary after responding

@@ -12,7 +12,7 @@ const DEFAULT_SCAN_DECISION: FinalReviewResult['six_second_scan']['decision'] = 
 const DEFAULT_RATING: FinalReviewVerdict['rating'] = 'needs_improvement';
 const DEFAULT_FINAL_REVIEW_FIX_STRATEGY = 'Review this concern and add truthful supporting proof before export if you have it.';
 const DEFAULT_FINAL_REVIEW_QUESTION = 'What concrete truthful detail would address this concern?';
-const DEFAULT_FIT: FinalReviewFitAssessment = {
+const _DEFAULT_FIT: FinalReviewFitAssessment = {
   job_description_fit: 'moderate',
   benchmark_alignment: 'moderate',
   business_impact: 'moderate',

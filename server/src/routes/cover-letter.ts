@@ -30,7 +30,7 @@ const startSchema = z.object({
 
 export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLetterSSEEvent>({
   startSchema,
-  buildProductConfig: (input) => createCoverLetterProductConfig(),
+  buildProductConfig: (_input) => createCoverLetterProductConfig(),
   isEnabled: () => FF_COVER_LETTER,
 
   onBeforeStart: async (input, _c, _session) => {

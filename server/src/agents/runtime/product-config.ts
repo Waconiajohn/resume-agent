@@ -9,7 +9,7 @@
  * that each product binds to its own concrete types.
  */
 
-import type { AgentConfig, AgentMessage, BaseState, BaseEvent, AgentContext } from './agent-protocol.js';
+import type { AgentConfig, AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
 
 // ─── Gate Definitions ────────────────────────────────────────────────
 

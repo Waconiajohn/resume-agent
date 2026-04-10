@@ -21,7 +21,6 @@ import type {
 } from '../types.js';
 import { ONBOARDING_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_MID, MODEL_LIGHT } from '../../../lib/llm.js';
-import type { ChatResponse } from '../../../lib/llm-provider.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 
 type OnboardingTool = AgentTool<OnboardingState, OnboardingSSEEvent>;
@@ -120,7 +119,7 @@ Return JSON array:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let questions: AssessmentQuestion[];
     try {
@@ -243,7 +242,7 @@ IMPORTANT:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let analysis: Record<string, unknown>;
     try {
@@ -369,7 +368,7 @@ Return JSON:
       }],
     });
 
-    const text = (response as ChatResponse).text;
+    const text = (response).text;
 
     let result: { segment: string; confidence: string; supporting_signals: string[] };
     try {

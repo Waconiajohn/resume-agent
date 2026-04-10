@@ -451,7 +451,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
               id: ps.requirement,
               work_item_id: gapAnalysis.requirement_work_items?.find((item) => item.requirement === ps.requirement)?.id,
               requirement: ps.requirement,
-              importance: (req?.importance === 'must_have' ? 'critical' : req?.importance === 'nice_to_have' ? 'supporting' : 'important') as 'critical' | 'important' | 'supporting',
+              importance: (req?.importance === 'must_have' ? 'critical' : req?.importance === 'nice_to_have' ? 'supporting' : 'important'),
               classification: (req?.classification ?? 'partial') as 'partial' | 'missing',
               question: ps.strategy.interview_questions?.[0]?.question ?? `Can you provide evidence for: ${ps.requirement}?`,
               context: ps.strategy.ai_reasoning ?? `Your background may have relevant experience for "${ps.requirement}".`,

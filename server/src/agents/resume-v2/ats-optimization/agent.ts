@@ -8,7 +8,7 @@
  * Model: MODEL_LIGHT
  */
 
-import { llm, MODEL_LIGHT } from '../../../lib/llm.js';
+import { MODEL_LIGHT } from '../../../lib/llm.js';
 import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
@@ -146,7 +146,7 @@ function normalizeATSOptimizationOutput(
   const keywordsMissing = sanitizeKeywordArray(output.keywords_missing, keywordUniverse);
   const suggestions = Array.isArray(output.keyword_suggestions)
     ? output.keyword_suggestions
-      .filter((item): item is ATSOptimizationOutput['keyword_suggestions'][number] => Boolean(item && typeof item === 'object'))
+      .filter((item): item is ATSOptimizationOutput['keyword_suggestions'][number] => (item != null && typeof item === 'object'))
       .map((item) => ({
         keyword: typeof item.keyword === 'string' ? sanitizeKeywordText(item.keyword) : '',
         suggested_placement: typeof item.suggested_placement === 'string' ? item.suggested_placement.trim() : 'executive_summary',

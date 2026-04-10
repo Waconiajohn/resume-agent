@@ -254,7 +254,7 @@ export function useSalaryNegotiation() {
             });
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useSalaryNegotiation] SSE fetch error:', err);
           if (mountedRef.current) {

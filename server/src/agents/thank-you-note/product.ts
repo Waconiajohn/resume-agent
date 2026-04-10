@@ -96,13 +96,13 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
       job_application_id: input.job_application_id as string | undefined,
       interviewers: (input.interviewers as InterviewerContext[] | undefined) ?? ([] as InterviewerContext[]),
       interview_context: {
-        company: String((input as Record<string, unknown>).company ?? ''),
-        role: String((input as Record<string, unknown>).role ?? ''),
-        interview_date: (input as Record<string, unknown>).interview_date
-          ? String((input as Record<string, unknown>).interview_date)
+        company: String((input).company ?? ''),
+        role: String((input).role ?? ''),
+        interview_date: (input).interview_date
+          ? String((input).interview_date)
           : undefined,
-        interview_type: (input as Record<string, unknown>).interview_type
-          ? String((input as Record<string, unknown>).interview_type)
+        interview_type: (input).interview_type
+          ? String((input).interview_type)
           : undefined,
       },
       notes: [] as ThankYouNoteState['notes'],
@@ -118,7 +118,7 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
           'Analyze the interview context and write personalized thank-you notes for each interviewer.',
           '',
           '## Resume',
-          String((input as Record<string, unknown>).resume_text ?? ''),
+          String((input).resume_text ?? ''),
           '',
           '## Interview Context',
           `Company: ${state.interview_context.company}`,

@@ -122,7 +122,7 @@ export function KeywordScoreDashboard({
   const beforeAts = preScoreKeywords?.ats_match ?? null;
   const hasImproved = liveScores !== null && liveScores.ats_score !== pipelineAts;
   const hasBeforeScore = beforeAts !== null && beforeAts !== pipelineAts;
-  const pipelineDelta = hasBeforeScore ? pipelineAts - beforeAts! : 0;
+  const pipelineDelta = hasBeforeScore ? pipelineAts - beforeAts : 0;
   const delta = liveScores !== null ? liveScores.ats_score - pipelineAts : 0;
 
   // Keywords: prefer live scores, fall back to pre-score baseline
@@ -382,7 +382,7 @@ export function KeywordScoreDashboard({
                   {isActionable && (
                     <button
                       type="button"
-                      onClick={() => onQuickWinAction!(w.description, w.impact)}
+                      onClick={() => onQuickWinAction(w.description, w.impact)}
                       className="shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] leading-4 transition-opacity hover:opacity-80 cursor-pointer"
                       style={impactButtonStyle[w.impact]}
                       title="Apply this fix to your resume"
