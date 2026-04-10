@@ -664,3 +664,28 @@ describe('evidenceIntegrity', () => {
     expect(dimensions.evidenceIntegrity).toBeLessThanOrEqual(5);
   });
 });
+
+// ─── identical suggestion fast path ─────────────────────────────────────────
+
+describe('identical suggestion detection', () => {
+  it('returns collapse verdict when suggestion is identical to current text', () => {
+    const text = 'Led a team of 12 engineers to deliver the AWS migration on time and under budget.';
+    const result = scoreSuggestion(text, text, ctx());
+    expect(result.verdict).toBe('collapse');
+    expect(result.reason).toMatch(/identical/i);
+  });
+
+  it('collapses when suggestion differs only in whitespace and punctuation', () => {
+    const current = 'Led a team of 12 engineers to deliver the AWS migration on time.';
+    const suggestion = '  Led  a team of 12  engineers to deliver the AWS migration on time  ';
+    const result = scoreSuggestion(current, suggestion, ctx());
+    expect(result.verdict).toBe('collapse');
+  });
+
+  it('does NOT collapse when suggestion has meaningful differences', () => {
+    const current = 'Led a team of 12 engineers to deliver the AWS migration.';
+    const suggestion = 'Directed a team of 12 engineers through an enterprise-wide AWS migration, reducing infrastructure costs by 40%.';
+    const result = scoreSuggestion(current, suggestion, ctx());
+    expect(result.verdict).not.toBe('collapse');
+  });
+});

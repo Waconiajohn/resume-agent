@@ -256,11 +256,29 @@ const DIMENSION_WEIGHTS: Record<keyof SuggestionScoreDimensions, number> = {
   evidenceIntegrity: 0.15,
 };
 
+function normalizeForComparison(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,;:!?]+$/, '');
+}
+
 export function scoreSuggestion(
   currentText: string,
   suggestion: string,
   context: SuggestionScoringContext,
 ): SuggestionScore {
+  // Fast path: identical or near-identical suggestion is not an improvement
+  if (normalizeForComparison(currentText) === normalizeForComparison(suggestion)) {
+    return {
+      overall: 5,
+      dimensions: {
+        preservesSpecificity: 10, preservesSeniority: 10, preservesOutcomes: 10,
+        requirementAlignment: 7, avoidsClicheVagueness: 10, avoidsRedundancy: 10,
+        preservesBrandVoice: 10, evidenceIntegrity: 10,
+      },
+      verdict: 'collapse',
+      reason: 'Suggestion is identical to current text — no changes needed.',
+    };
+  }
+
   const dimensions: SuggestionScoreDimensions = {
     preservesSpecificity: scorePreservesSpecificity(currentText, suggestion),
     preservesSeniority: scorePreservesSeniority(currentText, suggestion),

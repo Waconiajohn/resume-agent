@@ -14,7 +14,7 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { detectAIPrecursors, buildAIPrecursorSummary } from '../../../contracts/ai-readiness-policy.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
-import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
+import type { CandidateIntelligenceInput, CandidateIntelligenceOutput, CandidateExperience } from '../types.js';
 import {
   buildSourceResumeOutline,
   mergeCandidateExperienceWithSourceOutline,
@@ -264,10 +264,11 @@ function normalizeCandidateIntelligence(
   if (!parsed) return null;
 
   const normalizedEducation = coerceEducationArray(parsed.education);
-  const normalizedExperience = mergeCandidateExperienceWithSourceOutline(
+  const mergedExperience = mergeCandidateExperienceWithSourceOutline(
     coerceExperienceArray(parsed.experience),
     sourceResumeOutline,
   );
+  const normalizedExperience = filterPhantomExperience(mergedExperience);
 
   return {
     contact: {
@@ -301,6 +302,42 @@ function normalizeCandidateIntelligence(
     source_resume_outline: sourceResumeOutline,
     ai_readiness: coerceAIReadiness(parsed.ai_readiness),
   };
+}
+
+/**
+ * Remove phantom experience entries produced by fragmented resume parsing.
+ * Catches: contact info parsed as company names, bullet fragments parsed as titles,
+ * and duplicate (company, title) combinations.
+ */
+function filterPhantomExperience(experience: CandidateExperience[]): CandidateExperience[] {
+  const seen = new Set<string>();
+  return experience.filter(exp => {
+    // Reject if company looks like contact info (phone numbers, email addresses)
+    if (/\(\s*\d{3}\s*\)/.test(exp.company)) return false;
+    if (/@/.test(exp.company)) return false;
+
+    // Reject if company is too short to be real
+    if (exp.company.trim().length < 2) return false;
+
+    // Reject if title starts with a lowercase word — likely a sentence fragment
+    const titleTrimmed = exp.title.trim();
+    if (titleTrimmed && /^[a-z]/.test(titleTrimmed)) return false;
+
+    // Reject if title contains obvious bullet continuation phrases
+    if (/^(and |to |with |for |by |in |of |the |a |an )/i.test(titleTrimmed) && !/\b(manager|director|engineer|lead|head|chief|officer|president|vp|specialist|architect|analyst|coordinator|supervisor)\b/i.test(titleTrimmed)) {
+      return false;
+    }
+
+    // Reject if title contains "string" as a word (parsing artifact)
+    if (/\bstring\b/i.test(titleTrimmed)) return false;
+
+    // Deduplicate by normalized (company, title) key
+    const key = `${exp.company.trim().toLowerCase()}|${titleTrimmed.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+
+    return true;
+  });
 }
 
 function coerceStringArray(value: unknown): string[] {
