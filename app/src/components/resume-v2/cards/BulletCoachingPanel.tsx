@@ -357,7 +357,7 @@ export function BulletCoachingPanel({
       {/* ── Block 1: What You Have ─────────────────────────────────────── */}
       <div className="px-4 pt-4 pb-3">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
-          {sectionDisplayName}, item {bulletIndex + 1}
+          {sectionDisplayName}
         </p>
         <p className="text-sm leading-relaxed text-gray-200">
           {bulletText}
