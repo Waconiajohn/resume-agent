@@ -649,53 +649,6 @@ export function JobCommandCenterRoom({
         </div>
       </div>
 
-      <GlassCard className="p-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="max-w-2xl">
-            <div className="eyebrow-label">At a glance</div>
-            <p className="text-[14px] font-medium leading-relaxed text-[var(--text-strong)]">
-              Search public jobs, save only the best 5 or 6, and move real opportunities into the pipeline.
-            </p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--text-soft)]">
-              Smart Referrals stays separate for company-site scans where you already have a first-degree connection.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 xl:min-w-[420px]">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                  Shortlist
-                </div>
-                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{shortlistCount}</div>
-              </div>
-              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                  Pipeline
-                </div>
-                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{pipeline.applications.length}</div>
-              </div>
-              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                  Due now
-                </div>
-                <div className="mt-2 text-[22px] font-semibold text-[var(--text-strong)] tabular-nums">{dueCount}</div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <GlassButton variant="ghost" onClick={() => handleOpenShortlist('overview_cta')}>
-                Open Shortlist
-              </GlassButton>
-              {activeTab !== 'board' && (
-                <GlassButton variant="ghost" onClick={() => setActiveTab('board')}>
-                  Back to Job Board
-                </GlassButton>
-              )}
-            </div>
-          </div>
-        </div>
-      </GlassCard>
-
       <div className="rail-tabs">
         {JCC_TABS.map(({ id, label, icon: Icon }) => {
           return (
@@ -756,47 +709,11 @@ export function JobCommandCenterRoom({
       {/* Job Board tab — display:none preserves state */}
       <div style={{ display: activeTab === 'board' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
-          <GlassCard className="p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="eyebrow-label">Job Board</div>
-                <p className="mt-1 text-[14px] font-medium leading-relaxed text-[var(--text-strong)]">
-                  Search public roles, check how old they are, and save only the worthwhile ones before you build resumes.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 lg:min-w-[300px]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-                  Shortlist target
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[14px] font-semibold text-[var(--text-strong)]">
-                      {shortlistCount} role{shortlistCount === 1 ? '' : 's'} saved
-                    </div>
-                    <div className="mt-1 text-[12px] text-[var(--text-soft)]">
-                      Aim for 5 or 6 good roles.
-                    </div>
-                  </div>
-                  <GlassButton variant="ghost" onClick={() => handleOpenShortlist('board_target')}>
-                    Open Shortlist
-                  </GlassButton>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-
           <WatchlistBar
             companies={watchlist.companies}
             onSearchCompany={handleSearchCompany}
             onManage={() => setShowWatchlistManager(true)}
             description="Click a company to search public jobs from the board."
-          />
-
-          <BooleanSearchPanel
-            accessToken={session?.access_token ?? null}
-            resumeText={masterResumeText}
-            loadingResume={loadingMasterResume}
-            onShowAiSuggestions={() => setShowAiSuggestions(true)}
           />
 
           <JobFilterPanel
@@ -843,6 +760,22 @@ export function JobCommandCenterRoom({
               />
             </div>
           )}
+
+          {/* Boolean Search — power user tool for external boards, collapsed by default */}
+          <details className="group">
+            <summary className="cursor-pointer text-sm text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors list-none flex items-center gap-1.5">
+              <span className="text-xs transition-transform group-open:rotate-90">▶</span>
+              Generate search strings for external job boards (LinkedIn, Indeed, Google)
+            </summary>
+            <div className="mt-3">
+              <BooleanSearchPanel
+                accessToken={session?.access_token ?? null}
+                resumeText={masterResumeText}
+                loadingResume={loadingMasterResume}
+                onShowAiSuggestions={() => setShowAiSuggestions(true)}
+              />
+            </div>
+          </details>
         </div>
       </div>
 
