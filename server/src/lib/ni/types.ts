@@ -165,6 +165,17 @@ export interface JobMatchRow {
 
 export type NiSearchContext = 'network_connections' | 'bonus_search';
 
+// ─── Scrape Filters ───────────────────────────────────────────────────────────
+
+export interface NiScrapeFilters {
+  /** City/state string for location filtering, e.g. "Portland, OR" */
+  location?: string;
+  /** When true, only return jobs classified as remote */
+  remote_only: boolean;
+  /** Maximum age in days for jobs with a known postedOn date (1–14) */
+  max_days_old: number;
+}
+
 export interface ScrapeLogRow {
   id: string;
   user_id: string;

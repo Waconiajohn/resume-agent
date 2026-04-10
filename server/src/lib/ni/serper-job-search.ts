@@ -16,10 +16,13 @@ const SERPER_API_URL = 'https://google.serper.dev/search';
  * Returns normalized ATSJob[] results.
  *
  * Gracefully returns [] if SERPER_API_KEY is not configured.
+ *
+ * @param location - Optional city/state string appended to the query (e.g. "Portland, OR")
  */
 export async function searchJobsViaSerper(
   companyName: string,
   targetTitles: string[],
+  location?: string,
 ): Promise<ATSJob[]> {
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) {
@@ -31,8 +34,8 @@ export async function searchJobsViaSerper(
 
   // One search per target title (or one generic search if no titles)
   const queries = targetTitles.length > 0
-    ? targetTitles.map((title) => buildQuery(companyName, title))
-    : [buildQuery(companyName, null)];
+    ? targetTitles.map((title) => buildQuery(companyName, title, location))
+    : [buildQuery(companyName, null, location)];
 
   for (const query of queries) {
     try {
@@ -72,11 +75,12 @@ export async function searchJobsViaSerper(
 
 // ─── Query Building ─────────────────────────────────────────────────────────
 
-function buildQuery(companyName: string, targetTitle: string | null): string {
+function buildQuery(companyName: string, targetTitle: string | null, location?: string): string {
   const company = `"${companyName}"`;
   const title = targetTitle ? ` "${targetTitle}"` : '';
+  const locationPart = location && location.trim().length > 0 ? ` near "${location.trim()}"` : '';
   const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
-  return `${company}${title} (${atsSites})`;
+  return `${company}${title}${locationPart} (${atsSites})`;
 }
 
 // ─── Serper Response Parsing ────────────────────────────────────────────────

@@ -150,7 +150,7 @@ describe('scrapeCareerPages', () => {
     const result = await scrapeCareerPages([COMPANY_NO_ATS], ['VP'], 'user-1');
 
     expect(mockFetchFromATS).not.toHaveBeenCalled();
-    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP']);
+    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined);
     expect(result.jobsFound).toBeGreaterThan(0);
   });
 

@@ -19,7 +19,7 @@ import { runBulkEnrichment } from './ats-enrichment.js';
 import { scrapeCareerPages } from './career-scraper.js';
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
-import type { CsvParseResult, CsvUploadResponse, NiSearchContext } from './types.js';
+import type { CsvParseResult, CsvUploadResponse, NiSearchContext, NiScrapeFilters } from './types.js';
 
 // ─── CSV Import Pipeline ──────────────────────────────────────────────────────
 
@@ -131,6 +131,7 @@ export async function runCareerScrape(
   companyIds: string[],
   targetTitles: string[],
   searchContext: NiSearchContext = 'network_connections',
+  filters?: NiScrapeFilters,
 ): Promise<void> {
   try {
     const { data: companies, error } = await supabaseAdmin
@@ -153,8 +154,13 @@ export async function runCareerScrape(
       }),
     );
 
-    const result = await scrapeCareerPages(companyInfos, targetTitles, userId, searchContext, (progress) =>
-      updateScrapeLogProgress(scrapeLogId, progress),
+    const result = await scrapeCareerPages(
+      companyInfos,
+      targetTitles,
+      userId,
+      searchContext,
+      (progress) => updateScrapeLogProgress(scrapeLogId, progress),
+      filters,
     );
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {

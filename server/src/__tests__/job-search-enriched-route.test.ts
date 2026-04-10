@@ -98,7 +98,7 @@ function buildSingleChain(result: unknown) {
 
 function buildListChain(result: unknown) {
   const chain: Record<string, unknown> = {};
-  const methods = ['select', 'eq', 'order', 'limit', 'is', 'insert', 'upsert', 'update'];
+  const methods = ['select', 'eq', 'neq', 'or', 'in', 'order', 'limit', 'is', 'insert', 'upsert', 'update'];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
@@ -136,6 +136,7 @@ function makeResultRow(externalId: string, company = 'Acme Corp') {
     user_id: 'user-test-123',
     status: 'new',
     match_score: 85,
+    first_seen_at: new Date().toISOString(), // already seen — avoids fire-and-forget marking call
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     job_listings: makeListing(externalId, company),

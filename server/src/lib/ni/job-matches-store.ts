@@ -84,10 +84,20 @@ export async function getJobMatchesByUser(
     const limit = Math.min(filters.limit ?? 50, 200);
     const offset = filters.offset ?? 0;
 
+    // Auto-expire: exclude rows older than 30 days that have not been saved/actioned.
+    // This keeps the matches list fresh without deleting data.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
     let query = supabaseAdmin
       .from('job_matches')
       .select('*, company_directory(name_display)')
       .eq('user_id', userId)
+      // Staleness guard: drop matches older than 30 days unless saved/actioned
+      .or(
+        `created_at.gt.${thirtyDaysAgo},status.in.(applied,referred,interviewing,saved)`,
+      )
+      // New-first: rows without first_seen_at sort to the top, then by created_at desc
+      .order('first_seen_at', { ascending: true, nullsFirst: true })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -100,6 +110,23 @@ export async function getJobMatchesByUser(
     if (error) {
       logger.error({ error: error.message, userId }, 'getJobMatchesByUser: query failed');
       return [];
+    }
+
+    // Mark first_seen_at for unseen matches (fire-and-forget)
+    const unseenIds = (data ?? [])
+      .filter((m) => !(m as unknown as Record<string, unknown>).first_seen_at)
+      .map((m) => m.id)
+      .filter(Boolean);
+    if (unseenIds.length > 0) {
+      void (async () => {
+        const { error: markError } = await supabaseAdmin
+          .from('job_matches')
+          .update({ first_seen_at: new Date().toISOString() })
+          .in('id', unseenIds);
+        if (markError) {
+          logger.warn({ userId, count: unseenIds.length, error: markError.message }, 'getJobMatchesByUser: failed to mark first_seen_at');
+        }
+      })();
     }
 
     return (data ?? []) as JobMatchRow[];

@@ -35,7 +35,7 @@ import { crossReferenceReferralOpportunities } from '../lib/ni/referral-cross-re
 import { getBonusSearchCompanies } from '../lib/ni/bonus-company-search.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
-import type { CsvUploadResponse, NiSearchContext } from '../lib/ni/types.js';
+import type { CsvUploadResponse, NiSearchContext, NiScrapeFilters } from '../lib/ni/types.js';
 
 export const ni = new Hono();
 
@@ -92,6 +92,9 @@ const scrapeStartSchema = z.object({
   company_ids: z.array(z.string().uuid()).min(1).max(50),
   target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
   search_context: z.enum(['network_connections', 'bonus_search']).optional().default('network_connections'),
+  location: z.string().max(200).optional(),
+  remote_only: z.boolean().optional().default(false),
+  max_days_old: z.number().int().min(1).max(14).optional().default(7),
 });
 
 // ─── CSV Upload ───────────────────────────────────────────────────────────────
@@ -300,13 +303,20 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   }
 
   const userId = c.get('user').id;
-  const { company_ids, target_titles = [], search_context } = parsed.data;
+  const { company_ids, target_titles = [], search_context, location, remote_only, max_days_old } = parsed.data;
+
+  const scrapeFilters: NiScrapeFilters = {
+    location,
+    remote_only: remote_only ?? false,
+    max_days_old: max_days_old ?? 7,
+  };
 
   // Create scrape log entry upfront so we can return its ID immediately
   const logId = await createScrapeLogEntry(userId, 'job_scrape', {
     company_ids,
     target_title_count: target_titles.length,
     search_context,
+    filters: scrapeFilters,
   });
 
   if (!logId) {
@@ -314,9 +324,9 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   }
 
   // Fire-and-forget — scrape runs in background via import-service
-  void runCareerScrape(userId, logId, company_ids, target_titles, search_context as NiSearchContext);
+  void runCareerScrape(userId, logId, company_ids, target_titles, search_context as NiSearchContext, scrapeFilters);
 
-  return c.json({ scrape_log_id: logId, search_context }, 202);
+  return c.json({ scrape_log_id: logId, search_context, filters: scrapeFilters }, 202);
 });
 
 // ─── Referral Opportunities ──────────────────────────────────────────────────

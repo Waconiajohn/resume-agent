@@ -28,7 +28,10 @@ const mockSupabase = vi.hoisted(() => {
     chain.update = vi.fn().mockReturnValue(chain);
     chain.delete = vi.fn().mockReturnValue(chain);
     chain.eq     = vi.fn().mockReturnValue(chain);
+    chain.neq    = vi.fn().mockReturnValue(chain);
+    chain.or     = vi.fn().mockReturnValue(chain);
     chain.order  = vi.fn().mockReturnValue(chain);
+    chain.in     = vi.fn().mockReturnValue(chain);
     chain.range  = vi.fn().mockResolvedValue({ data: [], error: null });
     chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
     // Prevent accidental auto-await of the chain object itself.
@@ -186,6 +189,10 @@ describe('getJobMatchesByUser', () => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
       chain.eq     = vi.fn().mockReturnValue(chain);
+      chain.neq    = vi.fn().mockReturnValue(chain);
+      chain.or     = vi.fn().mockReturnValue(chain);
+      chain.in     = vi.fn().mockReturnValue(chain);
+      chain.update = vi.fn().mockReturnValue(chain);
       chain.order  = vi.fn().mockReturnValue(chain);
       chain.range  = vi.fn().mockResolvedValue({ data: rows, error: null });
       chain.then   = undefined;
@@ -201,18 +208,19 @@ describe('getJobMatchesByUser', () => {
 
   it('applies status filter when provided', async () => {
     const rows = [makeJobMatchRow({ id: 'match-003', status: 'applied' })];
-    let eqCallCount = 0;
     const eqArgs: Array<[string, unknown]> = [];
 
     mockSupabase.from.mockImplementation(() => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
       chain.eq     = vi.fn().mockImplementation((col: string, val: unknown) => {
-        eqCallCount++;
         eqArgs.push([col, val]);
-        // After range, the status filter .eq() is called — range must resolve after it
         return chain;
       });
+      chain.neq    = vi.fn().mockReturnValue(chain);
+      chain.or     = vi.fn().mockReturnValue(chain);
+      chain.in     = vi.fn().mockReturnValue(chain);
+      chain.update = vi.fn().mockReturnValue(chain);
       chain.order  = vi.fn().mockReturnValue(chain);
       chain.range  = vi.fn().mockReturnValue(chain);
       // The chain is awaited after the optional status .eq() call
@@ -225,7 +233,7 @@ describe('getJobMatchesByUser', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe('applied');
-    // Should have called .eq('user_id', ...) and .eq('status', 'applied')
+    // Should have called .eq('status', 'applied')
     const statusCall = eqArgs.find(([col]) => col === 'status');
     expect(statusCall).toBeDefined();
     expect(statusCall![1]).toBe('applied');
@@ -236,6 +244,9 @@ describe('getJobMatchesByUser', () => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
       chain.eq     = vi.fn().mockReturnValue(chain);
+      chain.neq    = vi.fn().mockReturnValue(chain);
+      chain.or     = vi.fn().mockReturnValue(chain);
+      chain.in     = vi.fn().mockReturnValue(chain);
       chain.order  = vi.fn().mockReturnValue(chain);
       chain.range  = vi.fn().mockResolvedValue({ data: [], error: null });
       chain.then   = undefined;
@@ -252,6 +263,9 @@ describe('getJobMatchesByUser', () => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
       chain.eq     = vi.fn().mockReturnValue(chain);
+      chain.neq    = vi.fn().mockReturnValue(chain);
+      chain.or     = vi.fn().mockReturnValue(chain);
+      chain.in     = vi.fn().mockReturnValue(chain);
       chain.order  = vi.fn().mockReturnValue(chain);
       chain.range  = vi.fn().mockResolvedValue({
         data: null,
@@ -273,6 +287,9 @@ describe('getJobMatchesByUser', () => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
       chain.eq     = vi.fn().mockReturnValue(chain);
+      chain.neq    = vi.fn().mockReturnValue(chain);
+      chain.or     = vi.fn().mockReturnValue(chain);
+      chain.in     = vi.fn().mockReturnValue(chain);
       chain.order  = vi.fn().mockReturnValue(chain);
       chain.range  = vi.fn().mockImplementation((from: number, to: number) => {
         capturedRangeArgs = [from, to];

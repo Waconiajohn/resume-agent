@@ -17,7 +17,7 @@ import { extractJobsFromCareerPage } from './json-ld-extractor.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
 import { classifyWorkMode } from '../job-search/work-mode-classifier.js';
 import logger from '../logger.js';
-import type { ATSJob, CompanyInfo, NiSearchContext, ScrapeResult, ScrapeSource } from './types.js';
+import type { ATSJob, CompanyInfo, NiSearchContext, NiScrapeFilters, ScrapeResult, ScrapeSource } from './types.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -158,11 +158,58 @@ interface CompanyScanResult {
   error?: string;
 }
 
+// ─── Post-fetch filtering ─────────────────────────────────────────────────────
+
+/**
+ * Apply location, remote-only, and date filters to a raw job list.
+ * Inclusion is additive: null/missing values pass through by default.
+ */
+function applyFilters(jobs: ATSJob[], filters: NiScrapeFilters): ATSJob[] {
+  let result = jobs;
+
+  // Remote-only filter — applied before location so remote jobs aren't excluded
+  // by a city-specific location filter.
+  if (filters.remote_only) {
+    result = result.filter((job) => {
+      const mode = classifyWorkMode(job.title, job.descriptionSnippet ?? '', job.location ?? undefined);
+      return mode === 'remote';
+    });
+  }
+
+  // Location filter — case-insensitive partial match on city name or state abbreviation.
+  // "Remote" jobs always pass through (remote is not a place).
+  if (filters.location && filters.location.trim().length > 0) {
+    const loc = filters.location.trim().toLowerCase();
+    // Extract city and state parts (e.g. "Portland, OR" → ["portland", "or"])
+    const parts = loc.split(/[,\s]+/).filter((p) => p.length > 0);
+    result = result.filter((job) => {
+      if (!job.location) return true; // unknown location — include
+      const jobLoc = job.location.toLowerCase();
+      if (jobLoc.includes('remote')) return true; // remote always passes
+      return parts.some((part) => jobLoc.includes(part));
+    });
+  }
+
+  // Date filter — only applied when the job has a known postedOn date.
+  if (filters.max_days_old > 0) {
+    const cutoff = new Date(Date.now() - filters.max_days_old * 24 * 60 * 60 * 1000);
+    result = result.filter((job) => {
+      if (!job.postedOn) return true; // unknown date — include
+      const postedDate = new Date(job.postedOn);
+      if (isNaN(postedDate.getTime())) return true; // unparseable — include
+      return postedDate >= cutoff;
+    });
+  }
+
+  return result;
+}
+
 async function scanCompany(
   company: CompanyInfo,
   targetTitles: string[],
   userId: string,
   searchContext: NiSearchContext,
+  filters: NiScrapeFilters,
 ): Promise<CompanyScanResult> {
   const referral = await hasReferralProgram(company.id);
   let allJobs: ATSJob[] = [];
@@ -211,7 +258,7 @@ async function scanCompany(
   // Tier 2: Serper Google Jobs search fallback
   if (allJobs.length === 0) {
     try {
-      allJobs = await searchJobsViaSerper(company.name, targetTitles);
+      allJobs = await searchJobsViaSerper(company.name, targetTitles, filters.location);
       source = 'serper';
       if (allJobs.length > 0) {
         logger.info(
@@ -223,6 +270,9 @@ async function scanCompany(
       logger.debug({ err, companyId: company.id }, 'job-scanner: Serper search failed');
     }
   }
+
+  // Apply location / remote / date filters after all tiers have run
+  allJobs = applyFilters(allJobs, filters);
 
   if (allJobs.length === 0) {
     return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
@@ -346,7 +396,9 @@ export async function scrapeCareerPages(
   userId: string,
   searchContext: NiSearchContext = 'network_connections',
   onProgress?: ScrapeProgressCallback,
+  filters?: NiScrapeFilters,
 ): Promise<ScrapeResult> {
+  const resolvedFilters: NiScrapeFilters = filters ?? { remote_only: false, max_days_old: 7 };
   const limited = companies.slice(0, MAX_COMPANIES);
   const errors: { company: string; error: string }[] = [];
 
@@ -371,7 +423,7 @@ export async function scrapeCareerPages(
     );
 
     try {
-      const result = await scanCompany(company, targetTitles, userId, searchContext);
+      const result = await scanCompany(company, targetTitles, userId, searchContext, resolvedFilters);
       companiesScanned++;
       jobsFound += result.jobsFound;
       matchingJobs += result.matchingJobs;

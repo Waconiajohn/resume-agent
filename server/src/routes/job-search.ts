@@ -38,7 +38,7 @@ jobSearchRoutes.use('*', async (c, next) => {
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const searchFiltersSchema = z.object({
-  datePosted: z.enum(['24h', '3d', '7d', '14d', '30d', 'any']).optional().default('7d'),
+  datePosted: z.enum(['24h', '3d', '7d', '14d']).optional().default('7d'),
   remoteType: z.enum(['remote', 'hybrid', 'onsite', 'any']).optional(),
   employmentType: z.enum(['full-time', 'contract', 'freelance', 'any']).optional(),
   salaryMin: z.number().int().min(0).optional(),
@@ -158,7 +158,17 @@ jobSearchRoutes.get(
       return c.json({ scan: null, results: [] });
     }
 
-    // Fetch results for this scan, joined with listing data
+    // Freshness window: honour the filter stored with the scan, default 7d.
+    const scanFilters = (scan as Record<string, unknown>).filters as { datePosted?: string } | null;
+    const datePosted = scanFilters?.datePosted ?? '7d';
+    const freshnessMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14 };
+    const freshnessDays = freshnessMap[datePosted] ?? 7;
+    const freshnessThreshold = new Date(Date.now() - freshnessDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // Fetch results for this scan, joined with listing data.
+    // Exclude explicitly-expired rows and rows older than 30 days that haven't
+    // been saved/promoted — these are stale and not worth surfacing.
+    // Sort: unseen (first_seen_at IS NULL) first, then by posted_date desc.
     const { data: resultRows, error: resultsError } = await supabaseAdmin
       .from('job_search_results')
       .select(`
@@ -168,6 +178,7 @@ jobSearchRoutes.get(
         user_id,
         status,
         match_score,
+        first_seen_at,
         created_at,
         updated_at,
         job_listings (
@@ -189,6 +200,13 @@ jobSearchRoutes.get(
       `)
       .eq('scan_id', scan.id as string)
       .eq('user_id', user.id)
+      // Exclude expired rows
+      .neq('status', 'expired')
+      // Staleness guard: drop rows older than 30 days unless saved/promoted
+      .or(`created_at.gt.${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()},status.in.(saved,promoted)`)
+      // Freshness filter on job listing's posted_date (null posted_date passes through)
+      .or(`job_listings.posted_date.gt.${freshnessThreshold},job_listings.posted_date.is.null`)
+      .order('first_seen_at', { ascending: true, nullsFirst: true })
       .order('match_score', { ascending: false, nullsFirst: false });
 
     if (resultsError) {
@@ -200,6 +218,23 @@ jobSearchRoutes.get(
     }
 
     const rows = (resultRows ?? []) as Array<Record<string, unknown>>;
+
+    // Mark first_seen_at for results that don't have it yet (best-effort, non-blocking)
+    const unseenIds = rows
+      .filter((r) => !r.first_seen_at)
+      .map((r) => r.id as string)
+      .filter(Boolean);
+    if (unseenIds.length > 0) {
+      void (async () => {
+        const { error: markError } = await supabaseAdmin
+          .from('job_search_results')
+          .update({ first_seen_at: new Date().toISOString() })
+          .in('id', unseenIds);
+        if (markError) {
+          logger.warn({ userId: user.id, count: unseenIds.length, error: markError.message }, 'scans/latest: failed to mark first_seen_at');
+        }
+      })();
+    }
 
     if (!includeContacts || rows.length === 0) {
       return c.json({ scan, results: rows });
