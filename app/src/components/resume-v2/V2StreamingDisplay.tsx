@@ -1813,7 +1813,7 @@ export function V2StreamingDisplay({
                       : isReviewerMode
                         ? "You've addressed the key items."
                       : isCoachMode
-                        ? 'Click any highlighted item or use Fix the Next One to start.'
+                        ? 'Click any highlighted item or use the button below to begin.'
                         : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
                 return (
@@ -1928,7 +1928,7 @@ export function V2StreamingDisplay({
                                 onClick={handleStartReviewing}
                                 className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
                               >
-                                Fix the Next One &rarr;
+                                {(queueSummary?.handled ?? 0) === 0 ? 'Start Reviewing \u2192' : 'Fix the Next One \u2192'}
                               </button>
                             )}
                           </div>

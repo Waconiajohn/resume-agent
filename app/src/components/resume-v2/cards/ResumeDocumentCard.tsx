@@ -328,7 +328,7 @@ export function ResumeDocumentCard({
                     <p
                       role="button"
                       tabIndex={0}
-                      className="resume-scope-note text-[0.94rem] text-gray-500 italic"
+                      className={`resume-scope-note text-[0.94rem] text-gray-500 italic${exp.scope_statement_is_new ? ' resume-proof-line resume-proof-line--partial' : ''}`}
                       title="Click to edit this role scope"
                       onClick={() => onBulletClick(
                         exp.scope_statement!,
@@ -371,7 +371,7 @@ export function ResumeDocumentCard({
                 ) : (
                   <p
                     data-scope-id={`professional_experience-${i}-scope`}
-                    className="resume-scope-note mt-1.5 pl-0.5 text-[0.94rem] text-gray-500 italic"
+                    className={`resume-scope-note mt-1.5 pl-0.5 text-[0.94rem] text-gray-500 italic${exp.scope_statement_is_new ? ' resume-proof-line resume-proof-line--partial' : ''}`}
                   >
                     {exp.scope_statement}
                   </p>

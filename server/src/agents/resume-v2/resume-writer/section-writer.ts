@@ -715,6 +715,7 @@ const EXPERIENCE_SYSTEM = `You are an expert executive resume writer. Your only 
 - EVERY position from the candidate experience MUST appear in your output — count them before writing
 - Never drop a position that would create an employment gap greater than 6 months
 - Scope statement required for every role with meaningful responsibility (team size, budget, geography, P&L)
+- Scope statements must read as natural sentences about the role's scale — NEVER start with labels like "Brief scope:", "Scope:", "Team:", or "Budget:" — write it as a sentence a human would say
 - Preserve ALL specific metrics, dollar amounts, percentages, team sizes, site counts from the original
 - Do NOT repeat proof points already used in Selected Accomplishments or custom sections (see Used Evidence below)
 - Professional Experience bullets for a role must cover DIFFERENT achievements than its Selected Accomplishment
@@ -752,7 +753,7 @@ Return this JSON object:
       "title": "Job Title",
       "start_date": "Start",
       "end_date": "End",
-      "scope_statement": "Brief scope: team size, budget, geography, P&L",
+      "scope_statement": "Led 14-person engineering team across 3 regions with $4.2M annual budget",
       "scope_statement_is_new": true,
       "scope_statement_source": "enhanced",
       "scope_statement_confidence": "strong",

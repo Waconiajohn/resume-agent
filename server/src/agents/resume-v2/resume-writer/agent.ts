@@ -224,6 +224,8 @@ For EVERY scope_statement in professional_experience, include:
 - scope_statement_confidence: 'strong' | 'partial' | 'needs_validation'
 - scope_statement_evidence_found: quote from original resume if applicable (empty string if none)
 
+Scope statements must read as natural sentences about the role's scale — NEVER start with labels like "Brief scope:", "Scope:", "Team:", or "Budget:". Write it as a sentence a human would say: "Oversaw 22-person product team across North America and EMEA with $8M operating budget."
+
 CRITICAL: The resume must address ALL job description requirements. For benchmark items, include the top 5-8 where evidence is strongest.
 
 ## 10 QUALITY GATES — CHECK BEFORE OUTPUT
@@ -331,7 +333,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
       "title": "Job Title",
       "start_date": "Start",
       "end_date": "End",
-      "scope_statement": "Brief scope: team size, budget, geography, P&L responsibility",
+      "scope_statement": "Oversaw 22-person product team across North America and EMEA with $8M operating budget",
       "scope_statement_source": "original",
       "scope_statement_confidence": "strong",
       "scope_statement_evidence_found": "quote from original resume or empty string",
