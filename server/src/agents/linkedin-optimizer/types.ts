@@ -91,6 +91,58 @@ export interface ProfileAnalysis {
   strengths: string[];
 }
 
+// ─── Audit Report ────────────────────────────────────────────────────────────
+
+export interface LinkedInAuditReport {
+  positioning_summary: {
+    core_identity: string;
+    value_proposition: string;
+    differentiators: string[];
+    target_market_fit: string;
+  };
+  audit_scores: {
+    five_second_test: number;
+    headline_strength: number;
+    about_hook_strength: number;
+    proof_strength: number;
+    differentiation_strength: number;
+    executive_presence: number;
+    keyword_effectiveness: number;
+    overall_score: number;
+  };
+  diagnostic_findings: {
+    what_is_working: string[];
+    what_is_weak: string[];
+    what_is_missing: string[];
+    where_profile_undersells_candidate: string[];
+  };
+  headline_recommendations: {
+    options: Array<{ label: string; headline: string; why_it_works: string }>;
+    recommended_headline: string;
+    recommended_headline_rationale: string;
+  };
+  about_section_rewrite: {
+    five_second_hook_analysis: string;
+    recommended_opening: string;
+    full_rewritten_about: string;
+  };
+  experience_alignment: {
+    resume_strengths_to_surface_more: string[];
+    claims_that_need_stronger_proof: string[];
+    recommended_experience_reframing: string[];
+  };
+  skills_and_featured_recommendations: {
+    top_skills_to_pin: string[];
+    skills_to_add_or_emphasize: string[];
+    featured_section_recommendations: string[];
+  };
+  final_benchmark_assessment: {
+    benchmark_candidate_summary: string;
+    confidence: number;
+    key_caveats: string[];
+  };
+}
+
 // ─── Pipeline State ──────────────────────────────────────────────────
 
 export interface LinkedInOptimizerState extends BaseState {
@@ -160,8 +212,11 @@ export interface LinkedInOptimizerState extends BaseState {
   /** Per-role structured experience data (populated by write_experience_entries) */
   experience_entries?: ExperienceEntry[];
 
-  /** Final assembled report (markdown) */
+  /** Final assembled report (markdown, backward compat) */
   final_report?: string;
+
+  /** Structured audit report (JSON) */
+  audit_report?: LinkedInAuditReport;
 
   /** Quality score from self-review (0-100) */
   quality_score?: number;
@@ -190,5 +245,5 @@ export type LinkedInOptimizerSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'section_progress'; section: LinkedInSection; status: 'writing' | 'reviewing' | 'complete' }
-  | { type: 'report_complete'; session_id: string; report: string; quality_score: number; experience_entries?: ExperienceEntry[] }
+  | { type: 'report_complete'; session_id: string; report: string; quality_score: number; experience_entries?: ExperienceEntry[]; audit_report?: LinkedInAuditReport }
   | { type: 'pipeline_error'; stage: string; error: string };

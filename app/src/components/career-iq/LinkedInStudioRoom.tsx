@@ -31,6 +31,7 @@ import { supabase } from '@/lib/supabase';
 import { SeriesPlanner } from './linkedin-studio/SeriesPlanner';
 import { ToolsPanel } from './linkedin-studio/ToolsPanel';
 import { ExperienceEntryCard } from './ExperienceEntryCard';
+import { LinkedInAuditReportRenderer } from './linkedin-studio/LinkedInAuditReport';
 import type { WhyMeSignals } from './useWhyMeStory';
 import type { TopicSuggestion } from '@/hooks/useLinkedInContent';
 import type { ProfileSection } from '@/hooks/useLinkedInEditor';
@@ -1607,10 +1608,13 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
                 </div>
               </GlassCard>
             )}
-            {!isOptimizerRunning && optimizer.report && (
+            {!isOptimizerRunning && optimizer.auditReport && (
+              <LinkedInAuditReportRenderer report={optimizer.auditReport} />
+            )}
+            {!isOptimizerRunning && !optimizer.auditReport && optimizer.report && (
               <ProfileOptimizer signals={signals} report={optimizer.report} />
             )}
-            {!isOptimizerRunning && !optimizer.report && (
+            {!isOptimizerRunning && !optimizer.auditReport && !optimizer.report && (
               <ProfileOptimizer signals={signals} report={null} />
             )}
             {isOptimizerRunning && (

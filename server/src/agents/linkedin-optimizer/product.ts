@@ -63,6 +63,9 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
           if (typeof scratchpad.quality_score === 'number') {
             state.quality_score = scratchpad.quality_score;
           }
+          if (scratchpad.audit_report && !state.audit_report) {
+            state.audit_report = scratchpad.audit_report as LinkedInOptimizerState['audit_report'];
+          }
         },
       },
     ],
@@ -203,6 +206,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         experience_entries: state.experience_entries,
+        audit_report: state.audit_report,
       });
 
       return {
@@ -211,6 +215,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         sections: state.sections,
         keyword_analysis: state.keyword_analysis,
         profile_analysis: state.profile_analysis,
+        audit_report: state.audit_report,
       };
     },
 
@@ -221,6 +226,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         sections: unknown;
         keyword_analysis: unknown;
         profile_analysis: unknown;
+        audit_report: unknown;
       };
 
       try {
