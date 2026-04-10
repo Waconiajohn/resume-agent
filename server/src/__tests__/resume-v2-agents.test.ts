@@ -27,6 +27,11 @@ vi.mock('../lib/llm.js', () => ({
   MODEL_LIGHT: 'model-light',
 }));
 
+// chatWithTruncationRetry wraps llm.chat — delegate to the same mock
+vi.mock('../lib/llm-retry.js', () => ({
+  chatWithTruncationRetry: mockLlmChat,
+}));
+
 vi.mock('../lib/json-repair.js', () => ({
   repairJSON: mockRepairJSON,
 }));

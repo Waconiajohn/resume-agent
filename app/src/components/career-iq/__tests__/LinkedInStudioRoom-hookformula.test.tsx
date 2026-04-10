@@ -52,6 +52,9 @@ vi.mock('@/lib/supabase', () => ({
       getSession: vi.fn().mockResolvedValue({
         data: { session: { access_token: 'test-token' } },
       }),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
     },
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnThis(),
@@ -157,6 +160,18 @@ vi.mock('@/hooks/useContentPosts', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useLinkedInProfile', () => ({
+  useLinkedInProfile: () => ({
+    profile: { headline: '', about: '', experience: '' },
+    updateField: vi.fn(),
+    save: vi.fn().mockResolvedValue(true),
+    loading: false,
+    saving: false,
+    error: null,
+    hasContent: false,
+  }),
+}));
+
 vi.mock('./ExperienceEntryCard', () => ({
   ExperienceEntryCard: () => <div data-testid="experience-entry-card" />,
 }));
@@ -179,7 +194,8 @@ function makeSignals(overrides: Partial<WhyMeSignals> = {}): WhyMeSignals {
 
 function renderWriteTab(signals: WhyMeSignals = makeSignals()) {
   render(<LinkedInStudioRoom signals={signals} />);
-  fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
+  // The Content tab houses the PostComposer (formerly called Write tab)
+  fireEvent.click(screen.getByRole('button', { name: /^Content$/i }));
 }
 
 /** Put the content hook into post_review state with the given hook fields. */

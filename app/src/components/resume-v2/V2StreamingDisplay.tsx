@@ -10,7 +10,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNod
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
-import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState, SuggestionScore, RewriteQueueItem } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { BulletCoachingPanel } from './cards/BulletCoachingPanel';
@@ -239,6 +239,22 @@ interface CoachTarget {
   autoReuseClarificationId?: string;
   /** True when this bullet was AI-generated/enhanced (is_new on the source ResumeBullet). */
   isAIEnhanced?: boolean;
+}
+
+/** Look up the suggestion score for an active bullet from the rewrite queue. */
+function findSuggestionScore(
+  activeBullet: CoachTarget | null,
+  queueItems: RewriteQueueItem[] | undefined,
+): SuggestionScore | undefined {
+  if (!activeBullet || !queueItems?.length) return undefined;
+  const req = activeBullet.requirements[0];
+  if (!req) return undefined;
+  const normalizedReq = req.trim().toLowerCase();
+  const match = queueItems.find(item =>
+    item.requirement?.trim().toLowerCase() === normalizedReq
+    || item.title.trim().toLowerCase() === normalizedReq
+  );
+  return match?.suggestionScore;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -1761,7 +1777,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1870,6 +1886,7 @@ export function V2StreamingDisplay({
                             canRemove={activeBullet.canRemove ?? true}
                             initialReuseClarificationId={activeBullet.autoReuseClarificationId}
                             isAIEnhanced={activeBullet.isAIEnhanced}
+                            suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)}
                             gapChat={gapChat}
                             chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
                             onApplyToResume={handleCoachApplyToResume}

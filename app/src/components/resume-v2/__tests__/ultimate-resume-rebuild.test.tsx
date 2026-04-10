@@ -267,7 +267,9 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bullet!.className).toContain('resume-proof-line--code-red');
   });
 
-  it('renders highlighted orange treatment for needs_validation + benchmark source', () => {
+  it('renders highlighted amber treatment for needs_validation + benchmark source', () => {
+    // benchmark source resolves to confirm_fit review state, which maps to the
+    // same amber class as "strengthen" — both use resume-proof-line--partial.
     const resume = makeResumeDraftWithConfidence({
       confidence: 'needs_validation',
       requirement_source: 'benchmark',
@@ -276,7 +278,7 @@ describe('ResumeDocumentCard — confidence color coding', () => {
 
     const bullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(bullet).toBeTruthy();
-    expect(bullet!.className).toContain('resume-proof-line--benchmark');
+    expect(bullet!.className).toContain('resume-proof-line--partial');
     expect(bullet!.className).not.toContain('resume-proof-line--code-red');
   });
 

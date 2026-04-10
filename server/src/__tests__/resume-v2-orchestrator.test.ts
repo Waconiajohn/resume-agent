@@ -45,6 +45,18 @@ const mockStopUsageTracking       = vi.hoisted(() => vi.fn());
 
 vi.mock('../agents/resume-v2/job-intelligence/agent.js', () => ({
   runJobIntelligence: mockRunJobIntelligence,
+  runJobIntelligenceWithConfidence: (...args: unknown[]) =>
+    mockRunJobIntelligence(...args).then((output: unknown) => ({
+      output,
+      confidence: {
+        company_name: { value: '', source: 'llm', confidence: 'high', repair_attempted: false },
+        role_title: { value: '', source: 'llm', confidence: 'high', repair_attempted: false },
+        seniority_level: { value: '', source: 'llm', confidence: 'high', repair_attempted: false },
+        industry: { value: '', source: 'llm', confidence: 'high', repair_attempted: false },
+        core_competencies: { value: 5, source: 'llm', confidence: 'high', repair_attempted: false },
+        language_keywords: { value: 10, source: 'llm', confidence: 'high', repair_attempted: false },
+      },
+    })),
 }));
 
 vi.mock('../agents/resume-v2/candidate-intelligence/agent.js', () => ({

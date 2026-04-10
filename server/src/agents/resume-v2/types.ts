@@ -14,6 +14,26 @@ import type { EvidenceItem } from '../../contracts/shared-evidence.js';
 import type { RequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
 import type { RoleProfile } from './knowledge/role-archetypes.js';
 
+// ─── Confidence-Based Extraction ─────────────────────────────────────
+
+/** Confidence metadata for a single extracted field. */
+export interface ExtractedField<T> {
+  value: T;
+  source: 'llm' | 'deterministic' | 'repaired' | 'default';
+  confidence: 'high' | 'medium' | 'low';
+  repair_attempted: boolean;
+}
+
+/** Confidence report for the 6 tracked JI fields. */
+export interface ConfidenceReport {
+  company_name: ExtractedField<string>;
+  role_title: ExtractedField<string>;
+  seniority_level: ExtractedField<string>;
+  industry: ExtractedField<string>;
+  core_competencies: ExtractedField<number>; // count
+  language_keywords: ExtractedField<number>; // count
+}
+
 // ─── Agent 1: Job Intelligence ───────────────────────────────────────
 
 export interface JobIntelligenceInput {

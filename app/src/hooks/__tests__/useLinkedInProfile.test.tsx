@@ -93,7 +93,7 @@ describe('useLinkedInProfile auth boundaries', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.profile).toEqual({ headline: '', about: '' });
+    expect(result.current.profile).toEqual({ headline: '', about: '', experience: '' });
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
@@ -124,6 +124,7 @@ describe('useLinkedInProfile auth boundaries', () => {
     expect(result.current.profile).toEqual({
       headline: 'Scoped headline',
       about: 'Scoped about',
+      experience: '',
     });
     expect(vi.mocked(fetch)).toHaveBeenNthCalledWith(
       2,
@@ -133,6 +134,7 @@ describe('useLinkedInProfile auth boundaries', () => {
         body: JSON.stringify({
           headline: 'Scoped headline',
           about: 'Scoped about',
+          experience: '',
         }),
       }),
     );

@@ -4,6 +4,19 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? (isProduction ? 'info' : 'debug'),
+  redact: {
+    paths: [
+      'rawSnippet',
+      '*.rawSnippet',
+      'resume_text',
+      '*.resume_text',
+      'job_description',
+      '*.job_description',
+      'original_resume',
+      '*.original_resume',
+    ],
+    remove: true,
+  },
   ...(isProduction
     ? {}
     : {

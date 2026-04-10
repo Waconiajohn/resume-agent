@@ -46,7 +46,17 @@ vi.mock('@/lib/supabase', () => ({
       getSession: vi.fn().mockResolvedValue({
         data: { session: { access_token: 'test-token' } },
       }),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
     },
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }),
   },
 }));
 
@@ -126,6 +136,18 @@ vi.mock('@/hooks/useContentPosts', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useLinkedInProfile', () => ({
+  useLinkedInProfile: () => ({
+    profile: { headline: '', about: '', experience: '' },
+    updateField: vi.fn(),
+    save: vi.fn().mockResolvedValue(true),
+    loading: false,
+    saving: false,
+    error: null,
+    hasContent: false,
+  }),
+}));
+
 vi.mock('./ExperienceEntryCard', () => ({
   ExperienceEntryCard: () => <div data-testid="experience-entry-card" />,
 }));
@@ -163,106 +185,94 @@ afterEach(() => {
 // ─── Tab rendering ────────────────────────────────────────────────────────────
 
 describe('LinkedInStudioRoom — tab rendering', () => {
-  it('renders the workflow guidance strip', () => {
+  it('renders the tab bar with Profile Audit and Content tabs', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
-    expect(screen.getByText('Right now')).toBeInTheDocument();
-    expect(screen.getByText('Then')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile Audit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Content' })).toBeInTheDocument();
   });
 
-  it('renders the tab bar', () => {
+  it('renders Profile Audit tab button', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByRole('button', { name: 'Write' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile Audit' })).toBeInTheDocument();
   });
 
-  it('renders Profile tab button', () => {
+  it('renders Content tab button', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Content' })).toBeInTheDocument();
   });
 
-  it('renders the embedded Content Plan launcher', () => {
+  it('renders the Content Plan section when Content tab is active', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    expect(screen.getByRole('button', { name: /Plan posts/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
+    expect(screen.getByText('Content Plan')).toBeInTheDocument();
   });
 
-  it('renders Results tab button', () => {
+  it('renders the Post Library section when Content tab is active', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    expect(screen.getByRole('button', { name: 'Results' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
+    expect(screen.getByText('Post Library')).toBeInTheDocument();
   });
 
-  it('renders the embedded Library launcher', () => {
+  it('renders the LinkedIn eyebrow label', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    expect(screen.getByRole('button', { name: /Reuse drafts/i })).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 });
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
 
 describe('LinkedInStudioRoom — tab switching', () => {
-  it('defaults to profile tab', () => {
+  it('defaults to profile audit tab showing profile content', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     expect(screen.getByText('Optimize Your LinkedIn Profile')).toBeInTheDocument();
-    expect(screen.getByText('Sharpen the profile people land on')).toBeInTheDocument();
   });
 
-  it('opens Content Plan from the embedded launcher', async () => {
+  it('switches to Content tab on click and shows PostComposer', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      expect(screen.getByText('Plan the next stretch of posts')).toBeInTheDocument();
+      expect(screen.getByText('Write a Post')).toBeInTheDocument();
     });
   });
 
-  it('opens Library from the embedded launcher', async () => {
+  it('shows Content Plan collapsible in Content tab', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      const libContent = screen.queryByText(/Keep your best LinkedIn work in one place/i) ||
-        screen.queryByText(/posts/i) ||
-        screen.queryByText(/Write your first post/i);
-      expect(libContent).toBeInTheDocument();
+      expect(screen.getByText('Content Plan')).toBeInTheDocument();
     });
   });
 
-  it('switches to Results tab on click', async () => {
+  it('shows Post Library collapsible in Content tab', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Results' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      const resultsContent = screen.queryByText(/Platform Metrics/i) ||
-        screen.queryByText(/Profile Score/i) ||
-        screen.queryByText(/Current Profile Score/i);
-      expect(resultsContent).toBeInTheDocument();
+      expect(screen.getByText('Post Library')).toBeInTheDocument();
     });
   });
 
-  it('switches to Profile tab on click', async () => {
+  it('switches back to Profile Audit tab on click', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Profile Audit' }));
     await waitFor(() => {
-      const editorContent = screen.queryByText(/Optimize Your LinkedIn Profile/i) ||
-        screen.queryByText(/Profile/i) ||
-        screen.queryByText(/Edit Profile/i);
-      expect(editorContent).toBeInTheDocument();
+      expect(screen.getByText(/Optimize Your LinkedIn Profile/i)).toBeInTheDocument();
     });
   });
 });
 
 // ─── Composer idle state ──────────────────────────────────────────────────────
 
-describe('LinkedInStudioRoom — Composer tab (idle)', () => {
-  it('renders "Write a Post" button', () => {
+describe('LinkedInStudioRoom — Composer (Content tab, idle)', () => {
+  it('renders "Write a Post" button in Content tab', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     expect(screen.getByText('Write a Post')).toBeInTheDocument();
   });
 
   it('shows clarity warning when signals.clarity is not green', () => {
     render(<LinkedInStudioRoom signals={makeSignals({ clarity: 'yellow' })} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     expect(
       screen.getByText(/Strengthen your Clarity signal first/),
     ).toBeInTheDocument();
@@ -270,7 +280,7 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 
   it('does not show clarity warning when signals.clarity is green', () => {
     render(<LinkedInStudioRoom signals={makeSignals({ clarity: 'green' })} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     expect(
       screen.queryByText(/Strengthen your Clarity signal first/),
     ).not.toBeInTheDocument();
@@ -278,146 +288,116 @@ describe('LinkedInStudioRoom — Composer tab (idle)', () => {
 
   it('renders the post description text', () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     expect(screen.getByText(/Once the profile direction feels strong enough/)).toBeInTheDocument();
   });
 });
 
 // ─── Library tab ─────────────────────────────────────────────────────────────
 
-describe('LinkedInStudioRoom — Library tab', () => {
-  it('library tab loads without error', async () => {
+describe('LinkedInStudioRoom — Library (Post Library in Content tab)', () => {
+  it('Post Library section is present in Content tab', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      expect(screen.getByText(/Keep your best LinkedIn work in one place/i)).toBeInTheDocument();
+      expect(screen.getByText('Post Library')).toBeInTheDocument();
     });
   });
 
-  it('library uses useContentPosts hook (posts = [])', async () => {
+  it('Post Library collapsible renders without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    fireEvent.click(screen.getByRole('button', { name: /Reuse drafts/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      const el = screen.queryByText(/Keep your best LinkedIn work in one place/i) || screen.queryByText(/Write your first post/i) || screen.queryByText(/no posts/i);
-      expect(el).toBeTruthy();
+      expect(document.body).toBeTruthy();
     });
   });
 });
 
 // ─── Content Plan tab ────────────────────────────────────────────────────────
 
-describe('LinkedInStudioRoom — Content Plan tab', () => {
-  it('content plan tab renders without error', async () => {
+describe('LinkedInStudioRoom — Content Plan (in Content tab)', () => {
+  it('Content Plan collapsible renders without error in Content tab', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
-    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Content' }));
     await waitFor(() => {
-      expect(document.body).toBeTruthy();
+      expect(screen.getByText('Content Plan')).toBeInTheDocument();
     });
   });
 });
 
 // ─── Results tab ─────────────────────────────────────────────────────────────
 
-describe('LinkedInStudioRoom — Results tab', () => {
-  it('results tab renders without error', async () => {
+describe('LinkedInStudioRoom — Profile Audit results section', () => {
+  it('Profile Audit tab renders without error', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Results' }));
     await waitFor(() => {
       expect(document.body).toBeTruthy();
     });
   });
 
-  it('renders platform metrics without crashing', async () => {
+  it('renders profile metrics in the Profile Audit tab', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Results' }));
     await waitFor(() => {
+      // ResultsSnapshot renders inside the profile tab
       const metrics =
+        screen.queryByText(/Current Profile Score/i) ||
         screen.queryByText(/Platform Metrics/i) ||
-        screen.queryByText(/Profile Score/i) ||
-        screen.queryByText(/Current Profile Score/i);
+        screen.queryByText(/Total Posts/i);
       expect(metrics).toBeTruthy();
     });
   });
 });
 
-// ─── FiftyGroupsGuide (Sprint 63-5) ──────────────────────────────────────────
-// FiftyGroupsGuide renders inside the "Profile" tab (activeTab === 'editor').
+// ─── Profile Audit tab — input fields ────────────────────────────────────────
 
-describe('FiftyGroupsGuide — Profile tab', () => {
-  it('renders a <details> element in the profile tab', async () => {
+describe('LinkedInStudioRoom — Profile Audit input fields', () => {
+  it('renders the profile input section heading', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      const details = document.querySelector('details');
-      expect(details).not.toBeNull();
+      expect(screen.getByText('Your Current LinkedIn Profile')).toBeInTheDocument();
     });
   });
 
-  it('contains "50 Groups Strategy" text in the editor tab', async () => {
+  it('renders the Current Headline label', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
+      expect(screen.getByText('Current Headline')).toBeInTheDocument();
     });
   });
 
-  it('shows "Coaching Guide" label in the summary', async () => {
+  it('renders the Current About Section label', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      expect(screen.getByText(/Coaching Guide/i)).toBeInTheDocument();
+      expect(screen.getByText('Current About Section')).toBeInTheDocument();
     });
   });
 
-  it('contains LinkedIn group strategy coaching content', async () => {
+  it('renders the headline input placeholder', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      expect(screen.getByText(/Why 50 groups/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Senior Product Owner/i)).toBeInTheDocument();
     });
   });
 
-  it('the <details> element is closed by default (progressive disclosure)', async () => {
+  it('renders the profile editor workflow section', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      const details = document.querySelector('details');
-      expect(details).not.toBeNull();
-      // HTML <details> without the `open` attribute is collapsed by default.
-      expect(details!.hasAttribute('open')).toBe(false);
+      expect(screen.getByText(/Optimize Your LinkedIn Profile/i)).toBeInTheDocument();
     });
   });
 
-  it('the <details> element gains the open attribute after the summary is clicked', async () => {
-    render(<LinkedInStudioRoom signals={makeSignals()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
-    });
-
-    const details = document.querySelector('details');
-    expect(details).not.toBeNull();
-    expect(details!.hasAttribute('open')).toBe(false);
-
-    // Click the summary — jsdom toggles the `open` attribute.
-    const summary = document.querySelector('summary');
-    expect(summary).not.toBeNull();
-    fireEvent.click(summary!);
-
-    expect(details!.hasAttribute('open')).toBe(true);
-  });
-
-  it('renders the guide without crashing when signals have non-green values', async () => {
+  it('renders without crashing when signals have non-green values', async () => {
     render(
       <LinkedInStudioRoom signals={makeSignals({ clarity: 'red', alignment: 'yellow' })} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     await waitFor(() => {
-      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
+      expect(screen.getByText('Your Current LinkedIn Profile')).toBeInTheDocument();
     });
+  });
+
+  it('renders the Profile Audit tab as active by default', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    const profileAuditBtn = screen.getByRole('button', { name: 'Profile Audit' });
+    expect(profileAuditBtn.className).toContain('bg-blue-600');
   });
 });

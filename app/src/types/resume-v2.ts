@@ -779,6 +779,30 @@ export interface RewriteQueueNextStep {
   detail: string;
 }
 
+/** Multi-dimensional quality score for an AI-generated suggestion. */
+export interface SuggestionScore {
+  overall: number;
+  dimensions: {
+    preservesSpecificity: number;
+    preservesSeniority: number;
+    preservesOutcomes: number;
+    requirementAlignment: number;
+    avoidsClicheVagueness: number;
+    avoidsRedundancy: number;
+    preservesBrandVoice: number;
+  };
+  verdict: 'show' | 'collapse' | 'ask_question';
+  reason: string;
+  suggestedQuestion?: string;
+}
+
+/** Context chip displayed alongside the active bullet/section. */
+export interface ActiveContextChip {
+  label: string;
+  source: 'requirement' | 'positioning' | 'rationale' | 'gap_prompt';
+  tooltip?: string;
+}
+
 export interface RewriteQueueItem {
   id: string;
   kind: 'requirement' | 'final_review';
@@ -807,6 +831,8 @@ export interface RewriteQueueItem {
   starterQuestion?: string;
   riskNote?: string;
   suggestedDraft?: string;
+  /** Quality score computed by the shared suggestion scoring engine */
+  suggestionScore?: SuggestionScore;
 }
 
 export interface RewriteQueueSummary {

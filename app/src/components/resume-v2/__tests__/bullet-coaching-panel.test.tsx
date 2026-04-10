@@ -71,8 +71,8 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    // Block 1: section name + item number
-    expect(screen.getByText(/Executive Summary, item 1/i)).toBeInTheDocument();
+    // Block 1: section name label
+    expect(screen.getByText(/Executive Summary/i)).toBeInTheDocument();
     // Block 1: full bullet text (may appear more than once if also in a suggestion)
     expect(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.').length).toBeGreaterThan(0);
   });

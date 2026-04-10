@@ -17,6 +17,7 @@ import type {
 } from '@/types/resume-v2';
 import { evidenceLooksDirectForRequirement } from './requirement-evidence';
 import { canonicalRequirementSignals } from './resume-requirement-signals';
+import { scoreSuggestion } from './suggestion-scoring';
 
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
@@ -529,7 +530,7 @@ export function buildRewriteQueue(args: {
 
   const dedupedRequirements = dedupeRequirements(args.gapAnalysis.requirements);
 
-  const items = dedupedRequirements.map((requirement) => {
+  const items: RewriteQueueItem[] = dedupedRequirements.map((requirement) => {
     const normalizedRequirement = normalize(requirement.requirement);
     const source = requirement.source ?? (requirement.score_domain === 'benchmark' ? 'benchmark' : 'job_description');
     const coachingCard = coachingLookup.get(normalizedRequirement);
@@ -737,10 +738,49 @@ export function buildRewriteQueue(args: {
           ? requirement.strategy?.positioning
           : undefined,
     };
-  }).sort((left, right) => {
+  });
+
+  // ─── Compute suggestion quality scores ───────────────────────────
+  const brandedTitle = args.currentResume?.header?.branded_title;
+  const allItemTexts = items.map(item =>
+    item.currentEvidence.map(e => e.text).join(' '),
+  );
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item.suggestedDraft) continue;
+
+    const currentText = item.currentEvidence.map(e => e.text).join(' ');
+    if (!currentText.trim()) continue;
+
+    // Other sections' text for redundancy check (exclude self)
+    const otherTexts = allItemTexts.filter((_, idx) => idx !== i).filter(Boolean);
+
+    item.suggestionScore = scoreSuggestion(currentText, item.suggestedDraft, {
+      targetRequirements: item.requirement ? [item.requirement] : [],
+      otherSectionTexts: otherTexts,
+      brandedTitle,
+      importance: item.importance,
+    });
+
+    // When verdict is 'ask_question', provide the gap-fill question as starterQuestion
+    if (item.suggestionScore.verdict === 'ask_question' && item.suggestionScore.suggestedQuestion) {
+      item.starterQuestion = item.suggestionScore.suggestedQuestion;
+      item.candidateInputNeeded = true;
+    }
+  }
+
+  // ─── Sort ────────────────────────────────────────────────────────
+  items.sort((left, right) => {
     // Primary sort: AI review items first, then must-address, then everything else
     const tierDiff = actionTierWeight(left) - actionTierWeight(right);
     if (tierDiff !== 0) return tierDiff;
+
+    // Suggestion quality: high-scoring suggestions before low-scoring ones
+    const leftQuality = left.suggestionScore?.overall ?? 5;
+    const rightQuality = right.suggestionScore?.overall ?? 5;
+    const qualityDiff = rightQuality - leftQuality;
+    if (Math.abs(qualityDiff) >= 1) return qualityDiff > 0 ? 1 : -1;
 
     const bucketDiff = bucketWeight(left.bucket) - bucketWeight(right.bucket);
     if (bucketDiff !== 0) return bucketDiff;

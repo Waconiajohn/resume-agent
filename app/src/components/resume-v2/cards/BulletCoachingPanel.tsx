@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronRight, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage } from '@/types/resume-v2';
+import type { ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext, GapChatMessage, SuggestionScore } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { CustomEditArea } from './bullet-coaching/CustomEditArea';
@@ -37,6 +37,8 @@ export interface BulletCoachingPanelProps {
    * evidence text against the AI-written bullet text.
    */
   isAIEnhanced?: boolean;
+  /** Quality score from the shared suggestion scoring engine */
+  suggestionScore?: SuggestionScore;
   onBulletEnhance?: (
     action: string,
     bulletText: string,
@@ -137,6 +139,7 @@ export function BulletCoachingPanel({
   initialReuseClarificationId,
   showCloseButton: _showCloseButton = true,
   isAIEnhanced,
+  suggestionScore,
   onBulletEnhance: _onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -365,7 +368,7 @@ export function BulletCoachingPanel({
       </div>
 
       {/* ── Block 2: What We Suggest ───────────────────────────────────── */}
-      {(showAIDiff || featuredOption || isCodeRedNoEvidence) && (
+      {(showAIDiff || featuredOption || isCodeRedNoEvidence || suggestionScore?.verdict === 'collapse' || suggestionScore?.verdict === 'ask_question') && (
         <div className="border-t border-white/10 px-4 py-3 space-y-3">
 
           {/* AI-enhanced diff view */}
@@ -395,8 +398,37 @@ export function BulletCoachingPanel({
             </div>
           )}
 
-          {/* Standard suggestion (not AI-enhanced, not code red) */}
-          {!showAIDiff && !isCodeRedNoEvidence && featuredOption && (
+          {/* Verdict: collapse — current text is strong */}
+          {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'collapse' && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-emerald-400 uppercase tracking-wide mb-1">
+                Looks Strong
+              </p>
+              <p className="text-sm leading-relaxed text-gray-300">
+                This section already addresses the requirement well. Click &ldquo;Keep Current&rdquo; to move on, or &ldquo;Edit Myself&rdquo; to make changes.
+              </p>
+            </div>
+          )}
+
+          {/* Verdict: ask_question — suggestion would downgrade, ask for context instead */}
+          {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'ask_question' && suggestionScore.suggestedQuestion && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
+                More Context Needed
+              </p>
+              <p className="text-sm leading-relaxed text-gray-200">
+                {suggestionScore.suggestedQuestion}
+              </p>
+              {addressesLabel && (
+                <p className="text-xs text-gray-300">
+                  For: <span className="text-gray-400">{addressesLabel}</span>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Standard suggestion (verdict: show, or no score computed) */}
+          {!showAIDiff && !isCodeRedNoEvidence && featuredOption && suggestionScore?.verdict !== 'collapse' && suggestionScore?.verdict !== 'ask_question' && (
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
@@ -552,8 +584,48 @@ export function BulletCoachingPanel({
               </>
             )}
 
-            {/* Standard suggestion: Use / Edit / Skip */}
-            {!showAIDiff && !isCodeRedNoEvidence && featuredOption && (
+            {/* Verdict: collapse — Keep / Edit */}
+            {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'collapse' && (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                >
+                  Keep Current
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(bulletText)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors"
+                >
+                  Edit Myself
+                </button>
+              </>
+            )}
+
+            {/* Verdict: ask_question — Answer / Edit / Skip */}
+            {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'ask_question' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(bulletText)}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                >
+                  Add Details
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  Skip
+                </button>
+              </>
+            )}
+
+            {/* Standard suggestion: Use / Edit / Skip (verdict: show, or no score) */}
+            {!showAIDiff && !isCodeRedNoEvidence && featuredOption && suggestionScore?.verdict !== 'collapse' && suggestionScore?.verdict !== 'ask_question' && (
               <>
                 <button
                   type="button"

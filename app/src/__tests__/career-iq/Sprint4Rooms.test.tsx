@@ -60,6 +60,18 @@ vi.mock('@/components/career-iq/CareerProfileSummaryCard', () => ({
   CareerProfileSummaryCard: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
+vi.mock('@/hooks/useLinkedInProfile', () => ({
+  useLinkedInProfile: () => ({
+    profile: { headline: '', about: '', experience: '' },
+    updateField: vi.fn(),
+    save: vi.fn().mockResolvedValue(true),
+    loading: false,
+    saving: false,
+    error: null,
+    hasContent: false,
+  }),
+}));
+
 // Mock clipboard
 Object.assign(navigator, {
   clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -95,31 +107,23 @@ describe('LinkedInStudioRoom', () => {
   const greenSignals: WhyMeSignals = { clarity: 'green', alignment: 'green', differentiation: 'green' };
   const yellowSignals: WhyMeSignals = { clarity: 'yellow', alignment: 'green', differentiation: 'green' };
 
-  it('renders tab navigation with all tabs', () => {
+  it('renders tab navigation with Profile Audit and Content tabs', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    expect(screen.getByText('LinkedIn workflow')).toBeInTheDocument();
-    expect(screen.getByText('Right now')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Write$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Profile$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Results$/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
-    expect(screen.getByRole('button', { name: /Plan posts/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Reuse drafts/i })).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Profile Audit$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Content$/i })).toBeInTheDocument();
   });
 
-  it('renders content calendar when Content Plan tab is clicked', () => {
+  it('renders content calendar section when Content tab is active', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Write$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Plan posts/i }));
-    // ContentCalendar in idle state renders "Build Content Plan"
-    expect(screen.getByText('Build Content Plan')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Content$/i }));
+    // ContentCalendar is inside a <details> element with "Content Plan" label
+    expect(screen.getByText('Content Plan')).toBeInTheDocument();
   });
 
-  it('renders analytics when Results tab is clicked', () => {
+  it('renders platform metrics in the Profile Audit tab', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Results$/i }));
-    // Results shows content-based metrics from generated posts
-    expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
+    // ResultsSnapshot always renders in profile tab — shows Total Posts / Avg Post Score
     expect(screen.getByText('Total Posts')).toBeInTheDocument();
     expect(screen.getByText('Avg Post Score')).toBeInTheDocument();
   });
@@ -129,15 +133,15 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 
-  it('renders the Profile tab by default', () => {
+  it('renders the Profile Audit tab by default with profile content', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
     expect(screen.getByText(/Optimize Your LinkedIn Profile/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sharpen the profile people land on/i)).toBeInTheDocument();
+    expect(screen.getByText('Your Current LinkedIn Profile')).toBeInTheDocument();
   });
 
-  it('renders the Profile tab content when clicked', () => {
+  it('renders the Profile Audit tab content when clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Profile$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Profile Audit$/i }));
     expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
   });
 });
@@ -161,10 +165,10 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders the simplified job board surface', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('At a glance')).toBeInTheDocument();
-    expect(screen.getByText('Due now')).toBeInTheDocument();
     expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
-    expect(screen.getByText('Search Strings')).toBeInTheDocument();
+    expect(getJobTabButton(/^Pipeline$/i)).toBeInTheDocument();
+    // The room subtitle explains the board's purpose
+    expect(screen.getByText(/One job board, one shortlist, one pipeline/i)).toBeInTheDocument();
   });
 
   it('renders the boolean-search generator by default', () => {
@@ -195,8 +199,8 @@ describe('JobCommandCenterRoom', () => {
 
   it('keeps the board focused on search first and boolean strings second', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText(/Search public roles, check how old they are/i)).toBeInTheDocument();
-    expect(screen.getByText(/Generate OR-only job-title strings from your master resume/i)).toBeInTheDocument();
+    // The boolean search generator is collapsed by default inside the Job Board tab
+    expect(screen.getByText(/Generate search strings for external job boards/i)).toBeInTheDocument();
   });
 
   it('reveals the full extra-suggestions panel when requested', () => {
@@ -205,15 +209,11 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('More Role Ideas')).toBeInTheDocument();
   });
 
-  it('tracks when the shortlist is opened from the board', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open Shortlist' })[0]);
-
-    expect(trackProductEventMock).toHaveBeenCalledWith('job_shortlist_opened', {
-      entry_point: 'overview_cta',
-      shortlist_count: 0,
-    });
+  it('opens directly into the shortlist view when shortlist focus is provided', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="shortlist" />);
+    // Pipeline tab should be active and Shortlist filter applied
+    expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Shortlist' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('tracks when more role suggestions are requested from the boolean-search panel', () => {
@@ -336,7 +336,8 @@ describe('InterviewLabRoom', () => {
   it('shows the interview workflow sequence on the default landing state', () => {
     render(<InterviewLabRoom />);
     expect(screen.getByText('Interview workflow')).toBeInTheDocument();
-    expect(screen.getByText('Then')).toBeInTheDocument();
+    // The workflow shows 4 steps as clickable cards
+    expect(screen.getByText('Step 1')).toBeInTheDocument();
   });
 
   it('renders interview history section', () => {
@@ -345,10 +346,12 @@ describe('InterviewLabRoom', () => {
     expect(screen.getByText('Interview History')).toBeInTheDocument();
   });
 
-  it('surfaces the 30-60-90 plan as an interview document action', () => {
+  it('surfaces the leave-behinds section with 30-60-90 plan content', () => {
     render(<InterviewLabRoom />);
+    // Click the Leave-behinds workflow card
     fireEvent.click(screen.getByRole('button', { name: /leave-behinds/i }));
-    expect(screen.getByRole('button', { name: /open 30-60-90 day plan/i })).toBeInTheDocument();
+    // The Leave-behinds section description confirms 30-60-90 plan (may appear in multiple elements)
+    expect(screen.getAllByText(/30-60-90 plan/i).length).toBeGreaterThan(0);
   });
 
   it('opens directly into the 30-60-90 plan when plan focus is provided', () => {

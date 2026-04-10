@@ -7,10 +7,73 @@ import type {
   ProofLevel,
   RequirementSource,
   ResumeReviewState,
+  ActiveContextChip,
 } from '@/types/resume-v2';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
+
+// ─── Context Chip Resolution ─────────────────────────────────────────
+
+const CHIP_STYLES: Record<ActiveContextChip['source'], string> = {
+  requirement: 'bg-blue-50 text-blue-600',
+  positioning: 'bg-indigo-50 text-indigo-600',
+  rationale: 'bg-slate-50 text-slate-600',
+  gap_prompt: 'bg-amber-50 text-amber-700',
+};
+
+function resolveContextChip(
+  requirements: string[],
+  sectionType: 'experience' | 'summary' | 'competencies' | 'custom',
+  brandedTitle?: string,
+  sectionRationale?: string,
+): ActiveContextChip | null {
+  // Priority 1: Mapped JD requirement
+  if (requirements.length > 0) {
+    const label = requirements[0];
+    return {
+      label: label.length > 60 ? `${label.slice(0, 57)}…` : label,
+      source: 'requirement',
+      tooltip: label.length > 60 ? label : undefined,
+    };
+  }
+  // Priority 2: Section rationale (custom sections)
+  if (sectionType === 'custom' && sectionRationale) {
+    return {
+      label: sectionRationale.length > 60 ? `${sectionRationale.slice(0, 57)}…` : sectionRationale,
+      source: 'rationale',
+      tooltip: sectionRationale.length > 60 ? sectionRationale : undefined,
+    };
+  }
+  // Priority 3: Positioning angle (executive summary)
+  if (sectionType === 'summary' && brandedTitle) {
+    return {
+      label: brandedTitle.length > 60 ? `${brandedTitle.slice(0, 57)}…` : brandedTitle,
+      source: 'positioning',
+      tooltip: brandedTitle.length > 60 ? brandedTitle : undefined,
+    };
+  }
+  return null;
+}
+
+function ContextChipTag({ chip, isVisible }: { chip: ActiveContextChip | null; isVisible: boolean }) {
+  if (!chip) return null;
+  return (
+    <span
+      aria-hidden="true"
+      title={chip.tooltip}
+      className={`inline-flex items-center mt-1 ml-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium
+        ${CHIP_STYLES[chip.source]}
+        transition-all duration-200
+        ${isVisible
+          ? 'opacity-100 translate-y-0 pointer-events-none'
+          : 'opacity-0 -translate-y-1 pointer-events-none'
+        }`}
+    >
+      {chip.label}
+    </span>
+  );
+}
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -167,6 +230,14 @@ export function ResumeDocumentCard({
           <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
             <Pencil className="h-3.5 w-3.5 text-gray-400" />
           </span>
+          <ContextChipTag
+            chip={resolveContextChip(
+              resume.executive_summary.addresses_requirements ?? [],
+              'summary',
+              resume.header.branded_title,
+            )}
+            isVisible={activeBullet?.section === 'executive_summary' && activeBullet.index === 0}
+          />
         </div>
       ) : (
         <p className="resume-document-copy text-sm leading-relaxed text-gray-800">
@@ -546,6 +617,10 @@ export function ResumeDocumentCard({
               <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
               </span>
+              <ContextChipTag
+                chip={resolveContextChip([], 'custom', undefined, section.rationale)}
+                isVisible={activeBullet?.section === customSectionKey && activeBullet.index === -1}
+              />
             </div>
           ) : (
             <p className="resume-document-copy mb-2 text-sm leading-relaxed text-gray-700">{summaryText}</p>
@@ -784,11 +859,10 @@ function BulletLineContent({
     }
   };
 
-  // The first requirement to surface as the floating context tag
-  const activeRequirementTag = isActive && requirements.length > 0 ? requirements[0] : null;
-  const truncatedTag = activeRequirementTag && activeRequirementTag.length > 50
-    ? `${activeRequirementTag.slice(0, 50)}…`
-    : activeRequirementTag;
+  // Resolve the context chip for this bullet
+  const contextChip = isActive
+    ? resolveContextChip(requirements, section.startsWith('custom_section:') ? 'custom' : 'experience')
+    : null;
 
   return (
     <span className="block">
@@ -817,19 +891,8 @@ function BulletLineContent({
               )}
               {text}
             </span>
-            {/* Floating requirement tag — only visible when this bullet is active */}
-            <span
-              aria-hidden="true"
-              className={`inline-flex items-center mt-1 ml-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium
-                bg-blue-50 text-blue-600
-                transition-all duration-200
-                ${isActive && truncatedTag
-                  ? 'opacity-100 translate-y-0 pointer-events-none'
-                  : 'opacity-0 -translate-y-1 pointer-events-none'
-                }`}
-            >
-              {truncatedTag ?? ''}
-            </span>
+            {/* Floating context chip — source-aware styling */}
+            <ContextChipTag chip={contextChip} isVisible={!!isActive && !!contextChip} />
           </span>
           <span className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
             <Pencil className="h-3.5 w-3.5 text-gray-400" />

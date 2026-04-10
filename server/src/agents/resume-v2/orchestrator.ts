@@ -17,7 +17,7 @@ import { MODEL_LIGHT, MODEL_MID, MODEL_PRIMARY, MODEL_PRICING } from '../../lib/
 import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../../lib/llm-provider.js';
 import { getRequirementCoachingPolicySnapshot } from '../../contracts/requirement-coaching-policy.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { runJobIntelligence } from './job-intelligence/agent.js';
+import { runJobIntelligenceWithConfidence } from './job-intelligence/agent.js';
 import { runCandidateIntelligence } from './candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from './benchmark-candidate/agent.js';
 import { runGapAnalysis } from './gap-analysis/agent.js';
@@ -281,10 +281,31 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       options.interview_evidence_lines,
     );
 
-    const [jobIntel, candidateIntel] = await Promise.all([
-      runJobIntelligence({ job_description: options.job_description }, signal),
+    const [jobIntelResult, candidateIntel] = await Promise.all([
+      runJobIntelligenceWithConfidence({ job_description: options.job_description }, signal),
       runCandidateIntelligence({ resume_text: enrichedResumeText }, signal),
     ]);
+
+    const jobIntel = jobIntelResult.output;
+    const jiConfidence = jobIntelResult.confidence;
+
+    // Log confidence report for observability
+    const lowConfidenceFields = Object.entries(jiConfidence)
+      .filter(([, f]) => f.confidence === 'low')
+      .map(([key]) => key);
+    if (lowConfidenceFields.length > 0) {
+      logger.warn(
+        { lowConfidenceFields, sessionId: options.session_id },
+        'Job Intelligence: low-confidence fields after extraction (may affect downstream quality)',
+      );
+      emit({
+        type: 'transparency',
+        stage: 'analysis',
+        message: `Job description format is unusual — some fields may have reduced accuracy: ${lowConfidenceFields.join(', ')}.`,
+      });
+    } else {
+      logger.info({ sessionId: options.session_id }, 'Job Intelligence: all tracked fields high/medium confidence');
+    }
 
     state.job_intelligence = jobIntel;
     state.candidate_intelligence = candidateIntel;

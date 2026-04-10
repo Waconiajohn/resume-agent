@@ -14,7 +14,7 @@ import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import type { RoleProfile } from '../knowledge/role-archetypes.js';
 import { ARCHETYPE_SEEDS } from '../knowledge/role-archetype-seeds.js';
-import type { JobIntelligenceInput, JobIntelligenceOutput } from '../types.js';
+import type { JobIntelligenceInput, JobIntelligenceOutput, ConfidenceReport, ExtractedField } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a senior executive recruiter who has placed 500+ candidates at the VP/C-suite level. Your job is to deconstruct a job description and extract what the hiring manager ACTUALLY wants — not what HR wrote.
 
@@ -58,6 +58,16 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   }
 }
 
+JOB DESCRIPTIONS COME IN MANY FORMATS. You must handle ALL of these:
+- Full formal JDs with headers (About, Responsibilities, Requirements)
+- Condensed single-paragraph descriptions
+- Bullet-point-only listings
+- Title-line-only format: "Senior Cloud Architect – TechVision Solutions"
+- URL-extracted text with formatting artifacts
+- LinkedIn job posts (may lack structure entirely)
+
+For COMPANY NAME: Check the title/header line FIRST (often "Role – Company" or "Role at Company"). Check for "About [Company]" sections. Check email domains or URLs. NEVER return "Not specified" if ANY company reference exists in the text.
+
 RULES:
 - Extract the company name from the JD. If not present, use "Not specified".
 - Classify competencies by importance: must_have = explicitly required or repeated, important = mentioned with emphasis, nice_to_have = listed but not emphasized.
@@ -76,10 +86,26 @@ If the role does not fit any of these examples, derive a novel profile from the 
 
 ${SOURCE_DISCIPLINE}`;
 
+export interface JobIntelligenceResult {
+  output: JobIntelligenceOutput;
+  confidence: ConfidenceReport;
+}
+
 export async function runJobIntelligence(
   input: JobIntelligenceInput,
   signal?: AbortSignal,
 ): Promise<JobIntelligenceOutput> {
+  const result = await runJobIntelligenceWithConfidence(input, signal);
+  return result.output;
+}
+
+export async function runJobIntelligenceWithConfidence(
+  input: JobIntelligenceInput,
+  signal?: AbortSignal,
+): Promise<JobIntelligenceResult> {
+  let output: JobIntelligenceOutput;
+  let extractionSource: 'llm' | 'deterministic' = 'llm';
+
   try {
     const response = await chatWithTruncationRetry({
       model: MODEL_MID,
@@ -92,21 +118,60 @@ export async function runJobIntelligence(
     });
 
     const parsed = repairJSON<JobIntelligenceOutput>(response.text);
-    if (parsed) return parsed;
-
-    logger.warn(
-      { rawSnippet: response.text.substring(0, 500) },
-      'Job Intelligence: first attempt unparseable, retrying with stricter prompt',
-    );
+    if (parsed) {
+      output = parsed;
+    } else {
+      logger.warn(
+        { rawSnippet: response.text.substring(0, 500) },
+        'Job Intelligence: first attempt unparseable, retrying with stricter prompt',
+      );
+      const retried = await retryOrFallback(input, signal);
+      if (retried) {
+        output = retried;
+      } else {
+        output = buildDeterministicJobIntelligence(input);
+        extractionSource = 'deterministic';
+      }
+    }
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
     logger.warn(
       { error: error instanceof Error ? error.message : String(error) },
       'Job Intelligence: first attempt failed, using deterministic fallback',
     );
-    return buildDeterministicJobIntelligence(input);
+    output = buildDeterministicJobIntelligence(input);
+    extractionSource = 'deterministic';
   }
 
+  // Stage 2: Assign confidence to tracked fields
+  const confidence = assignFieldConfidence(output, input.job_description, extractionSource);
+
+  // Stage 3: Repair low-confidence fields (only for deterministic fallback outputs —
+  // LLM outputs may legitimately have sparse fields that shouldn't be overwritten)
+  const hasLowConfidence = Object.values(confidence).some(f => f.confidence === 'low');
+  if (hasLowConfidence && extractionSource === 'deterministic') {
+    output = repairLowConfidenceFields(output, confidence, input.job_description);
+    // Re-score after repair
+    const repairedConfidence = assignFieldConfidence(output, input.job_description, extractionSource);
+    // Mark repaired fields
+    for (const key of Object.keys(repairedConfidence) as Array<keyof ConfidenceReport>) {
+      if (confidence[key].confidence === 'low' && repairedConfidence[key].confidence !== 'low') {
+        (repairedConfidence[key] as ExtractedField<unknown>).source = 'repaired';
+        (repairedConfidence[key] as ExtractedField<unknown>).repair_attempted = true;
+      } else if (confidence[key].confidence === 'low') {
+        (repairedConfidence[key] as ExtractedField<unknown>).repair_attempted = true;
+      }
+    }
+    return { output, confidence: repairedConfidence };
+  }
+
+  return { output, confidence };
+}
+
+async function retryOrFallback(
+  input: JobIntelligenceInput,
+  signal?: AbortSignal,
+): Promise<JobIntelligenceOutput | null> {
   try {
     const retry = await chatWithTruncationRetry({
       model: MODEL_MID,
@@ -132,8 +197,7 @@ export async function runJobIntelligence(
       'Job Intelligence: retry failed, using deterministic fallback',
     );
   }
-
-  return buildDeterministicJobIntelligence(input);
+  return null;
 }
 
 function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
@@ -356,11 +420,28 @@ function extractRoleTitle(lines: string[]): string {
 }
 
 function extractCompanyName(lines: string[], roleTitle: string): string {
+  // Strategy 1: Explicit "Company: ..." prefix
   const explicitCompany = lines.find((line) => /^company\s*:/i.test(line));
   if (explicitCompany) {
-    return explicitCompany.replace(/^company\s*:/i, '').trim() || 'Not specified';
+    const name = explicitCompany.replace(/^company\s*:/i, '').trim();
+    if (name) return name;
   }
 
+  // Strategy 2: Title line separators — "Role – Company", "Role | Company", "Role - Company"
+  const firstLine = lines[0] || '';
+  const separatorMatch = firstLine.match(/[–—|]\s*(.+)$/);
+  if (separatorMatch?.[1]) {
+    const candidate = separatorMatch[1].trim().replace(/[.;,]+$/, '');
+    if (candidate && candidate.length > 1 && candidate.length < 80) return candidate;
+  }
+  // Also check "Role - Company" (hyphen, but only when it's clearly a separator)
+  const hyphenMatch = firstLine.match(/^[^-]+-\s+(.+)$/);
+  if (hyphenMatch?.[1]) {
+    const candidate = hyphenMatch[1].trim().replace(/[.;,]+$/, '');
+    if (candidate && candidate.length > 1 && candidate.length < 80 && !/\d/.test(candidate)) return candidate;
+  }
+
+  // Strategy 3: "Role at Company" pattern
   const rolePattern = new RegExp(roleTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
   const lineWithAt = lines.find((line) => rolePattern.test(line) && /\bat\b/i.test(line));
   if (lineWithAt) {
@@ -368,13 +449,40 @@ function extractCompanyName(lines: string[], roleTitle: string): string {
     if (match?.[1]) return match[1].trim();
   }
 
+  // Strategy 4: "About [Company]" or "[Company] is" patterns
+  const fullText = lines.join('\n');
+  const aboutMatch = fullText.match(/\babout\s+([A-Z][A-Za-z0-9\s&.,']+?)(?:\n|$)/i);
+  if (aboutMatch?.[1]) {
+    const candidate = aboutMatch[1].trim().replace(/[.;,]+$/, '');
+    if (candidate && candidate.split(/\s+/).length <= 6) return candidate;
+  }
+
+  // Strategy 5: Email domain (@company.com)
+  const emailMatch = fullText.match(/@([A-Za-z0-9-]+)\.\w{2,}/);
+  if (emailMatch?.[1]) {
+    const domain = emailMatch[1];
+    if (!['gmail', 'yahoo', 'outlook', 'hotmail', 'aol', 'icloud', 'proton', 'protonmail'].includes(domain.toLowerCase())) {
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    }
+  }
+
+  // Strategy 6: URL domain (company.com/careers)
+  const urlMatch = fullText.match(/https?:\/\/(?:www\.)?([A-Za-z0-9-]+)\.\w{2,}/);
+  if (urlMatch?.[1]) {
+    const domain = urlMatch[1];
+    if (!['linkedin', 'indeed', 'glassdoor', 'ziprecruiter', 'monster', 'google', 'bit', 'tinyurl'].includes(domain.toLowerCase())) {
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    }
+  }
+
   return 'Not specified';
 }
 
 function inferSeniorityLevel(text: string): JobIntelligenceOutput['seniority_level'] {
   const normalized = text.toLowerCase();
+  // Check VP before president to avoid "Vice President" matching c_suite
+  if (/\b(vp|vice president|svp|evp|v\.p\.)\b/.test(normalized)) return 'vp';
   if (/\b(chief|cfo|cio|coo|ceo|president|c-suite|c suite)\b/.test(normalized)) return 'c_suite';
-  if (/\b(vp|vice president|svp|evp)\b/.test(normalized)) return 'vp';
   if (/\b(director|head of)\b/.test(normalized)) return 'director';
   if (/\b(senior|principal|staff)\b/.test(normalized)) return 'senior';
   if (/\b(manager|lead)\b/.test(normalized)) return 'mid';
@@ -438,4 +546,135 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value.trim());
   }
   return result;
+}
+
+// ─── Confidence Pipeline ─────────────────────────────────────────────
+
+function assignFieldConfidence(
+  output: JobIntelligenceOutput,
+  rawJD: string,
+  source: 'llm' | 'deterministic',
+): ConfidenceReport {
+  const jdLower = rawJD.toLowerCase();
+
+  return {
+    company_name: scoreCompanyName(output.company_name, jdLower, source),
+    role_title: scoreRoleTitle(output.role_title, rawJD, source),
+    seniority_level: scoreSeniority(output.seniority_level, rawJD, source),
+    industry: scoreIndustry(output.industry, source),
+    core_competencies: scoreCompetencies(output.core_competencies, source),
+    language_keywords: scoreKeywords(output.language_keywords, source),
+  };
+}
+
+function scoreCompanyName(value: string, jdLower: string, source: 'llm' | 'deterministic'): ExtractedField<string> {
+  if (value === 'Not specified' || !value) {
+    return { value, source, confidence: 'low', repair_attempted: false };
+  }
+  // Verify the extracted name actually appears in the JD text
+  const found = jdLower.includes(value.toLowerCase());
+  return { value, source, confidence: found ? 'high' : 'medium', repair_attempted: false };
+}
+
+function scoreRoleTitle(value: string, rawJD: string, source: 'llm' | 'deterministic'): ExtractedField<string> {
+  if (!value || value === 'Target role') {
+    return { value, source, confidence: 'low', repair_attempted: false };
+  }
+  const lines = rawJD.split('\n').slice(0, 3);
+  const inFirstLines = lines.some(l => l.toLowerCase().includes(value.toLowerCase()));
+  return { value, source, confidence: inFirstLines ? 'high' : 'medium', repair_attempted: false };
+}
+
+function scoreSeniority(value: string, rawJD: string, source: 'llm' | 'deterministic'): ExtractedField<string> {
+  const titleLower = rawJD.split('\n')[0]?.toLowerCase() ?? '';
+  const explicitLevel = /\b(chief|cfo|cio|coo|ceo|president|vp|vice president|svp|evp|director|head of|senior|principal|staff|manager|lead)\b/.test(titleLower);
+  return { value, source, confidence: explicitLevel ? 'high' : 'medium', repair_attempted: false };
+}
+
+function scoreIndustry(value: string, source: 'llm' | 'deterministic'): ExtractedField<string> {
+  if (value === 'Not specified' || !value) {
+    return { value, source, confidence: 'low', repair_attempted: false };
+  }
+  return { value, source, confidence: 'high', repair_attempted: false };
+}
+
+function scoreCompetencies(
+  value: JobIntelligenceOutput['core_competencies'],
+  source: 'llm' | 'deterministic',
+): ExtractedField<number> {
+  const count = value?.length ?? 0;
+  let confidence: 'high' | 'medium' | 'low' = 'high';
+  if (count < 2) confidence = 'low';
+  else if (count < 5) confidence = 'medium';
+  return { value: count, source, confidence, repair_attempted: false };
+}
+
+function scoreKeywords(
+  value: string[],
+  source: 'llm' | 'deterministic',
+): ExtractedField<number> {
+  const count = value?.length ?? 0;
+  let confidence: 'high' | 'medium' | 'low' = 'high';
+  if (count < 5) confidence = 'low';
+  else if (count < 10) confidence = 'medium';
+  return { value: count, source, confidence, repair_attempted: false };
+}
+
+function repairLowConfidenceFields(
+  output: JobIntelligenceOutput,
+  confidence: ConfidenceReport,
+  rawJD: string,
+): JobIntelligenceOutput {
+  const repaired = { ...output };
+  const normalizedText = rawJD.replace(/\r/g, '');
+  const lines = normalizedText
+    .split('\n')
+    .map((line) => stripBullet(line.trim()))
+    .filter(Boolean);
+  const lowerText = normalizedText.toLowerCase();
+
+  // Repair company_name
+  if (confidence.company_name.confidence === 'low') {
+    const roleTitle = repaired.role_title || '';
+    const repairedName = extractCompanyName(lines, roleTitle);
+    if (repairedName !== 'Not specified') {
+      repaired.company_name = repairedName;
+      logger.info({ repairedName }, 'Job Intelligence: repaired company_name from deterministic extraction');
+    }
+  }
+
+  // Repair core_competencies
+  if (confidence.core_competencies.confidence === 'low') {
+    const repairedCompetencies = buildCoreCompetencies(lines, lowerText);
+    if (repairedCompetencies.length > (repaired.core_competencies?.length ?? 0)) {
+      repaired.core_competencies = repairedCompetencies;
+      logger.info(
+        { count: repairedCompetencies.length },
+        'Job Intelligence: repaired core_competencies from deterministic extraction',
+      );
+    }
+  }
+
+  // Repair language_keywords
+  if (confidence.language_keywords.confidence === 'low') {
+    const repairedKeywords = buildLanguageKeywords(repaired.core_competencies, normalizedText);
+    if (repairedKeywords.length > (repaired.language_keywords?.length ?? 0)) {
+      repaired.language_keywords = repairedKeywords;
+      logger.info(
+        { count: repairedKeywords.length },
+        'Job Intelligence: repaired language_keywords from deterministic extraction',
+      );
+    }
+  }
+
+  // Repair industry
+  if (confidence.industry.confidence === 'low') {
+    const repairedIndustry = inferIndustry(lowerText);
+    if (repairedIndustry !== 'Not specified') {
+      repaired.industry = repairedIndustry;
+      logger.info({ repairedIndustry }, 'Job Intelligence: repaired industry from deterministic extraction');
+    }
+  }
+
+  return repaired;
 }
