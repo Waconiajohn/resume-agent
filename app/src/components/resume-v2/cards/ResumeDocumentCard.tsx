@@ -172,7 +172,7 @@ export function ResumeDocumentCard({
         <div
           data-resume-line={getResumeLineToken('executive_summary', 0)}
           data-active-line={activeBullet?.section === 'executive_summary' && activeBullet.index === 0 ? 'true' : undefined}
-          className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
+          className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
             activeBullet?.section === 'executive_summary' && activeBullet.index === 0
               ? 'resume-line-active'
               : resume.executive_summary.is_new
@@ -227,8 +227,8 @@ export function ResumeDocumentCard({
           >
             {resume.executive_summary.content}
           </p>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Pencil className="h-3.5 w-3.5 text-gray-400" />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <Pencil className="h-4 w-4 text-gray-400" />
           </span>
           <ContextChipTag
             chip={resolveContextChip(
@@ -291,8 +291,8 @@ export function ResumeDocumentCard({
                   );
                 }
               } : undefined}
-              className={`resume-competency-chip rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
-                onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
+              className={`resume-competency-chip rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 min-h-[44px] flex items-center text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
+                onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 active:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
               }${
                 activeBullet?.section === 'core_competencies' && activeBullet.index === i
                   ? ' resume-line-active border-[var(--link)] bg-[var(--link)]/6 text-[var(--link)]'
@@ -390,7 +390,7 @@ export function ResumeDocumentCard({
                     data-scope-id={`professional_experience-${i}-scope`}
                     data-resume-line={getResumeLineToken('professional_experience', i * 100 - 1)}
                     data-active-line={activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1 ? 'true' : undefined}
-                    className={`resume-line-card group relative mt-1.5 rounded-xl px-2.5 py-1.5 -mx-2.5 transition-all hover:bg-white/70${
+                    className={`resume-line-card group relative mt-1.5 rounded-xl px-2.5 py-1.5 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50${
                       activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1
                         ? ' resume-line-active'
                         : ''
@@ -569,7 +569,7 @@ export function ResumeDocumentCard({
             <div
               data-resume-line={getResumeLineToken(customSectionKey, -1)}
               data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === -1 ? 'true' : undefined}
-              className={`resume-line-card group relative mb-2 rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
+              className={`resume-line-card group relative mb-2 rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
                 activeBullet?.section === customSectionKey && activeBullet.index === -1
                   ? 'resume-line-active'
                   : ''
@@ -634,7 +634,7 @@ export function ResumeDocumentCard({
                   key={index}
                   data-resume-line={getResumeLineToken(customSectionKey, index)}
                   data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
-                  className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
+                  className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
                     activeBullet?.section === customSectionKey && activeBullet.index === index
                       ? 'resume-line-active'
                       : ''
@@ -695,7 +695,7 @@ export function ResumeDocumentCard({
                       <div
                         data-resume-line={getResumeLineToken(customSectionKey, index)}
                         data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
-                        className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
+                        className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
                         activeBullet?.section === customSectionKey && activeBullet.index === index
                           ? 'resume-line-active'
                           : ''
@@ -884,7 +884,7 @@ function BulletLineContent({
                   handleActivate();
                 }
               }}
-              className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 font-normal text-gray-900 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+              className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 min-h-[44px] flex items-center cursor-pointer font-normal text-gray-900 active:bg-blue-50/50 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
             >
               {globalNumber !== undefined && (
                 <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
@@ -894,8 +894,8 @@ function BulletLineContent({
             {/* Floating context chip — source-aware styling */}
             <ContextChipTag chip={contextChip} isVisible={!!isActive && !!contextChip} />
           </span>
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
-            <Pencil className="h-3.5 w-3.5 text-gray-400" />
+          <span className="opacity-30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
+            <Pencil className="h-4 w-4 text-gray-400" />
           </span>
         </span>
       ) : (

@@ -1,4 +1,5 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, FailoverProvider } from './llm-provider.js';
+import logger from './logger.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
 import {
   ACTIVE_PROVIDER,
@@ -91,10 +92,9 @@ export function getModelForTool(toolName: string): string {
 
 // ─── Provider factory ────────────────────────────────────────────────
 
-function createProvider(): LLMProvider {
-  const providerName = ACTIVE_PROVIDER;
-
-  if (providerName === 'groq') {
+/** Build a single named provider. Throws if the required API key is missing. */
+function buildProvider(name: string): LLMProvider {
+  if (name === 'groq') {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       throw new Error('GROQ_API_KEY environment variable is required when LLM_PROVIDER=groq');
@@ -103,7 +103,7 @@ function createProvider(): LLMProvider {
     return new GroqProvider({ apiKey, ...(baseUrl && { baseUrl }) });
   }
 
-  if (providerName === 'deepseek') {
+  if (name === 'deepseek') {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       throw new Error('DEEPSEEK_API_KEY environment variable is required when LLM_PROVIDER=deepseek');
@@ -112,7 +112,7 @@ function createProvider(): LLMProvider {
     return new DeepSeekProvider({ apiKey, ...(baseUrl && { baseUrl }) });
   }
 
-  if (providerName === 'zai') {
+  if (name === 'zai') {
     const apiKey = process.env.ZAI_API_KEY;
     if (!apiKey) {
       throw new Error('ZAI_API_KEY environment variable is required when LLM_PROVIDER=zai');
@@ -121,29 +121,82 @@ function createProvider(): LLMProvider {
     return new ZAIProvider({ apiKey, baseUrl });
   }
 
-  // Optional fallback: Anthropic (lazy-initializes client on first use).
+  // Anthropic is the ultimate fallback — lazy-initializes its client on first use.
   return new AnthropicProvider();
 }
 
-/** Active LLM provider instance based on LLM_PROVIDER env var */
+/**
+ * Choose the best available fallback provider for `primaryName`.
+ * Priority order: groq → zai → deepseek → anthropic (skip the primary).
+ * Returns null if no fallback API key is configured.
+ */
+function chooseFallbackProvider(primaryName: string): LLMProvider | null {
+  const candidates: Array<{ name: string; key: string | undefined }> = [
+    { name: 'groq',     key: process.env.GROQ_API_KEY },
+    { name: 'zai',      key: process.env.ZAI_API_KEY },
+    { name: 'deepseek', key: process.env.DEEPSEEK_API_KEY },
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate.name === primaryName) continue;
+    if (!candidate.key) continue;
+    try {
+      return buildProvider(candidate.name);
+    } catch {
+      // Should not happen since we checked the key, but guard just in case.
+    }
+  }
+
+  // Anthropic doesn't require an env key check here (SDK handles it lazily),
+  // but only use it as fallback if ANTHROPIC_API_KEY is set.
+  if (primaryName !== 'anthropic' && process.env.ANTHROPIC_API_KEY) {
+    return new AnthropicProvider();
+  }
+
+  return null;
+}
+
+function createProvider(): LLMProvider {
+  const providerName = ACTIVE_PROVIDER;
+  const primary = buildProvider(providerName);
+  const fallback = chooseFallbackProvider(providerName);
+
+  if (fallback) {
+    logger.info(
+      { primary: primary.name, fallback: fallback.name },
+      'LLM failover: configured with primary and fallback provider',
+    );
+  } else {
+    logger.info(
+      { primary: primary.name },
+      'LLM failover: no fallback provider configured — failover disabled',
+    );
+  }
+
+  return new FailoverProvider(primary, fallback);
+}
+
+/** Active LLM provider — wraps a FailoverProvider that auto-switches on repeated failures */
 export const llm: LLMProvider = createProvider();
 
 /**
- * Get the default model for the active provider.
+ * Get the default model for the configured primary provider.
  * For ZAI/Groq this is MODEL_ORCHESTRATOR; for Anthropic it's the existing MODEL.
+ * Keyed off ACTIVE_PROVIDER (startup config) rather than llm.name (which is
+ * dynamic when failover is active) so model IDs always match the primary config.
  */
 export function getDefaultModel(): string {
-  if (llm.name === 'zai' || llm.name === 'groq') {
+  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek') {
     return MODEL_ORCHESTRATOR;
   }
   return ANTHROPIC_MODEL;
 }
 
 /**
- * Get MAX_TOKENS for the active provider.
+ * Get MAX_TOKENS for the configured primary provider.
  */
 export function getMaxTokens(): number {
-  if (llm.name === 'zai' || llm.name === 'groq') {
+  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek') {
     return MAX_TOKENS;
   }
   return ANTHROPIC_MAX_TOKENS;

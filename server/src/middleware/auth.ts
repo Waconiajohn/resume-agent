@@ -12,6 +12,16 @@ const E2E_MOCK_AUTH_TOKEN = process.env.E2E_MOCK_AUTH_TOKEN ?? 'mock-e2e-access-
 const E2E_MOCK_AUTH_USER_ID = process.env.E2E_MOCK_AUTH_USER_ID ?? '5b756a7a-3e35-4465-bcf4-69d92f160f21';
 const E2E_MOCK_AUTH_EMAIL = process.env.E2E_MOCK_AUTH_EMAIL ?? 'e2e@example.com';
 
+// Block production startup with mock auth enabled — this would bypass all authentication
+if (E2E_MOCK_AUTH_ENABLED && process.env.NODE_ENV === 'production') {
+  console.error(
+    '\n\n*** FATAL: E2E_MOCK_AUTH=true is set in a production environment. ***\n' +
+    '*** This bypasses ALL authentication with a hardcoded token.     ***\n' +
+    '*** Remove E2E_MOCK_AUTH from production environment variables.  ***\n\n',
+  );
+  process.exit(1);
+}
+
 declare module 'hono' {
   interface ContextVariableMap {
     user: AuthUser;

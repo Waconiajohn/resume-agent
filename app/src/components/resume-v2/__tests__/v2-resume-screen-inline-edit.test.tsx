@@ -240,6 +240,7 @@ function latestStreamingProps(): Record<string, unknown> {
 describe('V2ResumeScreen inline editing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mockPipelineState.data = makePipelineData();
     mockGapChatSnapshot.items = {};
     mockFinalReviewChatSnapshot.items = {};

@@ -891,7 +891,7 @@ export class GroqProvider extends ZAIProvider {
       apiKey: config.apiKey,
       baseUrl: config.baseUrl ?? 'https://api.groq.com/openai/v1',
       providerName: 'groq',
-      chatTimeoutMs: 45_000,  // 70B may take slightly longer than Scout per request
+      chatTimeoutMs: 75_000,  // 70B needs headroom for 16K-token experience sections + truncation retry
       streamTimeoutMs: 60_000,
       disableParallelToolCalls: true,
     });
@@ -915,6 +915,162 @@ export class DeepSeekProvider extends ZAIProvider {
       streamTimeoutMs: 180_000,
       disableParallelToolCalls: false,
     });
+  }
+}
+
+// ─── Failover provider ───────────────────────────────────────────────
+
+const FAILOVER_THRESHOLD = 3;
+const RECOVERY_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Classify an error thrown by a provider's chat() or stream() method to
+ * determine whether it warrants a failover attempt.
+ *
+ * Failover-worthy: 5xx HTTP errors, connection errors, timeouts.
+ * NOT failover-worthy: 4xx errors (bad request, rate limit, auth), abort signals.
+ */
+function isFailoverWorthy(err: unknown): boolean {
+  // Explicit abort — user cancelled the request, not a provider failure.
+  if (err instanceof Error && err.name === 'AbortError') return false;
+
+  if (err instanceof Error) {
+    const msg = err.message;
+
+    // HTTP 5xx — provider-side failure.
+    if (/API error [5]\d{2}/.test(msg)) return true;
+
+    // HTTP 4xx — client-side error (bad request, rate limit, auth).
+    // These won't be fixed by switching providers, so don't failover.
+    if (/API error [4]\d{2}/.test(msg)) return false;
+
+    // Connection/network failures.
+    if (
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('fetch failed') ||
+      msg.includes('network error') ||
+      msg.includes('Failed to fetch')
+    ) {
+      return true;
+    }
+
+    // Timeouts from createCombinedAbortSignal (message set in that function).
+    if (/Timed out after \d+ms/.test(msg)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * FailoverProvider wraps a primary LLMProvider and an optional fallback.
+ * After FAILOVER_THRESHOLD consecutive failover-worthy errors on the primary,
+ * it switches all subsequent calls to the fallback. After
+ * RECOVERY_CHECK_INTERVAL_MS the primary is tried again.
+ *
+ * If no fallback is configured, errors pass through unchanged.
+ */
+export class FailoverProvider implements LLMProvider {
+  private consecutiveFailures = 0;
+  private failoverActive = false;
+  private failoverActivatedAt = 0;
+
+  constructor(
+    private readonly primary: LLMProvider,
+    private readonly fallback: LLMProvider | null,
+  ) {}
+
+  get name(): string {
+    return this.activeProvider.name;
+  }
+
+  private get activeProvider(): LLMProvider {
+    if (!this.failoverActive || !this.fallback) {
+      return this.primary;
+    }
+
+    // Recovery check: after the window elapses, try the primary again.
+    if (Date.now() - this.failoverActivatedAt > RECOVERY_CHECK_INTERVAL_MS) {
+      this.consecutiveFailures = 0;
+      this.failoverActive = false;
+      logger.info(
+        { primary: this.primary.name, fallback: this.fallback.name },
+        'LLM failover: recovery window elapsed — switching back to primary provider',
+      );
+      return this.primary;
+    }
+
+    return this.fallback;
+  }
+
+  async chat(params: ChatParams): Promise<ChatResponse> {
+    const provider = this.activeProvider;
+    try {
+      const result = await provider.chat(params);
+      // Successful call — reset failure counter if we were on primary.
+      if (provider === this.primary) {
+        this.consecutiveFailures = 0;
+      }
+      return result;
+    } catch (err) {
+      this.handleProviderError(err, provider);
+      throw err;
+    }
+  }
+
+  async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
+    const provider = this.activeProvider;
+    try {
+      yield* provider.stream(params);
+      // Successful stream — reset failure counter if we were on primary.
+      if (provider === this.primary) {
+        this.consecutiveFailures = 0;
+      }
+    } catch (err) {
+      this.handleProviderError(err, provider);
+      throw err;
+    }
+  }
+
+  private handleProviderError(err: unknown, provider: LLMProvider): void {
+    if (provider !== this.primary) {
+      // Errors on the fallback are logged but don't affect failover state.
+      logger.warn(
+        { fallback: provider.name, error: err instanceof Error ? err.message : String(err) },
+        'LLM failover: error on fallback provider',
+      );
+      return;
+    }
+
+    if (!isFailoverWorthy(err)) return;
+    if (!this.fallback) {
+      logger.warn(
+        { primary: provider.name, error: err instanceof Error ? err.message : String(err) },
+        'LLM failover: primary provider error — no fallback configured, continuing without failover',
+      );
+      return;
+    }
+
+    this.consecutiveFailures++;
+    logger.warn(
+      {
+        primary: provider.name,
+        consecutiveFailures: this.consecutiveFailures,
+        threshold: FAILOVER_THRESHOLD,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      'LLM failover: failover-worthy error on primary provider',
+    );
+
+    if (this.consecutiveFailures >= FAILOVER_THRESHOLD && !this.failoverActive) {
+      this.failoverActive = true;
+      this.failoverActivatedAt = Date.now();
+      logger.warn(
+        { primary: this.primary.name, fallback: this.fallback.name, threshold: FAILOVER_THRESHOLD },
+        'LLM failover: threshold reached — switching to fallback provider',
+      );
+    }
   }
 }
 

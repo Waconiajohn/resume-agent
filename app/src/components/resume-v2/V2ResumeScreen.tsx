@@ -9,6 +9,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, FileDown, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
+import { useResumeAutoSave, loadAutoSavedDraft, clearAutoSavedDraft } from '@/hooks/useResumeAutoSave';
 import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
 import { useLiveScoring } from '@/hooks/useLiveScoring';
 import { useGapChat } from '@/hooks/useGapChat';
@@ -412,6 +413,50 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   useEffect(() => {
     resetSectionDrafts();
   }, [data.sessionId, resetSectionDrafts]);
+
+  // Auto-save the editable resume to localStorage every 30 seconds.
+  // Safety net for mid-session edits before the server-side persist fires.
+  useResumeAutoSave(data.sessionId || null, editableResume);
+
+  // Warn the user before leaving when there is an active session with a resume draft.
+  useEffect(() => {
+    const hasActiveSession = data.sessionId !== '' && Boolean(currentResume);
+    if (!hasActiveSession) return;
+
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'You have unsaved resume changes.';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [data.sessionId, currentResume]);
+
+  // On the first render for a given session with no editable resume, check whether
+  // localStorage has a more-recent auto-saved draft and restore it.
+  const autoSaveRecoveryAttemptedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sessionId = data.sessionId;
+    if (!sessionId || editableResume !== null) return;
+    if (autoSaveRecoveryAttemptedRef.current === sessionId) return;
+
+    autoSaveRecoveryAttemptedRef.current = sessionId;
+
+    const saved = loadAutoSavedDraft(sessionId);
+    if (!saved) return;
+
+    const restored = normalizeResumeDraft(saved as Parameters<typeof normalizeResumeDraft>[0]);
+    if (!restored) {
+      clearAutoSavedDraft(sessionId);
+      return;
+    }
+
+    setEditableResume(restored);
+    clearAutoSavedDraft(sessionId);
+    addToast({ type: 'info', message: 'We recovered your unsaved edits.' });
+  // addToast is stable (from context). Intentionally omitting it to prevent
+  // spurious re-runs; the effect key is data.sessionId + editableResume.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.sessionId, editableResume]);
 
   const handleBulletEnhance = useCallback(async (
     action: string,
@@ -1689,6 +1734,21 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     void start(rt, jd);
   }, [start, resetHistory, resetGapChat, resetFinalReviewChat, resetHiringManagerReview, resetPostReviewPolish]);
 
+  // Retry the pipeline with the same inputs after an error
+  const handleRetryPipeline = useCallback(() => {
+    resetHistory();
+    resetGapChat();
+    resetFinalReviewChat();
+    resetHiringManagerReview();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
+    void start(resumeText, jobDescription);
+  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, resetFinalReviewChat, resetHiringManagerReview, resetPostReviewPolish]);
+
   // Gap coaching: user reviewed strategies → re-run pipeline with their decisions
   const handleGapCoachingRespond = useCallback((responses: GapCoachingResponse[]) => {
     // Build user_context from responses: approved strategies stay, skipped get excluded,
@@ -2041,6 +2101,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         isComplete={isComplete}
         isConnected={isConnected}
         error={error}
+        onRetryPipeline={handleRetryPipeline}
         editableResume={editableResume}
         pendingEdit={pendingEdit}
         isEditing={isEditing}

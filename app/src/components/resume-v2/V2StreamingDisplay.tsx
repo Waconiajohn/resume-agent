@@ -49,6 +49,8 @@ interface V2StreamingDisplayProps {
   isComplete: boolean;
   isConnected: boolean;
   error: string | null;
+  /** Called when the user clicks "Retry Pipeline" in the error banner */
+  onRetryPipeline?: () => void;
   /** The editable resume (may differ from pipeline data after user edits) */
   editableResume: ResumeDraft | null;
   /** Inline editing state */
@@ -963,6 +965,7 @@ export function V2StreamingDisplay({
   onGenerateSectionDraft,
   onRefineSectionDraft,
   onApplySectionDraft,
+  onRetryPipeline,
 }: V2StreamingDisplayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coachingPanelRef = useRef<HTMLDivElement | null>(null);
@@ -1723,8 +1726,19 @@ export function V2StreamingDisplay({
             )}
             <div className="mx-auto max-w-[900px] px-4 py-5 space-y-4 sm:px-6 sm:py-8 sm:space-y-6">
               {error && (
-                <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
-                  <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                <div className="rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90" role="alert">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                  </div>
+                  {onRetryPipeline && (
+                    <button
+                      type="button"
+                      onClick={onRetryPipeline}
+                      className="mt-3 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white transition-colors"
+                    >
+                      Retry Pipeline
+                    </button>
+                  )}
                 </div>
               )}
               {editError && (
@@ -1777,7 +1791,18 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {activeBullet && gapChat && buildChatContext && (
-                <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                <>
+                  {/* Backdrop */}
+                  <div
+                    className="mobile-coaching-overlay"
+                    onClick={() => setActiveBullet(null)}
+                    aria-hidden="true"
+                  />
+                  {/* Bottom sheet */}
+                  <div className="mobile-coaching-sheet" role="dialog" aria-modal="true" aria-label="Bullet coaching">
+                    <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                  </div>
+                </>
               )}
               {pendingEdit && !activeBullet && (
                 <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
@@ -1848,8 +1873,19 @@ export function V2StreamingDisplay({
 
                     <div className="flex-1 overflow-y-auto px-3 py-3">
                       {(error || editError) && (
-                        <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-3" role="alert">
-                          <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
+                        <div className="rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-3" role="alert">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
+                          </div>
+                          {error && onRetryPipeline && (
+                            <button
+                              type="button"
+                              onClick={onRetryPipeline}
+                              className="mt-3 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white transition-colors"
+                            >
+                              Retry Pipeline
+                            </button>
+                          )}
                         </div>
                       )}
                       {showDesktopFinalReview ? (
@@ -2147,9 +2183,20 @@ export function V2StreamingDisplay({
           )}
 
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-4" role="alert">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
+            <div className="rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-4" role="alert">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+              {onRetryPipeline && (
+                <button
+                  type="button"
+                  onClick={onRetryPipeline}
+                  className="mt-3 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white transition-colors"
+                >
+                  Retry Pipeline
+                </button>
+              )}
             </div>
           )}
 
