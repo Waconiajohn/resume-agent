@@ -104,7 +104,7 @@ watchlistRoutes.patch(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = c.req.param('id') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = updateSchema.safeParse(body);
@@ -136,7 +136,7 @@ watchlistRoutes.delete(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = c.req.param('id') ?? '';
 
     const { error } = await supabaseAdmin
       .from('watchlist_companies')

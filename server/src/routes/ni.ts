@@ -183,7 +183,7 @@ ni.post('/target-titles', rateLimitMiddleware(30, 60_000), async (c) => {
 
 ni.delete('/target-titles/:id', rateLimitMiddleware(30, 60_000), async (c) => {
   const userId = c.get('user').id;
-  const titleId = c.req.param('id');
+  const titleId = c.req.param('id') ?? '';
 
   const deleted = await deleteTargetTitle(userId, titleId);
   if (!deleted) {
@@ -240,7 +240,7 @@ ni.patch('/matches/:id/status', rateLimitMiddleware(30, 60_000), async (c) => {
   }
 
   const userId = c.get('user').id;
-  const matchId = c.req.param('id');
+  const matchId = c.req.param('id') ?? '';
 
   const updated = await updateJobMatchStatus(userId, matchId, parsed.data.status);
   if (!updated) {
@@ -278,7 +278,7 @@ ni.post('/boolean-search/generate', rateLimitMiddleware(10, 60_000), async (c) =
 });
 
 ni.get('/boolean-search/:id', rateLimitMiddleware(60, 60_000), async (c) => {
-  const id = c.req.param('id');
+  const id = c.req.param('id') ?? '';
   const result = getBooleanSearch(id);
 
   if (!result) {
@@ -356,7 +356,7 @@ ni.get('/bonus-companies', rateLimitMiddleware(30, 60_000), async (c) => {
 
 ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
   const userId = c.get('user').id;
-  const logId = c.req.param('id');
+  const logId = c.req.param('id') ?? '';
 
   const { data, error } = await supabaseAdmin
     .from('scrape_log')

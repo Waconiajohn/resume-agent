@@ -95,7 +95,7 @@ contentPostsRoutes.patch(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const postId = c.req.param('id');
+    const postId = c.req.param('id') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = updatePostStatusSchema.safeParse(body);
@@ -145,7 +145,7 @@ contentPostsRoutes.delete(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const postId = c.req.param('id');
+    const postId = c.req.param('id') ?? '';
 
     try {
       const { data: existing, error: findError } = await supabaseAdmin

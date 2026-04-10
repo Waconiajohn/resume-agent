@@ -224,7 +224,7 @@ jobSearchRoutes.get(
   rateLimitMiddleware(20, 60_000),
   async (c) => {
     const user = c.get('user');
-    const scanId = c.req.param('scanId');
+    const scanId = c.req.param('scanId') ?? '';
 
     // Verify the scan belongs to this user
     const { data: scanCheck, error: scanCheckError } = await supabaseAdmin

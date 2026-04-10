@@ -279,7 +279,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
 resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -319,7 +319,7 @@ resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddl
 resumeV2Pipeline.put('/:sessionId/draft-state', authMiddleware, rateLimitMiddleware(60, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -372,7 +372,7 @@ resumeV2Pipeline.put('/:sessionId/draft-state', authMiddleware, rateLimitMiddlew
 resumeV2Pipeline.get('/:sessionId/stream', authMiddleware, async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   // Verify session belongs to user
   const { data: session } = await supabaseAdmin
@@ -420,7 +420,7 @@ resumeV2Pipeline.get('/:sessionId/stream', authMiddleware, async (c) => {
 resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -466,7 +466,7 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
 resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   // Verify session belongs to user
   const { data: session } = await supabaseAdmin
@@ -585,7 +585,7 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
 resumeV2Pipeline.post('/:sessionId/rescore', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -657,7 +657,7 @@ RULES:
 resumeV2Pipeline.post('/:sessionId/polish', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -742,7 +742,7 @@ RULES:
 resumeV2Pipeline.post('/:sessionId/integrate-keyword', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -1167,7 +1167,7 @@ async function runLineCoachTurn(
 resumeV2Pipeline.post('/:sessionId/line-coach', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -1202,7 +1202,7 @@ resumeV2Pipeline.post('/:sessionId/line-coach', authMiddleware, rateLimitMiddlew
 resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -1851,7 +1851,7 @@ function buildEnhanceLineTypeInstructions(lineKind: z.infer<typeof bulletEnhance
 resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: sessionData } = await supabaseAdmin
     .from('coach_sessions')
@@ -2136,7 +2136,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
 resumeV2Pipeline.post('/:sessionId/section-draft', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: sessionData } = await supabaseAdmin
     .from('coach_sessions')
@@ -2358,7 +2358,7 @@ resumeV2Pipeline.post('/:sessionId/section-draft', authMiddleware, rateLimitMidd
 resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')
@@ -2422,7 +2422,7 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
 
   const { data: session } = await supabaseAdmin
     .from('coach_sessions')

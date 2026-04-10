@@ -115,7 +115,7 @@ async function getLatestPipelineStartRequestArtifact(sessionId: string) {
 
 workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -398,7 +398,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
 
 workflow.get('/:sessionId/restart-inputs', rateLimitMiddleware(60, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
 
   const session = await requireOwnedSession(sessionId, user.id);
@@ -446,7 +446,7 @@ workflow.get('/:sessionId/restart-inputs', rateLimitMiddleware(60, 60_000), asyn
 
 workflow.post('/:sessionId/restart', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
 
   const session = await requireOwnedSession(sessionId, user.id);
@@ -531,8 +531,8 @@ workflow.post('/:sessionId/restart', rateLimitMiddleware(20, 60_000), async (c) 
 
 workflow.get('/:sessionId/node/:nodeKey', rateLimitMiddleware(240, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
-  const nodeKey = c.req.param('nodeKey');
+  const sessionId = c.req.param('sessionId') ?? '';
+  const nodeKey = c.req.param('nodeKey') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   if (!isWorkflowNodeKey(nodeKey)) return c.json({ error: 'Invalid workflow node' }, 400);
 
@@ -557,8 +557,8 @@ workflow.get('/:sessionId/node/:nodeKey', rateLimitMiddleware(240, 60_000), asyn
 
 workflow.get('/:sessionId/node/:nodeKey/history', rateLimitMiddleware(240, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
-  const nodeKey = c.req.param('nodeKey');
+  const sessionId = c.req.param('sessionId') ?? '';
+  const nodeKey = c.req.param('nodeKey') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   if (!isWorkflowNodeKey(nodeKey)) return c.json({ error: 'Invalid workflow node' }, 400);
 
@@ -589,7 +589,7 @@ const deferQuestionSchema = z.object({
 
 workflow.post('/:sessionId/questions/defer', rateLimitMiddleware(60, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -638,7 +638,7 @@ const workflowPreferencesSchema = z.object({
 
 workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -669,7 +669,7 @@ workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_0
 
 workflow.post('/:sessionId/preferences', rateLimitMiddleware(40, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -762,7 +762,7 @@ const BENCHMARK_REBUILD_CONFIRMATION_STAGES = new Set([
 
 workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
@@ -887,7 +887,7 @@ workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_00
 
 workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);

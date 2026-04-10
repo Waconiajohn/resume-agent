@@ -178,7 +178,7 @@ app.get('/story-bank', async (c) => {
 
 app.delete('/story-bank/:id', async (c) => {
   const user = c.get('user') as { id: string };
-  const storyId = c.req.param('id');
+  const storyId = c.req.param('id') ?? '';
 
   if (!storyId) {
     return c.json({ error: 'Missing story id' }, 400);
@@ -209,7 +209,7 @@ app.delete('/story-bank/:id', async (c) => {
 
 app.put('/story-bank/:id', async (c) => {
   const user = c.get('user') as { id: string };
-  const storyId = c.req.param('id');
+  const storyId = c.req.param('id') ?? '';
 
   if (!storyId) {
     return c.json({ error: 'Missing story id' }, 400);

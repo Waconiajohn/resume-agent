@@ -699,7 +699,7 @@ export function createProductRoutes<
       return c.json({ error: 'feature_not_enabled', message: 'This feature is not currently enabled' }, 403);
     }
 
-    const sessionId = c.req.param('sessionId');
+    const sessionId = c.req.param('sessionId') ?? '';
     const user = c.get('user');
 
     // Verify session belongs to user

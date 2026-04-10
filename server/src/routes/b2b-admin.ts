@@ -219,7 +219,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     try {
       const authResult = await requireOrgAdmin(c, orgId);
@@ -241,7 +241,7 @@ b2bAdminRoutes.get(
   '/orgs/slug/:slug',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
-    const slug = c.req.param('slug');
+    const slug = c.req.param('slug') ?? '';
 
     try {
       const org = await getOrganizationBySlug(slug);
@@ -264,7 +264,7 @@ b2bAdminRoutes.patch(
   '/orgs/:orgId',
   rateLimitMiddleware(20, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = updateOrgSchema.safeParse(body);
@@ -302,7 +302,7 @@ b2bAdminRoutes.post(
   '/orgs/:orgId/contracts',
   rateLimitMiddleware(10, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = createContractSchema.safeParse(body);
@@ -344,7 +344,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId/contracts/active',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     try {
       const authResult = await requireOrgAdmin(c, orgId);
@@ -372,7 +372,7 @@ b2bAdminRoutes.post(
   '/orgs/:orgId/seats',
   rateLimitMiddleware(10, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = provisionSeatsSchema.safeParse(body);
@@ -405,7 +405,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId/seats',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     const queryParsed = seatStatusQuerySchema.safeParse({
       status: c.req.query('status'),
@@ -438,7 +438,7 @@ b2bAdminRoutes.post(
   '/seats/:seatId/activate',
   rateLimitMiddleware(30, 60_000),
   async (c) => {
-    const seatId = c.req.param('seatId');
+    const seatId = c.req.param('seatId') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = activateSeatBodySchema.safeParse(body);
@@ -486,7 +486,7 @@ b2bAdminRoutes.post(
   '/orgs/:orgId/cohorts',
   rateLimitMiddleware(20, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = createCohortSchema.safeParse(body);
@@ -523,7 +523,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId/cohorts',
   rateLimitMiddleware(60, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     try {
       const authResult = await requireOrgAdmin(c, orgId);
@@ -548,7 +548,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId/metrics',
   rateLimitMiddleware(30, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     try {
       const authResult = await requireOrgAdmin(c, orgId);
@@ -571,7 +571,7 @@ b2bAdminRoutes.get(
   '/orgs/:orgId/report',
   rateLimitMiddleware(20, 60_000),
   async (c) => {
-    const orgId = c.req.param('orgId');
+    const orgId = c.req.param('orgId') ?? '';
 
     try {
       const authResult = await requireOrgAdmin(c, orgId);

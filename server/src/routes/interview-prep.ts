@@ -138,7 +138,7 @@ interviewPrepRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 6
   }
 
   const user = c.get('user');
-  const sessionId = c.req.param('sessionId');
+  const sessionId = c.req.param('sessionId') ?? '';
   const parsed = z.string().uuid().safeParse(sessionId);
   if (!parsed.success) {
     return c.json({ error: 'Invalid session id' }, 400);

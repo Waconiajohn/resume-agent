@@ -713,7 +713,7 @@ extensionRoutes.get(
   async (c) => {
     const user = c.get('user');
 
-    const parsed = resumePdfParamsSchema.safeParse({ sessionId: c.req.param('sessionId') });
+    const parsed = resumePdfParamsSchema.safeParse({ sessionId: c.req.param('sessionId') ?? '' });
     if (!parsed.success) {
       return c.json({ error: 'Invalid session ID' }, 400);
     }

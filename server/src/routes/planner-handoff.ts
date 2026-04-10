@@ -208,7 +208,7 @@ plannerHandoffRoutes.patch(
   '/:id/status',
   rateLimitMiddleware(30, 60_000),
   async (c) => {
-    const referralId = c.req.param('id');
+    const referralId = c.req.param('id') ?? '';
     const body = await c.req.json().catch(() => null);
     const parsed = updateStatusSchema.safeParse(body);
     if (!parsed.success) {

@@ -219,7 +219,7 @@ sseRateCleanupTimer.unref();
 
 // SSE endpoint — requires Authorization header with Bearer token
 sessions.get('/:id/sse', async (c) => {
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }
@@ -484,7 +484,7 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
 // GET /sessions/:id/resume — Get the final resume from a completed session
 sessions.get('/:id/resume', async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }
@@ -512,7 +512,7 @@ sessions.get('/:id/resume', async (c) => {
 // GET /sessions/:id/cover-letter — Get the final cover letter from a completed session
 sessions.get('/:id/cover-letter', async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }
@@ -541,7 +541,7 @@ sessions.get('/:id/cover-letter', async (c) => {
 // GET /sessions/:id — Get session state
 sessions.get('/:id', async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }
@@ -583,7 +583,7 @@ sessions.get('/:id', async (c) => {
 // DELETE /sessions/:id — Delete a session
 sessions.delete('/:id', async (c) => {
   const user = c.get('user');
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }
@@ -695,7 +695,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
   if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
-  const sessionId = c.req.param('id');
+  const sessionId = c.req.param('id') ?? '';
   if (!isValidUuid(sessionId)) {
     return c.json({ error: 'Invalid session id' }, 400);
   }

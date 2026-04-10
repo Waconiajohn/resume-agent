@@ -328,7 +328,7 @@ momentumRoutes.patch(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const nudgeId = c.req.param('id');
+    const nudgeId = c.req.param('id') ?? '';
 
     try {
       // Verify ownership before updating

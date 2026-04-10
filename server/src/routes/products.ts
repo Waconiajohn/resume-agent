@@ -44,7 +44,7 @@ products.get('/', async (c) => {
 // GET /api/products/:slug
 // ---------------------------------------------------------------------------
 products.get('/:slug', async (c) => {
-  const slug = c.req.param('slug');
+  const slug = c.req.param('slug') ?? '';
 
   const { data, error } = await supabaseAdmin
     .from('products')

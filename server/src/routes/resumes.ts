@@ -135,7 +135,7 @@ resumes.get('/default', async (c) => {
 // GET /resumes/:id/history — Get version history for a master resume
 resumes.get('/:id/history', async (c) => {
   const user = c.get('user');
-  const resumeId = c.req.param('id');
+  const resumeId = c.req.param('id') ?? '';
   if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   // Verify ownership
@@ -168,7 +168,7 @@ resumes.get('/:id/history', async (c) => {
 // GET /resumes/:id — Get a master resume
 resumes.get('/:id', async (c) => {
   const user = c.get('user');
-  const resumeId = c.req.param('id');
+  const resumeId = c.req.param('id') ?? '';
   if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin
@@ -211,7 +211,7 @@ const updateResumeSchema = z.object({
 // PUT /resumes/:id — Update a master resume (partial)
 resumes.put('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
-  const resumeId = c.req.param('id');
+  const resumeId = c.req.param('id') ?? '';
   if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const parsedBody = await parseJsonBodyWithLimit(c, MAX_CREATE_RESUME_BODY_BYTES);
@@ -318,7 +318,7 @@ resumes.put('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
 // PUT /resumes/:id/default — Mark an existing resume as the default base
 resumes.put('/:id/default', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
-  const resumeId = c.req.param('id');
+  const resumeId = c.req.param('id') ?? '';
   if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin
@@ -346,7 +346,7 @@ resumes.put('/:id/default', rateLimitMiddleware(30, 60_000), async (c) => {
 // DELETE /resumes/:id — Delete a master resume
 resumes.delete('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
-  const resumeId = c.req.param('id');
+  const resumeId = c.req.param('id') ?? '';
   if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin

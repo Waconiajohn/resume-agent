@@ -143,7 +143,7 @@ interviewDebriefRoutes.get(
   rateLimitMiddleware(60, 60_000),
   async (c) => {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = c.req.param('id') ?? '';
     if (!UUID_RE.test(id)) return c.json({ error: 'Invalid debrief ID' }, 400);
 
     const { data, error } = await supabaseAdmin
@@ -168,7 +168,7 @@ interviewDebriefRoutes.patch(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = c.req.param('id') ?? '';
     if (!UUID_RE.test(id)) return c.json({ error: 'Invalid debrief ID' }, 400);
     const body = await c.req.json().catch(() => null);
 
@@ -201,7 +201,7 @@ interviewDebriefRoutes.delete(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = c.req.param('id') ?? '';
     if (!UUID_RE.test(id)) return c.json({ error: 'Invalid debrief ID' }, 400);
 
     const { error } = await supabaseAdmin

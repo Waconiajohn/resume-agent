@@ -204,7 +204,7 @@ networkingContacts.get(
   rateLimitMiddleware(60, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('id');
+    const contactId = c.req.param('id') ?? '';
 
     try {
       const { data: contact, error: contactError } = await supabaseAdmin
@@ -250,7 +250,7 @@ networkingContacts.patch(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('id');
+    const contactId = c.req.param('id') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = updateContactSchema.safeParse(body);
@@ -322,7 +322,7 @@ networkingContacts.delete(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('id');
+    const contactId = c.req.param('id') ?? '';
 
     try {
       const { data: existing, error: findError } = await supabaseAdmin
@@ -365,7 +365,7 @@ networkingContacts.post(
   rateLimitMiddleware(30, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('id');
+    const contactId = c.req.param('id') ?? '';
     const body = await c.req.json().catch(() => null);
 
     const parsed = createTouchpointSchema.safeParse(body);
@@ -420,7 +420,7 @@ networkingContacts.get(
   rateLimitMiddleware(60, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('id');
+    const contactId = c.req.param('id') ?? '';
 
     try {
       // Verify contact ownership
@@ -660,7 +660,7 @@ networkingContacts.post(
   rateLimitMiddleware(20, 60_000),
   async (c) => {
     const user = c.get('user');
-    const contactId = c.req.param('contactId');
+    const contactId = c.req.param('contactId') ?? '';
 
     // Both feature flags must be active
     if (!FF_NETWORKING_OUTREACH) {
