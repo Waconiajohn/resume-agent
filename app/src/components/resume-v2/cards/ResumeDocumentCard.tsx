@@ -112,7 +112,9 @@ export function ResumeDocumentCard({
           className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 ${
             activeBullet?.section === 'executive_summary' && activeBullet.index === 0
               ? 'resume-line-active'
-              : ''
+              : resume.executive_summary.is_new
+                ? 'resume-proof-line--partial'
+                : ''
           }`}
         >
           <p
@@ -312,12 +314,68 @@ export function ResumeDocumentCard({
                 </span>
               </div>
               {exp.scope_statement && (
-                <p
-                  data-scope-id={`professional_experience-${i}-scope`}
-                  className="resume-scope-note mt-1.5 pl-0.5 text-[0.94rem] text-gray-500 italic"
-                >
-                  {exp.scope_statement}
-                </p>
+                onBulletClick ? (
+                  <div
+                    data-scope-id={`professional_experience-${i}-scope`}
+                    data-resume-line={getResumeLineToken('professional_experience', i * 100 - 1)}
+                    data-active-line={activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1 ? 'true' : undefined}
+                    className={`resume-line-card group relative mt-1.5 rounded-xl px-2.5 py-1.5 -mx-2.5 transition-all hover:bg-white/70${
+                      activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1
+                        ? ' resume-line-active'
+                        : ''
+                    }`}
+                  >
+                    <p
+                      role="button"
+                      tabIndex={0}
+                      className="resume-scope-note text-[0.94rem] text-gray-500 italic"
+                      title="Click to edit this role scope"
+                      onClick={() => onBulletClick(
+                        exp.scope_statement!,
+                        'professional_experience',
+                        i * 100 - 1,
+                        [],
+                        'strengthen' as ResumeReviewState,
+                        undefined,
+                        exp.scope_statement!,
+                        undefined,
+                        'adjacent',
+                        'tighten',
+                        false,
+                      )}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onBulletClick(
+                            exp.scope_statement!,
+                            'professional_experience',
+                            i * 100 - 1,
+                            [],
+                            'strengthen' as ResumeReviewState,
+                            undefined,
+                            exp.scope_statement!,
+                            undefined,
+                            'adjacent',
+                            'tighten',
+                            false,
+                          );
+                        }
+                      }}
+                    >
+                      {exp.scope_statement}
+                    </p>
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                    </span>
+                  </div>
+                ) : (
+                  <p
+                    data-scope-id={`professional_experience-${i}-scope`}
+                    className="resume-scope-note mt-1.5 pl-0.5 text-[0.94rem] text-gray-500 italic"
+                  >
+                    {exp.scope_statement}
+                  </p>
+                )
               )}
               <ul className="resume-proof-list mt-2.5 space-y-3 list-none pl-0">
                 {(Array.isArray(exp.bullets) ? exp.bullets : []).map((bullet, j) => {

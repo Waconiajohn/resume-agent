@@ -965,6 +965,9 @@ export function V2StreamingDisplay({
   const [showStructurePlanner, setShowStructurePlanner] = useState(false);
   const [hasCompletedStructureStep, setHasCompletedStructureStep] = useState(false);
   const [sectionJourneyIndex, setSectionJourneyIndex] = useState(0);
+  // True only after the user explicitly confirms structure and enters the section-by-section workflow.
+  // When false, currentWorkflowStep is always null so Coach mode is the default entry state.
+  const [hasStartedSectionWorkflow, setHasStartedSectionWorkflow] = useState(false);
 
   useEffect(() => {
     setActiveBullet(initialActiveBullet ? {
@@ -1090,6 +1093,10 @@ export function V2StreamingDisplay({
     if (sectionJourneyIndex < 0 || sectionJourneyIndex >= sectionWorkflow.steps.length) return null;
     return sectionWorkflow.steps[sectionJourneyIndex];
   }, [sectionJourneyIndex, sectionWorkflow.steps]);
+  // True only when the user has explicitly entered the section-by-section workflow.
+  // currentWorkflowStep may be non-null (valid index) before this is true — we rely on
+  // isWorkflowActive to gate whether the workflow panel is shown.
+  const isWorkflowActive = hasStartedSectionWorkflow && currentWorkflowStep !== null;
   // Bullet click handler for cross-referencing
   const handleBulletClick = useCallback((
     bulletText: string,
@@ -1232,6 +1239,7 @@ export function V2StreamingDisplay({
     setHasCompletedStructureStep(true);
     setShowStructurePlanner(false);
     setSectionJourneyIndex(0);
+    setHasStartedSectionWorkflow(true);
     setActiveBullet(null);
   }, []);
 
@@ -1343,6 +1351,7 @@ export function V2StreamingDisplay({
       setHasPassedReadyGate(false);
       setHasCompletedStructureStep(false);
       setShowStructurePlanner(false);
+      setHasStartedSectionWorkflow(false);
     }
   }, [isRerunning]);
   useEffect(() => {
@@ -1350,6 +1359,7 @@ export function V2StreamingDisplay({
       setHasCompletedStructureStep(false);
       setShowStructurePlanner(false);
       setSectionJourneyIndex(0);
+      setHasStartedSectionWorkflow(false);
       return;
     }
 
@@ -1383,7 +1393,7 @@ export function V2StreamingDisplay({
     }
   }, [activeBullet, hasPassedReadyGate]);
   useEffect(() => {
-    if (!hasPassedReadyGate || workflowNeedsStructureStep || activeBullet || !currentWorkflowStep || !onGenerateSectionDraft) {
+    if (!hasPassedReadyGate || workflowNeedsStructureStep || activeBullet || !isWorkflowActive || !currentWorkflowStep || !onGenerateSectionDraft) {
       return;
     }
     const currentDraftState = sectionDrafts[currentWorkflowStep.id];
@@ -1397,6 +1407,7 @@ export function V2StreamingDisplay({
     activeBullet,
     currentWorkflowStep,
     hasPassedReadyGate,
+    isWorkflowActive,
     onGenerateSectionDraft,
     sectionDrafts,
     workflowNeedsStructureStep,
@@ -1711,7 +1722,7 @@ export function V2StreamingDisplay({
                 </div>
               )}
               {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
-              {!activeBullet && displayResume && (
+              {!activeBullet && displayResume && (isShowingStructurePlan || isWorkflowActive) && (
                 <div ref={structurePlannerRef}>
                   <ResumeSectionWorkflowPanel
                     resume={displayResume}
@@ -1719,8 +1730,8 @@ export function V2StreamingDisplay({
                     candidateIntelligence={data.candidateIntelligence}
                     requirementWorkItems={data.requirementWorkItems}
                     structureConfirmed={!isShowingStructurePlan}
-                    currentStep={currentWorkflowStep}
-                    draftState={currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
+                    currentStep={isWorkflowActive ? currentWorkflowStep : null}
+                    draftState={isWorkflowActive && currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
                     onMoveSection={onMoveSection!}
                     onToggleSection={onToggleSection!}
                     onAddAISection={handleAddAISectionAndOpen}
@@ -1773,8 +1784,8 @@ export function V2StreamingDisplay({
             <ResumeEditorLayout
               leftPanel={(() => {
                 const queueSummary = rewriteQueue?.summary ?? null;
-                // 3-mode panel applies only in the editing phase (past structure step, no section draft step, no active bullet)
-                const isInEditingPhase = hasCompletedStructureStep && !isShowingStructurePlan && !currentWorkflowStep && !activeBullet && !showDesktopFinalReview;
+                // 3-mode panel applies only in the editing phase (past structure step, no active section workflow step, no active bullet)
+                const isInEditingPhase = hasCompletedStructureStep && !isShowingStructurePlan && !isWorkflowActive && !activeBullet && !showDesktopFinalReview;
                 const isReviewerMode = isInEditingPhase && queueSummary !== null && queueSummary.needsUserInput === 0 && queueSummary.needsApproval <= 2;
                 const isCoachMode = isInEditingPhase && !isReviewerMode;
 
@@ -1784,7 +1795,7 @@ export function V2StreamingDisplay({
                     ? 'Final review'
                   : isShowingStructurePlan
                     ? 'Section plan'
-                    : currentWorkflowStep
+                    : isWorkflowActive && currentWorkflowStep
                       ? currentWorkflowStep.title
                       : isReviewerMode
                         ? 'Ready to Export'
@@ -1797,7 +1808,7 @@ export function V2StreamingDisplay({
                     ? 'Review the strongest hiring-manager concerns before you export or keep polishing lines.'
                   : isShowingStructurePlan
                     ? 'Choose the sections and order before you polish the wording. When the structure looks right, start at the top and work down the resume.'
-                    : currentWorkflowStep
+                    : isWorkflowActive && currentWorkflowStep
                       ? 'Review the full section draft, choose the version that feels right, and then move to the next section.'
                       : isReviewerMode
                         ? "You've addressed the key items."

@@ -74,10 +74,12 @@ vi.mock('lucide-react', () => {
     Pencil: Icon,
     ArrowUp: Icon,
     ArrowDown: Icon,
+    ArrowRight: Icon,
     BrainCircuit: Icon,
     EyeOff: Icon,
     Plus: Icon,
     Trash2: Icon,
+    Download: Icon,
   };
 });
 
@@ -295,6 +297,28 @@ async function startEditingIfGatePresent() {
     fireEvent.click(startButton);
     await Promise.resolve();
   });
+}
+
+/**
+ * After the ready gate, enter the section-by-section workflow via:
+ *   1. "Adjust section structure" (Coach mode) or "Review section structure" (Reviewer mode) → opens structure plan
+ *   2. "Continue to editing" → confirms structure and starts the workflow
+ */
+async function enterSectionWorkflow() {
+  const adjustBtns = screen.queryAllByRole('button', { name: /(?:Adjust|Review) section structure/i });
+  if (adjustBtns.length > 0) {
+    await act(async () => {
+      fireEvent.click(adjustBtns[0]);
+      await Promise.resolve();
+    });
+  }
+  const continueBtns = screen.queryAllByRole('button', { name: /Continue to editing/i });
+  if (continueBtns.length > 0) {
+    await act(async () => {
+      fireEvent.click(continueBtns[0]);
+      await Promise.resolve();
+    });
+  }
 }
 
 /** Minimal V2PipelineData that satisfies canShowResumeDocument */
@@ -610,6 +634,11 @@ describe('V2StreamingDisplay — layout modes', () => {
           editableResume: resume,
           sectionDrafts: drafts,
           onApplySectionDraft,
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           onRequestHiringManagerReview: vi.fn(),
           hiringManagerResult: {
             six_second_scan: {
@@ -655,6 +684,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
     expect(screen.queryByTestId('hiring-manager-review-card')).not.toBeInTheDocument();
 
     for (let index = 0; index < workflow.steps.length; index += 1) {
@@ -854,7 +884,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     expect(screen.queryByTestId('attention-review-strip')).not.toBeInTheDocument();
   });
 
-  it('shows the section workflow first and keeps the line coach closed until a resume line is clicked', async () => {
+  it('shows the section workflow after entering it and keeps the line coach closed until a resume line is clicked', async () => {
     const attentionResume = makeResumeDraftWithAttention();
 
     render(
@@ -870,6 +900,11 @@ describe('V2StreamingDisplay — layout modes', () => {
             reset: vi.fn(),
           } as never,
           buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           data: makePipelineDataWithResume({
             resumeDraft: attentionResume,
             assembly: {
@@ -887,6 +922,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
     expect(screen.getAllByText('Executive Summary').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Step 1 of 4/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('What this section needs to do').length).toBeGreaterThan(0);
@@ -986,6 +1022,11 @@ describe('V2StreamingDisplay — layout modes', () => {
             reset: vi.fn(),
           } as never,
           buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           data: makePipelineDataWithResume({
             resumeDraft: resume,
             assembly: {
@@ -1029,6 +1070,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
 
     expect(screen.getAllByText('Resume Coach').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Executive Summary').length).toBeGreaterThan(0);
@@ -1092,11 +1134,17 @@ describe('V2StreamingDisplay — layout modes', () => {
             },
           },
           onGenerateSectionDraft,
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
         })}
       />,
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
 
     expect(onGenerateSectionDraft).not.toHaveBeenCalled();
     expect(screen.getAllByText('Too many requests. Please try again later.').length).toBeGreaterThan(0);
@@ -1454,6 +1502,11 @@ describe('V2StreamingDisplay — layout modes', () => {
             reset: vi.fn(),
           } as never,
           buildChatContext: makeChatContextMock(),
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           data: makePipelineDataWithResume({
             requirementWorkItems: [
               {
@@ -1499,6 +1552,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
     expect(screen.getAllByText(/Show Product delivery early in the paragraph\./i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Support it with proof around Executive leadership\./i).length).toBeGreaterThan(0);
   });
@@ -1514,6 +1568,11 @@ describe('V2StreamingDisplay — layout modes', () => {
           editableResume: resume,
           sectionDrafts: drafts,
           onApplySectionDraft,
+          onMoveSection: vi.fn(),
+          onToggleSection: vi.fn(),
+          onAddAISection: vi.fn(),
+          onAddCustomSection: vi.fn(),
+          onRemoveCustomSection: vi.fn(),
           data: makePipelineDataWithResume({
             resumeDraft: resume,
             assembly: {
@@ -1531,6 +1590,7 @@ describe('V2StreamingDisplay — layout modes', () => {
     );
 
     await startEditingIfGatePresent();
+    await enterSectionWorkflow();
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: 'Use this version' })[0]);
       await Promise.resolve();
