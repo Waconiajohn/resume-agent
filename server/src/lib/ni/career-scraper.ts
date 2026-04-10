@@ -15,6 +15,7 @@ import { insertJobMatch } from './job-matches-store.js';
 import { fetchFromATS } from './ats-clients.js';
 import { extractJobsFromCareerPage } from './json-ld-extractor.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
+import { classifyWorkMode } from '../job-search/work-mode-classifier.js';
 import logger from '../logger.js';
 import type { ATSJob, CompanyInfo, NiSearchContext, ScrapeResult, ScrapeSource } from './types.js';
 
@@ -256,6 +257,11 @@ async function scanCompany(
 
   for (const job of matchingJobs.slice(0, 20)) {
     const score = computeMatchScore(job.title, targetTitles);
+    const remoteType = classifyWorkMode(
+      job.title,
+      job.descriptionSnippet ?? '',
+      job.location ?? undefined,
+    );
     const inserted = await insertJobMatch(userId, {
       company_id: company.id,
       title: job.title,
@@ -270,6 +276,7 @@ async function scanCompany(
       metadata: {
         source: job.source,
         search_context: searchContext,
+        remote_type: remoteType === 'unknown' ? null : remoteType,
       },
     });
     if (inserted) storedCount++;

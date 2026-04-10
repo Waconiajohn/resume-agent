@@ -9,6 +9,7 @@
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
 import { searchAllSources } from './index.js';
+import { SerperJobsAdapter } from './adapters/serper-jobs.js';
 import { FirecrawlAdapter } from './adapters/firecrawl.js';
 import { matchJobsToProfile } from './ai-matcher.js';
 import { crossReferenceWithNetwork } from './ni-crossref.js';
@@ -68,7 +69,12 @@ export async function runSearchPipeline(
   location: string,
   filters: SearchFilters,
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
-  const adapters = [new FirecrawlAdapter()];
+  // Serper Google Jobs is primary — structured data aggregated from all major boards.
+  // Firecrawl is fallback — web scraping when Serper is unavailable or unkeyed.
+  const adapters = [
+    new SerperJobsAdapter(),
+    ...(process.env.FIRECRAWL_API_KEY ? [new FirecrawlAdapter()] : []),
+  ];
 
   logger.info(
     { userId, query, location, filters },
