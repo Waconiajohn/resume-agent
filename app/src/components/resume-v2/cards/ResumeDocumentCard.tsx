@@ -872,9 +872,10 @@ function getConfidenceLineClass(
     case 'supported_rewrite':
       return 'resume-proof-line--strong';
     case 'strengthen':
-      return 'resume-proof-line--partial';
     case 'confirm_fit':
-      return 'resume-proof-line--benchmark';
+      // Both "needs strengthening" and "confirm fit" use amber — they both mean
+      // "review this." The user doesn't need to know the backend distinction.
+      return 'resume-proof-line--partial';
     case 'code_red':
       return 'resume-proof-line--code-red';
     default:
