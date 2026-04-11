@@ -14,6 +14,10 @@ interface ResumeReadyScreenProps {
   /** True when score_breakdown was present in gap analysis. Distinguishes genuine 0% from missing data. */
   hasScoreData?: boolean;
   primaryActionLabel?: string;
+  /** Actual count of addressed requirements from score_breakdown. */
+  requirementsAddressed?: number;
+  /** Actual total requirement count from score_breakdown. */
+  requirementsTotal?: number;
   onStartEditing: () => void;
 }
 
@@ -40,6 +44,8 @@ export function ResumeReadyScreen({
   roleTitle,
   hasScoreData = true,
   primaryActionLabel = 'Start Reviewing →',
+  requirementsAddressed,
+  requirementsTotal,
   onStartEditing,
 }: ResumeReadyScreenProps) {
   const [keywordExpanded, setKeywordExpanded] = useState(false);
@@ -53,8 +59,11 @@ export function ResumeReadyScreen({
       ? `${Math.round(keywordMatchPercent)}%`
       : '—';
 
-  const reqNumerator = Math.round((requirementCoveragePercent / 100) * 15);
-  const reqDisplay = hasScoreData ? `${reqNumerator} of 15` : '—';
+  const reqDisplay = typeof requirementsAddressed === 'number' && typeof requirementsTotal === 'number'
+    ? `${requirementsAddressed} of ${requirementsTotal}`
+    : hasScoreData
+      ? `${Math.round((requirementCoveragePercent / 100) * 10)} of 10`
+      : '—';
 
   // ── "What's done" — derived from available data ─────────────────────────
   // Pipeline produced a resume if we have any score data or phrases found.

@@ -60,6 +60,7 @@ function resolveStatus(
   if (reviewState === 'supported' || reviewState === 'supported_rewrite') return 'strong';
   if (reviewState === 'code_red') return 'needs_attention';
   if (reviewState === 'strengthen' || reviewState === 'confirm_fit') return 'needs_attention';
+  if (confidence === 'needs_validation' || confidence === 'partial') return 'needs_attention';
   return 'strong';
 }
 

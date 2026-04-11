@@ -1255,7 +1255,7 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
 const bulletEnhanceSchema = z.object({
   action: z.enum(['show_transformation', 'demonstrate_leadership', 'connect_to_role', 'show_accountability']),
   bullet_text: z.string().min(10).max(1000),
-  requirement: z.string().max(1000),
+  requirement: z.string().min(1).max(1000),
   evidence: z.string().max(3000).optional(),
   job_context: z.string().max(2000).optional(),
   line_kind: z.enum(['bullet', 'summary', 'competency', 'section_summary', 'custom_line']).optional(),
@@ -1294,6 +1294,12 @@ const SECTION_DRAFT_LEAKAGE_MARKERS = [
 const SECTION_DRAFT_BRACKET_PATTERN = /\[[^\]]{2,80}\]\s*:?\s*/g;
 const SECTION_DRAFT_BANNED_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bspearheaded\b/gi, 'Led'],
+  [/\bleverage[ds]?\b/gi, 'used'],
+  [/\butilize[ds]?\b/gi, 'used'],
+  [/\bsynergy\b/gi, 'collaboration'],
+  [/\bresults-driven\b/gi, 'effective'],
+  [/\bresults-oriented\b/gi, 'effective'],
+  [/\bresponsible for\b/gi, 'owned'],
 ];
 
 type SectionDraftVariantPayload =
@@ -1854,18 +1860,22 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   const userId = user.id;
   const sessionId = c.req.param('sessionId') ?? '';
 
-  const { data: sessionData } = await supabaseAdmin
+  const { data: sessionData, error: dbError } = await supabaseAdmin
     .from('coach_sessions')
     .select('id, user_id, tailored_sections')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .single();
 
+  if (dbError) {
+    logger.error({ session_id: sessionId, error: dbError.message, code: dbError.code }, 'Bullet enhance: DB lookup failed');
+    return c.json({ error: 'Database error' }, 503);
+  }
   if (!sessionData) {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const parsedBody = await parseJsonBodyWithLimit(c, 10_000);
+  const parsedBody = await parseJsonBodyWithLimit(c, 50_000);
   if (!parsedBody.ok) return parsedBody.response;
 
   const parsed = bulletEnhanceSchema.safeParse(parsedBody.data);
@@ -2083,7 +2093,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `- For executive summary: each option must be a FULL multi-sentence summary (3-5 sentences) of similar length to the original. Do NOT condense to a single sentence.`,
     `- For section-intro lines, keep each option concise, executive, and top-of-resume appropriate`,
     `- For bullet and custom-section lines, keep each option 1-2 lines and start with a strong action verb when it reads naturally`,
-    `- NEVER use these banned resume clichés: ${BANNED_PHRASES.slice(0, 20).join(', ')}`,
+    `- NEVER use these banned resume clichés: ${BANNED_PHRASES.join(', ')}`,
   ].filter(Boolean).join('\n');
 
   try {
@@ -2110,7 +2120,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       }
     }
 
-    if (!repaired || typeof repaired.enhanced_bullet !== 'string') {
+    if (!repaired || typeof repaired.enhanced_bullet !== 'string' || repaired.enhanced_bullet.trim().length === 0) {
       logger.warn({ session_id: sessionId, action, rawSnippet: response.text.substring(0, 200) }, 'Bullet enhance: JSON parse failed');
       return c.json({ error: 'Enhancement failed — could not parse LLM response' }, 500);
     }

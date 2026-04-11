@@ -983,6 +983,7 @@ export function V2StreamingDisplay({
     canRemove: true,
     locationLabel: chatContextLabelForSection(initialActiveBullet.section),
   } : null);
+  const [initialFlaggedCount, setInitialFlaggedCount] = useState(0);
   const [showStructurePlanner, setShowStructurePlanner] = useState(false);
   const [hasCompletedStructureStep, setHasCompletedStructureStep] = useState(false);
   const [sectionJourneyIndex, setSectionJourneyIndex] = useState(0);
@@ -1321,6 +1322,14 @@ export function V2StreamingDisplay({
   // ── Unified coach item list (new architecture) ───────────────────────────
   const coachData = useResumeCoachItems(displayResume ?? null, rewriteQueue?.items);
 
+  // Snapshot the initial flagged count when the user first enters review mode
+  // (either via handleStartReviewing or by clicking a bullet directly).
+  useEffect(() => {
+    if (initialFlaggedCount === 0 && activeBullet && coachData.flaggedCount > 0) {
+      setInitialFlaggedCount(coachData.flaggedCount);
+    }
+  }, [activeBullet, coachData.flaggedCount, initialFlaggedCount]);
+
   const sectionSummaries = useMemo(() => {
     const groups = new Map<string, { label: string; flagged: number; total: number }>();
     for (const item of coachData.items) {
@@ -1388,6 +1397,7 @@ export function V2StreamingDisplay({
   }, [currentFlaggedPosition, coachData.flaggedItems, navigateToFlaggedItem]);
 
   const handleNextItem = useCallback(() => {
+    if (currentFlaggedPosition === 0) return; // not in flagged list
     if (currentFlaggedPosition >= coachData.flaggedCount) return;
     const nextItem = coachData.flaggedItems[currentFlaggedPosition];
     if (nextItem) navigateToFlaggedItem(nextItem);
@@ -1402,11 +1412,14 @@ export function V2StreamingDisplay({
 
   // Activate the first flagged item using the new coachData list
   const handleStartReviewing = useCallback(() => {
+    if (initialFlaggedCount === 0 && coachData.flaggedCount > 0) {
+      setInitialFlaggedCount(coachData.flaggedCount);
+    }
     const firstFlagged = coachData.flaggedItems[0];
     if (firstFlagged) {
       navigateToFlaggedItem(firstFlagged);
     }
-  }, [coachData.flaggedItems, navigateToFlaggedItem]);
+  }, [coachData.flaggedItems, coachData.flaggedCount, initialFlaggedCount, navigateToFlaggedItem]);
 
   /** After applying an edit, advance directly to the next flagged item.
    *  No intermediate null state — one setActiveBullet call, no flash. */
@@ -1891,11 +1904,11 @@ export function V2StreamingDisplay({
               leftPanel={
                 <ResumeCoachPanel
                   flaggedCount={coachData.flaggedCount}
-                  reviewedCount={coachData.flaggedCount - coachData.flaggedItems.filter(i => i.status === 'needs_attention').length}
+                  reviewedCount={Math.max(0, initialFlaggedCount - coachData.flaggedItems.length)}
                   currentPosition={currentFlaggedPosition}
                   sectionSummaries={sectionSummaries}
                   isActive={!!activeBullet}
-                  isComplete={coachData.flaggedCount > 0 && coachData.flaggedItems.length === 0}
+                  isComplete={initialFlaggedCount > 0 && coachData.flaggedItems.length === 0}
                   onStartReviewing={handleStartReviewing}
                   onPrevItem={handlePrevItem}
                   onNextItem={handleNextItem}
@@ -2017,6 +2030,8 @@ export function V2StreamingDisplay({
             roleTitle={data.jobIntelligence?.role_title}
             hasScoreData={hasKeywordReportData}
             primaryActionLabel={readyGatePrimaryActionLabel}
+            requirementsAddressed={data.gapAnalysis?.score_breakdown?.job_description?.addressed}
+            requirementsTotal={data.gapAnalysis?.score_breakdown?.job_description?.total}
             onStartEditing={handleReadyGateStartEditing}
           />
         </div>

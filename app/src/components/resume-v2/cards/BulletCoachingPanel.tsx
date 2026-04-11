@@ -89,6 +89,7 @@ export function BulletCoachingPanel({
   const [enhanceResult, setEnhanceResult] = useState<EnhanceResult | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [usedAction, setUsedAction] = useState<string | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
 
   // ── Focus panel on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -107,12 +108,17 @@ export function BulletCoachingPanel({
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        e.stopPropagation();
+        if (showCustomEdit) {
+          setShowCustomEdit(false);
+        } else {
+          onClose();
+        }
       }
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  }, [onClose, showCustomEdit]);
 
   // ── Reset enhance state when bullet changes ────────────────────────────────
   useEffect(() => {
@@ -120,6 +126,11 @@ export function BulletCoachingPanel({
     setIsEnhancing(false);
     setUsedAction(null);
     setShowTryAnother(false);
+    setShowCustomEdit(false);
+    setEditDraft('');
+    setConfirmRemove(false);
+    setEnhanceError(null);
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
   }, [bulletText, section, bulletIndex]);
 
   // ── Section display name ──────────────────────────────────────────────────
@@ -152,6 +163,7 @@ export function BulletCoachingPanel({
   // ── On-demand AI enhancement ──────────────────────────────────────────────
   const handleEnhance = useCallback(async (action: string) => {
     if (!onBulletEnhance || isEnhancing) return;
+    setEnhanceError(null);
     setIsEnhancing(true);
     setUsedAction(action);
     setShowTryAnother(false);
@@ -171,22 +183,27 @@ export function BulletCoachingPanel({
       );
       if (result) {
         setEnhanceResult(result);
+      } else {
+        setEnhanceError('No suggestion generated — try a different angle or edit manually.');
       }
     } catch {
       // API call failed (session stale, network error, etc.)
       // Stay on this item with angle buttons — don't navigate away
+      setEnhanceError('Enhancement failed — try again or edit manually.');
     } finally {
       setIsEnhancing(false);
     }
   }, [onBulletEnhance, isEnhancing, bulletText, requirements, evidenceFound, chatContext.lineKind, chatContext.sectionLabel, section, sourceEvidence]);
 
   // ── Apply from custom edit ────────────────────────────────────────────────
+  // Only call onApplyToResume — the parent (handleCoachApplyToResume) handles
+  // advancing to the next item. Do NOT call onClose here — that would clear
+  // activeBullet and flash back to the overview, overriding the advance.
   const handleApplyEdit = useCallback(() => {
     const text = editDraft.trim();
     if (!text) return;
     onApplyToResume(section, bulletIndex, text, applyMetadata());
-    onClose();
-  }, [applyMetadata, editDraft, onApplyToResume, onClose, section, bulletIndex]);
+  }, [applyMetadata, editDraft, onApplyToResume, section, bulletIndex]);
 
   // ── Open edit area ────────────────────────────────────────────────────────
   const handleOpenEdit = useCallback((seed?: string) => {
@@ -239,6 +256,8 @@ export function BulletCoachingPanel({
             <div className="h-4 bg-[var(--surface-1)] rounded w-5/6" />
             <div className="h-4 bg-[var(--surface-1)] rounded w-4/6" />
           </div>
+        ) : enhanceError && !isEnhancing && !enhanceResult ? (
+          <p className="text-sm text-red-500">{enhanceError}</p>
         ) : enhanceResult ? (
           /* AI result */
           <>
