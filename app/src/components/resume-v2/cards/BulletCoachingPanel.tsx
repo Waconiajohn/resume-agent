@@ -211,6 +211,13 @@ export function BulletCoachingPanel({
     evidenceFound.trim().length > 0 &&
     evidenceFound.trim() !== bulletText.trim();
 
+  // Fallback: if the scoring engine didn't produce a verdict but the suggestion
+  // is identical to current text, treat it as 'collapse'
+  const effectiveVerdict: 'show' | 'collapse' | 'ask_question' | undefined = suggestionScore?.verdict
+    ?? (primarySuggestion && bulletText.trim().toLowerCase() === primarySuggestion.trim().toLowerCase()
+      ? 'collapse' as const
+      : undefined);
+
   const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
     .map((suggestion) => {
       const candidate = chatContext.relatedLineCandidates?.find((item) => item.id === suggestion.candidateId);
@@ -368,7 +375,7 @@ export function BulletCoachingPanel({
       </div>
 
       {/* ── Block 2: What We Suggest ───────────────────────────────────── */}
-      {(showAIDiff || featuredOption || isCodeRedNoEvidence || suggestionScore?.verdict === 'collapse' || suggestionScore?.verdict === 'ask_question') && (
+      {(showAIDiff || featuredOption || isCodeRedNoEvidence || effectiveVerdict === 'collapse' || effectiveVerdict === 'ask_question') && (
         <div className="border-t border-white/10 px-4 py-3 space-y-3">
 
           {/* AI-enhanced diff view */}
@@ -399,7 +406,7 @@ export function BulletCoachingPanel({
           )}
 
           {/* Verdict: collapse — current text is strong */}
-          {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'collapse' && (
+          {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-emerald-400 uppercase tracking-wide mb-1">
                 Looks Strong
@@ -411,13 +418,13 @@ export function BulletCoachingPanel({
           )}
 
           {/* Verdict: ask_question — suggestion would downgrade, ask for context instead */}
-          {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'ask_question' && suggestionScore.suggestedQuestion && (
+          {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && suggestionScore?.suggestedQuestion && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
                 More Context Needed
               </p>
               <p className="text-sm leading-relaxed text-gray-200">
-                {suggestionScore.suggestedQuestion}
+                {suggestionScore?.suggestedQuestion}
               </p>
               {addressesLabel && (
                 <p className="text-xs text-gray-300">
@@ -428,7 +435,7 @@ export function BulletCoachingPanel({
           )}
 
           {/* Standard suggestion (verdict: show, or no score computed) */}
-          {!showAIDiff && !isCodeRedNoEvidence && featuredOption && suggestionScore?.verdict !== 'collapse' && suggestionScore?.verdict !== 'ask_question' && (
+          {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
@@ -585,7 +592,7 @@ export function BulletCoachingPanel({
             )}
 
             {/* Verdict: collapse — Keep / Edit */}
-            {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'collapse' && (
+            {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
               <>
                 <button
                   type="button"
@@ -605,7 +612,7 @@ export function BulletCoachingPanel({
             )}
 
             {/* Verdict: ask_question — Answer / Edit / Skip */}
-            {!showAIDiff && !isCodeRedNoEvidence && suggestionScore?.verdict === 'ask_question' && (
+            {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && (
               <>
                 <button
                   type="button"
@@ -625,7 +632,7 @@ export function BulletCoachingPanel({
             )}
 
             {/* Standard suggestion: Use / Edit / Skip (verdict: show, or no score) */}
-            {!showAIDiff && !isCodeRedNoEvidence && featuredOption && suggestionScore?.verdict !== 'collapse' && suggestionScore?.verdict !== 'ask_question' && (
+            {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
               <>
                 <button
                   type="button"
