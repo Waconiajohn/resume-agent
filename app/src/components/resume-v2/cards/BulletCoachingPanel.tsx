@@ -143,7 +143,7 @@ export function BulletCoachingPanel({
   isAIEnhanced,
   suggestionScore,
   queueSuggestedDraft,
-  onBulletEnhance: _onBulletEnhance,
+  onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -154,6 +154,8 @@ export function BulletCoachingPanel({
   const [showCustomEdit, setShowCustomEdit] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [enhanceResult, setEnhanceResult] = useState<EnhanceResult | null>(null);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   // ── Focus panel on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -289,6 +291,38 @@ export function BulletCoachingPanel({
     onClose();
   }, [applyMetadata, evidenceFound, onApplyToResume, onClose, section, bulletIndex]);
 
+  // ── On-demand AI enhancement ──────────────────────────────────────────────
+  const handleEnhance = useCallback(async (action: string) => {
+    if (!onBulletEnhance || isEnhancing) return;
+    setIsEnhancing(true);
+    try {
+      const result = await onBulletEnhance(
+        action,
+        bulletText,
+        requirements[0] ?? '',
+        evidenceFound,
+        {
+          lineKind: chatContext.lineKind,
+          sectionKey: section,
+          sectionLabel: chatContext.sectionLabel,
+          sourceEvidence: evidenceFound,
+          relatedRequirements: requirements,
+        },
+      );
+      if (result) {
+        setEnhanceResult(result);
+      }
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [onBulletEnhance, isEnhancing, bulletText, requirements, evidenceFound, chatContext.lineKind, chatContext.sectionLabel, section]);
+
+  // Reset enhance result when bullet changes
+  useEffect(() => {
+    setEnhanceResult(null);
+    setIsEnhancing(false);
+  }, [bulletText, section, bulletIndex]);
+
   // ── Apply from custom edit ────────────────────────────────────────────────
   const handleApplyEdit = useCallback(() => {
     const text = editDraft.trim();
@@ -398,7 +432,7 @@ export function BulletCoachingPanel({
       </div>
 
       {/* ── Separator + suggestion ─────────────────────────────────────── */}
-      {(showAIDiff || featuredOption || isCodeRedNoEvidence || effectiveVerdict === 'collapse' || effectiveVerdict === 'ask_question') && (
+      {(showAIDiff || featuredOption || isCodeRedNoEvidence || effectiveVerdict === 'collapse' || effectiveVerdict === 'ask_question' || onBulletEnhance) && (
         <>
           <hr className="border-0 border-t border-dashed border-[var(--line-soft)] mx-4" />
 
@@ -470,6 +504,55 @@ export function BulletCoachingPanel({
                   <p className="text-xs text-[var(--text-soft)] italic">
                     Extra detail that would help: {topClarifyingDetail}.
                   </p>
+                )}
+              </>
+            )}
+
+            {/* AI enhancement — shown when no pre-computed suggestion exists */}
+            {!showAIDiff && !isCodeRedNoEvidence && !featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && onBulletEnhance && (
+              <>
+                {isEnhancing && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-soft)]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating suggestion...
+                  </div>
+                )}
+
+                {!isEnhancing && !enhanceResult && (
+                  <>
+                    <p className="text-sm text-[var(--text-soft)] mb-2">
+                      How should we strengthen this?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => handleEnhance('show_transformation')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Impact</button>
+                      <button type="button" onClick={() => handleEnhance('demonstrate_leadership')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Leadership</button>
+                      <button type="button" onClick={() => handleEnhance('connect_to_role')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Connect to Role</button>
+                      <button type="button" onClick={() => handleEnhance('show_accountability')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Scale</button>
+                    </div>
+                  </>
+                )}
+
+                {!isEnhancing && enhanceResult && (
+                  <>
+                    <p className="text-sm leading-relaxed text-[var(--text-strong)]">
+                      {enhanceResult.enhancedBullet}
+                    </p>
+                    {enhanceResult.alternatives.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs text-[var(--text-soft)]">Other angles:</p>
+                        {enhanceResult.alternatives.slice(0, 3).map((alt, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => handleAcceptSuggestion(alt.text)}
+                            className="block w-full text-left text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] py-1 px-2 rounded hover:bg-[var(--surface-1)] transition-colors"
+                          >
+                            <span className="font-medium">{alt.angle}:</span> {alt.text.slice(0, 80)}{alt.text.length > 80 ? '…' : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -647,34 +730,72 @@ export function BulletCoachingPanel({
                 >
                   Skip
                 </button>
+                {onBulletEnhance && (
+                  <button
+                    type="button"
+                    onClick={() => handleEnhance('connect_to_role')}
+                    disabled={isEnhancing}
+                    className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+                  >
+                    {isEnhancing ? 'Generating...' : 'Try a different angle'}
+                  </button>
+                )}
               </>
             )}
 
-            {/* No suggestion, no AI diff, no code red: just edit/skip */}
+            {/* No pre-computed suggestion: show enhance result actions OR edit/skip */}
             {!showAIDiff && !isCodeRedNoEvidence && !featuredOption && (
               <>
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(bulletText)}
-                  disabled={isChatLoading}
-                  className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors',
-                    isChatLoading && 'opacity-50 cursor-not-allowed',
-                  )}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isChatLoading}
-                  className={cn(
-                    'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
-                    isChatLoading && 'opacity-50 cursor-not-allowed',
-                  )}
-                >
-                  Skip
-                </button>
+                {enhanceResult ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptSuggestion(enhanceResult.enhancedBullet)}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    >
+                      Use This
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(enhanceResult.enhancedBullet)}
+                      className="rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </>
+                ) : !isEnhancing ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(bulletText)}
+                      disabled={isChatLoading}
+                      className={cn(
+                        'rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors',
+                        isChatLoading && 'opacity-50 cursor-not-allowed',
+                      )}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={isChatLoading}
+                      className={cn(
+                        'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
+                        isChatLoading && 'opacity-50 cursor-not-allowed',
+                      )}
+                    >
+                      Skip
+                    </button>
+                  </>
+                ) : null}
               </>
             )}
           </div>
