@@ -1765,13 +1765,13 @@ function buildEnhanceActionDescription(
   if (lineKind === 'summary') {
     switch (action) {
       case 'show_transformation':
-        return 'Rewrite this executive summary line so the opening tells a sharper transformation story: what kind of change this leader drives, at what level, and why it matters. Keep it concise, executive, and credible. Return 3 versions with different angles.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) so the opening tells a sharper transformation story. Maintain the multi-sentence structure. Improve the hook but preserve all key achievements and positioning. Return 3 full-length versions.';
       case 'demonstrate_leadership':
-        return 'Rewrite this executive summary line to foreground leadership scope through people, scale, and operating cadence. Make the leadership signal unmistakable in concise executive language. Return 3 versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground leadership scope through people, scale, and operating cadence. Maintain the multi-sentence structure and all key content. Return 3 full-length versions.';
       case 'connect_to_role':
-        return 'Rewrite this executive summary line to mirror the target role more directly. Bridge the candidate\'s background to the hiring company\'s language, priorities, and problem space. Return 3 concise versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to align with the target role. Improve the opening hook for immediate relevance to the hiring manager. Maintain all key achievements and positioning. Return 3 full-length versions.';
       case 'show_accountability':
-        return 'Rewrite this executive summary line to foreground ownership, standards, and business impact. Make it sound like a leader trusted with meaningful outcomes, not just activity. Return 3 concise versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground ownership, standards, and business impact. Maintain the multi-sentence structure and all key content. Return 3 full-length versions.';
     }
   }
 
@@ -1818,9 +1818,11 @@ function buildEnhanceLineTypeInstructions(lineKind: z.infer<typeof bulletEnhance
   switch (lineKind) {
     case 'summary':
       return [
-        'This is an executive summary line, not a bullet.',
-        'Return concise executive positioning language that could sit near the top of the resume.',
-        'Keep the wording polished and high-signal rather than writing a long sentence.',
+        'This is an EXECUTIVE SUMMARY — a multi-sentence positioning statement, NOT a single bullet.',
+        'MAINTAIN the full length and structure of the original summary.',
+        'Rewrite the entire summary with the requested improvement angle while preserving all key content.',
+        'The summary should be 3-5 sentences covering: positioning statement, key strengths, quantified achievements, and value proposition.',
+        'Do NOT condense to a single sentence. Do NOT shorten. Improve the quality while keeping the scope.',
       ];
     case 'competency':
       return [
@@ -2078,7 +2080,8 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `- Use conservative estimates if inferring numbers (back off 10-20%)`,
     `- Each alternative should take a genuinely different angle`,
     `- For competency lines, keep each option short and keyword-based rather than sentence-based`,
-    `- For summary or section-intro lines, keep each option concise, executive, and top-of-resume appropriate`,
+    `- For executive summary: each option must be a FULL multi-sentence summary (3-5 sentences) of similar length to the original. Do NOT condense to a single sentence.`,
+    `- For section-intro lines, keep each option concise, executive, and top-of-resume appropriate`,
     `- For bullet and custom-section lines, keep each option 1-2 lines and start with a strong action verb when it reads naturally`,
   ].filter(Boolean).join('\n');
 
@@ -2087,7 +2090,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       model: MODEL_MID,
       system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1024,
+      max_tokens: line_kind === 'summary' ? 2048 : 1024,
     }));
 
     const repaired = repairJSON<{ enhanced_bullet?: string; alternatives?: Array<{ text: string; angle: string }> }>(response.text);
