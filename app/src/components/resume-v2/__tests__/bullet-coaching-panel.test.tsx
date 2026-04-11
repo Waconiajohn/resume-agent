@@ -200,7 +200,7 @@ describe('BulletCoachingPanel', () => {
       'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
       expect.objectContaining({ reviewState: 'strengthen' }),
     );
-    expect(onClose).toHaveBeenCalled();
+    // onClose is NOT called — the parent (handleCoachApplyToResume) handles advancing
   });
 
   it('shows alternative angle buttons when result has alternatives', async () => {
@@ -263,7 +263,7 @@ describe('BulletCoachingPanel', () => {
       'Drove 12% throughput gain via weekly KPI cadence at 3 plants.',
       expect.any(Object),
     );
-    expect(onClose).toHaveBeenCalled();
+    // onClose is NOT called — the parent handles advancing
   });
 
   it('calls onClose when Skip is clicked in the default state', () => {

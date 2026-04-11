@@ -139,10 +139,12 @@ export function BulletCoachingPanel({
   );
 
   // ── Accept a suggestion ────────────────────────────────────────────────────
+  // Only call onApplyToResume — the parent (handleCoachApplyToResume) handles
+  // advancing to the next item. Do NOT call onClose here — that would clear
+  // activeBullet and flash back to the overview, overriding the advance.
   const handleAcceptSuggestion = useCallback((text: string) => {
     onApplyToResume(section, bulletIndex, text, applyMetadata());
-    onClose();
-  }, [applyMetadata, onApplyToResume, onClose, section, bulletIndex]);
+  }, [applyMetadata, onApplyToResume, section, bulletIndex]);
 
   // ── On-demand AI enhancement ──────────────────────────────────────────────
   const handleEnhance = useCallback(async (action: string) => {
@@ -167,6 +169,9 @@ export function BulletCoachingPanel({
       if (result) {
         setEnhanceResult(result);
       }
+    } catch {
+      // API call failed (session stale, network error, etc.)
+      // Stay on this item with angle buttons — don't navigate away
     } finally {
       setIsEnhancing(false);
     }
