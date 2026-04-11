@@ -1412,7 +1412,10 @@ export function V2StreamingDisplay({
    *  No intermediate null state — one setActiveBullet call, no flash. */
   const advanceToNextItem = useCallback((justEditedSection: string, justEditedIndex: number) => {
     const justEditedKey = `${justEditedSection}:${justEditedIndex}`;
-    const nextItem = coachData.flaggedItems.find(item => item.id !== justEditedKey);
+    const currentIdx = coachData.flaggedItems.findIndex(item => item.id === justEditedKey);
+    const nextItem = currentIdx >= 0
+      ? coachData.flaggedItems[currentIdx + 1]
+      : coachData.flaggedItems[0];
     if (nextItem) {
       navigateToFlaggedItem(nextItem);
     } else {

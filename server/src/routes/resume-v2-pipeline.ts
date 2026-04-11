@@ -2083,6 +2083,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `- For executive summary: each option must be a FULL multi-sentence summary (3-5 sentences) of similar length to the original. Do NOT condense to a single sentence.`,
     `- For section-intro lines, keep each option concise, executive, and top-of-resume appropriate`,
     `- For bullet and custom-section lines, keep each option 1-2 lines and start with a strong action verb when it reads naturally`,
+    `- NEVER use these banned resume clichés: ${BANNED_PHRASES.slice(0, 20).join(', ')}`,
   ].filter(Boolean).join('\n');
 
   try {
@@ -2094,6 +2095,20 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     }));
 
     const repaired = repairJSON<{ enhanced_bullet?: string; alternatives?: Array<{ text: string; angle: string }> }>(response.text);
+
+    // Strip banned phrases from the result
+    if (repaired?.enhanced_bullet) {
+      for (const [pattern, replacement] of SECTION_DRAFT_BANNED_REPLACEMENTS) {
+        repaired.enhanced_bullet = repaired.enhanced_bullet.replace(pattern, replacement);
+      }
+    }
+    if (repaired?.alternatives) {
+      for (const alt of repaired.alternatives) {
+        for (const [pattern, replacement] of SECTION_DRAFT_BANNED_REPLACEMENTS) {
+          alt.text = alt.text.replace(pattern, replacement);
+        }
+      }
+    }
 
     if (!repaired || typeof repaired.enhanced_bullet !== 'string') {
       logger.warn({ session_id: sessionId, action, rawSnippet: response.text.substring(0, 200) }, 'Bullet enhance: JSON parse failed');
