@@ -610,6 +610,13 @@
     transition: opacity 0.3s ease;
   }
 
+  /* Nuclear protection: left panel must NEVER dim regardless of resume state.
+     DO NOT REMOVE — this was removed once by a lint pass and broke the UI. */
+  .resume-editor-guide-pane,
+  .resume-editor-guide-pane * {
+    opacity: 1 !important;
+  }
+
   .eyebrow-label {
     font-size: 0.75rem;
     font-weight: 700;
