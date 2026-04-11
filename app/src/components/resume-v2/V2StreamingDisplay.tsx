@@ -243,19 +243,18 @@ interface CoachTarget {
 }
 
 /** Look up the suggestion score for an active bullet from the rewrite queue. */
-function findSuggestionScore(
+function findMatchingQueueItem(
   activeBullet: CoachTarget | null,
   queueItems: RewriteQueueItem[] | undefined,
-): SuggestionScore | undefined {
+): RewriteQueueItem | undefined {
   if (!activeBullet || !queueItems?.length) return undefined;
   const req = activeBullet.requirements[0];
   if (!req) return undefined;
   const normalizedReq = req.trim().toLowerCase();
-  const match = queueItems.find(item =>
+  return queueItems.find(item =>
     item.requirement?.trim().toLowerCase() === normalizedReq
     || item.title.trim().toLowerCase() === normalizedReq
   );
-  return match?.suggestionScore;
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -1802,7 +1801,7 @@ export function V2StreamingDisplay({
                   />
                   {/* Bottom sheet */}
                   <div className="mobile-coaching-sheet lg:hidden" role="dialog" aria-modal="true" aria-label="Bullet coaching">
-                    <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
+                    <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestionScore} queueSuggestedDraft={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestedDraft} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
                   </div>
                 </>
               )}
@@ -1863,6 +1862,14 @@ export function V2StreamingDisplay({
                 const reviewedCount = queueSummary?.handled ?? 0;
                 const allReviewed = totalItems > 0 && reviewedCount >= totalItems;
 
+                // Position of active bullet in the combined review list
+                const combinedKeys = [
+                  ...attentionItems.map(i => `${i.section}:${i.index}`),
+                  ...sectionCoachTargets.map(t => `${t.section}:${t.index}`),
+                ];
+                const activeBulletKey = activeBullet ? `${activeBullet.section}:${activeBullet.index}` : null;
+                const currentPosition = activeBulletKey ? combinedKeys.indexOf(activeBulletKey) + 1 : 0;
+
                 return (
                   <div className="flex flex-col h-full">
                     {/* ── Card Stack Progress Header ── */}
@@ -1871,9 +1878,11 @@ export function V2StreamingDisplay({
                         <span className="text-sm font-medium text-[var(--text-strong)]">
                           {allReviewed
                             ? `✓ ${reviewedCount} of ${totalItems} reviewed`
-                            : activeBullet
-                              ? `Item ${reviewedCount + 1} of ${totalItems}`
-                              : `${totalItems} items to review`}
+                            : activeBullet && currentPosition > 0
+                              ? `Item ${currentPosition} of ${totalItems}`
+                              : activeBullet
+                                ? `Item ${reviewedCount + 1} of ${totalItems}`
+                                : `${totalItems} items to review`}
                         </span>
                       </div>
                       {totalItems > 0 && (
@@ -1937,7 +1946,8 @@ export function V2StreamingDisplay({
                             canRemove={activeBullet.canRemove ?? true}
                             initialReuseClarificationId={activeBullet.autoReuseClarificationId}
                             isAIEnhanced={activeBullet.isAIEnhanced}
-                            suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)}
+                            suggestionScore={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestionScore}
+                            queueSuggestedDraft={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestedDraft}
                             gapChat={gapChat}
                             chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
                             onApplyToResume={handleCoachApplyToResume}

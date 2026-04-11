@@ -39,6 +39,8 @@ export interface BulletCoachingPanelProps {
   isAIEnhanced?: boolean;
   /** Quality score from the shared suggestion scoring engine */
   suggestionScore?: SuggestionScore;
+  /** AI-generated suggestion from the rewrite queue pipeline */
+  queueSuggestedDraft?: string;
   onBulletEnhance?: (
     action: string,
     bulletText: string,
@@ -140,6 +142,7 @@ export function BulletCoachingPanel({
   showCloseButton: _showCloseButton = true,
   isAIEnhanced,
   suggestionScore,
+  queueSuggestedDraft,
   onBulletEnhance: _onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -189,7 +192,7 @@ export function BulletCoachingPanel({
     ?? chatContext.recommendedBullet
     ?? null;
 
-  const primarySuggestion = chatSuggestedLanguage ?? alternatives[0]?.text ?? null;
+  const primarySuggestion = chatSuggestedLanguage ?? queueSuggestedDraft ?? alternatives[0]?.text ?? null;
   const primaryRequirement = requirements[0];
   const resolvedSourceEvidence = sourceEvidence ?? chatContext.sourceEvidence;
   const lineLabel = chatContext.lineKind === 'summary' ? 'summary line'
@@ -209,7 +212,13 @@ export function BulletCoachingPanel({
   const showAIDiff =
     isAIEnhanced &&
     evidenceFound.trim().length > 0 &&
-    evidenceFound.trim() !== bulletText.trim();
+    evidenceFound.trim() !== bulletText.trim() &&
+    (() => {
+      const currentWords = new Set(evidenceFound.trim().toLowerCase().split(/\s+/));
+      const newWords = bulletText.trim().toLowerCase().split(/\s+/);
+      const overlap = newWords.filter(w => currentWords.has(w)).length;
+      return overlap / Math.max(currentWords.size, newWords.length) <= 0.9;
+    })();
 
   // Fallback: if the scoring engine didn't produce a verdict but the suggestion
   // is nearly identical to current text (>90% word overlap), treat it as 'collapse'
@@ -494,7 +503,9 @@ export function BulletCoachingPanel({
               <>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => {
+                    onApplyToResume(section, bulletIndex, bulletText, applyMetadata());
+                  }}
                   disabled={isChatLoading}
                   className={cn(
                     'rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors',
