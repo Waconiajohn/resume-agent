@@ -30,6 +30,8 @@ export interface BulletCoachingPanelProps {
   onApplyToResume: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
   onRemoveBullet: (section: string, index: number) => void;
   onClose: () => void;
+  /** Skip this item and advance to the next flagged item */
+  onSkip?: () => void;
   canRemove?: boolean;
   initialReuseClarificationId?: string;
   /** @deprecated no longer used — kept for call-site backward compat */
@@ -70,6 +72,7 @@ export function BulletCoachingPanel({
   onApplyToResume,
   onRemoveBullet,
   onClose,
+  onSkip,
   canRemove = true,
   initialReuseClarificationId: _initialReuseClarificationId,
   sectionType = 'experience_bullet',
@@ -305,7 +308,7 @@ export function BulletCoachingPanel({
               </button>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={onSkip ?? onClose}
                 className="text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
               >
                 Skip
@@ -322,7 +325,7 @@ export function BulletCoachingPanel({
               </button>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={onSkip ?? onClose}
                 className="text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
               >
                 Skip
