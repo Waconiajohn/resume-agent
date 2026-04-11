@@ -1286,20 +1286,39 @@ export function V2StreamingDisplay({
   }, [advanceSectionJourney, currentWorkflowStep, onApplySectionDraft]);
   // Tracks when the coaching panel closed because the user applied an edit
   // (vs. clicking the X button). Used to gate the auto-advance effect below.
-  const justCompletedEditRef = useRef(false);
+  // justCompletedEditRef removed — auto-advance now handled directly by advanceToNextItem()
+
+  /** After applying an edit, advance directly to the next flagged item.
+   *  No intermediate null state — one setActiveBullet call, no flash. */
+  const advanceToNextItem = useCallback((justEditedSection: string, justEditedIndex: number) => {
+    // Find the next attention item that isn't the one we just edited
+    const nextAttention = attentionItems.find(
+      (item) => !(item.section === justEditedSection && item.index === justEditedIndex),
+    );
+    if (nextAttention) {
+      openAttentionItem(attentionItems.indexOf(nextAttention));
+      return;
+    }
+    // Find the next section coach target that isn't the one we just edited
+    const nextTarget = sectionCoachTargets.find(
+      (target) => !(target.section === justEditedSection && target.index === justEditedIndex),
+    );
+    if (nextTarget) {
+      openSectionCoachTarget(nextTarget);
+      return;
+    }
+    // Nothing left — return to coach mode
+    setActiveBullet(null);
+  }, [attentionItems, openAttentionItem, sectionCoachTargets, openSectionCoachTarget]);
 
   const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
-    justCompletedEditRef.current = true;
     onBulletEdit?.(section, index, newText, metadata);
-    // Close the panel so auto-advance can move to the next item
-    setActiveBullet(null);
-  }, [onBulletEdit]);
+    advanceToNextItem(section, index);
+  }, [onBulletEdit, advanceToNextItem]);
   const handleCoachRemoveBullet = useCallback((section: string, index: number) => {
-    justCompletedEditRef.current = true;
     onBulletRemove?.(section, index);
-    // Close the panel so auto-advance can move to the next item
-    setActiveBullet(null);
-  }, [onBulletRemove]);
+    advanceToNextItem(section, index);
+  }, [onBulletRemove, advanceToNextItem]);
 
   // Bullet clicking and direct editing: available as soon as the resume is visible
   const canInteract = displayResume !== null && displayResume !== undefined;
@@ -1329,29 +1348,8 @@ export function V2StreamingDisplay({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeBullet, onRejectEdit]);
 
-  // Auto-advance: when the coaching panel closes after an edit (not the X button),
-  // wait 500ms then activate the next unresolved item.
-  const prevActiveBulletRef = useRef<CoachTarget | null>(null);
-  useEffect(() => {
-    const wasActive = prevActiveBulletRef.current !== null;
-    const isNowNull = activeBullet === null;
-    prevActiveBulletRef.current = activeBullet;
-
-    if (!wasActive || !isNowNull) return;
-    if (!justCompletedEditRef.current) return;
-    justCompletedEditRef.current = false;
-
-    const queueSummary = rewriteQueue?.summary;
-    const hasItemsLeft = (queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0;
-    if (!hasItemsLeft) return;
-
-    const timerId = window.setTimeout(() => {
-      handleStartReviewing();
-    }, 150);
-    return () => window.clearTimeout(timerId);
-  // handleStartReviewing is stable (useCallback) — include all referenced values
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBullet]);
+  // Auto-advance is now handled directly in handleCoachApplyToResume/handleCoachRemoveBullet
+  // via advanceToNextItem() — no intermediate null state, no timer, no flash.
 
   // Scroll to top when scoring report data arrives so it's visible
   useEffect(() => {
