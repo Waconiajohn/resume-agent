@@ -91,11 +91,14 @@ function buildSuggestedWordingOptions(args: {
   alternatives: Array<{ text: string; angle: string }>;
 }): SuggestedWordingOption[] {
   const { bulletText, primarySuggestion, alternatives } = args;
+  // Only include actual suggestions — never the current bullet text itself
+  const bulletLower = bulletText.trim().toLowerCase();
   const optionTexts = [
-    bulletText,
     primarySuggestion ?? undefined,
     ...alternatives.map((a) => a.text),
-  ].filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  ]
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .filter((v) => v.trim().toLowerCase() !== bulletLower);
 
   const uniqueTexts: string[] = [];
   optionTexts.forEach((v) => {
