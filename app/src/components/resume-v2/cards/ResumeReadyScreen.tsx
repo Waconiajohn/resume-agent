@@ -18,6 +18,8 @@ interface ResumeReadyScreenProps {
   requirementsAddressed?: number;
   /** Actual total requirement count from score_breakdown. */
   requirementsTotal?: number;
+  /** True when the resume has a non-empty executive summary. */
+  hasExecutiveSummary?: boolean;
   onStartEditing: () => void;
 }
 
@@ -46,12 +48,17 @@ export function ResumeReadyScreen({
   primaryActionLabel = 'Start Reviewing →',
   requirementsAddressed,
   requirementsTotal,
+  hasExecutiveSummary = false,
   onStartEditing,
 }: ResumeReadyScreenProps) {
   const [keywordExpanded, setKeywordExpanded] = useState(false);
 
   const foundPhrases = dedupePhrases(keywordsFound);
   const missingPhrases = dedupePhrases(keywordsMissing);
+
+  // ── Stat card color classes ─────────────────────────────────────────────
+  const keywordStatClass = (keywordMatchPercent ?? 0) >= 50 ? 'ready-score-stat--good' : 'ready-score-stat--warn';
+  const reqStatClass = (requirementCoveragePercent ?? 0) >= 50 ? 'ready-score-stat--good' : 'ready-score-stat--warn';
 
   // ── Stat card values ────────────────────────────────────────────────────
   const keywordDisplay =
@@ -69,11 +76,10 @@ export function ResumeReadyScreen({
   // Pipeline produced a resume if we have any score data or phrases found.
   const pipelineRan = hasScoreData || foundPhrases.length > 0 || missingPhrases.length > 0;
   const hasBenchmark = typeof benchmarkMatchPercent === 'number';
-  const hasSummary = strengthSummary.trim().length > 0;
 
   const doneBullets: string[] = [];
   if (pipelineRan) doneBullets.push('Experience bullets written');
-  if (hasSummary) doneBullets.push('Executive summary positioned');
+  if (hasExecutiveSummary) doneBullets.push('Executive summary positioned');
   if (hasBenchmark) doneBullets.push('Competencies matched to role');
 
   // ── "What's next" — derive from actionSummaryLines if available, else build ──
@@ -110,7 +116,7 @@ export function ResumeReadyScreen({
 
       {/* ── Stat cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <div className="ready-score-stat ready-score-stat--good">
+        <div className={`ready-score-stat ${keywordStatClass}`}>
           <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
             {keywordDisplay}
           </p>
@@ -118,7 +124,7 @@ export function ResumeReadyScreen({
             Keyword Match
           </p>
         </div>
-        <div className="ready-score-stat ready-score-stat--good">
+        <div className={`ready-score-stat ${reqStatClass}`}>
           <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
             {reqDisplay}
           </p>

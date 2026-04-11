@@ -88,7 +88,7 @@ export function BulletCoachingPanel({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [enhanceResult, setEnhanceResult] = useState<EnhanceResult | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [usedAction, setUsedAction] = useState<string | null>(null);
+  const [usedActions, setUsedActions] = useState<Set<string>>(new Set());
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
 
   // ── Focus panel on mount ───────────────────────────────────────────────────
@@ -124,7 +124,7 @@ export function BulletCoachingPanel({
   useEffect(() => {
     setEnhanceResult(null);
     setIsEnhancing(false);
-    setUsedAction(null);
+    setUsedActions(new Set());
     setShowTryAnother(false);
     setShowCustomEdit(false);
     setEditDraft('');
@@ -165,7 +165,7 @@ export function BulletCoachingPanel({
     if (!onBulletEnhance || isEnhancing) return;
     setEnhanceError(null);
     setIsEnhancing(true);
-    setUsedAction(action);
+    setUsedActions(prev => new Set(prev).add(action));
     setShowTryAnother(false);
     try {
       const result = await onBulletEnhance(
@@ -213,9 +213,7 @@ export function BulletCoachingPanel({
 
   // ── Angle actions ─────────────────────────────────────────────────────────
   const allAngleActions = getEnhanceActionsForSection(sectionType);
-  const remainingAngleActions = usedAction
-    ? allAngleActions.filter((c) => c.action !== usedAction)
-    : allAngleActions;
+  const remainingAngleActions = allAngleActions.filter(c => !usedActions.has(c.action));
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -293,7 +291,8 @@ export function BulletCoachingPanel({
                   key={config.action}
                   type="button"
                   onClick={() => handleEnhance(config.action)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                  disabled={isEnhancing}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={config.description}
                 >
                   {config.label}
@@ -389,7 +388,8 @@ export function BulletCoachingPanel({
                   key={config.action}
                   type="button"
                   onClick={() => handleEnhance(config.action)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] border border-[var(--line-soft)] transition-colors"
+                  disabled={isEnhancing}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] border border-[var(--line-soft)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={config.description}
                 >
                   {config.label}

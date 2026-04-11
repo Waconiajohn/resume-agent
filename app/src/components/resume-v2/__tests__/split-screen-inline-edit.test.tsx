@@ -292,7 +292,7 @@ function makeGapAnalysis(): GapAnalysis {
 }
 
 async function startEditingIfGatePresent() {
-  const startButton = screen.queryByRole('button', { name: /Start Editing My Resume|Review Structure First|Review Sections First/i });
+  const startButton = screen.queryByRole('button', { name: /Start Editing My Resume|Review Structure First|Review Sections First|Start Reviewing/i });
   if (!startButton) return;
 
   await act(async () => {

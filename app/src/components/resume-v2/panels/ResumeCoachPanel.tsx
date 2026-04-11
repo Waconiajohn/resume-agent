@@ -329,57 +329,95 @@ export function ResumeCoachPanel({
       </div>
 
       {/* Overview body — scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-        {/* Section mini-map */}
-        {sectionSummaries.length > 0 && (
-          <section aria-label="Resume sections">
-            <SectionMiniMap
-              sections={sectionSummaries}
-              onSectionClick={onSectionClick}
-            />
-          </section>
-        )}
-
-        {/* Hint copy */}
-        {flaggedCount > 0 && (
-          <p className="text-[13px] leading-5" style={{ color: 'var(--text-soft)' }}>
-            Click any section to start, or work from the top.
-          </p>
-        )}
-
-        {/* Start Reviewing CTA */}
-        {flaggedCount > 0 && (
-          <button
-            type="button"
-            onClick={onStartReviewing}
-            className={cn(
-              'inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-[14px] font-semibold transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+      <div className="flex h-full flex-col overflow-y-auto">
+        {flaggedCount === 0 ? (
+          /* Zero-flagged: positive all-clear state */
+          <div className="flex flex-col items-center justify-center flex-1 px-6 text-center py-8">
+            <p className="text-lg font-semibold text-[var(--text-strong)] mb-2">All bullets look strong.</p>
+            <p className="text-sm text-[var(--text-soft)] mb-6">Your resume is ready to download.</p>
+            {onExportDocx && (
+              <button
+                type="button"
+                onClick={onExportDocx}
+                className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors mb-2"
+              >
+                Download DOCX
+              </button>
             )}
-            style={{
-              backgroundColor: 'var(--btn-primary-bg)',
-              border: '1px solid var(--btn-primary-border)',
-              color: 'var(--btn-primary-text)',
-            }}
-          >
-            Start Reviewing
-            <ChevronRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
-
-        {/* Structure plan link */}
-        {onStructurePlan && (
-          <button
-            type="button"
-            onClick={onStructurePlan}
-            className={cn(
-              'inline-flex w-full items-center justify-center text-[13px] transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+            {onExportPdf && (
+              <button
+                type="button"
+                onClick={onExportPdf}
+                className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg border border-[var(--line-soft)] px-4 py-2.5 text-sm font-medium text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+              >
+                Download PDF
+              </button>
             )}
-            style={{ color: 'var(--link)' }}
-          >
-            Adjust section structure
-          </button>
+            {/* Structure plan link — available even when no items are flagged */}
+            {onStructurePlan && (
+              <button
+                type="button"
+                onClick={onStructurePlan}
+                className={cn(
+                  'mt-4 inline-flex w-full max-w-[240px] items-center justify-center text-[13px] transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+                )}
+                style={{ color: 'var(--link)' }}
+              >
+                Adjust section structure
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="px-4 py-4 space-y-5">
+            {/* Section mini-map */}
+            {sectionSummaries.length > 0 && (
+              <section aria-label="Resume sections">
+                <SectionMiniMap
+                  sections={sectionSummaries}
+                  onSectionClick={onSectionClick}
+                />
+              </section>
+            )}
+
+            {/* Hint copy */}
+            <p className="text-[13px] leading-5" style={{ color: 'var(--text-soft)' }}>
+              Click any section to start, or work from the top.
+            </p>
+
+            {/* Start Reviewing CTA */}
+            <button
+              type="button"
+              onClick={onStartReviewing}
+              className={cn(
+                'inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-[14px] font-semibold transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+              )}
+              style={{
+                backgroundColor: 'var(--btn-primary-bg)',
+                border: '1px solid var(--btn-primary-border)',
+                color: 'var(--btn-primary-text)',
+              }}
+            >
+              Start Reviewing
+              <ChevronRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+            </button>
+
+            {/* Structure plan link */}
+            {onStructurePlan && (
+              <button
+                type="button"
+                onClick={onStructurePlan}
+                className={cn(
+                  'inline-flex w-full items-center justify-center text-[13px] transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+                )}
+                style={{ color: 'var(--link)' }}
+              >
+                Adjust section structure
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

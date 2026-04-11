@@ -1680,9 +1680,7 @@ export function V2StreamingDisplay({
     hiddenRecommendedSections,
     missingStructureRecommendations,
   ]);
-  const readyGatePrimaryActionLabel = canShowStructurePlanner
-    ? 'Review Sections First'
-    : 'Start Editing My Resume';
+  const readyGatePrimaryActionLabel = 'Start Reviewing →';
 
   // Health score: use keyword match when available, fall back to requirement coverage
   const _healthScore = useMemo(() => {
@@ -2032,6 +2030,7 @@ export function V2StreamingDisplay({
             primaryActionLabel={readyGatePrimaryActionLabel}
             requirementsAddressed={data.gapAnalysis?.score_breakdown?.job_description?.addressed}
             requirementsTotal={data.gapAnalysis?.score_breakdown?.job_description?.total}
+            hasExecutiveSummary={Boolean(displayResume?.executive_summary?.content?.trim())}
             onStartEditing={handleReadyGateStartEditing}
           />
         </div>

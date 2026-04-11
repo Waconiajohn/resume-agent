@@ -1293,8 +1293,6 @@
   .resume-proof-line.resume-line-active,
   .resume-line-card.resume-line-active,
   .resume-competency-chip.resume-line-active {
-    background:
-      linear-gradient(135deg, rgba(243, 248, 255, 0.98), rgba(255, 255, 255, 1)) !important;
     border: none !important;
     border-left: 4px solid rgba(59, 130, 246, 0.82) !important;
     box-shadow:

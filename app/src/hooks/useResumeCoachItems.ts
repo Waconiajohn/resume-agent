@@ -121,7 +121,33 @@ export function useResumeCoachItems(
       });
     }
 
-    // 2. Selected Accomplishments
+    // 2. Core Competencies
+    const competencies = resume.core_competencies ?? [];
+    for (let i = 0; i < competencies.length; i++) {
+      const comp = competencies[i];
+      if (!comp?.trim()) continue;
+      const sectionType: SectionType = 'core_competency';
+      items.push({
+        id: `core_competencies:${i}`,
+        section: 'core_competencies',
+        index: i,
+        sectionType,
+        text: comp,
+        status: 'strong',
+        reviewState: 'supported',
+        requirements: [],
+        evidenceFound: comp,
+        enhanceActions: getEnhanceActionsForSection(sectionType),
+        defaultEnhanceAction: getDefaultEnhanceAction(sectionType),
+        documentOrder: order++,
+        sectionLabel: 'Core Competencies',
+        locationLabel: 'Core Competencies',
+        canRemove: false,
+        confidence: 'strong',
+      });
+    }
+
+    // 3. Selected Accomplishments (was 2)
     const accomplishments = resume.selected_accomplishments ?? [];
     for (let i = 0; i < accomplishments.length; i++) {
       const bullet = accomplishments[i];
@@ -157,7 +183,7 @@ export function useResumeCoachItems(
       });
     }
 
-    // 3. Professional Experience
+    // 4. Professional Experience
     const experience = resume.professional_experience ?? [];
     for (let expIdx = 0; expIdx < experience.length; expIdx++) {
       const exp = experience[expIdx];
@@ -200,7 +226,7 @@ export function useResumeCoachItems(
       }
     }
 
-    // 4. Custom Sections
+    // 5. Custom Sections
     const customSections = resume.custom_sections ?? [];
     for (const cs of customSections) {
       for (let lineIdx = 0; lineIdx < cs.lines.length; lineIdx++) {

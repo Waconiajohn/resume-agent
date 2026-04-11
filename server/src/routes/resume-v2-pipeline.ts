@@ -1771,26 +1771,26 @@ function buildEnhanceActionDescription(
   if (lineKind === 'summary') {
     switch (action) {
       case 'show_transformation':
-        return 'Rewrite this FULL executive summary (3-5 sentences) so the opening tells a sharper transformation story. Maintain the multi-sentence structure. Improve the hook but preserve all key achievements and positioning. Return 3 full-length versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) so the opening tells a sharper transformation story. Maintain the multi-sentence structure. Improve the hook but preserve all key achievements and positioning. Return a primary rewrite and 3 alternatives.';
       case 'demonstrate_leadership':
-        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground leadership scope through people, scale, and operating cadence. Maintain the multi-sentence structure and all key content. Return 3 full-length versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground leadership scope through people, scale, and operating cadence. Maintain the multi-sentence structure and all key content. Return a primary rewrite and 3 alternatives.';
       case 'connect_to_role':
-        return 'Rewrite this FULL executive summary (3-5 sentences) to align with the target role. Improve the opening hook for immediate relevance to the hiring manager. Maintain all key achievements and positioning. Return 3 full-length versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to align with the target role. Improve the opening hook for immediate relevance to the hiring manager. Maintain all key achievements and positioning. Return a primary rewrite and 3 alternatives.';
       case 'show_accountability':
-        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground ownership, standards, and business impact. Maintain the multi-sentence structure and all key content. Return 3 full-length versions.';
+        return 'Rewrite this FULL executive summary (3-5 sentences) to foreground ownership, standards, and business impact. Maintain the multi-sentence structure and all key content. Return a primary rewrite and 3 alternatives.';
     }
   }
 
   if (lineKind === 'competency') {
     switch (action) {
       case 'show_transformation':
-        return 'Rewrite this competency as a sharper ATS-friendly keyword phrase that signals transformation or change capability. Return 3 short versions with no ending punctuation.';
+        return 'Rewrite this competency as a sharper ATS-friendly keyword phrase that signals transformation or change capability. Return a primary rewrite and 3 alternatives with no ending punctuation.';
       case 'demonstrate_leadership':
-        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals leadership through people, organizational influence, or executive ownership. Return 3 short versions with no ending punctuation.';
+        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals leadership through people, organizational influence, or executive ownership. Return a primary rewrite and 3 alternatives with no ending punctuation.';
       case 'connect_to_role':
-        return 'Rewrite this competency in language that more closely matches the target role and job description. Return 3 ATS-friendly keyword phrases with no ending punctuation.';
+        return 'Rewrite this competency in language that more closely matches the target role and job description. Return a primary rewrite and 3 ATS-friendly alternatives with no ending punctuation.';
       case 'show_accountability':
-        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals operating rigor, accountability, governance, or disciplined execution. Return 3 short versions with no ending punctuation.';
+        return 'Rewrite this competency as a sharper ATS-friendly phrase that signals operating rigor, accountability, governance, or disciplined execution. Return a primary rewrite and 3 alternatives with no ending punctuation.';
     }
   }
 
@@ -1798,25 +1798,25 @@ function buildEnhanceActionDescription(
     const sectionPhrase = sectionLabel ? `"${sectionLabel}"` : 'this section';
     switch (action) {
       case 'show_transformation':
-        return `Rewrite this resume line so it sharpens the story inside ${sectionPhrase}. Show the change, upgrade, or transformation the candidate drove, while staying grounded in real evidence. Return 3 versions.`;
+        return `Rewrite this resume line so it sharpens the story inside ${sectionPhrase}. Show the change, upgrade, or transformation the candidate drove, while staying grounded in real evidence. Return a primary rewrite and 3 alternatives.`;
       case 'demonstrate_leadership':
-        return `Rewrite this resume line so it shows leadership more clearly inside ${sectionPhrase}. Emphasize influence, ownership, and how the candidate led people or decisions. Return 3 versions.`;
+        return `Rewrite this resume line so it shows leadership more clearly inside ${sectionPhrase}. Emphasize influence, ownership, and how the candidate led people or decisions. Return a primary rewrite and 3 alternatives.`;
       case 'connect_to_role':
-        return `Rewrite this resume line so it connects ${sectionPhrase} more directly to the target role. Translate the experience into the hiring company\'s language and priorities. Return 3 versions.`;
+        return `Rewrite this resume line so it connects ${sectionPhrase} more directly to the target role. Translate the experience into the hiring company\'s language and priorities. Return a primary rewrite and 3 alternatives.`;
       case 'show_accountability':
-        return `Rewrite this resume line so it shows accountability, standards, or business impact inside ${sectionPhrase}. Make the line sound trusted, concrete, and outcome-oriented. Return 3 versions.`;
+        return `Rewrite this resume line so it shows accountability, standards, or business impact inside ${sectionPhrase}. Make the line sound trusted, concrete, and outcome-oriented. Return a primary rewrite and 3 alternatives.`;
     }
   }
 
   switch (action) {
     case 'show_transformation':
-      return 'Rewrite this bullet to show transformation: the before-state (what was broken or challenging), the action taken (HOW — through people, process, creativity, not just what), and the after-state (what became possible, not just the metric). Structure: inherited/faced → did → resulted in. Return 3 versions with different angles.';
+      return 'Rewrite this bullet to show transformation: the before-state (what was broken or challenging), the action taken (HOW — through people, process, creativity, not just what), and the after-state (what became possible, not just the metric). Structure: inherited/faced → did → resulted in. Return a primary rewrite and 3 alternatives with different angles.';
     case 'demonstrate_leadership':
-      return 'Rewrite this bullet to demonstrate leadership through people — empowerment, delegation, team development, growing others into leaders. Show who was developed, how they were empowered, what they accomplished as a result. The best leaders are measured by what their people achieved. Return 3 versions.';
+      return 'Rewrite this bullet to demonstrate leadership through people — empowerment, delegation, team development, growing others into leaders. Show who was developed, how they were empowered, what they accomplished as a result. The best leaders are measured by what their people achieved. Return a primary rewrite and 3 alternatives.';
     case 'connect_to_role':
-      return 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return 3 versions.';
+      return 'Rewrite this bullet to explicitly translate this accomplishment into the hiring company\'s language and problem space. Bridge the candidate\'s experience to the specific JD requirement. Make it obvious why this experience matters for THIS role. Return a primary rewrite and 3 alternatives.';
     case 'show_accountability':
-      return 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return 3 versions.';
+      return 'Rewrite this bullet to show accountability — standards set and enforced, or a recovery narrative (setback → rapid diagnosis → course correction → result). Show resilience, self-assessment, and learning. Hiring managers trust people who face failure data calmly and act fast. Return a primary rewrite and 3 alternatives.';
   }
 }
 
@@ -2042,7 +2042,9 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
         }
       }
     }
-  } catch { /* pipeline state may not have all fields */ }
+  } catch (err: unknown) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err), session_id: sessionId }, 'Bullet enhance: context enrichment failed');
+  }
 
   logger.info({ session_id: sessionId, action, bulletSnippet: bullet_text.substring(0, 60) }, 'Bullet enhance request');
 
@@ -2076,9 +2078,17 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
     `{`,
     `  "enhanced_bullet": "<your primary rewrite of the bullet>",`,
     `  "alternatives": [`,
-    `    {"text": "<a version emphasizing quantified metrics and numbers>", "angle": "metric"},`,
-    `    {"text": "<a version emphasizing scope, scale, and breadth of responsibility>", "angle": "scope"},`,
-    `    {"text": "<a version emphasizing business impact and outcomes>", "angle": "impact"}`,
+    ...(line_kind === 'competency'
+      ? [
+          `    {"text": "<a variation emphasizing technical depth>", "angle": "technical"},`,
+          `    {"text": "<a variation emphasizing leadership scope>", "angle": "leadership"},`,
+          `    {"text": "<a variation matching JD language>", "angle": "jd-aligned"}`,
+        ]
+      : [
+          `    {"text": "<a version emphasizing quantified metrics and numbers>", "angle": "metric"},`,
+          `    {"text": "<a version emphasizing scope, scale, and breadth of responsibility>", "angle": "scope"},`,
+          `    {"text": "<a version emphasizing business impact and outcomes>", "angle": "impact"}`,
+        ]),
     `  ]`,
     `}`,
     ``,
@@ -2097,12 +2107,16 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   ].filter(Boolean).join('\n');
 
   try {
-    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
-      model: MODEL_MID,
-      system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: line_kind === 'summary' ? 2048 : 1024,
-    }));
+    const response = await withRetry(
+      () => withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
+        model: MODEL_MID,
+        system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: line_kind === 'summary' ? 2048 : 1024,
+        signal: c.req.raw.signal,
+      })),
+      { signal: c.req.raw.signal },
+    );
 
     const repaired = repairJSON<{ enhanced_bullet?: string; alternatives?: Array<{ text: string; angle: string }> }>(response.text);
 
