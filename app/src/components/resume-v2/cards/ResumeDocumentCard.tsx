@@ -78,6 +78,8 @@ function ContextChipTag({ chip, isVisible }: { chip: ActiveContextChip | null; i
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
   requirementCatalog?: Array<{ requirement: string; source?: RequirementSource }>;
+  /** Progress indicators per section — shows remaining flagged item count */
+  sectionProgress?: Record<string, { flagged: number; total: number }>;
   /** Which bullet is currently selected for inline editing */
   activeBullet?: { section: string; index: number } | null;
   /** Click handler for bullet selection */
@@ -108,6 +110,7 @@ function getResumeLineToken(section: string, index: number): string {
 export function ResumeDocumentCard({
   resume,
   requirementCatalog = [],
+  sectionProgress,
   activeBullet = null,
   onBulletClick,
   onBulletEdit: _onBulletEdit,
@@ -250,7 +253,7 @@ export function ResumeDocumentCard({
   if (coreCompetencies.length > 0) {
     sectionNodes.set('core_competencies', (
       <section key="core_competencies" data-section="core_competencies">
-        <SectionHeading>Core Competencies</SectionHeading>
+        <SectionHeading progress={sectionProgress?.['core_competencies']}>Core Competencies</SectionHeading>
         <div className="flex flex-wrap gap-2">
           {coreCompetencies.map((comp, i) => (
             <span
@@ -310,7 +313,7 @@ export function ResumeDocumentCard({
   if (selectedAccomplishments.length > 0) {
     sectionNodes.set('selected_accomplishments', (
       <section key="selected_accomplishments" data-section="selected_accomplishments">
-        <SectionHeading>Selected Accomplishments</SectionHeading>
+        <SectionHeading progress={sectionProgress?.['selected_accomplishments']}>Selected Accomplishments</SectionHeading>
         <ul className="resume-proof-list space-y-3 list-none pl-0">
           {selectedAccomplishments.map((a, i) => {
             const accomplishmentRequirements = canonicalRequirementSignals(
@@ -371,7 +374,7 @@ export function ResumeDocumentCard({
   if (professionalExperience.length > 0) {
     sectionNodes.set('professional_experience', (
       <section key="professional_experience" data-section="professional_experience">
-        <SectionHeading>Professional Experience</SectionHeading>
+        <SectionHeading progress={sectionProgress?.['professional_experience']}>Professional Experience</SectionHeading>
         <div className="space-y-7">
           {professionalExperience.map((exp, i) => (
             <div key={i}>
@@ -1111,10 +1114,21 @@ function resolveStandaloneDisplayRequirements(
   return bestMatch && bestScore >= 0.18 ? [bestMatch] : [];
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SectionHeading({
+  children,
+  progress,
+}: {
+  children: React.ReactNode;
+  progress?: { flagged: number; total: number };
+}) {
   return (
-    <h3 className="resume-section-heading mb-4 border-b border-stone-200/80 pb-2.5 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-stone-500 sm:text-[11.5px]">
+    <h3 className="resume-section-heading mb-4 flex items-baseline gap-2 border-b border-stone-200/80 pb-2.5 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-stone-500 sm:text-[11.5px]">
       {children}
+      {progress && progress.flagged > 0 && (
+        <span className="text-xs font-normal normal-case tracking-normal text-[var(--text-soft)]">
+          ({progress.flagged} remaining)
+        </span>
+      )}
     </h3>
   );
 }

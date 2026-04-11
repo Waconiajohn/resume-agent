@@ -80,6 +80,8 @@ vi.mock('lucide-react', () => {
     Plus: Icon,
     Trash2: Icon,
     Download: Icon,
+    ChevronLeft: Icon,
+    FileType2: Icon,
   };
 });
 

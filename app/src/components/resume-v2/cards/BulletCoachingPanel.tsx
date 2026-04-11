@@ -6,6 +6,8 @@ import type { GapChatHook } from '@/hooks/useGapChat';
 import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 import { CustomEditArea } from './bullet-coaching/CustomEditArea';
 import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
+import type { SectionType } from '@/lib/section-enhance-config';
+import { getEnhanceActionsForSection, getDefaultEnhanceAction } from '@/lib/section-enhance-config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +43,8 @@ export interface BulletCoachingPanelProps {
   suggestionScore?: SuggestionScore;
   /** AI-generated suggestion from the rewrite queue pipeline */
   queueSuggestedDraft?: string;
+  /** Section type for context-aware enhancement actions and auto-enhance default */
+  sectionType?: SectionType;
   onBulletEnhance?: (
     action: string,
     bulletText: string,
@@ -143,11 +147,13 @@ export function BulletCoachingPanel({
   isAIEnhanced,
   suggestionScore,
   queueSuggestedDraft,
+  sectionType = 'experience_bullet',
   onBulletEnhance,
 }: BulletCoachingPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const autoReuseRef = useRef<string | null>(null);
+  const autoEnhancedRef = useRef(false);
 
   // ── Internal state ─────────────────────────────────────────────────────────
   const [editDraft, setEditDraft] = useState('');
@@ -317,11 +323,26 @@ export function BulletCoachingPanel({
     }
   }, [onBulletEnhance, isEnhancing, bulletText, requirements, evidenceFound, chatContext.lineKind, chatContext.sectionLabel, section]);
 
-  // Reset enhance result when bullet changes
+  // Reset enhance state when bullet changes
   useEffect(() => {
+    autoEnhancedRef.current = false;
     setEnhanceResult(null);
     setIsEnhancing(false);
   }, [bulletText, section, bulletIndex]);
+
+  // Auto-enhance when no suggestion exists (fires once per bullet open)
+  useEffect(() => {
+    if (autoEnhancedRef.current) return;
+    if (primarySuggestion || enhanceResult || isEnhancing) return;
+    if (!onBulletEnhance) return;
+    if (effectiveVerdict === 'collapse') return;
+    if (showAIDiff) return;
+    if (isCodeRedNoEvidence) return;
+
+    autoEnhancedRef.current = true;
+    const defaultAction = getDefaultEnhanceAction(sectionType);
+    void handleEnhance(defaultAction);
+  }, [primarySuggestion, enhanceResult, isEnhancing, onBulletEnhance, effectiveVerdict, showAIDiff, isCodeRedNoEvidence, sectionType, handleEnhance]);
 
   // ── Apply from custom edit ────────────────────────────────────────────────
   const handleApplyEdit = useCallback(() => {
@@ -512,9 +533,10 @@ export function BulletCoachingPanel({
             {!showAIDiff && !isCodeRedNoEvidence && !featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && onBulletEnhance && (
               <>
                 {isEnhancing && (
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-soft)]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating suggestion...
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-4 bg-[var(--surface-1)] rounded w-full" />
+                    <div className="h-4 bg-[var(--surface-1)] rounded w-5/6" />
+                    <div className="h-4 bg-[var(--surface-1)] rounded w-4/6" />
                   </div>
                 )}
 
@@ -524,10 +546,17 @@ export function BulletCoachingPanel({
                       How should we strengthen this?
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => handleEnhance('show_transformation')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Impact</button>
-                      <button type="button" onClick={() => handleEnhance('demonstrate_leadership')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Leadership</button>
-                      <button type="button" onClick={() => handleEnhance('connect_to_role')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Connect to Role</button>
-                      <button type="button" onClick={() => handleEnhance('show_accountability')} className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">Show Scale</button>
+                      {getEnhanceActionsForSection(sectionType).map((config) => (
+                        <button
+                          key={config.action}
+                          type="button"
+                          onClick={() => handleEnhance(config.action)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                          title={config.description}
+                        >
+                          {config.label}
+                        </button>
+                      ))}
                     </div>
                   </>
                 )}

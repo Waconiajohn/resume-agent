@@ -11,6 +11,10 @@ import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, Download } 
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState, SuggestionScore, RewriteQueueItem } from '@/types/resume-v2';
+import { useResumeCoachItems } from '@/hooks/useResumeCoachItems';
+import type { CoachItem } from '@/hooks/useResumeCoachItems';
+import { ResumeCoachPanel } from './panels/ResumeCoachPanel';
+import { deriveSectionType } from '@/lib/section-enhance-config';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { BulletCoachingPanel } from './cards/BulletCoachingPanel';
@@ -1150,7 +1154,7 @@ export function V2StreamingDisplay({
     });
   }, []);
 
-  const openAttentionItem = useCallback((index: number, options?: { autoReuseClarificationId?: string }) => {
+  const _openAttentionItem = useCallback((index: number, options?: { autoReuseClarificationId?: string }) => {
     const item = attentionItems[index];
     if (!item) return;
     setActiveBullet({
@@ -1287,28 +1291,134 @@ export function V2StreamingDisplay({
   // (vs. clicking the X button). Used to gate the auto-advance effect below.
   // justCompletedEditRef removed — auto-advance now handled directly by advanceToNextItem()
 
+  // ── Rewrite queue (moved here so coachData can consume its items) ─────────
+  const rewriteQueue = useMemo(() => {
+    if (!data.jobIntelligence || !data.gapAnalysis) return null;
+    return buildRewriteQueue({
+      jobIntelligence: data.jobIntelligence,
+      gapAnalysis: data.gapAnalysis,
+      requirementWorkItems: data.requirementWorkItems,
+      currentResume: displayResume,
+      benchmarkCandidate: data.benchmarkCandidate,
+      gapCoachingCards,
+      gapChatSnapshot,
+      finalReviewResult: hiringManagerResult ?? null,
+      finalReviewChatSnapshot,
+      resolvedFinalReviewConcernIds,
+    });
+  }, [
+    data.benchmarkCandidate,
+    data.gapAnalysis,
+    data.jobIntelligence,
+    displayResume,
+    finalReviewChatSnapshot,
+    gapChatSnapshot,
+    gapCoachingCards,
+    hiringManagerResult,
+    resolvedFinalReviewConcernIds,
+  ]);
+
+  // ── Unified coach item list (new architecture) ───────────────────────────
+  const coachData = useResumeCoachItems(displayResume ?? null, rewriteQueue?.items);
+
+  const sectionSummaries = useMemo(() => {
+    const groups = new Map<string, { label: string; flagged: number; total: number }>();
+    for (const item of coachData.items) {
+      const key = item.sectionLabel;
+      const existing = groups.get(key) ?? { label: key, flagged: 0, total: 0 };
+      existing.total++;
+      if (item.status === 'needs_attention') existing.flagged++;
+      groups.set(key, existing);
+    }
+    return [...groups.entries()].map(([key, groupData]) => ({
+      key,
+      label: groupData.label,
+      flaggedCount: groupData.flagged,
+      totalCount: groupData.total,
+      status: groupData.flagged === 0 ? 'strong' as const : groupData.flagged === groupData.total ? 'needs_attention' as const : 'mixed' as const,
+    }));
+  }, [coachData.items]);
+
+  const sectionProgress = useMemo(() => {
+    const progress: Record<string, { flagged: number; total: number }> = {};
+    for (const item of coachData.items) {
+      const key = item.section.startsWith('professional_experience') ? 'professional_experience' : item.section;
+      if (!progress[key]) progress[key] = { flagged: 0, total: 0 };
+      progress[key].total++;
+      if (item.status === 'needs_attention') progress[key].flagged++;
+    }
+    return progress;
+  }, [coachData.items]);
+
+  const currentFlaggedPosition = useMemo(() => {
+    if (!activeBullet) return 0;
+    const key = `${activeBullet.section}:${activeBullet.index}`;
+    const idx = coachData.flaggedItems.findIndex(item => item.id === key);
+    return idx >= 0 ? idx + 1 : 0;
+  }, [activeBullet, coachData.flaggedItems]);
+
+  // ── Navigation callbacks ──────────────────────────────────────────────────
+  const navigateToFlaggedItem = useCallback((item: CoachItem) => {
+    setActiveBullet({
+      id: item.id,
+      section: item.section,
+      index: item.index,
+      requirements: item.requirements,
+      bulletText: item.text,
+      reviewState: item.reviewState,
+      requirementSource: item.requirementSource,
+      evidenceFound: item.evidenceFound,
+      workItemId: item.workItemId,
+      proofLevel: item.proofLevel,
+      framingGuardrail: item.framingGuardrail,
+      nextBestAction: item.nextBestAction,
+      canRemove: item.canRemove,
+      locationLabel: item.locationLabel,
+      isAIEnhanced: item.isAIEnhanced,
+    });
+    window.requestAnimationFrame(() => {
+      scrollToAndFocusTarget(buildResumeLineSelector(item.section, item.index));
+    });
+  }, []);
+
+  const handlePrevItem = useCallback(() => {
+    if (currentFlaggedPosition <= 1) return;
+    const prevItem = coachData.flaggedItems[currentFlaggedPosition - 2];
+    if (prevItem) navigateToFlaggedItem(prevItem);
+  }, [currentFlaggedPosition, coachData.flaggedItems, navigateToFlaggedItem]);
+
+  const handleNextItem = useCallback(() => {
+    if (currentFlaggedPosition >= coachData.flaggedCount) return;
+    const nextItem = coachData.flaggedItems[currentFlaggedPosition];
+    if (nextItem) navigateToFlaggedItem(nextItem);
+  }, [currentFlaggedPosition, coachData.flaggedCount, coachData.flaggedItems, navigateToFlaggedItem]);
+
+  const handleSectionMiniMapClick = useCallback((sectionKey: string) => {
+    const firstInSection = coachData.flaggedItems.find(item => item.sectionLabel === sectionKey);
+    if (firstInSection) {
+      navigateToFlaggedItem(firstInSection);
+    }
+  }, [coachData.flaggedItems, navigateToFlaggedItem]);
+
+  // Activate the first flagged item using the new coachData list
+  const handleStartReviewing = useCallback(() => {
+    const firstFlagged = coachData.flaggedItems[0];
+    if (firstFlagged) {
+      navigateToFlaggedItem(firstFlagged);
+    }
+  }, [coachData.flaggedItems, navigateToFlaggedItem]);
+
   /** After applying an edit, advance directly to the next flagged item.
    *  No intermediate null state — one setActiveBullet call, no flash. */
   const advanceToNextItem = useCallback((justEditedSection: string, justEditedIndex: number) => {
-    // Find the next attention item that isn't the one we just edited
-    const nextAttention = attentionItems.find(
-      (item) => !(item.section === justEditedSection && item.index === justEditedIndex),
-    );
-    if (nextAttention) {
-      openAttentionItem(attentionItems.indexOf(nextAttention));
-      return;
+    const justEditedKey = `${justEditedSection}:${justEditedIndex}`;
+    const nextItem = coachData.flaggedItems.find(item => item.id !== justEditedKey);
+    if (nextItem) {
+      navigateToFlaggedItem(nextItem);
+    } else {
+      setActiveBullet(null);
     }
-    // Find the next section coach target that isn't the one we just edited
-    const nextTarget = sectionCoachTargets.find(
-      (target) => !(target.section === justEditedSection && target.index === justEditedIndex),
-    );
-    if (nextTarget) {
-      openSectionCoachTarget(nextTarget);
-      return;
-    }
-    // Nothing left — return to coach mode
-    setActiveBullet(null);
-  }, [attentionItems, openAttentionItem, sectionCoachTargets, openSectionCoachTarget]);
+  }, [coachData.flaggedItems, navigateToFlaggedItem]);
 
   const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
     onBulletEdit?.(section, index, newText, metadata);
@@ -1557,33 +1667,9 @@ export function V2StreamingDisplay({
   const readyGatePrimaryActionLabel = canShowStructurePlanner
     ? 'Review Sections First'
     : 'Start Editing My Resume';
-  const rewriteQueue = useMemo(() => {
-    if (!data.jobIntelligence || !data.gapAnalysis) return null;
-    return buildRewriteQueue({
-      jobIntelligence: data.jobIntelligence,
-      gapAnalysis: data.gapAnalysis,
-      requirementWorkItems: data.requirementWorkItems,
-      currentResume: displayResume,
-      benchmarkCandidate: data.benchmarkCandidate,
-      gapCoachingCards,
-      gapChatSnapshot,
-      finalReviewResult: hiringManagerResult ?? null,
-      finalReviewChatSnapshot,
-      resolvedFinalReviewConcernIds,
-    });
-  }, [
-    data.benchmarkCandidate,
-    data.gapAnalysis,
-    data.jobIntelligence,
-    displayResume,
-    finalReviewChatSnapshot,
-    gapChatSnapshot,
-    gapCoachingCards,
-    hiringManagerResult,
-    resolvedFinalReviewConcernIds,
-  ]);
+
   // Health score: use keyword match when available, fall back to requirement coverage
-  const healthScore = useMemo(() => {
+  const _healthScore = useMemo(() => {
     if (typeof keywordMatchPercent === 'number') return keywordMatchPercent;
     const queueSummary = rewriteQueue?.summary;
     if (queueSummary && queueSummary.total > 0) {
@@ -1591,31 +1677,6 @@ export function V2StreamingDisplay({
     }
     return null;
   }, [keywordMatchPercent, rewriteQueue?.summary]);
-
-  // Activate the first non-resolved rewrite queue item (transitions Coach → Editor mode)
-  const handleStartReviewing = useCallback(() => {
-    const nextQueueItem = rewriteQueue?.nextItem;
-    if (!nextQueueItem) return;
-
-    // Try to find a matching section coach target by requirement
-    const matchingTarget = sectionCoachTargets.find((target) =>
-      target.requirements.some((req) =>
-        req.toLowerCase().trim() === nextQueueItem.title.toLowerCase().trim(),
-      ),
-    );
-    if (matchingTarget) {
-      openSectionCoachTarget(matchingTarget);
-      window.requestAnimationFrame(() => {
-        scrollToAndFocusTarget(buildResumeLineSelector(matchingTarget.section, matchingTarget.index));
-      });
-      return;
-    }
-
-    // Fall back to the first attention item
-    if (attentionItems.length > 0) {
-      openAttentionItem(0);
-    }
-  }, [attentionItems, openAttentionItem, openSectionCoachTarget, rewriteQueue?.nextItem, sectionCoachTargets]);
 
   const unresolvedCriticalConcerns = useMemo(() => (
     hiringManagerResult?.concerns.filter((concern) => (
@@ -1787,7 +1848,7 @@ export function V2StreamingDisplay({
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="resume-paper-shell overflow-hidden">
-                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
+                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} sectionProgress={sectionProgress} />
                   </div>
                 </AnimatedCard>
               )}
@@ -1824,286 +1885,110 @@ export function V2StreamingDisplay({
           {/* ── Desktop: two-panel layout ── */}
           <div className="hidden h-full px-4 py-4 lg:flex xl:px-5 xl:py-5">
             <ResumeEditorLayout
-              leftPanel={(() => {
-                const queueSummary = rewriteQueue?.summary ?? null;
-                // 3-mode panel applies only in the editing phase (past structure step, no active section workflow step, no active bullet)
-                const isInEditingPhase = hasCompletedStructureStep && !isShowingStructurePlan && !isWorkflowActive && !activeBullet && !showDesktopFinalReview;
-                const isReviewerMode = isInEditingPhase && queueSummary !== null && queueSummary.needsUserInput === 0 && queueSummary.needsApproval <= 2;
-                const isCoachMode = isInEditingPhase && !isReviewerMode;
-
-                const headerTitle = activeBullet
-                  ? activeBullet.locationLabel
-                  : showDesktopFinalReview
-                    ? 'Final review'
-                  : isShowingStructurePlan
-                    ? 'Section plan'
-                    : isWorkflowActive && currentWorkflowStep
-                      ? currentWorkflowStep.title
-                      : isReviewerMode
-                        ? 'Ready to Export'
-                      : isCoachMode
-                        ? 'Resume Coach'
-                        : 'Review the final draft';
-                const headerSummary = activeBullet
-                  ? 'Use the suggestions below, apply the one that feels true, and then move on.'
-                  : showDesktopFinalReview
-                    ? 'Review the strongest hiring-manager concerns before you export or keep polishing lines.'
-                  : isShowingStructurePlan
-                    ? 'Choose the sections and order before you polish the wording. When the structure looks right, start at the top and work down the resume.'
-                    : isWorkflowActive && currentWorkflowStep
-                      ? 'Review the full section draft, choose the version that feels right, and then move to the next section.'
-                      : isReviewerMode
-                        ? "You've addressed the key items."
-                      : isCoachMode
-                        ? 'Click any highlighted item or use the button below to begin.'
-                        : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
-
-                const totalItems = (queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) + (queueSummary?.handled ?? 0);
-                const reviewedCount = queueSummary?.handled ?? 0;
-                const allReviewed = totalItems > 0 && reviewedCount >= totalItems;
-
-                // Position of active bullet in the combined review list
-                const combinedKeys = [
-                  ...attentionItems.map(i => `${i.section}:${i.index}`),
-                  ...sectionCoachTargets.map(t => `${t.section}:${t.index}`),
-                ];
-                const activeBulletKey = activeBullet ? `${activeBullet.section}:${activeBullet.index}` : null;
-                const currentPosition = activeBulletKey ? combinedKeys.indexOf(activeBulletKey) + 1 : 0;
-
-                return (
-                  <div className="flex flex-col h-full">
-                    {/* ── Card Stack Progress Header ── */}
-                    <div className="shrink-0 border-b border-[var(--line-soft)] px-4 py-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-[var(--text-strong)]">
-                          {allReviewed
-                            ? `✓ ${reviewedCount} of ${totalItems} reviewed`
-                            : activeBullet && currentPosition > 0
-                              ? `Item ${currentPosition} of ${totalItems}`
-                              : activeBullet
-                                ? `Item ${reviewedCount + 1} of ${totalItems}`
-                                : `${totalItems} items to review`}
-                        </span>
-                      </div>
-                      {totalItems > 0 && (
-                        <div className="h-1.5 bg-[var(--surface-1)] rounded-full overflow-hidden">
-                          <div
-                            className={`h-1.5 rounded-full transition-all duration-500 ${allReviewed ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                            style={{ width: `${totalItems > 0 ? (reviewedCount / totalItems) * 100 : 0}%` }}
-                          />
-                        </div>
-                      )}
+              leftPanel={
+                <ResumeCoachPanel
+                  flaggedCount={coachData.flaggedCount}
+                  reviewedCount={coachData.flaggedCount - coachData.flaggedItems.filter(i => i.status === 'needs_attention').length}
+                  currentPosition={currentFlaggedPosition}
+                  sectionSummaries={sectionSummaries}
+                  isActive={!!activeBullet}
+                  isComplete={coachData.flaggedCount > 0 && coachData.flaggedItems.length === 0}
+                  onStartReviewing={handleStartReviewing}
+                  onPrevItem={handlePrevItem}
+                  onNextItem={handleNextItem}
+                  onSectionClick={handleSectionMiniMapClick}
+                  onStructurePlan={canShowStructurePlanner ? handleShowStructurePlan : undefined}
+                  onExportDocx={() => document.querySelector<HTMLButtonElement>('[data-export-docx]')?.click()}
+                  onExportPdf={() => document.querySelector<HTMLButtonElement>('[data-export-pdf]')?.click()}
+                  error={error ?? editError ?? null}
+                  onRetryPipeline={onRetryPipeline}
+                >
+                  {showDesktopFinalReview ? (
+                    <ResumeFinalReviewPanel
+                      hiringManagerResult={hiringManagerResult ?? null}
+                      resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                      isFinalReviewStale={isFinalReviewStale}
+                      isHiringManagerLoading={isHiringManagerLoading}
+                      hiringManagerError={hiringManagerError}
+                      companyName={data.jobIntelligence?.company_name}
+                      jobTitle={data.jobIntelligence?.role_title}
+                      onRequestHiringManagerReview={onRequestHiringManagerReview}
+                      onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
+                      finalReviewChat={finalReviewChat}
+                      buildFinalReviewChatContext={buildFinalReviewChatContext}
+                      resolveConcernTarget={resolveFinalReviewTarget}
+                      onPreviewConcernTarget={onPreviewFinalReviewTarget}
+                      isEditing={isEditing}
+                    />
+                  ) : activeBullet && gapChat && buildChatContext ? (
+                    <div ref={coachingPanelRef} tabIndex={-1} className="outline-none">
+                      <BulletCoachingPanel
+                        bulletText={activeBullet.bulletText}
+                        section={activeBullet.section}
+                        bulletIndex={activeBullet.index}
+                        requirements={activeBullet.requirements}
+                        reviewState={activeBullet.reviewState}
+                        requirementSource={activeBullet.requirementSource}
+                        evidenceFound={activeBullet.evidenceFound}
+                        sourceEvidence={activeBullet.sourceEvidence}
+                        proofLevel={activeBullet.proofLevel}
+                        framingGuardrail={activeBullet.framingGuardrail}
+                        nextBestAction={activeBullet.nextBestAction}
+                        canRemove={activeBullet.canRemove ?? true}
+                        initialReuseClarificationId={activeBullet.autoReuseClarificationId}
+                        isAIEnhanced={activeBullet.isAIEnhanced}
+                        suggestionScore={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestionScore}
+                        queueSuggestedDraft={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestedDraft}
+                        gapChat={gapChat}
+                        chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
+                        onApplyToResume={handleCoachApplyToResume}
+                        onRemoveBullet={handleCoachRemoveBullet}
+                        onClose={() => setActiveBullet(null)}
+                        onBulletEnhance={onBulletEnhance}
+                        sectionType={deriveSectionType(activeBullet.section)}
+                      />
                     </div>
-
-                    <div className="flex-1 overflow-y-auto px-3 py-3">
-                      {(error || editError) && (
-                        <div className="rounded-xl border border-[var(--badge-red-text)]/28 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/90 mb-3" role="alert">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 shrink-0" />{error ?? editError}
-                          </div>
-                          {error && onRetryPipeline && (
-                            <button
-                              type="button"
-                              onClick={onRetryPipeline}
-                              className="mt-3 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white transition-colors"
-                            >
-                              Retry Pipeline
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {showDesktopFinalReview ? (
-                        <ResumeFinalReviewPanel
-                          hiringManagerResult={hiringManagerResult ?? null}
-                          resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-                          isFinalReviewStale={isFinalReviewStale}
-                          isHiringManagerLoading={isHiringManagerLoading}
-                          hiringManagerError={hiringManagerError}
-                          companyName={data.jobIntelligence?.company_name}
-                          jobTitle={data.jobIntelligence?.role_title}
-                          onRequestHiringManagerReview={onRequestHiringManagerReview}
-                          onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
-                          finalReviewChat={finalReviewChat}
-                          buildFinalReviewChatContext={buildFinalReviewChatContext}
-                          resolveConcernTarget={resolveFinalReviewTarget}
-                          onPreviewConcernTarget={onPreviewFinalReviewTarget}
-                          isEditing={isEditing}
+                  ) : isShowingStructurePlan || isWorkflowActive ? (
+                    displayResume ? (
+                      <div ref={structurePlannerRef}>
+                        <ResumeSectionWorkflowPanel
+                          resume={displayResume}
+                          workflow={sectionWorkflow}
+                          candidateIntelligence={data.candidateIntelligence}
+                          requirementWorkItems={data.requirementWorkItems}
+                          structureConfirmed={!isShowingStructurePlan}
+                          currentStep={isWorkflowActive ? currentWorkflowStep : null}
+                          draftState={isWorkflowActive && currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
+                          onMoveSection={onMoveSection!}
+                          onToggleSection={onToggleSection!}
+                          onAddAISection={handleAddAISectionAndOpen}
+                          onAddCustomSection={handleAddCustomSectionAndOpen}
+                          onRemoveCustomSection={onRemoveCustomSection!}
+                          onConfirmStructure={handleConfirmStructureStep}
+                          onGenerateDraft={() => {
+                            if (currentWorkflowStep) {
+                              void onGenerateSectionDraft?.({ step: currentWorkflowStep, force: true });
+                            }
+                          }}
+                          onRefineDraft={async (actionId, workingDraft) => {
+                            if (currentWorkflowStep) {
+                              await onRefineSectionDraft?.(currentWorkflowStep, actionId, workingDraft);
+                            }
+                          }}
+                          onApplyVariant={handleApplyWorkflowVariant}
+                          onShowStructurePlan={handleShowStructurePlan}
                         />
-                      ) : activeBullet && gapChat && buildChatContext ? (
-                        <div ref={coachingPanelRef} tabIndex={-1} className="outline-none">
-                          <BulletCoachingPanel
-                            bulletText={activeBullet.bulletText}
-                            section={activeBullet.section}
-                            bulletIndex={activeBullet.index}
-                            requirements={activeBullet.requirements}
-                            reviewState={activeBullet.reviewState}
-                            requirementSource={activeBullet.requirementSource}
-                            evidenceFound={activeBullet.evidenceFound}
-                            sourceEvidence={activeBullet.sourceEvidence}
-                            proofLevel={activeBullet.proofLevel}
-                            framingGuardrail={activeBullet.framingGuardrail}
-                            nextBestAction={activeBullet.nextBestAction}
-                            canRemove={activeBullet.canRemove ?? true}
-                            initialReuseClarificationId={activeBullet.autoReuseClarificationId}
-                            isAIEnhanced={activeBullet.isAIEnhanced}
-                            suggestionScore={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestionScore}
-                            queueSuggestedDraft={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestedDraft}
-                            gapChat={gapChat}
-                            chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
-                            onApplyToResume={handleCoachApplyToResume}
-                            onRemoveBullet={handleCoachRemoveBullet}
-                            onClose={() => setActiveBullet(null)}
-                            onBulletEnhance={onBulletEnhance}
-                          />
-                        </div>
-                      ) : allReviewed ? (
-                        /* ── Export-Ready Final Card ── */
-                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-                          <p className="text-lg font-semibold text-[var(--text-strong)] mb-2">
-                            All items reviewed.
-                          </p>
-                          <p className="text-sm text-[var(--text-soft)] mb-8">
-                            Your resume is ready.
-                          </p>
-                          {displayResume && (
-                            <div className="space-y-2 w-full max-w-[240px] mb-8">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const docxBtn = document.querySelector<HTMLButtonElement>('[data-export-docx]');
-                                  docxBtn?.click();
-                                }}
-                                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                              >
-                                <Download className="h-4 w-4" />
-                                Download DOCX
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const pdfBtn = document.querySelector<HTMLButtonElement>('[data-export-pdf]');
-                                  pdfBtn?.click();
-                                }}
-                                className="w-full flex items-center justify-center gap-2 rounded-lg border border-[var(--line-soft)] px-4 py-2.5 text-sm font-medium text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
-                              >
-                                <Download className="h-4 w-4" />
-                                Download PDF
-                              </button>
-                            </div>
-                          )}
-                          <p className="text-sm text-[var(--text-soft)]">
-                            Want to keep improving?<br />Click any bullet to edit.
-                          </p>
-                        </div>
-                      ) : !activeBullet ? (
-                        /* ── Initial State: no item selected ── */
-                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-                          <p className="text-sm text-[var(--text-soft)] mb-6 leading-relaxed">
-                            Click any highlighted item on your resume, or start from the top.
-                          </p>
-                          {!allReviewed && (
-                            <button
-                              type="button"
-                              onClick={handleStartReviewing}
-                              className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
-                            >
-                              Start Reviewing →
-                            </button>
-                          )}
-                          {canShowStructurePlanner && (
-                            <button
-                              type="button"
-                              onClick={handleShowStructurePlan}
-                              className="mt-4 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
-                            >
-                              Adjust section structure
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        /* ── Default: section plan / section draft steps ── */
-                        <div className="space-y-4">
-                          {displayResume && (
-                            <div ref={structurePlannerRef}>
-                              <ResumeSectionWorkflowPanel
-                                resume={displayResume}
-                                workflow={sectionWorkflow}
-                                candidateIntelligence={data.candidateIntelligence}
-                                requirementWorkItems={data.requirementWorkItems}
-                                structureConfirmed={!isShowingStructurePlan}
-                                currentStep={currentWorkflowStep}
-                                draftState={currentWorkflowStep ? sectionDrafts[currentWorkflowStep.id] : undefined}
-                                onMoveSection={onMoveSection!}
-                                onToggleSection={onToggleSection!}
-                                onAddAISection={handleAddAISectionAndOpen}
-                                onAddCustomSection={handleAddCustomSectionAndOpen}
-                                onRemoveCustomSection={onRemoveCustomSection!}
-                                onConfirmStructure={handleConfirmStructureStep}
-                                onGenerateDraft={() => {
-                                  if (currentWorkflowStep) {
-                                    void onGenerateSectionDraft?.({ step: currentWorkflowStep, force: true });
-                                  }
-                                }}
-                                onRefineDraft={async (actionId, workingDraft) => {
-                                  if (currentWorkflowStep) {
-                                    await onRefineSectionDraft?.(currentWorkflowStep, actionId, workingDraft);
-                                  }
-                                }}
-                                onApplyVariant={handleApplyWorkflowVariant}
-                                onShowStructurePlan={handleShowStructurePlan}
-                              />
-                            </div>
-                          )}
-                          {!displayResume && isComplete && (
-                            <ResumeFinalReviewPanel
-                              hiringManagerResult={hiringManagerResult ?? null}
-                              resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-                              isFinalReviewStale={isFinalReviewStale}
-                              isHiringManagerLoading={isHiringManagerLoading}
-                              hiringManagerError={hiringManagerError}
-                              companyName={data.jobIntelligence?.company_name}
-                              jobTitle={data.jobIntelligence?.role_title}
-                              onRequestHiringManagerReview={onRequestHiringManagerReview}
-                              onApplyHiringManagerRecommendation={onApplyHiringManagerRecommendation}
-                              finalReviewChat={finalReviewChat}
-                              buildFinalReviewChatContext={buildFinalReviewChatContext}
-                              resolveConcernTarget={resolveFinalReviewTarget}
-                              onPreviewConcernTarget={onPreviewFinalReviewTarget}
-                              isEditing={isEditing}
-                            />
-                          )}
-                          {isComplete && data.assembly && displayResume && (
-                            <CollapsibleWorkspaceRail>
-                              <ResumeWorkspaceRail
-                                displayResume={displayResume}
-                                companyName={data.jobIntelligence?.company_name}
-                                jobTitle={data.jobIntelligence?.role_title}
-                                atsScore={data.assembly.scores.ats_match}
-                                hiringManagerResult={hiringManagerResult ?? null}
-                                resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
-                                isFinalReviewStale={isFinalReviewStale}
-                                queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }}
-                                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-                                finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
-                                onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings}
-                                jobUrl={jobUrl}
-                                sessionId={data.sessionId}
-                                accessToken={accessToken}
-                              />
-                            </CollapsibleWorkspaceRail>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+                      </div>
+                    ) : null
+                  ) : null}
+                </ResumeCoachPanel>
+              }
               rightPanel={
                 <div className="mx-auto max-w-[940px]">
                   {displayResume && (
                     <AnimatedCard index={0}>
                       <div className="resume-paper-shell overflow-hidden">
-                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} />
+                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} sectionProgress={sectionProgress} />
                       </div>
                     </AnimatedCard>
                   )}
