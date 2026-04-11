@@ -182,12 +182,12 @@ let cachedHealthCheck: {
 
 async function getHealthSnapshot(now = Date.now()) {
   const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
-  const llmProvider = configuredProvider === 'zai' || configuredProvider === 'anthropic'
-    ? configuredProvider
-    : (process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
-  const llmKeyPresentNow = llmProvider === 'zai'
-    ? Boolean(process.env.ZAI_API_KEY)
-    : Boolean(process.env.ANTHROPIC_API_KEY);
+  const llmKeyPresentNow = Boolean(
+    process.env.GROQ_API_KEY
+    || process.env.ZAI_API_KEY
+    || process.env.ANTHROPIC_API_KEY
+    || process.env.DEEPSEEK_API_KEY
+  );
 
   const cache = cachedHealthCheck;
   const canUseCache =
