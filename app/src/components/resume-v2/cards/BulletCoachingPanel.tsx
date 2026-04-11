@@ -414,10 +414,10 @@ export function BulletCoachingPanel({
           {/* Verdict: collapse — current text is strong */}
           {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-emerald-400 uppercase tracking-wide mb-1">
+              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1">
                 Looks Strong
               </p>
-              <p className="text-sm leading-relaxed text-gray-300">
+              <p className="text-sm leading-relaxed text-white">
                 This section already addresses the requirement well. Click &ldquo;Keep Current&rdquo; to move on, or &ldquo;Edit Myself&rdquo; to make changes.
               </p>
             </div>
@@ -426,10 +426,10 @@ export function BulletCoachingPanel({
           {/* Verdict: ask_question — suggestion would downgrade, ask for context instead */}
           {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && suggestionScore?.suggestedQuestion && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
+              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-1">
                 More Context Needed
               </p>
-              <p className="text-sm leading-relaxed text-gray-200">
+              <p className="text-sm leading-relaxed text-white">
                 {suggestionScore?.suggestedQuestion}
               </p>
               {addressesLabel && (
@@ -444,10 +444,10 @@ export function BulletCoachingPanel({
           {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
             <div className="space-y-2">
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-1">
                   Suggested Improvement
                 </p>
-                <p className="text-sm leading-relaxed text-gray-200">
+                <p className="text-sm leading-relaxed text-white">
                   {featuredOption.text}
                 </p>
               </div>
