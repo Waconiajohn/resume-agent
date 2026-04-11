@@ -560,62 +560,8 @@
       0 6px 14px rgba(37, 99, 235, 0.08);
   }
 
-  /* ── Focus-dimming: when any bullet is active, fade everything else ── */
-  /* All rules are scoped to .resume-document-shell so only the right-panel
-     resume document dims — the left coaching panel is never affected.        */
-
-  /* Proof-list bullets that are NOT active */
-  .resume-document-shell.resume-has-active-bullet .resume-proof-line:not(.resume-line-active) {
-    opacity: 0.35;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Section headings */
-  .resume-document-shell.resume-has-active-bullet .resume-section-heading {
-    opacity: 0.35;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Document header (name / title / contact) */
-  .resume-document-shell.resume-has-active-bullet .resume-document-header {
-    opacity: 0.35;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Line-card elements (executive summary, custom section paragraphs) that are NOT active */
-  .resume-document-shell.resume-has-active-bullet .resume-line-card:not(.resume-line-active) {
-    opacity: 0.35;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Competency chips that are NOT active */
-  .resume-document-shell.resume-has-active-bullet .resume-competency-chip:not(.resume-line-active) {
-    opacity: 0.35;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Role headers, dates, scope notes, earlier career, education, certifications */
-  .resume-document-shell.resume-has-active-bullet .resume-role-title,
-  .resume-document-shell.resume-has-active-bullet .resume-role-company,
-  .resume-document-shell.resume-has-active-bullet .resume-role-date,
-  .resume-document-shell.resume-has-active-bullet .resume-scope-note,
-  .resume-document-shell.resume-has-active-bullet .resume-document-copy {
-    transition: opacity 0.3s ease;
-  }
-
-  /* Keep the active element and everything inside it fully visible via specificity */
-  .resume-document-shell.resume-has-active-bullet .resume-line-active,
-  .resume-document-shell.resume-has-active-bullet .resume-proof-line.resume-line-active {
-    opacity: 1 !important;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Nuclear protection: left panel must NEVER dim regardless of resume state.
-     DO NOT REMOVE — this was removed once by a lint pass and broke the UI. */
-  .resume-editor-guide-pane,
-  .resume-editor-guide-pane * {
-    opacity: 1 !important;
-  }
+  /* ── Focus highlighting: active bullet gets blue accent, everything else stays readable ── */
+  /* No dimming — the full resume stays at 100% opacity at all times. */
 
   .eyebrow-label {
     font-size: 0.75rem;

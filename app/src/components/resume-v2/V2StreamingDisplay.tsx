@@ -1859,18 +1859,31 @@ export function V2StreamingDisplay({
                         ? 'Click any highlighted item or use the button below to begin.'
                         : 'Use final review when the draft already looks right and you want one last hiring-manager check before export.';
 
+                const totalItems = (queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) + (queueSummary?.handled ?? 0);
+                const reviewedCount = queueSummary?.handled ?? 0;
+                const allReviewed = totalItems > 0 && reviewedCount >= totalItems;
+
                 return (
                   <div className="flex flex-col h-full">
-                    <div className="shrink-0 border-b border-[var(--line-soft)] px-4 py-4">
-                      <div className="space-y-3">
-                        <p className="eyebrow-label">Resume Coach</p>
-                        <h2 className="text-base font-semibold text-[var(--text-strong)]">
-                          {headerTitle}
-                        </h2>
-                        <p className="text-sm leading-6 text-[var(--text-soft)]">
-                          {headerSummary}
-                        </p>
+                    {/* ── Card Stack Progress Header ── */}
+                    <div className="shrink-0 border-b border-[var(--line-soft)] px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-[var(--text-strong)]">
+                          {allReviewed
+                            ? `✓ ${reviewedCount} of ${totalItems} reviewed`
+                            : activeBullet
+                              ? `Item ${reviewedCount + 1} of ${totalItems}`
+                              : `${totalItems} items to review`}
+                        </span>
                       </div>
+                      {totalItems > 0 && (
+                        <div className="h-1.5 bg-[var(--surface-1)] rounded-full overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full transition-all duration-500 ${allReviewed ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                            style={{ width: `${totalItems > 0 ? (reviewedCount / totalItems) * 100 : 0}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-3 py-3">
@@ -1933,96 +1946,24 @@ export function V2StreamingDisplay({
                             onBulletEnhance={onBulletEnhance}
                           />
                         </div>
-                      ) : isCoachMode ? (
-                        /* ── State 2: WAITING — entry state ── */
-                        <div className="flex flex-col h-full">
-                          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-                            {typeof healthScore === 'number' ? (
-                              <>
-                                <div className="text-4xl font-bold text-[var(--text-strong)] mb-1">{healthScore}%</div>
-                                <div className="text-sm text-[var(--text-soft)] mb-6">Resume Health</div>
-                                <div className="w-full max-w-[200px] h-2 bg-[var(--surface-1)] rounded-full mb-8">
-                                  <div
-                                    className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500"
-                                    style={{ width: `${healthScore}%` }}
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <div className="mb-8" />
-                            )}
-
-                            <p className="text-[var(--text-soft)] text-sm mb-6 leading-relaxed">
-                              Click any highlighted item on your resume to start editing.
-                            </p>
-
-                            {queueSummary && (
-                              <div className="space-y-2 text-sm w-full max-w-[240px] mb-8">
-                                {queueSummary.needsUserInput > 0 && (
-                                  <div className="flex items-center gap-2 text-[var(--text-soft)]">
-                                    <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                                    <span>{queueSummary.needsUserInput} item{queueSummary.needsUserInput === 1 ? '' : 's'} need your input</span>
-                                  </div>
-                                )}
-                                {queueSummary.needsApproval > 0 && (
-                                  <div className="flex items-center gap-2 text-[var(--text-soft)]">
-                                    <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                                    <span>{queueSummary.needsApproval} item{queueSummary.needsApproval === 1 ? '' : 's'} want your approval</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-2 text-[var(--text-soft)]">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                                  <span>{queueSummary.handled} item{queueSummary.handled === 1 ? '' : 's'} handled</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {(queueSummary?.needsUserInput ?? 0) + (queueSummary?.needsApproval ?? 0) > 0 && (
-                              <button
-                                type="button"
-                                onClick={handleStartReviewing}
-                                className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
-                              >
-                                {(queueSummary?.handled ?? 0) === 0 ? 'Start Reviewing →' : 'Review Next Item →'}
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="shrink-0 px-6 py-4 border-t border-[var(--line-soft)]">
-                            <button
-                              type="button"
-                              onClick={handleShowStructurePlan}
-                              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-soft)] transition-colors"
-                            >
-                              Adjust section structure
-                            </button>
-                          </div>
-                        </div>
-                      ) : isReviewerMode ? (
-                        /* ── Reviewer Mode: all critical items addressed ── */
-                        <div className="space-y-6 py-2">
-                          {typeof healthScore === 'number' && (
-                            <div className="text-center">
-                              <div className="text-5xl font-bold text-[var(--text-strong)]">{healthScore}%</div>
-                              <div className="text-sm text-[var(--text-soft)] mt-1">Resume health</div>
-                              <div className="h-1.5 bg-[var(--surface-1)] rounded-full mt-3 overflow-hidden">
-                                <div
-                                  className="h-1.5 bg-green-500 rounded-full transition-all duration-500"
-                                  style={{ width: `${healthScore}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
+                      ) : allReviewed ? (
+                        /* ── Export-Ready Final Card ── */
+                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                          <p className="text-lg font-semibold text-[var(--text-strong)] mb-2">
+                            All items reviewed.
+                          </p>
+                          <p className="text-sm text-[var(--text-soft)] mb-8">
+                            Your resume is ready.
+                          </p>
                           {displayResume && (
-                            <div className="space-y-2">
+                            <div className="space-y-2 w-full max-w-[240px] mb-8">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  // Trigger DOCX download via ExportBar if available, otherwise open the workspace rail
                                   const docxBtn = document.querySelector<HTMLButtonElement>('[data-export-docx]');
                                   docxBtn?.click();
                                 }}
-                                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                               >
                                 <Download className="h-4 w-4" />
                                 Download DOCX
@@ -2040,25 +1981,32 @@ export function V2StreamingDisplay({
                               </button>
                             </div>
                           )}
-                          {queueSummary && queueSummary.needsApproval > 0 && (
-                            <p className="text-sm text-[var(--text-soft)]">
-                              {queueSummary.needsApproval} more item{queueSummary.needsApproval === 1 ? '' : 's'} could push it higher.{' '}
-                              <button
-                                type="button"
-                                onClick={handleStartReviewing}
-                                className="text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline transition-colors"
-                              >
-                                Keep going
-                              </button>
-                            </p>
+                          <p className="text-sm text-[var(--text-soft)]">
+                            Want to keep improving?<br />Click any bullet to edit.
+                          </p>
+                        </div>
+                      ) : !activeBullet ? (
+                        /* ── Initial State: no item selected ── */
+                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                          <p className="text-sm text-[var(--text-soft)] mb-6 leading-relaxed">
+                            Click any highlighted item on your resume, or start from the top.
+                          </p>
+                          {!allReviewed && (
+                            <button
+                              type="button"
+                              onClick={handleStartReviewing}
+                              className="w-full max-w-[240px] py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
+                            >
+                              Start Reviewing →
+                            </button>
                           )}
                           {canShowStructurePlanner && (
                             <button
                               type="button"
                               onClick={handleShowStructurePlan}
-                              className="w-full rounded-lg border border-[var(--line-soft)] px-4 py-2 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+                              className="mt-4 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
                             >
-                              Review section structure
+                              Adjust section structure
                             </button>
                           )}
                         </div>

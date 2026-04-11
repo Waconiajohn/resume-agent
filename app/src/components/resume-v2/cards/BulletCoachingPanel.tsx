@@ -370,128 +370,102 @@ export function BulletCoachingPanel({
       className="mt-3 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-elevated)] focus:outline-none"
       style={{ animation: 'fade-slide-in 200ms ease-out forwards' }}
     >
-      {/* ── Block 1: What You Have ─────────────────────────────────────── */}
+      {/* ── Current text ──────────────────────────────────────────────── */}
       <div className="px-4 pt-4 pb-3">
         <p className="text-xs font-semibold text-[var(--text-soft)] uppercase tracking-wide mb-2">
           {sectionDisplayName}
         </p>
-        <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-          {bulletText}
-        </p>
+
+        {/* AI diff: show original evidence text as "current" */}
+        {showAIDiff ? (
+          <p className="text-sm leading-relaxed text-[var(--text-soft)]">
+            {evidenceFound.trim()}
+          </p>
+        ) : (
+          <p className="text-sm leading-relaxed text-[var(--text-strong)]">
+            {bulletText}
+          </p>
+        )}
       </div>
 
-      {/* ── Block 2: What We Suggest ───────────────────────────────────── */}
+      {/* ── Separator + suggestion ─────────────────────────────────────── */}
       {(showAIDiff || featuredOption || isCodeRedNoEvidence || effectiveVerdict === 'collapse' || effectiveVerdict === 'ask_question') && (
-        <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-3">
+        <>
+          <hr className="border-0 border-t border-dashed border-[var(--line-soft)] mx-4" />
 
-          {/* AI-enhanced diff view */}
-          {showAIDiff && (
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
-                  Original
-                </p>
-                <p className="text-sm leading-relaxed text-[var(--text-soft)]">
-                  {evidenceFound.trim()}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
-                  Our Enhancement
-                </p>
+          <div className="px-4 py-3 space-y-2">
+
+            {/* AI diff: enhanced version */}
+            {showAIDiff && (
+              <>
                 <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                   {bulletText}
                 </p>
-              </div>
-              {addressesLabel && (
-                <p className="text-xs text-[var(--text-soft)]">
-                  Addresses: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
-                </p>
-              )}
-            </div>
-          )}
+                {addressesLabel && (
+                  <p className="text-xs text-[var(--text-soft)]">
+                    Addresses: {addressesLabel}
+                  </p>
+                )}
+              </>
+            )}
 
-          {/* Verdict: collapse — current text is strong */}
-          {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1">
-                Looks Strong
-              </p>
+            {/* Verdict: collapse — looks strong already */}
+            {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
               <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-                This section already addresses the requirement well. Click &ldquo;Keep Current&rdquo; to move on, or &ldquo;Edit Myself&rdquo; to make changes.
+                Looks strong.
               </p>
-            </div>
-          )}
+            )}
 
-          {/* Verdict: ask_question — suggestion would downgrade, ask for context instead */}
-          {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && suggestionScore?.suggestedQuestion && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-1">
-                More Context Needed
-              </p>
-              <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-                {suggestionScore?.suggestedQuestion}
-              </p>
-              {addressesLabel && (
-                <p className="text-xs text-[var(--text-soft)]">
-                  For: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
+            {/* Verdict: ask_question — need more context */}
+            {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && suggestionScore?.suggestedQuestion && (
+              <>
+                <p className="text-sm leading-relaxed text-[var(--text-strong)]">
+                  {suggestionScore.suggestedQuestion}
                 </p>
-              )}
-            </div>
-          )}
+                {addressesLabel && (
+                  <p className="text-xs text-[var(--text-soft)]">
+                    For: {addressesLabel}
+                  </p>
+                )}
+              </>
+            )}
 
-          {/* Standard suggestion (verdict: show, or no score computed) */}
-          {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-soft)] uppercase tracking-wide mb-1">
-                  Suggested Improvement
-                </p>
+            {/* Standard suggestion (verdict: show, or no score computed) */}
+            {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
+              <>
                 <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                   {featuredOption.text}
                 </p>
-              </div>
-              {addressesLabel && (
-                <p className="text-xs text-[var(--text-soft)]">
-                  Addresses: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
-                </p>
-              )}
-              {priorClarifications.length > 0 && (
-                <p className="text-xs text-[var(--text-soft)] italic">
-                  I am also using this earlier detail you confirmed: &ldquo;{priorClarifications[0].userInput}&rdquo;
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Code red — no evidence, needs candidate input */}
-          {isCodeRedNoEvidence && (
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
-                  Gap Identified
-                </p>
-                <p className="text-sm leading-relaxed text-[var(--text-soft)]">
-                  This role requires{' '}
-                  <span className="text-[var(--text-strong)] font-medium">
-                    {primaryRequirement ?? 'this skill'}
-                  </span>
-                  . We don&apos;t have evidence of this in your resume yet.
-                </p>
-              </div>
-              {topClarifyingDetail && (
-                <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5">
-                  <p className="text-xs text-[var(--text-soft)] italic">
-                    If you want to strengthen this later, the extra detail I would want is: {topClarifyingDetail}.
+                {addressesLabel && (
+                  <p className="text-xs text-[var(--text-soft)]">
+                    Addresses: {addressesLabel}
                   </p>
-                </div>
-              )}
-              <p className="text-xs text-[var(--text-soft)]">
-                Can you confirm this reflects your experience?
-              </p>
-            </div>
-          )}
-        </div>
+                )}
+                {priorClarifications.length > 0 && (
+                  <p className="text-xs text-[var(--text-soft)] italic">
+                    Using your earlier detail: &ldquo;{priorClarifications[0].userInput}&rdquo;
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Code red — no evidence found */}
+            {isCodeRedNoEvidence && (
+              <>
+                <p className="text-sm leading-relaxed text-[var(--text-strong)]">
+                  This role requires{' '}
+                  <span className="font-medium">{primaryRequirement ?? 'this skill'}</span>
+                  . No evidence found yet.
+                </p>
+                {topClarifyingDetail && (
+                  <p className="text-xs text-[var(--text-soft)] italic">
+                    Extra detail that would help: {topClarifyingDetail}.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* ── Custom edit area (when open) ───────────────────────────────── */}
@@ -508,14 +482,14 @@ export function BulletCoachingPanel({
         </div>
       )}
 
-      {/* ── Block 3: Actions ───────────────────────────────────────────── */}
+      {/* ── Actions ────────────────────────────────────────────────────── */}
       <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-3">
 
         {/* Primary action buttons */}
         {!showCustomEdit && (
           <div className="flex flex-wrap items-center gap-2">
 
-            {/* AI-enhanced: Accept / Edit / Keep Original */}
+            {/* AI diff: Accept / Edit / Keep Original */}
             {showAIDiff && (
               <>
                 <button
@@ -527,7 +501,7 @@ export function BulletCoachingPanel({
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Accept Enhancement
+                  Accept
                 </button>
                 <button
                   type="button"
@@ -538,14 +512,14 @@ export function BulletCoachingPanel({
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Edit Myself
+                  Edit
                 </button>
                 <button
                   type="button"
                   onClick={handleRevertToOriginal}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
+                    'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -554,12 +528,12 @@ export function BulletCoachingPanel({
               </>
             )}
 
-            {/* Code red: generate safe version / write own / skip */}
+            {/* Code red: write own / skip */}
             {isCodeRedNoEvidence && (
               <>
                 <button
                   type="button"
-                  onClick={handleGenerateSafeRewrite}
+                  onClick={() => handleOpenEdit(bulletText)}
                   disabled={isChatLoading}
                   className={cn(
                     'rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5',
@@ -569,35 +543,24 @@ export function BulletCoachingPanel({
                   {isChatLoading ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /><span className="sr-only">Loading</span></>
                   ) : (
-                    'Use This Language'
+                    'Write My Own'
                   )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(bulletText)}
-                  disabled={isChatLoading}
-                  className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors',
-                    isChatLoading && 'opacity-50 cursor-not-allowed',
-                  )}
-                >
-                  Write My Own
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
+                    'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Skip This Gap
+                  Skip
                 </button>
               </>
             )}
 
-            {/* Verdict: collapse — Keep / Edit */}
+            {/* Verdict: collapse — Keep Current / Edit */}
             {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'collapse' && (
               <>
                 <button
@@ -612,12 +575,12 @@ export function BulletCoachingPanel({
                   onClick={() => handleOpenEdit(bulletText)}
                   className="rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors"
                 >
-                  Edit Myself
+                  Edit
                 </button>
               </>
             )}
 
-            {/* Verdict: ask_question — Answer / Edit / Skip */}
+            {/* Verdict: ask_question — Add Details / Skip */}
             {!showAIDiff && !isCodeRedNoEvidence && effectiveVerdict === 'ask_question' && (
               <>
                 <button
@@ -630,14 +593,14 @@ export function BulletCoachingPanel({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
+                  className="text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
                 >
                   Skip
                 </button>
               </>
             )}
 
-            {/* Standard suggestion: Use / Edit / Skip (verdict: show, or no score) */}
+            {/* Standard suggestion: Use This / Edit / Skip */}
             {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
               <>
                 <button
@@ -649,7 +612,7 @@ export function BulletCoachingPanel({
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Use Suggestion
+                  Use This
                 </button>
                 <button
                   type="button"
@@ -660,14 +623,14 @@ export function BulletCoachingPanel({
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Edit Myself
+                  Edit
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
+                    'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -688,14 +651,14 @@ export function BulletCoachingPanel({
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  Edit Myself
+                  Edit
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
+                    'text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -770,16 +733,11 @@ export function BulletCoachingPanel({
         {/* Related line suggestions */}
         {relatedSuggestionTargets.length > 0 && (
           <div className="border-t border-[var(--line-soft)] pt-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-[var(--text-soft)]">
-                Also improve nearby lines
-              </p>
-              <p className="text-xs text-[var(--text-soft)]">
-                {relatedSuggestionTargets.length === 1
-                  ? 'This same detail can also improve 1 other line.'
-                  : `This same detail can also improve ${relatedSuggestionTargets.length} other lines.`}
-              </p>
-            </div>
+            <p className="text-xs text-[var(--text-soft)]">
+              {relatedSuggestionTargets.length === 1
+                ? 'This same detail can also improve 1 nearby line.'
+                : `This same detail can also improve ${relatedSuggestionTargets.length} nearby lines.`}
+            </p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

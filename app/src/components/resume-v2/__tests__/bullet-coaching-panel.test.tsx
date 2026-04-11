@@ -77,7 +77,7 @@ describe('BulletCoachingPanel', () => {
     expect(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.').length).toBeGreaterThan(0);
   });
 
-  it('shows Accept Enhancement / Edit Myself / Keep Original for AI-enhanced bullets', () => {
+  it('shows Accept / Edit / Keep Original for AI-enhanced bullets', () => {
     render(
       <BulletCoachingPanel
         bulletText="Proven engineering leader who scaled teams across global product launches."
@@ -97,15 +97,14 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /accept enhancement/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /edit myself/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /^accept$/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^edit$/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /keep original/i })).toBeInTheDocument();
-    // Diff labels (use getAllBy since "Keep Original" button also contains "original")
-    expect(screen.getAllByText(/original/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/our enhancement/i)).toBeInTheDocument();
+    // "Keep Original" button text should be present
+    expect(screen.getAllByText(/keep original/i).length).toBeGreaterThan(0);
   });
 
-  it('offers Use This Language / Write My Own / Skip This Gap when a code-red line is missing proof', () => {
+  it('shows no-evidence message and Write My Own / Skip actions when a code-red line is missing proof', () => {
     const gapChat = makeGapChat();
 
     render(
@@ -134,32 +133,18 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    // Gap Identified block
-    expect(screen.getByText(/gap identified/i)).toBeInTheDocument();
-    expect(screen.getByText(/we don't have evidence/i)).toBeInTheDocument();
+    // No-evidence message block
+    expect(screen.getByText(/No evidence found yet/i)).toBeInTheDocument();
 
     // Code red clarifying detail hint
-    expect(screen.getAllByText(/the extra detail i would want is/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Extra detail that would help/i).length).toBeGreaterThan(0);
 
     // Primary action buttons
-    expect(screen.getByText('Use This Language')).toBeInTheDocument();
-    expect(screen.getByText('Write My Own')).toBeInTheDocument();
-    expect(screen.getByText('Skip This Gap')).toBeInTheDocument();
-
-    // Clicking "Use This Language" triggers a safe rewrite via gapChat
-    fireEvent.click(screen.getByText('Use This Language'));
-
-    expect(gapChat.sendMessage).toHaveBeenCalledWith(
-      'Develop and track performance metrics',
-      expect.stringContaining('Rewrite this line in the safest truthful way using only evidence we already have.'),
-      expect.objectContaining({
-        primaryRequirement: 'Develop and track performance metrics',
-      }),
-      'missing',
-    );
+    expect(screen.getAllByText('Write My Own').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Skip').length).toBeGreaterThan(0);
   });
 
-  it('shows Use Suggestion / Edit Myself / Skip for a standard suggestion', () => {
+  it('shows Use This / Edit / Skip for a standard suggestion', () => {
     const { container } = render(
       <BulletCoachingPanel
         bulletText="Built and tracked performance metrics."
@@ -196,10 +181,11 @@ describe('BulletCoachingPanel', () => {
     // Use container-scoped queries to avoid pollution from other tests in the same jsdom body
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
     expect(panel).toBeTruthy();
-    expect(panel.querySelector('button[class*="bg-blue-600"]')?.textContent).toContain('Use Suggestion');
-    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.includes('Edit Myself'))).toBe(true);
+    expect(panel.querySelector('button[class*="bg-blue-600"]')?.textContent?.trim()).toBe('Use This');
+    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Edit')).toBe(true);
     expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Skip')).toBe(true);
-    expect(panel.textContent).toContain('Suggested Improvement');
+    // The suggestion text should be visible in the panel
+    expect(panel.textContent).toContain('Built and tracked plant performance metrics across safety, throughput, and labor efficiency.');
   });
 
   it('shows related line suggestions from one clarification answer and applies them safely', () => {
@@ -276,8 +262,7 @@ describe('BulletCoachingPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Also improve nearby lines')).toBeInTheDocument();
-    expect(screen.getByText(/this same detail can also improve 2 other lines/i)).toBeInTheDocument();
+    expect(screen.getByText(/this same detail can also improve 2 nearby lines/i)).toBeInTheDocument();
     expect(screen.getByText('Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.')).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByText('Apply to this line')[0]);
@@ -343,7 +328,7 @@ describe('BulletCoachingPanel', () => {
     );
 
     // Prior clarification text shown under the suggestion
-    expect(screen.getByText(/I am also using this earlier detail you confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Using your earlier detail/i)).toBeInTheDocument();
     expect(screen.getByText(/I owned weekly KPI reviews across three plants/i)).toBeInTheDocument();
   });
 

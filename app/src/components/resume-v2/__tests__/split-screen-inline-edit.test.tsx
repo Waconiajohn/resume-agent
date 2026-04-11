@@ -1072,7 +1072,6 @@ describe('V2StreamingDisplay — layout modes', () => {
     await startEditingIfGatePresent();
     await enterSectionWorkflow();
 
-    expect(screen.getAllByText('Resume Coach').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Executive Summary').length).toBeGreaterThan(0);
     expect(screen.getAllByText('What this section needs to do').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Area 1 of \d+/)).not.toBeInTheDocument();
