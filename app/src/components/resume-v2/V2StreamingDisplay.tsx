@@ -1792,14 +1792,14 @@ export function V2StreamingDisplay({
               )}
               {activeBullet && gapChat && buildChatContext && (
                 <>
-                  {/* Backdrop */}
+                  {/* Backdrop — lg:hidden ensures fixed positioning can't leak onto desktop */}
                   <div
-                    className="mobile-coaching-overlay"
+                    className="mobile-coaching-overlay lg:hidden"
                     onClick={() => setActiveBullet(null)}
                     aria-hidden="true"
                   />
                   {/* Bottom sheet */}
-                  <div className="mobile-coaching-sheet" role="dialog" aria-modal="true" aria-label="Bullet coaching">
+                  <div className="mobile-coaching-sheet lg:hidden" role="dialog" aria-modal="true" aria-label="Bullet coaching">
                     <BulletCoachingPanel bulletText={activeBullet.bulletText} section={activeBullet.section} bulletIndex={activeBullet.index} requirements={activeBullet.requirements} reviewState={activeBullet.reviewState} requirementSource={activeBullet.requirementSource} evidenceFound={activeBullet.evidenceFound} sourceEvidence={activeBullet.sourceEvidence} proofLevel={activeBullet.proofLevel} framingGuardrail={activeBullet.framingGuardrail} nextBestAction={activeBullet.nextBestAction} canRemove={activeBullet.canRemove ?? true} initialReuseClarificationId={activeBullet.autoReuseClarificationId} isAIEnhanced={activeBullet.isAIEnhanced} suggestionScore={findSuggestionScore(activeBullet, rewriteQueue?.items)} gapChat={gapChat} chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })} onApplyToResume={handleCoachApplyToResume} onRemoveBullet={handleCoachRemoveBullet} onClose={() => setActiveBullet(null)} onBulletEnhance={onBulletEnhance} />
                   </div>
                 </>

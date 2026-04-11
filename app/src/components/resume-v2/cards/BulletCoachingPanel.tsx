@@ -212,11 +212,17 @@ export function BulletCoachingPanel({
     evidenceFound.trim() !== bulletText.trim();
 
   // Fallback: if the scoring engine didn't produce a verdict but the suggestion
-  // is identical to current text, treat it as 'collapse'
+  // is nearly identical to current text (>90% word overlap), treat it as 'collapse'
   const effectiveVerdict: 'show' | 'collapse' | 'ask_question' | undefined = suggestionScore?.verdict
-    ?? (primarySuggestion && bulletText.trim().toLowerCase() === primarySuggestion.trim().toLowerCase()
-      ? 'collapse' as const
-      : undefined);
+    ?? (() => {
+      if (!primarySuggestion) return undefined;
+      const currentWords = new Set(bulletText.trim().toLowerCase().split(/\s+/));
+      const suggestionWords = primarySuggestion.trim().toLowerCase().split(/\s+/);
+      if (currentWords.size === 0 || suggestionWords.length === 0) return undefined;
+      const overlap = suggestionWords.filter(w => currentWords.has(w)).length;
+      const similarity = overlap / Math.max(currentWords.size, suggestionWords.length);
+      return similarity > 0.9 ? 'collapse' as const : undefined;
+    })();
 
   const relatedSuggestionTargets = (latestAssistant?.relatedLineSuggestions ?? [])
     .map((suggestion) => {
