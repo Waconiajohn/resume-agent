@@ -400,7 +400,10 @@
         color-mix(in srgb, var(--surface-2) 98%, transparent),
         color-mix(in srgb, var(--surface-1) 98%, transparent)
       );
-    backdrop-filter: blur(14px);
+    /* backdrop-filter removed — blur(14px) caused compositing bleed from
+       the right panel's focus-dimming, making the left panel appear to dim
+       when a bullet is selected. isolation:isolate on the right panel was
+       insufficient across all browsers/GPU configurations. */
   }
 
   .resume-editor-document-pane {
