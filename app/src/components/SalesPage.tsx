@@ -62,7 +62,7 @@ function Hero() {
         <div className="mt-10">
           <a href="/workspace">
             <GlassButton>
-              Get Started Free
+              Get Started
             </GlassButton>
           </a>
         </div>
@@ -397,7 +397,7 @@ function CTASection() {
           <div className="mt-8">
             <a href="/workspace">
               <GlassButton>
-                Get Started Free
+                Get Started
               </GlassButton>
             </a>
           </div>
