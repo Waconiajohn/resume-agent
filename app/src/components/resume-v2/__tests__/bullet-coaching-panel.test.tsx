@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within, act } from '@testing-library/react';
 
 import { BulletCoachingPanel } from '../cards/BulletCoachingPanel';
 import type { GapChatContext } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
+import type { EnhanceResult } from '@/hooks/useBulletEnhance';
 
-function makeGapChat(itemState?: Record<string, unknown>): GapChatHook & { sendMessage: ReturnType<typeof vi.fn> } {
-  const mock = {
-    getItemState: vi.fn(() => ({ isLoading: false, ...itemState })),
+beforeEach(() => cleanup());
+afterEach(() => cleanup());
+
+function makeGapChat(): GapChatHook {
+  return {
+    getItemState: vi.fn(() => ({ isLoading: false })),
     sendMessage: vi.fn(() => Promise.resolve()),
     resolveLanguage: vi.fn(),
     clearResolution: vi.fn(),
@@ -21,9 +25,7 @@ function makeGapChat(itemState?: Record<string, unknown>): GapChatHook & { sendM
     resetChat: vi.fn(),
     resolvedCount: 0,
     isAnyLoading: false,
-  };
-
-  return mock as unknown as GapChatHook & { sendMessage: ReturnType<typeof vi.fn> };
+  } as unknown as GapChatHook;
 }
 
 function makeChatContext(overrides: Partial<GapChatContext> = {}): GapChatContext {
@@ -44,347 +46,325 @@ function makeChatContext(overrides: Partial<GapChatContext> = {}): GapChatContex
     sectionKey: 'executive_summary',
     sectionLabel: 'Executive Summary',
     relatedRequirements: ['Product delivery', 'Executive leadership'],
-    coachingGoal: 'Rewrite this executive summary line so it quickly sells role fit, leadership scope, and business relevance.',
-    clarifyingQuestions: ['What scale or business outcome makes this summary more concrete?'],
+    coachingGoal: 'Rewrite this line.',
+    clarifyingQuestions: ['What scale or business outcome makes this more concrete?'],
     ...overrides,
   };
 }
 
+function renderPanel(props: Partial<Parameters<typeof BulletCoachingPanel>[0]> = {}) {
+  const defaults: Parameters<typeof BulletCoachingPanel>[0] = {
+    bulletText: 'Built and tracked performance metrics.',
+    section: 'professional_experience',
+    bulletIndex: 0,
+    requirements: ['Develop and track performance metrics'],
+    reviewState: 'strengthen',
+    requirementSource: 'job_description',
+    evidenceFound: 'Built weekly KPI reviews.',
+    gapChat: makeGapChat(),
+    chatContext: makeChatContext({
+      lineKind: 'bullet',
+      sectionKey: 'professional_experience',
+      sectionLabel: 'Professional Experience',
+    }),
+    onApplyToResume: vi.fn(),
+    onRemoveBullet: vi.fn(),
+    onClose: vi.fn(),
+    onBulletEnhance: vi.fn(async () => null),
+    sectionType: 'experience_bullet',
+  };
+  return render(<BulletCoachingPanel {...defaults} {...props} />);
+}
+
+// Helper: get angle buttons from a panel (those with blue bg that are not in "try another" section)
+function getAngleButtons(container: HTMLElement) {
+  const suggestionArea = container.querySelector('.space-y-3');
+  if (!suggestionArea) return [];
+  const btns = Array.from(suggestionArea.querySelectorAll('button[class*="bg-blue-600"]'));
+  return btns as HTMLButtonElement[];
+}
+
 describe('BulletCoachingPanel', () => {
-  it('renders Block 1 with section name and bullet text', () => {
-    render(
-      <BulletCoachingPanel
-        bulletText="Seasoned engineering leader driving outcomes at scale."
-        section="executive_summary"
-        bulletIndex={0}
-        requirements={['Product delivery', 'Executive leadership']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Led a 45-person engineering organization across multiple launches."
-        gapChat={makeGapChat()}
-        chatContext={makeChatContext()}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        canRemove={false}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
+  it('renders section name and bullet text', () => {
+    const { container } = renderPanel({
+      bulletText: 'Seasoned engineering leader driving outcomes at scale.',
+      section: 'executive_summary',
+      chatContext: makeChatContext({ sectionLabel: 'Executive Summary' }),
+      canRemove: false,
+    });
 
-    // Block 1: section name label
-    expect(screen.getByText(/Executive Summary/i)).toBeInTheDocument();
-    // Block 1: full bullet text (may appear more than once if also in a suggestion)
-    expect(screen.getAllByText('Seasoned engineering leader driving outcomes at scale.').length).toBeGreaterThan(0);
-  });
-
-  it('shows Accept / Edit / Keep Original for AI-enhanced bullets', () => {
-    render(
-      <BulletCoachingPanel
-        bulletText="Proven engineering leader who scaled teams across global product launches."
-        section="executive_summary"
-        bulletIndex={0}
-        requirements={['Executive leadership']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Led a 45-person engineering organization across multiple launches."
-        isAIEnhanced
-        gapChat={makeGapChat()}
-        chatContext={makeChatContext()}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: /^accept$/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /^edit$/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /keep original/i })).toBeInTheDocument();
-    // "Keep Original" button text should be present
-    expect(screen.getAllByText(/keep original/i).length).toBeGreaterThan(0);
-  });
-
-  it('shows no-evidence message and Write My Own / Skip actions when a code-red line is missing proof', () => {
-    const gapChat = makeGapChat();
-
-    render(
-      <BulletCoachingPanel
-        bulletText="Built and tracked performance metrics."
-        section="professional_experience"
-        bulletIndex={0}
-        requirements={['Develop and track performance metrics']}
-        reviewState="code_red"
-        requirementSource="job_description"
-        evidenceFound=""
-        gapChat={gapChat}
-        chatContext={makeChatContext({
-          lineKind: 'bullet',
-          sectionKey: 'professional_experience',
-          sectionLabel: 'Professional Experience',
-          lineText: 'Built and tracked performance metrics.',
-          primaryRequirement: 'Develop and track performance metrics',
-          relatedRequirements: ['Develop and track performance metrics'],
-          clarifyingQuestions: ['What KPI review, scorecard, or operating rhythm did you actually own?'],
-        })}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
-
-    // No-evidence message block
-    expect(screen.getByText(/No evidence found yet/i)).toBeInTheDocument();
-
-    // Code red clarifying detail hint
-    expect(screen.getAllByText(/Extra detail that would help/i).length).toBeGreaterThan(0);
-
-    // Primary action buttons
-    expect(screen.getAllByText('Write My Own').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Skip').length).toBeGreaterThan(0);
-  });
-
-  it('shows Use This / Edit / Skip for a standard suggestion', () => {
-    const { container } = render(
-      <BulletCoachingPanel
-        bulletText="Built and tracked performance metrics."
-        section="professional_experience"
-        bulletIndex={0}
-        requirements={['Develop and track performance metrics']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
-        gapChat={makeGapChat({
-          messages: [
-            {
-              role: 'assistant',
-              content: 'Here is a stronger version.',
-              suggestedLanguage: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
-            },
-          ],
-        })}
-        chatContext={makeChatContext({
-          lineKind: 'bullet',
-          sectionKey: 'professional_experience',
-          sectionLabel: 'Professional Experience',
-          lineText: 'Built and tracked performance metrics.',
-          primaryRequirement: 'Develop and track performance metrics',
-          relatedRequirements: ['Develop and track performance metrics'],
-        })}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
-
-    // Use container-scoped queries to avoid pollution from other tests in the same jsdom body
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
-    expect(panel).toBeTruthy();
-    expect(panel.querySelector('button[class*="bg-blue-600"]')?.textContent?.trim()).toBe('Use This');
-    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Edit')).toBe(true);
-    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Skip')).toBe(true);
-    // The suggestion text should be visible in the panel
-    expect(panel.textContent).toContain('Built and tracked plant performance metrics across safety, throughput, and labor efficiency.');
+    expect(panel.textContent).toContain('Executive Summary');
+    expect(panel.textContent).toContain('Seasoned engineering leader driving outcomes at scale.');
   });
 
-  it('shows related line suggestions from one clarification answer and applies them safely', () => {
-    const onApplyToResume = vi.fn();
+  it('shows angle selection and Edit Myself / Skip in the default state', () => {
+    const { container } = renderPanel();
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    const p = within(panel as HTMLElement);
 
-    render(
-      <BulletCoachingPanel
-        bulletText="Built and tracked performance metrics."
-        section="professional_experience"
-        bulletIndex={0}
-        requirements={['Develop and track performance metrics']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
-        gapChat={makeGapChat({
-          messages: [
-            {
-              role: 'assistant',
-              content: 'That answer gives us enough to strengthen this claim and a couple of nearby lines too.',
-              suggestedLanguage: 'Built and tracked plant performance metrics across safety, throughput, and labor efficiency.',
-              relatedLineSuggestions: [
-                {
-                  candidateId: 'selected_accomplishments:0',
-                  lineText: 'Reduced defects by 50% through Agile ceremonies',
-                  suggestedLanguage: 'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
-                  rationale: 'The same KPI ownership answer gives this accomplishment a clearer operating-mechanism story.',
-                  requirement: 'Develop and track performance metrics',
-                },
-                {
-                  candidateId: 'executive_summary:0',
-                  lineText: 'Seasoned engineering leader driving outcomes at scale.',
-                  suggestedLanguage: 'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
-                  rationale: 'The KPI detail also sharpens the opening positioning.',
-                  requirement: 'Own KPI development and scorecards',
-                },
-              ],
-            },
-          ],
-        })}
-        chatContext={makeChatContext({
-          lineKind: 'bullet',
-          sectionKey: 'professional_experience',
-          sectionLabel: 'Professional Experience',
-          lineText: 'Built and tracked performance metrics.',
-          primaryRequirement: 'Develop and track performance metrics',
-          relatedRequirements: ['Develop and track performance metrics'],
-          relatedLineCandidates: [
-            {
-              id: 'selected_accomplishments:0',
-              section: 'selected_accomplishments',
-              index: 0,
-              lineText: 'Reduced defects by 50% through Agile ceremonies',
-              lineKind: 'bullet',
-              label: 'Selected Accomplishments',
-              requirements: ['Develop and track performance metrics'],
-              evidenceFound: 'Introduced KPI reviews and release checklists.',
-            },
-            {
-              id: 'executive_summary:0',
-              section: 'executive_summary',
-              index: 0,
-              lineText: 'Seasoned engineering leader driving outcomes at scale.',
-              lineKind: 'summary',
-              label: 'Executive Summary',
-              requirements: ['Own KPI development and scorecards'],
-              evidenceFound: 'Led plant-wide KPI reviews and performance cadences.',
-            },
-          ],
-        })}
-        onApplyToResume={onApplyToResume}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
+    expect(p.getByText(/how should we strengthen this/i)).toBeInTheDocument();
+    expect(p.getByRole('button', { name: /edit myself/i })).toBeInTheDocument();
+    expect(p.getByRole('button', { name: /^skip$/i })).toBeInTheDocument();
+  });
 
-    expect(screen.getByText(/this same detail can also improve 2 nearby lines/i)).toBeInTheDocument();
-    expect(screen.getByText('Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.')).toBeInTheDocument();
+  it('calls onBulletEnhance when an angle button is clicked', async () => {
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => null);
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    fireEvent.click(screen.getAllByText('Apply to this line')[0]);
-    expect(onApplyToResume).toHaveBeenCalledWith(
-      'selected_accomplishments',
-      0,
-      'Built weekly KPI reviews and operating rhythms that helped reduce defects by ~50% across three plants.',
-      expect.objectContaining({
-        requirement: 'Develop and track performance metrics',
-        reviewState: 'strengthen',
-      }),
-    );
+    const angleButtons = getAngleButtons(container);
+    expect(angleButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByText('Apply all nearby lines'));
-    expect(onApplyToResume).toHaveBeenCalledWith(
-      'executive_summary',
-      0,
-      'Operations leader who uses KPI scorecards and operating rhythm to improve plant performance at scale.',
-      expect.objectContaining({
-        requirement: 'Develop and track performance metrics',
-        reviewState: 'strengthen',
-      }),
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    expect(enhanceFn).toHaveBeenCalledWith(
+      expect.any(String),
+      'Built and tracked performance metrics.',
+      'Develop and track performance metrics',
+      'Built weekly KPI reviews.',
+      expect.any(Object),
     );
   });
 
-  it('shows matching prior clarifications from earlier answers and triggers a reuse rewrite', () => {
-    const gapChat = makeGapChat();
+  it('shows shimmer while enhancing', async () => {
+    // Never resolves during this test
+    const enhanceFn = vi.fn(() => new Promise<EnhanceResult | null>(() => {}));
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    render(
-      <BulletCoachingPanel
-        bulletText="Built and tracked performance metrics."
-        section="professional_experience"
-        bulletIndex={0}
-        requirements={['Develop and track performance metrics']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
-        gapChat={gapChat}
-        chatContext={makeChatContext({
-          lineKind: 'bullet',
-          sectionKey: 'professional_experience',
-          sectionLabel: 'Professional Experience',
-          lineText: 'Built and tracked performance metrics.',
-          primaryRequirement: 'Develop and track performance metrics',
-          relatedRequirements: ['Develop and track performance metrics'],
-          priorClarifications: [
-            {
-              id: 'gap_chat:performance metrics',
-              source: 'gap_chat',
-              topic: 'Performance metrics',
-              userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
-              appliedLanguage: 'Built weekly KPI reviews across 3 plants.',
-              primaryFamily: 'metrics',
-              families: ['metrics'],
-            },
-          ],
-        })}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
+    const angleButtons = getAngleButtons(container);
+    // Start the enhance (don't await — we want to check mid-flight state)
+    act(() => {
+      fireEvent.click(angleButtons[0]);
+    });
 
-    // Prior clarification evidence is available in the chat context (used by enhance)
-    // With no pre-computed suggestion, the panel shows enhance buttons instead of the suggestion+clarification
-    expect(screen.getAllByText(/Built and tracked performance metrics/i).length).toBeGreaterThanOrEqual(1);
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    // Shimmer: animate-pulse div present
+    expect(panel.querySelector('.animate-pulse')).toBeTruthy();
   });
 
-  it('auto-reuses a remembered clarification when the panel opens from that cue', async () => {
-    const gapChat = makeGapChat();
+  it('shows Use This / Edit / Skip after AI result is returned', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
+      alternatives: [],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    render(
-      <BulletCoachingPanel
-        bulletText="Built and tracked performance metrics."
-        section="professional_experience"
-        bulletIndex={0}
-        requirements={['Develop and track performance metrics']}
-        reviewState="strengthen"
-        requirementSource="job_description"
-        evidenceFound="Built weekly KPI reviews and line-performance meetings across 3 plants."
-        gapChat={gapChat}
-        initialReuseClarificationId="gap_chat:performance metrics"
-        chatContext={makeChatContext({
-          lineKind: 'bullet',
-          sectionKey: 'professional_experience',
-          sectionLabel: 'Professional Experience',
-          lineText: 'Built and tracked performance metrics.',
-          primaryRequirement: 'Develop and track performance metrics',
-          relatedRequirements: ['Develop and track performance metrics'],
-          priorClarifications: [
-            {
-              id: 'gap_chat:performance metrics',
-              source: 'gap_chat',
-              topic: 'Performance metrics',
-              userInput: 'I owned weekly KPI reviews across three plants and used them to address safety and throughput issues.',
-              appliedLanguage: 'Built weekly KPI reviews across 3 plants.',
-              primaryFamily: 'metrics',
-              families: ['metrics'],
-            },
-          ],
-        })}
-        onApplyToResume={vi.fn()}
-        onRemoveBullet={vi.fn()}
-        onClose={vi.fn()}
-        onBulletEnhance={vi.fn(async () => null)}
-      />,
-    );
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
 
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
     await waitFor(() => {
-      expect(gapChat.sendMessage).toHaveBeenCalledWith(
-        'Develop and track performance metrics',
-        expect.stringContaining('Use my earlier confirmed detail to rewrite this line'),
-        expect.objectContaining({
-          priorClarifications: [
-            expect.objectContaining({
-              id: 'gap_chat:performance metrics',
-            }),
-          ],
-        }),
-        'partial',
+      expect(panel.textContent).toContain(
+        'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
       );
     });
+
+    const p = within(panel as HTMLElement);
+    expect(p.getByRole('button', { name: /use this/i })).toBeInTheDocument();
+    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Edit')).toBe(true);
+    expect(Array.from(panel.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Skip')).toBe(true);
+  });
+
+  it('calls onApplyToResume with enhanced text when Use This is clicked', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
+      alternatives: [],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+    const onApplyToResume = vi.fn();
+    const onClose = vi.fn();
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn, onApplyToResume, onClose });
+
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => {
+      expect(panel.textContent).toContain(
+        'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
+      );
+    });
+
+    fireEvent.click(within(panel as HTMLElement).getByRole('button', { name: /use this/i }));
+
+    expect(onApplyToResume).toHaveBeenCalledWith(
+      'professional_experience',
+      0,
+      'Built weekly KPI reviews across 3 plants, improving throughput by 12%.',
+      expect.objectContaining({ reviewState: 'strengthen' }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows alternative angle buttons when result has alternatives', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Built weekly KPI reviews across 3 plants.',
+      alternatives: [
+        { angle: 'Metrics', text: 'Drove 12% throughput gain via weekly KPI cadence at 3 plants.' },
+        { angle: 'Leadership', text: 'Led cross-plant performance cadence improving safety and throughput.' },
+      ],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
+
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => {
+      expect(panel.textContent).toContain('Other angles:');
+    });
+
+    expect(panel.textContent).toContain('Metrics:');
+    expect(panel.textContent).toContain('Leadership:');
+  });
+
+  it('clicking an alternative calls onApplyToResume with that text', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Built weekly KPI reviews across 3 plants.',
+      alternatives: [
+        { angle: 'Metrics', text: 'Drove 12% throughput gain via weekly KPI cadence at 3 plants.' },
+      ],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+    const onApplyToResume = vi.fn();
+    const onClose = vi.fn();
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn, onApplyToResume, onClose });
+
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => {
+      expect(panel.textContent).toContain('Metrics:');
+    });
+
+    // Click the alternative button
+    const altBtn = Array.from(panel.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Metrics:'),
+    );
+    expect(altBtn).toBeTruthy();
+    fireEvent.click(altBtn!);
+
+    expect(onApplyToResume).toHaveBeenCalledWith(
+      'professional_experience',
+      0,
+      'Drove 12% throughput gain via weekly KPI cadence at 3 plants.',
+      expect.any(Object),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onClose when Skip is clicked in the default state', () => {
+    const onClose = vi.fn();
+    const { container } = renderPanel({ onClose });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    const skipBtn = Array.from(panel.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Skip',
+    );
+    expect(skipBtn).toBeTruthy();
+    fireEvent.click(skipBtn!);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows remove confirmation flow when canRemove is true', () => {
+    const onRemoveBullet = vi.fn();
+    const onClose = vi.fn();
+    const { container } = renderPanel({ canRemove: true, onRemoveBullet, onClose });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    const removeBtn = panel.querySelector('[aria-label="Remove this line from the resume"]') as HTMLButtonElement;
+    expect(removeBtn).toBeTruthy();
+
+    fireEvent.click(removeBtn);
+
+    const confirmBtn = panel.querySelector('[aria-label="Confirm removal of this line"]') as HTMLButtonElement;
+    expect(confirmBtn).toBeTruthy();
+
+    fireEvent.click(confirmBtn);
+    expect(onRemoveBullet).toHaveBeenCalledWith('professional_experience', 0);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('does not render remove button when canRemove is false', () => {
+    const { container } = renderPanel({ canRemove: false });
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    expect(panel.querySelector('[aria-label="Remove this line from the resume"]')).toBeNull();
+  });
+
+  it('resets to angle selection state when bullet changes', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Enhanced version.',
+      alternatives: [],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+
+    const { container, rerender } = renderPanel({ onBulletEnhance: enhanceFn });
+
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => {
+      expect(panel.textContent).toContain('Enhanced version.');
+    });
+
+    // Rerender with different bullet — should reset
+    const newProps: Parameters<typeof BulletCoachingPanel>[0] = {
+      bulletText: 'Second bullet.',
+      section: 'professional_experience',
+      bulletIndex: 1,
+      requirements: ['Requirement B'],
+      reviewState: 'strengthen',
+      requirementSource: 'job_description',
+      evidenceFound: '',
+      gapChat: makeGapChat(),
+      chatContext: makeChatContext({ sectionLabel: 'Professional Experience' }),
+      onApplyToResume: vi.fn(),
+      onRemoveBullet: vi.fn(),
+      onClose: vi.fn(),
+      onBulletEnhance: enhanceFn,
+      sectionType: 'experience_bullet',
+    };
+
+    rerender(<BulletCoachingPanel {...newProps} />);
+
+    expect(panel.textContent).toContain('How should we strengthen this?');
+    expect(panel.textContent).not.toContain('Enhanced version.');
+  });
+
+  it('shows Try a different angle toggle when result exists', async () => {
+    const mockResult: EnhanceResult = {
+      enhancedBullet: 'Enhanced version.',
+      alternatives: [],
+    };
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
+
+    const angleButtons = getAngleButtons(container);
+    await act(async () => {
+      fireEvent.click(angleButtons[0]);
+    });
+
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => {
+      expect(panel.textContent).toContain('Enhanced version.');
+    });
+
+    expect(panel.textContent).toContain('Try a different angle');
   });
 });
