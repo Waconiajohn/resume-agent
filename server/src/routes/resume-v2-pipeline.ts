@@ -90,7 +90,8 @@ async function loadMasterResumeEvidence(userId: string): Promise<string[]> {
         const category = typeof e.category === 'string' ? e.category : 'interview_response';
         return `[${category}]: ${e.text as string}`;
       });
-  } catch {
+  } catch (err: unknown) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Context enrichment warning');
     return [];
   }
 }
@@ -219,8 +220,8 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
           try {
             // The SSE emitter expects the old PipelineSSEEvent type — cast through unknown
             (emitter as (e: unknown) => void)(event);
-          } catch {
-            // Emitter may have been closed
+          } catch (err: unknown) {
+            logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Context enrichment warning');
           }
         }
       };
@@ -2107,16 +2108,27 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
   ].filter(Boolean).join('\n');
 
   try {
-    const response = await withRetry(
-      () => withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
-        model: MODEL_MID,
-        system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: line_kind === 'summary' ? 2048 : 1024,
-        signal: c.req.raw.signal,
-      })),
+    const chatParams = {
+      model: MODEL_MID,
+      system: 'You are a senior resume coach. Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
+      messages: [{ role: 'user' as const, content: prompt }],
+      max_tokens: line_kind === 'summary' ? 2048 : 1024,
+      signal: c.req.raw.signal,
+    };
+
+    let response = await withRetry(
+      () => withTrackedSessionUsage(sessionId, userId, async () => llm.chat(chatParams)),
       { signal: c.req.raw.signal },
     );
+
+    if (response.finish_reason === 'length') {
+      logger.warn({ session_id: sessionId, action, line_kind }, 'Bullet enhance: output truncated, retrying with higher budget');
+      response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
+        ...chatParams,
+        max_tokens: (chatParams.max_tokens ?? 1024) * 2,
+        signal: c.req.raw.signal,
+      }));
+    }
 
     const repaired = repairJSON<{ enhanced_bullet?: string; alternatives?: Array<{ text: string; angle: string }> }>(response.text);
 
@@ -2147,6 +2159,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
       /^impact[- ]focused\s+(version|phrasing)/i,
       /^(a\s+)?version\s+emphasizing/i,
       /^your\s+(primary\s+)?rewrite/i,
+      /\bversion\s+emphasizing\b/i,
     ];
 
     const isPlaceholder = (text: string) => PLACEHOLDER_PATTERNS.some(p => p.test(text.trim()));
@@ -2282,8 +2295,8 @@ resumeV2Pipeline.post('/:sessionId/section-draft', authMiddleware, rateLimitMidd
         jobContext = parts.join('\n');
       }
     }
-  } catch {
-    // Ignore missing enrichment context
+  } catch (err: unknown) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Context enrichment warning');
   }
 
   const prompt = buildSectionDraftPrompt(parsed.data, {

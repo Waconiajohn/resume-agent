@@ -139,7 +139,7 @@ export function BulletCoachingPanel({
   // ── Metadata builder ──────────────────────────────────────────────────────
   const applyMetadata = useCallback(
     (overrides?: Partial<OptimisticResumeEditMetadata>): OptimisticResumeEditMetadata => ({
-      requirement: requirements[0],
+      requirement: requirements[0] ?? '',
       requirements,
       reviewState,
       requirementSource,

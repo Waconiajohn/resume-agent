@@ -32,6 +32,8 @@ function statusDotStyle(status: SectionMiniMapSection['status']): React.CSSPrope
       return { backgroundColor: 'var(--badge-amber-text)' };
     case 'needs_attention':
       return { backgroundColor: 'var(--badge-red-text)' };
+    default:
+      return { backgroundColor: 'var(--text-soft)' };
   }
 }
 
@@ -43,6 +45,8 @@ function statusAriaLabel(status: SectionMiniMapSection['status']): string {
       return 'mixed';
     case 'needs_attention':
       return 'needs attention';
+    default:
+      return 'unknown';
   }
 }
 

@@ -170,7 +170,7 @@ export function ResumeDocumentCard({
 
   sectionNodes.set('executive_summary', (
     <section key="executive_summary" data-section="executive_summary">
-      <SectionHeading>Executive Summary</SectionHeading>
+      <SectionHeading progress={sectionProgress?.['executive_summary']}>Executive Summary</SectionHeading>
       {onBulletClick ? (
         <div
           data-resume-line={getResumeLineToken('executive_summary', 0)}
@@ -230,7 +230,7 @@ export function ResumeDocumentCard({
           >
             {resume.executive_summary.content}
           </p>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity">
             <Pencil className="h-4 w-4 text-gray-400" />
           </span>
           <ContextChipTag
@@ -438,7 +438,7 @@ export function ResumeDocumentCard({
                     >
                       {exp.scope_statement}
                     </p>
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity">
                       <Pencil className="h-3.5 w-3.5 text-gray-400" />
                     </span>
                   </div>
@@ -617,7 +617,7 @@ export function ResumeDocumentCard({
               >
                 {summaryText}
               </p>
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity">
                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
               </span>
               <ContextChipTag
@@ -682,7 +682,7 @@ export function ResumeDocumentCard({
                   >
                     {line}
                   </p>
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity">
                     <Pencil className="h-3.5 w-3.5 text-gray-400" />
                   </span>
                 </div>
@@ -743,7 +743,7 @@ export function ResumeDocumentCard({
                         >
                           {line}
                         </p>
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity">
                           <Pencil className="h-3.5 w-3.5 text-gray-400" />
                         </span>
                       </div>
@@ -768,7 +768,7 @@ export function ResumeDocumentCard({
       {/* Header */}
       <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-6 sm:pb-7">
         <h2 className="resume-document-name text-[2.08rem] font-semibold tracking-[-0.028em] text-gray-900 sm:text-[2.62rem]">{resume.header.name}</h2>
-        <p className="resume-document-title mt-2.5 text-[0.76rem] font-semibold tracking-[0.24em] text-blue-700 uppercase sm:text-[0.9rem]">
+        <p className="resume-document-title mt-2.5 text-[0.76rem] font-semibold tracking-[0.24em] text-blue-700 uppercase sm:text-[0.9rem] max-w-full overflow-hidden text-ellipsis">
           {resume.header.branded_title}
         </p>
         <div className="resume-document-contact mt-4 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11.5px] text-gray-500 sm:flex-row sm:text-[12.5px]">
@@ -891,21 +891,21 @@ function BulletLineContent({
               className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 min-h-[44px] flex items-center cursor-pointer font-normal text-gray-900 active:bg-blue-50/50 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
             >
               {globalNumber !== undefined && (
-                <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
+                <sup className="text-[11px] text-gray-500 font-semibold mr-1 not-italic select-none">{globalNumber}</sup>
               )}
               {text}
             </span>
             {/* Floating context chip — source-aware styling */}
             <ContextChipTag chip={contextChip} isVisible={!!isActive && !!contextChip} />
           </span>
-          <span className="opacity-30 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
+          <span className="opacity-20 sm:opacity-15 sm:group-hover:opacity-100 transition-opacity mt-1.5 shrink-0" aria-hidden="true">
             <Pencil className="h-4 w-4 text-gray-400" />
           </span>
         </span>
       ) : (
         <span className="block font-normal text-gray-800">
           {globalNumber !== undefined && (
-            <sup className="text-[10px] text-gray-400 mr-1 not-italic font-normal select-none">{globalNumber}</sup>
+            <sup className="text-[11px] text-gray-500 font-semibold mr-1 not-italic select-none">{globalNumber}</sup>
           )}
           {text}
         </span>

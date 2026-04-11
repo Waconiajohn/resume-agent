@@ -178,9 +178,11 @@ export function ResumeCoachPanel({
             <button
               type="button"
               onClick={onPrevItem}
+              disabled={currentPosition <= 1}
               className={cn(
                 'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
                 'hover:bg-[var(--surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+                'disabled:opacity-30 disabled:cursor-not-allowed',
               )}
               aria-label="Previous flagged item"
               style={{ color: 'var(--text-soft)' }}
@@ -190,9 +192,11 @@ export function ResumeCoachPanel({
             <button
               type="button"
               onClick={onNextItem}
+              disabled={currentPosition >= flaggedCount}
               className={cn(
                 'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
                 'hover:bg-[var(--surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+                'disabled:opacity-30 disabled:cursor-not-allowed',
               )}
               aria-label="Next flagged item"
               style={{ color: 'var(--text-soft)' }}

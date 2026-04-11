@@ -507,6 +507,8 @@
 
   .resume-document-copy {
     color: #1f2937;
+    font-size: 0.9375rem; /* 15px */
+    line-height: 1.65;
     text-rendering: optimizeLegibility;
   }
 
@@ -1838,11 +1840,11 @@ body {
   }
 }
 
-/* ── Larger resume text on small screens (45+ users) ── */
+/* ── Resume document copy is 15px by default; this rule is now a no-op override kept for clarity ── */
 @media (max-width: 640px) {
   .resume-document-copy {
-    font-size: 0.9375rem; /* 15px instead of 14px on mobile */
-    line-height: 1.6;
+    font-size: 0.9375rem; /* 15px — same as default */
+    line-height: 1.65;
   }
 }
 

@@ -279,6 +279,7 @@ export const BANNED_PHRASES = [
   'participated in', 'worked on', 'duties included',
   'leverage', 'utilize', 'value-add',
   'spearheaded', 'high stakes', 'high-stakes',
+  'member of', 'part of the team that', 'contributed to',
 ];
 
 // ─── Guardrails ──────────────────────────────────────────────────────
