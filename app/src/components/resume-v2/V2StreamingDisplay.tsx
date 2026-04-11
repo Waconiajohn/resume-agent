@@ -1291,10 +1291,14 @@ export function V2StreamingDisplay({
   const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
     justCompletedEditRef.current = true;
     onBulletEdit?.(section, index, newText, metadata);
+    // Close the panel so auto-advance can move to the next item
+    setActiveBullet(null);
   }, [onBulletEdit]);
   const handleCoachRemoveBullet = useCallback((section: string, index: number) => {
     justCompletedEditRef.current = true;
     onBulletRemove?.(section, index);
+    // Close the panel so auto-advance can move to the next item
+    setActiveBullet(null);
   }, [onBulletRemove]);
 
   // Bullet clicking and direct editing: available as soon as the resume is visible
@@ -1343,7 +1347,7 @@ export function V2StreamingDisplay({
 
     const timerId = window.setTimeout(() => {
       handleStartReviewing();
-    }, 500);
+    }, 150);
     return () => window.clearTimeout(timerId);
   // handleStartReviewing is stable (useCallback) — include all referenced values
   // eslint-disable-next-line react-hooks/exhaustive-deps
