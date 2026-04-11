@@ -12,9 +12,9 @@ interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 const sizeClasses: Record<GlassButtonSize, string> = {
-  sm: 'min-h-[42px] px-3.5 py-2 text-[13px] tracking-[0.08em] uppercase',
-  md: 'min-h-[46px] px-4.5 py-2.5 text-[13px] tracking-[0.08em] uppercase',
-  lg: 'min-h-[50px] px-5.5 py-3 text-[13px] tracking-[0.1em] uppercase',
+  sm: 'min-h-[42px] px-4 py-2 text-[13px] tracking-[0.08em] uppercase',
+  md: 'min-h-[46px] px-5 py-2.5 text-[13px] tracking-[0.08em] uppercase',
+  lg: 'min-h-[50px] px-6 py-3 text-[13px] tracking-[0.1em] uppercase',
 };
 
 export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(function GlassButton(

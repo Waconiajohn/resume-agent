@@ -806,9 +806,10 @@ describe('V2StreamingDisplay — layout modes', () => {
       />,
     );
 
-    expect(screen.getByText(/Language match 64%/i)).toBeInTheDocument();
-    expect(screen.getByText(/2 requirements still need concrete examples and\/or missing details before those claims are safe to add to the resume\./i)).toBeInTheDocument();
-    expect(screen.getByText(/3 claims that would make your resume look more like a top candidate still need more verification before we should include them\./i)).toBeInTheDocument();
+    // Redesigned checkpoint shows stat cards and action items
+    expect(screen.getByText(/Your draft is ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/64%/)).toBeInTheDocument();
+    expect(screen.getByText(/Keyword Match/i)).toBeInTheDocument();
   });
 
   it('drops the mobile score summary once the user enters resume editing mode', async () => {

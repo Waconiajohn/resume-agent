@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface ResumeReadyScreenProps {
   keywordMatchPercent: number | null;
   requirementCoveragePercent: number;
@@ -25,69 +27,6 @@ function dedupePhrases(items: string[] = []): string[] {
   });
 }
 
-function KeywordPhraseGroup({
-  title,
-  items,
-  emptyLabel,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  emptyLabel: string;
-  tone: 'found' | 'missing';
-}) {
-  return (
-    <div
-      className={`ready-phrase-card ready-phrase-card--${tone}`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)]">
-          {title}
-        </p>
-        <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
-          {items.length}
-        </span>
-      </div>
-      {items.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {items.slice(0, 8).map((item) => (
-            <div
-              key={item}
-              className={`ready-phrase-row ready-phrase-row--${tone}`}
-            >
-              <span className="ready-phrase-row__dot" aria-hidden="true" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-[var(--text-soft)]">{emptyLabel}</p>
-      )}
-    </div>
-  );
-}
-
-function ScoreStat({
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  tone?: 'neutral' | 'good' | 'warn';
-}) {
-  return (
-    <div className={`ready-score-stat ready-score-stat--${tone}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-[var(--text-strong)]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export function ResumeReadyScreen({
   keywordMatchPercent,
   requirementCoveragePercent,
@@ -100,120 +39,209 @@ export function ResumeReadyScreen({
   companyName,
   roleTitle,
   hasScoreData = true,
-  primaryActionLabel = 'Start Editing My Resume',
+  primaryActionLabel = 'Start Reviewing →',
   onStartEditing,
 }: ResumeReadyScreenProps) {
-  const needsReview = flaggedBulletCount > 0;
-  const headline = needsReview ? 'Your First Draft Is Ready' : 'Your Resume Is Ready for Final Review';
-  const summary = needsReview
-    ? 'The structure is in place. Now tighten the few lines that still need proof, clearer scope, or a more honest fit.'
-    : 'The draft is in strong shape. Do one last review for tone, credibility, and final polish before export.';
+  const [keywordExpanded, setKeywordExpanded] = useState(false);
+
   const foundPhrases = dedupePhrases(keywordsFound);
   const missingPhrases = dedupePhrases(keywordsMissing);
-  const reportIntro = hasScoreData
-    ? 'This draft is now being judged the way a job-scan style reviewer would: by the language it lands, the phrases it still misses, and how directly it mirrors the role.'
-    : 'The keyword and key-phrasing report is still calculating.';
-  const summaryLine = (() => {
-    if (typeof keywordMatchPercent === 'number') {
-      return `Language match ${Math.round(keywordMatchPercent)}%. ${foundPhrases.length} phrase${foundPhrases.length === 1 ? '' : 's'} are already landing, and ${missingPhrases.length} still need attention.`;
-    }
-    if (foundPhrases.length > 0 || missingPhrases.length > 0) {
-      return `${foundPhrases.length} phrase${foundPhrases.length === 1 ? '' : 's'} are already landing, and ${missingPhrases.length} still need attention.`;
-    }
-    return 'The keyword and key-phrasing report is still calculating.';
-  })();
-  const nextSteps = (actionSummaryLines.length > 0 ? actionSummaryLines : [summary]).slice(0, 2);
+
+  // ── Stat card values ────────────────────────────────────────────────────
+  const keywordDisplay =
+    typeof keywordMatchPercent === 'number' && hasScoreData
+      ? `${Math.round(keywordMatchPercent)}%`
+      : '—';
+
+  const reqNumerator = Math.round((requirementCoveragePercent / 100) * 15);
+  const reqDisplay = hasScoreData ? `${reqNumerator} of 15` : '—';
+
+  // ── "What's done" — derived from available data ─────────────────────────
+  // Pipeline produced a resume if we have any score data or phrases found.
+  const pipelineRan = hasScoreData || foundPhrases.length > 0 || missingPhrases.length > 0;
+  const hasBenchmark = typeof benchmarkMatchPercent === 'number';
+  const hasSummary = strengthSummary.trim().length > 0;
+
+  const doneBullets: string[] = [];
+  if (pipelineRan) doneBullets.push('Experience bullets written');
+  if (hasSummary) doneBullets.push('Executive summary positioned');
+  if (hasBenchmark) doneBullets.push('Competencies matched to role');
+
+  // ── "What's next" — derive from actionSummaryLines if available, else build ──
+  const nextItems: string[] = [];
+  if (flaggedBulletCount > 0) {
+    nextItems.push(`Review ${flaggedBulletCount} flagged item${flaggedBulletCount === 1 ? '' : 's'}`);
+  }
+  if (missingPhrases.length > 0) {
+    nextItems.push(`${missingPhrases.length} keyword${missingPhrases.length === 1 ? '' : 's'} still need attention`);
+  }
+  // Pull any additional context from actionSummaryLines (e.g. gap areas, structure)
+  const extraNextItems = actionSummaryLines.filter((line) => {
+    const lower = line.toLowerCase();
+    return !lower.includes('keyword') && !lower.includes('flagged');
+  });
+  for (const line of extraNextItems.slice(0, 2)) {
+    if (nextItems.length < 3) nextItems.push(line);
+  }
 
   return (
-    <div className="ready-checkpoint-shell grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.85fr)] lg:items-start">
-      <div className="space-y-4">
-        <div className="space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
-            Draft Checkpoint
-          </p>
-          <div className="space-y-2">
-            <h2 className="text-[28px] font-semibold tracking-tight text-[var(--text-strong)] sm:text-[34px]">
-              {headline}
-            </h2>
-            <p className="max-w-[760px] text-[15px] leading-7 text-[var(--text-muted)]">
-              {summary}
-            </p>
-          </div>
-          {companyName && roleTitle && (
-            <p className="text-[13px] text-[var(--text-soft)]">{roleTitle} at {companyName}</p>
-          )}
-          <p className="text-[14px] leading-6 text-[var(--text-muted)]">{summaryLine}</p>
-          {strengthSummary && (
-            <p className="text-sm leading-6 text-[var(--text-muted)]">
-              {strengthSummary}
-            </p>
-          )}
-        </div>
+    <div className="ready-checkpoint-shell space-y-5">
 
-        <details className="ready-keyword-disclosure">
-          <summary className="ready-keyword-disclosure__summary">
-            View keyword report
-          </summary>
-          <div className="ready-keyword-disclosure__content">
-            <p className="text-sm leading-6 text-[var(--text-muted)]">
-              {reportIntro}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <ScoreStat label="Language Match" value={typeof keywordMatchPercent === 'number' ? `${Math.round(keywordMatchPercent)}%` : '—'} tone="good" />
-              <ScoreStat label="Role Coverage" value={hasScoreData ? `${Math.round(requirementCoveragePercent)}%` : '—'} tone="good" />
-              {typeof benchmarkMatchPercent === 'number' && (
-                <ScoreStat label="Benchmark Fit" value={hasScoreData ? `${Math.round(benchmarkMatchPercent)}%` : '—'} tone="neutral" />
-              )}
-              <ScoreStat label="Still Missing" value={String(missingPhrases.length)} tone={missingPhrases.length > 0 ? 'warn' : 'neutral'} />
-            </div>
-            <div className="grid gap-3 lg:grid-cols-2">
-              <KeywordPhraseGroup
-                title="Landing Well"
-                items={foundPhrases}
-                emptyLabel="Matched phrases will appear here once the current draft is scored."
-                tone="found"
-              />
-              <KeywordPhraseGroup
-                title="Still Missing"
-                items={missingPhrases}
-                emptyLabel="Nothing obvious is missing right now."
-                tone="missing"
-              />
-            </div>
-          </div>
-        </details>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="space-y-1">
+        <h2 className="text-[26px] font-semibold tracking-tight text-[var(--text-strong)] sm:text-[30px]">
+          Your draft is ready
+        </h2>
+        {companyName && roleTitle && (
+          <p className="text-[14px] text-[var(--text-soft)]">
+            {roleTitle} at {companyName}
+          </p>
+        )}
       </div>
 
-      <div className="space-y-4">
-        <section className="ready-next-card">
-          <h3 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)]">
-            Start Here
-          </h3>
-          <div className="mt-3 space-y-3">
-            {nextSteps.map((line) => (
-              <div key={line} className="flex items-start gap-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--link)]" aria-hidden="true" />
-                <p className="text-[14px] leading-6 text-[var(--text-muted)]">{line}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="ready-next-card">
-          <p className="text-[14px] leading-6 text-[var(--text-muted)]">
-            {needsReview
-              ? 'Open the draft and tighten the few lines that still block a stronger fit.'
-              : 'Open the draft and do one last confidence check before export.'}
+      {/* ── Stat cards ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="ready-score-stat ready-score-stat--good">
+          <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
+            {keywordDisplay}
           </p>
+          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
+            Keyword Match
+          </p>
+        </div>
+        <div className="ready-score-stat ready-score-stat--good">
+          <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
+            {reqDisplay}
+          </p>
+          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
+            Requirements Addressed
+          </p>
+        </div>
+      </div>
+
+      {/* ── What's done ─────────────────────────────────────────────────── */}
+      {doneBullets.length > 0 && (
+        <section aria-label="What's done">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)] mb-2">
+            What's done
+          </p>
+          <ul className="space-y-1.5">
+            {doneBullets.map((item) => (
+              <li key={item} className="flex items-center gap-2.5">
+                <span
+                  className="shrink-0 text-[var(--badge-green-text)]"
+                  aria-hidden="true"
+                >
+                  ✓
+                </span>
+                <span className="text-[14px] leading-6 text-[var(--text-muted)]">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── What's next ─────────────────────────────────────────────────── */}
+      {nextItems.length > 0 && (
+        <section aria-label="What's next">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-soft)] mb-2">
+            What's next
+          </p>
+          <ul className="space-y-1.5">
+            {nextItems.map((item) => (
+              <li key={item} className="flex items-center gap-2.5">
+                <span
+                  className="shrink-0 text-[var(--link)]"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+                <span className="text-[14px] leading-6 text-[var(--text-muted)]">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── Primary CTA ─────────────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={onStartEditing}
+        className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3.5 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
+      >
+        {primaryActionLabel}
+      </button>
+
+      {/* ── Expandable keyword details ───────────────────────────────────── */}
+      {(foundPhrases.length > 0 || missingPhrases.length > 0) && (
+        <div className="ready-keyword-disclosure">
           <button
             type="button"
-            onClick={onStartEditing}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] border border-[var(--btn-primary-border)] px-6 py-3.5 text-[15px] font-semibold text-[var(--btn-primary-text)] shadow-sm hover:bg-[var(--btn-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] transition-colors"
+            aria-expanded={keywordExpanded}
+            onClick={() => setKeywordExpanded((prev) => !prev)}
+            className="ready-keyword-disclosure__summary flex w-full items-center justify-between gap-2"
           >
-            {primaryActionLabel}
+            <span>
+              {keywordExpanded ? '▾' : '▸'} View keyword details
+            </span>
+            <span className="rounded-full border border-[var(--line-soft)] bg-[var(--surface-0)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-soft)]">
+              {foundPhrases.length + missingPhrases.length}
+            </span>
           </button>
-        </section>
-      </div>
+
+          {keywordExpanded && (
+            <div className="ready-keyword-disclosure__content">
+              {/* Found keywords */}
+              {foundPhrases.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)] mb-2">
+                    Landing well
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {foundPhrases.slice(0, 20).map((phrase) => (
+                      <span
+                        key={phrase}
+                        className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
+                        style={{
+                          background: 'color-mix(in srgb, var(--badge-green-bg) 90%, transparent)',
+                          border: '1px solid color-mix(in srgb, var(--badge-green-text) 30%, var(--line-soft))',
+                          color: 'var(--badge-green-text)',
+                        }}
+                      >
+                        {phrase}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing keywords */}
+              {missingPhrases.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-soft)] mb-2">
+                    Still missing
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missingPhrases.slice(0, 20).map((phrase) => (
+                      <span
+                        key={phrase}
+                        className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
+                        style={{
+                          background: 'color-mix(in srgb, var(--badge-amber-bg) 90%, transparent)',
+                          border: '1px solid color-mix(in srgb, var(--badge-amber-text) 30%, var(--line-soft))',
+                          color: 'var(--badge-amber-text)',
+                        }}
+                      >
+                        {phrase}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
