@@ -367,45 +367,45 @@ export function BulletCoachingPanel({
       ref={panelRef}
       data-testid="bullet-coaching-panel"
       tabIndex={-1}
-      className="mt-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm focus:outline-none"
+      className="mt-3 rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-elevated)] focus:outline-none"
       style={{ animation: 'fade-slide-in 200ms ease-out forwards' }}
     >
       {/* ── Block 1: What You Have ─────────────────────────────────────── */}
       <div className="px-4 pt-4 pb-3">
-        <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-[var(--text-soft)] uppercase tracking-wide mb-2">
           {sectionDisplayName}
         </p>
-        <p className="text-sm leading-relaxed text-white">
+        <p className="text-sm leading-relaxed text-[var(--text-strong)]">
           {bulletText}
         </p>
       </div>
 
       {/* ── Block 2: What We Suggest ───────────────────────────────────── */}
       {(showAIDiff || featuredOption || isCodeRedNoEvidence || effectiveVerdict === 'collapse' || effectiveVerdict === 'ask_question') && (
-        <div className="border-t border-white/10 px-4 py-3 space-y-3">
+        <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-3">
 
           {/* AI-enhanced diff view */}
           {showAIDiff && (
             <div className="space-y-2">
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
                   Original
                 </p>
-                <p className="text-sm leading-relaxed text-gray-300">
+                <p className="text-sm leading-relaxed text-[var(--text-soft)]">
                   {evidenceFound.trim()}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
                   Our Enhancement
                 </p>
-                <p className="text-sm leading-relaxed text-gray-200">
+                <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                   {bulletText}
                 </p>
               </div>
               {addressesLabel && (
-                <p className="text-xs text-gray-300">
-                  Addresses: <span className="text-gray-400">{addressesLabel}</span>
+                <p className="text-xs text-[var(--text-soft)]">
+                  Addresses: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
                 </p>
               )}
             </div>
@@ -417,7 +417,7 @@ export function BulletCoachingPanel({
               <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1">
                 Looks Strong
               </p>
-              <p className="text-sm leading-relaxed text-white">
+              <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                 This section already addresses the requirement well. Click &ldquo;Keep Current&rdquo; to move on, or &ldquo;Edit Myself&rdquo; to make changes.
               </p>
             </div>
@@ -429,12 +429,12 @@ export function BulletCoachingPanel({
               <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-1">
                 More Context Needed
               </p>
-              <p className="text-sm leading-relaxed text-white">
+              <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                 {suggestionScore?.suggestedQuestion}
               </p>
               {addressesLabel && (
-                <p className="text-xs text-gray-300">
-                  For: <span className="text-gray-400">{addressesLabel}</span>
+                <p className="text-xs text-[var(--text-soft)]">
+                  For: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
                 </p>
               )}
             </div>
@@ -444,20 +444,20 @@ export function BulletCoachingPanel({
           {!showAIDiff && !isCodeRedNoEvidence && featuredOption && effectiveVerdict !== 'collapse' && effectiveVerdict !== 'ask_question' && (
             <div className="space-y-2">
               <div>
-                <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-1">
+                <p className="text-xs font-semibold text-[var(--text-soft)] uppercase tracking-wide mb-1">
                   Suggested Improvement
                 </p>
-                <p className="text-sm leading-relaxed text-white">
+                <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                   {featuredOption.text}
                 </p>
               </div>
               {addressesLabel && (
-                <p className="text-xs text-gray-300">
-                  Addresses: <span className="text-gray-400">{addressesLabel}</span>
+                <p className="text-xs text-[var(--text-soft)]">
+                  Addresses: <span className="text-[var(--text-soft)]">{addressesLabel}</span>
                 </p>
               )}
               {priorClarifications.length > 0 && (
-                <p className="text-xs text-gray-300 italic">
+                <p className="text-xs text-[var(--text-soft)] italic">
                   I am also using this earlier detail you confirmed: &ldquo;{priorClarifications[0].userInput}&rdquo;
                 </p>
               )}
@@ -468,25 +468,25 @@ export function BulletCoachingPanel({
           {isCodeRedNoEvidence && (
             <div className="space-y-2">
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
                   Gap Identified
                 </p>
-                <p className="text-sm leading-relaxed text-gray-300">
+                <p className="text-sm leading-relaxed text-[var(--text-soft)]">
                   This role requires{' '}
-                  <span className="text-gray-200 font-medium">
+                  <span className="text-[var(--text-strong)] font-medium">
                     {primaryRequirement ?? 'this skill'}
                   </span>
                   . We don&apos;t have evidence of this in your resume yet.
                 </p>
               </div>
               {topClarifyingDetail && (
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-                  <p className="text-xs text-gray-400 italic">
+                <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5">
+                  <p className="text-xs text-[var(--text-soft)] italic">
                     If you want to strengthen this later, the extra detail I would want is: {topClarifyingDetail}.
                   </p>
                 </div>
               )}
-              <p className="text-xs text-gray-300">
+              <p className="text-xs text-[var(--text-soft)]">
                 Can you confirm this reflects your experience?
               </p>
             </div>
@@ -496,7 +496,7 @@ export function BulletCoachingPanel({
 
       {/* ── Custom edit area (when open) ───────────────────────────────── */}
       {showCustomEdit && (
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="border-t border-[var(--line-soft)] px-4 py-3">
           <CustomEditArea
             value={editDraft}
             onChange={setEditDraft}
@@ -509,7 +509,7 @@ export function BulletCoachingPanel({
       )}
 
       {/* ── Block 3: Actions ───────────────────────────────────────────── */}
-      <div className="border-t border-white/10 px-4 py-3 space-y-3">
+      <div className="border-t border-[var(--line-soft)] px-4 py-3 space-y-3">
 
         {/* Primary action buttons */}
         {!showCustomEdit && (
@@ -534,7 +534,7 @@ export function BulletCoachingPanel({
                   onClick={() => handleOpenEdit(bulletText)}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -545,7 +545,7 @@ export function BulletCoachingPanel({
                   onClick={handleRevertToOriginal}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -577,7 +577,7 @@ export function BulletCoachingPanel({
                   onClick={() => handleOpenEdit(bulletText)}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -588,7 +588,7 @@ export function BulletCoachingPanel({
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -610,7 +610,7 @@ export function BulletCoachingPanel({
                 <button
                   type="button"
                   onClick={() => handleOpenEdit(bulletText)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors"
+                  className="rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors"
                 >
                   Edit Myself
                 </button>
@@ -630,7 +630,7 @@ export function BulletCoachingPanel({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
                 >
                   Skip
                 </button>
@@ -656,7 +656,7 @@ export function BulletCoachingPanel({
                   onClick={() => handleOpenEdit(featuredOption.text)}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -667,7 +667,7 @@ export function BulletCoachingPanel({
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -695,7 +695,7 @@ export function BulletCoachingPanel({
                   onClick={onClose}
                   disabled={isChatLoading}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors',
+                    'rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors',
                     isChatLoading && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -712,7 +712,7 @@ export function BulletCoachingPanel({
             <button
               type="button"
               onClick={() => setShowCustomEdit(false)}
-              className="rounded-lg px-3 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-gray-300 transition-colors"
+              className="rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors"
             >
               Cancel
             </button>
@@ -725,7 +725,7 @@ export function BulletCoachingPanel({
             <button
               type="button"
               onClick={() => setShowMoreOptions((v) => !v)}
-              className="flex items-center gap-1 text-sm text-gray-300 hover:text-gray-300 transition-colors"
+              className="flex items-center gap-1 text-sm text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
             >
               {showMoreOptions ? (
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -739,13 +739,13 @@ export function BulletCoachingPanel({
                 {alternateOptions.map((option) => (
                   <div
                     key={option.id}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 flex items-start justify-between gap-3"
+                    className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 flex items-start justify-between gap-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                      <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
                         {option.label}
                       </p>
-                      <p className="text-sm leading-relaxed text-gray-200">
+                      <p className="text-sm leading-relaxed text-[var(--text-strong)]">
                         {option.text}
                       </p>
                     </div>
@@ -769,12 +769,12 @@ export function BulletCoachingPanel({
 
         {/* Related line suggestions */}
         {relatedSuggestionTargets.length > 0 && (
-          <div className="border-t border-white/10 pt-3 space-y-2">
+          <div className="border-t border-[var(--line-soft)] pt-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-[var(--text-soft)]">
                 Also improve nearby lines
               </p>
-              <p className="text-xs text-gray-300">
+              <p className="text-xs text-[var(--text-soft)]">
                 {relatedSuggestionTargets.length === 1
                   ? 'This same detail can also improve 1 other line.'
                   : `This same detail can also improve ${relatedSuggestionTargets.length} other lines.`}
@@ -789,7 +789,7 @@ export function BulletCoachingPanel({
                     handleApplyRelatedSuggestion(first.candidate.section, first.candidate.index, first.suggestion.suggestedLanguage);
                   }
                 }}
-                className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition-colors"
+                className="rounded-lg border border-[var(--line-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-soft)] hover:bg-[var(--surface-3)] transition-colors"
               >
                 Show nearby lines
               </button>
@@ -797,7 +797,7 @@ export function BulletCoachingPanel({
                 <button
                   type="button"
                   onClick={handleApplyAllRelatedSuggestions}
-                  className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition-colors"
+                  className="rounded-lg border border-[var(--line-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-soft)] hover:bg-[var(--surface-3)] transition-colors"
                 >
                   Apply all nearby lines
                 </button>
@@ -807,13 +807,13 @@ export function BulletCoachingPanel({
               {relatedSuggestionTargets.map(({ candidate, suggestion }) => (
                 <div
                   key={candidate.id}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
+                  className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{candidate.label}</p>
+                      <p className="text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide">{candidate.label}</p>
                       {suggestion.requirement && (
-                        <p className="mt-0.5 text-xs text-gray-300">Supports: {suggestion.requirement}</p>
+                        <p className="mt-0.5 text-xs text-[var(--text-soft)]">Supports: {suggestion.requirement}</p>
                       )}
                     </div>
                     <button
@@ -824,10 +824,10 @@ export function BulletCoachingPanel({
                       Apply to this line
                     </button>
                   </div>
-                  <p className="mt-1.5 text-xs text-gray-300">Current: {candidate.lineText}</p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-gray-200">{suggestion.suggestedLanguage}</p>
+                  <p className="mt-1.5 text-xs text-[var(--text-soft)]">Current: {candidate.lineText}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-strong)]">{suggestion.suggestedLanguage}</p>
                   {suggestion.rationale && (
-                    <p className="mt-1 text-xs text-gray-300">Why this also improves: {suggestion.rationale}</p>
+                    <p className="mt-1 text-xs text-[var(--text-soft)]">Why this also improves: {suggestion.rationale}</p>
                   )}
                 </div>
               ))}
@@ -837,7 +837,7 @@ export function BulletCoachingPanel({
 
         {/* Remove */}
         {canRemove && (
-          <div className="border-t border-white/10 pt-2">
+          <div className="border-t border-[var(--line-soft)] pt-2">
             <button
               type="button"
               onClick={() => {
@@ -855,7 +855,7 @@ export function BulletCoachingPanel({
                 'text-xs font-medium transition-colors',
                 confirmRemove
                   ? 'text-red-400 font-semibold'
-                  : 'text-gray-300 hover:text-red-400',
+                  : 'text-[var(--text-soft)] hover:text-red-400',
                 isChatLoading && 'opacity-50 cursor-not-allowed',
               )}
             >
