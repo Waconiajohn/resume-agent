@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BriefcaseBusiness, ExternalLink, FileText, Trash2 } from 'lucide-react';
+import { BriefcaseBusiness, ExternalLink, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
@@ -11,19 +11,16 @@ import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
 import {
-  assetBadgeLabel,
   buildJobRecords,
-  buildJobWorkspaceRoute,
   buildWorkspaceRoomRoute,
   formatDate,
-  formatJobStage,
+  formatStatus,
   getUniqueProductTypes,
   humanizeProductType,
   isResumeProductType,
   isWorkspaceProductType,
   productTypeForSession,
   type SessionJobRecord,
-  stageAwareActions,
 } from '@/lib/job-workspace';
 
 type StatusFilter = 'all' | 'complete' | 'running' | 'error';
@@ -82,6 +79,8 @@ export function SessionHistoryTab({
   const [viewingCoverLetterSessionId, setViewingCoverLetterSessionId] = useState<string | null>(null);
   const [selectedWorkspaceKey, setSelectedWorkspaceKey] = useState<string | null>(null);
   const [savingStage, setSavingStage] = useState<PipelineStage | null>(null);
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [extraSessions, setExtraSessions] = useState<CoachSession[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -164,6 +163,21 @@ export function SessionHistoryTab({
     }
   }, [onMoveJobStage]);
 
+  const handleDeleteRecord = useCallback(async (record: SessionJobRecord) => {
+    setDeletingKey(record.key);
+    try {
+      // Delete all sessions in this record
+      const results = await Promise.all(record.assets.map((session) => onDeleteSession(session.id)));
+      const allSucceeded = results.every(Boolean);
+      if (allSucceeded) {
+        setConfirmDeleteKey(null);
+        if (selectedWorkspaceKey === record.key) setSelectedWorkspaceKey(null);
+      }
+    } finally {
+      setDeletingKey(null);
+    }
+  }, [onDeleteSession, selectedWorkspaceKey]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -211,11 +225,10 @@ export function SessionHistoryTab({
       </div>
 
       <GlassCard className="overflow-hidden p-0">
-        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] gap-4 border-b border-[var(--line-soft)] px-5 py-3 text-[13px] font-medium uppercase tracking-wider text-[var(--text-soft)] lg:grid">
+        <div className="hidden grid-cols-[minmax(0,2fr)_120px_140px_180px] gap-4 border-b border-[var(--line-soft)] px-5 py-3 text-[13px] font-medium uppercase tracking-wider text-[var(--text-soft)] lg:grid">
           <div>Company and role</div>
           <div>Date</div>
-          <div>Stage</div>
-          <div>Assets and unlocks</div>
+          <div>Status</div>
           <div>Actions</div>
         </div>
 
@@ -237,64 +250,52 @@ export function SessionHistoryTab({
             {jobRecords.map((record) => {
               const resumeAsset = record.assets.find((session) => isResumeProductType(productTypeForSession(session))) ?? null;
               const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter') ?? null;
-              const application = record.jobApplicationId ? applicationsById.get(record.jobApplicationId) : undefined;
-              const assetCounts = record.assets.reduce<Record<string, number>>((accumulator, session) => {
-                const type = productTypeForSession(session);
-                accumulator[type] = (accumulator[type] ?? 0) + 1;
-                return accumulator;
-              }, {});
-              const activeStage = application?.stage ?? record.jobStage;
-              const jobStage = formatJobStage(activeStage);
-              const stageActions = stageAwareActions(activeStage);
-              const nextActionRoute = activeStage === 'interviewing'
+              const reopenSessionId = resumeAsset?.id ?? record.latestSession.id;
+              const pipelineStatus = formatStatus(record.latestSession.pipeline_status ?? record.latestSession.pipeline_stage);
+              const nextActionRoute = record.jobStage === 'interviewing'
                 ? buildWorkspaceRoomRoute('interview', record, { focus: 'prep' })
-                : activeStage === 'offer'
+                : record.jobStage === 'offer'
                 ? buildWorkspaceRoomRoute('interview', record, { focus: 'negotiation' })
                 : null;
-              const reopenSessionId = resumeAsset?.id ?? record.latestSession.id;
-              const fullWorkspaceRoute = record.jobApplicationId ? buildJobWorkspaceRoute(record.jobApplicationId) : null;
+              const isConfirmingDelete = confirmDeleteKey === record.key;
+              const isDeleting = deletingKey === record.key;
 
               return (
                 <div key={record.key} className="px-5 py-4">
-                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] lg:items-start">
+                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_120px_140px_180px] lg:items-center">
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{record.company}</div>
-                        <span className="rounded-md border border-[var(--link)]/16 bg-[var(--link)]/[0.05] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--link)]">
-                          Job workspace
-                        </span>
+                      <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{record.company}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="truncate text-xs text-[var(--text-soft)]">{record.role}</span>
+                        {(resumeAsset || coverLetterAsset) && (
+                          <span className="shrink-0 text-[11px] text-[var(--text-soft)]/60">
+                            {[resumeAsset && 'Resume', coverLetterAsset && 'Cover Letter']
+                              .filter(Boolean)
+                              .map((label) => `${label as string} \u2713`)
+                              .join(' \u00b7 ')}
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-1 truncate text-xs text-[var(--text-soft)]">{record.role}</div>
                     </div>
 
                     <div className="text-xs text-[var(--text-soft)]">{formatDate(record.createdAt)}</div>
 
                     <div>
-                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] ${jobStage.classes}`}>
-                        {jobStage.label}
+                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[12px] font-medium uppercase tracking-[0.12em] ${pipelineStatus.classes}`}>
+                        {pipelineStatus.label}
                       </span>
-                      <div className="mt-2 text-[13px] text-[var(--text-soft)]">
-                        Pipeline state: {record.status.label}
-                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(assetCounts).map(([type, count]) => (
-                          <span
-                            key={type}
-                            className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-soft)]"
-                          >
-                            {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="text-[13px] text-[var(--text-soft)]">
-                        Available now: {stageActions.unlocked.join(' • ')}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <GlassButton
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => onResumeSession(reopenSessionId)}
+                      >
+                        <ExternalLink size={12} className="mr-1.5" />
+                        Open
+                      </GlassButton>
                       <GlassButton
                         size="sm"
                         variant="ghost"
@@ -302,46 +303,8 @@ export function SessionHistoryTab({
                         onClick={() => setSelectedWorkspaceKey(record.key)}
                       >
                         <BriefcaseBusiness size={12} className="mr-1.5" />
-                        {selectedWorkspaceKey === record.key ? 'Workspace Open' : 'View Workspace'}
+                        {selectedWorkspaceKey === record.key ? 'Viewing' : 'Details'}
                       </GlassButton>
-                      {fullWorkspaceRoute ? (
-                        <GlassButton
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-3 text-xs"
-                          onClick={() => onNavigate?.(fullWorkspaceRoute)}
-                        >
-                          <ExternalLink size={12} className="mr-1.5" />
-                          Full Page
-                        </GlassButton>
-                      ) : null}
-                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(reopenSessionId)}>
-                        <ExternalLink size={12} className="mr-1.5" />
-                        Open
-                      </GlassButton>
-                      {resumeAsset && (
-                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingResumeSessionId(resumeAsset.id)}>
-                          <FileText size={12} className="mr-1.5" />
-                          View Resume
-                        </GlassButton>
-                      )}
-                      {coverLetterAsset && (
-                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingCoverLetterSessionId(coverLetterAsset.id)}>
-                          <FileText size={12} className="mr-1.5" />
-                          View Cover Letter
-                        </GlassButton>
-                      )}
-                      {!coverLetterAsset && record.assets.length === 1 && (
-                        <button
-                          type="button"
-                          onClick={() => void onDeleteSession(record.latestSession.id)}
-                          className="inline-flex h-8 items-center rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 text-xs text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
-                          aria-label={`Delete ${record.company} ${record.role} session`}
-                        >
-                          <Trash2 size={12} className="mr-1.5" />
-                          Delete
-                        </button>
-                      )}
                       {nextActionRoute && (
                         <GlassButton
                           size="sm"
@@ -349,17 +312,40 @@ export function SessionHistoryTab({
                           className="h-8 px-3 text-xs"
                           onClick={() => onNavigate?.(nextActionRoute)}
                         >
-                          <FileText size={12} className="mr-1.5" />
-                          {stageActions.nextActionLabel}
+                          Interview Prep
                         </GlassButton>
+                      )}
+                      {isConfirmingDelete ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={isDeleting}
+                            onClick={() => void handleDeleteRecord(record)}
+                            className="inline-flex h-8 items-center rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            {isDeleting ? 'Deleting...' : 'Confirm'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteKey(null)}
+                            className="inline-flex h-8 items-center rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 text-xs text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteKey(record.key)}
+                          className="inline-flex h-8 items-center rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 text-xs text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]"
+                          aria-label={`Delete ${record.company} session`}
+                        >
+                          <Trash2 size={12} className="mr-1.5" />
+                          Delete
+                        </button>
                       )}
                     </div>
                   </div>
-                  {!nextActionRoute && (
-                    <div className="mt-3 text-[13px] text-[var(--text-soft)]">
-                      {stageActions.nextActionLabel}
-                    </div>
-                  )}
                 </div>
               );
             })}

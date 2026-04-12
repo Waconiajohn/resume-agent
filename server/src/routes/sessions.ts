@@ -800,7 +800,7 @@ sessions.get('/', async (c) => {
 
   let query = supabaseAdmin
     .from('coach_sessions')
-    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, job_application_id, created_at, updated_at, job_applications(company, title, status)', { count: 'exact' })
+    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, tailored_sections, product_type, job_application_id, created_at, updated_at, job_applications(company, title, status)', { count: 'exact' })
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -819,6 +819,15 @@ sessions.get('/', async (c) => {
   const enriched = (data ?? []).map((row: Record<string, unknown>) => {
     const panelData = row.last_panel_data as Record<string, unknown> | null;
     const resume = panelData?.resume as Record<string, unknown> | null;
+
+    // For resume_v2 sessions the pipeline stores job intelligence in tailored_sections,
+    // not last_panel_data. Extract company/role from there as an additional fallback.
+    const tailoredSections = row.tailored_sections as Record<string, unknown> | null;
+    const v2PipelineData = tailoredSections?.version === 'v2'
+      ? (tailoredSections.pipeline_data as Record<string, unknown> | null)
+      : null;
+    const v2JobIntelligence = v2PipelineData?.jobIntelligence as Record<string, unknown> | null;
+
     return {
       id: row.id,
       status: row.status,
@@ -829,8 +838,16 @@ sessions.get('/', async (c) => {
       output_tokens_used: row.output_tokens_used ?? 0,
       estimated_cost_usd: row.estimated_cost_usd ?? 0,
       last_panel_type: row.last_panel_type ?? null,
-      company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? (row.job_applications as Record<string, unknown> | null)?.company as string ?? null,
-      job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? (row.job_applications as Record<string, unknown> | null)?.title as string ?? null,
+      company_name: (resume?.company_name as string)
+        ?? (panelData?.company_name as string)
+        ?? (v2JobIntelligence?.company_name as string)
+        ?? (row.job_applications as Record<string, unknown> | null)?.company as string
+        ?? null,
+      job_title: (resume?.job_title as string)
+        ?? (panelData?.job_title as string)
+        ?? (v2JobIntelligence?.role_title as string)
+        ?? (row.job_applications as Record<string, unknown> | null)?.title as string
+        ?? null,
       job_stage: (row.job_applications as Record<string, unknown> | null)?.status as string ?? null,
       job_application_id: row.job_application_id ?? null,
       product_type: (row.product_type as string) ?? 'resume',

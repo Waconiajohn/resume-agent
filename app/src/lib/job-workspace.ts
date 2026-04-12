@@ -211,10 +211,13 @@ function buildJobRecordKey(session: CoachSession): string {
 }
 
 function buildFallbackJobRecordKey(session: CoachSession): string {
-  const company = session.company_name?.trim().toLowerCase() || 'untitled-company';
-  const role = session.job_title?.trim().toLowerCase() || 'untitled-role';
-  const date = session.created_at.slice(0, 10);
-  return `${company}::${role}::${date}`;
+  const company = session.company_name?.trim().toLowerCase();
+  const role = session.job_title?.trim().toLowerCase();
+  if (company && role) {
+    return `${company}::${role}`;
+  }
+  // No company/role — use session ID so unidentified sessions don't merge
+  return `session::${session.id}`;
 }
 
 export function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
@@ -235,10 +238,15 @@ export function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
     const existing = grouped.get(key);
 
     if (!existing) {
+      const sessionDateLabel = new Date(session.created_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
       grouped.set(key, {
         key,
-        company: session.company_name?.trim() || 'Untitled company',
-        role: session.job_title?.trim() || 'Untitled role',
+        company: session.company_name?.trim() || `Resume session`,
+        role: session.job_title?.trim() || sessionDateLabel,
         createdAt: session.created_at,
         jobApplicationId: resolvedJobApplicationId,
         jobStage: session.job_stage ?? null,

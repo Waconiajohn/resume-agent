@@ -262,6 +262,90 @@ describe('GET /api/sessions — enriched session list', () => {
     expect(s.job_stage).toBe('interviewing');
   });
 
+  it('extracts company_name and job_title from tailored_sections v2 pipeline data when panel data is missing', async () => {
+    const rawRow = {
+      id: VALID_SESSION_ID,
+      status: 'active',
+      current_phase: 'onboarding',
+      pipeline_status: 'complete',
+      pipeline_stage: 'complete',
+      input_tokens_used: 0,
+      output_tokens_used: 0,
+      estimated_cost_usd: 0,
+      last_panel_type: null,
+      last_panel_data: null,
+      tailored_sections: {
+        version: 'v2',
+        pipeline_data: {
+          stage: 'complete',
+          jobIntelligence: {
+            company_name: 'Apex Dynamics',
+            role_title: 'Chief Revenue Officer',
+          },
+        },
+        inputs: { resume_text: 'test', job_description: 'test' },
+        draft_state: null,
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+
+    mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, '/api/sessions');
+    expect(res.status).toBe(200);
+    const body = await res.json() as { sessions: unknown[] };
+    const s = body.sessions[0] as Record<string, unknown>;
+    expect(s.company_name).toBe('Apex Dynamics');
+    expect(s.job_title).toBe('Chief Revenue Officer');
+  });
+
+  it('tailored_sections v2 data does not override panel_data when panel_data has values', async () => {
+    const rawRow = {
+      id: VALID_SESSION_ID,
+      status: 'active',
+      current_phase: 'onboarding',
+      pipeline_status: 'complete',
+      pipeline_stage: 'complete',
+      input_tokens_used: 0,
+      output_tokens_used: 0,
+      estimated_cost_usd: 0,
+      last_panel_type: null,
+      last_panel_data: {
+        company_name: 'Panel Corp',
+        job_title: 'Panel Role',
+      },
+      tailored_sections: {
+        version: 'v2',
+        pipeline_data: {
+          stage: 'complete',
+          jobIntelligence: {
+            company_name: 'Snapshot Corp',
+            role_title: 'Snapshot Role',
+          },
+        },
+        inputs: { resume_text: 'test', job_description: 'test' },
+        draft_state: null,
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+
+    mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, '/api/sessions');
+    expect(res.status).toBe(200);
+    const body = await res.json() as { sessions: unknown[] };
+    const s = body.sessions[0] as Record<string, unknown>;
+    // panel_data takes precedence over tailored_sections
+    expect(s.company_name).toBe('Panel Corp');
+    expect(s.job_title).toBe('Panel Role');
+  });
+
   it('returns empty array when user has no sessions', async () => {
     mockFrom.mockReturnValue(makeChain({ data: [], error: null }));
 

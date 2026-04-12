@@ -94,13 +94,12 @@ afterEach(() => {
 });
 
 describe('SessionHistoryTab', () => {
-  it('renders company, role, date, and stage-aware status for saved sessions', () => {
+  it('renders company, role, date, and status for saved sessions', () => {
     render(<SessionHistoryTab {...makeProps()} />);
 
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('VP Engineering')).toBeInTheDocument();
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
-    expect(screen.getByText('Applied')).toBeInTheDocument();
     expect(screen.getByText('Jan 1, 2026')).toBeInTheDocument();
   });
 
@@ -160,34 +159,6 @@ describe('SessionHistoryTab', () => {
     expect(screen.getByText('Beta Co')).toBeInTheDocument();
   });
 
-  it('opens the resume modal from a resume row', async () => {
-    render(<SessionHistoryTab {...makeProps()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /view resume/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-resume-modal')).toBeInTheDocument();
-    });
-  });
-
-  it('opens the cover letter modal for a cover letter row', async () => {
-    render(
-      <SessionHistoryTab
-        {...makeProps({
-          sessions: [
-            makeSession({ id: 'letter-1', product_type: 'cover_letter', company_name: 'Beta Co', job_title: 'Director' }),
-          ],
-        })}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /view cover letter/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-cover-letter-modal')).toBeInTheDocument();
-    });
-  });
-
   it('calls onResumeSession when Open is clicked', () => {
     const onResumeSession = vi.fn();
     render(<SessionHistoryTab {...makeProps({ onResumeSession })} />);
@@ -197,7 +168,7 @@ describe('SessionHistoryTab', () => {
     expect(onResumeSession).toHaveBeenCalledWith('session-1');
   });
 
-  it('groups assets by company, role, and day into one job record', () => {
+  it('groups assets by company and role into one job record showing asset indicators', () => {
     const onResumeSession = vi.fn();
     render(
       <SessionHistoryTab
@@ -225,17 +196,15 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    expect(screen.getByText('Job workspace')).toBeInTheDocument();
+    // Grouped into one record — company appears once
     expect(screen.getAllByText('Acme Corp')).toHaveLength(1);
-    expect(screen.getByText('Resume')).toBeInTheDocument();
-    expect(screen.getAllByText('Cover Letter').length).toBeGreaterThan(0);
 
+    // Open button routes to the resume session (first resume asset)
     fireEvent.click(screen.getByRole('button', { name: /^open$/i }));
-
     expect(onResumeSession).toHaveBeenCalledWith('resume-1');
   });
 
-  it('shows interview assets only when the job stage reaches interviewing', () => {
+  it('shows interview prep action button when the job stage is interviewing', () => {
     render(
       <SessionHistoryTab
         {...makeProps({
@@ -250,12 +219,10 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    expect(screen.getByText(/Available now: Interview Prep/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Open Interview Prep/i })).toBeInTheDocument();
-    expect(screen.getByText(/Follow-up documents/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Interview Prep/i })).toBeInTheDocument();
   });
 
-  it('opens a job workspace panel with stage controls and stage-aware actions', () => {
+  it('opens a job workspace details panel when Details is clicked', () => {
     const onMoveJobStage = vi.fn().mockResolvedValue(true);
     render(
       <SessionHistoryTab
@@ -279,42 +246,41 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
+    fireEvent.click(screen.getByRole('button', { name: /details/i }));
 
     expect(screen.getByText('Stage control')).toBeInTheDocument();
     expect(screen.getByText(/Run interview prep and tighten the 30-60-90 story\./i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Open Interview Prep/i }).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Offer' }));
-
-    expect(onMoveJobStage).toHaveBeenCalledWith('job-app-1', 'offer');
   });
 
-  it('can open a first-class job workspace screen for linked applications', () => {
-    const onNavigate = vi.fn();
-    render(
-      <SessionHistoryTab
-        {...makeProps({
-          onNavigate,
-          sessions: [
-            makeSession({
-              id: 'resume-1',
-              product_type: 'resume_v2',
-              job_application_id: 'job-app-1',
-              job_stage: 'interviewing',
-            }),
-          ],
-          jobApplications: [makeApplication({ id: 'job-app-1' })],
-        })}
-      />,
-    );
+  it('shows a delete confirmation before deleting a session', async () => {
+    const onDeleteSession = vi.fn().mockResolvedValue(true);
+    render(<SessionHistoryTab {...makeProps({ onDeleteSession })} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /full page/i }));
+    // Initial delete button
+    fireEvent.click(screen.getByRole('button', { name: /delete acme corp session/i }));
 
-    expect(onNavigate).toHaveBeenCalledWith('/workspace/job/job-app-1');
+    // Confirmation buttons appear
+    expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+
+    // Cancel restores the original delete button
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.getByRole('button', { name: /delete acme corp session/i })).toBeInTheDocument();
   });
 
-  it('shows later-stage assets inside the job workspace when they are linked to the same job application', () => {
+  it('calls onDeleteSession when confirmed and dismisses the confirm prompt', async () => {
+    const onDeleteSession = vi.fn().mockResolvedValue(true);
+    render(<SessionHistoryTab {...makeProps({ onDeleteSession })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete acme corp session/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+
+    await waitFor(() => {
+      expect(onDeleteSession).toHaveBeenCalledWith('session-1');
+    });
+  });
+
+  it('shows later-stage assets inside the job workspace when linked to the same job application', () => {
     const onNavigate = vi.fn();
     render(
       <SessionHistoryTab
@@ -357,7 +323,7 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
+    fireEvent.click(screen.getByRole('button', { name: /details/i }));
 
     expect(screen.getAllByText('Interview Prep').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Open Saved Note/i })).toBeInTheDocument();
@@ -367,5 +333,35 @@ describe('SessionHistoryTab', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Open Saved Strategy/i })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith('/workspace?room=interview&job=job-app-1&company=Acme+Corp&role=VP+Engineering&focus=negotiation&session=nego-1');
+  });
+
+  it('shows "Resume session" fallback for sessions with no company or role', () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({ id: 'session-a', company_name: null, job_title: null }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Resume session')).toBeInTheDocument();
+  });
+
+  it('keeps unidentified sessions separate rather than merging them', () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({ id: 'session-a', company_name: null, job_title: null, created_at: '2026-01-01T12:00:00Z', updated_at: '2026-01-01T12:00:00Z' }),
+            makeSession({ id: 'session-b', company_name: null, job_title: null, created_at: '2026-01-02T12:00:00Z', updated_at: '2026-01-02T12:00:00Z' }),
+          ],
+        })}
+      />,
+    );
+
+    // Two separate rows, not merged — two Open buttons
+    expect(screen.getAllByRole('button', { name: /^open$/i })).toHaveLength(2);
   });
 });
