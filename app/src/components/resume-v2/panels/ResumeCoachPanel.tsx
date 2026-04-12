@@ -178,7 +178,7 @@ export function ResumeCoachPanel({
         )}
 
         {/* Prev / Next arrows — only in coaching state */}
-        {isActive && !isComplete && (
+        {isActive && (
           <div className="flex items-center gap-1" role="group" aria-label="Navigate items">
             {reviewedCount > 0 && onDoneReviewing && (
               <button
@@ -228,7 +228,7 @@ export function ResumeCoachPanel({
 
   // ── Complete state ─────────────────────────────────────────────────────────
 
-  if (isComplete) {
+  if (isComplete && !isActive) {
     return (
       <div className="flex h-full flex-col" style={{ color: 'var(--text-strong)' }}>
         {error && (
