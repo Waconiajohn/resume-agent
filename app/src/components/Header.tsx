@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CreditCard, FileText, HelpCircle, LayoutDashboard, Linkedin, LogOut, Menu, Mic, Moon, Search, Settings2, Sun, User, X } from 'lucide-react';
+import { ChevronDown, CreditCard, FileText, HelpCircle, LayoutDashboard, Linkedin, LogOut, Menu, Mic, Palette, Search, Settings2, User, X } from 'lucide-react';
 import { PipelineProgressBar } from './PipelineProgressBar';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useTheme } from '@/hooks/useTheme';
@@ -179,6 +179,14 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   <div className="py-1">
                     <button
                       role="menuitem"
+                      onClick={() => { toggleTheme(); setUserMenuOpen(false); }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    >
+                      <Palette className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                      {theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    </button>
+                    <button
+                      role="menuitem"
                       onClick={() => { setUserMenuOpen(false); onNavigate?.('billing'); }}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
                     >
@@ -199,22 +207,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             </div>
           )}
 
-          {/* Theme toggle — visible at all breakpoints */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            data-tour="theme-toggle"
-            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-5 w-5" aria-hidden="true" />
-            ) : (
-              <Moon className="h-5 w-5" aria-hidden="true" />
-            )}
-          </button>
-
           {/* Help / tour replay button */}
           {onReplayTour && (
             <button
@@ -222,9 +214,10 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               onClick={onReplayTour}
               aria-label="Replay onboarding tour"
               title="Take a guided tour of the workspace"
-              className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+              className="flex items-center gap-1.5 rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
             >
               <HelpCircle className="h-5 w-5" aria-hidden="true" />
+              <span className="text-[13px] font-medium hidden sm:inline">Help</span>
             </button>
           )}
 

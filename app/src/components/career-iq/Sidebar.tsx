@@ -31,7 +31,7 @@ interface RoomGroup {
 
 const ROOM_GROUPS: RoomGroup[] = [
   {
-    label: 'Start Here',
+    label: 'Core Tools',
     rooms: [
       { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
       { id: 'career-profile', label: 'Your Profile', icon: User, description: 'Your resume, story, and evidence in one place', gated: false },
@@ -44,7 +44,7 @@ const ROOM_GROUPS: RoomGroup[] = [
       { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: false },
       { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
       { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: false },
-      { id: 'networking', label: 'Network Job Search', icon: Users, description: 'Leverage your connections to find jobs', gated: false },
+      { id: 'networking', label: 'Networking', icon: Users, description: 'Referrals and outreach', gated: false },
     ],
   },
 ];
@@ -162,13 +162,6 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, defaultCollaps
 
       </nav>
 
-      <div className="border-t border-[var(--line-soft)] px-4 pb-5 pt-3">
-        {!collapsed && (
-          <div className="text-center text-[13px] uppercase tracking-[0.12em] text-[var(--text-soft)]">
-            Workspace
-          </div>
-        )}
-      </div>
     </aside>
   );
 }

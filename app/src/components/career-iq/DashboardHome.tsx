@@ -47,9 +47,11 @@ function formatRelativeTime(isoString: string): string {
 function ContinueCard({
   session,
   onResume,
+  onNavigateRoom,
 }: {
   session: RecentSession;
   onResume: (id: string) => void;
+  onNavigateRoom?: (room: CareerIQRoom) => void;
 }) {
   const title = [session.job_title, session.company_name].filter(Boolean).join(' at ') || 'Resume session';
   return (
@@ -63,15 +65,23 @@ function ContinueCard({
           Last edited {formatRelativeTime(session.updated_at)}
         </div>
       </div>
-      <GlassButton
-        variant="secondary"
-        size="sm"
-        onClick={() => onResume(session.id)}
-        className="flex-shrink-0"
-      >
-        Continue
-        <ArrowRight size={14} aria-hidden="true" />
-      </GlassButton>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <GlassButton
+          variant="secondary"
+          size="sm"
+          onClick={() => onResume(session.id)}
+        >
+          Continue
+          <ArrowRight size={14} aria-hidden="true" />
+        </GlassButton>
+        <button
+          type="button"
+          onClick={() => onNavigateRoom?.('resume')}
+          className="text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors mt-2"
+        >
+          or start a new resume →
+        </button>
+      </div>
     </GlassCard>
   );
 }
@@ -150,34 +160,36 @@ function HomeGuideCard({
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.05fr_0.85fr_0.85fr]">
-        <StepCard
-          icon={Target}
-          title="Career story"
-          description="Tighten the positioning story every other tool reads."
-          actionLabel="Review story"
-          onClick={onRefineWhyMe}
-          className="border-[var(--link)]/18 bg-[var(--link)]/[0.08]"
-        />
-        <StepCard
-          icon={FileText}
-          title="Resume work"
-          description={hasResumeSessions
-            ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
-            : 'Start a role-specific resume and keep the best additions for future use.'}
-          actionLabel={hasResumeSessions ? 'Open resumes' : 'Start resume'}
-          onClick={() => onNavigateRoom?.('resume')}
-          className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
-        />
-        <StepCard
-          icon={Search}
-          title="Job board"
-          description="Search roles, save the best ones, and keep applications moving."
-          actionLabel="Open jobs"
-          onClick={() => onNavigateRoom?.('jobs')}
-          className="border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06]"
-        />
-      </div>
+      {dashboardState === 'new-user' && (
+        <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.05fr_0.85fr_0.85fr]">
+          <StepCard
+            icon={Target}
+            title="Career story"
+            description="Tighten the positioning story every other tool reads."
+            actionLabel="Review story"
+            onClick={onRefineWhyMe}
+            className="border-[var(--link)]/18 bg-[var(--link)]/[0.08]"
+          />
+          <StepCard
+            icon={FileText}
+            title="Resume work"
+            description={hasResumeSessions
+              ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
+              : 'Start a role-specific resume and keep the best additions for future use.'}
+            actionLabel={hasResumeSessions ? 'Open resumes' : 'Start resume'}
+            onClick={() => onNavigateRoom?.('resume')}
+            className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
+          />
+          <StepCard
+            icon={Search}
+            title="Job board"
+            description="Search roles, save the best ones, and keep applications moving."
+            actionLabel="Open jobs"
+            onClick={() => onNavigateRoom?.('jobs')}
+            className="border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06]"
+          />
+        </div>
+      )}
     </GlassCard>
   );
 }
@@ -242,10 +254,12 @@ export function DashboardHome({
     saveDismissed(updated);
   };
 
+  const isNewUser = dashboardState === 'new-user';
+
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
       {recentSession && onResumeSession && (
-        <ContinueCard session={recentSession} onResume={onResumeSession} />
+        <ContinueCard session={recentSession} onResume={onResumeSession} onNavigateRoom={onNavigateRoom} />
       )}
       <HomeGuideCard
         hasResumeSessions={hasResumeSessions}
@@ -258,11 +272,13 @@ export function DashboardHome({
 
       {/* CoachingNudgeBar removed — momentum nudges are not ready for production */}
 
-      <ZoneYourPipeline
-        onNavigateRoom={onNavigateRoom}
-        onInterviewPrepClick={onInterviewPrepClick}
-        onNegotiationPrepClick={onNegotiationPrepClick}
-      />
+      {!isNewUser && (
+        <ZoneYourPipeline
+          onNavigateRoom={onNavigateRoom}
+          onInterviewPrepClick={onInterviewPrepClick}
+          onNegotiationPrepClick={onNegotiationPrepClick}
+        />
+      )}
     </div>
   );
 }
