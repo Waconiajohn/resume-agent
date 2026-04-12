@@ -188,8 +188,9 @@ export function BulletCoachingPanel({
       } else {
         setEnhanceError('No suggestion generated — try a different angle.');
       }
-    } catch {
-      setEnhanceError('Enhancement failed — try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Enhancement failed';
+      setEnhanceError(msg);
     } finally {
       setIsEnhancing(false);
     }

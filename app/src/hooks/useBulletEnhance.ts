@@ -92,7 +92,7 @@ export function useBulletEnhance(accessToken: string | null, sessionId: string |
       if (err instanceof Error && err.name === 'AbortError') return null;
       const msg = err instanceof Error ? err.message : 'Enhancement failed';
       setError(msg);
-      return null;
+      throw new Error(msg);
     } finally {
       setIsEnhancing(false);
     }
