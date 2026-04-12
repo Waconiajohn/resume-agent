@@ -76,12 +76,13 @@ function renderPanel(props: Partial<Parameters<typeof BulletCoachingPanel>[0]> =
   return render(<BulletCoachingPanel {...defaults} {...props} />);
 }
 
-// Helper: get angle buttons from a panel (those with blue bg that are not in "try another" section)
-function getAngleButtons(container: HTMLElement) {
-  const suggestionArea = container.querySelector('.space-y-3');
-  if (!suggestionArea) return [];
-  const btns = Array.from(suggestionArea.querySelectorAll('button[class*="bg-blue-600"]'));
-  return btns as HTMLButtonElement[];
+// Helper: get all angle tab buttons (pill-shaped, not action buttons)
+function getAngleTabButtons(container: HTMLElement): HTMLButtonElement[] {
+  const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+  // Angle tabs are rounded-full buttons in the suggestion area
+  return Array.from(
+    panel.querySelectorAll('button[class*="rounded-full"]'),
+  ) as HTMLButtonElement[];
 }
 
 describe('BulletCoachingPanel', () => {
@@ -98,25 +99,30 @@ describe('BulletCoachingPanel', () => {
     expect(panel.textContent).toContain('Seasoned engineering leader driving outcomes at scale.');
   });
 
-  it('shows angle selection and Edit Myself / Skip in the default state', () => {
+  it('shows angle tab buttons and Edit Myself / Skip in the default state', () => {
     const { container } = renderPanel();
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
     const p = within(panel as HTMLElement);
 
-    expect(p.getByText(/how should we strengthen this/i)).toBeInTheDocument();
+    // Notice text is visible
+    expect(panel.textContent).toContain('Suggestions based on facts from your resume');
+    // Angle tabs are rendered
+    const tabs = getAngleTabButtons(container);
+    expect(tabs.length).toBeGreaterThan(0);
+    // Default action buttons
     expect(p.getByRole('button', { name: /edit myself/i })).toBeInTheDocument();
     expect(p.getByRole('button', { name: /^skip$/i })).toBeInTheDocument();
   });
 
-  it('calls onBulletEnhance when an angle button is clicked', async () => {
+  it('calls onBulletEnhance when an angle tab is clicked', async () => {
     const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => null);
     const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
-    expect(angleButtons.length).toBeGreaterThan(0);
+    const tabs = getAngleTabButtons(container);
+    expect(tabs.length).toBeGreaterThan(0);
 
     await act(async () => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     expect(enhanceFn).toHaveBeenCalledWith(
@@ -133,10 +139,10 @@ describe('BulletCoachingPanel', () => {
     const enhanceFn = vi.fn(() => new Promise<EnhanceResult | null>(() => {}));
     const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
+    const tabs = getAngleTabButtons(container);
     // Start the enhance (don't await — we want to check mid-flight state)
     act(() => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
@@ -152,9 +158,9 @@ describe('BulletCoachingPanel', () => {
     const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
     const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
+    const tabs = getAngleTabButtons(container);
     await act(async () => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
@@ -180,9 +186,9 @@ describe('BulletCoachingPanel', () => {
     const onClose = vi.fn();
     const { container } = renderPanel({ onBulletEnhance: enhanceFn, onApplyToResume, onClose });
 
-    const angleButtons = getAngleButtons(container);
+    const tabs = getAngleTabButtons(container);
     await act(async () => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
@@ -203,67 +209,57 @@ describe('BulletCoachingPanel', () => {
     // onClose is NOT called — the parent (handleCoachApplyToResume) handles advancing
   });
 
-  it('shows alternative angle buttons when result has alternatives', async () => {
+  it('caches previous result and switches tab without re-calling enhance', async () => {
+    const mockResult1: EnhanceResult = {
+      enhancedBullet: 'First angle result.',
+      alternatives: [],
+    };
+    const mockResult2: EnhanceResult = {
+      enhancedBullet: 'Second angle result.',
+      alternatives: [],
+    };
+    let callCount = 0;
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => {
+      callCount += 1;
+      return callCount === 1 ? mockResult1 : mockResult2;
+    });
+    const { container } = renderPanel({ onBulletEnhance: enhanceFn });
+
+    const tabs = getAngleTabButtons(container);
+    expect(tabs.length).toBeGreaterThanOrEqual(2);
+
+    // Click first tab
+    await act(async () => { fireEvent.click(tabs[0]); });
+    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
+    await waitFor(() => expect(panel.textContent).toContain('First angle result.'));
+
+    // Click second tab
+    await act(async () => { fireEvent.click(tabs[1]); });
+    await waitFor(() => expect(panel.textContent).toContain('Second angle result.'));
+
+    // Click first tab again — should NOT call enhance again
+    const callsBefore = enhanceFn.mock.calls.length;
+    await act(async () => { fireEvent.click(tabs[0]); });
+    await waitFor(() => expect(panel.textContent).toContain('First angle result.'));
+    expect(enhanceFn.mock.calls.length).toBe(callsBefore); // no new call
+  });
+
+  it('shows a checkmark on cached tabs', async () => {
     const mockResult: EnhanceResult = {
-      enhancedBullet: 'Built weekly KPI reviews across 3 plants.',
-      alternatives: [
-        { angle: 'Metrics', text: 'Drove 12% throughput gain via weekly KPI cadence at 3 plants.' },
-        { angle: 'Leadership', text: 'Led cross-plant performance cadence improving safety and throughput.' },
-      ],
+      enhancedBullet: 'Enhanced version.',
+      alternatives: [],
     };
     const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
     const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
-    await act(async () => {
-      fireEvent.click(angleButtons[0]);
-    });
+    const tabs = getAngleTabButtons(container);
+    await act(async () => { fireEvent.click(tabs[0]); });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
-    await waitFor(() => {
-      expect(panel.textContent).toContain('Other angles:');
-    });
+    await waitFor(() => expect(panel.textContent).toContain('Enhanced version.'));
 
-    expect(panel.textContent).toContain('Metrics:');
-    expect(panel.textContent).toContain('Leadership:');
-  });
-
-  it('clicking an alternative calls onApplyToResume with that text', async () => {
-    const mockResult: EnhanceResult = {
-      enhancedBullet: 'Built weekly KPI reviews across 3 plants.',
-      alternatives: [
-        { angle: 'Metrics', text: 'Drove 12% throughput gain via weekly KPI cadence at 3 plants.' },
-      ],
-    };
-    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
-    const onApplyToResume = vi.fn();
-    const onClose = vi.fn();
-    const { container } = renderPanel({ onBulletEnhance: enhanceFn, onApplyToResume, onClose });
-
-    const angleButtons = getAngleButtons(container);
-    await act(async () => {
-      fireEvent.click(angleButtons[0]);
-    });
-
-    const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
-    await waitFor(() => {
-      expect(panel.textContent).toContain('Metrics:');
-    });
-
-    // Click the alternative button
-    const altBtn = Array.from(panel.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Metrics:'),
-    );
-    expect(altBtn).toBeTruthy();
-    fireEvent.click(altBtn!);
-
-    expect(onApplyToResume).toHaveBeenCalledWith(
-      'professional_experience',
-      0,
-      'Drove 12% throughput gain via weekly KPI cadence at 3 plants.',
-      expect.any(Object),
-    );
-    // onClose is NOT called — the parent handles advancing
+    // The first tab should now show a checkmark (✓)
+    expect(tabs[0].textContent).toContain('✓');
   });
 
   it('calls onClose when Skip is clicked in the default state', () => {
@@ -304,7 +300,7 @@ describe('BulletCoachingPanel', () => {
     expect(panel.querySelector('[aria-label="Remove this line from the resume"]')).toBeNull();
   });
 
-  it('resets to angle selection state when bullet changes', async () => {
+  it('resets to no active tab when bullet changes', async () => {
     const mockResult: EnhanceResult = {
       enhancedBullet: 'Enhanced version.',
       alternatives: [],
@@ -313,9 +309,9 @@ describe('BulletCoachingPanel', () => {
 
     const { container, rerender } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
+    const tabs = getAngleTabButtons(container);
     await act(async () => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
@@ -323,7 +319,7 @@ describe('BulletCoachingPanel', () => {
       expect(panel.textContent).toContain('Enhanced version.');
     });
 
-    // Rerender with different bullet — should reset
+    // Rerender with different bullet — should reset cache and active tab
     const newProps: Parameters<typeof BulletCoachingPanel>[0] = {
       bulletText: 'Second bullet.',
       section: 'professional_experience',
@@ -343,28 +339,27 @@ describe('BulletCoachingPanel', () => {
 
     rerender(<BulletCoachingPanel {...newProps} />);
 
-    expect(panel.textContent).toContain('How should we strengthen this?');
+    // No result showing — cache was cleared
     expect(panel.textContent).not.toContain('Enhanced version.');
+    // No Use This button — no active result
+    expect(panel.querySelector('button[class*="bg-blue-600"]')).toBeFalsy();
+    // Edit Myself and Skip are back
+    expect(panel.textContent).toContain('Edit Myself');
+    expect(Array.from(panel.querySelectorAll('button')).some(b => b.textContent?.trim() === 'Skip')).toBe(true);
   });
 
-  it('shows Try a different angle toggle when result exists', async () => {
-    const mockResult: EnhanceResult = {
-      enhancedBullet: 'Enhanced version.',
-      alternatives: [],
-    };
-    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => mockResult);
+  it('shows an error message when enhance returns null', async () => {
+    const enhanceFn = vi.fn(async (): Promise<EnhanceResult | null> => null);
     const { container } = renderPanel({ onBulletEnhance: enhanceFn });
 
-    const angleButtons = getAngleButtons(container);
+    const tabs = getAngleTabButtons(container);
     await act(async () => {
-      fireEvent.click(angleButtons[0]);
+      fireEvent.click(tabs[0]);
     });
 
     const panel = container.querySelector('[data-testid="bullet-coaching-panel"]')!;
     await waitFor(() => {
-      expect(panel.textContent).toContain('Enhanced version.');
+      expect(panel.textContent).toContain('No suggestion generated');
     });
-
-    expect(panel.textContent).toContain('Try a different angle');
   });
 });

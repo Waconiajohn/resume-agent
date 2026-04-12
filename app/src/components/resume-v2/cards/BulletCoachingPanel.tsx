@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FramingGuardrail, NextBestAction, ProofLevel, ResumeReviewState, RequirementSource, GapChatContext } from '@/types/resume-v2';
 import type { GapChatHook } from '@/hooks/useGapChat';
@@ -84,11 +83,10 @@ export function BulletCoachingPanel({
   // ── Internal state ─────────────────────────────────────────────────────────
   const [editDraft, setEditDraft] = useState('');
   const [showCustomEdit, setShowCustomEdit] = useState(false);
-  const [showTryAnother, setShowTryAnother] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [enhanceResult, setEnhanceResult] = useState<EnhanceResult | null>(null);
+  const [enhanceCache, setEnhanceCache] = useState<Map<string, EnhanceResult>>(new Map());
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [usedActions, setUsedActions] = useState<Set<string>>(new Set());
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
 
   // ── Focus panel on mount ───────────────────────────────────────────────────
@@ -122,14 +120,13 @@ export function BulletCoachingPanel({
 
   // ── Reset enhance state when bullet changes ────────────────────────────────
   useEffect(() => {
-    setEnhanceResult(null);
+    setEnhanceCache(new Map());
+    setActiveTab(null);
     setIsEnhancing(false);
-    setUsedActions(new Set());
-    setShowTryAnother(false);
+    setEnhanceError(null);
     setShowCustomEdit(false);
     setEditDraft('');
     setConfirmRemove(false);
-    setEnhanceError(null);
     if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
   }, [bulletText, section, bulletIndex]);
 
@@ -160,13 +157,18 @@ export function BulletCoachingPanel({
     onApplyToResume(section, bulletIndex, text, applyMetadata());
   }, [applyMetadata, onApplyToResume, section, bulletIndex]);
 
-  // ── On-demand AI enhancement ──────────────────────────────────────────────
+  // ── On-demand AI enhancement (with cache) ────────────────────────────────
   const handleEnhance = useCallback(async (action: string) => {
+    // If already cached, just switch tab
+    if (enhanceCache.has(action)) {
+      setActiveTab(action);
+      return;
+    }
+
     if (!onBulletEnhance || isEnhancing) return;
-    setEnhanceError(null);
     setIsEnhancing(true);
-    setUsedActions(prev => new Set(prev).add(action));
-    setShowTryAnother(false);
+    setActiveTab(action);
+    setEnhanceError(null);
     try {
       const result = await onBulletEnhance(
         action,
@@ -182,18 +184,16 @@ export function BulletCoachingPanel({
         },
       );
       if (result) {
-        setEnhanceResult(result);
+        setEnhanceCache(prev => new Map(prev).set(action, result));
       } else {
-        setEnhanceError('No suggestion generated — try a different angle or edit manually.');
+        setEnhanceError('No suggestion generated — try a different angle.');
       }
     } catch {
-      // API call failed (session stale, network error, etc.)
-      // Stay on this item with angle buttons — don't navigate away
-      setEnhanceError('Enhancement failed — try again or edit manually.');
+      setEnhanceError('Enhancement failed — try again.');
     } finally {
       setIsEnhancing(false);
     }
-  }, [onBulletEnhance, isEnhancing, bulletText, requirements, evidenceFound, chatContext.lineKind, chatContext.sectionLabel, section, sourceEvidence]);
+  }, [onBulletEnhance, isEnhancing, bulletText, requirements, evidenceFound, chatContext, section, sourceEvidence, enhanceCache]);
 
   // ── Apply from custom edit ────────────────────────────────────────────────
   // Only call onApplyToResume — the parent (handleCoachApplyToResume) handles
@@ -211,9 +211,9 @@ export function BulletCoachingPanel({
     setShowCustomEdit(true);
   }, [bulletText]);
 
-  // ── Angle actions ─────────────────────────────────────────────────────────
+  // ── Derive active result from cache ──────────────────────────────────────
+  const activeResult = activeTab ? (enhanceCache.get(activeTab) ?? null) : null;
   const allAngleActions = getEnhanceActionsForSection(sectionType);
-  const remainingAngleActions = allAngleActions.filter(c => !usedActions.has(c.action));
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -247,59 +247,51 @@ export function BulletCoachingPanel({
             onReset={() => setEditDraft(bulletText)}
             originalSuggestion={bulletText}
           />
-        ) : isEnhancing ? (
-          /* Shimmer */
-          <div className="space-y-2 animate-pulse">
-            <div className="h-4 bg-[var(--surface-1)] rounded w-full" />
-            <div className="h-4 bg-[var(--surface-1)] rounded w-5/6" />
-            <div className="h-4 bg-[var(--surface-1)] rounded w-4/6" />
-          </div>
-        ) : enhanceError && !isEnhancing && !enhanceResult ? (
-          <p className="text-sm text-red-500">{enhanceError}</p>
-        ) : enhanceResult ? (
-          /* AI result */
-          <>
-            <p className="text-sm leading-relaxed text-[var(--text-strong)]">
-              {enhanceResult.enhancedBullet}
-            </p>
-            {enhanceResult.alternatives.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-[var(--text-soft)]">Other angles:</p>
-                {enhanceResult.alternatives.slice(0, 3).map((alt, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleAcceptSuggestion(alt.text)}
-                    className="block w-full text-left text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] py-1 px-2 rounded hover:bg-[var(--surface-1)] transition-colors"
-                  >
-                    <span className="font-medium">{alt.angle}:</span>{' '}
-                    {alt.text.slice(0, 80)}{alt.text.length > 80 ? '…' : ''}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
         ) : (
-          /* Angle selection — default state */
           <>
-            <p className="text-sm text-[var(--text-soft)]">
-              How should we strengthen this?
+            {/* "Based on your resume" notice */}
+            <p className="text-[11px] text-[var(--text-soft)] flex items-center gap-1 mb-2">
+              <span>✦</span> Suggestions based on facts from your resume
             </p>
-            <div className="grid grid-cols-2 gap-2">
+
+            {/* Angle tabs — always visible */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {allAngleActions.map((config) => (
                 <button
                   key={config.action}
                   type="button"
                   onClick={() => handleEnhance(config.action)}
-                  disabled={isEnhancing}
-                  className="rounded-lg px-3 py-2 text-left bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isEnhancing && activeTab !== config.action}
                   title={config.description}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    activeTab === config.action
+                      ? 'border-[var(--link)] bg-[var(--surface-1)] text-[var(--text-strong)]'
+                      : 'border-[var(--line-strong)] text-[var(--text-soft)] hover:bg-[var(--surface-1)] hover:text-[var(--text-strong)]',
+                    enhanceCache.has(config.action) && activeTab !== config.action && 'border-[var(--badge-green-text)]/40',
+                    isEnhancing && activeTab !== config.action && 'opacity-50 cursor-not-allowed',
+                  )}
                 >
-                  <span className="text-sm font-medium block">{config.label}</span>
-                  <span className="text-[10px] opacity-70 block mt-0.5">{config.description}</span>
+                  {config.label}
+                  {enhanceCache.has(config.action) && <span className="ml-1 text-[9px]">✓</span>}
                 </button>
               ))}
             </div>
+
+            {/* Result area */}
+            {isEnhancing && !activeResult ? (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-4 bg-[var(--surface-1)] rounded w-full" />
+                <div className="h-4 bg-[var(--surface-1)] rounded w-5/6" />
+                <div className="h-4 bg-[var(--surface-1)] rounded w-4/6" />
+              </div>
+            ) : activeResult ? (
+              <p className="text-sm leading-relaxed text-[var(--text-strong)]">
+                {activeResult.enhancedBullet}
+              </p>
+            ) : enhanceError ? (
+              <p className="text-sm text-red-500">{enhanceError}</p>
+            ) : null}
           </>
         )}
       </div>
@@ -309,18 +301,18 @@ export function BulletCoachingPanel({
         <div className={cn(
           'px-4 py-3 border-t border-[var(--line-soft)] flex items-center gap-3',
         )}>
-          {enhanceResult ? (
+          {activeResult ? (
             <>
               <button
                 type="button"
-                onClick={() => handleAcceptSuggestion(enhanceResult.enhancedBullet)}
+                onClick={() => handleAcceptSuggestion(activeResult.enhancedBullet)}
                 className="rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
               >
                 Use This
               </button>
               <button
                 type="button"
-                onClick={() => handleOpenEdit(enhanceResult.enhancedBullet)}
+                onClick={() => handleOpenEdit(activeResult.enhancedBullet)}
                 className="rounded-lg px-3 py-2 text-sm font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] transition-colors"
               >
                 Edit
@@ -364,40 +356,6 @@ export function BulletCoachingPanel({
           >
             Cancel
           </button>
-        </div>
-      )}
-
-      {/* ── Try a different angle (when result exists) ─────────────────────── */}
-      {enhanceResult && !showCustomEdit && remainingAngleActions.length > 0 && (
-        <div className="px-4 pb-3">
-          <button
-            type="button"
-            onClick={() => setShowTryAnother((v) => !v)}
-            className="flex items-center gap-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
-          >
-            {showTryAnother ? (
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            Try a different angle
-          </button>
-          {showTryAnother && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {remainingAngleActions.map((config) => (
-                <button
-                  key={config.action}
-                  type="button"
-                  onClick={() => handleEnhance(config.action)}
-                  disabled={isEnhancing}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-[var(--surface-3)] hover:bg-[var(--surface-elevated)] text-[var(--text-soft)] border border-[var(--line-soft)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={config.description}
-                >
-                  {config.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

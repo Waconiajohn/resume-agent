@@ -2038,6 +2038,7 @@ export function V2StreamingDisplay({
         <div className="mx-auto max-w-[980px] px-4 py-5 sm:px-6 sm:py-8">
           <ResumeReadyScreen
             keywordMatchPercent={keywordMatchPercent}
+            beforeKeywordMatchPercent={data.preScores?.keyword_match_score ?? data.preScores?.ats_match ?? null}
             requirementCoveragePercent={jobBreakdown.coverage_score}
             benchmarkMatchPercent={benchmarkBreakdown.coverage_score}
             keywordsFound={keywordPhrasesFound}

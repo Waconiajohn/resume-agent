@@ -343,14 +343,15 @@ describe('ResumeDocumentCard — confidence color coding', () => {
     expect(bulletC!.className).toContain('resume-proof-line--code-red');
   });
 
-  it('renders numbered accomplishment lines', () => {
+  it('renders accomplishment lines without superscript numbers', () => {
     const resume = makeResumeDraftWithConfidence({ confidence: 'partial' });
     const { container } = render(<ResumeDocumentCard resume={resume} />);
 
     const numberedBullet = screen.getByText('Test accomplishment bullet').closest('li');
     expect(numberedBullet).not.toBeNull();
     expect(container.querySelector('ul.resume-proof-list')).not.toBeNull();
-    expect(numberedBullet?.querySelector('sup')).toHaveTextContent('1');
+    // Dot indicators via CSS ::before replace superscript numbers
+    expect(numberedBullet?.querySelector('sup')).toBeNull();
   });
 });
 

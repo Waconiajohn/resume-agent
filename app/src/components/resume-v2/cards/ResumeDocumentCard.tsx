@@ -890,9 +890,6 @@ function BulletLineContent({
               }}
               className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 min-h-[44px] flex items-center cursor-pointer font-normal text-gray-900 active:bg-blue-50/50 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
             >
-              {globalNumber !== undefined && (
-                <sup className="text-[11px] text-gray-500 font-semibold mr-1 not-italic select-none">{globalNumber}</sup>
-              )}
               {text}
             </span>
             {/* Floating context chip — source-aware styling */}
@@ -904,9 +901,6 @@ function BulletLineContent({
         </span>
       ) : (
         <span className="block font-normal text-gray-800">
-          {globalNumber !== undefined && (
-            <sup className="text-[11px] text-gray-500 font-semibold mr-1 not-italic select-none">{globalNumber}</sup>
-          )}
           {text}
         </span>
       )}

@@ -810,7 +810,8 @@ describe('V2StreamingDisplay — layout modes', () => {
 
     // Redesigned checkpoint shows stat cards and action items
     expect(screen.getByText(/Your draft is ready/i)).toBeInTheDocument();
-    expect(screen.getByText(/64%/)).toBeInTheDocument();
+    // 64% appears in both before and after when pre-score equals assembly score
+    expect(screen.getAllByText(/64%/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Keyword Match/i)).toBeInTheDocument();
   });
 

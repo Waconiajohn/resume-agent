@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 interface ResumeReadyScreenProps {
   keywordMatchPercent: number | null;
+  /** Keyword match score from the original resume before AI improvements. */
+  beforeKeywordMatchPercent?: number | null;
   requirementCoveragePercent: number;
   benchmarkMatchPercent?: number;
   keywordsFound?: string[];
@@ -35,6 +37,7 @@ function dedupePhrases(items: string[] = []): string[] {
 
 export function ResumeReadyScreen({
   keywordMatchPercent,
+  beforeKeywordMatchPercent,
   requirementCoveragePercent,
   benchmarkMatchPercent,
   keywordsFound = [],
@@ -117,9 +120,27 @@ export function ResumeReadyScreen({
       {/* ── Stat cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className={`ready-score-stat ${keywordStatClass}`}>
-          <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
-            {keywordDisplay}
-          </p>
+          {typeof beforeKeywordMatchPercent === 'number' && typeof keywordMatchPercent === 'number' ? (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[var(--text-soft)]">Before:</span>
+                <span className="text-lg font-bold text-[var(--text-soft)]">{Math.round(beforeKeywordMatchPercent)}%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[var(--text-soft)]">After:</span>
+                <span className="text-lg font-bold text-[var(--text-strong)]">{Math.round(keywordMatchPercent)}%</span>
+                {keywordMatchPercent > beforeKeywordMatchPercent && (
+                  <span className="text-[11px] font-medium text-emerald-500">
+                    ↑ +{Math.round(keywordMatchPercent) - Math.round(beforeKeywordMatchPercent)}%
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-[22px] font-semibold tracking-tight text-[var(--text-strong)]">
+              {keywordDisplay}
+            </p>
+          )}
           <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--text-soft)]">
             Keyword Match
           </p>

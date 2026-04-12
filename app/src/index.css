@@ -1234,15 +1234,6 @@
       background-color 160ms ease;
   }
 
-  /* ── Attention pulse: fires once on the first code-red bullet ── */
-  @keyframes attention-pulse {
-    0%   { box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.42), 0 0 0 0 rgba(220, 38, 38, 0); }
-    30%  { box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.58), 0 0 0 5px rgba(220, 38, 38, 0.10); }
-    60%  { box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.42), 0 0 0 0 rgba(220, 38, 38, 0); }
-    80%  { box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.54), 0 0 0 4px rgba(220, 38, 38, 0.08); }
-    100% { box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.42), 0 0 0 0 rgba(220, 38, 38, 0); }
-  }
-
   .resume-proof-line--strong {
     padding-block: 0.1rem;
     /* Whisper-level success signal — a hairline sage-green left accent */
@@ -1252,53 +1243,34 @@
 
   .resume-proof-line--partial,
   .resume-proof-line--code-red {
-    /* Left-accent only — all other borders suppressed */
-    border-top: none;
-    border-right: none;
-    border-bottom: none;
-    border-left-width: 2px;
-    border-left-style: solid;
-    padding: 0.72rem 0.95rem 0.78rem 1rem;
-    border-radius: 8px;
+    border: none;
+    padding: 0;
   }
 
-  .resume-proof-line--partial {
-    border-left-color: rgba(79, 70, 229, 0.65);
-    background: rgba(230, 235, 255, 0.80);
-    box-shadow: 0 1px 6px rgba(79, 70, 229, 0.10);
+  /* Dot indicator via ::before pseudo-element */
+  .resume-proof-line--partial::before,
+  .resume-proof-line--code-red::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
   }
 
-  .resume-proof-line--code-red {
-    border-left-color: rgba(220, 38, 38, 0.60);
-    background: rgba(254, 232, 232, 0.75);
-    box-shadow: 0 1px 6px rgba(220, 38, 38, 0.10);
+  .resume-proof-line--partial::before {
+    background-color: rgba(245, 158, 11, 0.7);
   }
 
-  /* First code-red bullet pulses twice then settles */
-  .resume-proof-line--code-red:first-of-type {
-    animation: attention-pulse 1.8s ease-out 0.6s 2 forwards;
+  .resume-proof-line--code-red::before {
+    background-color: rgba(239, 68, 68, 0.7);
   }
 
   .resume-proof-line--partial::marker,
   .resume-proof-line--code-red::marker {
     color: #94a3b8;
-  }
-
-  .resume-proof-line--partial:hover,
-  .resume-proof-line--code-red:hover {
-    transform: translateY(-1px);
-  }
-
-  .resume-proof-line--partial:hover {
-    background: rgba(220, 228, 255, 0.92);
-    box-shadow: 0 2px 10px rgba(79, 70, 229, 0.14);
-    border-left-color: rgba(79, 70, 229, 0.80);
-  }
-
-  .resume-proof-line--code-red:hover {
-    background: rgba(254, 220, 220, 0.88);
-    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.14);
-    border-left-color: rgba(220, 38, 38, 0.80);
   }
 
   .resume-proof-line.resume-line-active,
