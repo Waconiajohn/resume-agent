@@ -1256,7 +1256,7 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
 const bulletEnhanceSchema = z.object({
   action: z.enum(['show_transformation', 'demonstrate_leadership', 'connect_to_role', 'show_accountability']),
   bullet_text: z.string().min(10).max(1000),
-  requirement: z.string().min(1).max(1000),
+  requirement: z.string().max(1000).default(''),
   evidence: z.string().max(3000).optional(),
   job_context: z.string().max(2000).optional(),
   line_kind: z.enum(['bullet', 'summary', 'competency', 'section_summary', 'custom_line']).optional(),
@@ -1971,7 +1971,7 @@ resumeV2Pipeline.post('/:sessionId/bullet-enhance', authMiddleware, rateLimitMid
         // Find the matching requirement to pull its evidence and JD source excerpt
         let requirementEvidence = '';
         let jdExcerpt = '';
-        if (Array.isArray(gapAnalysis.requirements)) {
+        if (requirement.trim().length > 0 && Array.isArray(gapAnalysis.requirements)) {
           const requirementLower = requirement.toLowerCase();
           const matchedReq = (gapAnalysis.requirements as Array<Record<string, unknown>>).find(
             (r) => typeof r.requirement === 'string' &&
