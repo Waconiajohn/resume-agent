@@ -313,6 +313,7 @@ export function ExportBar({
 
       <div className="flex items-center gap-2 flex-wrap">
         <GlassButton
+          data-export-docx
           onClick={handleDocx}
           disabled={exporting !== null}
           size="sm"
@@ -327,6 +328,7 @@ export function ExportBar({
         </GlassButton>
 
         <GlassButton
+          data-export-pdf
           onClick={handlePdf}
           disabled={exporting !== null}
           variant="ghost"
