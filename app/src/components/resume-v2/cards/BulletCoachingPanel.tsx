@@ -285,17 +285,18 @@ export function BulletCoachingPanel({
             <p className="text-sm text-[var(--text-soft)]">
               How should we strengthen this?
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {allAngleActions.map((config) => (
                 <button
                   key={config.action}
                   type="button"
                   onClick={() => handleEnhance(config.action)}
                   disabled={isEnhancing}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg px-3 py-2 text-left bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={config.description}
                 >
-                  {config.label}
+                  <span className="text-sm font-medium block">{config.label}</span>
+                  <span className="text-[10px] opacity-70 block mt-0.5">{config.description}</span>
                 </button>
               ))}
             </div>

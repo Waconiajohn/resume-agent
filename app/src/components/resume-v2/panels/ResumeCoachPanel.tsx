@@ -34,9 +34,12 @@ export interface ResumeCoachPanelProps {
   onNextItem: () => void;
   onSectionClick: (sectionKey: string) => void;
   onStructurePlan?: () => void;
+  onDoneReviewing?: () => void;
   // Export
   onExportDocx?: () => void;
   onExportPdf?: () => void;
+  // Final review
+  onRequestFinalReview?: () => void;
   // Children: the coaching panel content (BulletCoachingPanel) is passed as children
   children?: ReactNode;
   // Error
@@ -141,8 +144,10 @@ export function ResumeCoachPanel({
   onNextItem,
   onSectionClick,
   onStructurePlan,
+  onDoneReviewing,
   onExportDocx,
   onExportPdf,
+  onRequestFinalReview,
   children,
   error,
   onRetryPipeline,
@@ -175,6 +180,15 @@ export function ResumeCoachPanel({
         {/* Prev / Next arrows — only in coaching state */}
         {isActive && !isComplete && (
           <div className="flex items-center gap-1" role="group" aria-label="Navigate items">
+            {reviewedCount > 0 && onDoneReviewing && (
+              <button
+                type="button"
+                onClick={onDoneReviewing}
+                className="mr-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
+              >
+                Done reviewing
+              </button>
+            )}
             <button
               type="button"
               onClick={onPrevItem}
@@ -282,6 +296,22 @@ export function ResumeCoachPanel({
           <p className="text-[12px]" style={{ color: 'var(--text-soft)' }}>
             Click any bullet to keep editing.
           </p>
+
+          {onRequestFinalReview && (
+            <>
+              <hr className="border-[var(--line-soft)] my-4" />
+              <button
+                type="button"
+                onClick={onRequestFinalReview}
+                className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg border border-[var(--line-soft)] px-4 py-2.5 text-sm font-medium text-[var(--text-strong)] hover:bg-[var(--surface-1)] transition-colors"
+              >
+                Run Hiring Manager Review
+              </button>
+              <p className="text-xs text-[var(--text-soft)] mt-2 max-w-[240px] text-center">
+                Get a final check from an AI hiring manager before sending.
+              </p>
+            </>
+          )}
         </div>
       </div>
     );

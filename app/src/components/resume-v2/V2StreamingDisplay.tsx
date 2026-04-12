@@ -984,6 +984,11 @@ export function V2StreamingDisplay({
     locationLabel: chatContextLabelForSection(initialActiveBullet.section),
   } : null);
   const [initialFlaggedCount, setInitialFlaggedCount] = useState(0);
+  const [visitedItems, setVisitedItems] = useState<Set<string>>(new Set());
+
+  const markVisited = useCallback((section: string, index: number) => {
+    setVisitedItems(prev => new Set(prev).add(`${section}:${index}`));
+  }, []);
   const [showStructurePlanner, setShowStructurePlanner] = useState(false);
   const [hasCompletedStructureStep, setHasCompletedStructureStep] = useState(false);
   const [sectionJourneyIndex, setSectionJourneyIndex] = useState(0);
@@ -1421,20 +1426,27 @@ export function V2StreamingDisplay({
     }
   }, [coachData.flaggedItems, coachData.flaggedCount, initialFlaggedCount, navigateToFlaggedItem]);
 
-  /** After applying an edit, advance directly to the next flagged item.
+  /** After applying an edit, advance directly to the next unvisited flagged item.
    *  No intermediate null state — one setActiveBullet call, no flash. */
   const advanceToNextItem = useCallback((justEditedSection: string, justEditedIndex: number) => {
     const justEditedKey = `${justEditedSection}:${justEditedIndex}`;
+    markVisited(justEditedSection, justEditedIndex);
+
     const currentIdx = coachData.flaggedItems.findIndex(item => item.id === justEditedKey);
-    const nextItem = currentIdx >= 0
-      ? coachData.flaggedItems[currentIdx + 1]
-      : coachData.flaggedItems[0];
-    if (nextItem) {
-      navigateToFlaggedItem(nextItem);
+
+    // Find the next unvisited item after current position
+    const updatedVisited = new Set(visitedItems).add(justEditedKey);
+    const nextUnvisited = coachData.flaggedItems.find(
+      (item, idx) => idx > currentIdx && !updatedVisited.has(item.id),
+    );
+
+    if (nextUnvisited) {
+      navigateToFlaggedItem(nextUnvisited);
     } else {
+      // All items visited or at the end — go to completion
       setActiveBullet(null);
     }
-  }, [coachData.flaggedItems, navigateToFlaggedItem]);
+  }, [coachData.flaggedItems, navigateToFlaggedItem, markVisited, visitedItems]);
 
   const handleCoachApplyToResume = useCallback((section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => {
     onBulletEdit?.(section, index, newText, metadata);
@@ -1902,11 +1914,11 @@ export function V2StreamingDisplay({
               leftPanel={
                 <ResumeCoachPanel
                   flaggedCount={coachData.flaggedCount}
-                  reviewedCount={Math.max(0, initialFlaggedCount - coachData.flaggedItems.length)}
+                  reviewedCount={visitedItems.size}
                   currentPosition={currentFlaggedPosition}
                   sectionSummaries={sectionSummaries}
                   isActive={!!activeBullet}
-                  isComplete={initialFlaggedCount > 0 && coachData.flaggedItems.length === 0}
+                  isComplete={initialFlaggedCount > 0 && coachData.flaggedItems.every(item => visitedItems.has(item.id))}
                   onStartReviewing={handleStartReviewing}
                   onPrevItem={handlePrevItem}
                   onNextItem={handleNextItem}
@@ -1914,6 +1926,8 @@ export function V2StreamingDisplay({
                   onStructurePlan={canShowStructurePlanner ? handleShowStructurePlan : undefined}
                   onExportDocx={() => document.querySelector<HTMLButtonElement>('[data-export-docx]')?.click()}
                   onExportPdf={() => document.querySelector<HTMLButtonElement>('[data-export-pdf]')?.click()}
+                  onRequestFinalReview={onRequestHiringManagerReview}
+                  onDoneReviewing={() => setActiveBullet(null)}
                   error={error ?? editError ?? null}
                   onRetryPipeline={onRetryPipeline}
                 >
