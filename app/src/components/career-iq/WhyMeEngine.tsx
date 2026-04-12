@@ -91,7 +91,7 @@ function StepIndicator({ currentStep, signals }: { currentStep: number; signals:
           {i < STEPS.length - 1 && (
             <div className={cn(
               'h-px w-8 transition-colors duration-300',
-              signals[signalKeys[i]] === 'green' ? 'bg-[var(--badge-green-text)]/30' : 'bg-white/[0.08]',
+              signals[signalKeys[i]] === 'green' ? 'bg-[var(--badge-green-text)]/30' : 'bg-[var(--line-soft)]',
             )} />
           )}
         </div>

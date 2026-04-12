@@ -379,7 +379,7 @@ function LinkedInSection() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-300">
+            <div className="flex items-center gap-2 text-sm text-[var(--badge-red-text)]">
               <AlertCircle size={14} />
               {error}
             </div>
@@ -576,7 +576,7 @@ function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
                   >
                     {field.charAt(0).toUpperCase() + field.slice(1)}
                     {field === 'reflection' && (
-                      <span className="ml-1 text-[11px] normal-case text-amber-400">required</span>
+                      <span className="ml-1 text-[11px] normal-case text-[var(--badge-amber-text)]">required</span>
                     )}
                   </label>
                   <textarea
@@ -585,7 +585,7 @@ function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
                     onChange={(e) => setDraft((prev) => ({ ...prev, [field]: e.target.value }))}
                     rows={field === 'action' ? 5 : 3}
                     className={cn(
-                      'mt-1.5 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-black/20 px-3 py-2.5',
+                      'mt-1.5 w-full resize-y rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5',
                       'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
                       'focus:border-[var(--link)]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
                     )}
@@ -594,7 +594,7 @@ function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
               ))}
 
               {saveError && (
-                <div className="flex items-center gap-2 text-sm text-red-300">
+                <div className="flex items-center gap-2 text-sm text-[var(--badge-red-text)]">
                   <AlertCircle size={13} />
                   {saveError}
                 </div>
@@ -703,7 +703,7 @@ function StoryBankSection() {
         </div>
       ) : error ? (
         <div className="mt-5 flex items-start gap-2 text-sm text-[var(--text-soft)]">
-          <AlertCircle size={14} className="mt-0.5 shrink-0 text-amber-400" />
+          <AlertCircle size={14} className="mt-0.5 shrink-0 text-[var(--badge-amber-text)]" />
           <div>
             <span>{error}</span>
             <button

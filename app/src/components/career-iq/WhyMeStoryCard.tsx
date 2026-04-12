@@ -94,7 +94,7 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
             placeholder={placeholder}
             autoFocus
             className={cn(
-              'min-h-[100px] w-full rounded-xl border border-[var(--link)]/20 bg-black/20 px-3 py-2.5',
+              'min-h-[100px] w-full rounded-xl border border-[var(--link)]/20 bg-[var(--surface-1)] px-3 py-2.5',
               'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
               'focus:border-[var(--link)]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/35',
               'resize-y',
