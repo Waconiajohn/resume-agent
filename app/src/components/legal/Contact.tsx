@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export function Contact() {
+  useEffect(() => { document.title = 'Contact | CareerIQ'; }, []);
+
   return (
     <div
       className="min-h-screen py-16 px-4"

@@ -1,12 +1,15 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export function NotFoundPage() {
+  useEffect(() => { document.title = 'Page Not Found | CareerIQ'; }, []);
+
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center px-4 text-center"
       style={{ background: 'var(--bg-0)' }}
     >
-      <p className="mb-3 text-7xl font-bold" style={{ color: 'var(--line-soft)' }}>
+      <p className="mb-3 text-7xl font-bold" style={{ color: 'var(--line-soft)' }} aria-hidden="true">
         404
       </p>
       <h1 className="mb-3 text-2xl font-semibold" style={{ color: 'var(--text-strong)' }}>

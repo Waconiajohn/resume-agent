@@ -25,6 +25,7 @@ import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
 import { NotFoundPage } from '@/components/NotFoundPage';
+import { ResetPassword } from '@/components/auth/ResetPassword';
 import { resumeToText } from '@/lib/export';
 import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
@@ -517,6 +518,15 @@ export default function App() {
   const isSalesRoute = location.pathname === '/' || location.pathname === '/sales';
   if (!user) {
     const legalPath = location.pathname === '/terms' || location.pathname === '/privacy' || location.pathname === '/contact';
+    const isResetPasswordPath = location.pathname === '/reset-password';
+    const knownUnauthPaths = [
+      '/', '/sales', '/workspace', '/billing', '/pricing', '/coach',
+      '/profile-setup', '/discover', '/resume-builder', '/affiliate', '/admin',
+    ];
+    const isKnownPath = knownUnauthPaths.some(
+      (p) => location.pathname === p || location.pathname.startsWith(p + '/'),
+    );
+
     return (
       <ToastProvider>
         {isSalesRoute ? (
@@ -527,12 +537,16 @@ export default function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/contact" element={<Contact />} />
           </Routes>
-        ) : (
+        ) : isResetPasswordPath ? (
+          <ResetPassword />
+        ) : isKnownPath ? (
           <AuthGate
             onSignIn={signInWithEmail}
             onSignUp={signUpWithEmail}
             onGoogleSignIn={signInWithGoogle}
           />
+        ) : (
+          <NotFoundPage />
         )}
       </ToastProvider>
     );
@@ -762,6 +776,7 @@ export default function App() {
                 }
               />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/contact" element={<Contact />} />

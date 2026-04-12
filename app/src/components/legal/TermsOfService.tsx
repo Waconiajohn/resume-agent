@@ -1,8 +1,11 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const LAST_UPDATED = 'April 10, 2026';
 
 export function TermsOfService() {
+  useEffect(() => { document.title = 'Terms of Service | CareerIQ'; }, []);
+
   return (
     <div
       className="min-h-screen py-16 px-4"

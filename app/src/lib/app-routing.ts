@@ -116,6 +116,12 @@ export function resolveNavigationTarget(viewName: string): string {
     billing: '/billing',
     affiliate: '/affiliate',
     admin: '/admin',
+    dashboard: buildWorkspaceRoute(),
+    'career-profile': buildWorkspaceRoute('career-profile'),
+    resume: buildWorkspaceRoute('resume'),
+    linkedin: buildWorkspaceRoute('linkedin'),
+    jobs: buildWorkspaceRoute('jobs'),
+    interview: buildWorkspaceRoute('interview'),
   };
 
   return pathByView[viewName] ?? buildWorkspaceRoute();

@@ -44,6 +44,12 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -86,7 +92,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               <button
                 type="button"
                 onClick={() => switchView('sign_in')}
-                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
               >
                 Back to sign in
               </button>
@@ -119,7 +125,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               <button
                 type="button"
                 onClick={() => switchView('sign_in')}
-                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
               >
                 Back to sign in
               </button>
@@ -220,7 +226,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
                 <button
                   type="button"
                   onClick={() => switchView('forgot_password')}
-                  className="text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)]"
+                  className="text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
                 >
                   Forgot password?
                 </button>
@@ -266,7 +272,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
           <button
             type="button"
             onClick={() => switchView(isSignUp ? 'sign_in' : 'sign_up')}
-            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
+            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
           >
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
