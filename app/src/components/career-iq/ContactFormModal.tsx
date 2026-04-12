@@ -190,7 +190,7 @@ export function ContactFormModal({
                 className={cn(inputClass, 'appearance-none')}
               >
                 {RELATIONSHIP_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-[#1a1a2e]">
+                  <option key={opt.value} value={opt.value} className="bg-[var(--surface-1)]">
                     {opt.label}
                   </option>
                 ))}
@@ -203,11 +203,11 @@ export function ContactFormModal({
                 onChange={(e) => setContactRole(e.target.value)}
                 className={cn(inputClass, 'appearance-none')}
               >
-                <option value="" className="bg-[#1a1a2e]">
+                <option value="" className="bg-[var(--surface-1)]">
                   None
                 </option>
                 {ALL_ROLES.map((role) => (
-                  <option key={role} value={role} className="bg-[#1a1a2e]">
+                  <option key={role} value={role} className="bg-[var(--surface-1)]">
                     {CONTACT_ROLE_LABELS[role]}
                   </option>
                 ))}

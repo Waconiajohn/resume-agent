@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Moon, Settings2, Sun, X } from 'lucide-react';
+import { ChevronDown, CreditCard, FileText, HelpCircle, LayoutDashboard, Linkedin, LogOut, Menu, Mic, Moon, Search, Settings2, Sun, User, X } from 'lucide-react';
 import { PipelineProgressBar } from './PipelineProgressBar';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useTheme } from '@/hooks/useTheme';
@@ -288,7 +288,26 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               </button>
             </div>
 
-            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5" />
+            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5">
+              {[
+                { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+                { id: 'career-profile', label: 'Your Profile', icon: User },
+                { id: 'resume', label: 'Resume Builder', icon: FileText },
+                { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+                { id: 'jobs', label: 'Job Search', icon: Search },
+                { id: 'interview', label: 'Interview Prep', icon: Mic },
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleNavClick(id)}
+                  className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </nav>
 
             {email && (
               <div className="border-t border-[var(--line-soft)] px-5 py-5">

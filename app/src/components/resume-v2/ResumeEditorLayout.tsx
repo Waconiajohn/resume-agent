@@ -12,6 +12,8 @@ const MIN_RIGHT_PX = 400;
 
 export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef<number>(0);
+  const startWidthRef = useRef<number>(DEFAULT_LEFT);
   const [leftPercent, setLeftPercent] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? parseFloat(stored) : DEFAULT_LEFT;
@@ -22,6 +24,14 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
     e.preventDefault();
     setIsDragging(true);
   }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    startXRef.current = touch.clientX;
+    startWidthRef.current = leftPercent;
+    setIsDragging(true);
+  }, [leftPercent]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -46,11 +56,36 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
       localStorage.setItem(STORAGE_KEY, String(leftPercent));
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const container = containerRef.current;
+      if (!container) return;
+      const touch = e.touches[0];
+      const rect = container.getBoundingClientRect();
+      const totalWidth = rect.width;
+      const delta = touch.clientX - startXRef.current;
+      const deltaPercent = (delta / totalWidth) * 100;
+      const newPercent = startWidthRef.current + deltaPercent;
+
+      const minLeftPercent = (MIN_LEFT_PX / totalWidth) * 100;
+      const maxLeftPercent = ((totalWidth - MIN_RIGHT_PX) / totalWidth) * 100;
+      setLeftPercent(Math.max(minLeftPercent, Math.min(maxLeftPercent, newPercent)));
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+      localStorage.setItem(STORAGE_KEY, String(leftPercent));
+    };
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging, leftPercent]);
 
@@ -69,11 +104,20 @@ export function ResumeEditorLayout({ leftPanel, rightPanel }: ResumeEditorLayout
 
       {/* Draggable divider */}
       <div
-        className={`resume-editor-divider w-1 shrink-0 cursor-col-resize transition-colors hover:bg-[var(--link)]/24 ${isDragging ? 'bg-[var(--link)]/30' : 'bg-transparent'}`}
+        className={`resume-editor-divider w-1 shrink-0 cursor-col-resize transition-colors hover:bg-[var(--link)]/24 focus:outline-none focus-visible:bg-[var(--link)]/30 ${isDragging ? 'bg-[var(--link)]/30' : 'bg-transparent'}`}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') setLeftPercent(prev => Math.max(20, prev - 2));
+          if (e.key === 'ArrowRight') setLeftPercent(prev => Math.min(70, prev + 2));
+        }}
+        tabIndex={0}
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize panels"
+        aria-valuenow={Math.round(leftPercent)}
+        aria-valuemin={20}
+        aria-valuemax={70}
       />
 
       {/* Right panel */}

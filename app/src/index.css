@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Type Scale ──
+   * XS:   11px — superscripts, tiny badges
+   * SM:   13px — labels, buttons, uppercase tracking
+   * Base: 15px — body text, resume copy
+   * MD:   16px — section headings, card titles
+   * LG:   18-20px — page titles
+   * XL:   24-32px — hero text, large stats
+   */
+
   /* ── Shared structural tokens (never override per theme) ── */
   :root {
     --radius-card: 18px;

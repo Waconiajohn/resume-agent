@@ -314,7 +314,7 @@ export function ExportBar({
       <div className="flex items-center gap-2 flex-wrap">
         <GlassButton
           onClick={handleDocx}
-          disabled={exporting === 'docx'}
+          disabled={exporting !== null}
           size="sm"
           className="gap-1.5"
         >
@@ -324,14 +324,11 @@ export function ExportBar({
             <FileType2 className="h-3.5 w-3.5" />
           )}
           Download DOCX
-          {exporting === 'pdf' && (
-            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[var(--line-strong)] animate-pulse" aria-hidden="true" />
-          )}
         </GlassButton>
 
         <GlassButton
           onClick={handlePdf}
-          disabled={exporting === 'pdf'}
+          disabled={exporting !== null}
           variant="ghost"
           size="sm"
           className="gap-1.5"
@@ -342,9 +339,6 @@ export function ExportBar({
             <Download className="h-3.5 w-3.5" />
           )}
           Download PDF
-          {exporting === 'docx' && (
-            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[var(--line-strong)] animate-pulse" aria-hidden="true" />
-          )}
         </GlassButton>
 
         <GlassButton

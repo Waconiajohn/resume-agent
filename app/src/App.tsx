@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
 const DiscoveryFlow = lazy(() => import('./components/discovery/DiscoveryFlow'));
 const ProfileSetupPage = lazy(() => import('./components/profile-setup/ProfileSetupPage'));
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -20,6 +21,10 @@ import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
+import { TermsOfService } from '@/components/legal/TermsOfService';
+import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
+import { Contact } from '@/components/legal/Contact';
+import { NotFoundPage } from '@/components/NotFoundPage';
 import { resumeToText } from '@/lib/export';
 import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
@@ -108,6 +113,7 @@ export default function App() {
     replayTourRef.current?.();
   }, []);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
   const currentView = getAppView(location.pathname);
@@ -496,11 +502,13 @@ export default function App() {
   }
 
   if (loading) {
-
     return (
       <ToastProvider>
-        <div className="flex h-screen items-center justify-center">
-          <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
+        <div className="flex h-screen items-center justify-center bg-[var(--surface-0)]">
+          <div className="text-center">
+            <p className="text-2xl font-semibold text-[var(--text-strong)] tracking-wider mb-4">CareerIQ</p>
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--text-soft)] mx-auto" />
+          </div>
         </div>
       </ToastProvider>
     );
@@ -508,10 +516,17 @@ export default function App() {
 
   const isSalesRoute = location.pathname === '/' || location.pathname === '/sales';
   if (!user) {
+    const legalPath = location.pathname === '/terms' || location.pathname === '/privacy' || location.pathname === '/contact';
     return (
       <ToastProvider>
         {isSalesRoute ? (
           <SalesPage />
+        ) : legalPath ? (
+          <Routes>
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/contact" element={<Contact />} />
+          </Routes>
         ) : (
           <AuthGate
             onSignIn={signInWithEmail}
@@ -562,20 +577,29 @@ export default function App() {
               onReplayTour={currentView === 'workspace' ? handleTourReplay : undefined}
             />
 
+            {!verifyBannerDismissed && user && !user.email_confirmed_at && (
+              <div className="mx-auto max-w-6xl px-4 pt-3">
+                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#afc4ff]/30 bg-[#afc4ff]/10 px-4 py-3 text-sm text-[#afc4ff]">
+                  <span>Please check your email to verify your account.</span>
+                  <button type="button" onClick={() => setVerifyBannerDismissed(true)} className="ml-4 text-xs text-[#afc4ff] hover:text-[#afc4ff]/80">Dismiss</button>
+                </div>
+              </div>
+            )}
+
             {checkoutStatus === 'success' && (
               <div className="mx-auto max-w-6xl px-4 pt-3">
-                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-4 py-3 text-sm text-[#b5dec2]">
+                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] px-4 py-3 text-sm text-[var(--badge-green-text)]">
                   <span>Subscription activated! You now have access to all plan features.</span>
-                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#b5dec2] hover:text-[#b5dec2]/80">Dismiss</button>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[var(--badge-green-text)] hover:text-[var(--badge-green-text)]/80">Dismiss</button>
                 </div>
               </div>
             )}
 
             {checkoutStatus === 'cancelled' && (
               <div className="mx-auto max-w-6xl px-4 pt-3">
-                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f]">
+                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] px-4 py-3 text-sm text-[var(--badge-amber-text)]">
                   <span>Checkout cancelled. You can try again anytime from billing.</span>
-                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#f0d99f] hover:text-[#f0d99f]/80">Dismiss</button>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[var(--badge-amber-text)] hover:text-[var(--badge-amber-text)]/80">Dismiss</button>
                 </div>
               </div>
             )}
@@ -738,7 +762,10 @@ export default function App() {
                 }
               />
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="*" element={<Navigate to="/workspace" replace />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
             </main>
           </div>

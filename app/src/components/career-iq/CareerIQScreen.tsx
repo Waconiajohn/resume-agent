@@ -297,6 +297,8 @@ export function CareerIQScreen({
           onRefineWhyMe={openCareerProfile}
           hasResumeSessions={sessions.length > 0}
           sessionCount={sessions.length}
+          recentSession={sessions.length > 0 ? sessions.reduce((a, b) => (a.updated_at >= b.updated_at ? a : b)) : null}
+          onResumeSession={onResumeSession}
           nudges={nudges}
           onDismissNudge={dismissNudge}
           coachRecommendation={coachRec}

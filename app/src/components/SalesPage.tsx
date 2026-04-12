@@ -1,4 +1,6 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ScoreRing } from '@/components/shared/ScoreRing';
@@ -107,6 +109,25 @@ function ProblemSection() {
 /*  3. Coaching Methodology                                           */
 /* ================================================================== */
 
+const DIALOGUE: { isCoach: boolean; text: string }[] = [
+  {
+    isCoach: true,
+    text: "Your resume says 'managed operations.' But you didn't just manage — you inherited a broken supply chain and rebuilt it. Let's lead with that.",
+  },
+  {
+    isCoach: false,
+    text: 'I reduced downtime by 40% in the first quarter.',
+  },
+  {
+    isCoach: true,
+    text: "Perfect. That's the proof. Now let's frame it as a transformation story, not a task list.",
+  },
+  {
+    isCoach: false,
+    text: 'I never thought of it that way. It just felt like doing my job.',
+  },
+];
+
 function CoachingSection() {
   const ref = useFadeIn();
   return (
@@ -119,20 +140,23 @@ function CoachingSection() {
           Before writing a single word, we uncover what makes you the obvious choice
         </p>
 
-        {/* Mock conversation bubbles */}
-        <div className="mx-auto mt-14 max-w-md space-y-4">
-          {[false, true, false, true].map((isRight, i) => (
-            <div key={i} className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}>
+        <div className="mx-auto mt-14 max-w-lg space-y-4">
+          {DIALOGUE.map((line, i) => (
+            <div key={i} className={`flex ${line.isCoach ? 'justify-start' : 'justify-end'}`}>
+              {line.isCoach && (
+                <div className="mr-3 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--badge-blue-bg)] text-[10px] font-bold uppercase tracking-widest text-[var(--link)]">
+                  AI
+                </div>
+              )}
               <div
-                className={`rounded-2xl px-5 py-3 ${
-                  isRight
-                    ? 'bg-[var(--badge-blue-bg)] border border-[var(--link)]/20'
-                    : 'bg-white/[0.06] border border-white/[0.12]'
+                className={`rounded-2xl px-5 py-3.5 text-sm leading-relaxed ${
+                  line.isCoach
+                    ? 'border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-white/90'
+                    : 'border border-white/[0.12] bg-white/[0.07] text-white/80'
                 }`}
-                style={{ maxWidth: '75%' }}
+                style={{ maxWidth: '78%' }}
               >
-                <div className="h-3 w-36 rounded bg-white/20 blur-sm" />
-                <div className="mt-2 h-3 w-24 rounded bg-white/15 blur-sm" />
+                {line.text}
               </div>
             </div>
           ))}
@@ -379,7 +403,75 @@ function RoleTagsSection() {
 }
 
 /* ================================================================== */
-/*  9. CTA                                                            */
+/*  9. FAQ                                                            */
+/* ================================================================== */
+
+const FAQ_ITEMS = [
+  {
+    q: 'How is this different from ChatGPT?',
+    a: "We don't just rewrite. We analyze the job description, build a benchmark candidate profile, find your positioning gaps, and write a resume that makes you the standard everyone else is measured against. ChatGPT echoes what you give it. We surface what hiring managers are actually looking for — and match you to it.",
+  },
+  {
+    q: 'How long does it take?',
+    a: 'About 2-3 minutes for the AI to generate your first draft. Most executives spend 15-30 minutes reviewing and refining with the coach before exporting.',
+  },
+  {
+    q: 'Is my resume data secure?',
+    a: 'Yes. Your data is encrypted, never sold, and processed only to build your resume. You can delete your account and all associated data at any time.',
+  },
+  {
+    q: 'What if the AI gets something wrong?',
+    a: "Every suggestion is grounded in YOUR actual experience. Our Truth Verification agent checks every claim against your original resume. You review and approve everything before export — nothing ships without your sign-off.",
+  },
+  {
+    q: 'Do I need a different resume for each job?',
+    a: "Yes, and that's the point. Each resume is role-specific, optimized for that particular job description, company, and hiring context. Generic resumes get screened out. Targeted ones get interviews.",
+  },
+];
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/[0.08] last:border-none">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left"
+        aria-expanded={open}
+      >
+        <span className="text-base font-medium text-white">{q}</span>
+        <ChevronDown
+          size={18}
+          className={`shrink-0 text-white/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <p className="pb-5 text-sm leading-relaxed text-white/60">{a}</p>
+      )}
+    </div>
+  );
+}
+
+function FAQSection() {
+  const ref = useFadeIn();
+  return (
+    <section className="py-20 md:py-32">
+      <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
+        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+          Common Questions
+        </h2>
+        <GlassCard className="mx-auto mt-14 max-w-2xl px-6 py-2">
+          {FAQ_ITEMS.map((item) => (
+            <FAQItem key={item.q} q={item.q} a={item.a} />
+          ))}
+        </GlassCard>
+      </div>
+    </section>
+  );
+}
+
+/* ================================================================== */
+/*  10. CTA                                                           */
 /* ================================================================== */
 
 function CTASection() {
@@ -408,20 +500,60 @@ function CTASection() {
 }
 
 /* ================================================================== */
-/*  10. Footer                                                        */
+/*  11. Footer                                                        */
 /* ================================================================== */
 
 function Footer() {
   return (
     <footer className="border-t border-white/[0.08] py-10">
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 text-sm text-white/40">
-        <span>CareerIQ</span>
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 text-sm text-white/40">
+        <span>CareerIQ by Agentic.AI</span>
         <span>&copy; 2026 All rights reserved</span>
-        <a href="/workspace" className="text-white/50 transition-colors hover:text-white">
+        <div className="flex flex-wrap items-center justify-center gap-5">
+          <a href="/workspace" className="text-white/50 transition-colors hover:text-white">
+            Sign In
+          </a>
+          <Link to="/terms" className="text-white/50 transition-colors hover:text-white">
+            Terms of Service
+          </Link>
+          <Link to="/privacy" className="text-white/50 transition-colors hover:text-white">
+            Privacy Policy
+          </Link>
+          <Link to="/contact" className="text-white/50 transition-colors hover:text-white">
+            Contact
+          </Link>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ================================================================== */
+/*  SalesPage (assembled)                                             */
+/* ================================================================== */
+
+/* ================================================================== */
+/*  Sales Nav                                                         */
+/* ================================================================== */
+
+function SalesNav() {
+  return (
+    <header
+      className="sticky top-0 z-40 border-b border-white/10"
+      style={{ background: 'rgba(10,10,20,0.75)', backdropFilter: 'blur(16px)' }}
+    >
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+        <span className="text-[18px] font-normal tracking-tight text-white">
+          Career<span className="font-bold text-blue-400">IQ</span>
+        </span>
+        <a
+          href="/workspace"
+          className="text-[13px] font-medium uppercase tracking-[0.1em] text-white/70 transition-colors hover:text-white"
+        >
           Sign In
         </a>
       </div>
-    </footer>
+    </header>
   );
 }
 
@@ -432,6 +564,7 @@ function Footer() {
 export function SalesPage() {
   return (
     <div className="min-h-screen bg-surface">
+      <SalesNav />
       <Hero />
       <ProblemSection />
       <CoachingSection />
@@ -440,6 +573,7 @@ export function SalesPage() {
       <QualitySection />
       <PositioningSection />
       <RoleTagsSection />
+      <FAQSection />
       <CTASection />
       <Footer />
     </div>

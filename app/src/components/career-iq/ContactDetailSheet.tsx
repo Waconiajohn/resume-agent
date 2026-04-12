@@ -177,7 +177,7 @@ export function ContactDetailSheet({
               className={cn(inputClass, 'appearance-none flex-1')}
             >
               {TOUCHPOINT_TYPES.map((t) => (
-                <option key={t.value} value={t.value} className="bg-[#1a1a2e]">
+                <option key={t.value} value={t.value} className="bg-[var(--surface-1)]">
                   {t.label}
                 </option>
               ))}

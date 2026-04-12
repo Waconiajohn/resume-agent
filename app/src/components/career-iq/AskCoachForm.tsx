@@ -180,11 +180,11 @@ export function AskCoachForm({ initialContext = '', onSubmitted }: AskCoachFormP
             onChange={(e) => setTopic(e.target.value as CoachTopic)}
             className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30 appearance-none"
           >
-            <option value="" className="bg-[#1a1a2e]">
+            <option value="" className="bg-[var(--surface-1)]">
               Select a topic...
             </option>
             {COACH_TOPICS.map((t) => (
-              <option key={t.value} value={t.value} className="bg-[#1a1a2e]">
+              <option key={t.value} value={t.value} className="bg-[var(--surface-1)]">
                 {t.label}
               </option>
             ))}

@@ -504,7 +504,7 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
           disabled={loading}
           className="flex w-full items-center gap-2 py-1 text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded disabled:opacity-50 disabled:pointer-events-none"
           aria-expanded={pasteOpen}
-          aria-controls={pasteId}
+          aria-controls={`${pasteId}-container`}
         >
           <div className="flex-1 border-t border-[var(--line-soft)]" />
           <span className="shrink-0">
@@ -516,7 +516,7 @@ function JdSection({ jobDescription, onJobDescriptionChange, loading, initialJob
       )}
 
       {pasteOpen && !jdUrl.trim() && (
-        <div id={pasteId} className="space-y-1.5">
+        <div id={`${pasteId}-container`} className="space-y-1.5">
           <GlassTextarea
             id={pasteId}
             value={jobDescription}
@@ -547,6 +547,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
   const [resumeText, setResumeText] = useState(initialResumeText ?? '');
   const [jobDescription, setJobDescription] = useState(initialJobUrl ?? '');
   const [masterResumeLoading, setMasterResumeLoading] = useState(false);
+  const [masterResumeNotice, setMasterResumeNotice] = useState<string | null>(null);
 
   // Sync when initialJobUrl changes (navigating from a different "Tailor Resume")
   useEffect(() => {
@@ -558,9 +559,15 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
   const handleLoadMasterResume = useCallback(async () => {
     if (!onLoadMasterResume) return;
     setMasterResumeLoading(true);
+    setMasterResumeNotice(null);
     try {
       const text = await onLoadMasterResume();
-      if (text) setResumeText(text);
+      if (text) {
+        setResumeText(text);
+        setMasterResumeNotice(null);
+      } else {
+        setMasterResumeNotice('No master resume yet — upload your resume below.');
+      }
     } finally {
       setMasterResumeLoading(false);
     }
@@ -621,14 +628,19 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
                   Your Resume
                 </label>
                 {onLoadMasterResume && (
-                  <button
-                    type="button"
-                    onClick={() => void handleLoadMasterResume()}
-                    disabled={masterResumeLoading || loading}
-                    className="text-xs text-[var(--link)]/70 transition-colors hover:text-[var(--link)] disabled:opacity-40"
-                  >
-                    {masterResumeLoading ? 'Loading...' : 'Use Master Resume'}
-                  </button>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleLoadMasterResume()}
+                      disabled={masterResumeLoading || loading}
+                      className="text-xs text-[var(--link)]/70 transition-colors hover:text-[var(--link)] disabled:opacity-40"
+                    >
+                      {masterResumeLoading ? 'Loading...' : 'Use Master Resume'}
+                    </button>
+                    {masterResumeNotice && (
+                      <p className="text-[11px] text-[var(--text-soft)]" role="status">{masterResumeNotice}</p>
+                    )}
+                  </div>
                 )}
               </div>
               <ResumeDropZone

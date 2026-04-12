@@ -2,11 +2,19 @@ import { useState } from 'react';
 import { ArrowRight, FileText, Search, Target } from 'lucide-react';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CoachingNudge } from '@/hooks/useMomentum';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { deriveWorkspaceHomeGuidance } from './workspaceHomeGuidance';
+
+export interface RecentSession {
+  id: string;
+  job_title?: string | null;
+  company_name?: string | null;
+  updated_at: string;
+}
 
 interface DashboardHomeProps {
   signals: WhyMeSignals;
@@ -15,6 +23,8 @@ interface DashboardHomeProps {
   onRefineWhyMe?: () => void;
   hasResumeSessions?: boolean;
   sessionCount?: number;
+  recentSession?: RecentSession | null;
+  onResumeSession?: (sessionId: string) => void;
   nudges?: CoachingNudge[];
   onDismissNudge?: (nudgeId: string) => void;
   coachRecommendation?: CoachRecommendation | null;
@@ -23,6 +33,48 @@ interface DashboardHomeProps {
 }
 
 const NUDGE_DISMISS_KEY = 'workspace_home_nudge_dismissed';
+
+function formatRelativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 60) return diffMins <= 1 ? 'just now' : `${diffMins} minutes ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return diffDays === 1 ? 'yesterday' : `${diffDays} days ago`;
+}
+
+function ContinueCard({
+  session,
+  onResume,
+}: {
+  session: RecentSession;
+  onResume: (id: string) => void;
+}) {
+  const title = [session.job_title, session.company_name].filter(Boolean).join(' at ') || 'Resume session';
+  return (
+    <GlassCard className="flex items-center justify-between gap-4 p-4 sm:p-5">
+      <div className="min-w-0">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--text-muted)]">
+          Continue where you left off
+        </div>
+        <div className="mt-1 truncate text-[15px] font-semibold text-[var(--text-strong)]">{title}</div>
+        <div className="mt-0.5 text-xs text-[var(--text-soft)]">
+          Last edited {formatRelativeTime(session.updated_at)}
+        </div>
+      </div>
+      <GlassButton
+        variant="secondary"
+        size="sm"
+        onClick={() => onResume(session.id)}
+        className="flex-shrink-0"
+      >
+        Continue
+        <ArrowRight size={14} aria-hidden="true" />
+      </GlassButton>
+    </GlassCard>
+  );
+}
 
 function loadDismissed(): Record<string, boolean> {
   try {
@@ -79,21 +131,21 @@ function HomeGuideCard({
           {guidance.description}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
+          <GlassButton
+            variant="primary"
+            size="sm"
             onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(guidance.primary.room))}
-            className="rounded-md border border-[#4a6bbf] bg-[#4a6bbf] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#3b5aa8]"
           >
             {guidance.primary.label}
-          </button>
+          </GlassButton>
           {secondaryAction && (
-            <button
-              type="button"
+            <GlassButton
+              variant="ghost"
+              size="sm"
               onClick={() => (secondaryAction.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(secondaryAction.room))}
-              className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:border-[var(--link)]/35 hover:text-white"
             >
               {secondaryAction.label}
-            </button>
+            </GlassButton>
           )}
         </div>
       </div>
@@ -175,6 +227,8 @@ export function DashboardHome({
   onRefineWhyMe,
   hasResumeSessions = false,
   sessionCount = 0,
+  recentSession,
+  onResumeSession,
   nudges: _nudges = [],
   onDismissNudge: _onDismissNudge,
   coachRecommendation,
@@ -190,6 +244,9 @@ export function DashboardHome({
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
+      {recentSession && onResumeSession && (
+        <ContinueCard session={recentSession} onResume={onResumeSession} />
+      )}
       <HomeGuideCard
         hasResumeSessions={hasResumeSessions}
         sessionCount={sessionCount}
