@@ -87,7 +87,7 @@ export type MockInterviewSSEEvent =
   | { type: 'stage_start'; stage: string; message: string }
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
-  | { type: 'question_presented'; question: InterviewQuestion }
+  | { type: 'question_presented'; question: InterviewQuestion; total_questions: number }
   | { type: 'answer_evaluated'; evaluation: AnswerEvaluation }
   | { type: 'simulation_complete'; session_id: string; summary: MockInterviewState['final_summary'] }
   | { type: 'pipeline_error'; stage: string; error: string };

@@ -38,10 +38,11 @@ function assessSignal(text: string): SignalLevel {
   if (!trimmed) return 'red';
 
   const words = trimmed.split(/\s+/).length;
-  const hasMetric = /\d/.test(trimmed);
   const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
 
-  if (words >= 15 && hasMetric && sentences >= 2) return 'green';
+  // Green: either a substantive multi-sentence answer (20+ words, 2+ sentences)
+  // or a shorter answer with concrete metrics (15+ words with a number)
+  if ((words >= 20 && sentences >= 2) || (words >= 15 && /\d/.test(trimmed))) return 'green';
   return 'yellow';
 }
 

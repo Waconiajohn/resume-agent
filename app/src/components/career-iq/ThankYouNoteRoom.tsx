@@ -121,7 +121,7 @@ function NoteCard({ title, content, interviewType }: NoteCardProps) {
       {/* Note header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2">
-          <Mail className="h-3.5 w-3.5 text-[#A396E2]" />
+          <Mail className="h-3.5 w-3.5 text-[var(--link)]" />
           <span className="text-[13px] font-semibold text-[var(--text-strong)]">{title}</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -236,7 +236,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
   const label = interviewer.name.trim() || `Interviewer ${index + 1}`;
 
   return (
-    <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-white/[0.04] to-white/[0.02] overflow-hidden">
+    <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
       {/* Header */}
       <div
         role="button"
@@ -250,8 +250,8 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
         }}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[var(--accent-muted)] transition-colors"
       >
-        <div className="h-8 w-8 rounded-full bg-[#A396E2]/10 flex items-center justify-center flex-shrink-0">
-          <User size={14} className="text-[#A396E2]" />
+        <div className="h-8 w-8 rounded-full bg-[var(--link)]/10 flex items-center justify-center flex-shrink-0">
+          <User size={14} className="text-[var(--link)]" />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[14px] font-medium text-[var(--text-strong)]">{label}</span>
@@ -374,12 +374,12 @@ function ActivityFeed({
   return (
     <GlassCard className="p-8">
       {/* Glow orb */}
-      <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[#A396E2]/[0.04] blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[var(--link)]/[0.04] blur-3xl pointer-events-none" />
 
       <div className="flex items-center gap-4 mb-8">
         <div className="relative">
-          <div className="rounded-xl bg-[#A396E2]/10 p-3">
-            <Mail size={20} className="text-[#A396E2]" />
+          <div className="rounded-xl bg-[var(--link)]/10 p-3">
+            <Mail size={20} className="text-[var(--link)]" />
           </div>
           <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[var(--badge-green-text)]/20 border-2 border-[var(--badge-green-text)]/40 flex items-center justify-center">
             <Loader2 size={8} className="text-[var(--badge-green-text)] animate-spin" />
@@ -408,7 +408,7 @@ function ActivityFeed({
                 className="flex items-start gap-3 py-1.5"
                 style={{ opacity }}
               >
-                <div className="h-1.5 w-1.5 rounded-full bg-[#A396E2]/50 mt-2 flex-shrink-0" />
+                <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/50 mt-2 flex-shrink-0" />
                 <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
               </div>
             );
@@ -483,7 +483,7 @@ function ReportView({
 
       {/* Report card header */}
       <GlassCard className="px-5 py-4 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-[#A396E2]/[0.03] blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-[var(--link)]/[0.03] blur-3xl pointer-events-none" />
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-[var(--badge-green-text)]/10 p-2.5">
             <CheckCircle2 size={18} className="text-[var(--badge-green-text)]" />
@@ -543,7 +543,7 @@ function ReportView({
               prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
               prose-strong:text-[var(--text-muted)]
               prose-em:text-[var(--text-soft)]
-              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
+              prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
               prose-hr:border-[var(--line-soft)]"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
@@ -589,6 +589,7 @@ export function ThankYouNoteRoom({
   const [interviewType, setInterviewType] = useState('video');
   const [interviewers, setInterviewers] = useState<(InterviewerInput & { _id: number })[]>([makeEmptyInterviewer()]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [reviewFeedback, setReviewFeedback] = useState('');
   const resumeRef = useRef<string>('');
   const { resumeText: loadedResumeText, loading: loadingResume } = useLatestMasterResumeText();
 
@@ -599,7 +600,9 @@ export function ThankYouNoteRoom({
     activityMessages,
     error,
     currentStage,
+    noteReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = useThankYouNote();
 
@@ -654,7 +657,7 @@ export function ThankYouNoteRoom({
     }
 
     await startPipeline({
-      resumeText: resumeRef.current || '(no resume loaded)',
+      resumeText: resumeRef.current,
       company: company.trim(),
       role: role.trim(),
       interviewDate: interviewDate || undefined,
@@ -670,6 +673,87 @@ export function ThankYouNoteRoom({
     setCompany(initialCompany ?? '');
     setRole(initialRole ?? '');
   }, [initialCompany, initialRole, reset]);
+
+  // Note review gate
+  if (status === 'note_review') {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Review Your Notes</h1>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">
+            The agent has drafted your thank-you notes. Approve to finalize or request changes.
+          </p>
+        </div>
+        <GlassCard className="p-6 space-y-4">
+          {noteReviewData && noteReviewData.quality_score > 0 && (
+            <div className="flex items-center gap-3 pb-2 border-b border-[var(--line-soft)]">
+              <span className="text-[13px] text-[var(--text-soft)]">Draft quality</span>
+              <span className={cn(
+                'text-[13px] font-semibold px-2 py-0.5 rounded-md border',
+                noteReviewData.quality_score >= 80
+                  ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
+                  : noteReviewData.quality_score >= 60
+                  ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
+                  : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20',
+              )}>
+                {noteReviewData.quality_score}%
+              </span>
+            </div>
+          )}
+          {noteReviewData && noteReviewData.notes.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
+                Drafted notes ({noteReviewData.notes.length})
+              </p>
+              {noteReviewData.notes.map((note, i) => {
+                const n = note as Record<string, unknown>;
+                const interviewerName = typeof n.interviewer_name === 'string' ? n.interviewer_name : `Note ${i + 1}`;
+                return (
+                  <div key={i} className="flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
+                    <CheckCircle2 size={13} className="text-[var(--badge-green-text)] flex-shrink-0" />
+                    {interviewerName}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="space-y-2 pt-2">
+            <p className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
+              Request changes (optional)
+            </p>
+            <textarea
+              value={reviewFeedback}
+              onChange={(e) => setReviewFeedback(e.target.value)}
+              placeholder="Describe any changes you'd like made to tone, length, or specific details..."
+              rows={3}
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors resize-none leading-relaxed"
+            />
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <GlassButton
+              variant="primary"
+              onClick={() => void respondToGate('note_review', true)}
+              className="gap-2"
+            >
+              <CheckCircle2 size={14} />
+              Approve Notes
+            </GlassButton>
+            {reviewFeedback.trim() && (
+              <GlassButton
+                variant="ghost"
+                onClick={() => {
+                  void respondToGate('note_review', { approved: false, feedback: reviewFeedback.trim() });
+                  setReviewFeedback('');
+                }}
+              >
+                Request Changes
+              </GlassButton>
+            )}
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
 
   // Complete → report
   if (status === 'complete' && report) {
@@ -722,7 +806,7 @@ export function ThankYouNoteRoom({
           <button
             type="button"
             onClick={handleReset}
-            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             Cancel
           </button>
@@ -754,8 +838,8 @@ export function ThankYouNoteRoom({
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Header */}
       <div className="flex gap-3">
-        <div className="rounded-xl bg-[#A396E2]/10 p-2.5 self-start shrink-0">
-          <Mail size={20} className="text-[#A396E2]" />
+        <div className="rounded-xl bg-[var(--link)]/10 p-2.5 self-start shrink-0">
+          <Mail size={20} className="text-[var(--link)]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Thank-You Notes</h1>
@@ -879,7 +963,7 @@ export function ThankYouNoteRoom({
                     'flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium border transition-all',
                     interviewType === value
                       ? 'border-[var(--link)]/30 bg-[var(--link)]/10 text-[var(--link)]'
-                      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:border-[var(--line-soft)]',
+                      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:border-[var(--line-strong)]',
                   )}
                 >
                   <Icon size={12} />
@@ -909,13 +993,13 @@ export function ThankYouNoteRoom({
       {/* Section 2: Interviewers */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <User size={16} className="text-[#A396E2]" />
+          <User size={16} className="text-[var(--link)]" />
           <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Interviewers</h2>
           <div className="flex-1 h-px bg-[var(--accent-muted)]" />
           <button
             type="button"
             onClick={handleAddInterviewer}
-            className="flex items-center gap-1.5 text-[12px] text-[#A396E2]/60 hover:text-[#A396E2] transition-colors"
+            className="flex items-center gap-1.5 text-[12px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
           >
             <Plus size={13} />
             Add interviewer

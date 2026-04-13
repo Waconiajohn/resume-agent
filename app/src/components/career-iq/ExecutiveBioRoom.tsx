@@ -44,7 +44,7 @@ const FORMAT_OPTIONS: FormatOption[] = [
 
 const LENGTH_OPTIONS = [
   { id: 'short', label: 'Short', description: '50-100 words' },
-  { id: 'standard', label: 'Long', description: '150-250 words' },
+  { id: 'standard', label: 'Standard', description: '150-250 words' },
 ];
 
 // --- Stage labels ---
@@ -59,10 +59,8 @@ const STAGE_LABELS: Record<string, string> = {
 
 function ActivityFeed({
   messages,
-  currentStage: _currentStage,
 }: {
   messages: { id: string; message: string; stage?: string; timestamp: number }[];
-  currentStage: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -80,10 +78,10 @@ function ActivityFeed({
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#A396E2]' : 'bg-[var(--line-strong)]')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[var(--link)]' : 'bg-[var(--line-strong)]')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -119,7 +117,7 @@ function BioSectionCard({ title, content }: BioSectionCardProps) {
     <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-5">
       {/* Bio header row */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[13px] font-semibold text-[#A396E2]/90">{title}</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--link)]/90">{title}</h3>
         <div className="flex items-center gap-2">
           {/* Word count chip */}
           <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
@@ -208,8 +206,8 @@ function ReportView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[var(--link)]/10 p-2.5 border border-[#A396E2]/20">
-            <User size={18} className="text-[#A396E2]" />
+          <div className="rounded-xl bg-gradient-to-br from-[var(--link)]/15 to-[var(--link)]/10 p-2.5 border border-[var(--link)]/20">
+            <User size={18} className="text-[var(--link)]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Collection</h2>
@@ -277,13 +275,13 @@ function ReportView({
             className="prose prose-invert prose-sm max-w-none
               prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
               prose-h1:text-lg prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
-              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#A396E2]/90
+              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[var(--link)]/90
               prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-[var(--text-muted)]
               prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
               prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
               prose-strong:text-[var(--text-strong)]
               prose-em:text-[var(--badge-amber-text)]/80
-              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:bg-[var(--link)]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
               prose-hr:border-[var(--line-soft)] prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
           />
@@ -302,6 +300,8 @@ export function ExecutiveBioRoom() {
   const [selectedLengths, setSelectedLengths] = useState<string[]>(['short', 'standard']);
   const [targetRole, setTargetRole] = useState('');
   const [targetIndustry, setTargetIndustry] = useState('');
+  const [changesFeedback, setChangesFeedback] = useState('');
+  const [showChangesInput, setShowChangesInput] = useState(false);
 
   const {
     status,
@@ -310,11 +310,14 @@ export function ExecutiveBioRoom() {
     activityMessages,
     error,
     currentStage,
+    bioReviewData,
+    pendingGate: _pendingGate,
     startPipeline,
+    respondToGate,
     reset,
   } = useExecutiveBio();
 
-  const isPipelineActive = status === 'connecting' || status === 'running';
+  const isPipelineActive = status === 'connecting' || status === 'running' || status === 'bio_review';
   const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
     productSlug: 'executive-bio',
     skip: isPipelineActive,
@@ -373,7 +376,118 @@ export function ExecutiveBioRoom() {
 
   const handleReset = useCallback(() => {
     reset();
-  }, [reset]);
+    clearPrior();
+  }, [reset, clearPrior]);
+
+  // Bio review gate
+  if (status === 'bio_review' && bioReviewData) {
+    const reviewReport = bioReviewData.final_report ?? '';
+    const reviewScore = typeof bioReviewData.quality_score === 'number' ? bioReviewData.quality_score : null;
+    const reviewSections = parseBioSections(reviewReport);
+
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-gradient-to-br from-[var(--link)]/15 to-[var(--link)]/10 p-2.5 border border-[var(--link)]/20">
+            <User size={20} className="text-[var(--link)]" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-[var(--text-strong)]">Review Your Bio Suite</h1>
+            <p className="text-[13px] text-[var(--text-soft)]">Review the generated bios and approve or request changes</p>
+          </div>
+        </div>
+
+        {/* Quality score */}
+        {reviewScore !== null && (
+          <GlassCard className="px-4 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[13px] text-[var(--text-soft)]">Bio Collection Quality</span>
+              <span className={cn(
+                'text-[13px] font-semibold',
+                reviewScore >= 80 ? 'text-[var(--badge-green-text)]' : reviewScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
+              )}>
+                {reviewScore}% — {reviewScore >= 80 ? 'Strong' : reviewScore >= 60 ? 'Good' : 'Needs Work'}
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  reviewScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : reviewScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
+                )}
+                style={{ width: `${reviewScore}%` }}
+              />
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Bio content */}
+        {reviewSections.length > 0 ? (
+          <div className="space-y-3">
+            {reviewSections.map((section, i) => (
+              <BioSectionCard key={i} title={section.title} content={section.content} />
+            ))}
+          </div>
+        ) : reviewReport ? (
+          <GlassCard className="p-8">
+            <p className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{reviewReport}</p>
+          </GlassCard>
+        ) : null}
+
+        {/* Approval controls */}
+        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+          {showChangesInput ? (
+            <div className="flex flex-col gap-3">
+              <label className="text-[13px] font-semibold text-[var(--text-muted)]">What would you like changed?</label>
+              <textarea
+                value={changesFeedback}
+                onChange={(e) => setChangesFeedback(e.target.value)}
+                placeholder="Describe the changes you'd like..."
+                rows={4}
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 transition-all"
+              />
+              <div className="flex gap-3">
+                <GlassButton
+                  variant="primary"
+                  onClick={() => {
+                    if (changesFeedback.trim()) {
+                      void respondToGate('bio_review', { approved: false, feedback: changesFeedback.trim() });
+                      setShowChangesInput(false);
+                      setChangesFeedback('');
+                    }
+                  }}
+                  disabled={!changesFeedback.trim()}
+                  size="sm"
+                >
+                  Submit Feedback
+                </GlassButton>
+                <GlassButton variant="ghost" onClick={() => setShowChangesInput(false)} size="sm">
+                  Cancel
+                </GlassButton>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <GlassButton
+                variant="primary"
+                onClick={() => void respondToGate('bio_review', true)}
+                className="px-6"
+              >
+                <Check size={15} className="mr-2" />
+                Approve Bio Suite
+              </GlassButton>
+              <GlassButton
+                variant="ghost"
+                onClick={() => setShowChangesInput(true)}
+              >
+                Request Changes
+              </GlassButton>
+            </div>
+          )}
+        </GlassCard>
+      </div>
+    );
+  }
 
   // Complete view
   if (status === 'complete' && report) {
@@ -408,7 +522,7 @@ export function ExecutiveBioRoom() {
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
-                  isActive ? 'bg-[#A396E2]/15 text-[#A396E2] border border-[#A396E2]/25'
+                  isActive ? 'bg-[var(--link)]/15 text-[var(--link)] border border-[var(--link)]/25'
                     : isDone ? 'bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)] border border-[var(--badge-green-text)]/20'
                     : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border border-[var(--line-soft)]',
                 )}>
@@ -425,8 +539,8 @@ export function ExecutiveBioRoom() {
         {/* Activity feed */}
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div className="flex items-center gap-2 mb-5">
-            <div className="rounded-lg bg-[#A396E2]/10 p-2">
-              <Loader2 size={16} className="text-[#A396E2] animate-spin" />
+            <div className="rounded-lg bg-[var(--link)]/10 p-2">
+              <Loader2 size={16} className="text-[var(--link)] animate-spin" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">
@@ -435,13 +549,13 @@ export function ExecutiveBioRoom() {
               <p className="text-[12px] text-[var(--text-soft)]">Crafting bios that position you as the benchmark</p>
             </div>
           </div>
-          <ActivityFeed messages={activityMessages} currentStage={currentStage} />
+          <ActivityFeed messages={activityMessages} />
         </GlassCard>
 
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -477,8 +591,8 @@ export function ExecutiveBioRoom() {
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Room header */}
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-[#A396E2]/15 to-[var(--link)]/10 p-2.5 border border-[#A396E2]/20">
-          <User size={20} className="text-[#A396E2]" />
+        <div className="rounded-xl bg-gradient-to-br from-[var(--link)]/15 to-[var(--link)]/10 p-2.5 border border-[var(--link)]/20">
+          <User size={20} className="text-[var(--link)]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Executive Bio Suite</h1>
@@ -522,7 +636,7 @@ export function ExecutiveBioRoom() {
       {/* Resume section */}
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-4">
-          <Award size={15} className="text-[#A396E2]" />
+          <Award size={15} className="text-[var(--link)]" />
           <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Your Resume</h2>
         </div>
 
@@ -535,12 +649,12 @@ export function ExecutiveBioRoom() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
-              Resume loaded — {Math.round(resumeText.length / 5)} words
+              Resume loaded — {resumeText.trim().split(/\s+/).filter(Boolean).length} words
             </div>
             <button
               type="button"
               onClick={() => setResumeText('')}
-              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
               Clear and paste manually
             </button>
@@ -556,7 +670,7 @@ export function ExecutiveBioRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
             />
           </div>
         )}
@@ -565,7 +679,7 @@ export function ExecutiveBioRoom() {
       {/* Bio format selection */}
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-5">
-          <LayoutGrid size={15} className="text-[#A396E2]" />
+          <LayoutGrid size={15} className="text-[var(--link)]" />
           <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Bio Formats</h2>
           <span className="ml-auto text-[13px] text-[var(--text-soft)]">Select all that apply</span>
         </div>
@@ -581,7 +695,7 @@ export function ExecutiveBioRoom() {
                 className={cn(
                   'flex flex-col items-center gap-2 rounded-xl p-4 border text-center transition-all',
                   isSelected
-                    ? 'bg-[#A396E2]/10 border-[#A396E2]/30 text-[#A396E2]'
+                    ? 'bg-[var(--link)]/10 border-[var(--link)]/30 text-[var(--link)]'
                     : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-soft)]',
                 )}
               >
@@ -632,7 +746,7 @@ export function ExecutiveBioRoom() {
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Chief Operating Officer"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -642,7 +756,7 @@ export function ExecutiveBioRoom() {
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g. Healthcare Technology"
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[#A396E2]/40 focus:ring-2 focus:ring-[#A396E2]/10 transition-all"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/10 transition-all"
             />
           </div>
         </GlassCard>
@@ -660,7 +774,7 @@ export function ExecutiveBioRoom() {
           disabled={!canSubmit}
           className={cn(
             'px-6 py-3 text-[14px] font-medium rounded-xl',
-            'bg-gradient-to-r from-[#A396E2]/20 to-[var(--link)]/15 hover:from-[#A396E2]/30 hover:to-[var(--link)]/25',
+            'bg-gradient-to-r from-[var(--link)]/20 to-[var(--link)]/15 hover:from-[var(--link)]/30 hover:to-[var(--link)]/25',
             !canSubmit && 'opacity-40 cursor-not-allowed',
           )}
         >

@@ -141,8 +141,8 @@ export function BooleanSearchPanel({
       </div>
 
       {error && (
-        <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] px-4 py-3">
-          <p className="text-[12px] text-red-400/70">{error}</p>
+        <div className="mt-4 rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04] px-4 py-3">
+          <p className="text-[12px] text-[var(--badge-red-text)]/70">{error}</p>
         </div>
       )}
 

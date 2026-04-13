@@ -18,14 +18,14 @@ const ALL_STAGES: { key: PipelineStage; label: string }[] = [
 ];
 
 const STAGE_DOT: Record<PipelineStage, string> = {
-  saved: 'bg-white/30',
+  saved: 'bg-[var(--accent-muted)]',
   researching: 'bg-[var(--link)]/60',
   applied: 'bg-[var(--badge-amber-text)]/60',
   screening: 'bg-[var(--badge-amber-text)]/80',
   interviewing: 'bg-[var(--badge-green-text)]/60',
   offer: 'bg-[var(--badge-green-text)]/80',
   closed_won: 'bg-[var(--badge-green-text)]',
-  closed_lost: 'bg-red-400/50',
+  closed_lost: 'bg-[var(--badge-red-text)]/50',
 };
 
 interface OpportunityCardProps {

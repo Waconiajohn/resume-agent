@@ -294,8 +294,8 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
 
         {/* Error state */}
         {error && !running && (
-          <div className="mt-4 rounded-md border border-[#f87171]/20 bg-[#f87171]/5 px-4 py-3">
-            <p className="text-sm text-[#f87171]/80">{error}</p>
+          <div className="mt-4 rounded-md border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 px-4 py-3">
+            <p className="text-sm text-[var(--badge-red-text)]/80">{error}</p>
           </div>
         )}
       </GlassCard>

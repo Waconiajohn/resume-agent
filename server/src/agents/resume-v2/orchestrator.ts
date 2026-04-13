@@ -554,6 +554,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       gap_analysis: gapAnalysis,
       pre_scores: state.pre_scores,
       job_intelligence: jobIntel,
+      candidate_raw_text: options.resume_text,
     });
     state.final_resume = assembled;
 
@@ -637,13 +638,18 @@ function buildApprovedStrategies(
     if (!ps) continue;
 
     if (response.action === 'approve') {
-      // If user selected an alternative bullet, substitute the positioning text
-      const strategy = response.user_context
-        ? { ...ps.strategy, positioning: response.user_context }
-        : ps.strategy;
       approved.push({
         ...ps,
-        strategy,
+        strategy: {
+          ...ps.strategy,
+          // If the user selected an alternative bullet or wrote their own answer, capture it
+          // as verified evidence. This is the user's own words and carries the highest trust
+          // level for the resume writer. Do NOT substitute it directly into positioning —
+          // the writer decides how to incorporate it.
+          ...(response.user_context
+            ? { verified_user_evidence: response.user_context }
+            : {}),
+        },
         target_section: response.target_section,
         target_company: response.target_company,
       });
@@ -652,7 +658,9 @@ function buildApprovedStrategies(
         requirement: ps.requirement,
         strategy: {
           ...ps.strategy,
-          real_experience: `${ps.strategy.real_experience}. Additional context from candidate: ${response.user_context}`,
+          // Preserve original real_experience intact. Store the user's answer separately
+          // so the writer can distinguish what was on the resume vs what the user confirmed.
+          verified_user_evidence: response.user_context,
         },
         target_section: response.target_section,
         target_company: response.target_company,

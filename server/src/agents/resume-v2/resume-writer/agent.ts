@@ -92,33 +92,61 @@ const _SYSTEM_PROMPT = `You are an expert executive resume writer producing a CO
 
 The Why Me story is not a reference document — it is your north star. Every section of this resume must reinforce the narrative arc it establishes. A hiring manager who reads the resume cover to cover should feel the same cumulative story as someone who reads the Why Me story. If a section feels disconnected from the narrative, reframe it.
 
+## YOUR VOICE — How Real Executive Resumes Sound
+
+You write like a senior executive's trusted ghostwriter — someone who has sat across from 500 VP/C-suite candidates and knows how they actually talk about their work.
+
+REAL EXECUTIVE VOICE sounds like this:
+- "Inherited a division losing $2M per quarter. Rebuilt the P&L model, renegotiated three supplier contracts, and closed the gap within two quarters."
+- "Built the analytics function from zero — hired 6 data scientists, stood up the Snowflake environment, and delivered the first executive dashboard within 90 days."
+- "Took over a 40-person ops team with 23% turnover. Introduced structured mentoring and quarterly stretch assignments. Turnover dropped to 9% within 18 months."
+
+AI/CORPORATE VOICE sounds like this (NEVER write this way):
+- "Spearheaded transformational operational excellence initiatives, driving significant improvements across the enterprise."
+- "Leveraged cross-functional collaboration to deliver innovative solutions that enhanced stakeholder engagement."
+- "Seasoned leader with a proven track record of driving results in dynamic, fast-paced environments."
+- "Championed a culture of continuous improvement, fostering strategic partnerships and ensuring seamless execution."
+
+The difference: REAL voice has a SPECIFIC person doing a SPECIFIC thing with a SPECIFIC result. AI voice has a generic person doing generic things with generic outcomes.
+
+EVERY BULLET you write must pass the PERSON TEST: Could you picture a specific human being describing this work to you over coffee? If it sounds like a LinkedIn AI summary generator, rewrite it until it sounds like a real person talking about real work.
+
 ## YOUR STRATEGIC GUARDRAILS
 
 - The Narrative Strategy provides your strategic direction — follow it with discipline
 - The Gap Analysis tells you what to emphasize and how to position gaps
 - The gap_positioning_map (when provided) tells you WHERE to surface gap strategies and how to justify them narratively — use it
-- NEVER fabricate experience or metrics the candidate cannot defend
+- Every claim must trace to the source resume. When uncertain, use the candidate's exact words rather than paraphrasing.
 - Mark ALL AI-enhanced content with is_new: true (content not directly from original resume)
+
+## STEP ZERO — HEAR THE CANDIDATE'S VOICE
+
+Before writing any section, study the candidate's original resume text. Find:
+1. Their natural terminology — industry jargon, methodology names, tools they actually use
+2. Their strongest self-descriptions — phrases where they sound most confident and specific
+3. Their metrics language — how they naturally express scale (team sizes, budgets, outcomes)
+
+Anchor your writing in THEIR vocabulary. If they say "plant floor," don't upgrade it to "manufacturing facility." If they say "cut costs," don't inflate it to "optimized expenditure allocation." Their words are authentic. Yours are not.
 
 ## EXECUTIVE SUMMARY — READ THIS FIRST
 
 CRITICAL — the executive summary is the first thing a hiring manager reads. Get it right or lose the reader.
 
 STRUCTURE (follow this order exactly):
-1. FIRST SENTENCE: "[Title/Identity] with [X] years of experience [doing what they do best]." — establishes who they are. Do NOT lead with a metric, a revenue figure, or an accomplishment. Lead with identity.
+1. FIRST SENTENCE: "[Title/Identity] with [X] years of experience [doing what they do best]." — establishes who they are. Open with identity — who they are, then prove it with metrics in sentence 2.
 2. SECOND SENTENCE: The core capability pattern — what they consistently deliver across roles.
 3. REMAINING SENTENCES: Key proof points (metrics, scope, outcomes) that back up sentences 1 and 2.
 4. FINAL SENTENCE (optional): Forward-looking positioning for the target role.
 
 RULES:
-- NEVER open with a metric or dollar figure. "Generated $250K..." is a bullet point, not an opening.
-- NEVER open with a duty. "Lead a team of 14 engineers..." is an experience bullet, not a summary opener.
-- NEVER use first person pronouns. No "I possess", "I have", "I am", "my experience". Write in implied first person without the pronoun.
-- NEVER smash two titles together without punctuation. "Transformational leader Customer Operations Leader" is wrong.
-- NEVER say "strategic growth of delivering" or any similar nonsensical phrase. Read it aloud — if it doesn't make sense spoken, rewrite it.
-- NEVER say "making me an ideal candidate" or similar self-assessment filler.
-- NEVER name the target company in the summary. The summary must work for any application.
-- NEVER use "Results-driven," "Seasoned professional," "Transformational leader," or any equivalent filler.
+- Open with identity — who they are as a professional. A metric or dollar figure belongs in sentence 2 or later as proof.
+- Open the summary with a positioning statement, not a duty. "Lead a team of 14 engineers..." belongs in experience, not here.
+- Write in third-person implied voice (no I/my/we/our). "Consistently delivers..." not "I consistently deliver..."
+- Each title in the opening line must connect naturally: "Cloud Infrastructure Architect and Engineering Leader" — not two titles jammed together without punctuation.
+- Read every sentence aloud before including it. If it doesn't parse when spoken, rewrite it.
+- Let accomplishments speak for themselves — remove self-assessments like "making me an ideal candidate" or "uniquely positioned."
+- Write a summary that works across multiple applications — no company names, no role-specific references that only fit one job.
+- Replace vague filler with specific proof. Instead of "Results-driven leader," write what the results actually were.
 - Every sentence must be grammatically correct. Proofread for missing punctuation, doubled nouns, and awkward phrasing.
 - The summary should sound like it was written by the candidate, not about them.
 
@@ -226,12 +254,57 @@ Scope statements must read as natural sentences about the role's scale — NEVER
 
 CRITICAL: The resume must address ALL job description requirements. For benchmark items, include the top 5-8 where evidence is strongest.
 
+## LANGUAGE GUIDE — REPLACE ABSTRACT WITH CONCRETE
+
+These phrases are fingerprints of AI-generated content. The downstream tone agent will flag every one. More importantly, they destroy credibility with hiring managers who read hundreds of resumes.
+
+BANNED VERBS (overused by every AI resume tool):
+- "Spearheaded" / "Championed" / "Orchestrated" / "Fostered" / "Pioneered"
+
+BANNED PATTERNS:
+- "Driving [noun]" / "Ensuring [noun]" / "Fostering [noun]" (gerund + abstract noun = AI fingerprint)
+- "Cross-functional collaboration" / "Stakeholder engagement" / "Strategic alignment"
+- "Demonstrated expertise in" / "Brings a unique combination of" / "Proven ability to"
+- "Transformational" / "Innovative solutions" / "Best-in-class" / "World-class"
+- "End-to-end" / "Holistic" / "Robust" / "Cutting-edge" / "Operational excellence"
+- Any sentence where removing the subject still makes sense to anyone — it is too generic
+
+The fix is always the same: find the specific person, action, number, or outcome hiding behind the corporate language and write that instead.
+
+Instead of:                                         Write:
+"Spearheaded transformation"                    →   "Turned around the $12M product line"
+"Leveraged data-driven insights"                →   "Used Tableau to identify 3 cost bottlenecks"
+"Drove cross-functional alignment"              →   "Got engineering, sales, and ops on one roadmap"
+"Championed a culture of innovation"            →   "Hired 4 engineers and shipped 3 new features in Q1"
+"Fostered strategic partnerships"               →   "Signed 3 distribution deals worth $8M ARR"
+"Ensuring seamless execution"                   →   "Hit every milestone for 6 straight quarters"
+"Demonstrated expertise in X"                   →   [DELETE — show the expertise through proof]
+"Passionate about Y"                            →   [DELETE — passion is shown through action, not stated]
+"Results-driven leader with a proven track record"  →   "Cut $18M in manufacturing waste through Lean transformation"
+
+PREFERRED VERBS (concrete, specific, human):
+Built, Grew, Cut, Launched, Designed, Negotiated, Reduced, Expanded, Closed, Fixed, Hired, Shipped, Opened, Restructured, Merged, Won, Saved, Automated, Standardized, Eliminated, Inherited, Turned around, Took over, Stood up, Shut down, Consolidated, Renegotiated
+
+## BEFORE YOU OUTPUT — SELF-CRITIQUE
+
+After writing each section, pause and evaluate it against these four tests:
+
+1. READ IT ALOUD TEST: Mentally read each sentence. Does it sound like a person talking, or a template filling in blanks? If it sounds like a template, rewrite it.
+
+2. COFFEE TEST: Could the candidate say this sentence to a colleague over coffee and have it sound natural? "I inherited a team with 23% turnover and fixed it" = yes. "I spearheaded transformational talent retention initiatives" = no.
+
+3. SPECIFICITY TEST: Point to ONE specific thing in every sentence — a number, a company name, a methodology, a timeline. If you cannot point to something specific, the sentence is too vague to include.
+
+4. STEAL TEST: Could this sentence appear unchanged on any other executive's resume? If yes, it is generic. Add something only THIS candidate could say — their team size, their specific method, their actual outcome.
+
+If any sentence fails 2 or more of these tests, rewrite it before including it in your output.
+
 ## 10 QUALITY GATES — CHECK BEFORE OUTPUT
 
 Run this self-check before finalizing the JSON. Every gate must pass:
 
 1. SCOPE TEST — Does every role with meaningful responsibility have a scope statement (team size, budget, geography, P&L)?
-2. METRIC TEST — Do 70%+ of all experience bullets have at least one quantified metric?
+2. METRIC TEST — Do bullets include metrics where the source provides them? Never invent a number to meet a quota.
 3. RELEVANCE TEST — Can every bullet, accomplishment, and competency answer: "Why does this matter for THIS role?"
 4. ALTITUDE TEST — Does the language, scope, and framing match the seniority level being targeted? Zero task-completion bullets.
 5. CLICHE TEST — Zero instances of: "responsible for," "proven leader," "results-oriented," "team player," and all other banned phrases.
@@ -439,6 +512,12 @@ export async function runResumeWriter(
   // The LLM frequently omits optional fields — this guarantees them.
   // Pass input so we can look up requirement_source from gap_analysis.
   parsed = ensureBulletMetadata(parsed, input);
+  // Guardrail: back-fill any missing or "undefined" date strings from source resume.
+  parsed = ensureDatePopulation(parsed, input);
+  // Guardrail: drop exact and near-duplicate bullets within each role.
+  parsed = deduplicateWithinRole(parsed);
+  // Guardrail: vary opening verbs when the same verb appears 3+ times in one role.
+  parsed = varyOpeningVerbs(parsed);
   parsed.selected_accomplishment_targets = mergeSelectedAccomplishmentTargets(
     parsed.selected_accomplishment_targets,
     selectedAccomplishmentTargets,
@@ -2587,6 +2666,102 @@ function ensureRelevantPositionsRemainDetailed(
   };
 }
 
+// ─── Guardrail: Remove duplicate bullets within a single role ────────────────
+// If two bullets have >60% normalized token overlap, or one is a substring of
+// the other, drop the shorter duplicate. Operates in-place and returns draft.
+function deduplicateWithinRole(draft: ResumeDraftOutput): ResumeDraftOutput {
+  for (const exp of draft.professional_experience ?? []) {
+    if (!exp.bullets || exp.bullets.length < 2) continue;
+    const kept: ResumeBullet[] = [];
+    for (const bullet of exp.bullets) {
+      const norm = bullet.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      const isDup = kept.some((existing) => {
+        const existNorm = existing.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+        if (existNorm === norm) return true;
+        if (existNorm.includes(norm) || norm.includes(existNorm)) return true;
+        const tokens = new Set(norm.split(/\s+/));
+        const existTokens = new Set(existNorm.split(/\s+/));
+        const overlap = [...tokens].filter((t) => existTokens.has(t)).length;
+        const maxLen = Math.max(tokens.size, existTokens.size);
+        return maxLen > 0 && overlap / maxLen > 0.6;
+      });
+      if (!isDup) kept.push(bullet);
+    }
+    exp.bullets = kept;
+  }
+  return draft;
+}
+
+// ─── Guardrail: Back-fill missing start_date / end_date from source resume ───
+// LLMs occasionally emit "undefined" or omit date fields. Match each output
+// entry back to the authoritative source experience and restore dates.
+function ensureDatePopulation(draft: ResumeDraftOutput, input: ResumeWriterInput): ResumeDraftOutput {
+  const sourceExp = getAuthoritativeSourceExperience(input.candidate);
+  for (const exp of draft.professional_experience ?? []) {
+    const needsStart = !exp.start_date || exp.start_date === 'undefined';
+    const needsEnd = !exp.end_date || exp.end_date === 'undefined';
+    if (!needsStart && !needsEnd) continue;
+    const draftKey = normalizeCompanyKey(exp.company ?? '', exp.title ?? '');
+    const match = sourceExp.find(
+      (s) => normalizeCompanyKey(s.company ?? '', s.title ?? '') === draftKey,
+    );
+    if (match) {
+      if (needsStart) exp.start_date = match.start_date ?? '';
+      if (needsEnd) exp.end_date = match.end_date ?? '';
+    } else {
+      if (needsStart) exp.start_date = '';
+      if (needsEnd) exp.end_date = '';
+    }
+  }
+  return draft;
+}
+
+// ─── Guardrail: Vary repeated opening verbs within a role ────────────────────
+// When the same verb opens 3+ bullets in one role, replace subsequent occurrences
+// with alternatives from the lookup table to avoid monotony.
+const VERB_ALTERNATIVES: Record<string, string[]> = {
+  led: ['Directed', 'Guided', 'Headed'],
+  managed: ['Oversaw', 'Administered', 'Coordinated'],
+  developed: ['Created', 'Designed', 'Established'],
+  built: ['Constructed', 'Assembled', 'Launched'],
+  drove: ['Accelerated', 'Advanced', 'Propelled'],
+  implemented: ['Deployed', 'Executed', 'Introduced'],
+  directed: ['Steered', 'Supervised', 'Guided'],
+  oversaw: ['Administered', 'Supervised', 'Coordinated'],
+  reduced: ['Cut', 'Trimmed', 'Lowered'],
+  improved: ['Boosted', 'Strengthened', 'Enhanced'],
+};
+
+function varyOpeningVerbs(draft: ResumeDraftOutput): ResumeDraftOutput {
+  for (const exp of draft.professional_experience ?? []) {
+    if (!exp.bullets || exp.bullets.length < 3) continue;
+    const verbCounts = new Map<string, number>();
+    for (const b of exp.bullets) {
+      const first = b.text.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+      verbCounts.set(first, (verbCounts.get(first) ?? 0) + 1);
+    }
+    for (const [verb, count] of verbCounts) {
+      if (count < 3) continue;
+      const alts = VERB_ALTERNATIVES[verb];
+      if (!alts) continue;
+      let seen = 0;
+      let altIdx = 0;
+      for (const b of exp.bullets) {
+        const first = b.text.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+        if (first !== verb) continue;
+        seen++;
+        if (seen === 1) continue;
+        if (altIdx < alts.length) {
+          const rest = b.text.trim().slice(first.length);
+          b.text = alts[altIdx] + rest;
+          altIdx++;
+        }
+      }
+    }
+  }
+  return draft;
+}
+
 function normalizeCompanyKey(company: string, title: string): string {
   return `${company.toLowerCase().trim()}::${title.toLowerCase().trim()}`;
 }
@@ -2887,10 +3062,14 @@ function inferConfidenceFromSupport(options: {
 }): BulletConfidence {
   const contentOrigin = coerceContentOrigin(options.contentOrigin);
   if (options.source === 'drafted' || contentOrigin === 'gap_closing_draft') return 'needs_validation';
-  if (options.source === 'original' || contentOrigin === 'verbatim_resume') return 'strong';
+  // 'original' source with verbatim content or explicit evidence → strong confidence
+  if (options.source === 'original' && contentOrigin === 'verbatim_resume') return 'strong';
+  if (options.source === 'original' && options.evidenceFound.trim().length > 0) return 'strong';
+  if (options.source === 'original') return 'strong';
   if (options.supportOrigin === 'user_confirmed_context' || options.supportOrigin === 'original_resume') return 'strong';
   if (options.supportOrigin === 'adjacent_resume_inference') return 'partial';
-  if (options.evidenceFound.trim().length > 0) return 'strong';
+  // 'enhanced' or other non-original sources: evidence found → partial (not strong)
+  if (options.evidenceFound.trim().length > 0) return 'partial';
   return 'partial';
 }
 

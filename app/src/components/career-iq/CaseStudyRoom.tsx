@@ -18,7 +18,6 @@ import {
   BarChart3,
   Lightbulb,
   Tag,
-  Bookmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -39,10 +38,8 @@ const STAGE_LABELS: Record<string, string> = {
 
 function ActivityFeed({
   messages,
-  currentStage: _currentStage,
 }: {
   messages: { id: string; message: string; stage?: string; timestamp: number }[];
-  currentStage: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +57,7 @@ function ActivityFeed({
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
               <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[var(--badge-green-text)]' : 'bg-[var(--line-strong)]')} />
@@ -90,6 +87,7 @@ function CaseStudySlider({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            aria-label="Decrease case study count"
             onClick={() => onChange(Math.max(1, value - 1))}
             disabled={value <= 1}
             className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--accent-muted)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
@@ -99,6 +97,7 @@ function CaseStudySlider({
           <span className="w-8 text-center text-[16px] font-bold text-[var(--text-strong)]">{value}</span>
           <button
             type="button"
+            aria-label="Increase case study count"
             onClick={() => onChange(Math.min(5, value + 1))}
             disabled={value >= 5}
             className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1.5 text-[var(--text-soft)] hover:text-[var(--text-strong)] hover:bg-[var(--accent-muted)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
@@ -112,6 +111,7 @@ function CaseStudySlider({
           <button
             key={n}
             type="button"
+            aria-label={`Set to ${n} case stud${n !== 1 ? 'ies' : 'y'}`}
             onClick={() => onChange(n)}
             className={cn(
               'flex-1 h-2 rounded-full transition-all',
@@ -259,12 +259,10 @@ function parseCaseStudySections(content: string): Partial<Record<CaseStudyCardSe
 interface StructuredCaseStudyCardProps {
   title: string;
   content: string;
-  onAddToPortfolio?: (title: string, content: string) => void;
 }
 
-function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: StructuredCaseStudyCardProps) {
+function StructuredCaseStudyCard({ title, content }: StructuredCaseStudyCardProps) {
   const [copied, setCopied] = useState(false);
-  const [addedToPortfolio, setAddedToPortfolio] = useState(false);
 
   const sections = parseCaseStudySections(content);
   const metrics = extractMetrics(content);
@@ -278,12 +276,6 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
       setTimeout(() => setCopied(false), 2000);
     } catch { /* ignore */ }
   }, [content]);
-
-  const handleAddToPortfolio = useCallback(() => {
-    onAddToPortfolio?.(title, content);
-    setAddedToPortfolio(true);
-    setTimeout(() => setAddedToPortfolio(false), 2000);
-  }, [title, content, onAddToPortfolio]);
 
   return (
     <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
@@ -308,19 +300,6 @@ function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: Structure
           >
             {copied ? <Check size={10} /> : <Copy size={10} />}
             {copied ? 'Copied' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            onClick={handleAddToPortfolio}
-            className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
-              addedToPortfolio
-                ? 'bg-[var(--link)]/10 border-[var(--link)]/20 text-[var(--link)]'
-                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
-            )}
-          >
-            <Bookmark size={10} />
-            {addedToPortfolio ? 'Added' : 'Portfolio'}
           </button>
         </div>
       </div>
@@ -415,7 +394,6 @@ function ReportView({
   onReset: () => void;
 }) {
   const [copiedAll, setCopiedAll] = useState(false);
-  const [portfolioCount, setPortfolioCount] = useState(0);
 
   const handleCopyAll = useCallback(async () => {
     try {
@@ -424,10 +402,6 @@ function ReportView({
       setTimeout(() => setCopiedAll(false), 2000);
     } catch { /* ignore */ }
   }, [report]);
-
-  const handleAddToPortfolio = useCallback(() => {
-    setPortfolioCount((c) => c + 1);
-  }, []);
 
   const caseStudies = parseCaseStudies(report);
   const hasParsedStudies = caseStudies.length > 0;
@@ -446,11 +420,6 @@ function ReportView({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {portfolioCount > 0 && (
-            <span className="rounded-md px-2 py-0.5 text-[13px] bg-[var(--link)]/10 border border-[var(--link)]/20 text-[var(--link)]">
-              {portfolioCount} added to portfolio
-            </span>
-          )}
           {qualityScore !== null && (
             <div className={cn(
               'text-[12px] font-semibold px-3 py-1.5 rounded-full border',
@@ -506,12 +475,11 @@ function ReportView({
               key={i}
               title={study.title}
               content={study.content}
-              onAddToPortfolio={handleAddToPortfolio}
             />
           ))}
         </div>
       ) : (
-        <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+        <GlassCard className="p-8 bg-[var(--accent-muted)]">
           <div
             className="prose prose-invert prose-sm max-w-none
               prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
@@ -650,7 +618,7 @@ export function CaseStudyRoom() {
         </div>
 
         {/* Activity feed */}
-        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+        <GlassCard className="p-6 bg-[var(--accent-muted)]">
           <div className="flex items-center gap-2 mb-5">
             <div className="rounded-lg bg-[var(--badge-green-text)]/10 p-2">
               <Loader2 size={16} className="text-[var(--badge-green-text)] animate-spin" />
@@ -662,13 +630,13 @@ export function CaseStudyRoom() {
               <p className="text-[12px] text-[var(--text-soft)]">Building compelling stories from your achievements</p>
             </div>
           </div>
-          <ActivityFeed messages={activityMessages} currentStage={currentStage} />
+          <ActivityFeed messages={activityMessages} />
         </GlassCard>
 
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -747,7 +715,7 @@ export function CaseStudyRoom() {
       )}
 
       {/* Resume section */}
-      <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+      <GlassCard className="p-6 bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles size={15} className="text-[var(--badge-green-text)]" />
           <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Your Resume</h2>
@@ -767,7 +735,7 @@ export function CaseStudyRoom() {
             <button
               type="button"
               onClick={() => setResumeText('')}
-              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+              className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             >
               Clear and paste manually
             </button>
@@ -792,14 +760,15 @@ export function CaseStudyRoom() {
       {/* Options */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left — Focus + count */}
-        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-6">
+        <GlassCard className="p-6 bg-[var(--accent-muted)] flex flex-col gap-6">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-2">
               <Target size={15} className="text-[var(--badge-green-text)]" />
               <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Focus Areas <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
             </div>
-            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">What to emphasize</label>
+            <label htmlFor="focus-areas-input" className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">What to emphasize</label>
             <textarea
+              id="focus-areas-input"
               value={focusAreas}
               onChange={(e) => setFocusAreas(e.target.value)}
               placeholder="e.g. Cost reduction, team leadership, digital transformation, supply chain optimization..."
@@ -812,7 +781,7 @@ export function CaseStudyRoom() {
         </GlassCard>
 
         {/* Right — Target context */}
-        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
+        <GlassCard className="p-6 bg-[var(--accent-muted)] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
             <BarChart3 size={15} className="text-[var(--link)]" />
             <h2 className="text-[14px] font-semibold text-[var(--text-muted)]">Target Context <span className="text-[13px] font-normal text-[var(--text-soft)]">optional</span></h2>
@@ -820,8 +789,9 @@ export function CaseStudyRoom() {
           <p className="text-[12px] text-[var(--text-soft)] -mt-3">Tailor the case studies for a specific role or industry</p>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Role</label>
+            <label htmlFor="target-role-input" className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Role</label>
             <input
+              id="target-role-input"
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
@@ -830,8 +800,9 @@ export function CaseStudyRoom() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Industry</label>
+            <label htmlFor="target-industry-input" className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Target Industry</label>
             <input
+              id="target-industry-input"
               type="text"
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}

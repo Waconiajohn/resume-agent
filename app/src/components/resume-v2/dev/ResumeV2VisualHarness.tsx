@@ -615,7 +615,6 @@ export function ResumeV2VisualHarness() {
           hiringManagerResult={scenario.hiringManagerResult ?? null}
           resolvedFinalReviewConcernIds={[]}
           isFinalReviewStale={scenario.isFinalReviewStale}
-          finalReviewWarningsAcknowledged
           onRequestHiringManagerReview={() => {}}
           onApplyHiringManagerRecommendation={() => {}}
           resolveFinalReviewTarget={resolveConcernTarget}

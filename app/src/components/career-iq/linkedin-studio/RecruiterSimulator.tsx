@@ -34,8 +34,8 @@ const RANK_COLORS: Record<string, string> = {
   top_10_percent: 'text-[var(--badge-green-text)] border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.04]',
   top_25_percent: 'text-[var(--link)] border-[var(--link)]/20 bg-[var(--link)]/[0.04]',
   average: 'text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04]',
-  below_average: 'text-[#ffc4a0] border-[#ffc4a0]/20 bg-[#ffc4a0]/[0.04]',
-  unlikely_to_appear: 'text-red-400 border-red-400/20 bg-red-400/[0.04]',
+  below_average: 'text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04]',
+  unlikely_to_appear: 'text-[var(--badge-red-text)] border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04]',
 };
 
 export function RecruiterSimulator() {
@@ -102,7 +102,7 @@ export function RecruiterSimulator() {
       ? 'text-[var(--link)]'
       : result.visibility_score >= 40
       ? 'text-[var(--badge-amber-text)]'
-      : 'text-red-400';
+      : 'text-[var(--badge-red-text)]';
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,7 +118,7 @@ export function RecruiterSimulator() {
         <div className="flex flex-col gap-3">
           <div>
             <label className="block text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
-              Recruiter Search Terms <span className="text-red-400">*</span>
+              Recruiter Search Terms <span className="text-[var(--badge-red-text)]">*</span>
             </label>
             <input
               type="text"
@@ -169,9 +169,9 @@ export function RecruiterSimulator() {
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-              <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
-              <p className="text-[12px] text-red-300/80">{error}</p>
+            <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+              <AlertCircle size={14} className="text-[var(--badge-red-text)] flex-shrink-0" />
+              <p className="text-[12px] text-[var(--badge-red-text)]/80">{error}</p>
             </div>
           )}
 

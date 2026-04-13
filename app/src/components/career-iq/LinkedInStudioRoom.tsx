@@ -123,9 +123,9 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
     return (
       <div className="flex flex-col gap-4">
         {error && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-            <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-            <p className="text-[13px] text-red-300/80">{error}</p>
+          <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+            <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+            <p className="text-[13px] text-[var(--badge-red-text)]/80">{error}</p>
           </div>
         )}
         {signals.clarity !== 'green' && (
@@ -220,19 +220,19 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                   scores.authenticity >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
                 )}>
-                  Auth {scores.authenticity}
+                  Authenticity {scores.authenticity}
                 </span>
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                   scores.engagement_potential >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
-                )}>
-                  Engage {scores.engagement_potential}
+                )} title="Engagement potential score out of 100">
+                  Engagement {scores.engagement_potential}
                 </span>
                 {content.hookScore != null && (
                   <span className={cn(
                     'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                     content.hookScore >= 60 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
-                  )}>
+                  )} title="Hook strength score out of 100">
                     Hook {content.hookScore}
                   </span>
                 )}
@@ -241,9 +241,9 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           </div>
 
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 mb-4">
-            <pre className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
               {content.postDraft}
-            </pre>
+            </div>
             {content.postHashtags.length > 0 && (
               <p className="mt-3 text-[12px] text-[var(--link)]/60">
                 {content.postHashtags.map((h) => `#${h}`).join(' ')}
@@ -340,9 +340,9 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           </div>
 
           <div className="rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.03] p-4 mb-4">
-            <pre className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
               {content.postDraft}
-            </pre>
+            </div>
             {content.postHashtags.length > 0 && (
               <p className="mt-3 text-[12px] text-[var(--link)]/60">
                 {content.postHashtags.map((h) => `#${h}`).join(' ')}
@@ -365,9 +365,9 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
   if (content.status === 'error') {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-          <p className="text-[13px] text-red-300/80">{content.error}</p>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <p className="text-[13px] text-[var(--badge-red-text)]/80">{content.error}</p>
         </div>
         <GlassButton onClick={content.reset} className="self-start flex items-center gap-2">
           <RotateCcw size={14} />
@@ -436,9 +436,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
     return (
       <div className="flex flex-col gap-4">
         {error && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-            <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-            <p className="text-[13px] text-red-300/80">{error}</p>
+          <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+            <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+            <p className="text-[13px] text-[var(--badge-red-text)]/80">{error}</p>
           </div>
         )}
         {signals.clarity !== 'green' && (
@@ -564,7 +564,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                 <span className={cn(
                   'rounded-md px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                   scores.positioning_alignment >= 80 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10' : 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
-                )}>
+                )} title="Positioning alignment score out of 100">
                   Positioning {scores.positioning_alignment}
                 </span>
               </div>
@@ -572,9 +572,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
           </div>
 
           <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.03] p-4 mb-4">
-            <pre className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
               {editor.currentDraft}
-            </pre>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -653,9 +653,9 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
   if (editor.status === 'error') {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-          <p className="text-[13px] text-red-300/80">{editor.error}</p>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <p className="text-[13px] text-[var(--badge-red-text)]/80">{editor.error}</p>
         </div>
         <GlassButton onClick={editor.reset} className="self-start flex items-center gap-2">
           <RotateCcw size={14} />
@@ -682,7 +682,7 @@ function SectionResult({ label, content }: { label: string; content: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           {copied ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
         </button>
@@ -739,7 +739,7 @@ function ProfileScoreRing({ score, label }: { score: number; label: string }) {
 
 // ─── Profile Optimizer (legacy: wraps useLinkedInOptimizer) ───────────────
 
-function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | null }) {
+function ProfileOptimizer({ report }: { report: string | null }) {
   const [copied, setCopied] = useState<'headline' | 'about' | null>(null);
 
   const parsedSections = report ? parseReportSections(report) : null;
@@ -793,7 +793,7 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
               <button
                 type="button"
                 onClick={() => handleCopy(headline, 'headline')}
-                className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+                className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               >
                 {copied === 'headline' ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
               </button>
@@ -816,7 +816,7 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
               <button
                 type="button"
                 onClick={() => handleCopy(about, 'about')}
-                className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+                className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
               >
                 {copied === 'about' ? <Check size={12} className="text-[var(--badge-green-text)]" /> : <Copy size={12} />}
               </button>
@@ -880,9 +880,9 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
     return (
       <div className="flex flex-col gap-4">
         {inputError && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-            <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-            <p className="text-[13px] text-red-300/80">{inputError}</p>
+          <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+            <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+            <p className="text-[13px] text-[var(--badge-red-text)]/80">{inputError}</p>
           </div>
         )}
 
@@ -900,7 +900,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
-                className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors ml-2"
+                className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors ml-2"
               >
                 Close
               </button>
@@ -919,9 +919,9 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
               )}
             </div>
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 max-h-[500px] overflow-y-auto">
-              <pre className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
+              <div className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">
                 {selectedReport.report_markdown}
-              </pre>
+              </div>
             </div>
             <div className="mt-4">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
@@ -936,7 +936,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
           <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
             <Calendar size={32} className="text-[var(--text-soft)]" />
             <div>
-              <div className="eyebrow-label justify-center">Support workspace</div>
+              <div className="eyebrow-label justify-center">Plan Your Posts</div>
               <p className="text-[15px] font-semibold text-[var(--text-strong)] mb-1">Build Content Plan</p>
               <p className="text-[13px] text-[var(--text-soft)] max-w-[380px]">
                 Use this after the profile and writing direction feel right, so you can sequence strong ideas instead of guessing what to post next.
@@ -1056,9 +1056,9 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
               )}
             </div>
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 max-h-[500px] overflow-y-auto">
-              <pre className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap font-sans">
+              <div className="text-[13px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">
                 {calendar.report}
-              </pre>
+              </div>
             </div>
             <div className="mt-4 flex items-center gap-3">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
@@ -1084,9 +1084,9 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
   if (calendar.status === 'error') {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-          <p className="text-[13px] text-red-300/80">{calendar.error}</p>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <p className="text-[13px] text-[var(--badge-red-text)]/80">{calendar.error}</p>
         </div>
         <GlassButton onClick={calendar.reset} className="self-start flex items-center gap-2">
           <RotateCcw size={14} />
@@ -1239,9 +1239,9 @@ function PostLibrary() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-        <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-        <p className="text-[13px] text-red-300/80">{error}</p>
+      <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+        <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+        <p className="text-[13px] text-[var(--badge-red-text)]/80">{error}</p>
       </div>
     );
   }
@@ -1319,7 +1319,7 @@ function PostLibrary() {
             <button
               type="button"
               onClick={() => handleDelete(post.id)}
-              className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-red-400 transition-colors ml-auto"
+              className="flex items-center gap-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--badge-red-text)] transition-colors ml-auto"
             >
               Delete
             </button>
@@ -1334,7 +1334,7 @@ function LibraryWorkspace() {
   return (
     <div className="space-y-4">
       <GlassCard className="p-6">
-        <div className="eyebrow-label">Support workspace</div>
+        <div className="eyebrow-label">Plan Your Posts</div>
         <h3 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your best LinkedIn work in one place</h3>
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
           Come here when you want to reuse strong drafts or restart from saved work instead of beginning from a blank page.
@@ -1367,7 +1367,7 @@ function KeywordMultiplierNudge() {
       ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/15'
       : postedThisWeek >= 2
       ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/15'
-      : 'text-red-400 bg-red-400/10 border-red-400/15';
+      : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/15';
 
   return (
     <div className={cn('support-callout border px-4 py-3 flex items-start gap-3', colorClass)}>
@@ -1497,9 +1497,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
 
       {/* Global error */}
       {(inputError || optimizer.error) && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-          <p className="text-[13px] text-red-300/80">{inputError || optimizer.error}</p>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[var(--badge-red-text)] flex-shrink-0" />
+          <p className="text-[13px] text-[var(--badge-red-text)]/80">{inputError || optimizer.error}</p>
         </div>
       )}
 
@@ -1509,8 +1509,8 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           type="button"
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'profile'
-              ? 'bg-blue-600 text-white'
-              : 'text-[var(--text-soft)] hover:bg-white/10'
+              ? 'bg-[var(--link)]/[0.12] text-[var(--link)] border-b-2 border-[var(--link)]'
+              : 'text-[var(--text-soft)] hover:bg-[var(--surface-1)]'
           }`}
           onClick={() => setActiveTab('profile')}
         >
@@ -1520,8 +1520,8 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           type="button"
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'content'
-              ? 'bg-blue-600 text-white'
-              : 'text-[var(--text-soft)] hover:bg-white/10'
+              ? 'bg-[var(--link)]/[0.12] text-[var(--link)] border-b-2 border-[var(--link)]'
+              : 'text-[var(--text-soft)] hover:bg-[var(--surface-1)]'
           }`}
           onClick={() => setActiveTab('content')}
         >
@@ -1589,8 +1589,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             {/* Profile editor workflow */}
             <ProfileEditor signals={signals} />
 
-            {/* Results / analytics */}
-            <ResultsSnapshot qualityScore={optimizer.qualityScore} />
+            {/* Results / analytics — only show when there's actual data */}
+            {optimizer.qualityScore !== null && (
+              <ResultsSnapshot qualityScore={optimizer.qualityScore} />
+            )}
 
             {optimizer.experienceEntries.length > 0 && (
               <GlassCard className="p-6">
@@ -1612,10 +1614,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               <LinkedInAuditReportRenderer report={optimizer.auditReport} />
             )}
             {!isOptimizerRunning && !optimizer.auditReport && optimizer.report && (
-              <ProfileOptimizer signals={signals} report={optimizer.report} />
-            )}
-            {!isOptimizerRunning && !optimizer.auditReport && !optimizer.report && (
-              <ProfileOptimizer signals={signals} report={null} />
+              <ProfileOptimizer report={optimizer.report} />
             )}
             {isOptimizerRunning && (
               <ActivityFeed messages={optimizer.activityMessages} label="Optimization in progress..." />

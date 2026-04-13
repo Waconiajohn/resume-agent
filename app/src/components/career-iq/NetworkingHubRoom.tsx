@@ -15,6 +15,7 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
+  CheckCircle2,
   RotateCcw,
   Bell,
   Plus,
@@ -26,6 +27,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNetworkingOutreach } from '@/hooks/useNetworkingOutreach';
 import { useNetworkingContacts, type NetworkingContact, type Touchpoint } from '@/hooks/useNetworkingContacts';
+import type { SequenceReviewData } from '@/types/panels';
 import { useRuleOfFour, CONTACT_ROLE_LABELS, type ContactRole, type RuleOfFourGroup } from '@/hooks/useRuleOfFour';
 import { ContactFormModal, type CreateContactData } from '@/components/career-iq/ContactFormModal';
 import { ContactDetailSheet } from '@/components/career-iq/ContactDetailSheet';
@@ -127,13 +129,13 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
   if (followUps.length === 0) return null;
 
   return (
-    <details className="rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04] overflow-hidden">
+    <details className="group rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04] overflow-hidden">
       <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none hover:bg-[var(--accent-muted)] transition-colors">
         <Bell size={14} className="text-[var(--badge-amber-text)] flex-shrink-0" />
         <span className="text-[13px] font-medium text-[var(--badge-amber-text)]">
           {followUps.length} contact{followUps.length !== 1 ? 's' : ''} need follow-up
         </span>
-        <ChevronDown size={13} className="text-[var(--badge-amber-text)]/50 ml-auto" />
+        <ChevronDown size={13} className="text-[var(--badge-amber-text)]/50 ml-auto transition-transform group-open:rotate-180" />
       </summary>
 
       <div className="border-t border-[var(--badge-amber-text)]/10 px-4 py-3 space-y-2">
@@ -513,7 +515,7 @@ function WeeklyActivity({ contacts: rawContacts }: WeeklyActivityProps) {
 
     return [
       { label: 'New Contacts', value: String(weekContacts.length), period: 'this week' },
-      { label: 'Responses', value: String(weekResponses.length), period: 'this week' },
+      { label: 'Active Contacts', value: String(weekResponses.length), period: 'this week' },
       { label: 'Total Network', value: String(contacts.length), period: 'all time' },
     ];
   }, [contacts, weekStart]);
@@ -607,7 +609,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
               key={recruiter.id}
               type="button"
               onClick={() => onOpenContact(recruiter)}
-              className="w-full flex items-center gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-left hover:bg-[var(--accent-muted)] transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-left hover:bg-[var(--surface-1)] transition-colors"
             >
               <div className="h-8 w-8 rounded-full bg-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
                 <span className="text-[12px] font-bold text-[var(--text-soft)]">
@@ -647,6 +649,106 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact
           );
         })}
       </div>
+    </GlassCard>
+  );
+}
+
+// --- Sequence Review Gate ---
+
+interface SequenceReviewGateProps {
+  data: SequenceReviewData;
+  onRespond: (response: true | { approved: false; feedback: string }) => void;
+}
+
+function SequenceReviewGate({ data, onRespond }: SequenceReviewGateProps) {
+  const [feedback, setFeedback] = useState('');
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  return (
+    <GlassCard className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[13px] font-semibold text-[var(--text-strong)]">
+            Review outreach sequence for {data.target_name}
+          </div>
+          <div className="text-[12px] text-[var(--text-soft)] mt-0.5">
+            {data.target_company} · {data.messages.length} messages ·{' '}
+            <span
+              className={cn(
+                'font-medium',
+                data.quality_score >= 80
+                  ? 'text-[var(--badge-green-text)]'
+                  : data.quality_score >= 60
+                  ? 'text-[var(--badge-amber-text)]'
+                  : 'text-[var(--badge-red-text)]',
+              )}
+            >
+              Quality: {data.quality_score}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+        {data.messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 space-y-1"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-[var(--text-muted)] capitalize">
+                {msg.type.replace(/_/g, ' ')}
+              </span>
+              {msg.timing && (
+                <span className="text-[12px] text-[var(--link)]/50 bg-[var(--link)]/[0.06] px-1.5 py-0.5 rounded-md border border-[var(--link)]/10">
+                  {msg.timing}
+                </span>
+              )}
+              <span className="ml-auto text-[12px] text-[var(--text-soft)]">{msg.char_count} chars</span>
+            </div>
+            {msg.subject && (
+              <div className="text-[12px] text-[var(--text-soft)] italic">Subject: {msg.subject}</div>
+            )}
+            <pre className="text-[12px] text-[var(--text-soft)] whitespace-pre-wrap font-sans leading-relaxed line-clamp-4">
+              {msg.body}
+            </pre>
+          </div>
+        ))}
+      </div>
+
+      {showFeedback ? (
+        <div className="space-y-2">
+          <textarea
+            aria-label="Revision feedback"
+            placeholder="Describe what you'd like changed..."
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 resize-none"
+          />
+          <div className="flex items-center gap-2">
+            <GlassButton
+              onClick={() => onRespond({ approved: false, feedback: feedback.trim() })}
+              disabled={!feedback.trim()}
+            >
+              Submit Feedback
+            </GlassButton>
+            <GlassButton variant="ghost" onClick={() => setShowFeedback(false)}>
+              Cancel
+            </GlassButton>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <GlassButton onClick={() => onRespond(true)}>
+            <Check size={14} />
+            Approve Sequence
+          </GlassButton>
+          <GlassButton variant="ghost" onClick={() => setShowFeedback(true)}>
+            Request Changes
+          </GlassButton>
+        </div>
+      )}
     </GlassCard>
   );
 }
@@ -841,6 +943,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                 <button
                   key={method}
                   type="button"
+                  aria-pressed={messagingMethod === method}
                   onClick={() => setMessagingMethod(method)}
                   className={cn(
                     'rounded-lg border px-3 py-2 text-left transition-all',
@@ -882,7 +985,6 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
-                      second: '2-digit',
                     })}
                   </span>
                   <span className="text-[var(--text-soft)]">{msg.message}</span>
@@ -891,6 +993,14 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Sequence review gate */}
+      {outreach.status === 'sequence_review' && outreach.sequenceReviewData && (
+        <SequenceReviewGate
+          data={outreach.sequenceReviewData}
+          onRespond={(response) => outreach.respondToGate('sequence_review', response)}
+        />
       )}
 
       {/* Error state */}
@@ -1064,7 +1174,7 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
 
   const handleDone = useCallback(
     async (id: string) => {
-      await networkingContacts.logTouchpoint(id, 'email');
+      await networkingContacts.logTouchpoint(id, 'follow_up');
       const nextFollowup = new Date(Date.now() + FOLLOWUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
       await networkingContacts.updateContact(id, { next_followup_at: nextFollowup });
       // Remove from follow-ups list
@@ -1126,7 +1236,11 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
               : 'text-red-400 border-red-400/20 bg-red-400/[0.05]',
           )}
         >
-          <AlertCircle size={12} />
+          {niImportStatus === 'success' ? (
+            <CheckCircle2 size={12} />
+          ) : (
+            <AlertCircle size={12} />
+          )}
           {niImportMessage}
         </div>
       )}

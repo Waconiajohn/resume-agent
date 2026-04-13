@@ -32,8 +32,6 @@ interface ExportBarProps {
   queueHandled?: number;
   queueTotal?: number;
   nextQueueItemLabel?: string;
-  warningsAcknowledged?: boolean;
-  onAcknowledgeWarnings?: () => void;
   /** Optional: called when the user clicks Copy. Supply a plain-text representation. */
   onCopy?: () => string | undefined;
   /** Job application URL — when present, shows the "Apply to This Job" button */
@@ -60,8 +58,6 @@ export function ExportBar({
   queueHandled = 0,
   queueTotal = 0,
   nextQueueItemLabel,
-  warningsAcknowledged = false,
-  onAcknowledgeWarnings: _onAcknowledgeWarnings,
   onCopy,
   jobUrl,
   sessionId,
@@ -78,7 +74,6 @@ export function ExportBar({
     isFinalReviewStale,
     unresolvedCriticalCount,
     unresolvedHardGapCount,
-    warningsAcknowledged,
   });
 
   // Health score: percentage of queue items that are handled

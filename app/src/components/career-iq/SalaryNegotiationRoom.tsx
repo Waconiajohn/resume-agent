@@ -56,7 +56,7 @@ function ConfidenceGauge({ score, size = 80, label }: { score: number; size?: nu
           <circle
             cx={cx} cy={cy} r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--line-soft)"
             strokeWidth={4}
           />
           <circle
@@ -267,7 +267,7 @@ function TalkingPointItem({ point, index }: { point: string; index: number }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-[var(--accent-muted)]"
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1 rounded-lg hover:bg-[var(--accent-muted)]"
           title="Copy to clipboard"
         >
           {copied
@@ -328,7 +328,7 @@ const COUNTER_SCENARIOS: ScenarioCard[] = [
   {
     scenario: 'Already at the top of the band',
     employer_says: `"Your ask is actually above the top of our band for this role."`,
-    recommended_response: `"I appreciate the transparency. Given the scope of what you've described — particularly [specific element] — I'd welcome a conversation about whether there's flexibility in the title, reporting structure, or total package. I want to make this work."`,
+    recommended_response: `"I appreciate the transparency. Given the scope of what you've described — particularly a specific benefit or term — I'd welcome a conversation about whether there's flexibility in the title, reporting structure, or total package. I want to make this work."`,
   },
   {
     scenario: 'Asking about your current comp',
@@ -381,10 +381,8 @@ function CounterScenarioCards() {
 
 function ActivityFeed({
   messages,
-  currentStage: _currentStage,
 }: {
   messages: { id: string; message: string; stage?: string; timestamp: number }[];
-  currentStage: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -402,7 +400,7 @@ function ActivityFeed({
       ) : (
         messages.map((msg, i) => {
           const age = messages.length - 1 - i;
-          const opacity = age === 0 ? 'text-[var(--text-muted)]' : age <= 2 ? 'text-[var(--text-soft)]' : age <= 5 ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]';
+          const opacity = age === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
               <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[var(--link)]' : 'bg-[var(--line-strong)]')} />
@@ -418,13 +416,6 @@ function ActivityFeed({
 
 // --- Report view ---
 
-// Static talking points for the report view (production would extract from the markdown)
-const STATIC_TALKING_POINTS = [
-  "Based on market data for this role and geography, the total compensation for this level typically ranges 10-20% above what's been offered. I'd like to explore whether we can close that gap.",
-  "I want to be clear: I'm excited about this role and the team. I'm raising these items because I want us to start on terms that reflect the scope of what I'll be delivering.",
-  "Rather than focusing only on base salary, I'd like to think about the total package — including first-year bonus guarantee, equity refresh schedule, and any signing consideration for what I'm leaving behind.",
-  "I have a number below which this transition doesn't make financial sense given what I'm currently forfeiting. I'm not saying that to create pressure — I want to be transparent so we can find something that works.",
-];
 
 function ReportView({
   report,
@@ -458,7 +449,7 @@ function ReportView({
   const salaryMin = p50 ? Math.round(p50 * 0.8) : undefined;
   const salaryMax = p75 ? Math.round(p75 * 1.15) : undefined;
 
-  const confidenceScore = qualityScore ?? 72;
+  const confidenceScore = qualityScore;
 
   const leverCards: LeverCard[] = [
     {
@@ -517,7 +508,9 @@ function ReportView({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfidenceGauge score={confidenceScore} size={72} label="Position Strength" />
+          {confidenceScore !== null && confidenceScore !== undefined && (
+            <ConfidenceGauge score={confidenceScore} size={72} label="Position Strength" />
+          )}
           <div className="flex flex-col gap-2">
             {onPractice && (
               <GlassButton variant="ghost" onClick={onPractice} size="sm" className="text-[var(--badge-red-text)]/80 hover:text-[var(--badge-red-text)]">
@@ -570,7 +563,7 @@ function ReportView({
               'px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
               activeTab === tab
                 ? 'bg-[var(--surface-1)] text-[var(--text-strong)] shadow-sm'
-                : 'text-[var(--text-soft)] hover:text-[var(--text-soft)]',
+                : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
             )}
           >
             {label}
@@ -587,11 +580,9 @@ function ReportView({
               <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Verbatim Talking Points</h3>
               <span className="text-[13px] text-[var(--text-soft)] ml-1">use or adapt these word-for-word</span>
             </div>
-            <div className="space-y-2.5">
-              {STATIC_TALKING_POINTS.map((point, i) => (
-                <TalkingPointItem key={i} point={point} index={i} />
-              ))}
-            </div>
+            <p className="text-[13px] text-[var(--text-soft)] leading-relaxed">
+              Personalized talking points will appear here after your negotiation analysis completes.
+            </p>
           </GlassCard>
 
           {/* Counter-offer scenarios */}
@@ -604,7 +595,7 @@ function ReportView({
           </GlassCard>
 
           {/* Full report markdown */}
-          <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+          <GlassCard className="p-8 bg-[var(--accent-muted)]">
             <div
               className="prose prose-invert prose-sm max-w-none
                 prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
@@ -798,10 +789,12 @@ export function SalaryNegotiationRoom({
     currentStage,
     strategyReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = useSalaryNegotiation();
+  const [strategyFeedback, setStrategyFeedback] = useState('');
 
-  const isPipelineActive = status === 'connecting' || status === 'running';
+  const isPipelineActive = status === 'connecting' || status === 'running' || status === 'strategy_review';
   const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
     productSlug: 'salary-negotiation',
     skip: isPipelineActive,
@@ -862,6 +855,107 @@ export function SalaryNegotiationRoom({
         mode="practice"
         onBack={() => setShowSimulation(false)}
       />
+    );
+  }
+
+  // Strategy review gate
+  if (status === 'strategy_review') {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Negotiation Prep</h1>
+          <p className="text-[13px] text-[var(--text-soft)]">Review your strategy before we write the full brief</p>
+        </div>
+
+        {strategyReviewData && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="rounded-lg bg-[var(--link)]/10 p-1.5">
+                <TrendingUp size={14} className="text-[var(--link)]" />
+              </div>
+              <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Strategy Review</h2>
+            </div>
+
+            {strategyReviewData.opening_position && (
+              <div>
+                <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Opening Position</span>
+                <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{strategyReviewData.opening_position}</p>
+              </div>
+            )}
+            {strategyReviewData.walk_away_point && (
+              <div>
+                <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Walk-Away Point</span>
+                <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{strategyReviewData.walk_away_point}</p>
+              </div>
+            )}
+            {strategyReviewData.batna && (
+              <div>
+                <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">BATNA</span>
+                <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{strategyReviewData.batna}</p>
+              </div>
+            )}
+            {strategyReviewData.approach && (
+              <div>
+                <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Recommended Approach</span>
+                <p className="mt-1 text-[13px] text-[var(--text-muted)] leading-relaxed">{strategyReviewData.approach}</p>
+              </div>
+            )}
+            {strategyReviewData.market_p50 !== undefined && (
+              <div className="flex items-center gap-6 pt-2 border-t border-[var(--line-soft)]">
+                <div>
+                  <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Market P50</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-[var(--text-strong)]">${strategyReviewData.market_p50.toLocaleString()}</p>
+                </div>
+                {strategyReviewData.market_p75 !== undefined && (
+                  <div>
+                    <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Market P75</span>
+                    <p className="mt-0.5 text-[14px] font-semibold text-[var(--text-strong)]">${strategyReviewData.market_p75.toLocaleString()}</p>
+                  </div>
+                )}
+                {strategyReviewData.data_confidence && (
+                  <div>
+                    <span className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Data Confidence</span>
+                    <p className="mt-0.5 text-[13px] text-[var(--text-muted)] capitalize">{strategyReviewData.data_confidence}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </GlassCard>
+        )}
+
+        <GlassCard className="p-6 space-y-4">
+          <h3 className="text-[14px] font-semibold text-[var(--text-muted)]">Request Changes</h3>
+          <TextareaField
+            label="Feedback (optional)"
+            value={strategyFeedback}
+            onChange={setStrategyFeedback}
+            placeholder="Describe any changes you'd like to the strategy before we continue..."
+            rows={3}
+          />
+        </GlassCard>
+
+        <div className="flex items-center gap-3">
+          <GlassButton
+            variant="primary"
+            onClick={() => respondToGate('strategy_review', true)}
+            className="px-6"
+          >
+            <Check size={14} className="mr-1.5" />
+            Approve Strategy
+          </GlassButton>
+          {strategyFeedback.trim().length > 0 && (
+            <GlassButton
+              variant="ghost"
+              onClick={() => {
+                respondToGate('strategy_review', { approved: false, feedback: strategyFeedback });
+                setStrategyFeedback('');
+              }}
+            >
+              Request Changes
+            </GlassButton>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -934,7 +1028,7 @@ export function SalaryNegotiationRoom({
           })}
         </div>
 
-        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+        <GlassCard className="p-6 bg-[var(--accent-muted)]">
           <div className="flex items-center gap-2 mb-5">
             <div className="rounded-lg bg-[var(--link)]/10 p-2">
               <Loader2 size={16} className="text-[var(--link)] animate-spin" />
@@ -946,13 +1040,13 @@ export function SalaryNegotiationRoom({
               <p className="text-[12px] text-[var(--text-soft)]">Reviewing market context and shaping your negotiation brief</p>
             </div>
           </div>
-          <ActivityFeed messages={activityMessages} currentStage={currentStage} />
+          <ActivityFeed messages={activityMessages} />
         </GlassCard>
 
         <button
           type="button"
           onClick={handleReset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors self-start"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors self-start"
         >
           Cancel
         </button>
@@ -1151,7 +1245,7 @@ export function SalaryNegotiationRoom({
 
       {/* Two-column form */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
+        <GlassCard className="p-6 bg-[var(--accent-muted)] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
             <div className="rounded-lg bg-[var(--link)]/10 p-1.5">
               <Target size={14} className="text-[var(--link)]" />
@@ -1206,7 +1300,7 @@ export function SalaryNegotiationRoom({
         </GlassCard>
 
         <div className="flex flex-col gap-5">
-          <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
+          <GlassCard className="p-6 bg-[var(--accent-muted)] flex flex-col gap-5">
             <div className="flex items-center gap-2 mb-1">
               <div className="rounded-lg bg-[var(--badge-green-text)]/10 p-1.5">
                 <Shield size={14} className="text-[var(--badge-green-text)]" />
@@ -1240,7 +1334,7 @@ export function SalaryNegotiationRoom({
             />
           </GlassCard>
 
-          <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
+          <GlassCard className="p-6 bg-[var(--accent-muted)] flex flex-col gap-5">
             <div className="flex items-center gap-2 mb-1">
               <div className="rounded-lg bg-[var(--badge-amber-text)]/10 p-1.5">
                 <Briefcase size={14} className="text-[var(--badge-amber-text)]" />

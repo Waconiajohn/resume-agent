@@ -18,11 +18,11 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
 
   return (
     <div
-      className="bg-white rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.35)] p-6"
+      className="bg-[var(--surface-elevated)] rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.15)] border border-[var(--line-soft)] p-6"
       role="status"
       aria-live="polite"
     >
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-soft)] mb-4">
         Building Your Role-Specific Resume
       </p>
 
@@ -44,10 +44,10 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
                 className={[
                   'flex items-center justify-center h-8 w-8 rounded-full text-xs font-semibold transition-colors duration-300',
                   isDone || isFinalDone
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-[var(--link)] text-white'
                     : isActive
-                      ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-400'
-                      : 'bg-neutral-100 text-neutral-400',
+                      ? 'bg-[var(--link)]/15 text-[var(--link)] ring-2 ring-[var(--link)]/40'
+                      : 'bg-[var(--surface-1)] text-[var(--text-soft)]',
                 ].join(' ')}
               >
                 {isDone || isFinalDone ? (
@@ -62,10 +62,10 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
                 className={[
                   'text-[11px] text-center leading-tight',
                   isDone || isFinalDone
-                    ? 'text-neutral-600 font-medium'
+                    ? 'text-[var(--text-muted)] font-medium'
                     : isActive
-                      ? 'text-blue-600 font-semibold'
-                      : 'text-neutral-400',
+                      ? 'text-[var(--link)] font-semibold'
+                      : 'text-[var(--text-soft)]',
                 ].join(' ')}
               >
                 {step.label}
@@ -76,10 +76,10 @@ export function PipelineProgressCard({ stage, isComplete, companyAndRole }: Pipe
       </div>
 
       {/* Status line */}
-      <p className="text-[15px] text-neutral-600 text-center">{statusMessage}</p>
+      <p className="text-[15px] text-[var(--text-muted)] text-center">{statusMessage}</p>
 
       {companyAndRole && (
-        <p className="mt-2 text-[12px] text-neutral-400 text-center">{companyAndRole}</p>
+        <p className="mt-2 text-[12px] text-[var(--text-soft)] text-center">{companyAndRole}</p>
       )}
     </div>
   );

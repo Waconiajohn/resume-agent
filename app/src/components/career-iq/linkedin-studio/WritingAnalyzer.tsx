@@ -39,16 +39,16 @@ const ENGAGEMENT_COLORS: Record<string, string> = {
   high: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
   above_average: 'text-[var(--link)] bg-[var(--link)]/10',
   average: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
-  below_average: 'text-[#ffc4a0] bg-[#ffc4a0]/10',
-  low: 'text-red-400 bg-red-400/10',
+  below_average: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
+  low: 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10',
 };
 
 const AI_RISK_COLORS: Record<string, string> = {
   very_low: 'text-[var(--badge-green-text)]',
   low: 'text-[var(--link)]',
   moderate: 'text-[var(--badge-amber-text)]',
-  high: 'text-[#ffc4a0]',
-  very_high: 'text-red-400',
+  high: 'text-[var(--badge-amber-text)]',
+  very_high: 'text-[var(--badge-red-text)]',
 };
 
 const CONTEXT_OPTIONS: { value: string; label: string }[] = [
@@ -116,7 +116,7 @@ export function WritingAnalyzer() {
       ? 'text-[var(--link)]'
       : result.overall_score >= 40
       ? 'text-[var(--badge-amber-text)]'
-      : 'text-red-400';
+      : 'text-[var(--badge-red-text)]';
 
   return (
     <div className="flex flex-col gap-4">
@@ -161,9 +161,9 @@ export function WritingAnalyzer() {
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-              <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
-              <p className="text-[12px] text-red-300/80">{error}</p>
+            <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 flex items-center gap-3">
+              <AlertCircle size={14} className="text-[var(--badge-red-text)] flex-shrink-0" />
+              <p className="text-[12px] text-[var(--badge-red-text)]/80">{error}</p>
             </div>
           )}
 
@@ -202,7 +202,7 @@ export function WritingAnalyzer() {
                 <p className={cn(
                   'text-[18px] font-bold tabular-nums',
                   result.authenticity_score >= 80 ? 'text-[var(--badge-green-text)]' :
-                  result.authenticity_score >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-red-400',
+                  result.authenticity_score >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
                 )}>{result.authenticity_score}</p>
               </div>
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 text-center">
@@ -210,7 +210,7 @@ export function WritingAnalyzer() {
                 <p className={cn(
                   'text-[18px] font-bold tabular-nums',
                   result.hook_quality >= 70 ? 'text-[var(--link)]' :
-                  result.hook_quality >= 50 ? 'text-[var(--badge-amber-text)]' : 'text-red-400',
+                  result.hook_quality >= 50 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
                 )}>{result.hook_quality}</p>
               </div>
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3 text-center">
@@ -232,8 +232,8 @@ export function WritingAnalyzer() {
             <span className="text-[12px] font-medium px-2 py-0.5 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]">
               {result.readability_level.replace(/_/g, ' ')}
             </span>
-            <span className={cn('text-[12px] font-medium px-2 py-0.5 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)]', AI_RISK_COLORS[result.ai_detection_risk] ?? 'text-[var(--text-soft)]')}>
-              Detection risk: {result.ai_detection_risk.replace(/_/g, ' ')}
+            <span className={cn('text-[12px] font-medium px-2 py-0.5 rounded-full border border-[var(--line-soft)] bg-[var(--accent-muted)]', AI_RISK_COLORS[result.ai_detection_risk] ?? 'text-[var(--text-soft)]')} title="How natural and authentic the writing sounds">
+              Authenticity: {result.ai_detection_risk === 'very_low' ? 'very strong' : result.ai_detection_risk === 'low' ? 'strong' : result.ai_detection_risk === 'moderate' ? 'fair' : result.ai_detection_risk === 'high' ? 'weak' : 'needs work'}
             </span>
           </div>
 

@@ -139,7 +139,8 @@ export function useCaseStudy() {
         case 'pipeline_complete':
           setState((prev) => ({
             ...prev,
-            status: prev.report ? 'complete' : prev.status,
+            status: prev.report ? 'complete' : 'error',
+            error: prev.report ? null : 'Pipeline completed without generating a report',
           }));
           abortRef.current?.abort();
           break;

@@ -1,6 +1,8 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { API_BASE } from '@/lib/api';
 import { EmptyStateIllustration } from '@/components/shared/EmptyStateIllustration';
+import { StarStoriesReviewPanel } from '@/components/panels/StarStoriesReviewPanel';
 import {
   Mic,
   Building2,
@@ -151,7 +153,7 @@ function ReadinessGauge({ score, size = 72 }: { score: number; size?: number }) 
         <circle
           cx={cx} cy={cy} r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="var(--line-soft)"
           strokeWidth={4}
         />
         <circle
@@ -566,8 +568,12 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
                   <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{interview.round}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-[12px] font-medium text-[var(--text-soft)]">{interview.date}</div>
-                  <div className="text-[13px] text-[var(--text-soft)]">{interview.time}</div>
+                  {interview.date !== 'TBD' && (
+                    <div className="text-[12px] font-medium text-[var(--text-soft)]">{interview.date}</div>
+                  )}
+                  {interview.time !== 'TBD' && (
+                    <div className="text-[13px] text-[var(--text-soft)]">{interview.time}</div>
+                  )}
                   <div className="text-[12px] text-[var(--text-soft)] capitalize mt-0.5">{interview.type}</div>
                 </div>
               </button>
@@ -694,7 +700,6 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
       )}
       <div className="space-y-3">
         {history.map((interview) => {
-          const _outcome = outcomeConfig[interview.outcome];
           return (
             <div key={interview.id} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
               <div className="flex items-center justify-between mb-1">
@@ -707,6 +712,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
                       <button
                         key={o}
                         type="button"
+                        aria-pressed={isActive}
                         onClick={() => onUpdateOutcome(interview.id, o)}
                         className={cn(
                           'text-[12px] px-1.5 py-0.5 rounded-full transition-colors',
@@ -788,17 +794,6 @@ function PrepProgress({ company, activityMessages, currentStage }: {
 
 // --- Prep Report View ---
 
-// Sample question bank — in production this would be extracted from the report markdown
-const SAMPLE_QUESTIONS: QuestionBankItem[] = [
-  { question: 'Tell me about a time you had to align a cross-functional team around a controversial decision.', category: 'behavioral', difficulty: 'hard' },
-  { question: 'Walk me through how you would approach your first 30 days in this role.', category: 'situational', difficulty: 'medium' },
-  { question: 'How do you prioritize competing initiatives when resources are constrained?', category: 'strategic', difficulty: 'hard' },
-  { question: 'Describe a significant technical challenge you have solved at scale.', category: 'technical', difficulty: 'hard' },
-  { question: 'Your resume shows strong individual contributor history. This role requires leading a team of 20+ — tell me about the largest team you have directly managed.', category: 'trap', difficulty: 'hard' },
-  { question: 'How do you build alignment with stakeholders who have competing priorities?', category: 'behavioral', difficulty: 'medium' },
-  { question: 'What metrics do you use to measure success in the first 90 days?', category: 'situational', difficulty: 'easy' },
-  { question: 'Describe your approach to managing underperformance on your team.', category: 'behavioral', difficulty: 'medium' },
-];
 
 function PrepReport({ company, role, report, qualityScore, onBack }: {
   company: string;
@@ -895,7 +890,12 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
         </GlassCard>
       ) : (
         <GlassCard className="p-6">
-          <QuestionBank questions={SAMPLE_QUESTIONS} />
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <ClipboardList size={24} className="text-[var(--text-soft)] mb-3" />
+            <p className="text-[13px] text-[var(--text-soft)] max-w-sm leading-relaxed">
+              Practice questions will be generated from your interview prep report. Run a prep session to get role-specific questions.
+            </p>
+          </div>
         </GlassCard>
       )}
     </div>
@@ -934,7 +934,7 @@ function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterview
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/interview-prep/follow-up-email', {
+      const res = await fetch(`${API_BASE}/interview-prep/follow-up-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1244,7 +1244,9 @@ export function InterviewLabRoom({
     activityMessages,
     error,
     currentStage,
+    starStoriesReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = useInterviewPrep();
   const { priorResult: savedPrepResult, loading: savedPrepLoading } = usePriorResult<{
@@ -1443,6 +1445,7 @@ export function InterviewLabRoom({
       setViewMode('mock_interview');
     } catch (err) {
       console.error('[InterviewLab] Failed to load resume for mock interview:', err);
+      setMockInterviewError('Something went wrong. Please try again.');
     } finally {
       setMockInterviewLoading(false);
     }
@@ -1463,6 +1466,7 @@ export function InterviewLabRoom({
       setViewMode('mock_interview');
     } catch (err) {
       console.error('[InterviewLab] Failed to load resume for practice session:', err);
+      setMockInterviewError('Something went wrong. Please try again.');
     } finally {
       setMockInterviewLoading(false);
     }
@@ -1471,11 +1475,6 @@ export function InterviewLabRoom({
   const handleMockInterviewBack = useCallback(() => {
     setViewMode('lab');
     setMockInterviewConfig(null);
-  }, []);
-
-  const _setFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
-    setActiveSection('follow_up');
-    setFollowUpView(view);
   }, []);
 
   const toggleFollowUpTool = useCallback((view: InterviewLabFollowUpView) => {
@@ -1553,6 +1552,11 @@ export function InterviewLabRoom({
               Back to Interview Prep
             </GlassButton>
           </GlassCard>
+        ) : status === 'star_stories_review' && starStoriesReviewData ? (
+          <StarStoriesReviewPanel
+            data={starStoriesReviewData}
+            onPipelineRespond={(gate, response) => void respondToGate(gate, response)}
+          />
         ) : (
           <>
             {jdWarning && (
@@ -1777,6 +1781,7 @@ export function InterviewLabRoom({
             <DebriefForm
               onSave={handleDebriefSave}
               onCancel={() => setFollowUpView('overview')}
+              onNavigateToThankYou={() => setFollowUpView('thank_you')}
               initialCompany={activeCompany}
               initialRole={activeRole}
               initialJobApplicationId={activeJobApplicationId}

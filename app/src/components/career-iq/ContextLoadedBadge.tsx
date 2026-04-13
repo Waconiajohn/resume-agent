@@ -80,13 +80,13 @@ export function ContextLoadedBadge({ contextTypes, className }: ContextLoadedBad
     <div
       className={cn(
         'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-        'bg-indigo-500/10 border border-indigo-400/20',
-        'text-[12px] text-indigo-300/80',
+        'bg-[var(--link)]/10 border border-[var(--link)]/20',
+        'text-[12px] text-[var(--link)]/80',
         className,
       )}
     >
       <svg
-        className="w-3 h-3 text-indigo-400/60 shrink-0"
+        className="w-3 h-3 text-[var(--link)]/60 shrink-0"
         fill="currentColor"
         viewBox="0 0 20 20"
         aria-hidden="true"

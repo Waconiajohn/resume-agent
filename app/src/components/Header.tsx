@@ -265,7 +265,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             ref={menuPanelRef}
             role="dialog"
             aria-label="Navigation menu"
-            className="absolute right-0 top-0 flex h-full w-80 flex-col border-l border-[var(--line-soft)] bg-[var(--mobile-menu-bg)] shadow-[var(--shadow-mid)]"
+            className="absolute right-0 top-0 flex h-full w-80 max-w-[calc(100vw-3rem)] flex-col border-l border-[var(--line-soft)] bg-[var(--mobile-menu-bg)] shadow-[var(--shadow-mid)]"
             style={{ transform: 'translateX(0)', transition: 'transform 0.2s ease-out' }}
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--line-soft)] px-5">

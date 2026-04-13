@@ -438,7 +438,6 @@ export function NegotiationSimulationView({
   const {
     status,
     currentRound,
-    pendingEvaluation,
     evaluations,
     activityMessages,
     summary,
@@ -449,11 +448,12 @@ export function NegotiationSimulationView({
   } = useNegotiationSimulation();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentRound, pendingEvaluation, evaluations.length]);
+  }, [currentRound, evaluations.length]);
 
   const handleStart = useCallback(async () => {
     await startSimulation({
@@ -479,8 +479,12 @@ export function NegotiationSimulationView({
   const handleSubmitResponse = useCallback(
     async (text: string) => {
       setIsSubmitting(true);
-      await submitResponse(text);
+      setSubmitError(null);
+      const ok = await submitResponse(text);
       setIsSubmitting(false);
+      if (ok === false) {
+        setSubmitError('Failed to submit your response. Please try again.');
+      }
     },
     [submitResponse],
   );
@@ -671,6 +675,12 @@ export function NegotiationSimulationView({
           <div className="space-y-4">
             <EmployerBubble round={currentRound} />
             <ResponseInput onSubmit={handleSubmitResponse} isSubmitting={isSubmitting} />
+            {submitError && (
+              <div className="ml-9 flex items-center gap-2 text-[12px] text-[var(--badge-red-text)]">
+                <AlertCircle size={12} className="flex-shrink-0" />
+                {submitError}
+              </div>
+            )}
           </div>
         )}
 

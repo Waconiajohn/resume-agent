@@ -14,7 +14,7 @@ function urgencyClass(dueDateStr: string): string {
   const now = new Date();
   const diffMs = due.getTime() - now.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return 'text-red-400/70 border-red-400/20 bg-red-400/[0.04]';
+  if (diffDays < 0) return 'text-[var(--badge-red-text)]/70 border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04]';
   if (diffDays < 1) return 'text-[var(--badge-amber-text)]/70 border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]';
   return 'text-[var(--text-soft)] border-[var(--line-soft)] bg-[var(--accent-muted)]';
 }
@@ -67,7 +67,7 @@ export function DailyOpsSection({
               const isPast = dueDate < new Date();
               const isDueToday = dueDate.toDateString() === new Date().toDateString();
               const dueLabelClass = isPast
-                ? 'text-red-400/70'
+                ? 'text-[var(--badge-red-text)]/70'
                 : isDueToday
                   ? 'text-[var(--badge-amber-text)]/70'
                   : 'text-[var(--text-soft)]';

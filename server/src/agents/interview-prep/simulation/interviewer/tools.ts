@@ -208,8 +208,9 @@ const presentQuestionToUserTool: InterviewerTool = {
       return JSON.stringify({ error: `No question at index ${questionIndex}` });
     }
 
-    // Emit the question to the frontend
-    ctx.emit({ type: 'question_presented', question });
+    // Emit the question to the frontend — include total_questions so the
+    // client can render "Question X of Y" without hardcoding the count.
+    ctx.emit({ type: 'question_presented', question, total_questions: state.max_questions });
 
     // Gate: pause the agent loop and wait for user response
     const answer = await ctx.waitForUser<string>('mock_interview_answer');

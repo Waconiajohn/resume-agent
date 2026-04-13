@@ -10,7 +10,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNod
 import { Loader2, AlertCircle, Undo2, Redo2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import type { V2PipelineData, V2Stage, ResumeDraft, BulletConfidence, ClarificationMemoryEntry, FramingGuardrail, NextBestAction, ProofLevel, RequirementSource, ResumeReviewState } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
-import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState, SuggestionScore, RewriteQueueItem } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatTargetInput, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import { useResumeCoachItems } from '@/hooks/useResumeCoachItems';
 import type { CoachItem } from '@/hooks/useResumeCoachItems';
 import { ResumeCoachPanel } from './panels/ResumeCoachPanel';
@@ -82,8 +82,6 @@ interface V2StreamingDisplayProps {
   hiringManagerResult?: HiringManagerReviewResult | null;
   resolvedFinalReviewConcernIds?: string[];
   isFinalReviewStale?: boolean;
-  finalReviewWarningsAcknowledged?: boolean;
-  onAcknowledgeFinalReviewWarnings?: () => void;
   isHiringManagerLoading?: boolean;
   hiringManagerError?: string | null;
   onRequestHiringManagerReview?: () => void;
@@ -242,23 +240,6 @@ interface CoachTarget {
   canRemove: boolean;
   locationLabel: string;
   autoReuseClarificationId?: string;
-  /** True when this bullet was AI-generated/enhanced (is_new on the source ResumeBullet). */
-  isAIEnhanced?: boolean;
-}
-
-/** Look up the suggestion score for an active bullet from the rewrite queue. */
-function findMatchingQueueItem(
-  activeBullet: CoachTarget | null,
-  queueItems: RewriteQueueItem[] | undefined,
-): RewriteQueueItem | undefined {
-  if (!activeBullet || !queueItems?.length) return undefined;
-  const req = activeBullet.requirements[0];
-  if (!req) return undefined;
-  const normalizedReq = req.trim().toLowerCase();
-  return queueItems.find(item =>
-    item.requirement?.trim().toLowerCase() === normalizedReq
-    || item.title.trim().toLowerCase() === normalizedReq
-  );
 }
 
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
@@ -281,11 +262,6 @@ function dedupePhraseList(items: string[] | null | undefined): string[] {
     seen.add(normalized);
     return true;
   });
-}
-
-function _truncatePreview(text: string, maxLength = 120): string {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 function chatContextLabelForSection(section: string): string {
@@ -874,60 +850,6 @@ function buildResumeLineSelector(section: string, index: number): string {
   return `[data-resume-line="${section}:${index}"]`;
 }
 
-function _GuidedNextStepCard({
-  title,
-  reason,
-  primaryActionLabel,
-  onPrimaryAction,
-  secondaryActionLabel,
-  onSecondaryAction,
-  note,
-}: {
-  title: string;
-  reason: string;
-  primaryActionLabel: string;
-  onPrimaryAction: () => void;
-  secondaryActionLabel?: string;
-  onSecondaryAction?: () => void;
-  note?: string;
-}) {
-  return (
-    <div className="shell-panel px-3 py-3 sm:px-4 sm:py-4">
-      <p className="eyebrow-label">Start Here</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-        {title}
-      </h3>
-      <p className="mt-1.5 text-[13px] leading-5 text-[var(--text-soft)]">
-        {reason}
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onPrimaryAction}
-          className="rounded-lg bg-[var(--link)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-opacity hover:opacity-95"
-        >
-          {primaryActionLabel}
-        </button>
-        {secondaryActionLabel && onSecondaryAction && (
-          <button
-            type="button"
-            onClick={onSecondaryAction}
-            className="rounded-lg border border-[var(--line-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--surface-0)] hover:text-[var(--text-strong)]"
-          >
-            {secondaryActionLabel}
-          </button>
-        )}
-      </div>
-      {note && (
-        <p className="mt-3 text-[12px] leading-5 text-[var(--text-soft)]">
-          {note}
-        </p>
-      )}
-    </div>
-  );
-}
-
-
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -937,7 +859,7 @@ export function V2StreamingDisplay({
   liveScores: _liveScores, isScoring: _isScoring,
   gapCoachingCards, onRespondGapCoaching: _onRespondGapCoaching, preScores: _preScores, onIntegrateKeyword: _onIntegrateKeyword,
   previousResume: _previousResume, onDismissChanges: _onDismissChanges,
-  hiringManagerResult, resolvedFinalReviewConcernIds = [], isFinalReviewStale = false, finalReviewWarningsAcknowledged = false, onAcknowledgeFinalReviewWarnings,
+  hiringManagerResult, resolvedFinalReviewConcernIds = [], isFinalReviewStale = false,
   isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
   gapChat, gapChatSnapshot, buildChatContext,
@@ -1137,7 +1059,6 @@ export function V2StreamingDisplay({
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
     canRemove?: boolean,
-    isAIEnhanced?: boolean,
   ) => {
     setActiveBullet((prev) => {
       if (prev?.section === section && prev?.index === bulletIndex) return null;
@@ -1155,7 +1076,6 @@ export function V2StreamingDisplay({
         nextBestAction,
         canRemove: canRemove ?? true,
         locationLabel: chatContextLabelForSection(section),
-        isAIEnhanced,
       };
     });
   }, []);
@@ -1388,7 +1308,6 @@ export function V2StreamingDisplay({
       nextBestAction: item.nextBestAction,
       canRemove: item.canRemove,
       locationLabel: item.locationLabel,
-      isAIEnhanced: item.isAIEnhanced,
     });
     window.requestAnimationFrame(() => {
       scrollToAndFocusTarget(buildResumeLineSelector(item.section, item.index));
@@ -1874,7 +1793,7 @@ export function V2StreamingDisplay({
               {displayResume && (
                 <AnimatedCard index={0}>
                   <div className="resume-paper-shell overflow-hidden">
-                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} sectionProgress={sectionProgress} />
+                    <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} sectionProgress={sectionProgress} />
                   </div>
                 </AnimatedCard>
               )}
@@ -1902,7 +1821,7 @@ export function V2StreamingDisplay({
               )}
               {isComplete && data.assembly && displayResume && (
                 <CollapsibleWorkspaceRail>
-                  <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
+                  <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
                 </CollapsibleWorkspaceRail>
               )}
             </div>
@@ -1964,9 +1883,6 @@ export function V2StreamingDisplay({
                         nextBestAction={activeBullet.nextBestAction}
                         canRemove={activeBullet.canRemove ?? true}
                         initialReuseClarificationId={activeBullet.autoReuseClarificationId}
-                        isAIEnhanced={activeBullet.isAIEnhanced}
-                        suggestionScore={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestionScore}
-                        queueSuggestedDraft={findMatchingQueueItem(activeBullet, rewriteQueue?.items)?.suggestedDraft}
                         gapChat={gapChat}
                         chatContext={buildChatContext({ requirement: activeBullet.requirements[0], requirements: activeBullet.requirements, lineText: activeBullet.bulletText, section: activeBullet.section, index: activeBullet.index, reviewState: activeBullet.reviewState, evidenceFound: activeBullet.evidenceFound, workItemId: activeBullet.workItemId })}
                         onApplyToResume={handleCoachApplyToResume}
@@ -2017,14 +1933,14 @@ export function V2StreamingDisplay({
                   {displayResume && (
                     <AnimatedCard index={0}>
                       <div className="resume-paper-shell overflow-hidden">
-                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} onBulletEdit={canInteract ? onBulletEdit : undefined} onBulletRemove={canInteract ? onBulletRemove : undefined} sectionProgress={sectionProgress} />
+                        <ResumeDocumentCard resume={displayResume} requirementCatalog={data.gapAnalysis?.requirements ?? []} activeBullet={activeBullet} onBulletClick={canInteract ? handleBulletClick : undefined} sectionProgress={sectionProgress} />
                       </div>
                     </AnimatedCard>
                   )}
                   {isComplete && data.assembly && displayResume && (
                     <div className="mt-4">
                       <CollapsibleWorkspaceRail>
-                        <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged} onAcknowledgeFinalReviewWarnings={onAcknowledgeFinalReviewWarnings} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
+                        <ResumeWorkspaceRail displayResume={displayResume} companyName={data.jobIntelligence?.company_name} jobTitle={data.jobIntelligence?.role_title} atsScore={data.assembly.scores.ats_match} hiringManagerResult={hiringManagerResult ?? null} resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds} isFinalReviewStale={isFinalReviewStale} queueSummary={rewriteQueue?.summary ?? { total: 0, needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0, needsUserInput: 0, needsApproval: 0, handled: 0 }} nextQueueItemLabel={rewriteQueue?.nextItem?.title} jobUrl={jobUrl} sessionId={data.sessionId} accessToken={accessToken} />
                       </CollapsibleWorkspaceRail>
                     </div>
                   )}

@@ -48,16 +48,16 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
   const percentage = (clampedScore / 10) * 100;
 
   const colorClass =
-    clampedScore <= 4 ? 'bg-red-500' :
-    clampedScore <= 6 ? 'bg-amber-500' :
-    clampedScore <= 8 ? 'bg-emerald-500' :
-    'bg-blue-500';
+    clampedScore <= 4 ? 'bg-[var(--badge-red-text)]' :
+    clampedScore <= 6 ? 'bg-[var(--badge-amber-text)]' :
+    clampedScore <= 8 ? 'bg-[var(--badge-green-text)]' :
+    'bg-[var(--link)]';
 
   const textColorClass =
-    clampedScore <= 4 ? 'text-red-400' :
-    clampedScore <= 6 ? 'text-amber-400' :
-    clampedScore <= 8 ? 'text-emerald-400' :
-    'text-blue-400';
+    clampedScore <= 4 ? 'text-[var(--badge-red-text)]' :
+    clampedScore <= 6 ? 'text-[var(--badge-amber-text)]' :
+    clampedScore <= 8 ? 'text-[var(--badge-green-text)]' :
+    'text-[var(--link)]';
 
   return (
     <div className="flex items-center gap-3">
@@ -133,10 +133,10 @@ function PillTag({ children }: { children: React.ReactNode }) {
 export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps) {
   const overallScore = report.audit_scores.overall_score;
   const overallColorClass =
-    overallScore <= 4 ? 'text-red-400' :
-    overallScore <= 6 ? 'text-amber-400' :
-    overallScore <= 8 ? 'text-emerald-400' :
-    'text-blue-400';
+    overallScore <= 4 ? 'text-[var(--badge-red-text)]' :
+    overallScore <= 6 ? 'text-[var(--badge-amber-text)]' :
+    overallScore <= 8 ? 'text-[var(--badge-green-text)]' :
+    'text-[var(--link)]';
 
   return (
     <div className="flex flex-col gap-6">
@@ -224,12 +224,12 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
             </div>
           )}
           {report.diagnostic_findings.what_is_missing.length > 0 && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3">
-              <p className="text-[12px] font-medium text-red-400 uppercase tracking-wider mb-2">What is missing</p>
+            <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04] p-3">
+              <p className="text-[12px] font-medium text-[var(--badge-red-text)] uppercase tracking-wider mb-2">What is missing</p>
               <ul className="flex flex-col gap-1">
                 {report.diagnostic_findings.what_is_missing.map((item) => (
                   <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5 flex-shrink-0">x</span>
+                    <span className="text-[var(--badge-red-text)] mt-0.5 flex-shrink-0">x</span>
                     {item}
                   </li>
                 ))}
@@ -432,7 +432,7 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
                 'inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-bold',
                 report.final_benchmark_assessment.confidence >= 0.8 ? 'bg-emerald-500/10 text-emerald-400' :
                 report.final_benchmark_assessment.confidence >= 0.6 ? 'bg-amber-500/10 text-amber-400' :
-                'bg-red-500/10 text-red-400',
+                'bg-[var(--badge-red-text)]/10 text-[var(--badge-red-text)]',
               )}>
                 {Math.round(report.final_benchmark_assessment.confidence * 100)}% confidence
               </span>

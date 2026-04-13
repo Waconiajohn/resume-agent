@@ -28,13 +28,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-[var(--badge-green-text)]';
   if (score >= 60) return 'text-[var(--badge-amber-text)]';
-  return 'text-[#e8a0a0]';
+  return 'text-[var(--badge-red-text)]';
 }
 
 function scoreBg(score: number): string {
   if (score >= 80) return 'bg-[var(--badge-green-text)]';
   if (score >= 60) return 'bg-[var(--badge-amber-text)]';
-  return 'bg-[#e8a0a0]';
+  return 'bg-[var(--badge-red-text)]';
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -269,7 +269,7 @@ function SummaryView({
                 ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10'
                 : summary.overall_score >= 60
                   ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10'
-                  : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
+                  : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10',
             )}
           >
             {summary.overall_score >= 80
@@ -371,6 +371,7 @@ export function MockInterviewView({
   const {
     status,
     currentQuestion,
+    totalQuestions,
     evaluations,
     summary,
     error,
@@ -384,10 +385,9 @@ export function MockInterviewView({
   const [hasStarted, setHasStarted] = useState(false);
   const [showPreviousEvals, setShowPreviousEvals] = useState(false);
 
-  // Must match the question count in the interviewer agent system prompt
-  // (server/src/agents/interview-prep/simulation/interviewer/agent.ts — "6-question session").
-  // If the server-side count changes, update this constant to keep the progress bar accurate.
-  const FULL_MODE_TOTAL = 6;
+  // Resolved question count: server sends total_questions in each question_presented event.
+  // Fall back to 6 only until the first question arrives.
+  const resolvedTotal = totalQuestions ?? 6;
 
   useEffect(() => {
     if (!hasStarted) {
@@ -467,9 +467,9 @@ export function MockInterviewView({
 
         <GlassCard className="p-6">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#e8a0a0] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <div className="text-[14px] font-medium text-[#e8a0a0] mb-1">Session Error</div>
+              <div className="text-[14px] font-medium text-[var(--badge-red-text)] mb-1">Session Error</div>
               <p className="text-[13px] text-[var(--text-soft)]">{error}</p>
             </div>
           </div>
@@ -507,7 +507,7 @@ export function MockInterviewView({
           <button
             type="button"
             onClick={onBack}
-            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded"
           >
             Cancel and return
           </button>
@@ -533,7 +533,7 @@ export function MockInterviewView({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 rounded"
         >
           <ArrowLeft size={13} />
           Exit
@@ -544,7 +544,7 @@ export function MockInterviewView({
       {currentQuestion && (
         <QuestionCard
           question={currentQuestion}
-          totalQuestions={mode === 'full' ? FULL_MODE_TOTAL : undefined}
+          totalQuestions={mode === 'full' ? resolvedTotal : undefined}
           mode={mode}
         />
       )}
@@ -608,7 +608,7 @@ export function MockInterviewView({
           <button
             type="button"
             onClick={() => setShowPreviousEvals((v) => !v)}
-            className="flex items-center gap-2 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors mb-2"
+            className="flex items-center gap-2 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors mb-2"
           >
             {showPreviousEvals ? (
               <ChevronUp size={13} />

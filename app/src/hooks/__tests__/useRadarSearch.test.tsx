@@ -94,10 +94,6 @@ describe('useRadarSearch — initial state', () => {
     expect(typeof result.current.dismissJob).toBe('function');
   });
 
-  it('exposes promoteJob as a function', () => {
-    const { result } = renderHook(() => useRadarSearch());
-    expect(typeof result.current.promoteJob).toBe('function');
-  });
 });
 
 describe('useRadarSearch — search()', () => {
@@ -273,18 +269,6 @@ describe('useRadarSearch — dismissJob()', () => {
     });
 
     expect(result.current.jobs).toHaveLength(1);
-  });
-});
-
-describe('useRadarSearch — promoteJob()', () => {
-  it('returns the job data passed to it', () => {
-    const { result } = renderHook(() => useRadarSearch());
-    const job = makeJob('j1');
-
-    const promoted = result.current.promoteJob(job);
-
-    expect(promoted).toEqual(job);
-    expect(promoted.external_id).toBe('jsearch_j1');
   });
 });
 

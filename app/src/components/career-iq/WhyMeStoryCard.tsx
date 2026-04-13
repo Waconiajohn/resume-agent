@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import {
   BookOpen,
-  FileText,
-  Linkedin,
-  MessageSquare,
-  Network,
   Pencil,
   Sparkles,
   X,
@@ -128,19 +124,6 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
   );
 }
 
-// ---------------------------------------------------------------------------
-// "How this drives your tools" connection grid
-// ---------------------------------------------------------------------------
-const TOOL_CONNECTIONS: Array<{
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  detail: string;
-}> = [
-  { icon: FileText, label: 'Resume', detail: 'Opens with your positioning' },
-  { icon: Linkedin, label: 'LinkedIn', detail: 'Headline and About section' },
-  { icon: MessageSquare, label: 'Interview', detail: 'Your career story' },
-  { icon: Network, label: 'Networking', detail: 'Outreach messages' },
-];
 
 // ---------------------------------------------------------------------------
 // Main component — fully self-contained, owns its own data hooks
@@ -183,7 +166,7 @@ export function WhyMeStoryCard() {
       {/* Section A: Core Identity (editable) */}
       <div className="mt-6">
         <div className="mb-3 text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-          A — Your Core Identity
+          Your Core Identity
         </div>
         <div className="space-y-3">
           <EditableBlock
@@ -210,7 +193,7 @@ export function WhyMeStoryCard() {
       {/* Section B: Pipeline Narrative (read-only) */}
       <div className="mt-6">
         <div className="mb-3 text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-          B — Your Positioning Narrative
+          Your Positioning Narrative
         </div>
 
         {snapshotStatus === 'loading' ? (
@@ -320,26 +303,6 @@ export function WhyMeStoryCard() {
         )}
       </div>
 
-      {/* Section C: How this drives your tools */}
-      <div className="mt-6">
-        <div className="mb-3 text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-          C — How This Drives Your Tools
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {TOOL_CONNECTIONS.map(({ icon: Icon, label, detail }) => (
-            <div
-              key={label}
-              className="flex flex-col items-center rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-center"
-            >
-              <div className="rounded-lg bg-[var(--link)]/10 p-2.5">
-                <Icon size={14} className="text-[var(--link)]/70" />
-              </div>
-              <div className="mt-2 text-[13px] font-medium text-[var(--text-muted)]">{label}</div>
-              <div className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">{detail}</div>
-            </div>
-          ))}
-        </div>
-      </div>
     </GlassCard>
   );
 }

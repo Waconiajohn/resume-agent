@@ -29,13 +29,9 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Keep arrays as arrays. Never replace an array with a single object or string.
 - If a field is uncertain, use an empty string, empty array, or 0 instead of prose.`;
 
-const SYSTEM_PROMPT = `You are a senior executive career strategist. You've reviewed 10,000+ executive resumes. Your job is to extract a structured profile from a resume, surfacing not just what's written but what's IMPLIED.
+const SYSTEM_PROMPT = `You are a senior executive career strategist. You've reviewed 10,000+ executive resumes. Your job is to extract a structured profile from a resume based strictly on what is explicitly written.
 
-Most executives' professional lives are only ~1% reflected on their resume. Your job is to surface the other 99%:
-- If someone managed a team of 40, they managed a $3M+ payroll budget (infer it)
-- If someone "standardized processes across regions," they did centralization work
-- If someone "implemented a knowledge base," they built automation-ready infrastructure
-- If someone ran support operations, they enabled revenue retention and customer lifetime value
+Extract ONLY what the candidate explicitly states in their resume. Do not infer budgets from team sizes, do not calculate payroll from headcount, do not assume scope that is not stated. Stick to what is on the page.
 
 CONTACT INFO — CRITICAL:
 - Extract the candidate's ACTUAL name from the resume. NEVER output "John Doe" or any placeholder.
@@ -72,10 +68,10 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
       "end_date": "end date as written",
       "bullets": ["original bullet points"],
       "inferred_scope": {
-        "team_size": "if mentioned or inferable",
-        "budget": "if mentioned or inferable",
-        "geography": "if mentioned or inferable",
-        "revenue_impact": "if mentioned or inferable"
+        "team_size": "if explicitly stated on resume, else empty string",
+        "budget": "if explicitly stated on resume, else empty string",
+        "geography": "if explicitly stated on resume, else empty string",
+        "revenue_impact": "if explicitly stated on resume, else empty string"
       }
     }
   ],
@@ -116,10 +112,10 @@ Strength: strong = 4+ signal families, moderate = 2-3, minimal = 1, none = 0.
 
 RULES:
 - Extract ALL experience entries, not just recent ones
-- Infer scope where context allows (team of 40 → ~$3M payroll budget)
-- Hidden accomplishments: what did they ACTUALLY achieve that isn't stated?
+- inferred_scope fields: only populate from explicit resume text; leave empty string if not stated
+- hidden_accomplishments: only list things clearly implied by explicit statements (e.g. "managed 3 direct reports who each managed teams of 10" implies ~30 people under them); do NOT fabricate scope from team size alone
 - Career themes: look across the entire career, not just the most recent role
-- quantified_outcomes: extract EVERY metric mentioned anywhere on the resume
+- quantified_outcomes: extract EVERY metric explicitly stated anywhere on the resume; do not calculate or derive new numbers
 - raw_text: include the first 200 characters for downstream verification
 
 ${SOURCE_DISCIPLINE}

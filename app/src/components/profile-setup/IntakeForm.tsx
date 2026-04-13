@@ -330,7 +330,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           className="w-full py-4 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
           style={{
             background: canSubmit ? 'var(--link)' : 'var(--surface-1)',
-            color: canSubmit ? '#080b10' : 'var(--text-muted)',
+            color: canSubmit ? 'var(--bg-0)' : 'var(--text-muted)',
           }}
           aria-label="Build my CareerIQ profile"
         >

@@ -9,7 +9,7 @@ import type {
   ResumeReviewState,
   ActiveContextChip,
 } from '@/types/resume-v2';
-import type { OptimisticResumeEditMetadata } from '@/lib/resume-edit-progress';
+
 import { canonicalRequirementSignals } from '@/lib/resume-requirement-signals';
 import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/resume-section-plan';
 
@@ -95,12 +95,7 @@ interface ResumeDocumentCardProps {
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
     canRemove?: boolean,
-    isAIEnhanced?: boolean,
   ) => void;
-  /** Direct edit callback — saves edited text back into the resume */
-  onBulletEdit?: (section: string, index: number, newText: string, metadata?: OptimisticResumeEditMetadata) => void;
-  /** Remove a bullet from the resume */
-  onBulletRemove?: (section: string, index: number) => void;
 }
 
 function getResumeLineToken(section: string, index: number): string {
@@ -113,8 +108,6 @@ export function ResumeDocumentCard({
   sectionProgress,
   activeBullet = null,
   onBulletClick,
-  onBulletEdit: _onBulletEdit,
-  onBulletRemove: _onBulletRemove,
 }: ResumeDocumentCardProps) {
   const coreCompetencies = Array.isArray(resume.core_competencies) ? resume.core_competencies : [];
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
@@ -359,7 +352,6 @@ export function ResumeDocumentCard({
                   workItemId={a.work_item_id}
                   proofLevel={a.proof_level}
                   nextBestAction={a.next_best_action}
-                  isAIEnhanced={a.is_new}
                   isActive={isActive}
                   onBulletClick={onBulletClick}
                 />
@@ -497,7 +489,6 @@ export function ResumeDocumentCard({
                         workItemId={bullet.work_item_id}
                         proofLevel={bullet.proof_level}
                         nextBestAction={bullet.next_best_action}
-                        isAIEnhanced={bullet.is_new}
                         isActive={isActive}
                         onBulletClick={onBulletClick}
                       />
@@ -814,8 +805,6 @@ interface BulletLineContentProps {
   workItemId?: string;
   proofLevel?: ProofLevel;
   nextBestAction?: NextBestAction;
-  /** True when this bullet was AI-generated/enhanced (is_new on the source bullet). */
-  isAIEnhanced?: boolean;
   /** True when this bullet is currently selected for coaching. */
   isActive?: boolean;
   /** Click handler — marks this bullet active, surfacing coaching in the left panel. When provided, ALL bullets are clickable regardless of review state. */
@@ -831,7 +820,6 @@ interface BulletLineContentProps {
     proofLevel?: ProofLevel,
     nextBestAction?: NextBestAction,
     canRemove?: boolean,
-    isAIEnhanced?: boolean,
   ) => void;
 }
 
@@ -849,7 +837,6 @@ function BulletLineContent({
   workItemId,
   proofLevel,
   nextBestAction,
-  isAIEnhanced,
   isActive,
   onBulletClick,
 }: BulletLineContentProps) {
@@ -858,7 +845,7 @@ function BulletLineContent({
 
   const handleActivate = () => {
     if (isClickable) {
-      onBulletClick(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true, isAIEnhanced);
+      onBulletClick(text, section, bulletIndex, requirements, resolvedState, requirementSource, evidenceFound ?? '', workItemId, proofLevel, nextBestAction, true);
     }
   };
 

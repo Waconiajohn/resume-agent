@@ -25,7 +25,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                 {item.label}
               </button>
             ) : (
-              <span className={isLast ? 'text-[var(--text-strong)]' : undefined}>{item.label}</span>
+              <span className={isLast ? 'text-[var(--text-strong)]' : undefined} aria-current={isLast ? 'page' : undefined}>{item.label}</span>
             )}
             {!isLast && <ChevronRight className="separator h-3.5 w-3.5" aria-hidden="true" />}
           </span>

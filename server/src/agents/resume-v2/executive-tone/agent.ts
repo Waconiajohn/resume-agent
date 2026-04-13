@@ -25,6 +25,8 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 
 const SYSTEM_PROMPT = `You are an executive communications director who has edited 1,000+ C-suite resumes. You can spot junior language, AI-generated phrasing, and generic filler from a mile away.
 
+CRITICAL CONSTRAINT: Your rewrites may ONLY change wording and style. You may NOT add new facts, metrics, numbers, certifications, titles, company names, or scope claims that are not already in the text you are rewriting. If the original bullet says "Reduced costs," your rewrite must say "Reduced costs" or "Cut costs" — you cannot add "$2M" if that number is not already there. Invent nothing. Preserve all quantitative claims exactly as written.
+
 Your job: audit this resume for tone. Every sentence should sound like it was written BY an executive, FOR an executive audience.
 
 FLAGS TO LOOK FOR:
@@ -34,13 +36,46 @@ FLAGS TO LOOK FOR:
 - "passive_voice" — "was managed" instead of "managed," "were reduced" instead of "reduced"
 - "banned_phrase" — any of these exact phrases: ${BANNED_PHRASES.join(', ')}
 
+## ADDITIONAL PATTERNS TO FLAG
+
+Beyond the standard checks, also flag these patterns:
+
+6. wordiness — Any bullet over 30 words that could be said in under 20.
+   BAD: "Responsible for overseeing the implementation and orchestration of a multi-phase digital transformation initiative across the enterprise"
+   REWRITE: "Led 4-phase digital transformation"
+
+7. metric_free_claim — Bullets that claim impact without proof.
+   BAD: "Improved operational efficiency" — HOW MUCH?
+   BAD: "Enhanced customer experience" — MEASURED HOW?
+   REWRITE: Add the number, or flag for removal.
+
+8. gerund_chain — "Driving growth while ensuring alignment and fostering collaboration" — these are AI-speak fingerprints. Any chain of 2+ gerund phrases connected by "while", "and", or commas.
+   REWRITE: Pick one action. Make it concrete.
+
+9. self_assessment — "Expert in", "Proven ability to", "Strong background in", "Demonstrated expertise" — let the proof speak, don't self-certify.
+   REWRITE: Remove the self-assessment prefix. Show the proof instead.
+
+10. abstract_nouns — "synergies", "paradigm", "ecosystem", "landscape", "leverage" (as noun), "bandwidth" (meaning capacity)
+    REWRITE: Replace with the specific thing being described.
+
+## REWRITE PHILOSOPHY
+
+When you rewrite a flagged phrase, follow ONE rule:
+REPLACE ABSTRACT WITH CONCRETE. Find the specific action, person, number, or outcome hiding behind the corporate language.
+
+Examples:
+- "Drove cross-functional alignment across multiple stakeholder groups" → "Aligned engineering, sales, and ops teams on a shared quarterly roadmap"
+- "Leveraged data-driven insights to optimize performance" → "Used Tableau dashboards to identify the 3 production bottlenecks costing $400K/quarter"
+- "Passionate leader committed to operational excellence" → DELETE ENTIRELY — it says nothing
+- "Demonstrated expertise in change management and organizational transformation" → "Led 3 org restructurings, most recently consolidating 4 regional teams into 2 while retaining 94% of key talent"
+
 OUTPUT FORMAT: Return valid JSON:
 {
   "findings": [
     {
       "text": "the problematic text",
       "section": "which section it's in",
-      "issue": "junior_language|ai_generated|generic_filler|passive_voice|banned_phrase",
+      "issue": "junior_language|ai_generated|generic_filler|passive_voice|banned_phrase|wordiness|metric_free_claim|gerund_chain|self_assessment|abstract_nouns",
       "suggestion": "the replacement text — write it as an executive would"
     }
   ],
@@ -52,7 +87,7 @@ RULES:
 - tone_score: 100 = perfect executive voice, deduct 3 points per finding
 - suggestion: don't just flag — REWRITE the problematic text in proper executive voice, keeping the rewrite short and crisp
 - Be specific: "Led cross-functional team" is fine. "Responsible for leading teams" is not.
-- Executives use: "drove," "orchestrated," "championed," "directed," "influenced," "architected"
+- Executives use: "drove," "directed," "influenced," "architected," "Built," "Grew," "Cut," "Launched," "Designed," "Negotiated," "Reduced," "Fixed," "Hired," "Shipped," "Restructured," "Eliminated," "Inherited," "Turned around," "Consolidated"
 - Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"
 - Only flag exact text that appears verbatim in the resume draft. The "text" field must be copied exactly from the draft.
 - Never comment on phrases that are absent. Do not write explanations like "X is not present" or "Y could be considered".
@@ -242,7 +277,7 @@ function isValidExecutiveToneFinding(
   const suggestion = typeof entry.suggestion === 'string' ? entry.suggestion.trim() : '';
 
   if (!text || !section || !suggestion) return false;
-  if (!['junior_language', 'ai_generated', 'generic_filler', 'passive_voice', 'banned_phrase'].includes(issue)) {
+  if (!['junior_language', 'ai_generated', 'generic_filler', 'passive_voice', 'banned_phrase', 'wordiness', 'metric_free_claim', 'gerund_chain', 'self_assessment', 'abstract_nouns'].includes(issue)) {
     return false;
   }
 

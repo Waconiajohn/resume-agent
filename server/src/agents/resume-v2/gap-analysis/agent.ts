@@ -50,26 +50,25 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Omit "strategy" entirely when it does not apply. Never output "strategy": {}.
 - If a field is uncertain, use an empty string, empty array, or omit the optional field instead of prose.`;
 
-const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: finding creative, TRUTHFUL ways to close gaps between what a candidate has and what a job requires.
+const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: mapping a candidate's real experience to job requirements honestly — noting where evidence is strong, partial, or absent.
 
-You NEVER fabricate experience. But you are CREATIVELY AGGRESSIVE about reframing real experience to close gaps:
+You NEVER fabricate experience. You are truthful and conservative about reframing real experience. The goal is not to make every gap disappear; it is to surface the candidate's genuine adjacent strengths where they truly exist.
 
-CREATIVE STRATEGY EXAMPLES:
-- "No budget management experience" → Do the math: team of 40 at ~$85K avg = $3.4M payroll. Back off to "$3M+ payroll budget" so they can defend it.
-- "Requires Salesforce" but has HubSpot/Zoho → Position as "Enterprise CRM platforms including HubSpot and Zoho CRM" — same functional domain.
-- "PMP certification required" but has 15 years of PM → "Extensive project and program leadership with working knowledge of PMI methodologies"
-- "Revenue accountability" but ran support ops → Reframe: support operations that enabled revenue retention, customer lifetime value, upsell.
-- "Call center centralization" but standardized processes → "Led initiatives to standardize operations across distributed teams" — that IS centralization.
-- "AI automation experience" but implemented knowledge bases → "Automation-ready knowledge infrastructure enabling future AI/RAG capabilities"
+REFRAMING EXAMPLES (only where genuinely adjacent experience exists):
+- "Requires Salesforce" but has HubSpot/Zoho → Note: "Enterprise CRM platforms including HubSpot and Zoho CRM" — same functional domain. The candidate must actually have this experience.
+- "PMP certification required" but has 15 years of PM → Note the adjacent experience but be explicit that the formal credential is absent.
+- "Revenue accountability" but ran support ops → Only bridge if the resume shows actual revenue-adjacent activity (retention metrics, upsell results, CLV work).
+- "Multi-cloud required" but only has primary cloud + basic secondary → Surface what they actually have; do not imply equivalency with the full requirement.
 
-ADJACENCY BRIDGING — when the candidate has closely related experience, bridge it:
-- "Compliance frameworks required (SOC 2/HIPAA/PCI-DSS)" but partnered with CISO on security → "Partnered with CISO to architect security controls aligned with enterprise compliance requirements" — security collaboration IS compliance-adjacent.
-- "Disaster recovery/business continuity required" but maintained high-uptime SLA → "Delivered 99.95% availability through resilient architecture and proactive incident management" — uptime discipline IS DR-adjacent.
-- "Multi-cloud required" but only has primary cloud + basic secondary → "Multi-cloud infrastructure experience spanning AWS (primary) and GCP" — don't hide the secondary skill, surface it.
-- "FinOps at $8M+ scale" but managed $4M budget → "Managed $4.2M cloud spend with quarterly optimization — methodology proven at scale and directly transferable to larger portfolios."
-- "Service mesh for 300+ microservices" but has 200+ microservices with Istio → "Implemented service mesh architecture with Istio across 200+ microservices" — don't inflate the number, let the pattern match speak.
+ADJACENCY BRIDGING — only where genuinely adjacent evidence exists in the source resume:
+- Do not bridge what isn't there. If the candidate has no compliance work, do not frame a general security background as compliance-adjacent.
+- Bridge only the gap between what they have and what's required — never invent the bridge itself.
 
-IMPORTANT MATH RULE: When you infer a number from scope (like budget from team size), ALWAYS back off 10-20% from the calculated value. The candidate must be able to defend the number comfortably in an interview.
+INFERRED METRIC RULE: When you infer a number from scope (like budget from team size), you MUST:
+1. Back off 10-20% from the calculated value so the candidate can defend it
+2. Label it explicitly as inferred: e.g., "~$3M payroll budget — INFERRED from team of 40 × ~$85K avg, backed off to $3M+"
+3. Populate inference_rationale with the full math/logic
+The inferred label is not optional. The resume writer will decide whether to use the inferred metric.
 
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
@@ -91,16 +90,19 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "ai_reasoning": "1-2 concise coaching sentences. Explain what you found, why it is relevant, and any math/logic in under 45 words.",
         "interview_questions": [
           {
-            "question": "Your resume mentions managing operations at Company X. Can you tell us about the team size, budget responsibility, and geographic scope?",
-            "rationale": "The JD requires P&L ownership — if they managed a team of 40+, the implied payroll budget alone could demonstrate budget accountability.",
-            "looking_for": "Team size, budget figures, geographic span, or any P&L-adjacent responsibility"
+            "question": "Your resume shows you managed a $210M operating budget with the VP Finance. The target role requires full P&L ownership. What was your actual budget authority — sign-off on spend, or advisory?",
+            "rationale": "The JD explicitly requires 'true P&L ownership' — we need to know if the candidate had sign-off authority or an advisory role.",
+            "looking_for": "Specific scope of financial authority: sign-off vs advisory, budget size, decisions they could make independently",
+            "suggested_answers": [
+              "Full P&L sign-off — I owned the bottom line and made allocation decisions independently",
+              "Shared authority — I managed the operating budget but revenue/capital decisions went through my VP",
+              "Budget accountability only — I managed spend against targets but didn't have P&L sign-off",
+              "Other (I'll describe my specific situation)"
+            ],
+            "source_context": "Resume states: 'Collaborated with VP Finance on annual operating budget of $210M; accountable for cost-per-unit targets'"
           }
         ],
-        "alternative_bullets": [
-          { "text": "Managed $3.4M payroll budget across 40-person operations team, driving 18% cost reduction through optimized scheduling and vendor renegotiation", "angle": "metric" },
-          { "text": "Directed multi-site operations spanning 3 regions and 40+ team members, standardizing processes across distributed field teams", "angle": "scope" },
-          { "text": "Transformed field operations efficiency, reducing downtime by 22% and enabling on-time delivery for 95% of major initiatives", "angle": "impact" }
-        ]
+        "source_lines": ["the specific lines from the source resume that could be reframed to address this requirement — do not write new bullets, only reference what is already there"]
       }
     }
   ],
@@ -136,16 +138,19 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "ai_reasoning": "1-2 concise coaching sentences. Explain what you found, why it is relevant, and any math/logic in under 45 words.",
         "interview_questions": [
           {
-            "question": "one targeted question referencing specific roles/companies from the resume",
-            "rationale": "why this question could surface useful evidence",
-            "looking_for": "what kind of answer would strengthen the positioning"
+            "question": "one targeted question that REFERENCES SPECIFIC TEXT from the candidate's resume, asks them to confirm/correct/expand on a specific inference, and names the gap and why it matters",
+            "rationale": "why this question targets a real hiring-manager concern",
+            "looking_for": "what kind of answer would close this gap and be defensible in an interview",
+            "suggested_answers": [
+              "3-4 clickable options the user can select or modify — each a complete honest answer to the question",
+              "One option per plausible scenario based on the resume evidence",
+              "One option for a stronger claim if evidence supports it",
+              "Other (I'll describe my specific situation)"
+            ],
+            "source_context": "The exact line(s) from the candidate's resume that prompted this question"
           }
         ],
-        "alternative_bullets": [
-          { "text": "Reduced BHA failures from 2.0 to 1.6 per lateral through insulated drill pipe implementation, saving $3M+ annually across 12 active rigs", "angle": "metric" },
-          { "text": "Led cross-functional drilling optimization program spanning 8 rigs and 3 basins, coordinating with 6 service company partners", "angle": "scope" },
-          { "text": "Drove $2.1M annual cost savings by redesigning drilling fluid program, eliminating non-productive time and improving well delivery timelines by 30%", "angle": "impact" }
-        ]
+        "source_lines": ["specific lines from the source resume that could be reframed — reference only, do not write new bullets"]
       }
     }
   ]
@@ -185,16 +190,12 @@ RULES:
   GOOD: "Led multi-site operating reviews across 3 plants, raising throughput by 18% through KPI discipline and defect-reduction planning"
   The positioning MUST reference specific details from the candidate's actual resume: company names, locations, team sizes, tools, methodologies, and outcomes. If you cannot write a specific bullet, leave positioning empty rather than writing a generic one.
 - PRESERVATION RULE: The positioning MUST preserve or improve upon the specificity of the evidence. If the candidate's resume says "Reduced BHA failures from 2.0 to 1.6 per lateral", your positioning must keep those exact numbers and details — never flatten them into "Optimized drilling performance". Your job is to REFRAME the evidence for the requirement, not to summarize it into a generic capability statement.
-- INFERRED METRIC RULE: If you generate an inferred_metric, the positioning text MUST incorporate that metric. Never infer "$350MM+ annual operations budget" in one field while writing generic "experience in budget management" in another. The inferred metric IS the value — weave it into the positioning bullet itself.
+- INFERRED METRIC RULE: If you generate an inferred_metric, it MUST be explicitly labeled as inferred (e.g., "~$3M payroll budget — INFERRED from team of 40 × ~$85K avg"). The inference_rationale field must show the full math. The positioning text should reference the inference only as context, not as a verified fact. The resume writer decides whether to use inferred numbers. Never present an inferred metric as a stated resume fact.
 - ANTI-REPETITION RULE: Each positioning statement must use distinct phrasing. Never start multiple positioning statements with the same verb or pattern (e.g., don't use "Optimized..." for three different requirements).
 - SPECIFICITY TEST: Before writing positioning, check: does this sentence contain at least ONE of [specific metric, company/project name, team size, tool/methodology, geographic scope, timeframe]? If not, rewrite it until it does.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
-- interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
-- alternative_bullets: REQUIRED for every strategy. Generate EXACTLY 3 alternative resume bullet phrasings. Each must tell a STORY, not just state a fact:
-  - "metric": Show the transformation with quantified outcomes — include the before-state, the action taken, and the measured result. Show process discipline.
-  - "scope": Show leadership through people — who was empowered, what team was built, what became possible through delegation, trust, and growing others into leaders.
-  - "impact": Show accountability and adaptability — what standard was set, how it was enforced, what the candidate learned, or how they adapted when things changed. Prove resilience.
-  Each alternative must be grounded in the candidate's actual resume evidence — no fabrication. Each must be ready to use as-is on a resume. Each must follow the same SPECIFICITY TEST and PRESERVATION RULE as the main positioning bullet.
+- interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 pointed evidence question. The question MUST: (1) quote or reference specific text already on the resume, (2) ask the user to CONFIRM, CORRECT, or EXPAND a specific inference, (3) explain what the gap is and why it matters to the hiring manager. Generic questions like "Tell us about your experience with X" are NOT acceptable — if you cannot point to specific resume text, skip the question rather than writing a generic one. Each question MUST include suggested_answers (3-4 complete, honest, scenario-based options the user can click or modify) and source_context (the exact resume line that prompted the question).
+- source_lines: REQUIRED for every strategy. List the specific lines or phrases from the source resume that could be reframed to address this requirement. Do NOT write pre-composed resume bullets. The resume writer agent will craft the actual bullets. Your job is to point to what's already there.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
 - critical_gaps must contain only unresolved formal credential requirement strings (degrees, certifications, licenses, work authorization, years-of-experience minimums), not skills, competencies, explanations, evidence snippets, or serialized JSON.
 - Be honest about critical_gaps — but NEVER include skills, soft skills, or operational competencies. Those belong in pending_strategies as coaching opportunities.
@@ -1579,11 +1580,23 @@ function sanitizeGapStrategy(strategy: RequirementGap['strategy'], requirement: 
         && typeof item.rationale === 'string'
         && typeof item.looking_for === 'string'
       ))
-      .map((item) => ({
-        question: item.question.trim(),
-        rationale: item.rationale.trim(),
-        looking_for: item.looking_for.trim(),
-      }))
+      .map((item) => {
+        const q: NonNullable<GapStrategy['interview_questions']>[number] = {
+          question: item.question.trim(),
+          rationale: item.rationale.trim(),
+          looking_for: item.looking_for.trim(),
+        };
+        if (Array.isArray(item.suggested_answers) && item.suggested_answers.length > 0) {
+          q.suggested_answers = (item.suggested_answers as unknown[])
+            .filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
+            .map((a) => a.trim())
+            .slice(0, 4);
+        }
+        if (typeof item.source_context === 'string' && item.source_context.trim()) {
+          q.source_context = item.source_context.trim();
+        }
+        return q;
+      })
       .filter((item) => item.question && item.rationale && item.looking_for && looksLikeTargetedInterviewQuestion(item.question, requirement))
       .slice(0, 1)
     : [];

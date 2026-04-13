@@ -2127,8 +2127,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         hiringManagerResult={hiringManagerResult}
         resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
         isFinalReviewStale={isFinalReviewStale}
-        finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
-        onAcknowledgeFinalReviewWarnings={() => setFinalReviewWarningsAcknowledged(true)}
         isHiringManagerLoading={isHiringManagerLoading}
         hiringManagerError={hiringManagerError}
         onRequestHiringManagerReview={handleRequestHiringManagerReview}

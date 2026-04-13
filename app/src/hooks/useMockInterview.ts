@@ -60,6 +60,7 @@ export interface StartSimulationInput {
 interface MockInterviewState {
   status: MockInterviewStatus;
   currentQuestion: InterviewQuestion | null;
+  totalQuestions: number | null;
   evaluations: AnswerEvaluation[];
   summary: SimulationSummary | null;
   error: string | null;
@@ -139,6 +140,7 @@ export function useMockInterview() {
   const [state, setState] = useState<MockInterviewState>({
     status: 'idle',
     currentQuestion: null,
+    totalQuestions: null,
     evaluations: [],
     summary: null,
     error: null,
@@ -208,10 +210,14 @@ export function useMockInterview() {
         case 'question_presented': {
           const question = sanitizeQuestion(data.question);
           if (!question) break;
+          const serverTotal = typeof data.total_questions === 'number' && data.total_questions > 0
+            ? data.total_questions
+            : null;
           setState((prev) => ({
             ...prev,
             status: 'waiting_for_answer',
             currentQuestion: question,
+            totalQuestions: serverTotal ?? prev.totalQuestions,
           }));
           break;
         }
@@ -357,6 +363,7 @@ export function useMockInterview() {
       setState({
         status: 'connecting',
         currentQuestion: null,
+        totalQuestions: null,
         evaluations: [],
         summary: null,
         error: null,
@@ -446,6 +453,7 @@ export function useMockInterview() {
     setState({
       status: 'idle',
       currentQuestion: null,
+      totalQuestions: null,
       evaluations: [],
       summary: null,
       error: null,

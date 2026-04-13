@@ -113,8 +113,6 @@ export function ResumeWorkspaceRail({
   isFinalReviewStale,
   queueSummary,
   nextQueueItemLabel,
-  finalReviewWarningsAcknowledged,
-  onAcknowledgeFinalReviewWarnings,
   jobUrl,
   sessionId,
   accessToken,
@@ -128,8 +126,6 @@ export function ResumeWorkspaceRail({
   isFinalReviewStale: boolean;
   queueSummary: RewriteQueueSummary;
   nextQueueItemLabel?: string;
-  finalReviewWarningsAcknowledged?: boolean;
-  onAcknowledgeFinalReviewWarnings?: () => void;
   /** Job application URL — when present, shows the Apply to This Job button in ExportBar */
   jobUrl?: string;
   /** Session ID for linking the resume to the job application */
@@ -161,8 +157,6 @@ export function ResumeWorkspaceRail({
         queueHandled={queueSummary.handled}
         queueTotal={queueSummary.total}
         nextQueueItemLabel={nextQueueItemLabel}
-        warningsAcknowledged={finalReviewWarningsAcknowledged}
-        onAcknowledgeWarnings={onAcknowledgeFinalReviewWarnings}
         jobUrl={jobUrl}
         sessionId={sessionId}
         accessToken={accessToken}

@@ -81,7 +81,7 @@ export function WatchlistManager({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Manage watchlist" className="relative w-full max-w-lg rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl max-h-[85vh] flex flex-col">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="watchlist-title" tabIndex={-1} className="relative w-full max-w-lg rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl max-h-[85vh] flex flex-col focus:outline-none">
         <button
           type="button"
           onClick={onClose}
@@ -90,7 +90,7 @@ export function WatchlistManager({
           <X size={18} />
         </button>
 
-        <h2 className="text-[16px] font-semibold text-[var(--text-strong)] mb-5">Target Companies</h2>
+        <h2 id="watchlist-title" className="text-[16px] font-semibold text-[var(--text-strong)] mb-5">Target Companies</h2>
 
         {/* Add form */}
         <div className="space-y-3 mb-5 pb-5 border-b border-[var(--line-soft)]">
@@ -184,6 +184,7 @@ export function WatchlistManager({
                     <button
                       type="button"
                       onClick={() => commitEdit(company.id)}
+                      aria-label="Save"
                       className="text-[var(--badge-green-text)]/60 hover:text-[var(--badge-green-text)] transition-colors"
                     >
                       <Check size={14} />
@@ -197,6 +198,7 @@ export function WatchlistManager({
                     <button
                       type="button"
                       onClick={() => startEdit(company)}
+                      aria-label="Edit"
                       className="text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
                     >
                       <Pencil size={12} />
@@ -207,7 +209,8 @@ export function WatchlistManager({
                 <button
                   type="button"
                   onClick={() => onRemove(company.id)}
-                  className="text-[var(--text-soft)] hover:text-red-400/60 transition-colors flex-shrink-0"
+                  aria-label="Remove"
+                  className="text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/60 transition-colors flex-shrink-0"
                 >
                   <Trash2 size={14} />
                 </button>

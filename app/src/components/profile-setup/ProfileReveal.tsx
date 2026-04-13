@@ -101,7 +101,7 @@ export function ProfileReveal({
                 className="rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed"
                 style={{
                   background: retryingMasterResume ? 'var(--surface-1)' : 'var(--link)',
-                  color: retryingMasterResume ? 'var(--text-muted)' : '#080b10',
+                  color: retryingMasterResume ? 'var(--text-muted)' : 'var(--bg-0)',
                 }}
               >
                 {retryingMasterResume ? 'Retrying master resume creation...' : 'Retry creating my master resume'}
@@ -190,7 +190,7 @@ export function ProfileReveal({
               type="button"
               onClick={() => navigate('/workspace?room=career-profile')}
               className="w-full py-4 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-              style={{ background: 'var(--link)', color: '#080b10' }}
+              style={{ background: 'var(--link)', color: 'var(--bg-0)' }}
             >
               Go to Your Profile →
             </button>

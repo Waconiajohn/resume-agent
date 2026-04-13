@@ -9,7 +9,7 @@ const STAGE_COLORS: Record<PipelineStage, string> = {
   interviewing: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
   offer: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
   closed_won: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]',
-  closed_lost: 'bg-red-400/10 text-red-400/60',
+  closed_lost: 'bg-[var(--badge-red-text)]/10 text-[var(--badge-red-text)]/60',
 };
 
 export function StageBadge({ stage }: { stage: PipelineStage }) {
@@ -20,7 +20,7 @@ export function StageBadge({ stage }: { stage: PipelineStage }) {
         STAGE_COLORS[stage],
       )}
     >
-      {stage.replace('_', ' ')}
+      {stage.replaceAll('_', ' ')}
     </span>
   );
 }

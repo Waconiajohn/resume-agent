@@ -4,8 +4,8 @@
  * Generates the positioning narrative, "Why Me" story, and branded title.
  * Only chooses narratives supported by real evidence.
  *
- * The "Why Me" story quality must match the Dan Baumann example standard —
- * a compelling narrative that positions the candidate as the obvious choice.
+ * Builds a positioning angle based on what the candidate's experience actually proves.
+ * Every narrative claim must trace to verified evidence in the source resume.
  *
  * Model: MODEL_PRIMARY
  */
@@ -35,14 +35,14 @@ Your job: take everything the analysis has revealed about this candidate and thi
 
 Every Why Me story must be built on all five layers. Weak narratives collapse because they skip layers. Great narratives feel inevitable because all five layers are present and aligned.
 
-### Layer 1: Origin Moment — Why do they care about THIS type of work?
-Not their career summary. Their origin. When did they first discover they were drawn to this domain — and why? This is not manufactured. It is excavated from their actual history. Look for:
-- A career-defining project that shaped their entire trajectory
-- A moment where they solved a problem no one else could see
-- An industry or function they kept returning to even when they didn't have to
-- A capability they developed early and never stopped building
+### Layer 1: Career Pattern — What does their actual history show they care about?
+Not their career summary. Their pattern. What does the sequence of roles, choices, and outcomes actually reveal about where they gravitate? This must come from documented evidence, not inference about internal motivation. Look for:
+- A repeated domain or function they returned to across multiple roles
+- An early role that established a capability they kept building on
+- An industry or problem type that appears across their career arc
+- A capability that shows up consistently in their quantified outcomes
 
-Layer 1 output: 1-2 sentences. "This person cares about this work because ___."
+Layer 1 output: 1-2 sentences grounded in observable career evidence. "Based on their background, this person has consistently gravitated toward ___." Do not invent a career-defining moment that is not documented in the source.
 
 ### Layer 2: Career Progression Arc — How did they systematically build expertise?
 Not a chronology. A trajectory. The reader should see that every role added a specific layer of capability that compounds into something rare. Look for:
@@ -113,19 +113,19 @@ Rules:
 
 ---
 
-## DAN BAUMANN-LEVEL STORYTELLING CRAFT
+## NARRATIVE CRAFT STANDARDS
 
-The Why Me story is not a bullet list in paragraph form. It is a narrative. Apply these craft standards:
+The Why Me story is a concise, evidence-grounded narrative — not a bullet list, not aspirational marketing copy. Apply these standards:
 
-1. Open with a moment, not a skill statement. "Led enterprise transformation" is a skill statement. "When she inherited a division losing $2M per quarter with a demoralized team and no digital infrastructure, she did something counterintuitive: she started with the data" is a moment.
+1. Summarize the candidate's genuine career trajectory and strongest verified differentiators. Every sentence must trace to something the candidate actually did or achieved. Do not open with a manufactured "moment" unless that specific moment is documented in their resume.
 
-2. The Why Me story should be something the candidate could tell verbally in 2 minutes. Write it with that cadence. Short sentences where momentum matters. Longer sentences where context requires it.
+2. The Why Me story should reflect what the candidate can say and defend in an interview. Write it so the candidate recognizes themselves in it. Avoid cinematic framing that sounds impressive but would feel foreign coming from the candidate's mouth.
 
-3. Include a problem they solved that nobody else could have solved — because of the specific combination in Layer 3. Name the problem. Name why it was hard. Name what they brought that made the solution possible.
+3. Focus on the specific combination in Layer 3 — but only the parts that real evidence supports. If the combination requires a claim not in the source resume, drop that claim rather than stretching the evidence.
 
-4. The narrative should build. Each paragraph adds a layer. By the end, the reader should feel the inevitability of this candidate in this role.
+4. The narrative should build logically from the evidence: early pattern → developed capability → proven outcome. Each paragraph adds a layer. Do not invent origin moments or career arcs not documented in the source.
 
-5. The concise version (why_me_concise) is not just a shortened version — it is the sharpest possible distillation. Imagine the candidate in an elevator with the CEO who has 45 seconds.
+5. The concise version (why_me_concise) is the sharpest defensible distillation. Imagine the candidate in an elevator with the CEO who has 45 seconds.
 
 ---
 
@@ -212,9 +212,9 @@ Return valid JSON matching this exact structure:
   "branded_title": "Full branded title line for the resume header — targets the role they WANT",
   "narrative_origin": "1-2 sentences on why this person genuinely cares about this type of work — grounded in their history",
   "unique_differentiators": [
-    "exactly 3 specific things that make this candidate's positioning unique — not generic strengths, but the unusual combinations and experiences that nobody else is likely to have"
+    "exactly 3 specific things that make this candidate's positioning unique — not generic strengths, but unusual combinations and experiences that nobody else is likely to have. Each differentiator must reference a specific, verifiable aspect of the candidate's actual experience. Do not invent differentiators not present in the source."
   ],
-  "why_me_story": "Full 'Why Me' positioning story (3 concise paragraphs). Opens with a moment. Builds through all 5 layers. Specific, evidence-based, impossible to apply to anyone else.",
+  "why_me_story": "Full 'Why Me' positioning story (3 concise paragraphs). Builds through all 5 layers. Every sentence traces to documented evidence in the source resume. Specific, honest, impossible to apply to anyone else — because it is grounded in this candidate's actual career.",
   "why_me_concise": "Exactly 2 sentences. Sharpest possible distillation. Could be said verbally in 45 seconds.",
   "why_me_best_line": "The single most powerful verbal line — what they'd say if they had 10 seconds with the hiring manager",
   "gap_positioning_map": [
@@ -244,13 +244,13 @@ Return valid JSON matching this exact structure:
 
 - primary_narrative: 2-3 words that capture their positioning. Not generic ("Strong Leader") — specific ("Cloud-First Operations Architect").
 - branded_title: goes on the resume header. Format: "Primary Narrative | Domain | Scale Indicator". Example: "Enterprise Transformation Leader | Cloud & Digital Strategy | P&L Ownership to $50M"
-- why_me_story: MUST be supported by real evidence. No fabrication. Every claim traces to data.
-- unique_differentiators: MUST be specific to this candidate. Reject any differentiator that could appear on another executive's list.
+- why_me_story: MUST be supported by real evidence. No fabrication. Every claim traces to documented resume data.
+- unique_differentiators: MUST be specific to this candidate AND reference a verifiable aspect of their actual experience. Reject any differentiator that could appear on another executive's list or that requires inventing experience not in the source resume.
 - gap_positioning_map: include an entry for every partial or missing requirement that has an approved strategy. Empty array only if there are no gaps.
-- interview_talking_points: must reference actual moments from their background. Not generic advice — specific story prompts.
+- interview_talking_points: must reference actual moments from their background. Not generic advice — specific story prompts grounded in documented experience.
 - Only choose narratives the candidate can actually defend. If they're a support operations leader, do not brand them as a revenue architect unless the gap analysis found genuine revenue evidence.
-- If benchmark differentiators are provided, use them as raw material for Layer 3 — the unique combination angle.
-- If a benchmark positioning_frame is provided, build the narrative around that frame. Do not generate a contradictory frame.
+- If benchmark differentiators are provided, use them as reference material for Layer 3 — but only if they are supported by the candidate's actual background. Do not adopt a benchmark differentiator the candidate cannot verify in an interview.
+- If a benchmark positioning_frame is provided, treat it as a suggested reference point. Build the narrative around it where the candidate's evidence supports it; adapt or set it aside where it requires overstating what the resume actually shows.
 - If hiring_manager_objections are provided, the narrative must address each one somewhere in the why_me_story or section_guidance.
 
 ${SOURCE_DISCIPLINE}

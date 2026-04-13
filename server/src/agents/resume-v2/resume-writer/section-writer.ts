@@ -70,39 +70,49 @@ function formatUsedEvidence(usedEvidence: string[]): string {
 
 // ─── Section 1: Executive Summary ───────────────────────────────────
 
-const SUMMARY_SYSTEM = `You are an expert executive resume writer. Your job is to COMPLETE an executive summary that has already been started for you.
+const SUMMARY_SYSTEM = `You are a ghostwriter for a senior executive. A hiring manager will spend 6 seconds on this summary. Your job: make those 6 seconds count.
 
-## YOUR TASK
+STEP 1 — EXTRACT THE CANDIDATE'S VOICE
+Before writing anything, read the candidate's original resume text below. Find 3-5 phrases where the candidate sounds most like themselves — specific language, industry terms, accomplishments they clearly own. Write these down mentally. Your summary must echo THEIR voice, not yours.
 
-You will receive an opening sentence that has already been written. Your job is to write 2-4 follow-up sentences that complete the executive summary. Total length: 60-100 words including the opener.
+STEP 2 — IDENTIFY THE JOB'S TOP NEED
+Read the top JD requirements provided below. What is the #1 problem this company is hiring someone to solve? Your summary must answer: "This person solves THAT problem."
 
-Your follow-up sentences should cover:
-1. CAPABILITY SENTENCE: What this person consistently delivers across roles — their signature pattern.
-2. PROOF SENTENCES (1-2): Specific quantified achievements that back up the identity and capability claims. Use real metrics from the candidate data.
-3. POSITIONING SENTENCE (optional): A forward-looking frame connecting their track record to what they'll deliver next.
+STEP 3 — WRITE THE SUMMARY
+Write 3-4 sentences. Total: 60-100 words. Follow this structure:
 
-## WRITING RULES — READ FIRST
-- Do NOT rewrite or replace the opening sentence — it is final. You are ONLY writing what comes after it.
-- Do NOT use first-person pronouns: "I", "my", "mine", "I've", "I'm", "I have", "I possess", "I am", "we", "our".
-  WRONG: "I've led teams across 3 regions." RIGHT: "Led teams across 3 regions."
-  WRONG: "I'm an expert in cloud." RIGHT: "Deep expertise in cloud infrastructure."
-- Do NOT use filler phrases: "results-driven", "proven track record", "seasoned professional", "ideal candidate", "dynamic professional", "motivated self-starter", "extensive experience"
-- Do NOT name the target company — the summary must work for any application
-- Do NOT repeat the same verb to start two different sentences
-- Every sentence must be grammatically correct and sound natural when read aloud
-- Weave in domain-relevant terms from the job description naturally — but only where the candidate has real evidence
+SENTENCE 1 — WHO THEY ARE (not what they've done):
+Write how a trusted colleague would introduce them at a conference.
+  ✓ "Operations executive who turns around underperforming manufacturing plants."
+  ✓ "Finance leader who builds reporting infrastructure that boards actually use."
+  ✗ "Results-driven professional with 22 years of experience in operations."
+  ✗ "Seasoned leader passionate about driving operational excellence."
 
-## EXAMPLE
+SENTENCE 2 — THEIR STRONGEST PROOF (with a number):
+One accomplishment that directly addresses the job's top need. Use the XYZ formula: Accomplished [X] as measured by [Y] by doing [Z].
+  ✓ "Turned around a $210M division — eliminated $18M in waste, improved throughput 22% in under two years."
+  ✓ "Built the FP&A function from scratch, delivering the first board-ready financial model within 90 days."
+  ✗ "Proven track record of driving improvements and delivering results."
 
-Opening sentence (given): "Cloud Infrastructure Architect with 12 years of experience designing, scaling, and securing enterprise platforms across multi-cloud environments."
+SENTENCE 3 — WHY THIS ROLE (connect to the JD):
+Bridge their experience to what THIS specific job needs. Be concrete.
+  ✓ "Combines deep Lean expertise with hands-on budget management across 3 plants serving automotive OEMs."
+  ✗ "Passionate about operational excellence and committed to continuous improvement."
 
-Good completion: "Consistently delivers cost optimization and reliability at scale — most recently driving 35% hosting cost reduction through a 60+ application cloud migration while maintaining 99.95% availability. Combines deep AWS and Kubernetes expertise with hands-on leadership of 14-person engineering teams supporting 200+ microservices. AWS Solutions Architect – Professional certified."
+STEP 4 — SELF-CRITIQUE
+Before outputting, check your summary against these tests:
+- PERSON TEST: Could you hear a real person say this at a dinner party? If it sounds like a LinkedIn bot, rewrite.
+- SPECIFICITY TEST: Does every sentence contain at least one concrete detail (number, company type, methodology, industry)?
+- BUZZWORD TEST: Scan for these AI fingerprints and REMOVE any you find: spearheaded, leveraged, orchestrated, championed, fostered, driving [noun], ensuring [noun], cross-functional collaboration, stakeholder engagement, transformational, innovative solutions, best-in-class, cutting-edge, holistic, robust, end-to-end, operational excellence, proven track record, results-driven, seasoned professional.
+- XYZ TEST: Does sentence 2 follow Accomplished [X] as measured by [Y] by doing [Z]?
 
-## AGE-PROOFING (when career span exceeds 20 years)
-- Do NOT say "30 years of experience" or similar — the opening sentence already states years
-- Frame career depth as mastery, not duration: "deep expertise" not "long career"
-- Emphasize recent capabilities and current relevance, not historical breadth
-- Position continuous evolution as a strength: technology adoption, methodology advancement
+If any test fails, revise that sentence before outputting.
+
+HARD CONSTRAINTS:
+- No first-person pronouns (I, my, we, our)
+- No naming the target company
+- Every metric must come from the source resume — never invent numbers
+- If career span > 20 years: say "deep expertise" not "30 years of experience"
 
 ${SOURCE_DISCIPLINE}
 ${JSON_RULES}`;
@@ -126,9 +136,7 @@ async function callSummarySection(
     (m) => `- [${m.strength}] ${m.jd_requirement} → ${m.candidate_evidence}`,
   ).join('\n');
 
-  // Construct the opening sentence deterministically — this is the identity-first anchor.
-  // Keep it short: just branded title + years. The LLM fills in the capability in follow-up sentences.
-  // Safety net: if career_span_years seems too low, compute from earliest experience date.
+  // Compute authoritative career span — prefer the larger of declared vs computed from experience dates.
   const sourceExperience = getAuthoritativeSourceExperience(candidate);
   const currentYear = new Date().getFullYear();
   const earliestYear = sourceExperience.reduce((earliest, exp) => {
@@ -139,13 +147,24 @@ async function callSummarySection(
   const careerYears = Math.max(candidate.career_span_years, computedYears);
 
   const title = narrative.branded_title?.trim() || candidate.contact.name;
-  const openingSentence = `${title} with ${careerYears} years of experience.`;
+
+  // Extract top 3 requirements for summary targeting
+  const top3Requirements = (input.gap_analysis?.requirements ?? [])
+    .filter((r) => r.classification === 'strong' || r.classification === 'partial')
+    .slice(0, 3)
+    .map((r) => r.requirement);
+
+  const requirementBlock = top3Requirements.length > 0
+    ? `\n\nTHE THREE JD REQUIREMENTS THAT MATTER MOST FOR THIS ROLE:\n${top3Requirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\nYour summary MUST address at least 2 of these 3 requirements explicitly.`
+    : '';
 
   const userMessage = [
-    '## THE OPENING SENTENCE (already written — do not change it)',
-    `"${openingSentence}"`,
+    '## CANDIDATE IDENTITY',
+    `Branded title: ${title}`,
+    `Career span: ${careerYears} years`,
+    `Name: ${candidate.contact.name}`,
     '',
-    'Write 2-4 sentences that FOLLOW this opener. Return the COMPLETE summary including the opening sentence above.',
+    'Write the COMPLETE executive summary from scratch — all sentences. Do not parrot the branded title verbatim. Use it as inspiration for sentence 1, but write it naturally.',
     '',
     '## STRATEGIC CONTEXT',
     `Primary narrative: ${narrative.primary_narrative}`,
@@ -158,8 +177,6 @@ async function callSummarySection(
       : '',
     '',
     '## CANDIDATE',
-    `Name: ${candidate.contact.name}`,
-    `Career span: ${candidate.career_span_years} years`,
     `Top quantified outcomes:\n${topOutcomes}`,
     `Career themes: ${candidate.career_themes.slice(0, 4).join(', ')}`,
     `Leadership scope: ${candidate.leadership_scope}`,
@@ -168,19 +185,25 @@ async function callSummarySection(
     '',
     '## OUTPUT FORMAT',
     'Return this JSON object:',
-    '{ "content": "3-5 sentence executive summary", "is_new": true }',
+    '{ "content": "3-4 sentence executive summary", "is_new": true }',
+    requirementBlock,
   ].filter(Boolean).join('\n');
 
   const parse = async (text: string): Promise<SummaryResult | null> => {
     const parsed = repairJSON<SummaryResult>(text);
     if (!parsed?.content || typeof parsed.content !== 'string') return null;
 
-    // Safety net: if the model wrote follow-up sentences but forgot to include the
-    // opening sentence, prepend it. This ensures identity-first regardless of model behavior.
+    // Safety net: only prepend the branded title as context if the model produced
+    // a summary with no identity-establishing first sentence at all (e.g. started
+    // mid-proof or with a bare job-duty clause). We check for the absence of any
+    // recognizable noun phrase about who the person is — not a strict prefix match.
     const content = parsed.content.trim();
-    const openerNormalized = openingSentence.toLowerCase().slice(0, 40);
-    if (!content.toLowerCase().startsWith(openerNormalized)) {
-      parsed.content = `${openingSentence} ${content}`;
+    const firstSentenceEnd = content.indexOf('.');
+    const firstSentence = firstSentenceEnd > 0 ? content.slice(0, firstSentenceEnd) : content;
+    const hasIdentityOpener = firstSentence.length > 15 && !/^(led|managed|built|drove|achieved|delivered|responsible|with \d)/i.test(firstSentence.trim());
+    if (!hasIdentityOpener) {
+      logger.warn('section-writer: summary lacked identity opener — prepending branded title as anchor');
+      parsed.content = `${title}. ${content}`;
     }
 
     return parsed;
@@ -684,55 +707,101 @@ async function callCustomSections(
 
 // ─── Section 5: Professional Experience ──────────────────────────────
 
-const EXPERIENCE_SYSTEM = `You are an expert executive resume writer. Your only job right now is to write the Professional Experience section of an executive resume.
+const EXPERIENCE_SYSTEM = `You are a ghostwriter for a senior executive. You are writing the Professional Experience section of their resume.
 
-## BULLET ARCHETYPES — use a mix within each role (aim for 2-3 different archetypes per role)
+## EVIDENCE-BOUND WRITING — YOUR #1 RULE
 
-1. TRANSFORMATION (before → action → after):
-   EXAMPLE: "Inherited operations division with 23% annual turnover. Built structured mentorship program pairing senior managers with high-potential ICs. Turnover dropped to 9% within 18 months — $340K in eliminated recruiting spend."
+You are rewriting the candidate's resume to better address the target role. You may ONLY use facts from these sources:
 
-2. EMPOWERMENT (grew people):
-   EXAMPLE: "Developed 8-person engineering leadership pipeline through quarterly stretch assignments. Five promoted to team leads within 3 years; three later led product teams generating $12M combined revenue."
+1. The candidate's original resume text (provided in SOURCE POSITIONS below)
+2. User-confirmed evidence (marked "USER CONFIRMED" in the gap strategies)
+3. Conservative inferences the user explicitly approved
 
-3. ACCOUNTABILITY (set standards):
-   EXAMPLE: "Established weekly OKR reviews with 100% participation. Every miss triggered 48-hour root cause analysis. Maintained 89% quarterly attainment against 67% historical baseline."
+You may NOT:
+- Invent metrics, team sizes, budgets, or certifications
+- Upgrade "managed" to "owned" without user confirmation
+- Add company names, client names, or project details not in the source
+- Convert "collaborated on" to "led" without evidence
 
-4. RECOVERY (setback → fix):
-   EXAMPLE: "When Q3 launch missed adoption targets by 40%, conducted cross-functional post-mortem within one week. Redesigned onboarding flow and launched peer coaching. Q4 adoption exceeded original targets by 15%."
+When evidence is thin for a requirement, write a SHORTER, HONEST bullet rather than a LONGER, FABRICATED one. A resume with 3 strong honest bullets per role is better than 6 polished lies.
 
-5. PROCESS (methodology):
-   EXAMPLE: "Conducted 6-week competitive analysis across 14 offerings before entering enterprise segment. Identified underserved mid-market niche. Designed land-and-expand model capturing 23 logos in first year."
+STEP 1 — READ THE SOURCE RESUME
+Before writing, study the candidate's original experience entries. For each role, note:
+- Their actual job title and company
+- Their real scope (team size, budget, geography)
+- The specific metrics and outcomes they reported
+- Their natural language — how THEY describe their work
+You will preserve their facts and echo their voice. You will NOT invent new facts.
 
-6. IMPACT (traditional — limit to ~30% of bullets):
-   EXAMPLE: "Reduced infrastructure costs by 35% through cloud consolidation while maintaining 99.95% uptime."
+STEP 2 — MAP JD REQUIREMENTS TO ROLES
+The user message includes the top 3 JD requirements. Before writing any bullets, decide:
+- Which role(s) have the strongest evidence for each requirement?
+- Put the strongest proof for each requirement in the MOST RECENT qualifying role
+- If a requirement has no evidence in any role, skip it — do not fabricate
+
+STEP 3 — WRITE EACH ROLE
+For each role, write:
+
+A) SCOPE STATEMENT (1 natural sentence about the role's scale):
+  ✓ "Ran day-to-day operations across 3 manufacturing plants, 1,100 employees, and a $210M operating budget."
+  ✗ "Scope: 3 plants, 1,100 FTEs, $210M budget" (never use labels)
+  ✗ "Oversaw comprehensive operational oversight of multi-facility enterprise" (corporate fluff)
+
+B) BULLETS using the XYZ formula: Accomplished [X] as measured by [Y] by doing [Z]
+
+For each bullet, CHOOSE the right story format:
+
+TRANSFORMATION (use when they FIXED something broken):
+  "Inherited [broken state]. [What they did — specifically how]. [Measurable result]."
+  Example: "Took over a warehouse with 23% annual turnover and no training program. Introduced structured mentoring pairing veteran leads with new hires. Turnover dropped to 9% in 18 months, saving $340K in recruiting."
+
+GROWTH (use when they BUILT something or GREW people):
+  "Built/Grew [what] from [start state] to [end state]. [How they did it]. [What it enabled]."
+  Example: "Grew the data team from 2 analysts to 8, including 3 data scientists. Stood up Snowflake and Looker from scratch. Delivered the first exec dashboard within 90 days — now used in every board meeting."
+
+RECOVERY (use when they SOLVED a crisis):
+  "When [what went wrong], [how fast they diagnosed it]. [What they changed]. [Result]."
+  Example: "When a key supplier missed delivery by 3 weeks, identified 2 backup vendors within 48 hours. Renegotiated terms and split the order. Production resumed on schedule — zero customer impact."
+
+IMPACT (simple action → result — limit to 30% of bullets):
+  "Reduced [X] by [Y%] through [specific method]."
+  Example: "Cut deployment time from 2 weeks to 4 hours by building a CI/CD pipeline with Jenkins and Terraform."
+
+Prefer story-format bullets when the source evidence supports them. But never force a story structure by inventing details.
+
+STEP 4 — CHECK YOUR WORK
+Before finalizing, scan your output:
+
+VERB DEDUP — check each role:
+  If any verb appears as the opener of 2+ bullets in the same role, rewrite one.
+  NEVER use "Led" more than once in the entire section.
+
+BANNED LANGUAGE — these are AI fingerprints. Using them WILL be caught:
+  Spearheaded, Championed, Orchestrated, Fostered, Pioneered
+  "Driving [noun]", "Ensuring [noun]", "Fostering [noun]"
+  "Cross-functional collaboration", "Stakeholder engagement"
+  "Transformational", "Innovative solutions", "Best-in-class"
+  "End-to-end", "Holistic", "Robust", "Cutting-edge", "Operational excellence"
+
+PREFERRED VERBS (concrete, human):
+  Built, Grew, Cut, Launched, Designed, Negotiated, Reduced, Expanded, Closed,
+  Fixed, Hired, Shipped, Opened, Restructured, Merged, Won, Saved, Automated,
+  Standardized, Eliminated, Inherited, Took over, Stood up, Consolidated
+
+STEP 5 — SELF-CRITIQUE
+Before outputting, verify:
+1. Every position from the source resume appears (count them)
+2. Every metric in your output comes from the source resume or user-confirmed evidence (no invented numbers)
+3. No verb appears as opener of 2+ bullets in the same role
+4. No sentence sounds like it was written by ChatGPT — read each aloud mentally
+5. You did not upgrade any verb (e.g., "collaborated" → "led") without user confirmation
+
+If any check fails, fix it before outputting.
 
 ## CAREER CONTEXT — 45+ EXECUTIVES
 - If a candidate has a gap > 6 months between roles, do NOT draw attention to it. The scope statement for the surrounding roles should imply continuity. If narrative guidance mentions a transition period, frame it positively in the scope statement.
 - If a candidate appears overqualified for the target role (their recent title is more senior), de-emphasize hierarchical titles in scope statements. Focus on the WORK and PROBLEMS, not the org chart position. Emphasize transferable capabilities.
 - If a candidate has 20+ years of experience, weight recent roles (last 10 years) heavily with full bullet detail. Older roles get fewer bullets and should emphasize transferable themes, not dated specifics. Use "Earlier Career" section for roles 15+ years ago that have low relevance to the target.
-
-## HARD RULES
-- EVERY position from the candidate experience MUST appear in your output — count them before writing
-- Never drop a position that would create an employment gap greater than 6 months
-- Scope statement required for every role with meaningful responsibility (team size, budget, geography, P&L)
-- Scope statements must read as natural sentences about the role's scale — NEVER start with labels like "Brief scope:", "Scope:", "Team:", or "Budget:" — write it as a sentence a human would say
-- Preserve ALL specific metrics, dollar amounts, percentages, team sizes, site counts from the original
-- Do NOT repeat proof points already used in Selected Accomplishments or custom sections (see Used Evidence below)
-- Professional Experience bullets for a role must cover DIFFERENT achievements than its Selected Accomplishment
-- Mark is_new: true for ANY content you wrote, rephrased, or enhanced beyond the original resume
-- BANNED openers: "Responsible for", "Helped", "Assisted", "Supported", "Participated in", "Worked on"
-- 70%+ of all experience bullets must have at least one quantified metric
-
-## VERB VARIETY — MANDATORY
-No two bullets within the same role may start with the same verb. Across the ENTIRE experience section, no verb should appear as an opener more than twice total.
-
-"Led" is the most overused verb in executive resumes. Use it AT MOST ONCE across the entire section. Instead, choose from verbs that show HOW the leadership happened:
-- Architected, Orchestrated, Drove, Championed, Transformed, Scaled, Negotiated, Launched
-- Designed, Established, Introduced, Pioneered, Restructured, Consolidated, Streamlined
-- Directed, Oversaw, Steered, Guided, Mobilized, Cultivated, Elevated
-- Built, Delivered, Implemented, Deployed, Accelerated, Expanded, Secured
-
-Before finalizing, scan every bullet opener. If you see the same verb twice in one role, rewrite one of them.
 
 ## SECTION BOUNDARIES — DO NOT MIX
 The positions array must contain ONLY professional experience entries (roles with company, title, dates, bullets).
@@ -744,6 +813,19 @@ Do NOT include any of the following as experience bullets or positions:
 
 These belong in separate resume sections, NOT inside professional experience.
 
+## HARD RULES
+- EVERY position from the candidate experience MUST appear in your output — count them before writing
+- Never drop a position that would create an employment gap greater than 6 months
+- Scope statement required for every role with meaningful responsibility (team size, budget, geography, P&L)
+- Scope statements must read as natural sentences about the role's scale — NEVER start with labels like "Brief scope:", "Scope:", "Team:", or "Budget:" — write it as a sentence a human would say
+- Preserve ALL specific metrics, dollar amounts, percentages, team sizes, site counts from the original
+- Do NOT repeat proof points already used in Selected Accomplishments or custom sections (see Used Evidence below)
+- Professional Experience bullets for a role must cover DIFFERENT achievements than its Selected Accomplishment
+- Mark is_new: true for ANY content you wrote, rephrased, or enhanced beyond the original resume
+- BANNED openers: "Responsible for", "Helped", "Assisted", "Supported", "Participated in", "Worked on"
+- Include metrics where the source provides them — but NEVER invent a number to meet a quota
+- No first-person pronouns
+
 ## OUTPUT FORMAT
 Return this JSON object:
 {
@@ -753,7 +835,7 @@ Return this JSON object:
       "title": "Job Title",
       "start_date": "Start",
       "end_date": "End",
-      "scope_statement": "Led 14-person engineering team across 3 regions with $4.2M annual budget",
+      "scope_statement": "Ran day-to-day operations across 3 manufacturing plants, 1,100 employees, and a $210M operating budget.",
       "scope_statement_is_new": true,
       "scope_statement_source": "enhanced",
       "scope_statement_confidence": "strong",
@@ -839,9 +921,14 @@ async function callExperienceSection(
     .filter((s) => !s.target_section || s.target_section === 'auto' || s.target_section === 'experience')
     .slice(0, 6)
     .map((s) => {
-      const metricNote = s.strategy.inferred_metric ? ` [use: ${s.strategy.inferred_metric}]` : '';
-      const placement = s.target_company ? ` (preferred company: ${s.target_company})` : '';
-      return `- ${s.requirement}: ${s.strategy.positioning}${metricNote}${placement}`;
+      const metricNote = s.strategy.inferred_metric
+        ? ` [INFERRED — use only if user confirmed: ${s.strategy.inferred_metric}]`
+        : '';
+      const userEvidence = s.strategy.verified_user_evidence
+        ? `\n  USER CONFIRMED: "${s.strategy.verified_user_evidence}" <- TRUST THIS`
+        : '';
+      const placement = s.target_company ? ` (company: ${s.target_company})` : '';
+      return `- ${s.requirement}: ${s.strategy.positioning}${metricNote}${userEvidence}${placement}`;
     })
     .join('\n');
 
@@ -855,6 +942,16 @@ async function callExperienceSection(
   const framingEntries = Object.entries(experienceFraming).slice(0, 6).map(
     ([company, framing]) => `- ${company}: ${framing}`,
   ).join('\n');
+
+  // Extract top 3 requirements for experience bullet targeting
+  const top3ExperienceRequirements = (input.gap_analysis?.requirements ?? [])
+    .filter((r) => r.classification === 'strong' || r.classification === 'partial')
+    .slice(0, 3)
+    .map((r) => r.requirement);
+
+  const experienceRequirementBlock = top3ExperienceRequirements.length > 0
+    ? `\n## TOP 3 JD REQUIREMENTS — COVER THESE FIRST\nFor each requirement below, write at least one bullet in the MOST RECENT role where the candidate has relevant experience. These are non-negotiable:\n${top3ExperienceRequirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
+    : '';
 
   const userMessage = [
     `## SOURCE POSITIONS (${sourceExperience.length} total — ALL must appear in output)`,
@@ -874,11 +971,22 @@ async function callExperienceSection(
     'ADDITIONAL USED EVIDENCE (from custom sections):',
     formatUsedEvidence(usedEvidence),
     '',
-    '## TOP JD REQUIREMENTS (target these in bullets)',
+    experienceRequirementBlock,
+    '',
+    '## ALL JD REQUIREMENTS (broader targeting)',
     topRequirements,
     '',
     experienceStrategies
-      ? `## GAP STRATEGIES TO SURFACE IN EXPERIENCE\n${experienceStrategies}`
+      ? [
+          '## EVIDENCE HIERARCHY — READ THIS BEFORE WRITING GAP STRATEGIES',
+          'When writing bullets to address gap requirements:',
+          '1. HIGHEST TRUST: Lines marked "USER CONFIRMED" — use these verbatim or lightly rewrite',
+          '2. MEDIUM TRUST: Original resume text (SOURCE POSITIONS above) — reframe for the target role but preserve facts',
+          '3. LOW TRUST: Lines marked "INFERRED" — use only if the user confirmed the inference',
+          '4. NEVER USE: Any metric, scope, or claim not in the above three categories',
+          '',
+          `## GAP STRATEGIES TO SURFACE IN EXPERIENCE\n${experienceStrategies}`,
+        ].join('\n')
       : '',
     relevantGapEntries
       ? `\n## GAP POSITIONING MAP (experience-targeted entries)\n${relevantGapEntries}`

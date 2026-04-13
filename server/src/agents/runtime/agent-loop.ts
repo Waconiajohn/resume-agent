@@ -10,7 +10,7 @@
  * Uses the existing llm-provider.ts infrastructure (streaming, usage tracking).
  */
 
-import { llm } from '../../lib/llm.js';
+import { llm, getModelForTier } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
 import { captureErrorWithContext } from '../../lib/sentry.js';
@@ -96,6 +96,9 @@ export async function runAgentLoop<
     overallTimeoutMs,
   );
 
+  // Resolve model tier (e.g., 'orchestrator') to concrete model name (e.g., 'llama-3.3-70b-versatile')
+  const resolvedModel = getModelForTier(config.model as Parameters<typeof getModelForTier>[0]) ?? config.model;
+
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let round = 0;
@@ -158,7 +161,7 @@ export async function runAgentLoop<
           // Call LLM with retry, using the per-round signal
           response = await withRetry(
           () => llm.chat({
-            model: config.model,
+            model: resolvedModel,
             system: config.system_prompt,
             messages,
             tools: toolDefs.length > 0 ? toolDefs : undefined,

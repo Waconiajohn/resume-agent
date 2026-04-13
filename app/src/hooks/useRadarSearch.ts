@@ -325,10 +325,6 @@ export function useRadarSearch() {
     }));
   }, []);
 
-  const promoteJob = useCallback((job: RadarJob): RadarJob => {
-    return job;
-  }, []);
-
   const reset = useCallback((): void => {
     if (!mountedRef.current) return;
     setState({
@@ -342,7 +338,6 @@ export function useRadarSearch() {
     ...state,
     search,
     dismissJob,
-    promoteJob,
     reset,
   };
 }

@@ -158,6 +158,9 @@ export interface CaseStudyState extends BaseState {
   /** Canonical shared context, populated alongside legacy platform_context during migration */
   shared_context?: SharedContext;
 
+  /** Optional emphasis areas specified by the user */
+  focus_areas?: string;
+
   /** Context about the target role and market */
   target_context?: {
     /** Target role or title */

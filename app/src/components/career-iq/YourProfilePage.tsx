@@ -35,40 +35,8 @@ import { useWhyMeStory } from './useWhyMeStory';
 import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
 import { useStoryBank } from '@/hooks/useStoryBank';
 import type { InterviewStory, StoryBankRow } from '@/hooks/useStoryBank';
-import { useEvidenceLibrary } from '@/hooks/useEvidenceLibrary';
 import type { MasterResume } from '@/types/resume';
 import type { CareerProfileV2 } from '@/types/career-profile';
-
-// ─── Source badge ─────────────────────────────────────────────────────────────
-
-type EvidenceSource = 'resume' | 'why_me' | 'career_profile' | 'manual';
-
-const SOURCE_LABELS: Record<EvidenceSource, string> = {
-  resume: 'From Resume',
-  why_me: 'From Why Me',
-  career_profile: 'From Interview',
-  manual: 'Manual Entry',
-};
-
-const SOURCE_COLORS: Record<EvidenceSource, string> = {
-  resume: 'border-[var(--link)]/20 bg-[var(--link)]/10 text-[var(--link)]/80',
-  why_me: 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/10 text-[var(--badge-green-text)]/80',
-  career_profile: 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/10 text-[var(--badge-amber-text)]/80',
-  manual: 'border-[var(--line-strong)] bg-[var(--accent-muted)] text-[var(--text-soft)]',
-};
-
-function SourceBadge({ source }: { source: EvidenceSource }) {
-  return (
-    <span
-      className={cn(
-        'rounded-md border px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] shrink-0',
-        SOURCE_COLORS[source],
-      )}
-    >
-      {SOURCE_LABELS[source]}
-    </span>
-  );
-}
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
@@ -144,7 +112,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Master Resume" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
           <Loader2 size={16} className="animate-spin text-[var(--link)]" />
           Loading your master resume...
@@ -156,7 +124,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (!resume) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Master Resume" />
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
           Your master resume is the source of truth for every tool in the workspace. Upload it once
           and every session starts with full context.
@@ -174,7 +142,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
               <p className="text-sm text-[var(--text-muted)] mb-3">
                 No master resume yet.
               </p>
-              <GlassButton onClick={() => { window.location.href = '/workspace?room=resume'; }}>
+              <GlassButton onClick={() => navigate('/workspace?room=resume')}>
                 Go to Resume Builder
               </GlassButton>
             </>
@@ -185,7 +153,6 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   }
 
   // Resume exists — compact summary view
-  const contact = resume.contact_info;
   const experienceCount = resume.experience.length;
   const skillGroupCount = Object.keys(resume.skills).length;
   const summaryPreview = resume.summary
@@ -195,7 +162,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={FileText} label="Section B" title="Your Master Resume" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Master Resume" />
         <div className="flex items-center gap-2 shrink-0">
           {onNavigateResume && (
             <GlassButton variant="ghost" size="sm" onClick={onNavigateResume}>
@@ -205,48 +172,6 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           )}
         </div>
       </div>
-
-      {/* Contact row */}
-      {contact && (
-        <div className="mt-4 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-          <div className="flex flex-wrap items-start gap-4">
-            {contact.name && (
-              <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-                  Name
-                </div>
-                <div className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
-                  {contact.name}
-                </div>
-              </div>
-            )}
-            {contact.email && (
-              <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-                  Email
-                </div>
-                <div className="mt-1 text-sm text-[var(--text-muted)]">{contact.email}</div>
-              </div>
-            )}
-            {contact.phone && (
-              <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-                  Phone
-                </div>
-                <div className="mt-1 text-sm text-[var(--text-muted)]">{contact.phone}</div>
-              </div>
-            )}
-            {contact.linkedin && (
-              <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-                  LinkedIn
-                </div>
-                <div className="mt-1 text-sm text-[var(--text-muted)]">{contact.linkedin}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Summary preview */}
       {summaryPreview && (
@@ -316,7 +241,7 @@ function LinkedInSection() {
 
   return (
     <GlassCard className="p-6">
-      <SectionHeader icon={Linkedin} label="Section C" title="LinkedIn Profile" />
+      <SectionHeader icon={Linkedin} label="LinkedIn" title="LinkedIn Profile" />
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
         Your LinkedIn headline and About section are stored here as source material. LinkedIn Studio
         uses this to generate optimized content and profile suggestions.
@@ -409,66 +334,7 @@ function LinkedInSection() {
   );
 }
 
-// ─── Section D — Evidence Library ─────────────────────────────────────────────
-
-interface EvidenceLibrarySectionProps {
-  onGetDefaultResume?: () => Promise<MasterResume | null>;
-  careerProfile: CareerProfileV2 | null;
-}
-
-function EvidenceLibrarySection({
-  onGetDefaultResume,
-  careerProfile,
-}: EvidenceLibrarySectionProps) {
-  const { story } = useWhyMeStory();
-  const { items, loading } = useEvidenceLibrary({
-    onGetDefaultResume,
-    whyMeStory: story,
-    careerProfile,
-  });
-
-  return (
-    <GlassCard className="p-6">
-      <SectionHeader icon={BookOpen} label="Section D" title="Proof Library" />
-      <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        Everything we have gathered from your accomplishments, positioning, and profile sources in one proof base.
-        Use this to support your Why Me Story and benchmark assets.
-      </p>
-
-      {loading ? (
-        <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
-          <Loader2 size={16} className="animate-spin text-[var(--link)]" />
-          Loading evidence...
-        </div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-[var(--text-soft)]">
-            Your evidence library builds automatically as you use the platform — from resume sessions, interview prep, and your Why Me story.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-4 space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start gap-3 rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm leading-relaxed text-[var(--text-muted)]">{item.text}</p>
-                {item.category && (
-                  <p className="mt-1 text-[12px] text-[var(--text-soft)]">{item.category}</p>
-                )}
-              </div>
-              <SourceBadge source={item.source as EvidenceSource} />
-            </div>
-          ))}
-        </div>
-      )}
-    </GlassCard>
-  );
-}
-
-// ─── Section F — Story Bank ───────────────────────────────────────────────────
+// ─── Story Bank ──────────────────────────────────────────────────────────────
 
 function ThemeBadge({ theme }: { theme: string }) {
   return (
@@ -683,7 +549,7 @@ function StoryBankSection() {
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={MessageSquare} label="Section E" title="Story Bank" />
+        <SectionHeader icon={MessageSquare} label="Stories" title="Story Bank" />
         {stories.length > 0 && (
           <div className="shrink-0 rounded-full border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-0.5 text-[12px] text-[var(--link)]/80">
             {stories.length} {stories.length === 1 ? 'story' : 'stories'}
@@ -751,7 +617,7 @@ interface YourProfilePageProps {
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
-  careerProfile = null,
+  careerProfile: _careerProfile = null,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
   const _navigate = useNavigate();
@@ -788,7 +654,7 @@ export function YourProfilePage({
                 <BookOpen size={16} className="text-[var(--link)]" />
               </div>
               <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Section A</div>
+                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
                 <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
                   Your Why Me Story
                 </h2>
@@ -806,7 +672,7 @@ export function YourProfilePage({
       ) : (
         <GlassCard className="p-6">
           <div className="flex items-center justify-between gap-4">
-            <SectionHeader icon={BookOpen} label="Section A" title="Your Why Me Story" />
+            <SectionHeader icon={BookOpen} label="Positioning" title="Your Why Me Story" />
             {whyMeSaved && (
               <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
                 <CheckCircle2 size={13} />
@@ -833,13 +699,7 @@ export function YourProfilePage({
       {/* Section C — LinkedIn Profile */}
       <LinkedInSection />
 
-      {/* Section E — Proof Library */}
-      <EvidenceLibrarySection
-        onGetDefaultResume={onGetDefaultResume}
-        careerProfile={careerProfile}
-      />
-
-      {/* Section F — Story Bank */}
+      {/* Story Bank */}
       <StoryBankSection />
     </div>
   );

@@ -19,7 +19,7 @@ const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = 
   { key: 'interviewing', label: 'Interviewing', color: 'text-[var(--badge-green-text)]' },
   { key: 'offer', label: 'Offer', color: 'text-[var(--badge-green-text)]' },
   { key: 'closed_won', label: 'Won', color: 'text-[var(--badge-green-text)]' },
-  { key: 'closed_lost', label: 'Lost', color: 'text-red-400/60' },
+  { key: 'closed_lost', label: 'Lost', color: 'text-[var(--badge-red-text)]/60' },
 ];
 
 interface PipelineBoardProps {

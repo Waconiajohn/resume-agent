@@ -6,7 +6,7 @@ import { GlassSkeleton } from '@/components/GlassSkeleton';
  */
 export function RoomSkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+    <div role="status" aria-label="Loading..." className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       {/* Title + subtitle */}
       <div className="flex flex-col gap-2">
         <GlassSkeleton className="h-5 w-40" />

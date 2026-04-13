@@ -10,6 +10,8 @@ const FILTER_STAGES: { key: PipelineStage | 'all'; label: string }[] = [
   { key: 'screening', label: 'Screening' },
   { key: 'interviewing', label: 'Interviewing' },
   { key: 'offer', label: 'Offer' },
+  { key: 'closed_won', label: 'Won' },
+  { key: 'closed_lost', label: 'Lost' },
 ];
 
 interface PipelineFiltersProps {

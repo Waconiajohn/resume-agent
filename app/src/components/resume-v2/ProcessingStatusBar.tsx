@@ -86,7 +86,7 @@ export function ProcessingStatusBar({
             left: 0,
             height: '100%',
             width: `${clampedProgress}%`,
-            background: isComplete ? '#4ade80' : '#60a5fa',
+            background: isComplete ? 'var(--badge-green-text)' : 'var(--link)',
             transition: 'width 400ms ease, background 300ms ease',
           }}
         />
@@ -100,7 +100,7 @@ export function ProcessingStatusBar({
               height: '100%',
               width: '40%',
               background:
-                'linear-gradient(90deg, transparent 0%, rgba(96,165,250,0.4) 50%, transparent 100%)',
+                'linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--link) 40%, transparent) 50%, transparent 100%)',
               animation: 'processing-bar-shimmer 1.6s ease-in-out infinite',
             }}
           />
@@ -113,7 +113,7 @@ export function ProcessingStatusBar({
           textAlign: 'center',
           marginTop: '8px',
           fontSize: '13px',
-          color: isComplete ? '#4ade80' : 'var(--text-soft)',
+          color: isComplete ? 'var(--badge-green-text)' : 'var(--text-soft)',
           transition: 'color 300ms ease',
           letterSpacing: '0.01em',
         }}

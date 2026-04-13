@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import type { CreateContactData } from '@/hooks/useNetworkingContacts';
 import { CONTACT_ROLE_LABELS, ALL_ROLES } from '@/hooks/useRuleOfFour';
 
@@ -32,6 +33,7 @@ export function ContactFormModal({
   initialData = {},
   title = 'Add Contact',
 }: ContactFormModalProps) {
+  const { dialogRef } = useDialogA11y(isOpen, onClose);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,18 +95,21 @@ export function ContactFormModal({
       />
 
       {/* Modal */}
-      <GlassCard
+      <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
-        className="relative w-full max-w-lg p-6 z-10"
+        aria-labelledby="contact-form-title"
+        tabIndex={-1}
+        className="relative w-full max-w-lg z-10 focus:outline-none"
       >
+        <GlassCard className="p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">{title}</h2>
+          <h2 id="contact-form-title" className="text-[15px] font-semibold text-[var(--text-strong)]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="p-2 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
             aria-label="Close"
           >
             <X size={16} />
@@ -228,14 +233,14 @@ export function ContactFormModal({
         </div>
 
         {error && (
-          <p className="mt-3 text-[12px] text-red-400">{error}</p>
+          <p className="mt-3 text-[12px] text-[var(--badge-red-text)]">{error}</p>
         )}
 
         <div className="flex items-center justify-end gap-3 mt-5">
           <button
             type="button"
             onClick={onClose}
-            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             Cancel
           </button>
@@ -243,7 +248,8 @@ export function ContactFormModal({
             {saving ? 'Saving...' : 'Save Contact'}
           </GlassButton>
         </div>
-      </GlassCard>
+        </GlassCard>
+      </div>
     </div>
   );
 }

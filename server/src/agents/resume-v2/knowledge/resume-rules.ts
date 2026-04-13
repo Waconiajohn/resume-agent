@@ -280,6 +280,14 @@ export const BANNED_PHRASES = [
   'leverage', 'utilize', 'value-add',
   'spearheaded', 'high stakes', 'high-stakes',
   'member of', 'part of the team that', 'contributed to',
+  'driving transformation', 'driving operational excellence', 'driving growth',
+  'showcasing', 'demonstrating ability', 'ensuring seamless',
+  'holistic', 'robust', 'cutting-edge', 'best-in-class', 'world-class',
+  'transformational', 'innovative solutions', 'strategic vision',
+  'cross-functional collaboration', 'stakeholder engagement',
+  'thought leadership', 'paradigm shift', 'disruptive',
+  'championed', 'fostering', 'fostered', 'operational excellence',
+  'end-to-end', 'strategic partnerships',
 ];
 
 // ─── Guardrails ──────────────────────────────────────────────────────

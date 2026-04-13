@@ -107,7 +107,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
   if (error) {
     return (
       <GlassCard className="p-6 text-center">
-        <p className="text-sm text-red-400/80">{error}</p>
+        <p className="text-sm text-[var(--badge-red-text)]/80">{error}</p>
         <button
           type="button"
           onClick={fetchOpportunities}
@@ -161,7 +161,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
                   <span className={cn(
                     'flex-shrink-0 rounded-md border px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.12em]',
                     opp.match_score >= 80
-                      ? 'bg-emerald-500/15 text-emerald-400/80 border-emerald-500/20'
+                      ? 'bg-[var(--badge-green-text)]/15 text-[var(--badge-green-text)]/80 border-[var(--badge-green-text)]/20'
                       : opp.match_score >= 60
                         ? 'bg-amber-500/15 text-amber-400/80 border-amber-500/20'
                         : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)]',
@@ -177,7 +177,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
 
             {opp.bonus_amount && (
               <div className="flex-shrink-0 text-right">
-                <div className="text-xs font-medium text-emerald-400/80">
+                <div className="text-xs font-medium text-[var(--badge-green-text)]/80">
                   {opp.bonus_currency ?? 'USD'} {opp.bonus_amount}
                 </div>
                 <div className="text-[12px] text-[var(--text-soft)]">referral bonus</div>
@@ -214,7 +214,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
               <button
                 type="button"
                 onClick={() => handleGenerateOutreach(opp)}
-                className="rounded-lg bg-indigo-600/30 border border-indigo-400/20 px-3 py-1.5 text-xs font-medium text-indigo-300/80 hover:bg-indigo-600/40 hover:border-indigo-400/30 transition-all"
+                className="rounded-lg bg-[var(--link)]/20 border border-[var(--link)]/20 px-3 py-1.5 text-xs font-medium text-[var(--link)] hover:bg-[var(--link)]/30 hover:border-[var(--link)]/30 transition-all"
               >
                 Generate Outreach
               </button>

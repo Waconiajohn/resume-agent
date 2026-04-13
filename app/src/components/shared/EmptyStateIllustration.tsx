@@ -4,7 +4,7 @@ type IllustrationVariant = 'resume' | 'research' | 'interview' | 'blueprint' | '
 
 const illustrations: Record<IllustrationVariant, React.ReactNode> = {
   resume: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="14" y="8" width="36" height="48" rx="3" />
       <line x1="22" y1="20" x2="42" y2="20" />
       <line x1="22" y1="28" x2="38" y2="28" />
@@ -13,7 +13,7 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   research: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="28" cy="28" r="14" />
       <line x1="38" y1="38" x2="52" y2="52" />
       <line x1="22" y1="24" x2="34" y2="24" />
@@ -21,14 +21,14 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   interview: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="8" y="12" width="40" height="32" rx="4" />
       <polyline points="8,44 16,52 24,44" />
       <text x="28" y="33" textAnchor="middle" fontSize="18" fill="currentColor" stroke="none">?</text>
     </svg>
   ),
   blueprint: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="8" y="8" width="48" height="48" rx="3" />
       <line x1="8" y1="20" x2="56" y2="20" />
       <line x1="32" y1="20" x2="32" y2="56" />
@@ -38,7 +38,7 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   jobs: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="8" y="20" width="48" height="34" rx="3" />
       <path d="M22 20v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4" />
       <line x1="8" y1="34" x2="56" y2="34" />
@@ -46,7 +46,7 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   networking: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="32" cy="14" r="6" />
       <circle cx="10" cy="48" r="6" />
       <circle cx="54" cy="48" r="6" />
@@ -56,7 +56,7 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   linkedin: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="8" y="8" width="48" height="48" rx="6" />
       <line x1="20" y1="28" x2="20" y2="48" />
       <circle cx="20" cy="20" r="3" />
@@ -65,7 +65,7 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
     </svg>
   ),
   general: (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="32" cy="32" r="22" />
       <line x1="32" y1="22" x2="32" y2="34" />
       <circle cx="32" cy="42" r="1.5" fill="currentColor" stroke="none" />

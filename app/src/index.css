@@ -472,6 +472,13 @@
     .ready-next-card {
       padding: 0.9rem;
     }
+
+    .room-shell {
+      padding: 1rem 0.875rem;
+    }
+    .room-title {
+      font-size: 1.45rem;
+    }
   }
 
   .resume-document-shell {
@@ -1833,4 +1840,10 @@ body {
 @keyframes score-ring-draw {
   from { stroke-dashoffset: var(--circumference); }
   to { stroke-dashoffset: var(--offset); }
+}
+
+@layer utilities {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

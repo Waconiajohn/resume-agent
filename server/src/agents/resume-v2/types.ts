@@ -244,12 +244,24 @@ export interface GapStrategy {
     rationale: string;
     /** What kind of answer would help (guides the user) */
     looking_for: string;
+    /** Clickable options the user can select or modify — scenario-based, not generic */
+    suggested_answers?: string[];
+    /** The exact line(s) from the candidate's resume that prompted this question */
+    source_context?: string;
   }>;
   /** 2-3 alternative resume bullet phrasings grounded in the candidate's real experience */
   alternative_bullets?: Array<{
     text: string;
     angle: 'metric' | 'scope' | 'impact';
   }>;
+  /**
+   * User-confirmed evidence collected during gap coaching.
+   * This field is populated by the orchestrator when the user answers an evidence question
+   * or selects/writes context during the coaching flow. It represents the user's own words
+   * about their experience and carries the highest trust level for the resume writer.
+   * The writer MUST prefer this over inferred metrics or generic positioning text.
+   */
+  verified_user_evidence?: string;
   coaching_policy?: RequirementCoachingPolicySnapshot;
 }
 
@@ -728,6 +740,8 @@ export interface AssemblyInput {
   pre_scores?: PreScores;
   /** Job intelligence used for hiring manager scan keyword matching */
   job_intelligence?: JobIntelligenceOutput;
+  /** Raw original resume text used by the truth gate to cross-check numbers */
+  candidate_raw_text?: string;
 }
 
 export interface AssemblyOutput {
@@ -789,6 +803,10 @@ export interface GapCoachingCard {
     question: string;
     rationale: string;
     looking_for: string;
+    /** Clickable options the user can select or modify — scenario-based, not generic */
+    suggested_answers?: string[];
+    /** The exact line(s) from the candidate's resume that prompted this question */
+    source_context?: string;
   }>;
   /** JD excerpt or benchmark rationale that created this requirement */
   source_evidence?: string;

@@ -33,7 +33,7 @@ const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   resume: 'Resume Builder',
   linkedin: 'LinkedIn',
   jobs: 'Job Search',
-  networking: 'Network Job Search',
+  networking: 'Networking',
   interview: 'Interview Prep',
   financial: 'Retirement Bridge',
 };

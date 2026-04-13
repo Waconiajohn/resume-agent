@@ -52,12 +52,12 @@ export function ProcessStepGuideCard({
   const userDoes = userDoesOverride ?? contract.userDoes;
 
   return (
-    <GlassCard className={`room-shell border-l-2 ${toneBorderClass(tone)} bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-4 ${className}`.trim()}>
+    <GlassCard className={`room-shell border-l-2 ${toneBorderClass(tone)} bg-[var(--accent-muted)] p-4 ${className}`.trim()}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium text-[var(--text-strong)]">
           Step {contract.number} · {title}
         </div>
-        <div className="rounded-md border border-[var(--line-soft)] bg-black/10 px-2.5 py-1 text-[12px] uppercase tracking-[0.18em] text-[var(--text-soft)]">
+        <div className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.18em] text-[var(--text-soft)]">
           Guided
         </div>
       </div>

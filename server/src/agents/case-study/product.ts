@@ -75,6 +75,7 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
       current_stage: 'analysis',
       platform_context: input.platform_context as CaseStudyState['platform_context'],
       shared_context: input.shared_context as CaseStudyState['shared_context'],
+      focus_areas: typeof input.focus_areas === 'string' ? input.focus_areas : undefined,
       target_context: input.target_context as CaseStudyState['target_context'] ?? {
         target_role: '',
         target_industry: '',
@@ -123,6 +124,10 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
             legacyEvidence: state.platform_context?.evidence_items,
             maxItems: 15,
           }));
+        }
+
+        if (state.focus_areas) {
+          parts.push('', '## Focus Areas', state.focus_areas);
         }
 
         if (state.target_context) {

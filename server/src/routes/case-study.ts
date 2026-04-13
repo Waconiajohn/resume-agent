@@ -24,6 +24,7 @@ import { applySharedContextOverride } from '../contracts/shared-context-adapter.
 const startSchema = z.object({
   session_id: z.string().uuid(),
   resume_text: z.string().min(50).max(100_000),
+  focus_areas: z.string().max(500).optional(),
   target_role: z.string().max(200).optional(),
   target_industry: z.string().max(200).optional(),
   max_case_studies: z.number().min(1).max(10).optional().default(5),
@@ -89,6 +90,11 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
         { error: err instanceof Error ? err.message : String(err), userId },
         'Case study: failed to load platform context (continuing without it)',
       );
+    }
+
+    // Thread focus_areas through directly
+    if (input.focus_areas) {
+      transformed.focus_areas = String(input.focus_areas);
     }
 
     // Build target context from flat fields

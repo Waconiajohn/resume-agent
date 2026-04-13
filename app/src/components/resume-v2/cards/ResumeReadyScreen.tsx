@@ -72,7 +72,7 @@ export function ResumeReadyScreen({
   const reqDisplay = typeof requirementsAddressed === 'number' && typeof requirementsTotal === 'number'
     ? `${requirementsAddressed} of ${requirementsTotal}`
     : hasScoreData
-      ? `${Math.round((requirementCoveragePercent / 100) * 10)} of 10`
+      ? `${Math.round(requirementCoveragePercent)}%`
       : '—';
 
   // ── "What's done" — derived from available data ─────────────────────────

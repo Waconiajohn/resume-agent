@@ -113,8 +113,8 @@ export function JobFilterPanel({
                   className={cn(
                     'rounded-full px-3 py-1 text-[12px] font-medium transition-colors duration-150 border',
                     active
-                      ? 'border-blue-500/60 bg-blue-600 text-white'
-                      : 'border-[var(--line-soft)] bg-white/10 text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:text-[var(--text-muted)]',
+                      ? 'border-[var(--link)]/40 bg-[var(--link)]/15 text-[var(--link)]'
+                      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:text-[var(--text-muted)]',
                   )}
                 >
                   {label}

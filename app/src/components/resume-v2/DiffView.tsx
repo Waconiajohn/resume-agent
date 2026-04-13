@@ -103,6 +103,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           <textarea
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
+            aria-label="Replacement text — edit before accepting"
             className="w-full resize-y min-h-[4.5rem] bg-transparent text-sm text-[var(--text-strong)] leading-relaxed focus:outline-none"
             rows={Math.max(3, editedText.split('\n').length + 1)}
           />

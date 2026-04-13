@@ -33,14 +33,6 @@ export interface BulletCoachingPanelProps {
   onSkip?: () => void;
   canRemove?: boolean;
   initialReuseClarificationId?: string;
-  /** @deprecated no longer used — kept for call-site backward compat */
-  showCloseButton?: boolean;
-  /** @deprecated no longer used — kept for call-site backward compat */
-  isAIEnhanced?: boolean;
-  /** @deprecated no longer used — kept for call-site backward compat */
-  suggestionScore?: unknown;
-  /** @deprecated no longer used — kept for call-site backward compat */
-  queueSuggestedDraft?: string;
   /** Section type for context-aware enhancement actions */
   sectionType?: SectionType;
   onBulletEnhance?: (

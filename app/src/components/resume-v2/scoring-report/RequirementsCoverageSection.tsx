@@ -66,7 +66,7 @@ function sourceBadge(source: RequirementGap['source']) {
     <span
       className="rounded-md px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap"
       style={{
-        color: isJD ? 'var(--link)' : '#c4b5fd',
+        color: isJD ? 'var(--link)' : 'var(--link)',
         backgroundColor: isJD ? 'rgba(175,196,255,0.08)' : 'rgba(196,181,253,0.08)',
         border: isJD ? '1px solid rgba(175,196,255,0.18)' : '1px solid rgba(196,181,253,0.18)',
       }}
@@ -222,7 +222,7 @@ export function RequirementsCoverageSection({ gapAnalysis }: RequirementsCoverag
               <div className="rounded-lg border border-[var(--line-soft)] border-dashed bg-[var(--surface-1)] px-3 py-2 space-y-1">
                 <p className="text-[10px] font-medium text-[var(--text-soft)]">Ideal Candidate</p>
                 <p className="text-[9px] text-[var(--text-soft)] -mt-0.5">Aspirational, not required</p>
-                <p className="text-xs font-bold tabular-nums" style={{ color: '#c4b5fd' }}>
+                <p className="text-xs font-bold tabular-nums" style={{ color: 'var(--link)' }}>
                   {bench.coverage_score}
                 </p>
                 <p className="text-[10px] text-[var(--text-soft)]">

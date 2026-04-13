@@ -3,6 +3,7 @@ import { X, Mail, Phone, Linkedin, MessageSquare, Clock, User } from 'lucide-rea
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import type { NetworkingContact, Touchpoint } from '@/hooks/useNetworkingContacts';
 
 const TOUCHPOINT_TYPES = [
@@ -44,6 +45,7 @@ export function ContactDetailSheet({
   onClose,
   onLogTouchpoint,
 }: ContactDetailSheetProps) {
+  const { dialogRef } = useDialogA11y(true, onClose);
   const [logType, setLogType] = useState('email');
   const [logNotes, setLogNotes] = useState('');
   const [logging, setLogging] = useState(false);
@@ -76,15 +78,18 @@ export function ContactDetailSheet({
       />
 
       {/* Sheet */}
-      <GlassCard
+      <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={contact.name}
-        className="relative w-full max-w-xl p-6 z-10 max-h-[90vh] overflow-y-auto"
+        aria-labelledby="contact-detail-title"
+        tabIndex={-1}
+        className="relative w-full max-w-xl z-10 focus:outline-none"
       >
+        <GlassCard className="p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">{contact.name}</h2>
+            <h2 id="contact-detail-title" className="text-[15px] font-semibold text-[var(--text-strong)]">{contact.name}</h2>
             {contact.title && (
               <p className="text-[12px] text-[var(--text-soft)]">{contact.title}</p>
             )}
@@ -95,7 +100,7 @@ export function ContactDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--text-soft)] hover:text-white/60 transition-colors ml-4 flex-shrink-0"
+            className="p-2 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors ml-4 flex-shrink-0"
             aria-label="Close"
           >
             <X size={16} />
@@ -193,7 +198,7 @@ export function ContactDetailSheet({
             rows={2}
             className={cn(inputClass, 'resize-none')}
           />
-          {logError && <p className="mt-1.5 text-[13px] text-red-400">{logError}</p>}
+          {logError && <p className="mt-1.5 text-[13px] text-[var(--badge-red-text)]">{logError}</p>}
         </div>
 
         {/* Touchpoint timeline */}
@@ -231,7 +236,8 @@ export function ContactDetailSheet({
         {touchpoints.length === 0 && (
           <p className="text-[12px] text-[var(--text-soft)] text-center py-3">No interactions logged yet.</p>
         )}
-      </GlassCard>
+        </GlassCard>
+      </div>
     </div>
   );
 }

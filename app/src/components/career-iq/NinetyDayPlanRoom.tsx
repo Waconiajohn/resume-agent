@@ -113,7 +113,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.05)"
+          stroke="var(--line-soft)"
           strokeWidth={6}
         />
         <circle
@@ -522,7 +522,7 @@ export function NinetyDayPlanRoom({
     const resolvedResume = resumeRef.current || manualResumeText.trim();
     if (!resolvedResume) {
       setFormError(
-        'Resume text is required. Paste your resume below or complete the Resume Strategist to auto-load it.',
+        'Resume text is required. Paste your resume below or complete the Resume Builder to auto-load it.',
       );
       return;
     }
@@ -560,6 +560,26 @@ export function NinetyDayPlanRoom({
     );
   }
 
+  // Complete but no report — show error card with retry
+  if (status === 'complete' && !report) {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <GlassCard className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
+            <span className="text-[13px] text-[var(--badge-red-text)]">
+              The plan could not be generated. Please try again.
+            </span>
+          </div>
+          <GlassButton variant="ghost" onClick={handleReset} size="sm">
+            <RotateCcw size={13} className="mr-1.5" />
+            Try again
+          </GlassButton>
+        </GlassCard>
+      </div>
+    );
+  }
+
   if (status === 'idle' && initialSessionId && priorResult?.report_markdown) {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
@@ -579,10 +599,22 @@ export function NinetyDayPlanRoom({
 
   // Stakeholder review gate — pipeline paused awaiting user confirmation
   if (status === 'stakeholder_review') {
-    const stakeholderCount = Array.isArray(stakeholderReviewData?.stakeholder_map)
+    if (!stakeholderReviewData) {
+      return (
+        <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+          <GlassCard className="p-6">
+            <div className="flex items-center gap-3">
+              <Loader2 size={18} className="text-[var(--text-soft)] animate-spin" />
+              <span className="text-[13px] text-[var(--text-soft)]">Loading stakeholder analysis...</span>
+            </div>
+          </GlassCard>
+        </div>
+      );
+    }
+    const stakeholderCount = Array.isArray(stakeholderReviewData.stakeholder_map)
       ? stakeholderReviewData.stakeholder_map.length
       : 0;
-    const quickWinCount = Array.isArray(stakeholderReviewData?.quick_wins)
+    const quickWinCount = Array.isArray(stakeholderReviewData.quick_wins)
       ? stakeholderReviewData.quick_wins.length
       : 0;
     return (
@@ -644,7 +676,7 @@ export function NinetyDayPlanRoom({
           <button
             type="button"
             onClick={handleReset}
-            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             Cancel
           </button>
@@ -654,13 +686,15 @@ export function NinetyDayPlanRoom({
   }
 
   // Error state
-  if (status === 'error' && error) {
+  if (status === 'error') {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle size={18} className="text-[var(--badge-red-text)]" />
-            <span className="text-[13px] text-[var(--badge-red-text)]">{error}</span>
+            <span className="text-[13px] text-[var(--badge-red-text)]">
+              {error || 'Something went wrong. Please try again.'}
+            </span>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
@@ -756,7 +790,7 @@ export function NinetyDayPlanRoom({
         ) : (
           <>
             <AlertCircle size={12} /> No resume found — paste below or complete the Resume
-            Strategist to auto-load
+            Builder to auto-load
           </>
         )}
       </div>
@@ -854,7 +888,7 @@ export function NinetyDayPlanRoom({
       </div>
 
       {/* What you'll get */}
-      <div className="rounded-2xl border border-[var(--line-soft)] bg-gradient-to-br from-white/[0.03] to-white/[0.01] px-5 py-4">
+      <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-5 py-4">
         <p className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-3">
           What you will get
         </p>
@@ -905,6 +939,7 @@ export function NinetyDayPlanRoom({
         <GlassButton
           variant="primary"
           onClick={handleSubmit}
+          disabled={status !== 'idle'}
           className="text-[14px] px-6 py-3 gap-2"
         >
           <Sparkles size={15} />

@@ -302,9 +302,9 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
     if (!accessToken) {
       return (
         <GlassCard className="p-6 text-center">
-          <p className="text-sm text-[var(--text-muted)]">You need an active session to import connections.</p>
+          <p className="text-sm text-[var(--text-muted)]">Please sign in to use Networking tools.</p>
           <p className="mt-2 text-xs text-[var(--text-soft)]">
-            Refresh the page or sign back in, then try the CSV import again.
+            Please sign in and try again.
           </p>
         </GlassCard>
       );

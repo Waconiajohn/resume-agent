@@ -54,6 +54,7 @@ export function WatchlistBar({
           title="Manage watchlist"
         >
           <Plus size={12} />
+          Manage
         </button>
       </div>
     </div>

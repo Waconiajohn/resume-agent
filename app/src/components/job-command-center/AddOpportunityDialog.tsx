@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { GlassButton } from '@/components/GlassButton';
 import { X } from 'lucide-react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 interface AddOpportunityDialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface AddOpportunityDialogProps {
 }
 
 export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunityDialogProps) {
+  const { dialogRef } = useDialogA11y(open, onClose);
   const [roleTitle, setRoleTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [source, setSource] = useState('manual');
@@ -53,20 +55,23 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
       onClick={handleBackdropClick}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Add opportunity"
-        className="relative w-full max-w-md rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl"
+        aria-labelledby="add-opportunity-title"
+        tabIndex={-1}
+        className="relative w-full max-w-md rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-6 shadow-2xl focus:outline-none"
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
+          aria-label="Close dialog"
+          className="absolute right-4 top-4 p-2 text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           <X size={18} />
         </button>
 
-        <h2 className="text-[16px] font-semibold text-[var(--text-strong)] mb-4">Add Application</h2>
+        <h2 id="add-opportunity-title" className="text-[16px] font-semibold text-[var(--text-strong)] mb-4">Add Application</h2>
 
         <div className="space-y-3">
           <div>
@@ -98,7 +103,7 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
             <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
             >
               <option value="manual">Manual</option>
               <option value="linkedin">LinkedIn</option>

@@ -30,22 +30,24 @@ const ZAI_MODEL_LIGHT = process.env.ZAI_MODEL_LIGHT ?? 'glm-4.7-flash';
 
 // ─── Groq model constants ────────────────────────────────────────────
 
-/** Quality writing — llama-3.3-70b-versatile ($0.59/$0.79 per M tokens).
- *  Dense 70B: best writing quality on Groq. Maverick (17Bx128E MoE) tested
- *  but produced fewer sections and weaker content despite lower cost. */
-const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY ?? 'llama-3.3-70b-versatile';
+/** Quality writing — qwen/qwen3-32b ($0.29/$0.59 per M tokens).
+ *  Dense 32B with native thinking mode. All 32B params active per token —
+ *  better instruction following than GPT-OSS 120B (sparse MoE, only 5.1B active).
+ *  GPT-OSS had known Groq issues: tool calls ignored, reasoning token leakage,
+ *  Harmony format incompatibility. Qwen3 is stable, proven, cheaper. */
+const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY ?? 'qwen/qwen3-32b';
 
-/** Mid-tier analysis — llama-4-scout ($0.11/$0.34 per M tokens) */
+/** Mid-tier analysis — llama-4-scout ($0.11/$0.34 per M tokens).
+ *  Scout is now GA (April 2026) with stable tool-calling. Fast (460 tps),
+ *  good for gap analysis, candidate intelligence, and mid-tier reasoning. */
 const GROQ_MODEL_MID =
   process.env.GROQ_MODEL_MID ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-/** Main loop orchestrator — llama-3.3-70b-versatile ($0.59/$0.79 per M tokens).
- *  Upgraded from Scout 17B (Preview, tool-calling quirks) to 70B (GA, reliable).
- *  The agent "brain" that decides tool sequencing and generates parameters should be
- *  as capable as the "hands" that write content. At ~$0.23/pipeline this is still
- *  cheaper than Z.AI's ~$0.26/pipeline, with 10x faster execution. */
+/** Main loop orchestrator — llama-4-scout ($0.11/$0.34 per M tokens).
+ *  Same model as MID. Scout's tool-calling is now production-stable (GA).
+ *  57% cheaper than the 70B it replaced with comparable orchestration quality. */
 const GROQ_MODEL_ORCHESTRATOR =
-  process.env.GROQ_MODEL_ORCHESTRATOR ?? 'llama-3.3-70b-versatile';
+  process.env.GROQ_MODEL_ORCHESTRATOR ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 /** Lightweight extraction — llama-3.1-8b ($0.05/$0.08 per M tokens).
  *  8B is fine for non-tool-calling tasks (text extraction, analysis). */
@@ -93,11 +95,12 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   'glm-4.7-flashx': { input: 0.07, output: 0.40 },
   'glm-4.7-flash': { input: 0, output: 0 },
   // Groq models
+  'openai/gpt-oss-120b': { input: 0.15, output: 0.60 },
+  'qwen/qwen3-32b': { input: 0.29, output: 0.59 },
   'llama-3.3-70b-versatile': { input: 0.59, output: 0.79 },
   'meta-llama/llama-4-scout-17b-16e-instruct': { input: 0.11, output: 0.34 },
   'llama-3.1-8b-instant': { input: 0.05, output: 0.08 },
-  'meta-llama/llama-4-maverick-17b-128e-instruct': { input: 0.50, output: 0.77 },
-  'qwen/qwen3-32b': { input: 0.29, output: 0.59 },
+  'openai/gpt-oss-20b': { input: 0.075, output: 0.30 },
   'meta-llama/llama-4-scout-17b-16e-instruct:free': { input: 0, output: 0 },
   'deepseek-r1-distill-llama-70b': { input: 0.75, output: 0.99 },
   // DeepSeek models (direct API)

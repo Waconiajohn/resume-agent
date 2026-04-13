@@ -3,19 +3,17 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const STAGES = ['Shortlist', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
+const STAGES = ['Shortlist', 'Applied', 'Interviewing', 'Offer', 'Won', 'Lost'] as const;
 
 const STAGE_DB_MAP: Record<string, string> = {
   saved: 'Shortlist',
-  discovered: 'Shortlist',
+  researching: 'Shortlist',
   applied: 'Applied',
-  phone_screen: 'Interviewing',
+  screening: 'Interviewing',
   interviewing: 'Interviewing',
-  final_round: 'Interviewing',
   offer: 'Offer',
-  accepted: 'Accepted',
-  rejected: 'Discovered',
-  withdrawn: 'Discovered',
+  closed_won: 'Won',
+  closed_lost: 'Lost',
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -23,7 +21,8 @@ const STAGE_COLORS: Record<string, string> = {
   Applied: 'bg-[var(--link)]/50',
   Interviewing: 'bg-[var(--badge-amber-text)]/50',
   Offer: 'bg-[var(--badge-green-text)]/50',
-  Accepted: 'bg-[var(--badge-green-text)]/70',
+  Won: 'bg-[var(--badge-green-text)]',
+  Lost: 'bg-[var(--badge-red-text)]/50',
 };
 
 function makeEmptyCounts(): Record<string, number> {
@@ -71,8 +70,8 @@ export function PipelineSummary() {
 
         const counts = makeEmptyCounts();
         for (const row of data) {
-          const mapped = STAGE_DB_MAP[row.stage] ?? 'Discovered';
-          counts[mapped] = (counts[mapped] ?? 0) + 1;
+          const mapped = STAGE_DB_MAP[row.stage];
+          if (mapped) counts[mapped] = (counts[mapped] ?? 0) + 1;
         }
         setStageCounts(counts);
         setTotalActive(data.length);

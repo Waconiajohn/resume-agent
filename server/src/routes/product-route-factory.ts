@@ -168,6 +168,11 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
 const IN_PROCESS_PIPELINE_TTL_MS = 20 * 60 * 1000;
 const runningProductPipelines = new Map<string, number>();
 
+// Buffer events emitted before the SSE client connects — prevents event loss
+// during the window between POST /start and GET /:sessionId/stream.
+const eventBuffers = new Map<string, Array<{ type: string }>>();
+const MAX_BUFFERED_EVENTS = 100;
+
 function pruneStaleProductPipelines(now = Date.now()): void {
   for (const [sessionId, startedAt] of runningProductPipelines.entries()) {
     if (now - startedAt > IN_PROCESS_PIPELINE_TTL_MS) {
@@ -463,13 +468,20 @@ export function createProductRoutes<
         : broadcastEvent;
 
       const emitters = sseConnections.get(sessionId);
-      if (emitters) {
+      if (emitters && emitters.length > 0) {
         for (const emitter of [...emitters]) {
           try {
             emitter(finalEvent as never);
           } catch {
             // Connection may be closed
           }
+        }
+      } else {
+        // Buffer events for late-connecting SSE clients
+        const buffer = eventBuffers.get(sessionId) ?? [];
+        if (buffer.length < MAX_BUFFERED_EVENTS) {
+          buffer.push(finalEvent as { type: string });
+          eventBuffers.set(sessionId, buffer);
         }
       }
     };
@@ -506,51 +518,59 @@ export function createProductRoutes<
       input,
     };
 
-    runProductPipeline(productConfig, runtimeParams).then(async () => {
-      await supabaseAdmin
-        .from('coach_sessions')
-        .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
-        .eq('id', sessionId);
-      // Hook: onComplete — domain-specific success cleanup
-      if (config.onComplete) {
-        await config.onComplete(sessionId).catch((err: unknown) => {
-          logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onComplete hook failed');
-        });
-      }
-      // Momentum: auto-log activity on pipeline completion
-      if (config.momentumActivityType) {
-        const { error: momentumErr } = await supabaseAdmin
-          .from('user_momentum_activities')
-          .insert({
-            user_id: user.id,
-            activity_type: config.momentumActivityType,
-            related_id: sessionId,
-            metadata: {},
+    // Pipeline runs asynchronously — void IIFE guarantees the async body is
+    // registered on the event loop microtask queue before the route handler exits.
+    // A bare .then() chain does NOT guarantee this, causing a race condition where
+    // the pipeline never starts. See resume-v2-pipeline.ts line 172 for the same pattern.
+    void (async () => {
+      try {
+        await runProductPipeline(productConfig, runtimeParams);
+        await supabaseAdmin
+          .from('coach_sessions')
+          .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
+          .eq('id', sessionId);
+        // Hook: onComplete — domain-specific success cleanup
+        if (config.onComplete) {
+          await config.onComplete(sessionId).catch((err: unknown) => {
+            logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onComplete hook failed');
           });
-        if (momentumErr) {
-          logger.warn({ session_id: sessionId, error: momentumErr.message }, 'Momentum activity log failed');
         }
+        // Momentum: auto-log activity on pipeline completion
+        if (config.momentumActivityType) {
+          const { error: momentumErr } = await supabaseAdmin
+            .from('user_momentum_activities')
+            .insert({
+              user_id: user.id,
+              activity_type: config.momentumActivityType,
+              related_id: sessionId,
+              metadata: {},
+            });
+          if (momentumErr) {
+            logger.warn({ session_id: sessionId, error: momentumErr.message }, 'Momentum activity log failed');
+          }
+        }
+      } catch (pipelineError) {
+        logger.error(
+          { session_id: sessionId, error: pipelineError instanceof Error ? pipelineError.message : String(pipelineError) },
+          'Product pipeline failed',
+        );
+        await supabaseAdmin
+          .from('coach_sessions')
+          .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
+          .eq('id', sessionId);
+        // Hook: onError — domain-specific failure cleanup
+        if (config.onError) {
+          await config.onError(sessionId, pipelineError).catch((err: unknown) => {
+            logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onError hook failed');
+          });
+        }
+      } finally {
+        clearInterval(heartbeatTimer);
+        runningProductPipelines.delete(sessionId);
+        void clearPendingGate(sessionId);
+        eventBuffers.delete(sessionId);
       }
-    }).catch(async (pipelineError) => {
-      logger.error(
-        { session_id: sessionId, error: pipelineError instanceof Error ? pipelineError.message : String(pipelineError) },
-        'Product pipeline failed',
-      );
-      await supabaseAdmin
-        .from('coach_sessions')
-        .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
-        .eq('id', sessionId);
-      // Hook: onError — domain-specific failure cleanup
-      if (config.onError) {
-        await config.onError(sessionId, pipelineError).catch((err: unknown) => {
-          logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onError hook failed');
-        });
-      }
-    }).finally(() => {
-      clearInterval(heartbeatTimer);
-      runningProductPipelines.delete(sessionId);
-      void clearPendingGate(sessionId);
-    });
+    })();
 
     return c.json({ status: 'started', session_id: sessionId });
   });
@@ -727,6 +747,15 @@ export function createProductRoutes<
       };
 
       addSSEConnection(sessionId, user.id, emitter as never);
+
+      // Flush any events buffered before the client connected
+      const buffered = eventBuffers.get(sessionId);
+      if (buffered && buffered.length > 0) {
+        for (const event of buffered) {
+          emitter(event as never);
+        }
+        eventBuffers.delete(sessionId);
+      }
 
       await stream.writeSSE({
         event: 'connected',

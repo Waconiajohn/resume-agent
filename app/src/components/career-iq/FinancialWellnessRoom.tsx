@@ -86,8 +86,8 @@ const SIGNAL_CONFIG: Record<
   },
   red: {
     label: 'Priority Conversation',
-    color: 'text-[#e8a0a0]',
-    bgColor: 'bg-[#e8a0a0]',
+    color: 'text-[var(--badge-red-text)]',
+    bgColor: 'bg-[var(--badge-red-text)]',
     Icon: XCircle,
   },
 };
@@ -244,6 +244,7 @@ function AssessmentQuestionsView({
 
 function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const overallConfig = SIGNAL_CONFIG[summary.overall_readiness];
   const OverallIcon = overallConfig.Icon;
 
@@ -253,7 +254,8 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard write failed — ignore silently
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 2000);
     }
   }, [summary.shareable_summary]);
 
@@ -264,13 +266,18 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Retirement Bridge Analysis</h3>
         <button
           onClick={handleCopyShare}
-          className="ml-auto flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="ml-auto flex items-center gap-1.5 text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           title="Copy shareable summary"
         >
           {copied ? (
             <>
               <ClipboardCheck size={13} className="text-[var(--badge-green-text)]" />
               <span className="text-[var(--badge-green-text)]">Copied</span>
+            </>
+          ) : copyError ? (
+            <>
+              <AlertCircle size={13} className="text-[var(--badge-red-text)]" />
+              <span className="text-[var(--badge-red-text)]">Copy failed</span>
             </>
           ) : (
             <>
@@ -327,6 +334,21 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
                   ))}
                 </div>
               )}
+              {dim.questions_to_ask_planner && dim.questions_to_ask_planner.length > 0 && (
+                <div className="pl-4 mt-2">
+                  <p className="text-[11px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-1">
+                    Questions for your planner
+                  </p>
+                  <div className="space-y-0.5">
+                    {dim.questions_to_ask_planner.map((q, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <ChevronRight size={10} className="text-[var(--link)]/50 mt-0.5 flex-shrink-0" />
+                        <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{q}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -353,7 +375,7 @@ function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary
 }
 
 function PlannerConnectionCard() {
-  const { phase, qualify, planners, referral, selectPlanner, reset } = usePlannerHandoff();
+  const { phase, qualify, planners, referral, error, selectPlanner, reset } = usePlannerHandoff();
 
   const [showForm, setShowForm] = useState(false);
   const [assetRange, setAssetRange] = useState('');
@@ -386,10 +408,38 @@ function PlannerConnectionCard() {
         </div>
         <button
           onClick={reset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           Start over
         </button>
+      </GlassCard>
+    );
+  }
+
+  if (phase === 'error') {
+    return (
+      <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
+        <AlertCircle size={22} className="text-[var(--badge-red-text)]" />
+        <div>
+          <p className="text-[13px] font-medium text-[var(--text-muted)] mb-1">Something went wrong</p>
+          <p className="text-[12px] text-[var(--text-soft)]">
+            {error ?? 'An unexpected error occurred.'}
+          </p>
+        </div>
+        <GlassButton variant="ghost" size="sm" onClick={reset}>
+          Try Again
+        </GlassButton>
+      </GlassCard>
+    );
+  }
+
+  if (phase === 'referring') {
+    return (
+      <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
+        <Loader2 size={22} className="text-[var(--link)] animate-spin" />
+        <p className="text-[13px] font-medium text-[var(--text-muted)]">
+          Connecting you with a planner...
+        </p>
       </GlassCard>
     );
   }
@@ -407,7 +457,7 @@ function PlannerConnectionCard() {
         </p>
         <button
           onClick={reset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           Try again
         </button>
@@ -428,7 +478,7 @@ function PlannerConnectionCard() {
         </p>
         <button
           onClick={reset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           Try a different location
         </button>
@@ -485,7 +535,7 @@ function PlannerConnectionCard() {
         </div>
         <button
           onClick={reset}
-          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+          className="text-[12px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
         >
           Start over
         </button>
@@ -508,10 +558,11 @@ function PlannerConnectionCard() {
 
         <div className="space-y-4 mb-5">
           <div>
-            <label className="block text-[12px] text-[var(--text-soft)] mb-1.5">
+            <label htmlFor="asset-range" className="block text-[12px] text-[var(--text-soft)] mb-1.5">
               Approximate investable assets
             </label>
             <select
+              id="asset-range"
               value={assetRange}
               onChange={(e) => setAssetRange(e.target.value)}
               className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2.5 text-[13px] text-[var(--text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/40 transition-colors"
@@ -525,10 +576,11 @@ function PlannerConnectionCard() {
             </select>
           </div>
           <div>
-            <label className="block text-[12px] text-[var(--text-soft)] mb-1.5">
+            <label htmlFor="geography" className="block text-[12px] text-[var(--text-soft)] mb-1.5">
               Geographic region (city or state)
             </label>
             <input
+              id="geography"
               type="text"
               value={geography}
               onChange={(e) => setGeography(e.target.value)}
@@ -541,7 +593,7 @@ function PlannerConnectionCard() {
         <div className="flex gap-3">
           <button
             onClick={() => setShowForm(false)}
-            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
+            className="text-[13px] text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors"
           >
             Cancel
           </button>
@@ -616,12 +668,18 @@ function PlannerConnectionCard() {
 function EducationalResources() {
   return (
     <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1">
         <BookOpen size={18} className="text-[var(--link)]" />
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Financial Resources</h3>
+        <span className="ml-2 text-[11px] font-medium text-[var(--text-soft)] bg-[var(--accent-muted)] border border-[var(--line-soft)] rounded-full px-2 py-0.5 uppercase tracking-wider">
+          Coming Soon
+        </span>
       </div>
+      <p className="text-[12px] text-[var(--text-soft)] mb-4">
+        Educational articles — coming soon
+      </p>
 
-      <div className="space-y-3">
+      <div className="space-y-3 opacity-50 pointer-events-none select-none">
         {RESOURCES.map((resource) => (
           <div
             key={resource.id}
@@ -671,7 +729,7 @@ function EvaluatingState() {
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
-      <AlertCircle size={24} className="text-[#e8a0a0]" />
+      <AlertCircle size={24} className="text-[var(--badge-red-text)]" />
       <div>
         <p className="text-[13px] font-medium text-[var(--text-muted)] mb-1">Something went wrong</p>
         <p className="text-[12px] text-[var(--text-soft)]">{message}</p>
@@ -779,6 +837,25 @@ export function FinancialWellnessRoom({
       return <RetirementBridgeCard summary={summary} />;
     }
 
+    if (phase === 'complete' && !summary) {
+      return (
+        <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
+          <AlertCircle size={22} className="text-[var(--badge-red-text)]" />
+          <div>
+            <p className="text-[13px] font-medium text-[var(--text-muted)] mb-1">
+              Assessment complete
+            </p>
+            <p className="text-[12px] text-[var(--text-soft)]">
+              Results could not be loaded. Please try again.
+            </p>
+          </div>
+          <GlassButton variant="ghost" size="sm" onClick={reset}>
+            Try Again
+          </GlassButton>
+        </GlassCard>
+      );
+    }
+
     if (phase === 'error') {
       return (
         <ErrorState
@@ -858,7 +935,7 @@ export function FinancialWellnessRoom({
               copy: 'Use the output as a planner-prep brief, not as financial advice or a substitute for fiduciary guidance.',
             },
           ].map((item) => (
-            <div key={item.step} className="rounded-xl border border-[var(--line-soft)] bg-black/10 p-4">
+            <div key={item.step} className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
               <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Step {item.step}</div>
               <div className="mt-2 text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
               <div className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">{item.copy}</div>

@@ -26,6 +26,7 @@ export interface Application {
   next_action?: string;
   next_action_due?: string;
   resume_version_id?: string;
+  location?: string;
   notes?: string;
   stage_history: Array<{ stage: string; at: string }>;
   score?: number;
@@ -108,6 +109,7 @@ function sanitizeApplication(value: unknown): Application | null {
     next_action: safeOptionalString(candidate.next_action),
     next_action_due: safeOptionalString(candidate.next_action_due),
     resume_version_id: safeOptionalString(candidate.resume_version_id),
+    location: safeOptionalString(candidate.location),
     notes: safeOptionalString(candidate.notes),
     stage_history: sanitizeStageHistory(candidate.stage_history),
     score,

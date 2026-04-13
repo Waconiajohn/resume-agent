@@ -17,6 +17,9 @@ import { registerAgent } from '../../../runtime/agent-registry.js';
 import type { MockInterviewState, MockInterviewSSEEvent } from '../types.js';
 import { interviewerTools } from './tools.js';
 
+/** Number of questions in a full-mode mock interview session. */
+export const FULL_MODE_QUESTIONS = 6;
+
 export const interviewerConfig: AgentConfig<MockInterviewState, MockInterviewSSEEvent> = {
   identity: {
     name: 'interviewer',

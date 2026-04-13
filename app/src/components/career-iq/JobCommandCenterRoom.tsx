@@ -24,6 +24,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJobFinder';
 import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
+import type { RadarJob } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
@@ -207,10 +208,10 @@ function SmartMatches({
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-3">
-          <AlertCircle size={18} className="text-red-400/70" />
+          <AlertCircle size={18} className="text-[var(--badge-red-text)]/70" />
           <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Suggestion Search Error</h3>
         </div>
-        <p className="text-[12px] text-red-400/60 mb-4">{error}</p>
+        <p className="text-[12px] text-[var(--badge-red-text)]/60 mb-4">{error}</p>
         <GlassButton onClick={onReset} className="w-full">
           <RotateCcw size={14} /> Try Again
         </GlassButton>
@@ -560,7 +561,7 @@ export function JobCommandCenterRoom({
   );
 
   const handlePromoteRadarJob = useCallback(
-    async (job: ReturnType<typeof radar.promoteJob>) => {
+    async (job: RadarJob) => {
       trackProductEvent('job_saved_to_shortlist', {
         source: 'job_board',
         company_name: job.company,
@@ -574,7 +575,7 @@ export function JobCommandCenterRoom({
         stage: 'saved',
         source: job.source ?? 'radar',
         url: job.apply_url ?? undefined,
-        notes: job.location ?? undefined,
+        location: job.location ?? undefined,
         stage_history: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -620,22 +621,6 @@ export function JobCommandCenterRoom({
     }
     return apps;
   }, [pipeline.applications, stageFilter, searchText]);
-
-  const shortlistCount = useMemo(
-    () => pipeline.applications.filter((application) => application.stage === 'saved').length,
-    [pipeline.applications],
-  );
-
-  const _dueCount = dailyOps.dueActions.length;
-
-  const _handleOpenShortlist = useCallback((entryPoint: 'overview_cta' | 'board_target') => {
-    trackProductEvent('job_shortlist_opened', {
-      entry_point: entryPoint,
-      shortlist_count: shortlistCount,
-    });
-    setStageFilter('saved');
-    setActiveTab('pipeline');
-  }, [shortlistCount]);
 
   return (
     <div className="room-shell">
@@ -686,7 +671,6 @@ export function JobCommandCenterRoom({
             applications={filteredApplications}
             loading={pipeline.loading}
             onMoveStage={pipeline.moveToStage}
-            onSelect={() => {}}
             onAddApplication={handleAddApplication}
             onBuildResume={() => handleBuildResumeRequest('pipeline')}
             onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
@@ -735,6 +719,16 @@ export function JobCommandCenterRoom({
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
             onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company)}
+            initialLocation={jobFilters.location}
+            initialRemoteType={
+              jobFilters.workModes.remote && !jobFilters.workModes.hybrid && !jobFilters.workModes.onsite
+                ? 'remote'
+                : jobFilters.workModes.hybrid && !jobFilters.workModes.remote && !jobFilters.workModes.onsite
+                  ? 'hybrid'
+                  : jobFilters.workModes.onsite && !jobFilters.workModes.remote && !jobFilters.workModes.hybrid
+                    ? 'onsite'
+                    : 'any'
+            }
           />
 
           {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (
@@ -764,7 +758,7 @@ export function JobCommandCenterRoom({
           {/* Boolean Search — power user tool for external boards, collapsed by default */}
           <details className="group">
             <summary className="cursor-pointer text-sm text-[var(--text-soft)] hover:text-[var(--text-muted)] transition-colors list-none flex items-center gap-1.5">
-              <span className="text-xs transition-transform group-open:rotate-90">▶</span>
+              <span className="text-xs transition-transform group-open:rotate-90" aria-hidden="true">▶</span>
               Generate search strings for external job boards (LinkedIn, Indeed, Google)
             </summary>
             <div className="mt-3">

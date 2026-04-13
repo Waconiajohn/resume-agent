@@ -347,7 +347,7 @@ export function JobMatchesList({
                 )}
               >
                 {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s} className="bg-gray-900 text-white">
+                  <option key={s} value={s} className="bg-[var(--surface-0)] text-[var(--text-strong)]">
                     {s}
                   </option>
                 ))}

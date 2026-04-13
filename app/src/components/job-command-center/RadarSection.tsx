@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Search,
   MapPin,
@@ -29,6 +29,8 @@ interface RadarSectionProps {
   onDismiss: (externalId: string) => void;
   onPromote: (job: RadarJob) => void;
   onBuildResume?: (job: RadarJob) => void;
+  initialLocation?: string;
+  initialRemoteType?: RadarSearchFilters['remoteType'];
 }
 
 function formatSalary(min: number | null, max: number | null): string | null {
@@ -84,11 +86,21 @@ export function RadarSection({
   onDismiss,
   onPromote,
   onBuildResume,
+  initialLocation,
+  initialRemoteType,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState(initialLocation ?? '');
   const [datePosted, setDatePosted] = useState<RadarSearchFilters['datePosted']>('any');
-  const [remoteType, setRemoteType] = useState<RadarSearchFilters['remoteType']>('any');
+  const [remoteType, setRemoteType] = useState<RadarSearchFilters['remoteType']>(initialRemoteType ?? 'any');
+
+  useEffect(() => {
+    setLocation(initialLocation ?? '');
+  }, [initialLocation]);
+
+  useEffect(() => {
+    setRemoteType(initialRemoteType ?? 'any');
+  }, [initialRemoteType]);
 
   const handleSearch = useCallback(() => {
     if (!query.trim()) return;
@@ -197,8 +209,8 @@ export function RadarSection({
 
       {/* Error state */}
       {error && (
-        <div className="rounded-xl border border-red-400/20 bg-red-400/[0.04] px-4 py-3 mb-4">
-          <p className="text-[12px] text-red-400/70">{error}</p>
+        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04] px-4 py-3 mb-4">
+          <p className="text-[12px] text-[var(--badge-red-text)]/70">{error}</p>
         </div>
       )}
 

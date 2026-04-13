@@ -27,9 +27,9 @@ const CONTENT_TYPE_COLORS: Record<string, string> = {
   storytelling: 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10',
   engagement: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
   industry_insight: 'text-[var(--link)] bg-[var(--link)]/10',
-  how_to: 'text-[#c9b8ff] bg-[#c9b8ff]/10',
-  case_study: 'text-[#ffc4a0] bg-[#ffc4a0]/10',
-  career_lesson: 'text-[#a0e0ff] bg-[#a0e0ff]/10',
+  how_to: 'text-[var(--link)] bg-[var(--link)]/10',
+  case_study: 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10',
+  career_lesson: 'text-[var(--link)] bg-[var(--link)]/10',
 };
 
 function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {

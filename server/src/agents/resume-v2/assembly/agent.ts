@@ -12,6 +12,7 @@ import type {
   AssemblyOutput,
   HiringManagerScan,
   JobIntelligenceOutput,
+  ResumeBullet,
   ResumeDraftOutput,
   PositioningAssessment,
   PositioningAssessmentEntry,
@@ -21,8 +22,9 @@ import { bulletPreservesProofDensity } from '../resume-writer/agent.js';
 export function runAssembly(input: AssemblyInput): AssemblyOutput {
   const { draft, truth_verification, ats_optimization, executive_tone } = input;
 
-  // Apply tone fixes to the draft
-  const final_resume = applyToneFixes(draft, executive_tone.findings);
+  // Apply tone fixes to the draft, then enforce truth gate
+  const toned_resume = applyToneFixes(draft, executive_tone.findings);
+  const final_resume = applyTruthGate(toned_resume, truth_verification, input.candidate_raw_text ?? '');
 
   // Compute quick wins from all verification agents
   const quick_wins = computeQuickWins(input);
@@ -108,6 +110,159 @@ function applyToneFixes(
       })),
     })),
   };
+}
+
+/**
+ * Truth gate — demotes or flags bullets containing fabricated or unverified claims.
+ *
+ * Fabricated bullets (issue text contains 'unsupported', 'fabricat', 'invented', or 'no basis'):
+ *   - If the bullet has evidence_found, replace its text with the evidence and mark code_red.
+ *   - Otherwise, mark code_red so the user is forced to review it.
+ *
+ * Unverified bullets (all other flagged items):
+ *   - Downgrade to confirm_fit so the user can validate before sending.
+ *
+ * Numeric check — any number that appears in the final resume but not in the source
+ * text is flagged confirm_fit regardless of whether truth_verification caught it.
+ *
+ * Note: executive_summary does not carry a review_state field on its type, so
+ * fabricated-claim detection in the summary is recorded in quick_wins only.
+ */
+function applyTruthGate(
+  draft: ResumeDraftOutput,
+  truthVerification: AssemblyInput['truth_verification'],
+  sourceText: string,
+): ResumeDraftOutput {
+  const flaggedItems = truthVerification.flagged_items ?? [];
+  if (flaggedItems.length === 0 && sourceText.trim().length === 0) return draft;
+
+  const result = { ...draft };
+
+  // Build sets of fabricated vs unverified claim texts (lowercased for matching)
+  const fabricatedClaims = new Set<string>();
+  const unverifiedClaims = new Set<string>();
+
+  for (const item of flaggedItems) {
+    const claimLower = item.claim?.toLowerCase().trim() ?? '';
+    if (!claimLower) continue;
+    const issueLower = item.issue?.toLowerCase() ?? '';
+    if (
+      issueLower.includes('unsupported') ||
+      issueLower.includes('fabricat') ||
+      issueLower.includes('invented') ||
+      issueLower.includes('no basis')
+    ) {
+      fabricatedClaims.add(claimLower);
+    } else {
+      unverifiedClaims.add(claimLower);
+    }
+  }
+
+  // Extract all numbers from source text for the deterministic numeric check
+  const sourceNumbers = extractNumbers(sourceText);
+
+  const applyBulletTruthGate = (bullet: ResumeBullet): ResumeBullet => {
+    const bulletLower = bullet.text.toLowerCase();
+    const bulletPrefix = bulletLower.slice(0, 50);
+
+    // Fabrication check — highest severity
+    const isFabricated = [...fabricatedClaims].some(
+      claim => bulletLower.includes(claim) || claim.includes(bulletPrefix),
+    );
+
+    if (isFabricated) {
+      if (typeof bullet.evidence_found === 'string' && bullet.evidence_found.trim().length > 10) {
+        return {
+          ...bullet,
+          text: bullet.evidence_found.trim(),
+          is_new: false,
+          review_state: 'code_red',
+          confidence: 'needs_validation',
+        };
+      }
+      return { ...bullet, review_state: 'code_red', confidence: 'needs_validation' };
+    }
+
+    // Unverified claim check
+    const isUnverified = [...unverifiedClaims].some(
+      claim => bulletLower.includes(claim) || claim.includes(bulletPrefix),
+    );
+
+    if (isUnverified) {
+      return { ...bullet, review_state: 'confirm_fit', confidence: 'partial' };
+    }
+
+    // Numeric check — any number in this bullet that doesn't appear in the source
+    if (sourceNumbers.size > 0) {
+      const bulletNumbers = extractNumbers(bullet.text);
+      const hasUnsourcedNumber = [...bulletNumbers].some(n => !sourceNumbers.has(n));
+      if (hasUnsourcedNumber && bullet.review_state !== 'code_red') {
+        return { ...bullet, review_state: 'confirm_fit', confidence: 'partial' };
+      }
+    }
+
+    return bullet;
+  };
+
+  // Process professional experience bullets
+  if (result.professional_experience) {
+    result.professional_experience = result.professional_experience.map(exp => ({
+      ...exp,
+      bullets: exp.bullets.map(applyBulletTruthGate),
+    }));
+  }
+
+  // Process selected accomplishments
+  if (result.selected_accomplishments) {
+    result.selected_accomplishments = result.selected_accomplishments.map(acc => {
+      const accLower = acc.content.toLowerCase();
+      const accPrefix = accLower.slice(0, 50);
+
+      const isFabricated = [...fabricatedClaims].some(
+        claim => accLower.includes(claim) || claim.includes(accPrefix),
+      );
+      if (isFabricated) {
+        return { ...acc, review_state: 'code_red' as const, confidence: 'needs_validation' as const };
+      }
+
+      const isUnverified = [...unverifiedClaims].some(
+        claim => accLower.includes(claim) || claim.includes(accPrefix),
+      );
+      if (isUnverified) {
+        return { ...acc, review_state: 'confirm_fit' as const, confidence: 'partial' as const };
+      }
+
+      if (sourceNumbers.size > 0) {
+        const accNumbers = extractNumbers(acc.content);
+        const hasUnsourcedNumber = [...accNumbers].some(n => !sourceNumbers.has(n));
+        if (hasUnsourcedNumber && acc.review_state !== 'code_red') {
+          return { ...acc, review_state: 'confirm_fit' as const, confidence: 'partial' as const };
+        }
+      }
+
+      return acc;
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Extract all numeric tokens from text as normalised strings.
+ * Captures dollar amounts, percentages, plain integers, and decimal numbers.
+ * Returns a set of raw numeric strings (e.g. "2", "2.5", "100", "1000000").
+ */
+function extractNumbers(text: string): Set<string> {
+  const results = new Set<string>();
+  // Match $-prefixed, %-suffixed, and plain integers/decimals
+  const pattern = /\$?\d[\d,]*\.?\d*%?/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    // Normalise by stripping currency and percent symbols, removing commas
+    const normalised = match[0].replace(/[$,%]/g, '').replace(/,/g, '');
+    if (normalised.length > 0) results.add(normalised);
+  }
+  return results;
 }
 
 /**

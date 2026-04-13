@@ -11,6 +11,16 @@ function originLabel(pendingEdit: PendingEdit['editContext']): string {
   return 'Manual Edit';
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  strengthen: 'Strengthen',
+  add_metrics: 'Add Metrics',
+  shorten: 'Shorten',
+  add_keywords: 'Add Keywords',
+  rewrite: 'Rewrite',
+  custom: 'Custom Edit',
+  not_my_voice: 'Voice Adjustment',
+};
+
 export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
   if (!pendingEdit) {
     return (
@@ -43,7 +53,7 @@ export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
               {originLabel(pendingEdit.editContext)}
             </span>
             <span className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] uppercase tracking-[0.16em] text-[var(--text-soft)]">
-              {pendingEdit.action.replaceAll('_', ' ')}
+              {ACTION_LABELS[pendingEdit.action] ?? pendingEdit.action.replaceAll('_', ' ')}
             </span>
           </div>
 
@@ -54,12 +64,6 @@ export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
           {pendingEdit.editContext?.requirement && (
             <p className="mt-2 text-xs text-[var(--text-soft)]">
               Requirement: {pendingEdit.editContext.requirement}
-            </p>
-          )}
-
-          {pendingEdit.editContext?.finalReviewConcernId && (
-            <p className="mt-1 text-xs text-[var(--text-soft)]">
-              Final Review concern: {pendingEdit.editContext.finalReviewConcernId}
             </p>
           )}
 

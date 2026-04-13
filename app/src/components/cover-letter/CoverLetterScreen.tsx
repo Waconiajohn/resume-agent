@@ -34,7 +34,7 @@ interface CoverLetterScreenProps {
   backLabel?: string;
 }
 
-type Phase = 'intake' | 'running' | 'complete' | 'error';
+type Phase = 'intake' | 'running' | 'letter_review' | 'complete' | 'error';
 
 // ─── Section parsing ──────────────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ function parseSectionsFromLetter(text: string): LetterSection[] {
   for (let i = 2; i < middle.length; i++) {
     sections.push({
       type: 'body',
-      label: `Body ${i}`,
+      label: `Body ${i - 1}`,
       icon: MessageSquare,
       color: 'text-[var(--text-soft)]',
       borderColor: 'border-[var(--line-soft)]',
@@ -283,6 +283,8 @@ export function CoverLetterScreen({
   const [defaultResumeText, setDefaultResumeText] = useState<string | undefined>(undefined);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [reviewFeedback, setReviewFeedback] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Fetch the master resume on mount and pre-fill the intake form
   useEffect(() => {
@@ -313,7 +315,9 @@ export function CoverLetterScreen({
     activityMessages,
     error: pipelineError,
     currentStage,
+    letterReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = useCoverLetter(accessToken);
 
@@ -325,7 +329,9 @@ export function CoverLetterScreen({
         ? 'complete'
         : status === 'error'
           ? 'error'
-          : 'running';
+          : status === 'letter_review'
+            ? 'letter_review'
+            : 'running';
 
   const handleSubmit = useCallback(
     async (data: { resumeText: string; jobDescription: string; companyName: string; tone: CoverLetterTone }) => {
@@ -425,13 +431,13 @@ export function CoverLetterScreen({
           onClick={() => onNavigate(backTarget)}
           className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors duration-150"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           {resolvedBackLabel}
         </button>
 
         {/* Activity Feed (running) */}
         {effectivePhase === 'running' && (
-          <GlassCard className="mb-6 p-5">
+          <GlassCard className="mb-6 p-5" role="status" aria-live="polite">
             <div className="mb-3 flex items-center gap-2">
               <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[var(--link)]" />
               <span className="text-sm font-medium text-[var(--text-strong)]">
@@ -459,20 +465,115 @@ export function CoverLetterScreen({
             )}
             {/* Progress bar */}
             <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-[var(--accent-muted)]">
-              <div className="h-full motion-safe:animate-pulse rounded-full bg-[var(--link)]/40" style={{ width: '60%' }} />
+              <div className="h-full motion-safe:animate-pulse rounded-full bg-[var(--link)]/40" style={{ width: '100%' }} />
             </div>
           </GlassCard>
         )}
 
         {/* Error Phase */}
         {effectivePhase === 'error' && (
-          <GlassCard className="mb-6 border-[var(--badge-red-text)]/20 p-5">
+          <GlassCard className="mb-6 border-[var(--badge-red-text)]/20 p-5" role="alert">
             <div className="mb-3 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-[var(--badge-red-text)]" />
               <span className="text-sm font-medium text-[var(--badge-red-text)]">Something went wrong</span>
             </div>
             <p className="mb-4 text-xs text-[var(--text-soft)]">
               {pipelineError ?? 'An unexpected error occurred.'}
+            </p>
+            <GlassButton variant="ghost" onClick={handleRetry}>
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+              Try Again
+            </GlassButton>
+          </GlassCard>
+        )}
+
+        {/* Letter Review Gate */}
+        {effectivePhase === 'letter_review' && letterReviewData && (
+          <GlassCard className="mb-6 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-[var(--badge-green-text)]" />
+              <span className="text-sm font-medium text-[var(--text-strong)]">Draft Ready for Review</span>
+            </div>
+
+            <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-strong)]">
+                {letterReviewData.letter_draft}
+              </p>
+            </div>
+
+            {letterReviewData.quality_score != null && (
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-[var(--text-soft)]">Draft score:</span>
+                <span
+                  className={cn(
+                    'rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
+                    letterReviewData.quality_score >= 80
+                      ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-text)]/15'
+                      : letterReviewData.quality_score >= 60
+                        ? 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/15'
+                        : 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] border-[var(--badge-red-text)]/15',
+                  )}
+                >
+                  {letterReviewData.quality_score}/100
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-1">
+              <textarea
+                className="w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--link)]/40 resize-none"
+                rows={3}
+                placeholder="Optional: describe any changes you'd like before approving..."
+                value={reviewFeedback}
+                onChange={(e) => setReviewFeedback(e.target.value)}
+                disabled={reviewSubmitting}
+              />
+              <div className="flex flex-wrap gap-3">
+                <GlassButton
+                  variant="primary"
+                  disabled={reviewSubmitting}
+                  onClick={async () => {
+                    setReviewSubmitting(true);
+                    await respondToGate('letter_review', true);
+                    setReviewSubmitting(false);
+                    setReviewFeedback('');
+                  }}
+                >
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                  Approve
+                </GlassButton>
+                <GlassButton
+                  variant="ghost"
+                  disabled={reviewSubmitting || !reviewFeedback.trim()}
+                  onClick={async () => {
+                    if (!reviewFeedback.trim()) return;
+                    setReviewSubmitting(true);
+                    await respondToGate('letter_review', { approved: false, feedback: reviewFeedback.trim() });
+                    setReviewSubmitting(false);
+                    setReviewFeedback('');
+                  }}
+                >
+                  {reviewSubmitting ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Request Changes
+                </GlassButton>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Complete Phase — no draft received */}
+        {effectivePhase === 'complete' && !letterDraft && (
+          <GlassCard className="mb-6 border-[var(--badge-amber-text)]/20 p-5" role="alert">
+            <div className="mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-[var(--badge-amber-text)]" />
+              <span className="text-sm font-medium text-[var(--badge-amber-text)]">Cover letter not received</span>
+            </div>
+            <p className="mb-4 text-xs text-[var(--text-soft)]">
+              The pipeline completed but no cover letter draft was returned. Please try again.
             </p>
             <GlassButton variant="ghost" onClick={handleRetry}>
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />

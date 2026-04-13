@@ -10,6 +10,18 @@ export interface InterviewerNote {
   rapport_notes?: string;
 }
 
+export interface PerformanceScores {
+  communication: number;
+  technical_depth: number;
+  cultural_fit: number;
+  enthusiasm: number;
+}
+
+export interface SentimentItem {
+  signal: string;
+  type: 'positive' | 'negative' | 'neutral';
+}
+
 export interface InterviewDebrief {
   id: string;
   user_id: string;
@@ -25,6 +37,8 @@ export interface InterviewDebrief {
   interviewer_notes?: InterviewerNote[];
   company_signals?: string;
   follow_up_actions?: string;
+  performance_scores?: PerformanceScores;
+  sentiment_items?: SentimentItem[];
   created_at: string;
   updated_at: string;
 }
