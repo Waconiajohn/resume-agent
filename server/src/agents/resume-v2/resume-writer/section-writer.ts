@@ -105,6 +105,7 @@ Before outputting, check your summary against these tests:
 - SPECIFICITY TEST: Does every sentence contain at least one concrete detail (number, company type, methodology, industry)?
 - BUZZWORD TEST: Scan for these AI fingerprints and REMOVE any you find: spearheaded, leveraged, orchestrated, championed, fostered, driving [noun], ensuring [noun], cross-functional collaboration, stakeholder engagement, transformational, innovative solutions, best-in-class, cutting-edge, holistic, robust, end-to-end, operational excellence, proven track record, results-driven, seasoned professional.
 - XYZ TEST: Does sentence 2 follow Accomplished [X] as measured by [Y] by doing [Z]?
+- FLOW TEST: Read the summary as one paragraph. Does it flow naturally from sentence to sentence? Or does it feel like three bullets mashed together? If the latter, rewrite transitions.
 
 If any test fails, revise that sentence before outputting.
 
@@ -113,6 +114,11 @@ HARD CONSTRAINTS:
 - No naming the target company
 - Every metric must come from the source resume — never invent numbers
 - If career span > 20 years: say "deep expertise" not "30 years of experience"
+- Read your summary aloud before outputting. If any sentence has the same word appearing twice, rewrite it. If any sentence has more than 2 commas, split it into two sentences.
+- Each sentence should make ONE point. Do not chain multiple accomplishments with "and" or commas.
+  BAD: "Reduced costs by $18M delivering 22% throughput improvement and 0.9% defect rate through structured value stream mapping and capital-efficient kaizen cycles."
+  GOOD: "Cut $18M in annual waste through plant-wide Lean transformation. Improved throughput 22% while driving defect rates down to 0.9%."
+- The summary must read as smooth prose, not a compressed bullet list. Write it as if you were introducing this person to a CEO at a dinner — clear, confident, brief.
 
 ${SOURCE_DISCIPLINE}
 ${JSON_RULES}`;

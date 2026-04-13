@@ -624,7 +624,20 @@ function sanitizeDraftForDisplay(
     },
     core_competencies: draft.core_competencies
       .map((item, index) => sanitizeField(item, fallback.core_competencies[index] ?? item))
-      .filter((item) => item.length > 0),
+      .filter((item) => {
+        if (item.length === 0) return false;
+        // Stricter source validation: require the full phrase OR at least 2 significant
+        // tokens (>3 chars) from the competency to appear in the source corpus.
+        // This prevents invented skills like "Recapitalization Strategy" from passing
+        // just because a common word like "strategy" appears somewhere in the resume.
+        const comp = item.toLowerCase();
+        const phraseMatch = sourceCorpus.includes(comp);
+        if (phraseMatch) return true;
+        const sourceTokens = new Set(sourceCorpus.split(/\s+/));
+        const compTokens = comp.split(/\s+/).filter((t) => t.length > 3);
+        const matchingTokens = compTokens.filter((token) => sourceTokens.has(token));
+        return matchingTokens.length >= 2;
+      }),
     selected_accomplishments: draft.selected_accomplishments.map((item, index) => ({
       ...item,
       content: sanitizeField(
@@ -2667,23 +2680,30 @@ function ensureRelevantPositionsRemainDetailed(
 }
 
 // ─── Guardrail: Remove duplicate bullets within a single role ────────────────
-// If two bullets have >60% normalized token overlap, or one is a substring of
-// the other, drop the shorter duplicate. Operates in-place and returns draft.
+// If two bullets have >50% normalized token overlap, or one is a substring of
+// the other, or they share an identical opening phrase (first 8 words, >20 chars),
+// drop the shorter duplicate. Operates in-place and returns draft.
 function deduplicateWithinRole(draft: ResumeDraftOutput): ResumeDraftOutput {
   for (const exp of draft.professional_experience ?? []) {
     if (!exp.bullets || exp.bullets.length < 2) continue;
     const kept: ResumeBullet[] = [];
     for (const bullet of exp.bullets) {
-      const norm = bullet.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      const normalized = bullet.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
       const isDup = kept.some((existing) => {
-        const existNorm = existing.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-        if (existNorm === norm) return true;
-        if (existNorm.includes(norm) || norm.includes(existNorm)) return true;
-        const tokens = new Set(norm.split(/\s+/));
-        const existTokens = new Set(existNorm.split(/\s+/));
+        const existingNorm = existing.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+        if (existingNorm === normalized) return true;
+        if (existingNorm.includes(normalized) || normalized.includes(existingNorm)) return true;
+        const tokens = new Set(normalized.split(/\s+/));
+        const existTokens = new Set(existingNorm.split(/\s+/));
         const overlap = [...tokens].filter((t) => existTokens.has(t)).length;
         const maxLen = Math.max(tokens.size, existTokens.size);
-        return maxLen > 0 && overlap / maxLen > 0.6;
+        if (maxLen > 0 && overlap / maxLen > 0.5) return true;
+        // Also flag as duplicate if the first 8 words are identical (catches near-duplicates
+        // that differ only in metrics or trailing phrases).
+        const firstWords = normalized.split(/\s+/).slice(0, 8).join(' ');
+        const existingFirstWords = existingNorm.split(/\s+/).slice(0, 8).join(' ');
+        if (firstWords.length > 20 && firstWords === existingFirstWords) return true;
+        return false;
       });
       if (!isDup) kept.push(bullet);
     }

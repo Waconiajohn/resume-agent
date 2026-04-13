@@ -418,10 +418,9 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       state.gap_coaching_responses = options.gap_coaching_responses;
       allApproved = buildApprovedStrategies(options.gap_coaching_responses, gapAnalysis);
     } else if (gapAnalysis.pending_strategies.length > 0) {
-      // Case 3: Non-strong gaps present — continue immediately.
-      // The user validates these on the resume itself (Ultimate Resume mode).
-      // We still emit gap_questions as informational coaching for the analysis UI,
-      // but they are not a blocking gate.
+      // Case 3: Non-strong gaps present — wait for user responses.
+      // The gap_coaching cards were already emitted above. Now we pause
+      // the pipeline and wait for the user to respond via POST /respond-gaps.
       const importanceOrder: Record<string, number> = {
         must_have: 0,
         critical: 0,
@@ -456,17 +455,49 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
               question: ps.strategy.interview_questions?.[0]?.question ?? `Can you provide evidence for: ${ps.requirement}?`,
               context: ps.strategy.ai_reasoning ?? `Your background may have relevant experience for "${ps.requirement}".`,
               currentEvidence: req?.evidence ?? [],
-              informational_only: true,
+              informational_only: false,
             })),
           },
         });
       }
 
-      // Auto-approve all pending strategies — no user gate
-      allApproved = gapAnalysis.pending_strategies.map(ps => ({
-        requirement: ps.requirement,
-        strategy: ps.strategy,
-      }));
+      // Emit a pipeline gate event so the frontend knows to pause and collect responses
+      emit({ type: 'pipeline_gate', gate: 'gap_coaching' });
+
+      // Register a resolver and wait for the user to POST to /respond-gaps.
+      // If the request is aborted while waiting, reject immediately so the
+      // pipeline can tear down cleanly rather than leaking a dangling Promise.
+      const gapResponse = await new Promise<GapCoachingResponse[]>((resolve, reject) => {
+        pendingGapResolvers.set(options.session_id, resolve);
+
+        if (signal) {
+          const onAbort = () => {
+            pendingGapResolvers.delete(options.session_id);
+            reject(signal.reason);
+          };
+          if (signal.aborted) {
+            onAbort();
+          } else {
+            signal.addEventListener('abort', onAbort, { once: true });
+          }
+        }
+      });
+
+      // Clean up resolver immediately after it fires
+      pendingGapResolvers.delete(options.session_id);
+
+      if (gapResponse.length > 0) {
+        state.gap_coaching_responses = gapResponse;
+        allApproved = buildApprovedStrategies(gapResponse, gapAnalysis);
+      } else {
+        // User dismissed without responding — approve only strong matches
+        allApproved = gapAnalysis.pending_strategies
+          .filter(ps => {
+            const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
+            return req?.classification === 'strong';
+          })
+          .map(ps => ({ requirement: ps.requirement, strategy: ps.strategy }));
+      }
     } else {
       // Case 4: No pending strategies
       allApproved = [];

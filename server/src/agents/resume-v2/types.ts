@@ -941,6 +941,7 @@ export type V2PipelineSSEEvent =
   | { type: 'requirement_work_items'; data: RequirementWorkItem[] }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'gap_questions'; data: { questions: GapQuestion[] } }
+  | { type: 'pipeline_gate'; gate: 'gap_coaching' }
   | { type: 'narrative_strategy'; data: NarrativeStrategyOutput }
   | { type: 'resume_draft'; data: ResumeDraftOutput }
   | { type: 'verification_complete'; data: {
