@@ -918,6 +918,21 @@ export class DeepSeekProvider extends ZAIProvider {
   }
 }
 
+// ─── DeepInfra provider (US-hosted DeepSeek, OpenAI-compatible) ──────
+
+export class DeepInfraProvider extends ZAIProvider {
+  constructor(config: { apiKey: string; baseUrl?: string }) {
+    super({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl ?? 'https://api.deepinfra.com/v1/openai',
+      providerName: 'deepinfra',
+      chatTimeoutMs: 90_000,   // US-hosted, should be faster than direct DeepSeek
+      streamTimeoutMs: 120_000,
+      disableParallelToolCalls: false,
+    });
+  }
+}
+
 // ─── Failover provider ───────────────────────────────────────────────
 
 const FAILOVER_THRESHOLD = 3;

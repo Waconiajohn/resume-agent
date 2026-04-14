@@ -78,13 +78,16 @@ export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSE
 // Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.
 // This override lets Resume V2 use DeepSeek for high-trust writing
 // while the rest of the app stays on the global provider (Groq).
+// Prefers DeepInfra (US-hosted DeepSeek, lower latency) when available.
 // Other products should be tested independently before switching.
 
+const DEEPINFRA_MODEL = 'deepseek-ai/DeepSeek-V3.2';
+
 export const RESUME_V2_WRITER_MODEL = process.env.RESUME_V2_WRITER_MODEL
-  ?? DEEPSEEK_MODEL_PRIMARY;
+  ?? (process.env.DEEPINFRA_API_KEY ? DEEPINFRA_MODEL : DEEPSEEK_MODEL_PRIMARY);
 
 export const RESUME_V2_WRITER_PROVIDER = process.env.RESUME_V2_WRITER_PROVIDER
-  ?? 'deepseek';
+  ?? (process.env.DEEPINFRA_API_KEY ? 'deepinfra' : 'deepseek');
 
 /**
  * Orchestrator model for agent loops with complex nested tool schemas.
@@ -119,6 +122,9 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   'deepseek-r1-distill-llama-70b': { input: 0.75, output: 0.99 },
   // DeepSeek models (direct API)
   'deepseek-chat': { input: 0.14, output: 0.28 },
+  // DeepInfra (US-hosted DeepSeek — lower latency, slightly higher cost)
+  'deepseek-ai/DeepSeek-V3.2': { input: 0.26, output: 0.38 },
+  'deepseek-ai/DeepSeek-V3': { input: 0.26, output: 0.38 },
   'mistral-saba-24b': { input: 0.79, output: 0.79 },
   // Anthropic models for reference
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },

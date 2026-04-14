@@ -1,4 +1,4 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, FailoverProvider } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, FailoverProvider } from './llm-provider.js';
 import logger from './logger.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
 import {
@@ -114,6 +114,15 @@ function buildProvider(name: string): LLMProvider {
     return new DeepSeekProvider({ apiKey, ...(baseUrl && { baseUrl }) });
   }
 
+  if (name === 'deepinfra') {
+    const apiKey = process.env.DEEPINFRA_API_KEY;
+    if (!apiKey) {
+      throw new Error('DEEPINFRA_API_KEY environment variable is required when LLM_PROVIDER=deepinfra');
+    }
+    const baseUrl = process.env.DEEPINFRA_BASE_URL;
+    return new DeepInfraProvider({ apiKey, ...(baseUrl && { baseUrl }) });
+  }
+
   if (name === 'zai') {
     const apiKey = process.env.ZAI_API_KEY;
     if (!apiKey) {
@@ -134,9 +143,10 @@ function buildProvider(name: string): LLMProvider {
  */
 function chooseFallbackProvider(primaryName: string): LLMProvider | null {
   const candidates: Array<{ name: string; key: string | undefined }> = [
-    { name: 'groq',     key: process.env.GROQ_API_KEY },
-    { name: 'zai',      key: process.env.ZAI_API_KEY },
-    { name: 'deepseek', key: process.env.DEEPSEEK_API_KEY },
+    { name: 'groq',      key: process.env.GROQ_API_KEY },
+    { name: 'deepinfra', key: process.env.DEEPINFRA_API_KEY },
+    { name: 'zai',       key: process.env.ZAI_API_KEY },
+    { name: 'deepseek',  key: process.env.DEEPSEEK_API_KEY },
   ];
 
   for (const candidate of candidates) {
