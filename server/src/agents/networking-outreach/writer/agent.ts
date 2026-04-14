@@ -71,7 +71,7 @@ Emit after completing each message, not after every tool call.`,
     ...writerTools,
     createEmitTransparency<NetworkingOutreachState, NetworkingOutreachSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 8,
   round_timeout_ms: 120_000,
   overall_timeout_ms: 600_000, // 10 min

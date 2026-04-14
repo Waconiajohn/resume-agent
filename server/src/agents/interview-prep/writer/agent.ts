@@ -101,7 +101,7 @@ Emit after completing each major step, not after every tool call.`,
     ...writerTools,
     createEmitTransparency<InterviewPrepState, InterviewPrepSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   // 9 sections × (write + review) + career story + assemble + story bank (recall + save×N) + post-interview tools = ~35 rounds
   max_rounds: 40,
   round_timeout_ms: 120_000,

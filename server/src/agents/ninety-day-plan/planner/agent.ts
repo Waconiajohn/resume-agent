@@ -82,7 +82,7 @@ Emit after completing each phase, not after every tool call.`,
     ...plannerTools,
     createEmitTransparency<NinetyDayPlanState, NinetyDayPlanSSEEvent>({ prefix: 'Planner' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 10,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 420_000,

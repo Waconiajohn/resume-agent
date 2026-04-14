@@ -96,7 +96,7 @@ Emit after completing each bio, not after every individual tool call.`,
     ...writerTools,
     createEmitTransparency<ExecutiveBioState, ExecutiveBioSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 15,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 480_000,

@@ -116,7 +116,7 @@ All sections must be completed before assembling. The assembled report should be
     ...writerTools,
     createEmitTransparency<LinkedInOptimizerState, LinkedInOptimizerSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer needs stronger model for report generation (was orchestrator/Scout — too weak)
   // 4 sections + assemble = ~6 rounds
   max_rounds: 10,
   round_timeout_ms: 120_000,

@@ -80,7 +80,7 @@ Emit after completing each case study's write-metrics-review cycle, not after ev
     ...writerTools,
     createEmitTransparency<CaseStudyState, CaseStudySSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 25,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 480_000,

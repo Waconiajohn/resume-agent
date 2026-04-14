@@ -58,7 +58,7 @@ Emit after each batch of posts, not after every individual write_post call.`,
     ...writerTools,
     createEmitTransparency<ContentCalendarState, ContentCalendarSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   // Writing ~20 posts + hooks + hashtags + scheduling + assembly = ~12 rounds
   max_rounds: 12,
   round_timeout_ms: 120_000,

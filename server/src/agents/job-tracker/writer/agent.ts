@@ -49,7 +49,7 @@ Work through all steps systematically. Write messages for each qualifying applic
     ...writerTools,
     createEmitTransparency<JobTrackerState, JobTrackerSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 12,
   round_timeout_ms: 120_000,
   overall_timeout_ms: 600_000,

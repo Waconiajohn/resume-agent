@@ -53,7 +53,7 @@ Emit at meaningful transitions, not after every tool call.`,
     ...strategistTools,
     createEmitTransparency<SalaryNegotiationState, SalaryNegotiationSSEEvent>({ prefix: 'Strategist' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 12,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 480_000,

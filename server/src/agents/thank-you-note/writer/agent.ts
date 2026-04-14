@@ -97,7 +97,7 @@ Emit after completing each note, not after every tool call.`,
     ...writerTools,
     createEmitTransparency<ThankYouNoteState, ThankYouNoteSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 15,
   round_timeout_ms: 60_000,
   overall_timeout_ms: 360_000,

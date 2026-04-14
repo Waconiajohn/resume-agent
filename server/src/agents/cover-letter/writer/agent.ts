@@ -77,7 +77,7 @@ Emit at meaningful transitions, not after every tool call.`,
     ...writerTools,
     createEmitTransparency<CoverLetterState, CoverLetterSSEEvent>({ prefix: 'Writer' }),
   ],
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 5,
   round_timeout_ms: 60_000,
   overall_timeout_ms: 180_000,

@@ -73,7 +73,7 @@ Posts that build genuine credibility are written by practitioners who have lived
 ${LINKEDIN_CONTENT_RULES}`,
 
   tools: writerTools,
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 8,
   round_timeout_ms: 120_000,
   overall_timeout_ms: 360_000,

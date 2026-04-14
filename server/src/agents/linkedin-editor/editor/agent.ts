@@ -39,7 +39,7 @@ After presenting each section, stop — the pipeline will gate for user review. 
 Write one section at a time. Do not attempt to write multiple sections before presenting.`,
 
   tools: editorTools,
-  model: 'orchestrator',
+  model: 'primary',  // Writer/planner needs stronger model than Scout
   max_rounds: 20,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 600_000,
