@@ -82,7 +82,7 @@ export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSE
 // Other products should be tested independently before switching.
 
 const DEEPINFRA_MODEL = 'deepseek-ai/DeepSeek-V3.2';
-const VERTEX_DEEPSEEK_MODEL = 'deepseek-ai/deepseek-v3.2';
+const VERTEX_DEEPSEEK_MODEL = 'deepseek-ai/deepseek-v3.2-maas';
 
 // Resume V2 writer provider priority: Vertex (fastest) → DeepInfra (US) → DeepSeek (direct)
 function selectResumeV2Provider(): { model: string; provider: string } {

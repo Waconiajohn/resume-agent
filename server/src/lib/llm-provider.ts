@@ -938,23 +938,41 @@ export class DeepInfraProvider extends ZAIProvider {
 // Endpoint: https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints/openapi
 
 export class VertexProvider extends ZAIProvider {
+  private tokenExpiry = 0;
+
   constructor(config: {
     project: string;
     region?: string;
     accessToken: string;
     baseUrl?: string;
   }) {
-    const region = config.region ?? 'us-central1';
+    const region = config.region ?? 'global';
     const baseUrl = config.baseUrl
-      ?? `https://${region}-aiplatform.googleapis.com/v1/projects/${config.project}/locations/${region}/endpoints/openapi`;
+      ?? (region === 'global'
+        ? `https://aiplatform.googleapis.com/v1/projects/${config.project}/locations/global/endpoints/openapi`
+        : `https://${region}-aiplatform.googleapis.com/v1/projects/${config.project}/locations/${region}/endpoints/openapi`);
     super({
-      apiKey: config.accessToken,  // Vertex uses OAuth2 bearer tokens
+      apiKey: config.accessToken || 'placeholder',
       baseUrl,
       providerName: 'vertex',
-      chatTimeoutMs: 60_000,   // Vertex is fast — 200+ tok/s
+      chatTimeoutMs: 60_000,
       streamTimeoutMs: 90_000,
       disableParallelToolCalls: false,
     });
+  }
+
+  /** Refresh the gcloud access token before each call (tokens expire every ~60 min) */
+  async chat(params: ChatParams): Promise<ChatResponse> {
+    if (Date.now() > this.tokenExpiry) {
+      try {
+        const token = await getVertexAccessToken();
+        (this as unknown as { apiKey: string }).apiKey = token;
+        this.tokenExpiry = Date.now() + 50 * 60 * 1000; // Refresh 10 min before expiry
+      } catch (err) {
+        throw new Error(`Vertex token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return super.chat(params);
   }
 }
 
