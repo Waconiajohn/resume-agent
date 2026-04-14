@@ -12,7 +12,7 @@
 
 export const ACTIVE_PROVIDER =
   process.env.LLM_PROVIDER?.toLowerCase() ??
-  (process.env.DEEPSEEK_API_KEY ? 'deepseek' : process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
+  (process.env.DEEPINFRA_API_KEY ? 'deepinfra' : process.env.DEEPSEEK_API_KEY ? 'deepseek' : process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
 
 // ─── ZAI model constants ─────────────────────────────────────────────
 
@@ -64,15 +64,26 @@ const DEEPSEEK_MODEL_LIGHT = process.env.DEEPSEEK_MODEL_LIGHT ?? 'deepseek-chat'
 
 // ─── Provider-aware model exports ────────────────────────────────────
 
-function selectModel(zai: string, groq: string, deepseek?: string): string {
+// DeepInfra model IDs use the HuggingFace format (e.g., deepseek-ai/DeepSeek-V3.2)
+const DEEPINFRA_MODEL_PRIMARY = process.env.DEEPINFRA_MODEL_PRIMARY ?? 'deepseek-ai/DeepSeek-V3.2';
+const DEEPINFRA_MODEL_MID = process.env.DEEPINFRA_MODEL_MID ?? 'deepseek-ai/DeepSeek-V3.2';
+const DEEPINFRA_MODEL_ORCHESTRATOR = process.env.DEEPINFRA_MODEL_ORCHESTRATOR ?? 'deepseek-ai/DeepSeek-V3.2';
+const DEEPINFRA_MODEL_LIGHT = process.env.DEEPINFRA_MODEL_LIGHT ?? 'deepseek-ai/DeepSeek-V3.2';
+
+function selectModel(
+  zai: string, groq: string,
+  deepseek?: string, deepinfra?: string, vertex?: string,
+): string {
+  if (ACTIVE_PROVIDER === 'deepinfra') return deepinfra ?? deepseek ?? zai;
   if (ACTIVE_PROVIDER === 'deepseek') return deepseek ?? zai;
+  if (ACTIVE_PROVIDER === 'vertex') return vertex ?? 'deepseek-ai/deepseek-v3.2-maas';
   return ACTIVE_PROVIDER === 'groq' ? groq : zai;
 }
 
-export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY, DEEPSEEK_MODEL_PRIMARY);
-export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MODEL_MID);
-export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR);
-export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT);
+export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY, DEEPSEEK_MODEL_PRIMARY, DEEPINFRA_MODEL_PRIMARY);
+export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MODEL_MID, DEEPINFRA_MODEL_MID);
+export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR, DEEPINFRA_MODEL_ORCHESTRATOR);
+export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT, DEEPINFRA_MODEL_LIGHT);
 
 // ─── Feature-scoped model overrides ─────────────────────────────────
 // Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.

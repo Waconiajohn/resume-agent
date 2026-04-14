@@ -226,7 +226,7 @@ export const resumeV2Llm: LLMProvider = (() => {
  * dynamic when failover is active) so model IDs always match the primary config.
  */
 export function getDefaultModel(): string {
-  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek') {
+  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek' || ACTIVE_PROVIDER === 'deepinfra' || ACTIVE_PROVIDER === 'vertex') {
     return MODEL_ORCHESTRATOR;
   }
   return ANTHROPIC_MODEL;
@@ -236,7 +236,7 @@ export function getDefaultModel(): string {
  * Get MAX_TOKENS for the configured primary provider.
  */
 export function getMaxTokens(): number {
-  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek') {
+  if (ACTIVE_PROVIDER === 'zai' || ACTIVE_PROVIDER === 'groq' || ACTIVE_PROVIDER === 'deepseek' || ACTIVE_PROVIDER === 'deepinfra' || ACTIVE_PROVIDER === 'vertex') {
     return MAX_TOKENS;
   }
   return ANTHROPIC_MAX_TOKENS;

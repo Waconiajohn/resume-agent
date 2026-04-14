@@ -928,8 +928,8 @@ export class DeepInfraProvider extends ZAIProvider {
       apiKey: config.apiKey,
       baseUrl: config.baseUrl ?? 'https://api.deepinfra.com/v1/openai',
       providerName: 'deepinfra',
-      chatTimeoutMs: 90_000,   // US-hosted, should be faster than direct DeepSeek
-      streamTimeoutMs: 120_000,
+      chatTimeoutMs: 180_000,  // DeepSeek V3.2 needs more time for complex tool-calling prompts
+      streamTimeoutMs: 240_000,
       disableParallelToolCalls: false,
     });
   }
