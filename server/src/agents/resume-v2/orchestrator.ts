@@ -586,6 +586,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       pre_scores: state.pre_scores,
       job_intelligence: jobIntel,
       candidate_raw_text: options.resume_text,
+      approved_strategies: allApproved,
     });
     state.final_resume = assembled;
 

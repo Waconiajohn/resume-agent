@@ -753,6 +753,8 @@ export interface AssemblyInput {
   job_intelligence?: JobIntelligenceOutput;
   /** Raw original resume text used by the truth gate to cross-check numbers */
   candidate_raw_text?: string;
+  /** Approved gap strategies with user-verified evidence (from coaching flow) */
+  approved_strategies?: Array<{ requirement: string; strategy: { verified_user_evidence?: string; positioning?: string; real_experience?: string } }>;
 }
 
 export interface AssemblyOutput {

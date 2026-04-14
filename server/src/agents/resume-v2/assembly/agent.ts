@@ -25,10 +25,18 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
   // Apply tone fixes to the draft, then enforce truth gate
   const toned_resume = applyToneFixes(draft, executive_tone.findings);
   const truth_gated_resume = applyTruthGate(toned_resume, truth_verification, input.candidate_raw_text ?? '');
+  // Include user-verified evidence in safety check so the summary can reference
+  // topics the user explicitly confirmed (e.g., P&L authority, board experience)
+  const verifiedEvidence = (input.approved_strategies ?? [])
+    .filter(s => s.strategy?.verified_user_evidence)
+    .map(s => s.strategy.verified_user_evidence!)
+    .join('\n');
+  const combinedSourceText = [input.candidate_raw_text ?? '', verifiedEvidence].filter(Boolean).join('\n');
+
   const final_resume = applyPresentationSafety(
     truth_gated_resume,
     input.job_intelligence,
-    input.candidate_raw_text ?? '',
+    combinedSourceText,
   );
 
   // Compute quick wins from all verification agents
@@ -397,11 +405,27 @@ function buildConservativeBrandedTitle(
 function summaryNeedsConservativeFallback(summary: string, sourceText: string): boolean {
   const lower = summary.toLowerCase();
   const sourceLower = sourceText.toLowerCase();
+
+  // Check if user provided evidence that addresses P&L or board gaps
+  // (user evidence is appended to sourceText after the original resume)
+  const userConfirmedPAndL = /p&l sign-off authority|full p&l|owned.*p&l|p&l accountability/i.test(sourceLower)
+    && /i (had|assumed|owned|managed|have)/i.test(sourceLower);
+  const userConfirmedBoard = /presented.*board|presented.*advisory|quarterly.*board|board.*quarterly/i.test(sourceLower)
+    && /i (present|presented|regularly)/i.test(sourceLower);
+
+  // P&L risk: summary claims P&L but source says "not ultimate sign-off"
+  // UNLESS user explicitly confirmed they DO have P&L authority
   const pAndLRisk = /\bp&l\b/.test(lower)
-    && (/not ultimate p&l sign-off/.test(sourceLower) || /\bbut not ultimate p&l sign-off\b/.test(sourceLower));
+    && /not ultimate p&l sign-off/.test(sourceLower)
+    && !userConfirmedPAndL;
+
+  // Board risk: summary mentions board but source has no board evidence
+  // UNLESS user explicitly confirmed board presentations
   const boardRisk = /\bboard(?:-level)?\b/.test(lower)
-    && !(/\bboard\b/.test(sourceLower) && /\b(present|presented|report|reported|advisory)\b/.test(sourceLower));
-  const hardBranding = /\bunified\b/.test(lower) && /\bp&l/.test(lower);
+    && !(/\bboard\b/.test(sourceLower) && /\b(present|presented|report|reported|advisory)\b/.test(sourceLower))
+    && !userConfirmedBoard;
+
+  const hardBranding = /\bunified\b/.test(lower) && /\bp&l/.test(lower) && !userConfirmedPAndL;
   return pAndLRisk || boardRisk || hardBranding;
 }
 
@@ -415,15 +439,42 @@ function buildConservativeExecutiveSummary(
   const proofLine = pickSafestSummaryProof(resume);
   const roleTitle = jobIntelligence?.role_title?.trim();
 
+  // Build a richer summary using verified experience data
+  const topRole = resume.professional_experience[0];
+  const scopeParts: string[] = [];
+  if (topRole?.scope_statement) scopeParts.push(topRole.scope_statement);
+
+  // Extract strong bullet texts for additional proof (up to 2)
+  const strongBullets = (topRole?.bullets ?? [])
+    .filter(b => b.review_state === 'supported' || b.review_state === 'supported_rewrite')
+    .filter(b => /\d/.test(b.text))  // must have a metric
+    .slice(0, 2)
+    .map(b => {
+      // Trim to one sentence if multi-sentence
+      const firstSentence = b.text.split(/\.\s/)[0];
+      return firstSentence.endsWith('.') ? firstSentence : `${firstSentence}.`;
+    });
+
   const sentences = [
     `${title} with deep experience in ${domain}.`,
     proofLine,
+    ...strongBullets,
     roleTitle
-      ? `Positioned for ${roleTitle} roles that value disciplined execution, plant leadership, and measurable operational improvement.`
+      ? `Seeking a ${roleTitle} role where this experience drives measurable results.`
       : '',
   ].filter(Boolean);
 
-  return sentences.join(' ');
+  // Cap at ~80 words to keep it tight
+  let result = sentences.join(' ');
+  const words = result.split(/\s+/);
+  if (words.length > 80) {
+    result = words.slice(0, 80).join(' ');
+    // End at last complete sentence
+    const lastPeriod = result.lastIndexOf('.');
+    if (lastPeriod > 40) result = result.slice(0, lastPeriod + 1);
+  }
+
+  return result;
 }
 
 function pickSafestSummaryProof(resume: ResumeDraftOutput): string {
