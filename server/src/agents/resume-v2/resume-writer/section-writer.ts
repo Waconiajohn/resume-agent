@@ -27,7 +27,10 @@ import type { ChatParams, ChatResponse } from '../../../lib/llm-provider.js';
 
 /** Section-writer LLM call — uses the Resume V2-scoped provider (DeepSeek when available) */
 function chatWithRetry(params: ChatParams, options?: { retryMaxTokens?: number }): Promise<ChatResponse> {
-  return _chatWithTruncationRetry(params, { ...options, provider: resumeV2Llm });
+  return _chatWithTruncationRetry(
+    { temperature: 0.5, ...params },  // Default temp 0.5 for consistent, human-sounding writing
+    { ...options, provider: resumeV2Llm },
+  );
 }
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';

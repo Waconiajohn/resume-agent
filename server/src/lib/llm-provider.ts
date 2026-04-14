@@ -14,6 +14,7 @@ export interface ChatParams {
   tool_choice?: { type: 'any' } | { type: 'auto' } | { type: 'none' };
   response_format?: { type: 'json_object' };
   max_tokens: number;
+  temperature?: number;
   signal?: AbortSignal;
   session_id?: string;
 }
@@ -574,6 +575,7 @@ export class ZAIProvider implements LLMProvider {
       max_tokens: params.max_tokens,
       messages,
       stream,
+      ...(params.temperature != null && { temperature: params.temperature }),
     };
 
     if (stream) {
