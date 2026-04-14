@@ -214,9 +214,36 @@ interface GapCoachingCard {
 }
 
 /**
+ * Profile-specific evidence responses — what a real VP Ops (Profile 0)
+ * would say when asked about gaps in their experience for a COO role.
+ * These are realistic answers a 20-year manufacturing exec would give.
+ */
+const PROFILE_0_EVIDENCE: Record<string, string> = {
+  // P&L ownership
+  'p&l': 'After my VP Finance left in late 2024, I assumed full P&L sign-off authority for the $210M operating budget for 14 months. I owned cost-per-unit targets, capital allocation up to $5M, and monthly budget-vs-actual reviews. I presented the EBITDA bridge to our board quarterly during that period.',
+  'budget': 'I managed the full $210M operating budget with sign-off authority on all operational spending. Capital requests over $5M went to the board but I prepared and presented the business cases. I also managed the $47M CNC modernization capital program end-to-end.',
+  // Board experience
+  'board': 'I presented quarterly to the Cincinnati Manufacturing Advisory Board (5 external members) covering operational KPIs, EBITDA bridge analysis, capital project ROI, and supply chain risk. I also presented annual strategic plans to the parent company executive committee.',
+  'executive': 'I reported directly to the CEO and participated in monthly executive leadership meetings with the full C-suite. I led the operational portion of the annual strategic planning process and presented to the board twice per year.',
+  // Multi-site / cross-divisional
+  'multi-site': 'I managed three manufacturing facilities across the Cincinnati metro area — two stamping plants and one assembly plant. Total footprint was 420,000 sq ft with 1,100 employees. I coordinated production scheduling, quality standards, and Lean deployment across all three sites with a unified KPI dashboard.',
+  'cross-divisional': 'I standardized operating procedures across all three plants including unified quality management systems, shared maintenance scheduling, and cross-trained supervisory teams. I also led the ERP consolidation project that brought all three sites onto a single platform.',
+  'integration': 'I led the integration of a newly acquired stamping operation in 2022, standardizing their processes to match our existing plants within 6 months. This included quality system harmonization, ERP migration, and cross-training 180 employees.',
+  // PE / recapitalization
+  'recapitalization': 'I led the operational due diligence when Meridian explored a PE sale in 2023. I built the operational data room with 30+ KPI dashboards, presented the manufacturing EBITDA bridge to three PE firms, and identified $8M in additional savings opportunities for the value creation thesis.',
+  'pe': 'During the 2023 PE exploration, I worked directly with the PE sponsors on operational modeling. I presented our Lean transformation ROI, capital efficiency metrics, and the remaining $8M opportunity pipeline. While the deal ultimately did not close, I built the full operational case.',
+  // ERP / systems
+  'erp': 'I led the selection and implementation of a plant-wide MES that integrated with our ERP. I also standardized quality management across all three plants onto a single QMS platform, replacing three legacy systems. The MES implementation reduced data entry time by 40% and gave us real-time OEE visibility.',
+  // Working capital
+  'working capital': 'At Fortis Components I redesigned the production scheduling system to reduce WIP inventory by 31%, freeing $4.8M in working capital. At Meridian I applied similar principles to optimize raw material ordering cycles, reducing carrying costs by $1.2M annually.',
+  // Supplier management
+  'supplier': 'I managed relationships with 40+ Tier 1 and Tier 2 suppliers. I renegotiated contracts for $6M in annual savings while improving on-time delivery from 81% to 96%. I also developed a supplier scorecard system that reduced quality rejects from incoming materials by 60%.',
+};
+
+/**
  * Simulate a real user responding to gap coaching questions.
- * Instead of blindly approving everything, provide realistic evidence
- * for gaps we can address and SKIP gaps we genuinely can't.
+ * Uses profile-specific evidence that matches what the candidate
+ * would actually know and say about their experience.
  */
 function buildRealisticGapResponse(card: GapCoachingCard): {
   requirement: string;
@@ -227,48 +254,33 @@ function buildRealisticGapResponse(card: GapCoachingCard): {
   const evidence = (card.evidence_found ?? []).join(' ').toLowerCase();
   const hasEvidence = evidence.length > 20;
 
-  // If the card has strong evidence, approve it — the candidate really has this
+  // If the card has strong evidence, approve it
   if (card.classification === 'strong' && hasEvidence) {
     return { requirement: card.requirement, action: 'approve' };
   }
 
-  // If the card has partial evidence, provide context to strengthen it
+  // Try to match against profile-specific evidence
+  for (const [keyword, userEvidence] of Object.entries(PROFILE_0_EVIDENCE)) {
+    if (req.includes(keyword)) {
+      return {
+        requirement: card.requirement,
+        action: 'context',
+        user_context: userEvidence,
+      };
+    }
+  }
+
+  // If the card has partial evidence but no profile match, provide generic strengthening
   if (card.classification === 'partial' && hasEvidence) {
-    // Use the evidence as the basis for a realistic user response
     const evidenceText = card.evidence_found?.slice(0, 2).join('. ') ?? '';
     return {
       requirement: card.requirement,
       action: 'context',
-      user_context: `Yes, this is accurate. ${evidenceText}. I can provide more detail if needed.`,
+      user_context: `Yes, this is accurate. ${evidenceText}`,
     };
   }
 
-  // If the requirement is about something common that most execs have but
-  // may not have on their resume, provide brief context
-  if (req.includes('budget') || req.includes('p&l') || req.includes('financial')) {
-    return {
-      requirement: card.requirement,
-      action: 'context',
-      user_context: 'I had budget accountability for my area including headcount planning and capital allocation requests. Happy to provide specific numbers.',
-    };
-  }
-  if (req.includes('board') || req.includes('executive') || req.includes('stakeholder')) {
-    return {
-      requirement: card.requirement,
-      action: 'context',
-      user_context: 'I regularly presented operational results to senior leadership and participated in strategic planning sessions.',
-    };
-  }
-  if (req.includes('team') || req.includes('leadership') || req.includes('manage')) {
-    return {
-      requirement: card.requirement,
-      action: 'context',
-      user_context: 'I directly managed the team referenced in my resume and was responsible for hiring, performance reviews, and development plans.',
-    };
-  }
-
-  // For requirements with no evidence and no obvious connection, SKIP
-  // This is what a real user would do — they won't fake experience they don't have
+  // For requirements with no evidence and no profile match, SKIP honestly
   if (card.classification === 'missing' && !hasEvidence) {
     return { requirement: card.requirement, action: 'skip' };
   }
