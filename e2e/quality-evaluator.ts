@@ -213,15 +213,83 @@ interface GapCoachingCard {
   classification: string;
 }
 
+/**
+ * Simulate a real user responding to gap coaching questions.
+ * Instead of blindly approving everything, provide realistic evidence
+ * for gaps we can address and SKIP gaps we genuinely can't.
+ */
+function buildRealisticGapResponse(card: GapCoachingCard): {
+  requirement: string;
+  action: 'approve' | 'context' | 'skip';
+  user_context?: string;
+} {
+  const req = card.requirement.toLowerCase();
+  const evidence = (card.evidence_found ?? []).join(' ').toLowerCase();
+  const hasEvidence = evidence.length > 20;
+
+  // If the card has strong evidence, approve it — the candidate really has this
+  if (card.classification === 'strong' && hasEvidence) {
+    return { requirement: card.requirement, action: 'approve' };
+  }
+
+  // If the card has partial evidence, provide context to strengthen it
+  if (card.classification === 'partial' && hasEvidence) {
+    // Use the evidence as the basis for a realistic user response
+    const evidenceText = card.evidence_found?.slice(0, 2).join('. ') ?? '';
+    return {
+      requirement: card.requirement,
+      action: 'context',
+      user_context: `Yes, this is accurate. ${evidenceText}. I can provide more detail if needed.`,
+    };
+  }
+
+  // If the requirement is about something common that most execs have but
+  // may not have on their resume, provide brief context
+  if (req.includes('budget') || req.includes('p&l') || req.includes('financial')) {
+    return {
+      requirement: card.requirement,
+      action: 'context',
+      user_context: 'I had budget accountability for my area including headcount planning and capital allocation requests. Happy to provide specific numbers.',
+    };
+  }
+  if (req.includes('board') || req.includes('executive') || req.includes('stakeholder')) {
+    return {
+      requirement: card.requirement,
+      action: 'context',
+      user_context: 'I regularly presented operational results to senior leadership and participated in strategic planning sessions.',
+    };
+  }
+  if (req.includes('team') || req.includes('leadership') || req.includes('manage')) {
+    return {
+      requirement: card.requirement,
+      action: 'context',
+      user_context: 'I directly managed the team referenced in my resume and was responsible for hiring, performance reviews, and development plans.',
+    };
+  }
+
+  // For requirements with no evidence and no obvious connection, SKIP
+  // This is what a real user would do — they won't fake experience they don't have
+  if (card.classification === 'missing' && !hasEvidence) {
+    return { requirement: card.requirement, action: 'skip' };
+  }
+
+  // Default: approve with what we have
+  return { requirement: card.requirement, action: 'approve' };
+}
+
 async function respondToGaps(
   token: string,
   sessionId: string,
   cards: GapCoachingCard[],
 ): Promise<void> {
-  const responses = cards.map((card) => ({
-    requirement: card.requirement,
-    action: 'approve' as const,
-  }));
+  const responses = cards.map((card) => {
+    const response = buildRealisticGapResponse(card);
+    const label = response.action === 'skip' ? 'SKIP (no evidence)'
+      : response.action === 'context' ? 'CONTEXT (providing evidence)'
+      : 'APPROVE (strong match)';
+    console.log(`    [gap] ${card.requirement}: ${label}`);
+    return response;
+  });
 
   const res = await fetch(`${API_BASE}/pipeline/${sessionId}/respond-gaps`, {
     method: 'POST',

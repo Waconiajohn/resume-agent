@@ -90,6 +90,8 @@ export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(
 
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // Z.AI models
+  'glm-5.1': { input: 1.40, output: 4.40 },
+  'glm-5': { input: 1.00, output: 3.20 },
   'glm-4.7': { input: 0.60, output: 2.20 },
   'glm-4.5-air': { input: 0.20, output: 1.10 },
   'glm-4.7-flashx': { input: 0.07, output: 0.40 },
