@@ -963,18 +963,36 @@ export class VertexProvider extends ZAIProvider {
     });
   }
 
-  /** Refresh the gcloud access token before each call (tokens expire every ~60 min) */
+  /**
+   * Vertex requires the first message to be role 'user', not 'system'.
+   * Merge the system prompt into the first user message and refresh the
+   * gcloud access token before each call (tokens expire every ~60 min).
+   */
   async chat(params: ChatParams): Promise<ChatResponse> {
+    // Refresh access token if expired
     if (Date.now() > this.tokenExpiry) {
       try {
         const token = await getVertexAccessToken();
         (this as unknown as { apiKey: string }).apiKey = token;
-        this.tokenExpiry = Date.now() + 50 * 60 * 1000; // Refresh 10 min before expiry
+        this.tokenExpiry = Date.now() + 50 * 60 * 1000;
       } catch (err) {
         throw new Error(`Vertex token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
-    return super.chat(params);
+
+    // Merge system prompt into first user message for Vertex compatibility
+    const firstUserMsg = params.messages[0];
+    const firstUserContent = typeof firstUserMsg?.content === 'string' ? firstUserMsg.content : '';
+    const mergedFirstMessage: ChatMessage = {
+      role: 'user',
+      content: `${params.system}\n\n---\n\n${firstUserContent}`,
+    };
+
+    return super.chat({
+      ...params,
+      system: '',  // Empty system — content merged into user message
+      messages: [mergedFirstMessage, ...params.messages.slice(1)],
+    });
   }
 }
 
