@@ -340,9 +340,10 @@ async function runSSEPipeline(opts: SSEPipelineOptions): Promise<SSEPipelineResu
         if (onGate && respondUrl) {
           const gateResponse = await onGate(event.type, event.data ?? event);
           if (gateResponse !== null) {
-            // Wait for the server to persist the pending_gate in the DB before responding.
-            // The SSE event arrives before setPendingGate() writes to the DB, causing a race.
-            await new Promise(r => setTimeout(r, 2000));
+            // Small delay to let server pre-register the gate in the DB.
+            // The server now pre-registers gates before emitting SSE events,
+            // but a 500ms buffer handles edge cases where DB write is slow.
+            await new Promise(r => setTimeout(r, 500));
             const respondRes = await fetch(respondUrl, {
               method: 'POST',
               headers: {

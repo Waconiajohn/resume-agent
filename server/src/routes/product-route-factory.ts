@@ -101,14 +101,37 @@ async function clearPendingGate(sessionId: string, keepQueueFromPayload?: Pendin
   }
 }
 
+/**
+ * Pre-register a gate in the DB so early responses (arriving before polling starts) are accepted.
+ * Call this BEFORE emitting the pipeline_gate SSE event to avoid the race condition where
+ * the client responds before the server has set pending_gate.
+ */
+export async function preRegisterGate(sessionId: string, gate: string): Promise<void> {
+  await setPendingGate(sessionId, gate, {
+    gate,
+    created_at: new Date().toISOString(),
+  });
+}
+
 async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<T> {
   const startedAt = Date.now();
   let pollAttempt = 0;
   let lastPayload: PendingGatePayload = {};
 
   // First consume any buffered early response for this exact gate.
+  // This handles the case where the client responded before we started polling
+  // (possible because preRegisterGate was called before the SSE event was emitted).
   const initial = await getPipelineState(sessionId);
   const initialPayload = parsePendingGatePayload(initial?.pending_gate_data);
+
+  // Check for direct response (set by /respond endpoint)
+  const responseGate = initialPayload.response_gate ?? initialPayload.gate ?? initial?.pending_gate ?? null;
+  if (responseGate === gate && 'response' in initialPayload) {
+    await clearPendingGate(sessionId, initialPayload);
+    return initialPayload.response as T;
+  }
+
+  // Check queued responses
   const initialQueue = getResponseQueue(initialPayload);
   let initialIdx = -1;
   for (let i = initialQueue.length - 1; i >= 0; i -= 1) {
@@ -130,10 +153,14 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
     return match.response as T;
   }
 
-  await setPendingGate(sessionId, gate, {
-    gate,
-    created_at: new Date().toISOString(),
-  });
+  // Gate was already pre-registered by preRegisterGate() — no need to set again.
+  // If preRegisterGate wasn't called, set it now as fallback.
+  if (!initial?.pending_gate || initial.pending_gate !== gate) {
+    await setPendingGate(sessionId, gate, {
+      gate,
+      created_at: new Date().toISOString(),
+    });
+  }
 
   while (Date.now() - startedAt < GATE_TIMEOUT_MS) {
     const state = await getPipelineState(sessionId);
@@ -466,6 +493,18 @@ export function createProductRoutes<
       const finalEvent = broadcastEvent === event && config.processEvent
         ? config.processEvent(broadcastEvent)
         : broadcastEvent;
+
+      // Pre-register gate in DB BEFORE broadcasting the SSE event.
+      // This prevents the race where the client responds before pending_gate is set.
+      // Note: emit() is synchronous but we fire-and-forget the DB write here.
+      // The DB write is fast (~5ms) and will complete before the client can HTTP-roundtrip
+      // a response back (~50ms minimum). If it fails, waitForGateResponse has a fallback.
+      const eventObj = finalEvent as Record<string, unknown>;
+      if (eventObj.type === 'pipeline_gate' && typeof eventObj.gate === 'string') {
+        preRegisterGate(sessionId, eventObj.gate as string).catch(() => {
+          // Fallback: waitForGateResponse will set the gate if pre-registration failed
+        });
+      }
 
       const emitters = sseConnections.get(sessionId);
       if (emitters && emitters.length > 0) {
