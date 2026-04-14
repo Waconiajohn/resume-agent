@@ -175,17 +175,96 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
 
       if (agentName === 'writer') {
         const parts = [
-          'Write the complete LinkedIn profile optimization using the analysis data gathered.',
+          'Write a benchmark-quality LinkedIn profile optimization for this candidate.',
+          'Every section must be grounded in the resume evidence and analysis below.',
+          'Generic output that could apply to any executive is not acceptable.',
           '',
-          'Use this default workflow unless the profile evidence suggests a better sequence:',
-          '1. write_headline',
-          '2. write_about',
-          '3. write_experience_entries',
-          '4. optimize_keywords',
-          '5. assemble_report',
-          '',
-          'Cover every required section before assemble_report.',
         ];
+
+        // Pass resume data so the writer is grounded before calling any tool
+        if (state.resume_data) {
+          parts.push('## Candidate Resume Data');
+          parts.push(`Name: ${state.resume_data.name}`);
+          parts.push(`Current Title: ${state.resume_data.current_title}`);
+          if (state.resume_data.career_summary) {
+            parts.push(`Career Summary: ${state.resume_data.career_summary}`);
+          }
+          if (state.resume_data.key_skills.length > 0) {
+            parts.push(`Key Skills: ${state.resume_data.key_skills.join(', ')}`);
+          }
+          if (state.resume_data.key_achievements.length > 0) {
+            parts.push('Key Achievements:');
+            for (const a of state.resume_data.key_achievements) {
+              parts.push(`- ${a}`);
+            }
+          }
+          if (state.resume_data.work_history.length > 0) {
+            parts.push('Work History:');
+            for (const w of state.resume_data.work_history) {
+              parts.push(`- ${w.title} at ${w.company} (${w.duration})`);
+              for (const h of w.highlights) {
+                parts.push(`  - ${h}`);
+              }
+            }
+          }
+          parts.push('');
+        } else if (input.resume_text) {
+          // Fallback: pass raw resume text if structured data not yet parsed
+          parts.push('## Resume Text');
+          parts.push(String(input.resume_text));
+          parts.push('');
+        }
+
+        if (state.target_context?.target_role) {
+          parts.push(`Target Role: ${state.target_context.target_role}`);
+          if (state.target_context.target_industry) {
+            parts.push(`Target Industry: ${state.target_context.target_industry}`);
+          }
+          parts.push('');
+        }
+
+        if (state.current_profile) {
+          parts.push('## Current LinkedIn Profile (what we are improving)');
+          parts.push(`Headline: ${state.current_profile.headline || '(empty)'}`);
+          if (state.current_profile.about) {
+            parts.push(`About: ${state.current_profile.about}`);
+          }
+          if (state.current_profile.experience_text) {
+            parts.push(`Experience: ${state.current_profile.experience_text}`);
+          }
+          parts.push('');
+        }
+
+        if (state.profile_analysis) {
+          parts.push('## Profile Analysis (from Analyzer)');
+          parts.push(`Headline Assessment: ${state.profile_analysis.headline_assessment}`);
+          parts.push(`About Assessment: ${state.profile_analysis.about_assessment}`);
+          if (state.profile_analysis.positioning_gaps.length > 0) {
+            parts.push('Positioning Gaps:');
+            for (const g of state.profile_analysis.positioning_gaps) {
+              parts.push(`- ${g}`);
+            }
+          }
+          if (state.profile_analysis.strengths.length > 0) {
+            parts.push('Strengths:');
+            for (const s of state.profile_analysis.strengths) {
+              parts.push(`- ${s}`);
+            }
+          }
+          parts.push('');
+        }
+
+        if (state.keyword_analysis) {
+          parts.push('## Keyword Analysis (from Analyzer)');
+          parts.push(`Coverage Score: ${state.keyword_analysis.coverage_score}%`);
+          if (state.keyword_analysis.missing_keywords.length > 0) {
+            parts.push(`Missing Keywords: ${state.keyword_analysis.missing_keywords.join(', ')}`);
+          }
+          if (state.keyword_analysis.recommended_keywords.length > 0) {
+            parts.push(`Recommended Keywords: ${state.keyword_analysis.recommended_keywords.join(', ')}`);
+          }
+          parts.push('');
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

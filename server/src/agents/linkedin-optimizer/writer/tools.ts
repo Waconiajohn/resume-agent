@@ -185,23 +185,31 @@ ${contextBlock}`,
         role: 'user',
         content: `Write 3 optimized LinkedIn headline options following Rule 1.
 
+## EVIDENCE-BINDING REQUIREMENTS
+These are non-negotiable. A headline that violates any of these is a failed headline.
+- Use the candidate's ACTUAL most recent job title (from the resume data above) — not a generic aspirational label
+- Reference the candidate's REAL scale: team size, budget, revenue, or geographic scope from their actual work history
+- Include keywords that appear in the candidate's ACTUAL skill set — not generic keywords for the target role
+- If a proof point is included, it must come from a real achievement listed in the resume
+- A headline that could apply to a different executive in the same field has failed the specificity test
+
 Requirements for each headline:
 - Maximum 220 characters — use available space
-- Lead with the VALUE PROPOSITION, not the job title
-- Include 2-3 high-value keywords that recruiters search for
-- Add a proof point with a metric if space allows
+- Lead with the VALUE PROPOSITION, not just the job title
+- Include 2-3 high-value keywords traceable to the candidate's actual skills
+- Add a proof point with a real metric if space allows
 - Use pipe (|) or bullet (·) to separate clusters if needed
 - No buzzwords without substance
 
 Return JSON:
 {
   "options": [
-    { "label": "Option A — Strongest Overall", "headline": "headline text", "why_it_works": "explanation" },
-    { "label": "Option B — More Magnetic", "headline": "headline text", "why_it_works": "explanation" },
-    { "label": "Option C — ATS Optimized", "headline": "headline text", "why_it_works": "explanation" }
+    { "label": "Option A — Strongest Overall", "headline": "headline text", "why_it_works": "which resume evidence this uses" },
+    { "label": "Option B — More Magnetic", "headline": "headline text", "why_it_works": "which resume evidence this uses" },
+    { "label": "Option C — ATS Optimized", "headline": "headline text", "why_it_works": "which resume evidence this uses" }
   ],
   "recommended_headline": "the exact headline text from options that you recommend",
-  "recommended_headline_rationale": "why this is the strongest choice for this candidate"
+  "recommended_headline_rationale": "why this is the strongest choice for this specific candidate based on their resume"
 }`,
       }],
     });
@@ -315,10 +323,18 @@ ${contextBlock}`,
         role: 'user',
         content: `Write an optimized LinkedIn About section following Rule 2.
 
+## EVIDENCE-BINDING REQUIREMENTS
+These are non-negotiable. Every sentence must be traceable to the resume data above.
+- Every proof point must correspond to a real achievement, role, or metric from the resume — no invented accomplishments
+- The opening business problem must reflect the actual domain this candidate has worked in (based on their work history), not a generic executive problem
+- "Selected Impact" bullets must use real metrics from the resume's key achievements
+- Keywords woven into the text must be skills this candidate actually has — not generic keywords for the target role
+- The close must reflect what this specific candidate is seeking, not a template aspiration
+
 Requirements:
 - Write in FIRST PERSON ("I" statements)
-- Open with a hook — career identity statement. If a Why-Me story is available, use it as the foundation.
-- Structure: Hook (1-2 sentences) → Career pattern with 2-3 proof points → What excites you professionally (close)
+- Open with a hook — frame the business problem this candidate specifically solves, then introduce them
+- Structure: Hook (1-2 sentences) → Career pattern with 2-3 specific proof points from the resume → What excites them professionally (close)
 - Include 8-12 high-value keywords woven naturally — do NOT keyword-stuff
 - Minimum 1,500 characters, target 2,000-2,400 characters
 - The first 300 characters must hook a recruiter (this is what shows before "see more")
@@ -327,9 +343,9 @@ Requirements:
 
 Return JSON:
 {
-  "five_second_hook_analysis": "honest assessment of whether the current opening hooks a recruiter in 5 seconds and what the candidate is doing wrong",
-  "recommended_opening": "the magnetic 2-sentence opener that frames a business problem before introducing the candidate",
-  "full_rewritten_about": "the complete optimized about section text in first person, minimum 1500 characters"
+  "five_second_hook_analysis": "honest assessment of whether the current opening hooks a recruiter — reference what the current text actually says and which specific resume strengths it fails to communicate",
+  "recommended_opening": "the magnetic 2-sentence opener that frames the specific business problem this candidate solves (based on their resume evidence)",
+  "full_rewritten_about": "the complete optimized about section text in first person, minimum 1500 characters, with all proof points traceable to resume evidence"
 }`,
       }],
     });
@@ -760,16 +776,51 @@ const assembleReportTool: LinkedInOptimizerTool = {
     const profileStrengths = state.profile_analysis?.strengths ?? [];
     const profileGaps = state.profile_analysis?.positioning_gaps ?? [];
 
-    const auditPrompt = `You are a LinkedIn profile auditor. Generate the positioning summary and benchmark assessment for this candidate.
+    // Include the actual written sections so the scorer has evidence to evaluate
+    const writtenHeadline = headlineRec.recommended_headline;
+    const writtenAbout = aboutRec.full_rewritten_about;
+    const resumeAchievements = state.resume_data?.key_achievements ?? [];
+    const resumeCurrentTitle = state.resume_data?.current_title ?? '';
+    const resumeWorkHistory = state.resume_data?.work_history ?? [];
 
-Candidate: ${candidateName}
+    const auditPrompt = `You are a LinkedIn profile auditor. Score and assess the ACTUAL WRITTEN CONTENT produced for this candidate.
+
+Score based on what the content actually says — not what it should say in general.
+Every finding in diagnostic_findings must cite specific text from the written content or specific evidence from the resume.
+
+## Candidate
+Name: ${candidateName}
+Resume Current Title: ${resumeCurrentTitle}
 Target Role: ${targetRole}
-Profile Strengths: ${profileStrengths.join(', ') || 'Not specified'}
-Profile Gaps: ${profileGaps.join(', ') || 'Not specified'}
+
+## Resume Achievements (the candidate's actual accomplishments)
+${resumeAchievements.length > 0 ? resumeAchievements.map((a: string) => `- ${a}`).join('\n') : '(none listed)'}
+
+## Resume Work History
+${resumeWorkHistory.length > 0 ? resumeWorkHistory.map((w: { title: string; company: string; duration: string }) => `- ${w.title} at ${w.company} (${w.duration})`).join('\n') : '(none listed)'}
+
+## Written Headline (what we produced)
+${writtenHeadline}
+
+## Written About Section (what we produced)
+${writtenAbout ? writtenAbout.slice(0, 1200) : '(not written)'}
+
+## Current Profile Gaps (from Analyzer)
+${profileGaps.length > 0 ? profileGaps.map((g: string) => `- ${g}`).join('\n') : 'None identified'}
+
+## Current Profile Strengths (from Analyzer)
+${profileStrengths.length > 0 ? profileStrengths.map((s: string) => `- ${s}`).join('\n') : 'None identified'}
+
 Quality Score: ${qualityScore}%
 
-Headline: ${headlineRec.recommended_headline}
-About Opening: ${aboutRec.recommended_opening}
+Score the WRITTEN CONTENT on:
+- five_second_test: Does the written headline make a recruiter stop? (1-10)
+- headline_strength: Does it use the candidate's real title, real scale, and specific value? (1-10)
+- about_hook_strength: Does the about opening frame a real business problem this candidate solves? (1-10)
+- proof_strength: Are real metrics from the resume woven in? (1-10)
+- differentiation_strength: Could this content apply to a different executive, or is it specific to this candidate? (1-10)
+- executive_presence: Tone, authority, and specificity of the written content (1-10)
+- keyword_effectiveness: Are the right keywords placed naturally in the right sections? (1-10)
 
 Return JSON:
 {

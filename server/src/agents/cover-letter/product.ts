@@ -229,10 +229,24 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       if (agentName === 'writer') {
         const plan = state.letter_plan;
         const tone = state.tone ?? 'formal';
+
+        // Pass the raw source material so the writer can cross-reference claims
+        // against the original text and catch anything the Analyst may have missed.
+        const rawResume = String(input.resume_text ?? '').trim();
+        const rawJd = String(input.job_description ?? '').trim();
+
         const parts = [
-          'Write a professional cover letter based on the analysis plan.',
+          'Write a professional cover letter based on the analysis plan below.',
           '',
-          plan ? `## Letter Plan\n${JSON.stringify(plan, null, 2)}` : '',
+          'The raw resume and job description are included so you can verify every claim',
+          'traces to the source material. Do not invent experience, metrics, or accomplishments',
+          'that are not present in the resume text.',
+          '',
+          plan ? `## Letter Plan (from Analyst)\n${JSON.stringify(plan, null, 2)}` : '',
+          '',
+          rawResume ? `## Source Resume (use this to verify all claims)\n${rawResume}` : '',
+          '',
+          rawJd ? `## Job Description (use this to verify alignment)\n${rawJd}` : '',
           '',
           `Tone requested by the user: **${tone}**. Pass this value as the tone parameter when calling write_letter.`,
           '',

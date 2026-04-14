@@ -248,9 +248,18 @@ const writeSectionTool: InterviewPrepTool = {
       max_tokens: 8192,
       system: `You are an expert interview preparation coach writing a comprehensive interview prep document for a senior executive. Everything you write must be in FIRST PERSON — as if the candidate is speaking.
 
+## EVIDENCE-BOUND CONSTRAINT — NON-NEGOTIABLE
+
+You MUST use ONLY the candidate data provided below. Do NOT invent, extrapolate, or fabricate:
+- Do not create STAR stories for roles not listed in the work history
+- Do not add metrics, team sizes, dollar amounts, or outcomes not present in the provided data
+- Do not write "At [Company], I led X" unless the work history shows this
+- When the resume lacks evidence for a question, write: "Prepare an answer from your own experience about [topic]" with a STAR framework scaffold — never a fabricated story
+- Every STAR story must be traceable to a specific role entry or achievement bullet in the resume data below
+
 ${INTERVIEW_PREP_RULES}
 
-You have access to the following data about the candidate, company, and role:
+You have access to the following ACTUAL candidate data. Use only this — nothing invented:
 
 ${contextBlock}`,
       messages: [{
@@ -330,19 +339,21 @@ const selfReviewSectionTool: InterviewPrepTool = {
       system: `You are a quality reviewer for interview preparation documents serving senior executives (45+). Review the section against these criteria and return JSON.
 
 Key rules to check:
+- FABRICATION CHECK (highest priority): Do any STAR stories, metrics, or accomplishments appear to be invented rather than drawn from the provided resume? Look for suspiciously round numbers, vague company references, or stories with no traceable resume basis. Flag any fabricated content — it is the #1 quality failure.
 - Rule 2: Minimum lengths met? (STAR answers: 12+ sentences each, Action 40%+ of total; technical answers: 5-8 sentences; elevator pitch: 100-150 words; Why Me: 200-400 words)
 - Rule 3: STAR answers have explicit Situation/Task/Action/Result labels? Action is the longest section?
 - Rule 4: Answers tailored to the specific company (not generic)?
 - Rule 5: Executive-level framing (strategic impact, not task completion)?
 - Rule 6: Why Me is a narrative identity story, not a resume summary?
-- Rule 9: Every answer references specific resume evidence?
+- Rule 9: Every answer references specific resume evidence? (If the resume lacks evidence, the section should say "Prepare an answer from your own experience about [X]" — not present a fabricated story)
 
 Return JSON:
 {
   "passed": true/false,
   "issues": ["issue 1", "issue 2"],
   "score": 0-100,
-  "needs_rewrite": true/false
+  "needs_rewrite": true/false,
+  "fabrication_detected": true/false
 }`,
       messages: [{
         role: 'user',
@@ -365,9 +376,13 @@ Return JSON:
         max_tokens: 8192,
         system: `You are rewriting an interview prep section that failed quality review. Fix ALL issues listed below. Everything in first person.
 
+## EVIDENCE-BOUND CONSTRAINT — NON-NEGOTIABLE
+
+Use ONLY the candidate data provided below. Do NOT invent scenarios, metrics, or stories not present in the resume data. If the resume lacks evidence for a claim, write "Prepare an answer from your own experience about [topic]" with a STAR scaffold — never a fabricated story.
+
 ${INTERVIEW_PREP_RULES}
 
-Candidate/Company/Role data:
+Candidate/Company/Role data (USE ONLY THIS — do not invent):
 ${contextBlock}`,
         messages: [{
           role: 'user',
@@ -508,11 +523,20 @@ After answering these questions, I can use the Story Builder to craft a narrativ
       max_tokens: 4096,
       system: `You are a career storytelling expert helping a senior executive craft their interview identity narrative.
 
+## EVIDENCE-BOUND CONSTRAINT — NON-NEGOTIABLE
+
+The career story MUST be grounded in the actual work history and achievements listed below. Do NOT:
+- Invent proof points, projects, or accomplishments not present in the resume data
+- Add fabricated metrics or outcomes to make the story sound more impressive
+- Name companies, roles, or experiences not listed in the provided work history
+
+If the resume evidence is thin for a particular pattern, acknowledge that in the narrative and use what IS there. A story built from thin but real evidence is better than a polished fabrication.
+
 ${INTERVIEW_PREP_RULES}
 
 Focus specifically on Rule 6 — Career Story Identity. This is the MOST IMPORTANT section of the entire document.
 
-Candidate/Company/Role data:
+Candidate/Company/Role data (USE ONLY WHAT IS PROVIDED HERE):
 ${contextBlock}`,
       messages: [{
         role: 'user',

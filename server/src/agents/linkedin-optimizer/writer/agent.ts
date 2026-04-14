@@ -78,6 +78,15 @@ Produce a complete LinkedIn Profile Audit & Benchmark Overhaul Report with these
 - Top 3 actions to take immediately
 - Confidence score (0.00-1.00) with key caveats
 
+## EVIDENCE-BOUND RULE — NON-NEGOTIABLE
+
+Every recommendation must be grounded in the candidate's actual resume content. Generic output is not acceptable.
+
+- **Headline:** Use the candidate's real job title from their most recent role, their real industry, and their real scale (e.g., "$40M P&L", "150-person org", "3 acquisitions") — not aspirational branding. A headline that could apply to any senior executive in their field has failed.
+- **About section:** Rewrite using only facts traceable to the resume. Every proof point must correspond to a real achievement. No invented accomplishments. No generic capability statements like "proven leader" or "change agent" unless directly supported by a specific named initiative.
+- **Findings (diagnostic):** Each finding must cite what the profile currently says (or fails to say) vs. what the resume evidence supports. "Profile undersells your scale" is not a finding — "Profile doesn't mention you managed a 150-person global team at [Company]; the headline says only 'Operations Executive'" is a finding.
+- **Recommendations:** Must be specific enough to act on immediately. Tell the user exactly WHAT to change and WHAT to change it TO. "Add more keywords" is not a recommendation — "Add 'Supply Chain Optimization' and 'P&L Management' to your headline because these appear in 3 of your 5 most recent roles but are absent from your current headline" is a recommendation.
+
 ## QUALITY RULES
 - Headline: 220 chars max, lead with value proposition, not a keyword dump
 - About: First person, conversational, opens with a PROBLEM not a self-intro

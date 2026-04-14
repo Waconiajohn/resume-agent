@@ -449,7 +449,7 @@ const findInterviewQuestionsTool: InterviewPrepTool = {
         rawQuestions = (await llm.chat({
           model: MODEL_LIGHT,
           max_tokens: 4096,
-          system: 'Generate realistic interview questions that would likely be asked for this role.',
+          system: 'Generate interview questions based strictly on the requirements in the job description provided. Label each question with the JD requirement it tests. Mark all questions as "Generated from JD" — do not present them as sourced from Glassdoor or real candidate reports.',
           messages: [{ role: 'user', content: searchQuery }],
         })).text;
       }

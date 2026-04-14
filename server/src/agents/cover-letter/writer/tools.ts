@@ -83,30 +83,52 @@ const writeLetterTool: CoverLetterTool = {
       ? `\n\n${evidenceItemsBlock}`
       : '';
 
-    const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.
+    // Build work history block — this is the primary source of evidence.
+    // Include company, title, duration, and all highlights so the writer
+    // can reference specific roles and real accomplishments.
+    const workHistoryBlock = (resume as typeof resume & { work_history?: Array<{ company: string; title: string; duration: string; highlights: string[] }> }).work_history && (resume as typeof resume & { work_history?: Array<{ company: string; title: string; duration: string; highlights: string[] }> }).work_history!.length > 0
+      ? '\n\nWORK HISTORY (primary evidence source — cite specific roles and highlights):\n' +
+        (resume as typeof resume & { work_history?: Array<{ company: string; title: string; duration: string; highlights: string[] }> }).work_history!.map(
+          (role) =>
+            `${role.title} at ${role.company} (${role.duration})\n` +
+            role.highlights.map((h) => `  - ${h}`).join('\n'),
+        ).join('\n\n')
+      : '';
+
+    const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — you never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.
+
+EVIDENCE-BOUND RULE: Every claim in the cover letter must trace directly to the candidate data provided below. This means:
+- Metrics must come from the source data. Use the exact figures provided — do not round up, inflate, or substitute different numbers.
+- Company names and role titles must match the work history exactly. Do not invent employers or titles.
+- Do not invent projects, outcomes, or experiences that are not listed in the candidate data.
+- When the candidate's background does not directly map to a JD requirement, bridge with a real transferable skill — do not fabricate direct experience.
+- Forbidden filler phrases: "passionate about", "proven track record", "results-oriented", "dynamic leader", "I am the perfect candidate", "I am confident I would be an asset", "leverage my expertise". Replace any of these with specific, sourced evidence.
 
 Writing philosophy:
-- Executives are better suited for far more roles than they initially believe — surface that.
+- Executives are better suited for far more roles than they initially believe — your job is to surface that real fit.
 - Use the candidate's own language and phrasing wherever possible; avoid generic resume-speak.
-- Every claim must be rooted in real experience from the provided resume data.
 - Tone must feel human and confident, not formulaic.
 - Length target: 250-350 words. No fluff.`;
 
-    const userMessage = `Write a complete, polished cover letter using the information below. Output the letter text only — no JSON, no commentary, no markdown fencing.
+    const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
+
+Every claim must trace to the candidate data below. Do not add accomplishments, metrics, or experiences that do not appear in this data.
 
 CANDIDATE PROFILE
 Name: ${resume.name}
 Current title: ${resume.current_title}
 Key skills: ${resume.key_skills.join(', ')}
-Key achievements: ${resume.key_achievements.join('\n- ')}${positioningStrategy}${evidenceItems}
+Key achievements:
+- ${resume.key_achievements.join('\n- ')}${workHistoryBlock}${positioningStrategy}${evidenceItems}
 
 TARGET ROLE
 Company: ${jd.company_name}
 Role: ${jd.role_title}
-Key requirements: ${jd.requirements.join('\n- ')}
-Culture cues: ${jd.culture_cues.join(', ')}
+Key requirements:
+- ${jd.requirements.join('\n- ')}
+Culture cues: ${jd.culture_cues.length > 0 ? jd.culture_cues.join(', ') : 'Not specified'}
 
-LETTER PLAN (from Analyst)
+LETTER PLAN (from Analyst — use the specific evidence cited here)
 Opening hook: ${plan.opening_hook}
 Body points:
 ${plan.body_points.map((p, i) => `${i + 1}. ${p}`).join('\n')}
@@ -114,7 +136,7 @@ Closing strategy: ${plan.closing_strategy}
 
 TONE: ${tone}
 
-Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name.`;
+Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must reference a specific role, company, or metric from the candidate data above.`;
 
     try {
       const response = await llm.chat({
