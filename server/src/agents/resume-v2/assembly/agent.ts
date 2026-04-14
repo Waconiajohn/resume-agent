@@ -325,13 +325,23 @@ function applyPresentationSafety(
     },
   };
 
-  if (
-    nextResume.executive_summary.review_state === 'code_red'
-    || summaryNeedsConservativeFallback(nextResume.executive_summary.content, sourceText)
-  ) {
+  // If the summary has risk indicators (P&L claims without full evidence, board
+  // references without proof), flag it for user review rather than replacing it.
+  // The coaching UI will surface it as "confirm this" — the user can approve,
+  // edit, or rewrite. Replacing with a generic fallback destroys positioning value.
+  if (nextResume.executive_summary.review_state === 'code_red') {
+    // code_red summary: replace with conservative fallback AND flag for coaching
     nextResume.executive_summary = {
       ...nextResume.executive_summary,
       content: buildConservativeExecutiveSummary(nextResume, jobIntelligence, sourceText),
+      review_state: 'confirm_fit',
+      confidence: 'partial',
+      next_best_action: 'confirm',
+    };
+  } else if (summaryNeedsConservativeFallback(nextResume.executive_summary.content, sourceText)) {
+    // Risky but not code_red: keep the LLM's summary but flag for confirmation
+    nextResume.executive_summary = {
+      ...nextResume.executive_summary,
       review_state: 'confirm_fit',
       confidence: 'partial',
       next_best_action: 'confirm',
