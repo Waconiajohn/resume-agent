@@ -24,7 +24,12 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
 
   // Apply tone fixes to the draft, then enforce truth gate
   const toned_resume = applyToneFixes(draft, executive_tone.findings);
-  const final_resume = applyTruthGate(toned_resume, truth_verification, input.candidate_raw_text ?? '');
+  const truth_gated_resume = applyTruthGate(toned_resume, truth_verification, input.candidate_raw_text ?? '');
+  const final_resume = applyPresentationSafety(
+    truth_gated_resume,
+    input.job_intelligence,
+    input.candidate_raw_text ?? '',
+  );
 
   // Compute quick wins from all verification agents
   const quick_wins = computeQuickWins(input);
@@ -214,11 +219,16 @@ function applyTruthGate(
     result.selected_accomplishments = result.selected_accomplishments.map(acc => {
       const accLower = acc.content.toLowerCase();
       const accPrefix = accLower.slice(0, 50);
+      const evidenceBundle = `${acc.evidence_found ?? ''} ${acc.target_evidence ?? ''}`;
 
       const isFabricated = [...fabricatedClaims].some(
         claim => accLower.includes(claim) || claim.includes(accPrefix),
       );
       if (isFabricated) {
+        return { ...acc, review_state: 'code_red' as const, confidence: 'needs_validation' as const };
+      }
+
+      if (looksLikeSyntheticEvidence(evidenceBundle)) {
         return { ...acc, review_state: 'code_red' as const, confidence: 'needs_validation' as const };
       }
 
@@ -275,6 +285,54 @@ function applyTruthGate(
   return result;
 }
 
+function applyPresentationSafety(
+  resume: ResumeDraftOutput,
+  jobIntelligence: JobIntelligenceOutput | undefined,
+  sourceText: string,
+): ResumeDraftOutput {
+  const enabledSectionIds = new Set(
+    (resume.section_plan ?? [])
+      .filter((item) => item.enabled)
+      .map((item) => item.id),
+  );
+  const filteredExperience = resume.professional_experience.map((exp) => ({
+    ...exp,
+    bullets: exp.bullets.filter((bullet) => bullet.review_state !== 'code_red'),
+  }));
+
+  const filteredAccomplishments = resume.selected_accomplishments
+    .filter((item) => item.review_state !== 'code_red');
+  const filteredCustomSections = (resume.custom_sections ?? []).filter((section) => (
+    section.evidence_strength === 'strong' && enabledSectionIds.has(section.id)
+  ));
+
+  const nextResume: ResumeDraftOutput = {
+    ...resume,
+    professional_experience: filteredExperience,
+    selected_accomplishments: filteredAccomplishments,
+    custom_sections: filteredCustomSections,
+    header: {
+      ...resume.header,
+      branded_title: sanitizeBrandedTitle(resume, jobIntelligence, sourceText),
+    },
+  };
+
+  if (
+    nextResume.executive_summary.review_state === 'code_red'
+    || summaryNeedsConservativeFallback(nextResume.executive_summary.content, sourceText)
+  ) {
+    nextResume.executive_summary = {
+      ...nextResume.executive_summary,
+      content: buildConservativeExecutiveSummary(nextResume, jobIntelligence, sourceText),
+      review_state: 'confirm_fit',
+      confidence: 'partial',
+      next_best_action: 'confirm',
+    };
+  }
+
+  return nextResume;
+}
+
 /**
  * Extract all numeric tokens from text as normalised strings.
  * Captures dollar amounts, percentages, plain integers, and decimal numbers.
@@ -291,6 +349,116 @@ function extractNumbers(text: string): Set<string> {
     if (normalised.length > 0) results.add(normalised);
   }
   return results;
+}
+
+function looksLikeSyntheticEvidence(value: string): boolean {
+  const lower = value.toLowerCase();
+  return lower.includes('executive summary')
+    || lower.includes('inferred from context')
+    || lower.includes('not directly stated')
+    || /\bevidence\s+\d+\b/.test(lower);
+}
+
+function sanitizeBrandedTitle(
+  resume: ResumeDraftOutput,
+  jobIntelligence: JobIntelligenceOutput | undefined,
+  sourceText: string,
+): string {
+  const current = resume.header.branded_title?.trim() ?? '';
+  const lower = current.toLowerCase();
+  if (!current) return buildConservativeBrandedTitle(resume, jobIntelligence, sourceText);
+
+  const soundsLikeLinkedInBranding = /\barchitect\b|\bninja\b|\bguru\b|\bvisionary\b/.test(lower);
+  const overclaimsOwnership = /\bp&l\b/.test(lower) && /\bowner\b/.test(lower);
+  const containsMoneyClaim = /\$\d/.test(current);
+
+  if (soundsLikeLinkedInBranding || overclaimsOwnership || containsMoneyClaim) {
+    return buildConservativeBrandedTitle(resume, jobIntelligence, sourceText);
+  }
+
+  return current;
+}
+
+function buildConservativeBrandedTitle(
+  resume: ResumeDraftOutput,
+  jobIntelligence: JobIntelligenceOutput | undefined,
+  sourceText: string,
+): string {
+  const currentTitle = resume.professional_experience[0]?.title?.trim() || 'Operations Executive';
+  const domain = deriveAssemblyDomain(sourceText);
+  const jdFocus = jobIntelligence?.role_title?.trim();
+
+  if (domain && jdFocus) return `${currentTitle} | ${domain} | ${jdFocus}`;
+  if (domain) return `${currentTitle} | ${domain}`;
+  if (jdFocus) return `${currentTitle} | ${jdFocus}`;
+  return currentTitle;
+}
+
+function summaryNeedsConservativeFallback(summary: string, sourceText: string): boolean {
+  const lower = summary.toLowerCase();
+  const sourceLower = sourceText.toLowerCase();
+  const pAndLRisk = /\bp&l\b/.test(lower)
+    && (/not ultimate p&l sign-off/.test(sourceLower) || /\bbut not ultimate p&l sign-off\b/.test(sourceLower));
+  const boardRisk = /\bboard(?:-level)?\b/.test(lower)
+    && !(/\bboard\b/.test(sourceLower) && /\b(present|presented|report|reported|advisory)\b/.test(sourceLower));
+  const hardBranding = /\bunified\b/.test(lower) && /\bp&l/.test(lower);
+  return pAndLRisk || boardRisk || hardBranding;
+}
+
+function buildConservativeExecutiveSummary(
+  resume: ResumeDraftOutput,
+  jobIntelligence: JobIntelligenceOutput | undefined,
+  sourceText: string,
+): string {
+  const title = resume.professional_experience[0]?.title?.trim() || 'Operations leader';
+  const domain = deriveAssemblyDomain(sourceText) || 'operations leadership';
+  const proofLine = pickSafestSummaryProof(resume);
+  const roleTitle = jobIntelligence?.role_title?.trim();
+
+  const sentences = [
+    `${title} with deep experience in ${domain}.`,
+    proofLine,
+    roleTitle
+      ? `Positioned for ${roleTitle} roles that value disciplined execution, plant leadership, and measurable operational improvement.`
+      : '',
+  ].filter(Boolean);
+
+  return sentences.join(' ');
+}
+
+function pickSafestSummaryProof(resume: ResumeDraftOutput): string {
+  const accomplishment = resume.selected_accomplishments.find((item) => (
+    item.review_state !== 'code_red'
+      && item.review_state !== 'confirm_fit'
+      && /\d/.test(item.content)
+  ));
+  if (accomplishment) return ensureSentence(accomplishment.content);
+
+  for (const exp of resume.professional_experience) {
+    const bullet = exp.bullets.find((item) => (
+      item.review_state !== 'code_red'
+        && item.review_state !== 'confirm_fit'
+        && /\d/.test(item.text)
+    ));
+    if (bullet) return ensureSentence(bullet.text);
+  }
+
+  return '';
+}
+
+function deriveAssemblyDomain(sourceText: string): string {
+  const lower = sourceText.toLowerCase();
+  if (/\bmanufacturing|plant|lean|six sigma|operations\b/.test(lower)) return 'manufacturing operations';
+  if (/\bmarketing|brand|consumer\b/.test(lower)) return 'marketing leadership';
+  if (/\bengineering|cloud|software|platform|infrastructure\b/.test(lower)) return 'engineering leadership';
+  if (/\bsupply chain|distribution|logistics\b/.test(lower)) return 'operations and supply chain';
+  return 'operations leadership';
+}
+
+function ensureSentence(value: string): string {
+  const cleaned = value.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return '';
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
 }
 
 /**

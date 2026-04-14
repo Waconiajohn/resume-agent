@@ -623,21 +623,12 @@ function sanitizeDraftForDisplay(
       ),
     },
     core_competencies: draft.core_competencies
-      .map((item, index) => sanitizeField(item, fallback.core_competencies[index] ?? item))
+      .map((item, index) => shortenCompetencyPhrase(sanitizeField(item, fallback.core_competencies[index] ?? item)))
       .filter((item) => {
         if (item.length === 0) return false;
-        // Stricter source validation: require the full phrase OR at least 2 significant
-        // tokens (>3 chars) from the competency to appear in the source corpus.
-        // This prevents invented skills like "Recapitalization Strategy" from passing
-        // just because a common word like "strategy" appears somewhere in the resume.
-        const comp = item.toLowerCase();
-        const phraseMatch = sourceCorpus.includes(comp);
-        if (phraseMatch) return true;
-        const sourceTokens = new Set(sourceCorpus.split(/\s+/));
-        const compTokens = comp.split(/\s+/).filter((t) => t.length > 3);
-        const matchingTokens = compTokens.filter((token) => sourceTokens.has(token));
-        return matchingTokens.length >= 2;
-      }),
+        return competencyMatchesSource(item, sourceCorpus);
+      })
+      .slice(0, 18),
     selected_accomplishments: draft.selected_accomplishments.map((item, index) => ({
       ...item,
       content: sanitizeField(
@@ -678,6 +669,33 @@ function sanitizeDraftForDisplay(
   }
 
   return sanitized;
+}
+
+function shortenCompetencyPhrase(value: string): string {
+  const cleaned = value
+    .replace(/[|•]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b(?:through|via|across|for|using|within)\b.*$/i, '')
+    .replace(/[,:;]+$/g, '')
+    .trim();
+
+  if (!cleaned) return '';
+  const words = cleaned.split(/\s+/);
+  if (words.length > 6) return words.slice(0, 6).join(' ');
+  return cleaned;
+}
+
+function competencyMatchesSource(phrase: string, sourceCorpus: string): boolean {
+  const normalizedPhrase = shortenCompetencyPhrase(phrase).toLowerCase();
+  if (!normalizedPhrase) return false;
+
+  const sourceTokens = new Set(sourceCorpus.split(/\s+/).filter(Boolean));
+  if (sourceCorpus.includes(normalizedPhrase)) return true;
+
+  const tokens = normalizedPhrase.split(/\s+/).filter((token) => token.length > 3);
+  if (tokens.length === 0) return false;
+  return tokens.every((token) => sourceTokens.has(token));
 }
 
 function buildDraftSafetySourceCorpus(input: ResumeWriterInput): string {
@@ -1090,15 +1108,7 @@ function _buildUserMessage(input: ResumeWriterInput): string {
 
 function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOutput {
   const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
-  const topRequirements = input.gap_analysis.requirements
-    .filter((requirement) => requirement.source === 'job_description')
-    .map((requirement) => requirement.requirement);
-  const competencyThemes = input.narrative.section_guidance?.competency_themes ?? [];
-  const coreCompetencies = dedupeStrings([
-    ...competencyThemes,
-    ...topRequirements,
-    ...(input.candidate.technologies ?? []),
-  ]).slice(0, 20);
+  const coreCompetencies = buildSourceBoundCoreCompetencies(input);
 
   const positionLayoutPlan = derivePositionLayoutPlan(input);
   const earlierCareer = buildEarlierCareer(input, positionLayoutPlan);
@@ -2923,24 +2933,23 @@ function buildProfessionalExperienceEntry(
   experience: CandidateExperience,
   input: ResumeWriterInput,
 ): ResumeDraftOutput['professional_experience'][number] {
-  const scopeParts = [
-    experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
-    experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',
-    experience.inferred_scope?.geography ? `Geography: ${experience.inferred_scope.geography}` : '',
-    experience.inferred_scope?.revenue_impact ? `Revenue: ${experience.inferred_scope.revenue_impact}` : '',
-  ].filter(Boolean);
+  const scopeStatement = pickSourceScopeStatement(experience);
+  const filteredBullets = experience.bullets.filter((bullet) => (
+    !scopeStatement || normalizeLooseText(bullet) !== normalizeLooseText(scopeStatement)
+  ));
+  const roleBullets = filteredBullets.length > 0 ? filteredBullets : experience.bullets;
 
   return {
     company: experience.company,
     title: experience.title,
     start_date: experience.start_date,
     end_date: experience.end_date,
-    scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
+    scope_statement: scopeStatement,
     scope_statement_is_new: false,
     scope_statement_source: 'original' as const,
     scope_statement_confidence: 'strong' as const,
-    scope_statement_evidence_found: '',
-    bullets: experience.bullets.map((bullet) => {
+    scope_statement_evidence_found: scopeStatement,
+    bullets: roleBullets.map((bullet) => {
       const addressesRequirements = matchRequirementLinks(bullet, input.gap_analysis.requirements);
       return {
         text: bullet,
@@ -2978,15 +2987,24 @@ function _shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
 }
 
 function buildExecutiveSummary(input: ResumeWriterInput): string {
-  const yearsThresholdLine = buildSatisfiedYearsThresholdLine(input);
-  const strongestProofLine = buildStrongestProofSummaryLine(input);
-  return [
-    yearsThresholdLine,
-    strongestProofLine,
-    input.narrative.why_me_concise,
-    input.candidate.leadership_scope,
-    input.candidate.operational_scale,
-  ].filter(Boolean).join(' ').trim();
+  const sentences = [
+    buildSourceBackedIdentityLine(input),
+    buildStrongestProofSummaryLine(input),
+    buildSourceBackedRoleFocusLine(input),
+  ]
+    .map((sentence) => ensureSentence(sentence))
+    .filter(Boolean);
+
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const sentence of sentences) {
+    const key = normalizeLooseText(sentence);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(sentence);
+  }
+
+  return deduped.join(' ').trim();
 }
 
 function buildStrongestProofSummaryLine(input: ResumeWriterInput): string {
@@ -3000,16 +3018,112 @@ function buildStrongestProofSummaryLine(input: ResumeWriterInput): string {
 
   if (!bestSourceBullet) return '';
 
-  const summaryText = [
-    input.narrative.why_me_concise,
-    input.candidate.leadership_scope,
-    input.candidate.operational_scale,
-  ].join(' ').toLowerCase();
-  if (summaryText.includes(bestSourceBullet.toLowerCase())) {
-    return '';
-  }
+  return ensureSentence(bestSourceBullet);
+}
 
-  return bestSourceBullet.endsWith('.') ? bestSourceBullet : `${bestSourceBullet}.`;
+function buildSourceBoundCoreCompetencies(input: ResumeWriterInput): string[] {
+  const sourceCorpus = buildDraftSafetySourceCorpus(input);
+  const sourceDerivedCandidates = [
+    ...(input.candidate.certifications ?? []),
+    ...(input.candidate.technologies ?? []),
+    ...(input.candidate.industry_depth ?? []),
+    ...(input.job_intelligence.core_competencies ?? []).map((item) => item.competency),
+    ...input.gap_analysis.requirements
+      .filter((requirement) => requirement.source === 'job_description' && requirement.classification !== 'missing')
+      .map((requirement) => requirement.requirement),
+  ];
+
+  return dedupeStrings(
+    sourceDerivedCandidates
+      .map((value) => shortenCompetencyPhrase(value))
+      .filter((value) => competencyMatchesSource(value, sourceCorpus)),
+  ).slice(0, 18);
+}
+
+function pickSourceScopeStatement(experience: CandidateExperience): string {
+  const scopeBullet = experience.bullets.find((bullet) => looksLikeScopeStatement(bullet));
+  if (scopeBullet) return scopeBullet;
+  return '';
+}
+
+function looksLikeScopeStatement(text: string): boolean {
+  const lower = text.toLowerCase();
+  const scopeMarkers = Array.from(
+    lower.matchAll(/\b(team|employees?|direct reports?|budget|p&l|sites?|plants?|facilities|regions?|states?|countries|locations?|operating budget|capital program|headcount)\b/g),
+  );
+  const distinctMarkers = new Set(scopeMarkers.map((match) => match[1])).size;
+  const hasLeadershipVerb = /\b(led|oversaw|managed|ran|directed|owned|supervised|headed|guided)\b/.test(lower);
+  const looksLikeOutcomeBullet = /\b(improved|reduced|cut|increased|grew|scaled|boosted|raised)\b/.test(lower)
+    && (/%|\bfrom\b|\bto\b|\bby\b/.test(lower));
+
+  if (looksLikeOutcomeBullet) return false;
+  return distinctMarkers >= 2 || (hasLeadershipVerb && distinctMarkers >= 1);
+}
+
+function buildSourceBackedIdentityLine(input: ResumeWriterInput): string {
+  const currentTitle = getAuthoritativeSourceExperience(input.candidate)[0]?.title?.trim() ?? '';
+  const years = input.candidate.career_span_years > 0 ? `${input.candidate.career_span_years}+ years` : '';
+  const discipline = deriveSourceBackedDiscipline(input);
+
+  if (currentTitle && years && discipline) {
+    return `${currentTitle} with ${years} of ${discipline} experience`;
+  }
+  if (currentTitle && years) {
+    return `${currentTitle} with ${years} of leadership experience`;
+  }
+  if (years && discipline) {
+    return `${years} of ${discipline} experience`;
+  }
+  return currentTitle || years;
+}
+
+function deriveSourceBackedDiscipline(input: ResumeWriterInput): string {
+  const sourceText = buildDraftSafetySourceCorpus(input);
+  if (/\bmanufacturing|plant|lean|six sigma|operations\b/.test(sourceText)) return 'manufacturing operations';
+  if (/\bmarketing|brand|demand generation|consumer\b/.test(sourceText)) return 'marketing and brand growth';
+  if (/\bsales|revenue|commercial|pipeline\b/.test(sourceText)) return 'commercial leadership';
+  if (/\bengineering|cloud|platform|software|infrastructure\b/.test(sourceText)) return 'engineering leadership';
+  if (/\bfinance|fp&a|treasury|accounting\b/.test(sourceText)) return 'finance leadership';
+  if (/\bsupply chain|distribution|logistics\b/.test(sourceText)) return 'operations and supply chain';
+  return 'executive leadership';
+}
+
+function buildSourceBackedRoleFocusLine(input: ResumeWriterInput): string {
+  const roleTitle = input.job_intelligence.role_title?.trim();
+  const directCapabilities = dedupeStrings(
+    input.gap_analysis.requirements
+      .filter((requirement) => requirement.source === 'job_description' && requirement.classification !== 'missing' && requirement.evidence.length > 0)
+      .sort((a, b) => importanceRank(a.importance) - importanceRank(b.importance))
+      .map((requirement) => simplifySummaryRequirement(requirement.requirement))
+      .filter(Boolean),
+  ).slice(0, 2);
+
+  if (roleTitle && directCapabilities.length >= 2) {
+    return `Positioned for ${roleTitle} roles that value ${directCapabilities[0]} and ${directCapabilities[1]}`;
+  }
+  if (roleTitle && directCapabilities.length === 1) {
+    return `Positioned for ${roleTitle} roles that value ${directCapabilities[0]}`;
+  }
+  if (roleTitle) {
+    return `Positioned for ${roleTitle} roles in environments that value disciplined execution and measurable results`;
+  }
+  return '';
+}
+
+function simplifySummaryRequirement(value: string): string {
+  return value
+    .replace(/\b(?:minimum of\s*)?\d+\+?\s+years?\s+of\s+/i, '')
+    .replace(/\b(?:minimum of\s*)?\d+\+?\s+years?\b/i, '')
+    .replace(/\([^)]*\)/g, '')
+    .split(/[;,.]/)[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function ensureSentence(value: string): string {
+  const cleaned = value.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return '';
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
 }
 
 function inferRequirementSource(
