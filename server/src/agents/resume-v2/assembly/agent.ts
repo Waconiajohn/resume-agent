@@ -295,15 +295,15 @@ function applyPresentationSafety(
       .filter((item) => item.enabled)
       .map((item) => item.id),
   );
-  const filteredExperience = resume.professional_experience.map((exp) => ({
-    ...exp,
-    bullets: exp.bullets.filter((bullet) => bullet.review_state !== 'code_red'),
-  }));
+  // Keep code_red items in the resume — they will be surfaced in the coaching UI
+  // where the user can confirm, edit, provide evidence, or remove them.
+  // Stripping them here would discard positioning opportunities before the user
+  // ever gets a chance to provide the evidence that makes them safe.
+  const filteredExperience = resume.professional_experience;
 
-  const filteredAccomplishments = resume.selected_accomplishments
-    .filter((item) => item.review_state !== 'code_red');
+  const filteredAccomplishments = resume.selected_accomplishments;
   const filteredCustomSections = (resume.custom_sections ?? []).filter((section) => (
-    section.evidence_strength === 'strong' && enabledSectionIds.has(section.id)
+    enabledSectionIds.has(section.id)
   ));
 
   const nextResume: ResumeDraftOutput = {
