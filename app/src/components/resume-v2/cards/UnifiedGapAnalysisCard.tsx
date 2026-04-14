@@ -449,7 +449,38 @@ function RequirementRow({
                 questions.map((q, qi) => (
                   <div key={qi} className="rounded-lg border border-[var(--link)]/15 bg-[var(--badge-blue-bg)] px-3 py-2.5">
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-1.5">{q.question}</p>
+                    {q.rationale && (
+                      <p className="text-[12px] text-[var(--text-soft)] leading-relaxed mb-1.5">{q.rationale}</p>
+                    )}
                     <p className="text-[12px] text-[var(--text-soft)] mb-2 italic">{q.looking_for}</p>
+                    {q.source_context && (
+                      <div className="mb-2 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
+                          What prompted this question
+                        </p>
+                        <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">{q.source_context}</p>
+                      </div>
+                    )}
+                    {q.suggested_answers && q.suggested_answers.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {q.suggested_answers.map((answer, answerIndex) => (
+                          <button
+                            key={`${qi}-${answerIndex}`}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => onCoachingChange({
+                              questionAnswers: {
+                                ...coachingState.questionAnswers,
+                                [qi]: answer,
+                              },
+                            })}
+                            className="rounded-full border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1 text-[12px] leading-5 text-[var(--text-muted)] transition-colors hover:border-[var(--link)]/35 hover:text-[var(--text-strong)] disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {answer}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <textarea
                       value={coachingState.questionAnswers[qi] ?? ''}
                       onChange={e => onCoachingChange({

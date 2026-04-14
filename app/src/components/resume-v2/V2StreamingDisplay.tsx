@@ -31,6 +31,7 @@ import { ScoringReport } from './ScoringReport';
 import { ResumeEditorLayout } from './ResumeEditorLayout';
 import { PipelineProgressCard } from './cards/PipelineProgressCard';
 import { ResumeReadyScreen } from './cards/ResumeReadyScreen';
+import { UnifiedGapAnalysisCard } from './cards/UnifiedGapAnalysisCard';
 import { ResumeSectionWorkflowPanel } from './workflow/ResumeSectionWorkflowPanel';
 import { REVIEW_STATE_DISPLAY } from './utils/review-state-labels';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
@@ -281,7 +282,7 @@ function chatContextLabelForSection(section: string): string {
 
 function getAttentionStatusMeta(
   reviewState: ResumeReviewState | undefined,
-  confidence: BulletConfidence,
+  confidence: BulletConfidence | undefined,
   requirementSource?: RequirementSource,
 ): { label: string; className: string; priority: number } {
   const resolvedReviewState = reviewState
@@ -344,6 +345,44 @@ function buildAttentionReviewItems(
 ): AttentionReviewItem[] {
   const items: AttentionReviewItem[] = [];
   let order = 0;
+
+  const summaryReviewState = resolveCoachReviewState(
+    resume.executive_summary.review_state,
+    resume.executive_summary.confidence,
+    resume.executive_summary.requirement_source,
+    'strengthen',
+  );
+  if (summaryReviewState !== 'supported' && summaryReviewState !== 'supported_rewrite') {
+    const baselineText = baselineResume?.executive_summary?.content;
+    if (!baselineText || baselineText === resume.executive_summary.content) {
+      const status = getAttentionStatusMeta(
+        summaryReviewState,
+        resume.executive_summary.confidence,
+        resume.executive_summary.requirement_source,
+      );
+      items.push({
+        id: 'executive_summary-0',
+        section: 'executive_summary',
+        index: 0,
+        selector: '[data-resume-line="executive_summary:0"]',
+        text: resume.executive_summary.content,
+        locationLabel: 'Executive Summary',
+        statusLabel: status.label,
+        statusClassName: status.className,
+        priority: status.priority,
+        order: order++,
+        requirements: canonicalRequirementSignals(
+          undefined,
+          resume.executive_summary.addresses_requirements,
+        ),
+        reviewState: summaryReviewState,
+        requirementSource: resume.executive_summary.requirement_source,
+        evidenceFound: resume.executive_summary.evidence_found ?? '',
+        proofLevel: resume.executive_summary.proof_level,
+        nextBestAction: resume.executive_summary.next_best_action,
+      });
+    }
+  }
 
   resume.selected_accomplishments.forEach((bullet, index) => {
     const reviewState = bullet.review_state
@@ -629,6 +668,12 @@ function buildSectionCoachTargets(
     const rankedItems = rankWorkItems('executive_summary', 'Executive Summary', summaryText);
     const primaryGuidance = derivePrimaryGuidance(rankedItems, summaryText, 'summary');
     const relatedRequirements = rankedItems.slice(0, 3).map(({ item }) => item.requirement);
+    const summaryReviewState = resolveCoachReviewState(
+      resume.executive_summary.review_state,
+      resume.executive_summary.confidence,
+      resume.executive_summary.requirement_source,
+      primaryGuidance.reviewState,
+    );
     const sectionPlanItem = planById.get('executive_summary');
     const summaryRationale = sectionPlanItem?.rationale ?? 'Lead with identity in the clearest version of the why-me story.';
     targets.push({
@@ -643,14 +688,14 @@ function buildSectionCoachTargets(
       requirements: relatedRequirements.length > 0
         ? relatedRequirements
         : (resume.executive_summary.addresses_requirements ?? []),
-      reviewState: primaryGuidance.reviewState,
-      requirementSource: primaryGuidance.requirementSource,
-      evidenceFound: primaryGuidance.evidenceFound,
+      reviewState: summaryReviewState,
+      requirementSource: resume.executive_summary.requirement_source ?? primaryGuidance.requirementSource,
+      evidenceFound: resume.executive_summary.evidence_found ?? primaryGuidance.evidenceFound,
       sourceEvidence: primaryGuidance.sourceEvidence,
       workItemId: primaryGuidance.primaryItem?.id,
-      proofLevel: primaryGuidance.proofLevel,
-      framingGuardrail: primaryGuidance.framingGuardrail,
-      nextBestAction: primaryGuidance.nextBestAction,
+      proofLevel: resume.executive_summary.proof_level ?? primaryGuidance.proofLevel,
+      framingGuardrail: resume.executive_summary.framing_guardrail ?? primaryGuidance.framingGuardrail,
+      nextBestAction: resume.executive_summary.next_best_action ?? primaryGuidance.nextBestAction,
       canRemove: false,
     });
   }
@@ -1694,6 +1739,14 @@ export function V2StreamingDisplay({
       && displayResume
       && onRequestHiringManagerReview,
   );
+  const showGapClarificationGate = Boolean(
+    !canShowResumeDocument
+      && data.stage === 'clarification'
+      && data.gapAnalysis
+      && gapCoachingCards
+      && gapCoachingCards.length > 0,
+  );
+  const isGapGateInteractive = data.pendingGate === 'gap_coaching';
 
   // ─── Unified layout — single ScoringReport above the branch split ────────
   return (
@@ -2001,11 +2054,35 @@ export function V2StreamingDisplay({
             </div>
           )}
 
-          <PipelineProgressCard
-            stage={data.stage}
-            isComplete={isComplete}
-            companyAndRole={data.jobIntelligence ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}` : null}
-          />
+          {showGapClarificationGate && data.gapAnalysis ? (
+            <div className="space-y-4">
+              <PipelineProgressCard
+                stage={data.stage}
+                isComplete={isComplete}
+                companyAndRole={data.jobIntelligence ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}` : null}
+              />
+              {!isGapGateInteractive && isConnected && (
+                <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]" role="status" aria-live="polite">
+                  <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+                  <span>Loading your evidence questions…</span>
+                </div>
+              )}
+              <UnifiedGapAnalysisCard
+                gapAnalysis={data.gapAnalysis}
+                gapCoachingCards={gapCoachingCards}
+                companyName={data.jobIntelligence?.company_name}
+                roleTitle={data.jobIntelligence?.role_title}
+                onRespondGapCoaching={_onRespondGapCoaching}
+                disabled={!isGapGateInteractive}
+              />
+            </div>
+          ) : (
+            <PipelineProgressCard
+              stage={data.stage}
+              isComplete={isComplete}
+              companyAndRole={data.jobIntelligence ? `${data.jobIntelligence.company_name} — ${data.jobIntelligence.role_title}` : null}
+            />
+          )}
         </div>
       )}
     </div>

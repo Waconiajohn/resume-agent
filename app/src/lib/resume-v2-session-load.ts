@@ -3,6 +3,7 @@ import { normalizeAssemblyResult, normalizeResumeDraft } from '@/lib/normalize-r
 
 export type LoadableV2PipelineSnapshot = {
   stage?: V2Stage;
+  pendingGate?: V2PipelineData['pendingGate'];
   jobIntelligence?: V2PipelineData['jobIntelligence'];
   candidateIntelligence?: V2PipelineData['candidateIntelligence'];
   benchmarkCandidate?: V2PipelineData['benchmarkCandidate'];
@@ -48,11 +49,17 @@ export function hydrateV2SessionLoad(
   const stage = status === 'complete'
     ? 'complete'
     : (pd.stage ?? body.pipeline_stage ?? 'intake');
+  const inferredPendingGate = status === 'running'
+    && stage === 'clarification'
+    && ((pd.gapCoachingCards?.length ?? 0) > 0 || (pd.gapQuestions?.length ?? 0) > 0)
+      ? 'gap_coaching'
+      : null;
 
   return {
     data: {
       sessionId,
       stage,
+      pendingGate: pd.pendingGate ?? inferredPendingGate,
       jobIntelligence: pd.jobIntelligence ?? null,
       candidateIntelligence: pd.candidateIntelligence ?? null,
       benchmarkCandidate: pd.benchmarkCandidate ?? null,

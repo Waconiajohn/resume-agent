@@ -384,6 +384,31 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
   const selectedAccomplishments = Array.isArray(resume.selected_accomplishments) ? resume.selected_accomplishments : [];
   const professionalExperience = Array.isArray(resume.professional_experience) ? resume.professional_experience : [];
   const executiveSummaryContent = sanitizeResumeDisplayText(typeof resume.executive_summary?.content === 'string' ? resume.executive_summary.content : '');
+  const executiveSummaryRequirements = normalizeRequirements(resume.executive_summary?.addresses_requirements);
+  const executiveSummaryEvidence = sanitizeResumeDisplayText(typeof resume.executive_summary?.evidence_found === 'string'
+    ? resume.executive_summary.evidence_found
+    : '');
+  const executiveSummaryConfidence = inferConfidence(
+    Boolean(resume.executive_summary?.is_new),
+    executiveSummaryEvidence,
+    executiveSummaryRequirements,
+    resume.executive_summary?.confidence,
+    resume.executive_summary?.content_origin,
+  );
+  const executiveSummaryRequirementSource = normalizeRequirementSource(resume.executive_summary?.requirement_source);
+  const executiveSummaryContentOrigin = normalizeContentOrigin(
+    resume.executive_summary?.content_origin,
+    {
+      confidence: executiveSummaryConfidence,
+      source: resume.executive_summary?.is_new ? 'enhanced' : 'original',
+      evidenceFound: executiveSummaryEvidence,
+      currentText: executiveSummaryContent,
+      isNew: Boolean(resume.executive_summary?.is_new),
+    },
+  );
+  const executiveSummaryProofLevel = normalizeProofLevel(resume.executive_summary?.proof_level);
+  const executiveSummaryFramingGuardrail = normalizeFramingGuardrail(resume.executive_summary?.framing_guardrail);
+  const executiveSummaryNextBestAction = normalizeNextBestAction(resume.executive_summary?.next_best_action);
 
   const normalizedBase: ResumeDraft = {
     ...resume,
@@ -397,7 +422,28 @@ export function normalizeResumeDraft(resume: ResumeDraft | null | undefined): Re
     executive_summary: {
       content: executiveSummaryContent,
       is_new: Boolean(resume.executive_summary?.is_new),
-      addresses_requirements: normalizeRequirements(resume.executive_summary?.addresses_requirements),
+      addresses_requirements: executiveSummaryRequirements,
+      confidence: executiveSummaryConfidence,
+      review_state: normalizeReviewState(resume.executive_summary?.review_state, {
+        confidence: executiveSummaryConfidence,
+        requirementSource: executiveSummaryRequirementSource,
+        contentOrigin: executiveSummaryContentOrigin,
+        primaryTargetRequirement: executiveSummaryRequirements[0],
+        targetEvidence: executiveSummaryEvidence,
+        proofLevel: executiveSummaryProofLevel,
+        framingGuardrail: executiveSummaryFramingGuardrail,
+      }),
+      evidence_found: executiveSummaryEvidence,
+      requirement_source: executiveSummaryRequirementSource,
+      content_origin: executiveSummaryContentOrigin,
+      support_origin: normalizeSupportOrigin(
+        resume.executive_summary?.support_origin,
+        executiveSummaryEvidence,
+        executiveSummaryConfidence,
+      ),
+      proof_level: executiveSummaryProofLevel,
+      framing_guardrail: executiveSummaryFramingGuardrail,
+      next_best_action: executiveSummaryNextBestAction,
     },
     core_competencies: Array.isArray(resume.core_competencies)
       ? resume.core_competencies

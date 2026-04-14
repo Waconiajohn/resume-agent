@@ -564,6 +564,17 @@ export interface ResumeDraftOutput {
   executive_summary: {
     content: string;
     is_new: boolean;
+    addresses_requirements?: string[];
+    evidence_found?: string;
+    source?: BulletSource;
+    confidence?: BulletConfidence;
+    review_state?: ResumeReviewState;
+    requirement_source?: 'job_description' | 'benchmark';
+    content_origin?: ResumeContentOrigin;
+    support_origin?: ResumeSupportOrigin;
+    proof_level?: ProofLevel;
+    framing_guardrail?: FramingGuardrail;
+    next_best_action?: NextBestAction;
   };
   core_competencies: string[];
   selected_accomplishments: Array<{

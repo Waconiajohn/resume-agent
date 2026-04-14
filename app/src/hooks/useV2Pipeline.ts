@@ -28,6 +28,7 @@ import type {
 const INITIAL_DATA: V2PipelineData = {
   sessionId: '',
   stage: 'intake',
+  pendingGate: null,
   jobIntelligence: null,
   candidateIntelligence: null,
   benchmarkCandidate: null,
@@ -75,6 +76,7 @@ export function useV2Pipeline(accessToken: string | null) {
           return {
             ...prev,
             stage: event.stage,
+            pendingGate: event.stage === 'clarification' ? prev.pendingGate : null,
             stageMessages: [...prev.stageMessages, { stage: event.stage, message: event.message, type: 'start' as const }],
           };
 
@@ -112,11 +114,14 @@ export function useV2Pipeline(accessToken: string | null) {
         case 'gap_questions':
           return { ...prev, gapQuestions: event.data.questions };
 
+        case 'pipeline_gate':
+          return { ...prev, pendingGate: event.gate };
+
         case 'narrative_strategy':
-          return { ...prev, narrativeStrategy: event.data };
+          return { ...prev, pendingGate: null, narrativeStrategy: event.data };
 
         case 'resume_draft':
-          return { ...prev, resumeDraft: normalizeResumeDraft(event.data) };
+          return { ...prev, pendingGate: null, resumeDraft: normalizeResumeDraft(event.data) };
 
         case 'verification_complete': {
           if (!event.data?.truth || !event.data?.ats || !event.data?.tone) return prev;
@@ -143,16 +148,16 @@ export function useV2Pipeline(accessToken: string | null) {
         }
 
         case 'assembly_complete':
-          return { ...prev, assembly: normalizeAssemblyResult(event.data) };
+          return { ...prev, pendingGate: null, assembly: normalizeAssemblyResult(event.data) };
 
         case 'hiring_manager_scan':
           return { ...prev, hiringManagerScan: event.data };
 
         case 'pipeline_complete':
-          return { ...prev, stage: 'complete' as V2Stage };
+          return { ...prev, stage: 'complete' as V2Stage, pendingGate: null };
 
         case 'pipeline_error':
-          return { ...prev, error: event.error };
+          return { ...prev, pendingGate: null, error: event.error };
 
         default:
           console.warn('Unhandled SSE event type:', (event as { type: string }).type);
@@ -272,6 +277,40 @@ export function useV2Pipeline(accessToken: string | null) {
     }
   }, [accessToken, isStarting, connectSSE]);
 
+  const respondGapCoaching = useCallback(async (
+    responses: GapCoachingResponse[],
+  ): Promise<'ok' | 'no_gate_pending' | 'error'> => {
+    if (!accessToken || !data.sessionId) return 'error';
+
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/${data.sessionId}/respond-gaps`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ responses }),
+      });
+
+      if (response.ok) {
+        setData((prev) => ({ ...prev, pendingGate: null }));
+        return 'ok';
+      }
+
+      if (response.status === 409) {
+        return 'no_gate_pending';
+      }
+
+      const body = await response.json().catch(() => ({}));
+      const msg = (body as { error?: string }).error ?? `Failed to submit coaching responses: ${response.status}`;
+      setData((prev) => ({ ...prev, error: msg }));
+      return 'error';
+    } catch (err) {
+      setData((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to submit coaching responses' }));
+      return 'error';
+    }
+  }, [accessToken, data.sessionId]);
+
   const integrateKeyword = useCallback(async (keyword: string, resumeText: string, jobDescription: string): Promise<{
     original_text: string;
     revised_text: string;
@@ -375,5 +414,6 @@ export function useV2Pipeline(accessToken: string | null) {
     loadSession,
     saveDraftState,
     integrateKeyword,
+    respondGapCoaching,
   };
 }

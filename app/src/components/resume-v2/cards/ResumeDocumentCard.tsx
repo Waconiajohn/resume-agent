@@ -102,6 +102,16 @@ function getResumeLineToken(section: string, index: number): string {
   return `${section}:${index}`;
 }
 
+function resolveSummaryReviewState(resume: ResumeDraft): ResumeReviewState {
+  if (resume.executive_summary.review_state) return resume.executive_summary.review_state;
+  if (resume.executive_summary.confidence === 'needs_validation' && resume.executive_summary.requirement_source === 'benchmark') {
+    return 'confirm_fit';
+  }
+  if (resume.executive_summary.confidence === 'needs_validation') return 'code_red';
+  if (resume.executive_summary.confidence === 'partial') return 'strengthen';
+  return 'strengthen';
+}
+
 export function ResumeDocumentCard({
   resume,
   requirementCatalog = [],
@@ -160,6 +170,7 @@ export function ResumeDocumentCard({
 
   const customSections = getResumeCustomSectionMap(resume);
   const sectionNodes = new Map<string, ReactNode>();
+  const executiveSummaryReviewState = resolveSummaryReviewState(resume);
 
   sectionNodes.set('executive_summary', (
     <section key="executive_summary" data-section="executive_summary">
@@ -171,8 +182,12 @@ export function ResumeDocumentCard({
           className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
             activeBullet?.section === 'executive_summary' && activeBullet.index === 0
               ? 'resume-line-active'
-              : resume.executive_summary.is_new
-                ? 'resume-proof-line--partial'
+              : executiveSummaryReviewState === 'code_red'
+                ? 'resume-proof-line--code-red'
+                : executiveSummaryReviewState === 'confirm_fit'
+                  ? 'resume-proof-line--confirm-fit'
+                  : resume.executive_summary.is_new || executiveSummaryReviewState === 'strengthen'
+                    ? 'resume-proof-line--partial'
                 : ''
           }`}
         >
@@ -190,12 +205,12 @@ export function ResumeDocumentCard({
                 requirementCatalog,
                 resume.executive_summary.content,
               ),
-              'strengthen' as ResumeReviewState,
+              executiveSummaryReviewState,
+              resume.executive_summary.requirement_source,
+              resume.executive_summary.evidence_found ?? resume.executive_summary.content,
               undefined,
-              resume.executive_summary.content,
-              undefined,
-              'adjacent',
-              'tighten',
+              resume.executive_summary.proof_level ?? 'adjacent',
+              resume.executive_summary.next_best_action ?? 'tighten',
               false,
             )}
             onKeyDown={(e) => {
@@ -210,12 +225,12 @@ export function ResumeDocumentCard({
                     requirementCatalog,
                     resume.executive_summary.content,
                   ),
-                  'strengthen' as ResumeReviewState,
+                  executiveSummaryReviewState,
+                  resume.executive_summary.requirement_source,
+                  resume.executive_summary.evidence_found ?? resume.executive_summary.content,
                   undefined,
-                  resume.executive_summary.content,
-                  undefined,
-                  'adjacent',
-                  'tighten',
+                  resume.executive_summary.proof_level ?? 'adjacent',
+                  resume.executive_summary.next_best_action ?? 'tighten',
                   false,
                 );
               }

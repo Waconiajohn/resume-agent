@@ -2,7 +2,7 @@
  * LLM-as-judge quality evaluation system for Resume V2 pipeline outputs.
  *
  * Runs 3 executive profiles through the pipeline, captures the assembled resume,
- * sends it to Claude (claude-sonnet-4-6) with structured rubrics, and prints
+ * sends it to Claude with structured rubrics, and prints
  * per-dimension scores with specific callouts.
  *
  * Usage (from repo root):
@@ -163,6 +163,7 @@ interface ParsedSSEEvent {
   type: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
+  gate?: string;
   session_id?: string;
   error?: string;
   stage?: string;
@@ -305,10 +306,11 @@ async function runAndCapturePipeline(
       throw new Error('SSE stream response has no body');
     }
 
-    const reader = streamRes.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let pipelineComplete = false;
+  const reader = streamRes.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let pipelineComplete = false;
+  let pendingGapCards: GapCoachingCard[] = [];
 
     while (!pipelineComplete) {
       const { value, done } = await reader.read();
@@ -357,8 +359,8 @@ async function runAndCapturePipeline(
           case 'gap_coaching': {
             const cards = (Array.isArray(event.data) ? event.data : []) as GapCoachingCard[];
             if (cards.length > 0) {
-              console.log(`${tag} gap_coaching gate: ${cards.length} cards — auto-approving`);
-              await respondToGaps(token, sessionId, cards);
+              pendingGapCards = cards;
+              console.log(`${tag} captured gap_coaching cards: ${cards.length}`);
             }
             break;
           }
@@ -369,16 +371,27 @@ async function runAndCapturePipeline(
               requirement: string;
             }>;
             if (questions.length > 0) {
-              console.log(`${tag} gap_questions gate: ${questions.length} — auto-approving`);
-              const cards: GapCoachingCard[] = questions.map((q) => ({
+              pendingGapCards = questions.map((q) => ({
                 requirement: q.requirement ?? q.id,
                 importance: 'important',
                 classification: 'partial',
               }));
-              await respondToGaps(token, sessionId, cards);
+              console.log(`${tag} captured gap_questions cards: ${questions.length}`);
             }
             break;
           }
+
+          case 'pipeline_gate':
+            if (event.data?.gate === 'gap_coaching' || event.gate === 'gap_coaching') {
+              if (pendingGapCards.length > 0) {
+                console.log(`${tag} pipeline_gate: gap_coaching — auto-approving ${pendingGapCards.length} cards`);
+                await respondToGaps(token, sessionId, pendingGapCards);
+                pendingGapCards = [];
+              } else {
+                console.log(`${tag} pipeline_gate: gap_coaching with no cached cards`);
+              }
+            }
+            break;
 
           case 'pipeline_complete':
             console.log(`${tag} pipeline_complete`);
@@ -482,7 +495,9 @@ function flattenResumeToText(assembledResumeJson: string): string {
   const experience = resume.professional_experience as Array<{
     title: string;
     company: string;
-    dates: string;
+    dates?: string;
+    start_date?: string;
+    end_date?: string;
     scope_statement?: string;
     bullets: Array<{ text: string }>;
   }> | undefined;
@@ -490,7 +505,10 @@ function flattenResumeToText(assembledResumeJson: string): string {
   if (experience && experience.length > 0) {
     lines.push('PROFESSIONAL EXPERIENCE');
     for (const role of experience) {
-      lines.push(`${role.title} | ${role.company} | ${role.dates}`);
+      const roleDates = typeof role.dates === 'string' && role.dates.trim().length > 0
+        ? role.dates
+        : [role.start_date, role.end_date].filter(Boolean).join(' – ');
+      lines.push(`${role.title} | ${role.company}${roleDates ? ` | ${roleDates}` : ''}`);
       if (role.scope_statement) {
         lines.push(role.scope_statement);
       }

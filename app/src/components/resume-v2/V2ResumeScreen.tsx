@@ -329,7 +329,7 @@ function buildRelatedLineCandidates(args: {
 }
 
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialJobUrl, onLoadMasterResume, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
-  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword: _integrateKeyword } = useV2Pipeline(accessToken);
+  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword: _integrateKeyword, respondGapCoaching } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
   const storageUserId = useMemo(() => decodeUserIdFromAccessToken(accessToken), [accessToken]);
 
@@ -1765,25 +1765,34 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }
 
     setClarificationMemory(nextClarificationMemory);
-    setEditableResume(null);
-    resetHistory();
-    resetGapChat();
-    resetFinalReviewChat();
-    resetHiringManagerReview();
-    setResolvedFinalReviewConcernIds([]);
-    setFinalReviewWarningsAcknowledged(false);
-    setIsFinalReviewStale(false);
-    setFinalReviewResumeText(null);
-    setSelectedMasterPromotionIds([]);
-    resetPostReviewPolish();
-    void start(resumeText, jobDescription, {
-      userContext: contextParts.length > 0 ? contextParts.join('\n') : undefined,
-      clarificationMemory: nextClarificationMemory,
-      gapCoachingResponses: responses,
-      preScores: data.preScores,
-    });
+
+    void (async () => {
+      const result = await respondGapCoaching(responses);
+      if (result === 'ok') return;
+
+      // Safety fallback for stale sessions or older snapshots that never entered
+      // the live gap gate. In that case we preserve the previous restart path.
+      setEditableResume(null);
+      resetHistory();
+      resetGapChat();
+      resetFinalReviewChat();
+      resetHiringManagerReview();
+      setResolvedFinalReviewConcernIds([]);
+      setFinalReviewWarningsAcknowledged(false);
+      setIsFinalReviewStale(false);
+      setFinalReviewResumeText(null);
+      setSelectedMasterPromotionIds([]);
+      resetPostReviewPolish();
+      void start(resumeText, jobDescription, {
+        userContext: contextParts.length > 0 ? contextParts.join('\n') : undefined,
+        clarificationMemory: nextClarificationMemory,
+        gapCoachingResponses: responses,
+        preScores: data.preScores,
+      });
+    })();
   }, [
     currentClarificationMemory,
+    respondGapCoaching,
     start,
     resumeText,
     jobDescription,

@@ -107,6 +107,8 @@ export interface GapStrategy {
     question: string;
     rationale: string;
     looking_for: string;
+    suggested_answers?: string[];
+    source_context?: string;
   }>;
   alternative_bullets?: Array<{
     text: string;
@@ -297,6 +299,8 @@ export interface GapCoachingCard {
     question: string;
     rationale: string;
     looking_for: string;
+    suggested_answers?: string[];
+    source_context?: string;
   }>;
   /** JD excerpt or benchmark rationale that created this requirement */
   source_evidence?: string;
@@ -463,6 +467,15 @@ export interface ResumeDraft {
     content: string;
     is_new: boolean;
     addresses_requirements?: string[];
+    confidence?: BulletConfidence;
+    review_state?: ResumeReviewState;
+    evidence_found?: string;
+    requirement_source?: RequirementSource;
+    content_origin?: ResumeContentOrigin;
+    support_origin?: ResumeSupportOrigin;
+    proof_level?: ProofLevel;
+    framing_guardrail?: FramingGuardrail;
+    next_best_action?: NextBestAction;
   };
   core_competencies: string[];
   selected_accomplishments: Array<{
@@ -963,6 +976,7 @@ export interface VerificationDetail {
 export interface V2PipelineData {
   sessionId: string;
   stage: V2Stage;
+  pendingGate?: 'gap_coaching' | null;
   jobIntelligence: JobIntelligence | null;
   candidateIntelligence: CandidateIntelligence | null;
   benchmarkCandidate: BenchmarkCandidate | null;
@@ -994,6 +1008,7 @@ export type V2SSEEvent =
   | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'gap_questions'; data: { questions: GapQuestion[] } }
+  | { type: 'pipeline_gate'; gate: 'gap_coaching' }
   | { type: 'narrative_strategy'; data: NarrativeStrategy }
   | { type: 'resume_draft'; data: ResumeDraft }
   | { type: 'verification_complete'; data?: { truth?: TruthVerificationDetail; ats?: ATSOptimizationDetail; tone?: ExecutiveToneDetail } }

@@ -124,9 +124,6 @@ function applyToneFixes(
  *
  * Numeric check — any number that appears in the final resume but not in the source
  * text is flagged confirm_fit regardless of whether truth_verification caught it.
- *
- * Note: executive_summary does not carry a review_state field on its type, so
- * fabricated-claim detection in the summary is recorded in quick_wins only.
  */
 function applyTruthGate(
   draft: ResumeDraftOutput,
@@ -242,6 +239,37 @@ function applyTruthGate(
 
       return acc;
     });
+  }
+
+  if (result.executive_summary?.content) {
+    const summaryLower = result.executive_summary.content.toLowerCase();
+    const summaryPrefix = summaryLower.slice(0, 80);
+    const summaryNumbers = extractNumbers(result.executive_summary.content);
+    const hasUnsourcedNumber = sourceNumbers.size > 0
+      && [...summaryNumbers].some((n) => !sourceNumbers.has(n));
+
+    const isFabricated = [...fabricatedClaims].some(
+      (claim) => summaryLower.includes(claim) || claim.includes(summaryPrefix),
+    );
+    const isUnverified = !isFabricated && [...unverifiedClaims].some(
+      (claim) => summaryLower.includes(claim) || claim.includes(summaryPrefix),
+    );
+
+    if (isFabricated) {
+      result.executive_summary = {
+        ...result.executive_summary,
+        confidence: 'needs_validation',
+        review_state: 'code_red',
+        next_best_action: 'answer',
+      };
+    } else if (isUnverified || hasUnsourcedNumber) {
+      result.executive_summary = {
+        ...result.executive_summary,
+        confidence: 'partial',
+        review_state: 'confirm_fit',
+        next_best_action: hasUnsourcedNumber ? 'quantify' : 'confirm',
+      };
+    }
   }
 
   return result;
