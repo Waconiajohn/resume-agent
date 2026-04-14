@@ -162,7 +162,11 @@ async function callSummarySection(
   const computedYears = currentYear - earliestYear;
   const careerYears = Math.max(candidate.career_span_years, computedYears);
 
-  const title = narrative.branded_title?.trim() || candidate.contact.name;
+  // Never use branded_title for the summary — it contains pipe-delimited marketing
+  // fragments that poison the output. Derive a clean role descriptor from source data.
+  const topRole = sourceExperience[0];
+  const cleanRoleTitle = topRole?.title?.trim() || 'Senior operations leader';
+  const domain = candidate.career_themes.slice(0, 2).join(' and ') || 'operations';
 
   // Extract top 3 requirements for summary targeting
   const top3Requirements = (input.gap_analysis?.requirements ?? [])
@@ -174,54 +178,101 @@ async function callSummarySection(
     ? `\n\nTHE THREE JD REQUIREMENTS THAT MATTER MOST FOR THIS ROLE:\n${top3Requirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\nYour summary MUST address at least 2 of these 3 requirements explicitly.`
     : '';
 
+  // Build a clean, focused user message with ONLY verified facts.
+  // No branded title, no narrative scaffolding, no positioning frames.
+  const targetRole = input.job_intelligence?.role_title ?? 'the target role';
+
+  // Pick the single strongest verified outcome
+  const topOutcome = candidate.quantified_outcomes[0];
+  const proofLine = topOutcome
+    ? `${topOutcome.outcome}: ${topOutcome.value}`
+    : '';
+
+  // Strongest JD fit from gap analysis
+  const strongestFit = (input.gap_analysis?.requirements ?? [])
+    .filter(r => r.classification === 'strong')
+    .slice(0, 2)
+    .map(r => r.requirement)
+    .join(' and ');
+
+  // Known gaps — DO NOT claim these
+  const hardGaps = (input.gap_analysis?.requirements ?? [])
+    .filter(r => r.classification === 'missing')
+    .slice(0, 3)
+    .map(r => r.requirement);
+
   const userMessage = [
-    '## CANDIDATE IDENTITY',
-    `Branded title: ${title}`,
-    `Career span: ${careerYears} years`,
-    `Name: ${candidate.contact.name}`,
+    `Write a 3-sentence executive summary for this person applying to a ${targetRole} role.`,
     '',
-    'Write the COMPLETE executive summary from scratch — all sentences. Do not parrot the branded title verbatim. Use it as inspiration for sentence 1, but write it naturally.',
+    `WHO: ${cleanRoleTitle} with ${careerYears} years in ${domain}.`,
+    `SCALE: ${candidate.leadership_scope}. ${candidate.operational_scale}.`,
+    proofLine ? `STRONGEST OUTCOME: ${proofLine}` : '',
+    strongestFit ? `BEST FIT FOR JD: ${strongestFit}` : '',
+    hardGaps.length > 0 ? `DO NOT CLAIM: ${hardGaps.join('; ')}` : '',
     '',
-    '## STRATEGIC CONTEXT',
-    `Primary narrative: ${narrative.primary_narrative}`,
-    `Why Me (concise): ${narrative.why_me_concise}`,
-    narrative.unique_differentiators?.length
-      ? `\nUnique differentiators:\n${narrative.unique_differentiators.slice(0, 3).map((d) => `- ${d}`).join('\n')}`
-      : '',
-    benchmark.positioning_frame
-      ? `\nPositioning frame: ${benchmark.positioning_frame}`
-      : '',
-    '',
-    '## CANDIDATE',
-    `Top quantified outcomes:\n${topOutcomes}`,
-    `Career themes: ${candidate.career_themes.slice(0, 4).join(', ')}`,
-    `Leadership scope: ${candidate.leadership_scope}`,
-    `Operational scale: ${candidate.operational_scale}`,
-    directMatchLines ? `\nDirect JD matches to surface:\n${directMatchLines}` : '',
-    '',
-    '## OUTPUT FORMAT',
-    'Return this JSON object:',
-    '{ "content": "3-4 sentence executive summary", "is_new": true }',
     requirementBlock,
+    '',
+    'Return JSON: { "content": "3-sentence summary", "is_new": true }',
   ].filter(Boolean).join('\n');
 
   const parse = async (text: string): Promise<SummaryResult | null> => {
     const parsed = repairJSON<SummaryResult>(text);
     if (!parsed?.content || typeof parsed.content !== 'string') return null;
 
-    // Safety net: only prepend the branded title as context if the model produced
-    // a summary with no identity-establishing first sentence at all (e.g. started
-    // mid-proof or with a bare job-duty clause). We check for the absence of any
-    // recognizable noun phrase about who the person is — not a strict prefix match.
-    const content = parsed.content.trim();
-    const firstSentenceEnd = content.indexOf('.');
-    const firstSentence = firstSentenceEnd > 0 ? content.slice(0, firstSentenceEnd) : content;
-    const hasIdentityOpener = firstSentence.length > 15 && !/^(led|managed|built|drove|achieved|delivered|responsible|with \d)/i.test(firstSentence.trim());
-    if (!hasIdentityOpener) {
-      logger.warn('section-writer: summary lacked identity opener — prepending branded title as anchor');
-      parsed.content = `${title}. ${content}`;
+    let content = parsed.content.trim();
+
+    // ── Strict validator: reject and fix garbage patterns ──
+
+    // Reject pipe-delimited branded titles (e.g., "Leader | Domain | Scale")
+    if (content.includes('|') || content.includes('/')) {
+      const firstPipe = content.indexOf('|');
+      const firstSlash = content.indexOf('/');
+      const cutPoint = Math.min(
+        firstPipe >= 0 ? firstPipe : content.length,
+        firstSlash >= 0 ? firstSlash : content.length,
+      );
+      // Find the end of the branded-title fragment and strip it
+      const afterFragment = content.indexOf('.', cutPoint);
+      if (afterFragment > 0) {
+        content = content.slice(afterFragment + 1).trim();
+        logger.warn('section-writer: stripped pipe/slash branded title fragment from summary');
+      }
     }
 
+    // Reject repeated metrics (same number appearing 2+ times)
+    const numbers = content.match(/\$?\d[\d,.]*[BMK%]?/g) ?? [];
+    const seen = new Set<string>();
+    for (const num of numbers) {
+      const normalized = num.replace(/[$,%BMK]/g, '');
+      if (normalized.length >= 2 && seen.has(normalized)) {
+        // Deduplicate: remove the second sentence containing the repeated number
+        const sentences = content.split(/\.\s+/);
+        const deduped = sentences.filter((s, i) => {
+          if (i === 0) return true; // Keep first sentence always
+          return !s.includes(num);
+        });
+        content = deduped.join('. ');
+        if (!content.endsWith('.')) content += '.';
+        logger.warn({ repeatedMetric: num }, 'section-writer: removed sentence with repeated metric from summary');
+        break; // Fix one at a time
+      }
+      seen.add(normalized);
+    }
+
+    // Ensure content starts with a proper identity sentence, not a marketing label
+    if (/^[A-Z][a-z]+ [A-Z]/.test(content) && content.split(' ').length < 5) {
+      // Looks like a bare title fragment — prefix with clean role
+      content = `${cleanRoleTitle} in ${domain}. ${content}`;
+    }
+
+    // Final length check
+    const wordCount = content.split(/\s+/).length;
+    if (wordCount < 15) {
+      logger.warn({ wordCount }, 'section-writer: summary too short after validation');
+      return null; // Force fallback
+    }
+
+    parsed.content = content;
     return parsed;
   };
 
@@ -268,14 +319,14 @@ async function callSummarySection(
     );
   }
 
-  // Deterministic fallback: identity + top metric + why_me_concise
-  const topMetric = candidate.quantified_outcomes[0]
+  // Deterministic fallback: clean role title + top metric (no branded_title)
+  const fallbackMetric = candidate.quantified_outcomes[0]
     ? `${candidate.quantified_outcomes[0].outcome}: ${candidate.quantified_outcomes[0].value}.`
     : '';
   const fallbackContent = [
-    `${narrative.branded_title} with ${candidate.career_span_years} years of experience.`,
-    topMetric,
-    narrative.why_me_concise,
+    `${cleanRoleTitle} with deep expertise in ${domain}.`,
+    fallbackMetric,
+    strongestFit ? `Background aligns with roles requiring ${strongestFit}.` : '',
   ].filter(Boolean).join(' ');
 
   logger.info({ duration_ms: Date.now() - start }, 'section-writer: summary fallback used');
