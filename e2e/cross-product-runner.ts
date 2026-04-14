@@ -340,6 +340,9 @@ async function runSSEPipeline(opts: SSEPipelineOptions): Promise<SSEPipelineResu
         if (onGate && respondUrl) {
           const gateResponse = await onGate(event.type, event.data ?? event);
           if (gateResponse !== null) {
+            // Wait for the server to persist the pending_gate in the DB before responding.
+            // The SSE event arrives before setPendingGate() writes to the DB, causing a race.
+            await new Promise(r => setTimeout(r, 2000));
             const respondRes = await fetch(respondUrl, {
               method: 'POST',
               headers: {
@@ -354,7 +357,17 @@ async function runSSEPipeline(opts: SSEPipelineOptions): Promise<SSEPipelineResu
             });
             if (!respondRes.ok && respondRes.status !== 409) {
               const body_text = await respondRes.text().catch(() => '');
-              console.warn(`  [${label}] Gate response failed ${respondRes.status}: ${body_text}`);
+              console.warn(`  [${label}] Gate response attempt 1 failed ${respondRes.status}: ${body_text}`);
+              // Retry once after another 2s — gate may not be persisted yet
+              await new Promise(r => setTimeout(r, 2000));
+              const retryRes = await fetch(respondUrl, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId, gate: gateResponse.gate, response: gateResponse.response }),
+              });
+              if (!retryRes.ok && retryRes.status !== 409) {
+                console.warn(`  [${label}] Gate response retry also failed ${retryRes.status}`);
+              }
             }
           }
         }
