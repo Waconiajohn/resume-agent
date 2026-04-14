@@ -9,6 +9,8 @@ import {
   MODEL_ORCHESTRATOR_COMPLEX,
   MODEL_LIGHT,
   MODEL_PRICING,
+  RESUME_V2_WRITER_MODEL,
+  RESUME_V2_WRITER_PROVIDER,
 } from './model-constants.js';
 import { agentRegistry } from '../agents/runtime/agent-registry.js';
 
@@ -178,6 +180,23 @@ function createProvider(): LLMProvider {
 
 /** Active LLM provider — wraps a FailoverProvider that auto-switches on repeated failures */
 export const llm: LLMProvider = createProvider();
+
+// ─── Feature-scoped provider: Resume V2 writing ─────────────────────
+// Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.
+// This provider is used ONLY by the resume-v2 section writer for high-trust
+// writing. All other products use the global `llm` provider above.
+// Falls back to the global provider if DeepSeek key is not available.
+
+export const resumeV2Llm: LLMProvider = (() => {
+  const resumeProvider = RESUME_V2_WRITER_PROVIDER;
+  if (resumeProvider === ACTIVE_PROVIDER) return llm; // Same provider — reuse global
+  try {
+    const primary = buildProvider(resumeProvider);
+    return new FailoverProvider(primary, llm); // Fall back to global if DeepSeek fails
+  } catch {
+    return llm; // DeepSeek key not available — use global
+  }
+})();
 
 /**
  * Get the default model for the configured primary provider.

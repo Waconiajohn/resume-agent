@@ -20,8 +20,15 @@
  * stays in agent.ts and runs on the merged output just like before.
  */
 
-import { MODEL_PRIMARY } from '../../../lib/llm.js';
-import { chatWithTruncationRetry } from '../../../lib/llm-retry.js';
+import { resumeV2Llm } from '../../../lib/llm.js';
+import { RESUME_V2_WRITER_MODEL } from '../../../lib/model-constants.js';
+import { chatWithTruncationRetry as _chatWithTruncationRetry } from '../../../lib/llm-retry.js';
+import type { ChatParams, ChatResponse } from '../../../lib/llm-provider.js';
+
+/** Section-writer LLM call — uses the Resume V2-scoped provider (DeepSeek when available) */
+function chatWithRetry(params: ChatParams, options?: { retryMaxTokens?: number }): Promise<ChatResponse> {
+  return _chatWithTruncationRetry(params, { ...options, provider: resumeV2Llm });
+}
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
@@ -219,8 +226,8 @@ async function callSummarySection(
   logger.info('section-writer: calling summary section');
 
   try {
-    const response = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: SUMMARY_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
@@ -236,8 +243,8 @@ async function callSummarySection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: summary parse failed, retrying');
 
-    const retry = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${SUMMARY_SYSTEM}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },
@@ -374,8 +381,8 @@ async function callAccomplishmentsSection(
   logger.info('section-writer: calling accomplishments section');
 
   try {
-    const response = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: ACCOMPLISHMENTS_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
@@ -391,8 +398,8 @@ async function callAccomplishmentsSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: accomplishments parse failed, retrying');
 
-    const retry = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${ACCOMPLISHMENTS_SYSTEM}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },
@@ -498,8 +505,8 @@ async function callCompetenciesSection(
   logger.info('section-writer: calling competencies section');
 
   try {
-    const response = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: COMPETENCIES_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
@@ -515,8 +522,8 @@ async function callCompetenciesSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: competencies parse failed, retrying');
 
-    const retry = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${COMPETENCIES_SYSTEM}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },
@@ -667,8 +674,8 @@ async function callCustomSections(
   logger.info({ count: recommendedSections.length }, 'section-writer: calling custom sections');
 
   try {
-    const response = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: CUSTOM_SECTIONS_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
@@ -684,8 +691,8 @@ async function callCustomSections(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: custom sections parse failed, retrying');
 
-    const retry = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${CUSTOM_SECTIONS_SYSTEM}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },
@@ -1020,8 +1027,8 @@ async function callExperienceSection(
   logger.info({ position_count: sourceExperience.length }, 'section-writer: calling experience section');
 
   try {
-    const response = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: EXPERIENCE_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
@@ -1037,8 +1044,8 @@ async function callExperienceSection(
 
     logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: experience parse failed, retrying');
 
-    const retry = await chatWithTruncationRetry({
-      model: MODEL_PRIMARY,
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
       system: RETRY_SYSTEM,
       messages: [{ role: 'user', content: `${EXPERIENCE_SYSTEM}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },

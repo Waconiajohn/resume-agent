@@ -74,6 +74,18 @@ export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MOD
 export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR);
 export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT);
 
+// ─── Feature-scoped model overrides ─────────────────────────────────
+// Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.
+// This override lets Resume V2 use DeepSeek for high-trust writing
+// while the rest of the app stays on the global provider (Groq).
+// Other products should be tested independently before switching.
+
+export const RESUME_V2_WRITER_MODEL = process.env.RESUME_V2_WRITER_MODEL
+  ?? DEEPSEEK_MODEL_PRIMARY;
+
+export const RESUME_V2_WRITER_PROVIDER = process.env.RESUME_V2_WRITER_PROVIDER
+  ?? 'deepseek';
+
 /**
  * Orchestrator model for agent loops with complex nested tool schemas.
  * With 70B as the orchestrator on Groq, this now maps to the same model as

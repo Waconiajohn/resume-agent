@@ -13,7 +13,7 @@
  */
 
 import { llm } from './llm.js';
-import type { ChatParams, ChatResponse } from './llm-provider.js';
+import type { LLMProvider, ChatParams, ChatResponse } from './llm-provider.js';
 import logger from './logger.js';
 
 /**
@@ -23,14 +23,16 @@ import logger from './logger.js';
  * retries once with double the max_tokens budget.
  *
  * @param params - Standard ChatParams
- * @param options - Optional: retryMaxTokens override (default: 2x original)
+ * @param options - Optional: retryMaxTokens override (default: 2x original),
+ *                  optional provider override (default: global llm)
  * @returns ChatResponse from either the original or retry call
  */
 export async function chatWithTruncationRetry(
   params: ChatParams,
-  options?: { retryMaxTokens?: number },
+  options?: { retryMaxTokens?: number; provider?: LLMProvider },
 ): Promise<ChatResponse> {
-  const response = await llm.chat(params);
+  const provider = options?.provider ?? llm;
+  const response = await provider.chat(params);
 
   if (response.finish_reason === 'length') {
     const originalMax = params.max_tokens;
@@ -46,7 +48,7 @@ export async function chatWithTruncationRetry(
       'LLM output truncated at max_tokens — retrying with higher limit',
     );
 
-    const retryResponse = await llm.chat({
+    const retryResponse = await provider.chat({
       ...params,
       max_tokens: retryMax,
     });
