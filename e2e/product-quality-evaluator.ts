@@ -235,10 +235,18 @@ async function captureInterviewPrep(resumeText: string, jd: string, company: str
       if (gate === 'star_stories_review') { console.log('[interview] Approving star_stories_review'); return { gate, response: true }; }
       return null;
     },
-    onEvent: (ev) => { if (ev.type === 'report_complete') out ??= pickText(ev, 'report'); },
+    onEvent: (ev) => {
+      if (ev.type === 'report_complete') out ??= pickText(ev, 'report');
+      if (ev.type === 'star_stories_review_ready') out ??= pickText(ev, 'report');
+    },
   });
   if (!result.success) { console.error(`[interview] Failed: ${result.error}`); return null; }
-  out ??= (() => { const ev = result.events.slice().reverse().find(e => e.type === 'report_complete' || e.type === 'pipeline_complete'); return ev ? pickText(ev, 'report') : null; })();
+  out ??= (() => {
+    const ev = result.events.slice().reverse().find(e =>
+      e.type === 'report_complete' || e.type === 'star_stories_review_ready' || e.type === 'pipeline_complete'
+    );
+    return ev ? pickText(ev, 'report') : null;
+  })();
   console.log(`[interview] Captured ${out?.length ?? 0} chars in ${Math.round(result.durationMs / 1000)}s`);
   return out;
 }

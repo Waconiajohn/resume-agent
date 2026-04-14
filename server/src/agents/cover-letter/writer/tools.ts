@@ -143,7 +143,7 @@ Write the full letter now. Start with "Dear Hiring Manager," and end with a prof
         model: MODEL_PRIMARY,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
-        max_tokens: 1024,
+        max_tokens: 4096,
         signal: ctx.signal,
         session_id: ctx.sessionId,
       });

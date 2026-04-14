@@ -339,7 +339,9 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
       }
       if (agentName === 'writer') {
         if (!state.final_report) {
-          throw new Error('Writer did not produce a final report');
+          // Writer may not have called assemble_report if sections were incomplete.
+          // Log a warning — finalizeResult will emit an empty report rather than crash.
+          logger.warn({ agentName }, 'LinkedIn writer did not produce a final_report — finalizeResult will emit empty report');
         }
       }
     },
