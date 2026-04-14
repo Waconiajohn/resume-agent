@@ -82,12 +82,25 @@ export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSE
 // Other products should be tested independently before switching.
 
 const DEEPINFRA_MODEL = 'deepseek-ai/DeepSeek-V3.2';
+const VERTEX_DEEPSEEK_MODEL = 'deepseek-ai/deepseek-v3.2';
 
-export const RESUME_V2_WRITER_MODEL = process.env.RESUME_V2_WRITER_MODEL
-  ?? (process.env.DEEPINFRA_API_KEY ? DEEPINFRA_MODEL : DEEPSEEK_MODEL_PRIMARY);
+// Resume V2 writer provider priority: Vertex (fastest) → DeepInfra (US) → DeepSeek (direct)
+function selectResumeV2Provider(): { model: string; provider: string } {
+  if (process.env.RESUME_V2_WRITER_PROVIDER && process.env.RESUME_V2_WRITER_MODEL) {
+    return { model: process.env.RESUME_V2_WRITER_MODEL, provider: process.env.RESUME_V2_WRITER_PROVIDER };
+  }
+  if (process.env.VERTEX_PROJECT || process.env.GCP_PROJECT) {
+    return { model: VERTEX_DEEPSEEK_MODEL, provider: 'vertex' };
+  }
+  if (process.env.DEEPINFRA_API_KEY) {
+    return { model: DEEPINFRA_MODEL, provider: 'deepinfra' };
+  }
+  return { model: DEEPSEEK_MODEL_PRIMARY, provider: 'deepseek' };
+}
 
-export const RESUME_V2_WRITER_PROVIDER = process.env.RESUME_V2_WRITER_PROVIDER
-  ?? (process.env.DEEPINFRA_API_KEY ? 'deepinfra' : 'deepseek');
+const resumeV2Selection = selectResumeV2Provider();
+export const RESUME_V2_WRITER_MODEL = resumeV2Selection.model;
+export const RESUME_V2_WRITER_PROVIDER = resumeV2Selection.provider;
 
 /**
  * Orchestrator model for agent loops with complex nested tool schemas.
@@ -125,6 +138,8 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   // DeepInfra (US-hosted DeepSeek — lower latency, slightly higher cost)
   'deepseek-ai/DeepSeek-V3.2': { input: 0.26, output: 0.38 },
   'deepseek-ai/DeepSeek-V3': { input: 0.26, output: 0.38 },
+  // Google Vertex AI (fastest — 207 tok/s output)
+  'deepseek-ai/deepseek-v3.2': { input: 0.56, output: 1.68 },
   'mistral-saba-24b': { input: 0.79, output: 0.79 },
   // Anthropic models for reference
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },

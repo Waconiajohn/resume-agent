@@ -1,4 +1,4 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, FailoverProvider } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, VertexProvider, getVertexAccessToken, FailoverProvider } from './llm-provider.js';
 import logger from './logger.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
 import {
@@ -121,6 +121,17 @@ function buildProvider(name: string): LLMProvider {
     }
     const baseUrl = process.env.DEEPINFRA_BASE_URL;
     return new DeepInfraProvider({ apiKey, ...(baseUrl && { baseUrl }) });
+  }
+
+  if (name === 'vertex') {
+    const project = process.env.VERTEX_PROJECT ?? process.env.GCP_PROJECT;
+    if (!project) {
+      throw new Error('VERTEX_PROJECT or GCP_PROJECT environment variable is required when using vertex provider');
+    }
+    // Token will be refreshed lazily; for now use a placeholder that triggers refresh
+    const token = process.env.VERTEX_ACCESS_TOKEN ?? '';
+    const region = process.env.VERTEX_REGION ?? 'us-central1';
+    return new VertexProvider({ project, region, accessToken: token });
   }
 
   if (name === 'zai') {

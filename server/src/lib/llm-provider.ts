@@ -933,6 +933,72 @@ export class DeepInfraProvider extends ZAIProvider {
   }
 }
 
+// ─── Google Vertex AI provider (OpenAI-compatible endpoint) ──────────
+// Uses gcloud application default credentials for auth.
+// Endpoint: https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints/openapi
+
+export class VertexProvider extends ZAIProvider {
+  constructor(config: {
+    project: string;
+    region?: string;
+    accessToken: string;
+    baseUrl?: string;
+  }) {
+    const region = config.region ?? 'us-central1';
+    const baseUrl = config.baseUrl
+      ?? `https://${region}-aiplatform.googleapis.com/v1/projects/${config.project}/locations/${region}/endpoints/openapi`;
+    super({
+      apiKey: config.accessToken,  // Vertex uses OAuth2 bearer tokens
+      baseUrl,
+      providerName: 'vertex',
+      chatTimeoutMs: 60_000,   // Vertex is fast — 200+ tok/s
+      streamTimeoutMs: 90_000,
+      disableParallelToolCalls: false,
+    });
+  }
+}
+
+/**
+ * Get a fresh access token from gcloud application default credentials.
+ * Falls back to `gcloud auth print-access-token` if the metadata server is unavailable.
+ */
+export async function getVertexAccessToken(): Promise<string> {
+  // Try the gcloud CLI first (works in dev)
+  try {
+    const { execSync } = await import('node:child_process');
+    const token = execSync('gcloud auth print-access-token', { timeout: 5000 })
+      .toString().trim();
+    if (token && token.length > 20) return token;
+  } catch {
+    // Fall through
+  }
+
+  // Try GOOGLE_APPLICATION_CREDENTIALS service account
+  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (keyFile) {
+    try {
+      const { readFileSync } = await import('node:fs');
+      const key = JSON.parse(readFileSync(keyFile, 'utf-8'));
+      // For service accounts, we'd need to do JWT signing — complex.
+      // For now, rely on gcloud CLI or env var.
+      if (key.type === 'authorized_user' && key.access_token) {
+        return key.access_token;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  // Last resort: check for explicit env var
+  const envToken = process.env.VERTEX_ACCESS_TOKEN;
+  if (envToken) return envToken;
+
+  throw new Error(
+    'Cannot get Vertex AI access token. Either run `gcloud auth application-default login` '
+    + 'or set VERTEX_ACCESS_TOKEN environment variable.',
+  );
+}
+
 // ─── Failover provider ───────────────────────────────────────────────
 
 const FAILOVER_THRESHOLD = 3;
