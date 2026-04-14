@@ -448,50 +448,65 @@ function RequirementRow({
                 /* Structured interview questions */
                 questions.map((q, qi) => (
                   <div key={qi} className="rounded-lg border border-[var(--link)]/15 bg-[var(--badge-blue-bg)] px-3 py-2.5">
+                    {q.source_context && (
+                      <div className="mb-2.5 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-2">
+                        <p className="text-[11px] leading-5 text-[var(--text-soft)]">
+                          <span className="mr-1">📋</span>
+                          <span className="font-semibold">Your resume says:</span>
+                          {' '}&ldquo;{q.source_context}&rdquo;
+                        </p>
+                      </div>
+                    )}
                     <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-1.5">{q.question}</p>
                     {q.rationale && (
                       <p className="text-[12px] text-[var(--text-soft)] leading-relaxed mb-1.5">{q.rationale}</p>
                     )}
                     <p className="text-[12px] text-[var(--text-soft)] mb-2 italic">{q.looking_for}</p>
-                    {q.source_context && (
-                      <div className="mb-2 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
-                          What prompted this question
-                        </p>
-                        <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">{q.source_context}</p>
+                    {q.suggested_answers && q.suggested_answers.length > 0 && !coachingState.questionAnswers[qi] && (
+                      <div className="mb-2 space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {q.suggested_answers.map((answer, answerIndex) => (
+                            <button
+                              key={`${qi}-${answerIndex}`}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => onCoachingChange({
+                                action: 'context',
+                                questionAnswers: {
+                                  ...coachingState.questionAnswers,
+                                  [qi]: answer,
+                                },
+                                showContextInput: false,
+                              })}
+                              className="rounded-full border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1 text-[12px] leading-5 text-[var(--text-muted)] transition-colors hover:border-[var(--link)]/40 hover:bg-[var(--badge-blue-bg)] hover:text-[var(--text-strong)] disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {answer}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => onCoachingChange({ showContextInput: true })}
+                          className="text-[11px] text-[var(--text-soft)] hover:text-[var(--link)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Write my own answer
+                        </button>
                       </div>
                     )}
-                    {q.suggested_answers && q.suggested_answers.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        {q.suggested_answers.map((answer, answerIndex) => (
-                          <button
-                            key={`${qi}-${answerIndex}`}
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => onCoachingChange({
-                              questionAnswers: {
-                                ...coachingState.questionAnswers,
-                                [qi]: answer,
-                              },
-                            })}
-                            className="rounded-full border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1 text-[12px] leading-5 text-[var(--text-muted)] transition-colors hover:border-[var(--link)]/35 hover:text-[var(--text-strong)] disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {answer}
-                          </button>
-                        ))}
-                      </div>
+                    {(!q.suggested_answers || q.suggested_answers.length === 0 || coachingState.showContextInput || !!coachingState.questionAnswers[qi]) && (
+                      <textarea
+                        value={coachingState.questionAnswers[qi] ?? ''}
+                        onChange={e => onCoachingChange({
+                          questionAnswers: { ...coachingState.questionAnswers, [qi]: e.target.value },
+                        })}
+                        disabled={disabled}
+                        placeholder="Your answer..."
+                        rows={2}
+                        className="w-full rounded-md border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        aria-label={`Answer for: ${q.question}`}
+                      />
                     )}
-                    <textarea
-                      value={coachingState.questionAnswers[qi] ?? ''}
-                      onChange={e => onCoachingChange({
-                        questionAnswers: { ...coachingState.questionAnswers, [qi]: e.target.value },
-                      })}
-                      disabled={disabled}
-                      placeholder="Your answer..."
-                      rows={2}
-                      className="w-full rounded-md border border-[var(--link)]/20 bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-muted)] placeholder-[var(--text-soft)] resize-none focus:outline-none focus:border-[var(--link)]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label={`Answer for: ${q.question}`}
-                    />
                   </div>
                 ))
               ) : (
@@ -1026,6 +1041,19 @@ export function UnifiedGapAnalysisCard({
     onRespondGapCoaching(responses);
   }
 
+  function handleSkipAll() {
+    if (!gapCoachingCards) return;
+    // Mark all unresponded items as skipped, then continue
+    setCoachingStates(prev =>
+      prev.map(s => s.action !== null ? s : { ...s, action: 'skip' as GapCoachingAction }),
+    );
+    const responses: GapCoachingResponse[] = gapCoachingCards.map((card, i) => ({
+      requirement: card.requirement,
+      action: coachingStates[i].action ?? 'skip',
+    }));
+    onRespondGapCoaching(responses);
+  }
+
   const title = companyName && roleTitle
     ? `Your Alignment with ${companyName} — ${roleTitle}`
     : 'Gap Analysis';
@@ -1188,9 +1216,20 @@ export function UnifiedGapAnalysisCard({
             <ArrowRight className="h-4 w-4" />
           </button>
           {!allResponded && (
-            <p className="text-center text-xs text-[var(--text-soft)] mt-2">
-              Review all {gapCoachingCards.length} items to continue
-            </p>
+            <div className="mt-3 flex flex-col items-center gap-2">
+              <p className="text-center text-xs text-[var(--text-soft)]">
+                {respondedCount} of {gapCoachingCards.length} reviewed
+              </p>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={handleSkipAll}
+                className="text-xs text-[var(--text-soft)] hover:text-[var(--text-muted)] underline-offset-2 hover:underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Skip remaining items and continue to resume drafting"
+              >
+                Skip remaining and continue
+              </button>
+            </div>
           )}
           {allResponded && coachingStates.every(s => s.action === 'skip') && (
             <div className="support-callout mt-3 px-4 py-3">

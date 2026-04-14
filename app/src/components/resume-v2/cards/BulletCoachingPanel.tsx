@@ -44,6 +44,94 @@ export interface BulletCoachingPanelProps {
   ) => Promise<EnhanceResult | null>;
 }
 
+// ─── CoachingContextBlock ────────────────────────────────────────────────────
+
+interface CoachingContextBlockProps {
+  reviewState: ResumeReviewState;
+  requirements: string[];
+  requirementSource?: RequirementSource;
+  nextBestAction?: NextBestAction;
+}
+
+function CoachingContextBlock({
+  reviewState,
+  requirements,
+  requirementSource,
+  nextBestAction,
+}: CoachingContextBlockProps) {
+  // ── Derive coaching message and color from reviewState ──────────────────
+  const stateConfig: Record<
+    ResumeReviewState,
+    { message: string; color: string; dot: string } | null
+  > = {
+    code_red: {
+      message: 'This claim needs your verification before it\'s safe to use. Can you confirm it\'s accurate?',
+      color: 'text-[var(--badge-red-text)]',
+      dot: 'bg-[var(--badge-red-text)]',
+    },
+    confirm_fit: {
+      message: 'We positioned this bullet to address a key job requirement. Please confirm it reflects your real experience.',
+      color: 'text-[var(--badge-amber-text)]',
+      dot: 'bg-[var(--badge-amber-text)]',
+    },
+    strengthen: {
+      message: 'Good foundation — this bullet could be stronger with more specific detail.',
+      color: 'text-[var(--link)]',
+      dot: 'bg-[var(--link)]',
+    },
+    supported: null,
+    supported_rewrite: null,
+  };
+
+  const config = stateConfig[reviewState];
+  if (!config) return null;
+
+  // ── Derive next-best-action prompt ──────────────────────────────────────
+  const actionPrompt: Record<NextBestAction, string> = {
+    answer: 'Tell us more about this experience.',
+    confirm: 'Is this accurate? Approve or edit below.',
+    quantify: 'Can you add a specific number or metric?',
+    tighten: 'This could be more concise.',
+    remove: 'Consider removing — the supporting evidence is thin.',
+    accept: '',
+  };
+
+  const prompt = nextBestAction ? actionPrompt[nextBestAction] : '';
+  const requirement = requirements[0];
+  const sourceLabel = requirementSource === 'job_description'
+    ? 'from job description'
+    : requirementSource === 'benchmark'
+      ? 'from benchmark'
+      : null;
+
+  return (
+    <div className="mx-4 mt-3 mb-0 rounded-lg px-3 py-2.5 bg-[var(--surface-1)] border border-[var(--line-soft)]">
+      {/* State message */}
+      <p className={cn('text-xs font-medium leading-snug flex items-start gap-1.5', config.color)}>
+        <span className={cn('mt-1 shrink-0 w-1.5 h-1.5 rounded-full', config.dot)} />
+        {config.message}
+      </p>
+
+      {/* Requirement chip + next-best-action prompt */}
+      {(requirement || prompt) && (
+        <div className="mt-1.5 ml-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {requirement && (
+            <span className="text-[11px] text-[var(--text-soft)]">
+              Addressing: <span className="text-[var(--text-strong)]">{requirement}</span>
+              {sourceLabel && (
+                <span className="text-[var(--text-soft)]"> ({sourceLabel})</span>
+              )}
+            </span>
+          )}
+          {prompt && (
+            <span className="text-[11px] text-[var(--text-soft)] italic">{prompt}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function BulletCoachingPanel({
@@ -229,6 +317,16 @@ export function BulletCoachingPanel({
       </div>
 
       <hr className="border-0 border-t border-dashed border-[var(--line-soft)] mx-4" />
+
+      {/* ── Coaching context block ─────────────────────────────────────────── */}
+      {!showCustomEdit && reviewState && reviewState !== 'supported' && reviewState !== 'supported_rewrite' && (
+        <CoachingContextBlock
+          reviewState={reviewState}
+          requirements={requirements}
+          requirementSource={requirementSource}
+          nextBestAction={nextBestAction}
+        />
+      )}
 
       {/* ── Suggestion area ────────────────────────────────────────────────── */}
       <div className="px-4 py-3 space-y-3">

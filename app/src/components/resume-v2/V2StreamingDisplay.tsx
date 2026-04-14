@@ -2070,6 +2070,7 @@ export function V2StreamingDisplay({
               <UnifiedGapAnalysisCard
                 gapAnalysis={data.gapAnalysis}
                 gapCoachingCards={gapCoachingCards}
+                currentResume={editableResume ?? data.assembly?.final_resume ?? data.resumeDraft}
                 companyName={data.jobIntelligence?.company_name}
                 roleTitle={data.jobIntelligence?.role_title}
                 onRespondGapCoaching={_onRespondGapCoaching}
