@@ -34,6 +34,12 @@ export interface PostQualityScores {
   keyword_density: number;
 }
 
+export interface RecommendedPostingTime {
+  hour: number;
+  timezone: string;
+  rationale: string;
+}
+
 interface LinkedInContentState {
   status: LinkedInContentStatus;
   topics: TopicSuggestion[];
@@ -46,6 +52,7 @@ interface LinkedInContentState {
   activityMessages: ActivityMessage[];
   postSaved: boolean;
   carouselSlides: CarouselSlide[] | null;
+  recommendedPostingTime: RecommendedPostingTime | null;
   error: string | null;
 }
 
@@ -142,6 +149,7 @@ export function useLinkedInContent() {
     activityMessages: [],
     postSaved: false,
     carouselSlides: null,
+    recommendedPostingTime: null,
     error: null,
   });
 
@@ -245,6 +253,19 @@ export function useLinkedInContent() {
 
         case 'content_complete': {
           const updatedDraft = typeof data.post === 'string' ? data.post : null;
+          const rpt = (data as Record<string, unknown>).recommended_posting_time;
+          const postingTime: RecommendedPostingTime | null =
+            rpt != null && typeof rpt === 'object' &&
+            typeof (rpt as Record<string, unknown>).hour === 'number' &&
+            typeof (rpt as Record<string, unknown>).timezone === 'string'
+              ? {
+                  hour: (rpt as Record<string, unknown>).hour as number,
+                  timezone: (rpt as Record<string, unknown>).timezone as string,
+                  rationale: typeof (rpt as Record<string, unknown>).rationale === 'string'
+                    ? (rpt as Record<string, unknown>).rationale as string
+                    : '',
+                }
+              : null;
           setState((prev) => ({
             ...prev,
             status: 'complete',
@@ -252,6 +273,7 @@ export function useLinkedInContent() {
             postHashtags: Array.isArray(data.hashtags) ? asHashtags(data.hashtags) : prev.postHashtags,
             qualityScores: data.quality_scores == null ? prev.qualityScores : asPostQualityScores(data.quality_scores),
             postSaved: true,
+            recommendedPostingTime: postingTime ?? prev.recommendedPostingTime,
           }));
           abortRef.current?.abort();
           break;
@@ -371,7 +393,9 @@ export function useLinkedInContent() {
     [handleSSEEvent],
   );
 
-  const startContentPipeline = useCallback(async (): Promise<boolean> => {
+  const startContentPipeline = useCallback(async (
+    options?: { content_type?: 'standard' | 'interview_authority' },
+  ): Promise<boolean> => {
     if (statusRef.current !== 'idle') return false;
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? null;
@@ -397,6 +421,7 @@ export function useLinkedInContent() {
       activityMessages: [],
       postSaved: false,
       carouselSlides: null,
+      recommendedPostingTime: null,
       error: null,
     });
 
@@ -407,7 +432,12 @@ export function useLinkedInContent() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ session_id: sessionId }),
+        body: JSON.stringify({
+          session_id: sessionId,
+          ...(options?.content_type && options.content_type !== 'standard'
+            ? { content_type: options.content_type }
+            : {}),
+        }),
       });
 
       if (!res.ok) {
@@ -525,6 +555,7 @@ export function useLinkedInContent() {
       activityMessages: [],
       postSaved: false,
       carouselSlides: null,
+      recommendedPostingTime: null,
       error: null,
     });
   }, []);

@@ -126,10 +126,44 @@ Alignment standards:
 5. **Future-positioning alignment** — If the executive is positioning for a new role or industry, the LinkedIn content strategy should begin establishing authority in that domain before the job search becomes public. Content is a long game. Posts published 6 months before a job search lay the groundwork for conversations that happen 6 months later.
 6. **Content calendar discipline** — Inconsistent posting undermines positioning. A burst of 10 posts followed by 3 months of silence signals disorganization, not authority. A realistic cadence (even 1-2 posts per week) maintained consistently is far more effective than irregular intensity.`;
 
+// ─── Rule 6: 360Brew Algorithm Optimization ─────────────────────────
+
+export const RULE_6_360BREW = `## RULE 6 — 360BREW ALGORITHM OPTIMIZATION
+
+360Brew research identifies specific patterns that LinkedIn's algorithm rewards and penalizes. Apply these rules to every post:
+
+**Hard prohibitions:**
+1. **NO EXTERNAL LINKS in the post body** — LinkedIn suppresses reach on posts containing URLs. If a source must be referenced, name it in text ("MIT published research on this in 2023") and put the link in the first comment after posting. Never in the post body.
+2. **NO ENGAGEMENT BAIT** — These phrases are flagged by the algorithm and destroy credibility with senior audiences:
+   - "Like if you agree"
+   - "Comment your thoughts below"
+   - "Share this with someone who needs it"
+   - "Tag a colleague"
+   - "Drop a [emoji] if..."
+   - "Repost to spread the word"
+3. **NO AI FILLER PHRASES** — These phrases signal AI-generated content and are penalized:
+   - "In today's rapidly evolving landscape"
+   - "It's not about X, it's about Y"
+   - "Here's why this matters"
+   - "Let me break this down"
+   - "The truth is..."
+   - "Game-changer" / "game-changing"
+   - "Thought leadership" (referring to the post itself)
+   - "At the end of the day"
+   - Any sentence opening with "As a [job title]..."
+
+**Format optimization:**
+4. **TEXT POST LENGTH: 1,000–1,300 characters** — This range is the 360Brew sweet spot for text posts. Under 800 characters delivers less reach. Over 1,500 characters shows diminishing returns. Count the characters and target this band.
+5. **CAROUSEL DEPTH: 8–12 slides** — Document carousels in this range outperform shorter ones. Each slide must carry real insight, not filler. Under 8 slides and over 12 slides are both penalized in the algorithm's ranking.
+6. **DEPTH OVER BREVITY** — A 1,100-character post with one well-developed idea outperforms a 200-character post every time. LinkedIn rewards time-on-post. Give readers something worth staying for.
+
+**Topic consistency:**
+7. **TOPIC DNA** — 360Brew's algorithm tracks topic consistency per profile. An executive who posts consistently about operations will rank higher for "operations" searches than one who varies topics every week. Every post should connect to the executive's core expertise domain. If they are an operations leader, posts about team culture, supply chain, or efficiency all connect. Posts about cryptocurrency do not.`;
+
 // ─── Combined System Prompt Injection ────────────────────────────────
 
 /**
- * All 6 rules concatenated for injection into the LinkedIn Content agent system prompts.
+ * All 7 rules concatenated for injection into the LinkedIn Content agent system prompts.
  */
 export const LINKEDIN_CONTENT_RULES = [
   RULE_0_PHILOSOPHY,
@@ -138,4 +172,5 @@ export const LINKEDIN_CONTENT_RULES = [
   RULE_3_THOUGHT_LEADERSHIP,
   RULE_4_PLATFORM,
   RULE_5_POSITIONING,
+  RULE_6_360BREW,
 ].join('\n\n---\n\n');

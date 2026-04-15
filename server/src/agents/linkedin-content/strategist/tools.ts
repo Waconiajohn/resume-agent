@@ -519,6 +519,156 @@ const presentSeriesTool: LinkedInContentTool = {
   },
 };
 
+// --- Tool: suggest_interview_authority_topics --------------------------
+
+const suggestInterviewAuthorityTopicsTool: LinkedInContentTool = {
+  name: 'suggest_interview_authority_topics',
+  description:
+    'Identifies 5 hard interview questions for the user\'s target role, then maps each ' +
+    'question to specific evidence from their resume and experience library. Each question ' +
+    'becomes a carousel post topic — the user answers it from their real experience, ' +
+    'positioning themselves as an authority before the interview happens. ' +
+    'Returns topics in the same format as suggest_topics. Stores in scratchpad.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+  async execute(_input, ctx) {
+    const state = ctx.getState();
+
+    ctx.emit({
+      type: 'transparency',
+      stage: state.current_stage,
+      message: 'Identifying the hardest interview questions for your target role...',
+    });
+
+    const expertiseAnalysis = ctx.scratchpad.expertise_analysis as Record<string, unknown> | undefined;
+    const platformContext = state.platform_context;
+    const sharedContext = state.shared_context;
+
+    const contextParts: string[] = [
+      'You are designing Interview Authority carousel posts for a LinkedIn content strategy.',
+      '',
+      'Your task: Identify the 5 hardest, most differentiating interview questions for this person\'s target role, then map each question to specific evidence from their background.',
+      '',
+      'These are NOT generic behavioral questions. They are the questions where weak candidates give vague answers — and where this person can give concrete, specific answers that make them stand out.',
+      '',
+    ];
+
+    if (expertiseAnalysis) {
+      contextParts.push(
+        '## Expertise & Positioning',
+        JSON.stringify(expertiseAnalysis, null, 2),
+        '',
+      );
+    }
+
+    if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy (understand their target role and differentiation)',
+        sharedStrategy: sharedContext?.positioningStrategy,
+      }));
+    } else if (platformContext?.positioning_strategy) {
+      contextParts.push(...renderPositioningStrategySection({
+        heading: '## Positioning Strategy (understand their target role and differentiation)',
+        legacyStrategy: platformContext.positioning_strategy,
+      }));
+    }
+
+    if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Library (map each question to real evidence)',
+        sharedInventory: sharedContext?.evidenceInventory,
+        maxItems: 15,
+      }));
+    } else if (platformContext?.evidence_items && platformContext.evidence_items.length > 0) {
+      contextParts.push(...renderEvidenceInventorySection({
+        heading: '## Evidence Library (map each question to real evidence)',
+        legacyEvidence: platformContext.evidence_items,
+        maxItems: 15,
+      }));
+    }
+
+    contextParts.push(
+      '',
+      '## Output Requirements',
+      '',
+      'Return exactly 5 interview questions. For each:',
+      '- The question must be hard — the kind that separates strong candidates from weak ones',
+      '- The question must be answerable by this specific person (based on their evidence)',
+      '- The hook must sound like this person starting to answer the question — specific, confident, from experience',
+      '- The rationale must explain which JD requirement or role challenge this question probes',
+      '- evidence_refs must point to specific items from their evidence library',
+      '',
+      'Question categories to draw from:',
+      '- Scale/scope questions: "Tell me about the largest [X] you\'ve managed"',
+      '- Failure/recovery questions: "Tell me about a time you had to recover from [hard situation]"',
+      '- Conflict/stakeholder questions: "How do you handle [politically difficult scenario]"',
+      '- Domain-specific deep dives: "Walk me through how you approach [key domain challenge]"',
+      '- Vision/transformation questions: "How would you [transform/rebuild/fix] [something]"',
+      '',
+      'Return ONLY valid JSON array:',
+      `[
+  {
+    "id": "iq-1",
+    "topic": "The interview question itself, exactly as an interviewer would ask it",
+    "hook": "The first line of this person's answer — specific, grounded, from real experience",
+    "rationale": "Why this question is hard for most candidates, and what requirement or role challenge it probes",
+    "expertise_area": "The domain this question tests (e.g. 'operations_leadership', 'financial_turnaround')",
+    "evidence_refs": ["Specific evidence item from their library that backs their answer"]
+  }
+]`,
+    );
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 4096,
+      system:
+        'You are a senior executive interview coach. You know which questions separate truly strong candidates from ' +
+        'the pack, and you know how to map a candidate\'s evidence to those questions so their answers are specific and credible. ' +
+        'Return ONLY valid JSON, no markdown fencing.',
+      messages: [
+        {
+          role: 'user',
+          content: contextParts.join('\n'),
+        },
+      ],
+    });
+
+    const raw = response.text ?? '[]';
+    let topics: TopicSuggestion[];
+
+    try {
+      const parsed = repairJSON<TopicSuggestion[]>(raw);
+      topics = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      topics = [
+        {
+          id: 'iq-1',
+          topic: 'Tell me about the largest operational transformation you have led.',
+          hook: 'The first time I was handed a plant that was hemorrhaging $2M/month, I had 90 days to turn it around.',
+          rationale: 'Tests depth of operational experience and comfort with high-stakes accountability.',
+          expertise_area: 'operations_leadership',
+          evidence_refs: [],
+        },
+      ];
+    }
+
+    // Enforce id prefix for interview authority topics
+    topics = topics.map((t, i) => ({
+      ...t,
+      id: t.id?.startsWith('iq-') ? t.id : `iq-${i + 1}`,
+    }));
+
+    ctx.scratchpad.suggested_topics = topics;
+    ctx.updateState({ suggested_topics: topics });
+
+    return { topics, count: topics.length };
+  },
+};
+
 // --- Tool exports ------------------------------------------------------
 
 export const strategistTools: LinkedInContentTool[] = [
@@ -527,5 +677,6 @@ export const strategistTools: LinkedInContentTool[] = [
   presentTopicsTool,
   planSeriesTool,
   presentSeriesTool,
+  suggestInterviewAuthorityTopicsTool,
   createEmitTransparency<LinkedInContentState, LinkedInContentSSEEvent>({ prefix: 'Strategist: ' }),
 ];

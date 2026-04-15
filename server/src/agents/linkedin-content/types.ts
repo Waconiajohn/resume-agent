@@ -172,6 +172,27 @@ export interface LinkedInContentState extends BaseState {
    * Defaults to 'both' when not specified.
    */
   carousel_format?: 'text' | 'carousel' | 'both';
+
+  /**
+   * The content type for this session.
+   * - 'standard': thought leadership post from the user's expertise (default)
+   * - 'interview_authority': carousel posts answering hard interview questions for the
+   *   user's target role, drawing from their evidence library
+   */
+  content_type?: 'standard' | 'interview_authority';
+
+  /**
+   * 360Brew-informed best time to post this content for maximum reach.
+   * Populated in finalizeResult based on the user's timezone.
+   */
+  recommended_posting_time?: {
+    /** Hour of day in 24h format: 8 (8am) or 14 (2pm) */
+    hour: number;
+    /** IANA timezone string, e.g. "America/Chicago" */
+    timezone: string;
+    /** Human-readable rationale shown to the user */
+    rationale: string;
+  };
 }
 
 // --- SSE Events --------------------------------------------------------
@@ -184,7 +205,7 @@ export type LinkedInContentSSEEvent =
   | { type: 'series_plan_ready'; session_id: string; series: ContentSeries }
   | { type: 'post_draft_ready'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_post_number?: number; series_total?: number }
   | { type: 'post_revised'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_post_number?: number; series_total?: number }
-  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_plan?: ContentSeries; carousel_slides?: CarouselSlide[] }
+  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_plan?: ContentSeries; carousel_slides?: CarouselSlide[]; recommended_posting_time?: { hour: number; timezone: string; rationale: string } }
   | { type: 'carousel_ready'; slides: CarouselSlide[]; topic: string }
   | { type: 'pipeline_error'; stage: string; error: string };
 

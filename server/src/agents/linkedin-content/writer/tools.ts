@@ -22,6 +22,7 @@ import {
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
 import { buildCarouselSlides } from '../../../lib/carousel-builder.js';
+import logger from '../../../lib/logger.js';
 
 // ─── Helper: build series context block ──────────────────────────────────
 
@@ -277,15 +278,48 @@ const writePostTool: LinkedInContentTool = {
       };
     }
 
-    const postText = String(parsed.post ?? '');
+    let postText = String(parsed.post ?? '');
     const hashtags = Array.isArray(parsed.hashtags)
       ? (parsed.hashtags as unknown[]).map(String)
       : ['#Leadership'];
 
+    // 360Brew length enforcement for text posts
+    const charCount = postText.length;
+    let lengthNote: string | undefined;
+    if (charCount < 800) {
+      lengthNote = `Post is ${charCount} characters — below the 360Brew minimum of 1,000. Consider expanding with more specific evidence or a deeper development of the main idea.`;
+      logger.warn({ charCount, topic }, 'linkedin-content: write_post below 360Brew minimum length');
+    } else if (charCount > 1500) {
+      // Truncate at the last complete sentence before 1,300 characters
+      const target = postText.slice(0, 1300);
+      const lastPeriod = Math.max(
+        target.lastIndexOf('. '),
+        target.lastIndexOf('.\n'),
+        target.lastIndexOf('! '),
+        target.lastIndexOf('!\n'),
+        target.lastIndexOf('? '),
+        target.lastIndexOf('?\n'),
+      );
+      if (lastPeriod > 800) {
+        postText = postText.slice(0, lastPeriod + 1).trimEnd();
+        lengthNote = `Post was ${charCount} characters — trimmed to ${postText.length} to stay within the 360Brew optimal range (1,000–1,300).`;
+        logger.info({ originalLength: charCount, trimmedLength: postText.length }, 'linkedin-content: write_post trimmed to 360Brew optimal length');
+      }
+    }
+
+    // 360Brew carousel slide count check (applies when content is a carousel)
+    const carouselFormat = state.carousel_format;
+    if ((carouselFormat === 'carousel' || carouselFormat === 'both') && state.carousel_slides) {
+      const slideCount = state.carousel_slides.length;
+      if (slideCount < 8 || slideCount > 12) {
+        logger.warn({ slideCount }, 'linkedin-content: carousel slide count outside 360Brew optimal range (8-12)');
+      }
+    }
+
     ctx.scratchpad.post_draft = postText;
     ctx.scratchpad.post_hashtags = hashtags;
 
-    return { post: postText, hashtags, hook_explanation: parsed.hook_explanation };
+    return { post: postText, hashtags, hook_explanation: parsed.hook_explanation, length_note: lengthNote };
   },
 };
 

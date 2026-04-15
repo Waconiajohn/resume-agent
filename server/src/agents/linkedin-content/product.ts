@@ -184,18 +184,38 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
       series_plan: input.series_plan
         ? (input.series_plan as ContentSeries)
         : undefined,
+      // content_type: 'interview_authority' activates the interview question carousel workflow
+      content_type: input.content_type === 'interview_authority'
+        ? 'interview_authority'
+        : 'standard',
+      // User timezone for 360Brew posting time recommendations. Defaults to US Central.
+      recommended_posting_time: {
+        hour: 8,
+        timezone: typeof input.timezone === 'string' && input.timezone
+          ? input.timezone
+          : 'America/Chicago',
+        rationale: '',
+      },
     }),
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'strategist') {
         const sharedContext = state.shared_context;
         const isSeries = state.series_mode;
+        const isInterviewAuthority = state.content_type === 'interview_authority';
         const parts: string[] = [];
 
         if (isSeries) {
           parts.push(
             'Plan a 12-16 post thought leadership series for this executive.',
             'The series must tell a cohesive story: each post stands alone but builds on a shared narrative arc.',
+            '',
+          );
+        } else if (isInterviewAuthority) {
+          parts.push(
+            'This is an Interview Authority session. Content type: interview_authority.',
+            'Identify the 5 hardest interview questions for this professional\'s target role, mapped to their real evidence.',
+            'Each question becomes a carousel post where they answer it from their actual experience.',
             '',
           );
         } else {
@@ -259,12 +279,19 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           }));
         }
 
-        parts.push(
-          '## Objective',
-          isSeries
-            ? 'Use analyze_expertise to map this person\'s signature strengths and career themes, then plan_series to design a cohesive series, then present_series to show the user the plan for approval.'
-            : 'Use the available tools to identify what this person should be known for on LinkedIn right now, then suggest topics that are truthful, differentiated, and well-supported by their evidence.',
-        );
+        let objectiveInstruction: string;
+        if (isSeries) {
+          objectiveInstruction =
+            'Use analyze_expertise to map this person\'s signature strengths and career themes, then plan_series to design a cohesive series, then present_series to show the user the plan for approval.';
+        } else if (isInterviewAuthority) {
+          objectiveInstruction =
+            'Use analyze_expertise to understand their target role and differentiators, then suggest_interview_authority_topics to identify 5 hard interview questions mapped to their evidence, then present_topics to show the user the questions for selection.';
+        } else {
+          objectiveInstruction =
+            'Use the available tools to identify what this person should be known for on LinkedIn right now, then suggest topics that are truthful, differentiated, and well-supported by their evidence.';
+        }
+
+        parts.push('## Objective', objectiveInstruction);
 
         // Distress resources -- first agent only
         const distress = getDistressFromInput(input);
@@ -286,6 +313,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
       if (agentName === 'writer') {
         const sharedContext = state.shared_context;
         const isSeries = state.series_mode && state.series_plan;
+        const isInterviewAuthority = state.content_type === 'interview_authority';
         const parts: string[] = [];
 
         if (isSeries) {
@@ -299,6 +327,16 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
             `**Post topic:** ${seriesPost?.title ?? 'see series context'}`,
             '',
             'Use write_post to draft this post with full series context, self_review_post to check quality, then present_post to show the user.',
+            '',
+          );
+        } else if (isInterviewAuthority) {
+          const selectedQuestion = state.selected_topic ?? 'interview question';
+          parts.push(
+            'Content type: interview_authority.',
+            `Write an Interview Authority carousel answering this interview question: "${selectedQuestion}"`,
+            '',
+            'This is the user answering this question in public, from their real experience — not generic advice.',
+            'Use write_post with style "story", then self_review_post, then present_post, then generate_carousel.',
             '',
           );
         } else {
@@ -344,6 +382,16 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           );
         }
 
+        // Provide timezone context so the writer knows what posting time to recommend
+        const timezone = state.recommended_posting_time?.timezone ?? 'America/Chicago';
+        parts.push(
+          '',
+          `## Posting Time Context`,
+          `User timezone: ${timezone}`,
+          '360Brew optimal posting windows: 8-9am or 2-3pm in the user\'s timezone.',
+          'Tuesday through Thursday are the highest-engagement days.',
+        );
+
         const toneGuidance = getToneGuidanceFromInput(input);
         if (toneGuidance) {
           parts.push(toneGuidance);
@@ -364,6 +412,15 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         keyword_density: 0,
       };
 
+      // Compute 360Brew posting time recommendation.
+      // Pick 8am (morning window) or 2pm (afternoon window). Default to 8am Tuesday.
+      const timezone = state.recommended_posting_time?.timezone ?? 'America/Chicago';
+      const recommendedPostingTime = {
+        hour: 8,
+        timezone,
+        rationale: 'Tuesday–Thursday 8am gets the highest LinkedIn engagement according to 360Brew research.',
+      };
+
       emit({
         type: 'content_complete',
         session_id: state.session_id,
@@ -375,6 +432,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         series_plan: state.series_plan,
         // Include carousel slides when the writer called generate_carousel
         carousel_slides: state.carousel_slides,
+        recommended_posting_time: recommendedPostingTime,
       });
 
       return {
@@ -405,7 +463,9 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           .insert({
             user_id: state.user_id,
             platform: 'linkedin',
-            post_type: data.series_mode ? 'thought_leadership_series' : 'thought_leadership',
+            post_type: state.content_type === 'interview_authority'
+              ? 'interview_authority'
+              : data.series_mode ? 'thought_leadership_series' : 'thought_leadership',
             topic: state.selected_topic ?? null,
             content: data.post,
             hashtags: data.hashtags,

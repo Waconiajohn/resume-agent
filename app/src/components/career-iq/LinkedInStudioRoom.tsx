@@ -177,6 +177,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
   const [inputError, setInputError] = useState<string | null>(null);
   const [showCarousel, setShowCarousel] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [contentType, setContentType] = useState<'standard' | 'interview_authority'>('standard');
 
   const handleDownloadCarousel = useCallback(async () => {
     if (!content.carouselSlides) return;
@@ -190,11 +191,11 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
 
   const handleStart = useCallback(async () => {
     setInputError(null);
-    const ok = await content.startContentPipeline();
+    const ok = await content.startContentPipeline({ content_type: contentType });
     if (!ok && !content.error) {
       setInputError('Unable to start your LinkedIn post draft. Please try again.');
     }
-  }, [content]);
+  }, [content, contentType]);
 
   const handleSelectTopic = useCallback(async (topic: TopicSuggestion) => {
     await content.selectTopic(topic.id);
@@ -249,9 +250,46 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               Once the profile direction feels strong enough, draft one authentic post that sounds like you and gives people a reason to keep reading.
             </p>
           </div>
+
+          {/* Content type selector */}
+          <div className="flex flex-col items-center gap-2 w-full max-w-[360px]">
+            <span className="text-[12px] text-[var(--text-soft)] font-medium">Post type</span>
+            <div className="flex items-center rounded-xl border border-[var(--line-soft)] overflow-hidden w-full">
+              <button
+                type="button"
+                onClick={() => setContentType('standard')}
+                className={cn(
+                  'flex-1 px-3 py-2 text-[12px] font-medium transition-colors text-center',
+                  contentType === 'standard'
+                    ? 'bg-[var(--link)] text-white'
+                    : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                )}
+              >
+                Thought Leadership
+              </button>
+              <button
+                type="button"
+                onClick={() => setContentType('interview_authority')}
+                className={cn(
+                  'flex-1 px-3 py-2 text-[12px] font-medium transition-colors text-center',
+                  contentType === 'interview_authority'
+                    ? 'bg-[var(--link)] text-white'
+                    : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                )}
+              >
+                Interview Authority
+              </button>
+            </div>
+            {contentType === 'interview_authority' && (
+              <p className="text-[12px] text-[var(--text-soft)] text-center leading-relaxed">
+                Answer hard interview questions in public, drawing from your real experience. Positions you as an authority before the interview happens.
+              </p>
+            )}
+          </div>
+
           <GlassButton onClick={handleStart} className="flex items-center gap-2">
             <Sparkles size={14} />
-            Write a Post
+            {contentType === 'interview_authority' ? 'Find My Interview Questions' : 'Write a Post'}
           </GlassButton>
         </GlassCard>
       </div>
@@ -260,22 +298,30 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
 
   // ── Running / connecting ──
   if (isRunning && content.status !== 'topic_selection' && content.status !== 'post_review') {
+    const runningLabel = contentType === 'interview_authority'
+      ? 'Identifying hard interview questions for your role...'
+      : 'Generating post topics...';
     return (
       <div className="flex flex-col gap-4">
-        <ActivityFeed messages={content.activityMessages} label="Generating post topics..." />
+        <ActivityFeed messages={content.activityMessages} label={runningLabel} />
       </div>
     );
   }
 
   // ── Topic selection gate ──
   if (content.status === 'topic_selection') {
+    const isIA = contentType === 'interview_authority';
     return (
       <div className="flex flex-col gap-4">
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles size={16} className="text-[var(--link)]" />
-            <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Choose a Topic</h3>
-            <span className="ml-auto text-[13px] text-[var(--text-soft)]">Select one to write</span>
+            <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
+              {isIA ? 'Choose an Interview Question' : 'Choose a Topic'}
+            </h3>
+            <span className="ml-auto text-[13px] text-[var(--text-soft)]">
+              {isIA ? 'Select one to answer publicly' : 'Select one to write'}
+            </span>
           </div>
           <div className="space-y-3">
             {content.topics.map((topic) => (
@@ -535,6 +581,19 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                 onDownload={handleDownloadCarousel}
                 isDownloading={isDownloadingPdf}
               />
+            </div>
+          )}
+
+          {content.recommendedPostingTime && (
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] w-fit">
+              <Clock size={12} className="text-[var(--text-soft)] flex-shrink-0" />
+              <span className="text-[12px] text-[var(--text-soft)]">
+                Best time to post:{' '}
+                <span className="font-medium text-[var(--text-muted)]">
+                  {content.recommendedPostingTime.hour === 8 ? 'Tue–Thu 8am' : 'Tue–Thu 2pm'}{' '}
+                  {content.recommendedPostingTime.timezone.split('/').pop()?.replace('_', ' ') ?? content.recommendedPostingTime.timezone}
+                </span>
+              </span>
             </div>
           )}
 
