@@ -134,26 +134,17 @@ describe('profile-setup route', () => {
     });
 
     mockSynthesizeProfile.mockResolvedValue({
-      career_thread: 'Operator to engineering leader',
-      top_capabilities: [],
-      signature_story: {
-        situation: '',
-        task: '',
-        action: '',
-        result: '',
-        reflection: '',
-      },
-      honest_answer: {
-        concern: '',
-        response: '',
-      },
-      righteous_close: '',
-      why_me_final: {
-        headline: 'Engineering leader',
-        body: 'Scales platforms and teams.',
-      },
-      target_roles: ['VP Engineering'],
-      created_at: '2026-04-07T00:00:00.000Z',
+      version: 'career_profile_v2',
+      source: 'profile-setup',
+      generated_at: new Date().toISOString(),
+      targeting: { target_roles: ['VP of Operations'], target_industries: ['Manufacturing'], seniority: 'VP', transition_type: 'lateral', preferred_company_environments: [] },
+      positioning: { core_strengths: ['Operations Leadership'], proof_themes: [], differentiators: [], adjacent_positioning: [], positioning_statement: 'Test positioning', narrative_summary: '', leadership_scope: '', scope_of_responsibility: '' },
+      narrative: { colleagues_came_for_what: '', known_for_what: '', why_not_me: '', story_snippet: '' },
+      preferences: { must_haves: [], constraints: [], compensation_direction: '' },
+      coaching: { financial_segment: 'comfortable', emotional_state: 'confident', coaching_tone: 'direct', urgency_score: 5, recommended_starting_point: 'resume' },
+      evidence_positioning_statements: [],
+      profile_signals: { clarity: 'strong', alignment: 'strong', differentiation: 'moderate' },
+      completeness: { overall_score: 75, dashboard_state: 'refining', sections: [] },
     });
 
     mockUpsertUserContext.mockResolvedValue({ id: 'ctx-1' });
@@ -203,7 +194,7 @@ describe('profile-setup route', () => {
     expect(mockFrom).toHaveBeenCalledTimes(1);
     expect(mockUpsertUserContext).toHaveBeenCalledWith(
       'user-123',
-      'career_iq_profile',
+      'career_profile',
       expect.any(Object),
       'profile-setup',
       '123e4567-e89b-12d3-a456-426614174000',

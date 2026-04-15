@@ -26,7 +26,6 @@ export type ContextType =
   | 'benchmark_candidate'
   | 'blueprint'
   | 'career_interview_transcript'
-  | 'career_iq_profile'
   | 'career_narrative'
   | 'career_profile'
   | 'client_profile'

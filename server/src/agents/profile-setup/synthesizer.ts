@@ -2,7 +2,7 @@
  * Profile Setup — Synthesizer Agent
  *
  * Single-prompt agent. Reads all intake analysis + the full interview transcript
- * and produces a CareerIQProfileFull — the complete, polished profile.
+ * and produces a CareerProfileV2 — the complete, polished profile.
  *
  * One LLM call. Not an agentic loop.
  *

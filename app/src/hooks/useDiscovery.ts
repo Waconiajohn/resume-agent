@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
-import type { DiscoveryOutput, ExcavationResponse, CareerIQProfile, DiscoverySSEEvent } from '@/types/discovery';
+import type { DiscoveryOutput, ExcavationResponse, DiscoverySSEEvent } from '@/types/discovery';
+import type { CareerProfileV2 } from '@/types/career-profile';
 
 interface DiscoveryAnalyzeResult {
   session_id: string;
@@ -9,7 +10,7 @@ interface DiscoveryAnalyzeResult {
 }
 
 interface CompleteResult {
-  profile: CareerIQProfile;
+  profile: CareerProfileV2;
 }
 
 interface UseDiscoveryState {

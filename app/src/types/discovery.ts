@@ -32,12 +32,10 @@ export interface ExcavationResponse {
   complete: boolean;
 }
 
-export interface CareerIQProfile {
-  career_thread: string;
-  exceptional_areas: Array<{ area: string; evidence: string }>;
-  role_fit_points: Array<{ point: string; evidence: string }>;
-  hiring_manager_concerns: Array<{ concern: string; response: string }>;
-}
+import type { CareerProfileV2 } from '@/types/career-profile';
+
+// Backward-compatibility alias — discovery now returns CareerProfileV2
+export type CareerIQProfile = CareerProfileV2;
 
 export interface LiveResumeBullet {
   id: string;

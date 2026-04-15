@@ -30,50 +30,40 @@ export function CareerIQProfileScreen({ profile, resume, jobText }: CareerIQProf
           Here is who you are.
         </h1>
 
-        {/* Career Thread */}
+        {/* Positioning statement */}
         <ProfileSection label="Your Career Thread">
           <p className="text-lg leading-relaxed text-[var(--text-strong)]" style={{ fontFamily: 'var(--font-display)' }}>
-            {profile.career_thread}
+            {profile.positioning?.positioning_statement}
           </p>
         </ProfileSection>
 
-        {/* Exceptional areas */}
+        {/* Core strengths */}
         <ProfileSection label="Where You Are Exceptional">
           <div className="space-y-4">
-            {profile.exceptional_areas.map((item, idx) => (
+            {(profile.positioning?.core_strengths ?? []).map((strength, idx) => (
               <div key={idx} className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-4">
-                <p className="font-semibold text-[var(--text-strong)]">{item.area}</p>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">{item.evidence}</p>
+                <p className="font-semibold text-[var(--text-strong)]">{strength}</p>
               </div>
             ))}
           </div>
         </ProfileSection>
 
-        {/* Role fit */}
+        {/* Differentiators */}
         <ProfileSection label="What You Bring To This Role">
           <div className="space-y-4">
-            {profile.role_fit_points.map((item, idx) => (
+            {(profile.positioning?.differentiators ?? []).map((d, idx) => (
               <div key={idx} className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-2)] p-4">
-                <p className="font-semibold text-[var(--text-strong)]">{item.point}</p>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">{item.evidence}</p>
+                <p className="font-semibold text-[var(--text-strong)]">{d}</p>
               </div>
             ))}
           </div>
         </ProfileSection>
 
-        {/* Hiring manager concerns — styled honestly, slightly different */}
-        {profile.hiring_manager_concerns.length > 0 && (
+        {/* Why not me — single text block */}
+        {profile.narrative?.why_not_me && (
           <ProfileSection label="What A Hiring Manager Might Worry About">
-            <div className="space-y-4">
-              {profile.hiring_manager_concerns.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)] p-4"
-                >
-                  <p className="font-semibold text-[var(--badge-amber-text)]">{item.concern}</p>
-                  <p className="mt-2 text-sm text-[var(--text-muted)]">{item.response}</p>
-                </div>
-              ))}
+            <div className="rounded-xl border border-[var(--badge-amber-bg)] bg-[var(--badge-amber-bg)] p-4">
+              <p className="text-sm text-[var(--text-muted)]">{profile.narrative.why_not_me}</p>
             </div>
           </ProfileSection>
         )}

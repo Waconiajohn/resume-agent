@@ -56,15 +56,15 @@ type DiscoveryAction =
 function applyProfileSynthesis(resume: LiveResumeState, profile: CareerIQProfile): LiveResumeState {
   let updated = { ...resume };
 
-  // Replace summary with career thread
-  if (profile.career_thread) {
-    updated = { ...updated, summary: profile.career_thread };
+  // Replace summary with positioning statement
+  if (profile.positioning?.positioning_statement) {
+    updated = { ...updated, summary: profile.positioning.positioning_statement };
   }
 
-  // Highlight bullets that match evidence from exceptional_areas and role_fit_points
+  // Highlight bullets that match evidence from core_strengths and differentiators
   const allEvidence = [
-    ...profile.exceptional_areas.map(a => a.evidence),
-    ...profile.role_fit_points.map(p => p.evidence),
+    ...(profile.positioning?.core_strengths ?? []),
+    ...(profile.positioning?.differentiators ?? []),
   ].filter(Boolean);
 
   if (allEvidence.length > 0) {
