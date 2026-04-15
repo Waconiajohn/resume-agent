@@ -48,6 +48,7 @@ export interface LessonInjection {
   available: boolean;
   unavailableMessage?: string;
   unavailableLink?: string;
+  unavailableRoom?: string;
 }
 
 export type CourseProgress = Record<

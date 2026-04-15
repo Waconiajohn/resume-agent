@@ -64,12 +64,14 @@ function ProgressRing({
   size = 36,
   stroke = 3,
   color = 'var(--accent)',
+  label,
   children,
 }: {
   progress: number;
   size?: number;
   stroke?: number;
   color?: string;
+  label?: string;
   children?: React.ReactNode;
 }) {
   const r = (size - stroke * 2) / 2;
@@ -78,7 +80,12 @@ function ProgressRing({
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size}>
+      <svg
+        width={size}
+        height={size}
+        role="img"
+        aria-label={label ?? `${progress}% complete`}
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -102,7 +109,7 @@ function ProgressRing({
         />
       </svg>
       {children && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
           {children}
         </div>
       )}
@@ -137,6 +144,7 @@ function CourseNavItem({
     <div className="mb-0.5">
       <button
         type="button"
+        aria-expanded={isOpen}
         onClick={onToggle}
         className={cn(
           'group flex w-full items-center gap-3 rounded-[8px] px-3 py-3 text-left transition-all',
@@ -148,7 +156,7 @@ function CourseNavItem({
           borderLeft: isActive ? `2px solid ${course.color}` : '2px solid transparent',
         }}
       >
-        <ProgressRing progress={progress} color={course.color} size={36} stroke={2.5}>
+        <ProgressRing progress={progress} color={course.color} size={36} stroke={2.5} label={`${course.title}: ${progress}% complete`}>
           <span
             className="text-[9px] tracking-[0.05em] text-[var(--text-soft)]"
             style={{ fontFamily: 'var(--font-mono, monospace)' }}
@@ -184,6 +192,7 @@ function CourseNavItem({
               <button
                 key={lesson.id}
                 type="button"
+                aria-current={isLessonActive ? 'true' : undefined}
                 onClick={() => onSelectLesson(lesson)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-left transition-colors',
@@ -366,7 +375,7 @@ function QuickStats({ dataSources }: { dataSources: AgentDataSources }) {
                   className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${stat.pct}%`,
-                    background: stat.bad ? '#EF4444' : 'var(--accent)',
+                    background: stat.bad ? 'var(--color-destructive, #EF4444)' : 'var(--accent)',
                   }}
                 />
               </div>
@@ -583,6 +592,7 @@ export function LMSRoom({ onNavigateRoom, agentDataSources = {} }: LMSRoomProps)
       <main className="flex-1 overflow-y-auto px-10 py-8">
         {activeLesson ? (
           <LessonRenderer
+            key={activeLesson.id}
             lesson={activeLesson}
             injections={injections}
             onLaunchTool={handleLaunchTool}

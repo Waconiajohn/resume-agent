@@ -13,6 +13,8 @@ import { useMomentum } from '@/hooks/useMomentum';
 import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { supabase } from '@/lib/supabase';
+import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
+import type { AgentDataSources } from '@/lib/lms-injection-mapper';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
 import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachSession } from '@/types/session';
@@ -111,6 +113,7 @@ export function CareerIQScreen({
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
   const { nudges, dismissNudge, checkStalls } = useMomentum();
   const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
+  const [lmsAgentDataSources, setLmsAgentDataSources] = useState<AgentDataSources>({});
   const workspaceLaunchContext = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const jobApplicationId = params.get('job');
@@ -214,6 +217,44 @@ export function CareerIQScreen({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (activeRoom !== 'learning') return;
+
+    let cancelled = false;
+
+    async function loadLatestResumePipelineResult() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        const { data } = await supabase
+          .from('coach_sessions')
+          .select('id, tailored_sections')
+          .eq('user_id', user.id)
+          .eq('pipeline_status', 'complete')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (cancelled || !data) return;
+
+        const stored = data.tailored_sections as Record<string, unknown> | null;
+        if (!stored || stored.version !== 'v2') return;
+
+        const body = stored as unknown as LoadSessionResponseBody;
+        const hydrated = hydrateV2SessionLoad(data.id as string, body);
+        if (!hydrated || cancelled) return;
+
+        setLmsAgentDataSources({ resumePipelineResult: hydrated.data });
+      } catch {
+        // Data unavailable — LMS slots gracefully show as unavailable
+      }
+    }
+
+    void loadLatestResumePipelineResult();
+    return () => { cancelled = true; };
+  }, [activeRoom]);
 
   const mobileFeedEvents = useMemo<RealFeedEvent[] | undefined>(() => {
     const events: RealFeedEvent[] = [];
@@ -396,6 +437,7 @@ export function CareerIQScreen({
       return (
         <LMSRoom
           onNavigateRoom={handleRoomNavigate}
+          agentDataSources={lmsAgentDataSources}
         />
       );
     }

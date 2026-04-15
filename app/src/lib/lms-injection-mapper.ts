@@ -17,6 +17,7 @@ export interface AgentDataSources {
   resumePipelineResult?: V2PipelineData | null;
   positioningProfile?: CareerProfileV2 | null;
   jobFinderResults?: Record<string, unknown> | null;
+  networkingResults?: Record<string, unknown> | null;
   linkedInProfile?: Record<string, unknown> | null;
   interviewPrepResult?: Record<string, unknown> | null;
   evidenceLibrary?: Array<{ text: string; source: string }> | null;
@@ -100,7 +101,7 @@ function resolveSource(
       return dataSources.linkedInProfile ?? null;
 
     case 'networking':
-      return dataSources.jobFinderResults ?? null;
+      return dataSources.networkingResults ?? null;
 
     default:
       return null;
@@ -186,6 +187,7 @@ export function buildLessonInjections(
         available: false,
         unavailableMessage: unavailableCfg.message,
         unavailableLink: unavailableCfg.link,
+        unavailableRoom: unavailableCfg.link.replace('/workspace?room=', ''),
       };
     }
 
@@ -198,6 +200,7 @@ export function buildLessonInjections(
         available: false,
         unavailableMessage: unavailableCfg.message,
         unavailableLink: unavailableCfg.link,
+        unavailableRoom: unavailableCfg.link.replace('/workspace?room=', ''),
       };
     }
 
@@ -210,6 +213,7 @@ export function buildLessonInjections(
         available: false,
         unavailableMessage: unavailableCfg.message,
         unavailableLink: unavailableCfg.link,
+        unavailableRoom: unavailableCfg.link.replace('/workspace?room=', ''),
       };
     }
 
@@ -221,6 +225,7 @@ export function buildLessonInjections(
         available: false,
         unavailableMessage: unavailableCfg.message,
         unavailableLink: unavailableCfg.link,
+        unavailableRoom: unavailableCfg.link.replace('/workspace?room=', ''),
       };
     }
 
@@ -231,6 +236,7 @@ export function buildLessonInjections(
         available: false,
         unavailableMessage: unavailableCfg.message,
         unavailableLink: unavailableCfg.link,
+        unavailableRoom: unavailableCfg.link.replace('/workspace?room=', ''),
       };
     }
 

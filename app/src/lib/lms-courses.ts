@@ -214,7 +214,7 @@ This isn't cynicism — it's pattern recognition. Experienced hiring managers ha
   },
 ];
 
-// ─── Course 2: Super Bowl Story ──────────────────────────────────────────────
+// ─── Course 2: The Benchmark Candidate ──────────────────────────────────────
 
 const COURSE_2_LESSONS: LessonConfig[] = [
   {
@@ -1276,8 +1276,8 @@ Understanding your actual runway — not your estimated runway — and making pr
 **Your retirement readiness score is below.**`,
     slots: [
       {
-        key: 'retirement_readiness',
-        label: 'Your Retirement Readiness Score',
+        key: 'urgency_score',
+        label: 'Your Search Urgency Score',
         agentSource: 'positioning',
         dataPath: 'coaching.urgency_score',
         format: 'score-badge',

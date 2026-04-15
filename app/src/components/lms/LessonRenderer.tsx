@@ -103,7 +103,7 @@ function AvailableInjection({ slot, injection }: { slot: LessonSlot; injection: 
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${Math.min(display, 100)}%`,
-                  background: display >= 70 ? 'var(--accent)' : display >= 40 ? '#EAB308' : '#EF4444',
+                  background: display >= 70 ? 'var(--accent)' : display >= 40 ? 'var(--color-warning, #EAB308)' : 'var(--color-destructive, #EF4444)',
                 }}
               />
             </div>
@@ -116,7 +116,7 @@ function AvailableInjection({ slot, injection }: { slot: LessonSlot; injection: 
       return (
         <span className="text-[28px] font-extrabold tabular-nums text-[var(--accent)]"
           style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-          {typeof value === 'number' ? value : value}
+          {value}
         </span>
       );
     }
@@ -167,7 +167,7 @@ function UnavailableInjection({
   injection: LessonInjection;
   onLaunchTool?: (agentRoom: string) => void;
 }) {
-  const agentRoom = injection.unavailableLink?.replace('/workspace?room=', '') ?? '';
+  const agentRoom = injection.unavailableRoom ?? injection.unavailableLink?.replace('/workspace?room=', '') ?? '';
 
   return (
     <div className="rounded-[8px] border border-dashed border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
@@ -250,20 +250,34 @@ function renderMarkdown(content: string): React.ReactNode {
   };
 
   let listBuffer: string[] = [];
+  let listType: 'ul' | 'ol' = 'ul';
 
   const flushList = () => {
     if (listBuffer.length > 0) {
-      nodes.push(
-        <ul key={key++} className="ml-4 space-y-1.5">
-          {listBuffer.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
-              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
-              {renderInline(item)}
-            </li>
-          ))}
-        </ul>,
-      );
+      if (listType === 'ol') {
+        nodes.push(
+          <ol key={key++} className="ml-4 list-decimal space-y-1.5">
+            {listBuffer.map((item, i) => (
+              <li key={i} className="pl-1 text-[14px] leading-relaxed text-[var(--text-muted)]">
+                {renderInline(item)}
+              </li>
+            ))}
+          </ol>,
+        );
+      } else {
+        nodes.push(
+          <ul key={key++} className="ml-4 space-y-1.5">
+            {listBuffer.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
+                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
+                {renderInline(item)}
+              </li>
+            ))}
+          </ul>,
+        );
+      }
       listBuffer = [];
+      listType = 'ul'; // reset default
     }
   };
 
@@ -292,12 +306,16 @@ function renderMarkdown(content: string): React.ReactNode {
 
     if (trimmed.startsWith('- ')) {
       flushParagraph();
+      if (listType !== 'ul' && listBuffer.length > 0) flushList();
+      listType = 'ul';
       listBuffer.push(trimmed.slice(2));
       continue;
     }
 
     if (/^\d+\. /.test(trimmed)) {
       flushParagraph();
+      if (listType !== 'ol' && listBuffer.length > 0) flushList();
+      listType = 'ol';
       listBuffer.push(trimmed.replace(/^\d+\.\s*/, ''));
       continue;
     }
@@ -385,9 +403,12 @@ export function LessonRenderer({
 
       {/* Tab Toggle */}
       {hasSlots && (
-        <div className="mb-7 flex w-fit rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-1">
+        <div role="tablist" className="mb-7 flex w-fit rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-1">
           <button
+            id="tab-lesson"
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'lesson'}
             onClick={() => setActiveTab('lesson')}
             className={cn(
               'rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
@@ -399,7 +420,10 @@ export function LessonRenderer({
             Lesson
           </button>
           <button
+            id="tab-situation"
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'situation'}
             onClick={() => setActiveTab('situation')}
             className={cn(
               'flex items-center gap-2 rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
@@ -418,7 +442,7 @@ export function LessonRenderer({
 
       {/* ─── Lesson Tab ─── */}
       {activeTab === 'lesson' && (
-        <div className="animate-in fade-in duration-200">
+        <div role="tabpanel" aria-labelledby="tab-lesson" className="animate-in fade-in duration-200">
           {/* Core Insight */}
           {lesson.coreInsight && (
             <CoreInsightBadge text={lesson.coreInsight} />
@@ -466,7 +490,7 @@ export function LessonRenderer({
 
       {/* ─── Your Situation Tab ─── */}
       {activeTab === 'situation' && hasSlots && (
-        <div className="animate-in fade-in duration-200">
+        <div role="tabpanel" aria-labelledby="tab-situation" className="animate-in fade-in duration-200">
           <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
             This lesson applied to your current resume, target role, and career data.
           </p>
@@ -475,6 +499,7 @@ export function LessonRenderer({
           <div className="rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] overflow-hidden">
             <button
               type="button"
+              aria-expanded={situationOpen}
               onClick={() => setSituationOpen(!situationOpen)}
               className="flex w-full items-center justify-between p-5 text-left"
             >
