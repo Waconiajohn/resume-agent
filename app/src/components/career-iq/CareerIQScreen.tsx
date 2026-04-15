@@ -26,6 +26,7 @@ const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((modul
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
+const LMSRoom = lazy(() => import('@/components/lms/LMSRoom').then((module) => ({ default: module.LMSRoom })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Workspace Home',
@@ -36,6 +37,7 @@ const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   networking: 'Networking',
   interview: 'Interview Prep',
   financial: 'Retirement Bridge',
+  learning: 'Learning',
 };
 
 interface CoverLetterSession {
@@ -388,6 +390,14 @@ export function CareerIQScreen({
 
     if (activeRoom === 'networking') {
       return <SmartReferralsRoom initialFocus={normalizedWorkspaceFocus} onNavigate={onNavigate} />;
+    }
+
+    if (activeRoom === 'learning') {
+      return (
+        <LMSRoom
+          onNavigateRoom={handleRoomNavigate}
+        />
+      );
     }
 
     const unhandledRoom: never = activeRoom;

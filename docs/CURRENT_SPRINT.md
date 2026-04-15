@@ -47,7 +47,7 @@
 
 ## Epic 2 — LMS Personalization Layer (Weeks 2-4)
 
-### Story 2.1 — Lesson Injection Schema and Renderer [not started]
+### Story 2.1 — Lesson Injection Schema and Renderer [done]
 ### Story 2.2 — Course 1 Injection: Understanding the System [not started]
 ### Story 2.3 — Course 2 Injection: Super Bowl Story [not started]
 ### Story 2.4 — Course 3 Injection: Resume Mastery [not started]

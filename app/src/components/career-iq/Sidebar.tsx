@@ -10,6 +10,7 @@ import {
   Lock,
   User,
   Users,
+  GraduationCap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { DashboardState } from './useWhyMeStory';
@@ -45,6 +46,12 @@ const ROOM_GROUPS: RoomGroup[] = [
       { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
       { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: false },
       { id: 'networking', label: 'Networking', icon: Users, description: 'Referrals and outreach', gated: false },
+    ],
+  },
+  {
+    label: 'Resources',
+    rooms: [
+      { id: 'learning', label: 'Learning', icon: GraduationCap, description: '8 courses personalized with your data', gated: false },
     ],
   },
 ];

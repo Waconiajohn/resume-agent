@@ -1,5 +1,33 @@
 # Changelog — Resume Agent
 
+## 2026-04-12 — Session 96
+**Sprint:** LMS + CareerIQ Integration | **Story:** Story 2.1 — Lesson Injection Schema and Renderer
+**Summary:** Built the complete LMS foundation: types, 8-course configuration, injection mapper, lesson renderer, room component, and sidebar + routing integration.
+
+### Changes Made
+- `app/src/types/lms.ts` — New file. `LessonSlot`, `LessonConfig`, `LessonInjection`, `CourseProgress`, `CourseConfig` types.
+- `app/src/lib/lms-courses.ts` — New file. All 8 courses (40 lessons) fully configured with injection slots tied to real agent data paths.
+- `app/src/lib/lms-injection-mapper.ts` — New file. `buildLessonInjections()` maps `AgentDataSources` to `LessonInjection[]` via dot-path resolver. Handles all 7 agent sources and all 5 formats. Graceful "unavailable" fallback per source.
+- `app/src/components/lms/LessonRenderer.tsx` — New file. Renders a lesson with header, markdown content, "Your Situation" injection grid, and "Launch Tool" button. Handles all formats: number, percentage, text, list, score-badge.
+- `app/src/components/lms/LMSRoom.tsx` — New file. Room component with collapsible course sidebar, lesson nav, lesson renderer, localStorage view tracking, and welcome screen.
+- `app/src/components/career-iq/workspaceRoomAccess.ts` — Added `'learning'` to `ExposedWorkspaceRoom` and `EXPOSED_WORKSPACE_ROOMS`.
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Lazy-loaded `LMSRoom`, added `'learning'` to `ROOM_LABELS`, added `learning` render branch.
+- `app/src/components/career-iq/Sidebar.tsx` — Added `GraduationCap` icon, added "Resources" group with "Learning" nav item.
+- `app/src/components/career-iq/workspaceHomeGuidance.ts` — Added `learning` entry to `labelByRoom` record to satisfy exhaustive type check.
+
+### Decisions Made
+- Lesson content is substantive placeholder — real copy fills later. Injection slot definitions (key, agentSource, dataPath) are the load-bearing part and are final.
+- `AgentDataSources` receives `positioningProfile` from `CareerProfileContext` automatically inside `LMSRoom`; callers only need to pass pipeline-specific data.
+- `handleLaunchTool` bridges `string` (from lesson configs) to `WorkspaceRoom` via `resolveWorkspaceRoom()` — avoids leaking workspace types into the lesson schema.
+- Lesson view tracking via localStorage (no DB needed — progress survives page refreshes, not cross-device).
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Story 2.2-2.5: Wire real agent data into `agentDataSources` once pipeline hook (`usePipelineResult`) is accessible from CareerIQScreen
+- Story 2.6: "Launch Tool" buttons already wired — test with real agent rooms
+
 ## 2026-04-01 — Session 95
 **Sprint:** Active sprint (shared context audit) | **Story:** Enrich all agents with full platform context
 **Summary:** Audited all 15 active agent products for shared context coverage. 12 products were already fully enriched via `shared_context` + `platform_context`. Fixed the 3 agents whose second-stage agents were missing positioning context.

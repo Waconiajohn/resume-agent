@@ -7,7 +7,8 @@ export type ExposedWorkspaceRoom =
   | 'linkedin'
   | 'jobs'
   | 'networking'
-  | 'interview';
+  | 'interview'
+  | 'learning';
 
 export type HiddenWorkspaceRoom =
   | 'financial';
@@ -22,6 +23,7 @@ const EXPOSED_WORKSPACE_ROOMS: readonly ExposedWorkspaceRoom[] = [
   'jobs',
   'interview',
   'networking',
+  'learning',
 ];
 
 const ROUTABLE_WORKSPACE_ROOMS: readonly WorkspaceRoom[] = [
