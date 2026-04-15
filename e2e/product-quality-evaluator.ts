@@ -444,22 +444,28 @@ async function main(): Promise<void> {
   const reports: QualityReport[] = [];
   const run = (p: ProductFilter) => productFilter === 'all' || productFilter === p;
 
-  if (run('linkedin')) {
-    const out = await captureLinkedIn(profile.resumeText, token);
-    if (out) { const r = await evaluate('LinkedIn Optimizer', buildLinkedInRubric(profile.resumeText, out), apiKey); reports.push(r); printReport(r); }
-    else console.warn('[linkedin] No output captured — skipping evaluation');
-  }
+  // Run all products IN PARALLEL for speed
+  const captures = await Promise.allSettled([
+    run('linkedin') ? captureLinkedIn(profile.resumeText, token).then(out => ({ product: 'linkedin' as const, out })) : Promise.resolve(null),
+    run('interview') ? captureInterviewPrep(profile.resumeText, profile.jobDescription, companyName, token).then(out => ({ product: 'interview' as const, out })) : Promise.resolve(null),
+    run('cover-letter') ? captureCoverLetter(profile.resumeText, profile.jobDescription, companyName, profile.jobDescription.match(/([A-Z][a-z]+ (?:of|for) [A-Z].*?)(?:\n|$)/)?.[1] ?? 'COO', token).then(out => ({ product: 'cover-letter' as const, out })) : Promise.resolve(null),
+  ]);
 
-  if (run('interview')) {
-    const out = await captureInterviewPrep(profile.resumeText, profile.jobDescription, companyName, token);
-    if (out) { const r = await evaluate('Interview Prep', buildInterviewPrepRubric(profile.resumeText, profile.jobDescription, out), apiKey); reports.push(r); printReport(r); }
-    else console.warn('[interview] No output captured — skipping evaluation');
-  }
+  // Evaluate each captured output
+  for (const result of captures) {
+    if (result.status === 'rejected') { console.warn('Pipeline failed:', result.reason); continue; }
+    const val = result.value;
+    if (!val || !val.out) continue;
 
-  if (run('cover-letter')) {
-    const out = await captureCoverLetter(profile.resumeText, profile.jobDescription, companyName, token);
-    if (out) { const r = await evaluate('Cover Letter', buildCoverLetterRubric(profile.resumeText, profile.jobDescription, out), apiKey); reports.push(r); printReport(r); }
-    else console.warn('[cover-letter] No output captured — skipping evaluation');
+    let report: QualityReport | null = null;
+    if (val.product === 'linkedin') {
+      report = await evaluate('LinkedIn Optimizer', buildLinkedInRubric(profile.resumeText, val.out), apiKey);
+    } else if (val.product === 'interview') {
+      report = await evaluate('Interview Prep', buildInterviewPrepRubric(profile.resumeText, profile.jobDescription, val.out), apiKey);
+    } else if (val.product === 'cover-letter') {
+      report = await evaluate('Cover Letter', buildCoverLetterRubric(profile.resumeText, profile.jobDescription, val.out), apiKey);
+    }
+    if (report) { reports.push(report); printReport(report); }
   }
 
   if (reports.length > 1) printSummaryTable(reports);

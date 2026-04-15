@@ -10,7 +10,8 @@
  * Uses the existing llm-provider.ts infrastructure (streaming, usage tracking).
  */
 
-import { llm, getModelForTier } from '../../lib/llm.js';
+import { llm, writerLlm, getModelForTier } from '../../lib/llm.js';
+import { MODEL_PRIMARY, RESUME_V2_WRITER_MODEL } from '../../lib/model-constants.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
 import { captureErrorWithContext } from '../../lib/sentry.js';
@@ -99,6 +100,13 @@ export async function runAgentLoop<
   // Resolve model tier (e.g., 'orchestrator') to concrete model name (e.g., 'llama-3.3-70b-versatile')
   const resolvedModel = getModelForTier(config.model as Parameters<typeof getModelForTier>[0]) ?? config.model;
 
+  // Use the high-quality writer provider (DeepSeek via Vertex/DeepInfra) for agents
+  // configured as 'primary' tier. These are writer/planner agents that need better
+  // prose quality than Groq provides. Orchestrator/mid/light agents stay on Groq for speed.
+  const isPrimaryWriter = config.model === 'primary';
+  const provider = isPrimaryWriter ? writerLlm : llm;
+  const effectiveModel = isPrimaryWriter ? RESUME_V2_WRITER_MODEL : resolvedModel;
+
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let round = 0;
@@ -160,8 +168,8 @@ export async function runAgentLoop<
         try {
           // Call LLM with retry, using the per-round signal
           response = await withRetry(
-          () => llm.chat({
-            model: resolvedModel,
+          () => provider.chat({
+            model: effectiveModel,
             system: config.system_prompt,
             messages,
             tools: toolDefs.length > 0 ? toolDefs : undefined,

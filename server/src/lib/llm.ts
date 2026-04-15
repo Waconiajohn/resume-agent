@@ -130,7 +130,7 @@ function buildProvider(name: string): LLMProvider {
     }
     // Token will be refreshed lazily; for now use a placeholder that triggers refresh
     const token = process.env.VERTEX_ACCESS_TOKEN ?? '';
-    const region = process.env.VERTEX_REGION ?? 'us-central1';
+    const region = process.env.VERTEX_REGION ?? 'global';  // DeepSeek V3.2 is global-only on Vertex
     return new VertexProvider({ project, region, accessToken: token });
   }
 
@@ -202,22 +202,27 @@ function createProvider(): LLMProvider {
 /** Active LLM provider — wraps a FailoverProvider that auto-switches on repeated failures */
 export const llm: LLMProvider = createProvider();
 
-// ─── Feature-scoped provider: Resume V2 writing ─────────────────────
-// Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.
-// This provider is used ONLY by the resume-v2 section writer for high-trust
-// writing. All other products use the global `llm` provider above.
+// ─── Feature-scoped provider: High-quality writing ──────────────────
+// DeepSeek V3.2 via Vertex/DeepInfra produces dramatically better writing
+// than Groq (6.7/10 vs 5.2/10 on resume, similar gaps on other products).
+// This provider is used by ALL writer agents across the platform for
+// high-trust prose generation. The global `llm` stays on Groq for fast
+// agent-loop orchestration and tool-calling.
 // Falls back to the global provider if DeepSeek key is not available.
 
-export const resumeV2Llm: LLMProvider = (() => {
+export const writerLlm: LLMProvider = (() => {
   const resumeProvider = RESUME_V2_WRITER_PROVIDER;
-  if (resumeProvider === ACTIVE_PROVIDER) return llm; // Same provider — reuse global
+  if (resumeProvider === ACTIVE_PROVIDER) return llm;
   try {
     const primary = buildProvider(resumeProvider);
-    return new FailoverProvider(primary, llm); // Fall back to global if DeepSeek fails
+    return new FailoverProvider(primary, llm);
   } catch {
-    return llm; // DeepSeek key not available — use global
+    return llm;
   }
 })();
+
+/** @deprecated Use writerLlm instead */
+export const resumeV2Llm = writerLlm;
 
 /**
  * Get the default model for the configured primary provider.
