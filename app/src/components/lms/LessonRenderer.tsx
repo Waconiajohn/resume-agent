@@ -426,15 +426,17 @@ export function LessonRenderer({
             aria-selected={activeTab === 'situation'}
             onClick={() => setActiveTab('situation')}
             className={cn(
-              'flex items-center gap-2 rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
+              'rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
               activeTab === 'situation'
                 ? 'bg-[var(--surface-3)] text-[var(--text-strong)] shadow-sm'
                 : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
             )}
           >
-            Your Situation
-            <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
-              {availableCount > 0 ? 'Live' : `${lesson.slots.length}`}
+            <span className="inline-flex items-center gap-1.5">
+              Your Situation
+              <span className="rounded-full bg-[var(--accent)]/15 px-1.5 py-px text-[10px] font-semibold leading-4 text-[var(--accent)]">
+                {availableCount > 0 ? 'Live' : `${lesson.slots.length}`}
+              </span>
             </span>
           </button>
         </div>
