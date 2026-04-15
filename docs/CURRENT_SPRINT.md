@@ -52,7 +52,7 @@
 ### Story 2.3 — Course 2 Injection: Super Bowl Story [done]
 ### Story 2.4 — Course 3 Injection: Resume Mastery [done]
 ### Story 2.5 — Courses 4-8 Injection [done]
-### Story 2.6 — "Launch Tool" Embedded Buttons [not started]
+### Story 2.6 — "Launch Tool" Embedded Buttons [done]
 
 ## Epic 3 — Hermes Heartbeat Integration (Week 5+)
 
