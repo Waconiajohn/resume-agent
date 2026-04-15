@@ -17,6 +17,9 @@ import type { BaseState } from '../runtime/agent-protocol.js';
 import type { AgentTool } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { SharedContext } from '../../contracts/shared-context.js';
+import type { CarouselSlide } from '../../lib/carousel-builder.js';
+
+export type { CarouselSlide };
 
 // --- Topic Suggestion ---------------------------------------------------
 
@@ -156,6 +159,19 @@ export interface LinkedInContentState extends BaseState {
 
   /** User-provided feedback for post revision */
   revision_feedback?: string;
+
+  /** Structured carousel slide data, populated after generate_carousel is called */
+  carousel_slides?: CarouselSlide[];
+
+  /**
+   * Which output format(s) to produce.
+   * - 'text': post text only (default behavior)
+   * - 'carousel': carousel slides only
+   * - 'both': produce both post text and carousel slides
+   *
+   * Defaults to 'both' when not specified.
+   */
+  carousel_format?: 'text' | 'carousel' | 'both';
 }
 
 // --- SSE Events --------------------------------------------------------
@@ -168,7 +184,8 @@ export type LinkedInContentSSEEvent =
   | { type: 'series_plan_ready'; session_id: string; series: ContentSeries }
   | { type: 'post_draft_ready'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_post_number?: number; series_total?: number }
   | { type: 'post_revised'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_post_number?: number; series_total?: number }
-  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_plan?: ContentSeries }
+  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null; series_plan?: ContentSeries; carousel_slides?: CarouselSlide[] }
+  | { type: 'carousel_ready'; slides: CarouselSlide[]; topic: string }
   | { type: 'pipeline_error'; stage: string; error: string };
 
 // --- Tool type alias ---------------------------------------------------

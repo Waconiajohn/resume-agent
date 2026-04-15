@@ -3,6 +3,7 @@ import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { safeNumber, safeString } from '@/lib/safe-cast';
+import type { CarouselSlide } from '@/lib/export-carousel-pdf';
 
 export type LinkedInContentStatus =
   | 'idle'
@@ -16,6 +17,7 @@ export type LinkedInContentStatus =
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
+export type { CarouselSlide };
 
 export interface TopicSuggestion {
   id: string;
@@ -43,12 +45,40 @@ interface LinkedInContentState {
   hookAssessment: string | null;
   activityMessages: ActivityMessage[];
   postSaved: boolean;
+  carouselSlides: CarouselSlide[] | null;
   error: string | null;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 const CONTENT_GATE_SET = new Set(['topic_selection', 'post_review'] as const);
+
+function asCarouselSlides(value: unknown): CarouselSlide[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const slides = value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const candidate = item as Record<string, unknown>;
+    if (
+      (candidate.type !== 'cover' && candidate.type !== 'content' && candidate.type !== 'cta') ||
+      typeof candidate.headline !== 'string' ||
+      typeof candidate.slideNumber !== 'number' ||
+      typeof candidate.totalSlides !== 'number'
+    ) {
+      return [];
+    }
+    return [{
+      type: candidate.type as 'cover' | 'content' | 'cta',
+      headline: candidate.headline,
+      body: typeof candidate.body === 'string' ? candidate.body : undefined,
+      bulletPoints: Array.isArray(candidate.bulletPoints)
+        ? candidate.bulletPoints.filter((v): v is string => typeof v === 'string')
+        : undefined,
+      slideNumber: candidate.slideNumber,
+      totalSlides: candidate.totalSlides,
+    }];
+  });
+  return slides.length > 0 ? slides : null;
+}
 
 function asTopicSuggestions(value: unknown): TopicSuggestion[] {
   if (!Array.isArray(value)) return [];
@@ -111,6 +141,7 @@ export function useLinkedInContent() {
     hookAssessment: null,
     activityMessages: [],
     postSaved: false,
+    carouselSlides: null,
     error: null,
   });
 
@@ -248,6 +279,14 @@ export function useLinkedInContent() {
           });
           break;
 
+        case 'carousel_ready': {
+          const slides = asCarouselSlides(data.slides);
+          if (slides) {
+            setState((prev) => ({ ...prev, carouselSlides: slides }));
+          }
+          break;
+        }
+
         case 'heartbeat':
           break;
 
@@ -357,6 +396,7 @@ export function useLinkedInContent() {
       hookAssessment: null,
       activityMessages: [],
       postSaved: false,
+      carouselSlides: null,
       error: null,
     });
 
@@ -484,6 +524,7 @@ export function useLinkedInContent() {
       hookAssessment: null,
       activityMessages: [],
       postSaved: false,
+      carouselSlides: null,
       error: null,
     });
   }, []);

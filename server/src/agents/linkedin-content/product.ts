@@ -23,6 +23,7 @@ import type {
   TopicSuggestion,
   PostQualityScores,
   ContentSeries,
+  CarouselSlide,
 } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
@@ -159,6 +160,9 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           }
           if (scratchpad.quality_scores && typeof scratchpad.quality_scores === 'object') {
             state.quality_scores = scratchpad.quality_scores as PostQualityScores;
+          }
+          if (Array.isArray(scratchpad.carousel_slides) && !state.carousel_slides) {
+            state.carousel_slides = scratchpad.carousel_slides as CarouselSlide[];
           }
         },
       },
@@ -369,6 +373,8 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         // Surface the series plan in the completion event so the UI can render
         // the full series plan alongside the first completed post
         series_plan: state.series_plan,
+        // Include carousel slides when the writer called generate_carousel
+        carousel_slides: state.carousel_slides,
       });
 
       return {
@@ -378,6 +384,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         series_plan: state.series_plan,
         series_mode: state.series_mode,
         current_series_post: state.current_series_post,
+        carousel_slides: state.carousel_slides,
       };
     },
 
@@ -389,6 +396,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         series_plan?: ContentSeries;
         series_mode?: boolean;
         current_series_post?: number;
+        carousel_slides?: CarouselSlide[];
       };
 
       try {
@@ -404,6 +412,8 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
             status: 'draft',
             quality_scores: data.quality_scores,
             source_session_id: state.session_id,
+            // Persist carousel slides when generated
+            ...(data.carousel_slides && { carousel_slides: data.carousel_slides }),
             // Persist series metadata when in series mode
             ...(data.series_mode && {
               series_title: data.series_plan?.series_title ?? null,

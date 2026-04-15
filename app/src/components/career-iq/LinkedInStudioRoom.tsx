@@ -17,7 +17,11 @@ import {
   RotateCcw,
   BookOpen,
   Clock,
+  Download,
+  Layers,
 } from 'lucide-react';
+import { exportCarouselPdf } from '@/lib/export-carousel-pdf';
+import type { CarouselSlide } from '@/lib/export-carousel-pdf';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
 import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
@@ -75,6 +79,94 @@ function ActivityFeed({ messages, label }: { messages: Array<{ id: string; messa
   );
 }
 
+// ─── Carousel Preview ─────────────────────────────────────────────────────
+
+function CarouselSlideThumbnail({ slide }: { slide: CarouselSlide }) {
+  const isCover = slide.type === 'cover';
+  const isCta = slide.type === 'cta';
+  return (
+    <div
+      className={cn(
+        'flex-shrink-0 w-[120px] h-[90px] rounded-lg border overflow-hidden flex flex-col p-2 gap-1',
+        isCover
+          ? 'bg-[#1a365d] border-[#1a365d]/40'
+          : isCta
+          ? 'bg-[#1a365d]/90 border-[#1a365d]/30'
+          : 'bg-[var(--surface-0)] border-[var(--line-soft)]',
+      )}
+    >
+      {isCover && (
+        <div className="w-full h-1.5 rounded-sm bg-[#3182ce] mb-0.5 flex-shrink-0" />
+      )}
+      {!isCover && !isCta && (
+        <div className="w-8 h-0.5 rounded-sm bg-[#3182ce] mb-0.5 flex-shrink-0" />
+      )}
+      <p
+        className={cn(
+          'text-[9px] font-semibold leading-tight line-clamp-2 flex-1',
+          isCover || isCta ? 'text-white' : 'text-[var(--text-strong)]',
+        )}
+      >
+        {slide.headline}
+      </p>
+      {(slide.bulletPoints ?? []).length > 0 && !isCta && (
+        <div className="space-y-0.5">
+          {(slide.bulletPoints ?? []).slice(0, 2).map((bp, i) => (
+            <p key={i} className="text-[8px] text-[var(--text-soft)] leading-tight truncate">
+              · {bp}
+            </p>
+          ))}
+        </div>
+      )}
+      <p
+        className={cn(
+          'text-[8px] mt-auto text-right',
+          isCover || isCta ? 'text-white/50' : 'text-[var(--text-soft)]',
+        )}
+      >
+        {slide.slideNumber}/{slide.totalSlides}
+      </p>
+    </div>
+  );
+}
+
+interface CarouselPreviewProps {
+  slides: CarouselSlide[];
+  onDownload: () => void;
+  isDownloading: boolean;
+}
+
+function CarouselPreview({ slides, onDownload, isDownloading }: CarouselPreviewProps) {
+  return (
+    <GlassCard className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Layers size={14} className="text-[var(--link)]" />
+        <span className="text-[13px] font-semibold text-[var(--text-strong)]">Carousel Slides</span>
+        <span className="text-[12px] text-[var(--text-soft)] ml-1">
+          {slides.length} slide{slides.length !== 1 ? 's' : ''}
+        </span>
+        <GlassButton
+          onClick={onDownload}
+          disabled={isDownloading}
+          className="ml-auto flex items-center gap-1.5 text-[12px] py-1 px-2.5"
+        >
+          {isDownloading ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Download size={12} />
+          )}
+          {isDownloading ? 'Generating...' : 'Download PDF'}
+        </GlassButton>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {slides.map((slide) => (
+          <CarouselSlideThumbnail key={slide.slideNumber} slide={slide} />
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
 // ─── Write Tab ────────────────────────────────────────────────────────────
 
 function PostComposer({ signals }: { signals: WhyMeSignals }) {
@@ -83,6 +175,18 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [showCarousel, setShowCarousel] = useState(true);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadCarousel = useCallback(async () => {
+    if (!content.carouselSlides) return;
+    setIsDownloadingPdf(true);
+    try {
+      await exportCarouselPdf(content.carouselSlides);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }, [content.carouselSlides]);
 
   const handleStart = useCallback(async () => {
     setInputError(null);
@@ -240,6 +344,38 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
             )}
           </div>
 
+          {content.carouselSlides && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[12px] text-[var(--text-soft)] font-medium">Format:</span>
+              <div className="flex items-center rounded-lg border border-[var(--line-soft)] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowCarousel(false)}
+                  className={cn(
+                    'px-3 py-1 text-[12px] font-medium transition-colors',
+                    !showCarousel
+                      ? 'bg-[var(--link)] text-white'
+                      : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                  )}
+                >
+                  Text Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCarousel(true)}
+                  className={cn(
+                    'px-3 py-1 text-[12px] font-medium transition-colors',
+                    showCarousel
+                      ? 'bg-[var(--link)] text-white'
+                      : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                  )}
+                >
+                  Carousel
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 mb-4">
             <div className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
               {content.postDraft}
@@ -250,6 +386,16 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               </p>
             )}
           </div>
+
+          {content.carouselSlides && showCarousel && (
+            <div className="mb-4">
+              <CarouselPreview
+                slides={content.carouselSlides}
+                onDownload={handleDownloadCarousel}
+                isDownloading={isDownloadingPdf}
+              />
+            </div>
+          )}
 
           {content.hookScore != null && content.hookScore < 60 && (
             <div className="mb-4 rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.04] px-4 py-3 flex items-start gap-2">
@@ -339,6 +485,38 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
             </button>
           </div>
 
+          {content.carouselSlides && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[12px] text-[var(--text-soft)] font-medium">Format:</span>
+              <div className="flex items-center rounded-lg border border-[var(--line-soft)] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowCarousel(false)}
+                  className={cn(
+                    'px-3 py-1 text-[12px] font-medium transition-colors',
+                    !showCarousel
+                      ? 'bg-[var(--link)] text-white'
+                      : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                  )}
+                >
+                  Text Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCarousel(true)}
+                  className={cn(
+                    'px-3 py-1 text-[12px] font-medium transition-colors',
+                    showCarousel
+                      ? 'bg-[var(--link)] text-white'
+                      : 'text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
+                  )}
+                >
+                  Carousel
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.03] p-4 mb-4">
             <div className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
               {content.postDraft}
@@ -349,6 +527,16 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               </p>
             )}
           </div>
+
+          {content.carouselSlides && showCarousel && (
+            <div className="mb-4">
+              <CarouselPreview
+                slides={content.carouselSlides}
+                onDownload={handleDownloadCarousel}
+                isDownloading={isDownloadingPdf}
+              />
+            </div>
+          )}
 
           <div className="flex gap-2">
             <GlassButton onClick={content.reset} className="flex items-center gap-2">

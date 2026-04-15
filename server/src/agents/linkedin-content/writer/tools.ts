@@ -21,6 +21,7 @@ import {
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
+import { buildCarouselSlides } from '../../../lib/carousel-builder.js';
 
 // ─── Helper: build series context block ──────────────────────────────────
 
@@ -573,6 +574,66 @@ const presentPostTool: LinkedInContentTool = {
   },
 };
 
+// ─── Tool: generate_carousel ───────────────────────────────────────────────
+
+const generateCarouselTool: LinkedInContentTool = {
+  name: 'generate_carousel',
+  description:
+    'Convert the drafted post into a multi-slide document carousel for LinkedIn. ' +
+    'Call this AFTER the post draft is finalized and the user has approved it. ' +
+    'Emits a carousel_ready SSE event with the structured slide data.',
+  model_tier: 'light',
+  input_schema: {
+    type: 'object',
+    properties: {
+      post_text: {
+        type: 'string',
+        description: 'The finalized post text to convert into slides',
+      },
+      topic: {
+        type: 'string',
+        description: 'The post topic/title used as the cover slide headline',
+      },
+    },
+    required: ['post_text', 'topic'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const postText = String(input.post_text ?? ctx.scratchpad.post_draft ?? '');
+    const topic = String(input.topic ?? state.selected_topic ?? 'Professional Insight');
+
+    if (!postText) {
+      return { success: false, reason: 'No post text provided -- pass post_text or call write_post first' };
+    }
+
+    // Derive author name from career profile if available; fall back gracefully
+    const careerProfile = state.platform_context?.career_profile;
+    const authorName =
+      (careerProfile as Record<string, unknown> | undefined)?.name as string | undefined
+      ?? 'Career Professional';
+
+    const hashtags = (ctx.scratchpad.post_hashtags as string[] | undefined) ?? [];
+
+    // Detect series info for cover slide framing
+    const seriesInfo =
+      state.series_mode && state.series_plan && state.current_series_post
+        ? {
+            part: state.current_series_post,
+            total: state.series_plan.total_posts,
+            title: state.series_plan.series_title,
+          }
+        : undefined;
+
+    const slides = buildCarouselSlides(postText, topic, authorName, hashtags, { seriesInfo });
+
+    ctx.scratchpad.carousel_slides = slides;
+
+    ctx.emit({ type: 'carousel_ready', slides, topic });
+
+    return { slides_generated: slides.length, format: 'carousel' };
+  },
+};
+
 // ─── Tool exports ──────────────────────────────────────────────────────
 
 export const writerTools: LinkedInContentTool[] = [
@@ -580,5 +641,6 @@ export const writerTools: LinkedInContentTool[] = [
   selfReviewPostTool,
   revisePostTool,
   presentPostTool,
+  generateCarouselTool,
   createEmitTransparency<LinkedInContentState, LinkedInContentSSEEvent>({ prefix: 'Writer: ' }),
 ];
