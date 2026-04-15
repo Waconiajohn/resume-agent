@@ -434,9 +434,11 @@ export function LessonRenderer({
           >
             <span className="inline-flex items-center gap-1.5">
               Your Situation
-              <span className="rounded-full bg-[var(--accent)]/15 px-1.5 py-px text-[10px] font-semibold leading-4 text-[var(--accent)]">
-                {availableCount > 0 ? 'Live' : `${lesson.slots.length}`}
-              </span>
+              {availableCount > 0 && (
+                <span className="rounded-full bg-[var(--accent)]/15 px-1.5 py-px text-[10px] font-semibold leading-4 text-[var(--accent)]">
+                  Live
+                </span>
+              )}
             </span>
           </button>
         </div>
