@@ -258,7 +258,7 @@ async function scanCompany(
   // Tier 2: Serper Google Jobs search fallback
   if (allJobs.length === 0) {
     try {
-      allJobs = await searchJobsViaSerper(company.name, targetTitles, filters.location);
+      allJobs = await searchJobsViaSerper(company.name, targetTitles, filters.location, filters.max_days_old);
       source = 'serper';
       if (allJobs.length > 0) {
         logger.info(

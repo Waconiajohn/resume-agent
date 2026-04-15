@@ -23,6 +23,7 @@ export async function searchJobsViaSerper(
   companyName: string,
   targetTitles: string[],
   location?: string,
+  maxDaysOld?: number,
 ): Promise<ATSJob[]> {
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) {
@@ -39,13 +40,23 @@ export async function searchJobsViaSerper(
 
   for (const query of queries) {
     try {
+      // Build Serper request body with optional time filter
+      const serperBody: Record<string, unknown> = { q: query, num: 10 };
+      if (maxDaysOld && maxDaysOld > 0) {
+        // Google tbs parameter: qdr:d = past day, qdr:d3 = past 3 days, qdr:w = past week, qdr:w2 = past 2 weeks
+        if (maxDaysOld <= 1) serperBody.tbs = 'qdr:d';
+        else if (maxDaysOld <= 3) serperBody.tbs = 'qdr:d3';
+        else if (maxDaysOld <= 7) serperBody.tbs = 'qdr:w';
+        else if (maxDaysOld <= 14) serperBody.tbs = 'qdr:w2';
+      }
+
       const res = await fetch(SERPER_API_URL, {
         method: 'POST',
         headers: {
           'X-API-KEY': apiKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ q: query, num: 10 }),
+        body: JSON.stringify(serperBody),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
 
