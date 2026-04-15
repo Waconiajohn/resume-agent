@@ -165,7 +165,7 @@ function NetworkSetupPanel({
 
 export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartReferralsRoomProps) {
   const { user, session, loading: authLoading } = useAuth();
-  const { filters: niFilters } = useJobFilters('ni-job-filters');
+  const { filters: niFilters, setLocation: setNiLocation, setRadiusMiles: setNiRadiusMiles, setWorkModes: setNiWorkModes, setPostedWithin: setNiPostedWithin } = useJobFilters('ni-job-filters');
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
   const [networkSupportView, setNetworkSupportView] = useState<NetworkSupportView>(null);
@@ -350,7 +350,21 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
           />
         );
       case 'targets':
-        return <TargetTitlesManager accessToken={accessToken} />;
+        return (
+          <>
+            <TargetTitlesManager accessToken={accessToken} />
+            <JobFilterPanel
+              location={niFilters.location}
+              onLocationChange={(v) => void setNiLocation(v)}
+              radiusMiles={niFilters.radiusMiles}
+              onRadiusMilesChange={(v) => void setNiRadiusMiles(v)}
+              workModes={niFilters.workModes}
+              onWorkModesChange={(v) => void setNiWorkModes(v)}
+              postedWithin={niFilters.postedWithin}
+              onPostedWithinChange={(v) => void setNiPostedWithin(v)}
+            />
+          </>
+        );
       case 'job-matches':
         return (
           <JobMatchesList
