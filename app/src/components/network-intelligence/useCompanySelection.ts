@@ -1,10 +1,36 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { CompanySummary } from '@/types/ni';
 
 const MAX_SELECTION = 50;
+const STORAGE_KEY = 'ni-selected-companies';
+
+function loadSaved(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    if (Array.isArray(arr)) return new Set(arr.filter((v): v is string => typeof v === 'string'));
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveToDisk(selected: Set<string>): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...selected]));
+  } catch {
+    // Storage unavailable
+  }
+}
 
 export function useCompanySelection(companies: CompanySummary[]) {
-  const [selectedRaws, setSelectedRaws] = useState<Set<string>>(new Set());
+  const [selectedRaws, setSelectedRaws] = useState<Set<string>>(() => loadSaved());
+
+  // Persist on every change
+  useEffect(() => {
+    saveToDisk(selectedRaws);
+  }, [selectedRaws]);
 
   const eligibleCompanies = useMemo(
     () => companies.filter((c) => c.companyId !== null),
