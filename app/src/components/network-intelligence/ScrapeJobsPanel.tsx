@@ -300,6 +300,20 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
         )}
       </GlassCard>
 
+      {/* Job filters — above company picker so user sets criteria first */}
+      {eligibleCompanyCount > 0 && (
+        <JobFilterPanel
+          location={filters.location}
+          onLocationChange={setLocation}
+          radiusMiles={filters.radiusMiles}
+          onRadiusMilesChange={setRadiusMiles}
+          workModes={filters.workModes}
+          onWorkModesChange={setWorkModes}
+          postedWithin={filters.postedWithin}
+          onPostedWithinChange={setPostedWithin}
+        />
+      )}
+
       {/* Company picker */}
       {eligibleCompanyCount > 0 && (
         <CompanyPickerList
@@ -313,20 +327,6 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
           onClear={selection.clearAll}
           accessToken={accessToken}
           disabled={running}
-        />
-      )}
-
-      {/* Job filters */}
-      {eligibleCompanyCount > 0 && (
-        <JobFilterPanel
-          location={filters.location}
-          onLocationChange={setLocation}
-          radiusMiles={filters.radiusMiles}
-          onRadiusMilesChange={setRadiusMiles}
-          workModes={filters.workModes}
-          onWorkModesChange={setWorkModes}
-          postedWithin={filters.postedWithin}
-          onPostedWithinChange={setPostedWithin}
         />
       )}
 
