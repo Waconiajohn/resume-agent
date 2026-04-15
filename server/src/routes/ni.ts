@@ -253,6 +253,23 @@ ni.patch('/matches/:id/status', rateLimitMiddleware(30, 60_000), async (c) => {
   return c.json({ success: true });
 });
 
+ni.delete('/matches', rateLimitMiddleware(5, 60_000), async (c) => {
+  const userId = c.get('user').id;
+
+  const { error } = await supabaseAdmin
+    .from('job_matches')
+    .delete()
+    .eq('user_id', userId)
+    .in('status', ['new', 'archived']);
+
+  if (error) {
+    logger.error({ error: error.message, userId }, 'DELETE /ni/matches: failed');
+    return c.json({ error: 'Failed to clear matches' }, 500);
+  }
+
+  return c.json({ success: true });
+});
+
 // ─── Boolean Search ───────────────────────────────────────────────────────────
 
 ni.post('/boolean-search/generate', rateLimitMiddleware(10, 60_000), async (c) => {

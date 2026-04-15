@@ -114,6 +114,7 @@ export function JobMatchesList({
 }: JobMatchesListProps) {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MatchFilter>(initialFilter);
 
   useEffect(() => {
@@ -200,6 +201,24 @@ export function JobMatchesList({
     }
   }, [accessToken]);
 
+  const handleClearAll = useCallback(async () => {
+    if (!accessToken) return;
+    setClearing(true);
+    try {
+      const res = await fetch(`${API_BASE}/ni/matches`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        setMatches([]);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setClearing(false);
+    }
+  }, [accessToken]);
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -229,7 +248,7 @@ export function JobMatchesList({
             {description}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(['all', 'network_connections', 'bonus_search', 'referral_bonus'] as const).map((filter) => (
             <button
               key={filter}
@@ -245,6 +264,14 @@ export function JobMatchesList({
               {FILTER_LABELS[filter]} ({filterCounts[filter]})
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleClearAll}
+            disabled={clearing || matches.length === 0}
+            className="rounded-md border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:border-[var(--badge-red-text)]/30 hover:text-[var(--badge-red-text)]/70 disabled:opacity-40"
+          >
+            {clearing ? 'Clearing...' : 'Clear All'}
+          </button>
         </div>
       </div>
 
