@@ -7,6 +7,7 @@ import { ConnectionsBrowser } from '@/components/network-intelligence/Connection
 import { TargetTitlesManager } from '@/components/network-intelligence/TargetTitlesManager';
 import { JobMatchesList } from '@/components/network-intelligence/JobMatchesList';
 import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPanel';
+import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 import { BonusSearchPanel } from '@/components/network-intelligence/BonusSearchPanel';
 import { ReferralOpportunitiesPanel } from '@/components/network-intelligence/ReferralOpportunitiesPanel';
 import { NetworkingHubRoom, type OutreachReferralContext } from './NetworkingHubRoom';
@@ -108,6 +109,8 @@ function NetworkSetupPanel({
   onViewMatches?: () => void;
   onScanComplete?: () => void;
 }) {
+  const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters('ni-job-filters');
+
   return (
     <div className="space-y-4">
       <ConnectionsBrowser accessToken={accessToken} />
@@ -134,7 +137,21 @@ function NetworkSetupPanel({
         </div>
       </GlassCard>
 
-      {supportView === 'targets' && <TargetTitlesManager accessToken={accessToken} />}
+      {supportView === 'targets' && (
+        <>
+          <TargetTitlesManager accessToken={accessToken} />
+          <JobFilterPanel
+            location={filters.location}
+            onLocationChange={setLocation}
+            radiusMiles={filters.radiusMiles}
+            onRadiusMilesChange={setRadiusMiles}
+            workModes={filters.workModes}
+            onWorkModesChange={setWorkModes}
+            postedWithin={filters.postedWithin}
+            onPostedWithinChange={setPostedWithin}
+          />
+        </>
+      )}
       {supportView === 'job-scan' && (
         <ScrapeJobsPanel
           accessToken={accessToken}

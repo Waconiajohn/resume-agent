@@ -7,7 +7,7 @@ import type { CompanySummary, TargetTitle } from '@/types/ni';
 import { useNiScrapeRunner } from './useNiScrapeRunner';
 import { useCompanySelection } from './useCompanySelection';
 import { CompanyPickerList } from './CompanyPickerList';
-import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
+
 import { useJobFilters } from '@/hooks/useJobFilters';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
@@ -299,20 +299,6 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
           </div>
         )}
       </GlassCard>
-
-      {/* Job filters — above company picker so user sets criteria first */}
-      {eligibleCompanyCount > 0 && (
-        <JobFilterPanel
-          location={filters.location}
-          onLocationChange={setLocation}
-          radiusMiles={filters.radiusMiles}
-          onRadiusMilesChange={setRadiusMiles}
-          workModes={filters.workModes}
-          onWorkModesChange={setWorkModes}
-          postedWithin={filters.postedWithin}
-          onPostedWithinChange={setPostedWithin}
-        />
-      )}
 
       {/* Company picker */}
       {eligibleCompanyCount > 0 && (
