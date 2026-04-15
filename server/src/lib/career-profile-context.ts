@@ -533,7 +533,10 @@ export async function loadCareerProfileContext(userId: string): Promise<CareerPr
       fallbackTimestamp,
     );
 
-    if (!storedCareerProfileRow) {
+    // Auto-save normalized V2 profile when missing or outdated (legacy format)
+    const storedContent = storedCareerProfileRow?.content as Record<string, unknown> | null;
+    const isLegacyFormat = !storedCareerProfileRow || !storedContent?.version || storedContent.version !== 'career_profile_v2';
+    if (isLegacyFormat) {
       void upsertUserContext(
         userId,
         'career_profile',
